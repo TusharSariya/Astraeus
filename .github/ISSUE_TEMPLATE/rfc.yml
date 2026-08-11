@@ -1,0 +1,29 @@
+name: RFC proposal
+description: Propose a consequential cross-cutting technical design.
+title: "spec(rfc): "
+labels: [rfc]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation and affected requirements
+    validations:
+      required: true
+  - type: textarea
+    id: design
+    attributes:
+      label: Proposed design and boundaries
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and tradeoffs
+    validations:
+      required: true
+  - type: textarea
+    id: failures
+    attributes:
+      label: Failure, security, privacy, operations, and migration
+    validations:
+      required: true

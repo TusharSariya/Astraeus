@@ -1,0 +1,42 @@
+name: Spec governance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: spec-governance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: spec-governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out complete history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.1"
+          enable-cache: true
+      - name: Synchronize locked validator environment
+        run: uv sync --project tools/specs --locked
+      - name: Run specification unit tests
+        env:
+          PYTHONPATH: tools/specs
+        run: uv run --project tools/specs python -m unittest discover -s tools/specs/tests -v
+      - name: Validate specifications and generated contracts
+        run: uv run --project tools/specs python tools/specs/specctl.py validate
+      - name: Validate pull request traceability
+        if: github.event_name == 'pull_request'
+        run: uv run --project tools/specs python tools/specs/specctl.py validate-pr "$GITHUB_EVENT_PATH"
