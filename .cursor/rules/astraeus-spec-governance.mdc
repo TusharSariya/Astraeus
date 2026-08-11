@@ -1,0 +1,8 @@
+---
+description: Astraeus specification and traceability governance
+alwaysApply: true
+---
+
+Follow `/AGENTS.md` and
+`/.agents/skills/manage-astraeus-specs/SKILL.md`. Specifications under
+`/docs/specv1` are authoritative according to their status; research is not.

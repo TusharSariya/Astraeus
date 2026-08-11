@@ -1,0 +1,35 @@
+name: Specification change
+description: Propose a new or changed normative requirement, RFC, ADR, or contract.
+title: "spec: "
+labels: [spec-change]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or contradiction
+    validations:
+      required: true
+  - type: input
+    id: affected
+    attributes:
+      label: Affected document and requirement IDs
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed normative change
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and consequences
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Required verification
+    validations:
+      required: true

@@ -1,0 +1,1101 @@
+{
+  "requirements": [
+    {
+      "anchor": "ecl26-cloud-001-model-a-line-of-sight-proxy-not-full-cloud-truth",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-CLOUD-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Model a line-of-sight proxy, not full cloud truth"
+    },
+    {
+      "anchor": "ecl26-cloud-002-restrict-quantitative-optical-claims",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-CLOUD-002",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Restrict quantitative optical claims"
+    },
+    {
+      "anchor": "ecl26-cloud-003-handle-eclipse-contaminated-satellite-evidence",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-CLOUD-003",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Handle eclipse-contaminated satellite evidence"
+    },
+    {
+      "anchor": "ecl26-data-001-use-the-declared-weather-stack",
+      "document_id": "ECL26-DATA",
+      "id": "ECL26-DATA-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DATA_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Use the declared weather stack"
+    },
+    {
+      "anchor": "ecl26-data-002-ingest-required-hrdps-evidence",
+      "document_id": "ECL26-DATA",
+      "id": "ECL26-DATA-002",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DATA_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Ingest required HRDPS evidence"
+    },
+    {
+      "anchor": "ecl26-data-003-use-goes-full-disk-evidence-with-qc",
+      "document_id": "ECL26-DATA",
+      "id": "ECL26-DATA-003",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DATA_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Use GOES full-disk evidence with QC"
+    },
+    {
+      "anchor": "ecl26-data-004-use-observations-for-their-measured-quantities",
+      "document_id": "ECL26-DATA",
+      "id": "ECL26-DATA-004",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DATA_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Use observations for their measured quantities"
+    },
+    {
+      "anchor": "ecl26-degr-001-degrade-explicitly",
+      "document_id": "ECL26-DATA",
+      "id": "ECL26-DEGR-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DATA_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Degrade explicitly"
+    },
+    {
+      "anchor": "ecl26-evid-001-define-minimum-cloud-evidence",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-EVID-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Define minimum cloud evidence"
+    },
+    {
+      "anchor": "ecl26-fresh-001-enforce-freshness-policy",
+      "document_id": "ECL26-DATA",
+      "id": "ECL26-FRESH-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DATA_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Enforce freshness policy"
+    },
+    {
+      "anchor": "ecl26-geo-001-calculate-local-circumstances-per-candidate",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-GEO-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Calculate local circumstances per candidate"
+    },
+    {
+      "anchor": "ecl26-geo-002-report-geometry-uncertainty-honestly",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-GEO-002",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Report geometry uncertainty honestly"
+    },
+    {
+      "anchor": "ecl26-norm-001-normalize-without-inventing-precision",
+      "document_id": "ECL26-DATA",
+      "id": "ECL26-NORM-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DATA_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Normalize without inventing precision"
+    },
+    {
+      "anchor": "ecl26-prod-001-accept-a-constrained-observation-request",
+      "document_id": "ECL26-PRODUCT",
+      "id": "ECL26-PROD-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/PRODUCT_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Accept a constrained observation request"
+    },
+    {
+      "anchor": "ecl26-prod-002-return-ranked-contiguous-opportunities",
+      "document_id": "ECL26-PRODUCT",
+      "id": "ECL26-PROD-002",
+      "path": "docs/specv1/features/eclipse-2026-08-12/PRODUCT_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Return ranked contiguous opportunities"
+    },
+    {
+      "anchor": "ecl26-prod-003-use-decision-states-not-data-dumps",
+      "document_id": "ECL26-PRODUCT",
+      "id": "ECL26-PROD-003",
+      "path": "docs/specv1/features/eclipse-2026-08-12/PRODUCT_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Use decision states, not data dumps"
+    },
+    {
+      "anchor": "ecl26-prod-004-aggregate-useful-time-windows",
+      "document_id": "ECL26-PRODUCT",
+      "id": "ECL26-PROD-004",
+      "path": "docs/specv1/features/eclipse-2026-08-12/PRODUCT_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Aggregate useful time windows"
+    },
+    {
+      "anchor": "ecl26-prod-005-preserve-honest-alternatives",
+      "document_id": "ECL26-PRODUCT",
+      "id": "ECL26-PROD-005",
+      "path": "docs/specv1/features/eclipse-2026-08-12/PRODUCT_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Preserve honest alternatives"
+    },
+    {
+      "anchor": "ecl26-prod-006-explain-recommendation-changes",
+      "document_id": "ECL26-PRODUCT",
+      "id": "ECL26-PROD-006",
+      "path": "docs/specv1/features/eclipse-2026-08-12/PRODUCT_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Explain recommendation changes"
+    },
+    {
+      "anchor": "ecl26-prod-007-preserve-freshness-and-offline-truth",
+      "document_id": "ECL26-PRODUCT",
+      "id": "ECL26-PROD-007",
+      "path": "docs/specv1/features/eclipse-2026-08-12/PRODUCT_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Preserve freshness and offline truth"
+    },
+    {
+      "anchor": "ecl26-rel-001-limit-the-immediate-preview-honestly",
+      "document_id": "ECL26-DELIVERY",
+      "id": "ECL26-REL-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DELIVERY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Limit the immediate preview honestly"
+    },
+    {
+      "anchor": "ecl26-rel-002-build-the-reusable-web-product-by-dependency-order",
+      "document_id": "ECL26-DELIVERY",
+      "id": "ECL26-REL-002",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DELIVERY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Build the reusable web product by dependency order"
+    },
+    {
+      "anchor": "ecl26-rel-003-defer-optional-capabilities-without-weakening-contracts",
+      "document_id": "ECL26-DELIVERY",
+      "id": "ECL26-REL-003",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DELIVERY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Defer optional capabilities without weakening contracts"
+    },
+    {
+      "anchor": "ecl26-rel-004-gate-public-native-release",
+      "document_id": "ECL26-DELIVERY",
+      "id": "ECL26-REL-004",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DELIVERY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Gate public native release"
+    },
+    {
+      "anchor": "ecl26-rel-005-assign-work-only-after-contract-predecessors-pass",
+      "document_id": "ECL26-DELIVERY",
+      "id": "ECL26-REL-005",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DELIVERY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Assign work only after contract predecessors pass"
+    },
+    {
+      "anchor": "ecl26-safe-001-require-solar-protection-for-the-entire-event",
+      "document_id": "ECL26-SAFETY",
+      "id": "ECL26-SAFE-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SAFETY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Require solar protection for the entire event"
+    },
+    {
+      "anchor": "ecl26-safe-002-protect-optical-equipment-correctly",
+      "document_id": "ECL26-SAFETY",
+      "id": "ECL26-SAFE-002",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SAFETY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Protect optical equipment correctly"
+    },
+    {
+      "anchor": "ecl26-safe-003-gate-destinations-independently-of-viewing-utility",
+      "document_id": "ECL26-SAFETY",
+      "id": "ECL26-SAFE-003",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SAFETY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Gate destinations independently of viewing utility"
+    },
+    {
+      "anchor": "ecl26-safe-004-require-lawful-access-and-stopping",
+      "document_id": "ECL26-SAFETY",
+      "id": "ECL26-SAFE-004",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SAFETY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Require lawful access and stopping"
+    },
+    {
+      "anchor": "ecl26-safe-005-enforce-full-travel-safety",
+      "document_id": "ECL26-SAFETY",
+      "id": "ECL26-SAFE-005",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SAFETY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Enforce full travel safety"
+    },
+    {
+      "anchor": "ecl26-safe-006-prevent-distracted-rerouting",
+      "document_id": "ECL26-SAFETY",
+      "id": "ECL26-SAFE-006",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SAFETY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Prevent distracted rerouting"
+    },
+    {
+      "anchor": "ecl26-safe-007-fail-safe-on-missing-geometry-or-advice",
+      "document_id": "ECL26-SAFETY",
+      "id": "ECL26-SAFE-007",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SAFETY_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Fail safe on missing geometry or advice"
+    },
+    {
+      "anchor": "ecl26-scen-001-keep-scenario-families-explicit",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-SCEN-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Keep scenario families explicit"
+    },
+    {
+      "anchor": "ecl26-score-001-use-versioned-explainable-scoring",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-SCORE-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Use versioned explainable scoring"
+    },
+    {
+      "anchor": "ecl26-time-001-evaluate-the-event-specific-interval",
+      "document_id": "ECL26-SCIENCE",
+      "id": "ECL26-TIME-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Evaluate the event-specific interval"
+    },
+    {
+      "anchor": "ecl26-ux-001-use-a-decision-first-screen-hierarchy",
+      "document_id": "ECL26-UX",
+      "id": "ECL26-UX-001",
+      "path": "docs/specv1/features/eclipse-2026-08-12/UX_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Use a decision-first screen hierarchy"
+    },
+    {
+      "anchor": "ecl26-ux-002-render-the-minimum-operational-layers-by-default",
+      "document_id": "ECL26-UX",
+      "id": "ECL26-UX-002",
+      "path": "docs/specv1/features/eclipse-2026-08-12/UX_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Render the minimum operational layers by default"
+    },
+    {
+      "anchor": "ecl26-ux-003-make-scores-decomposable",
+      "document_id": "ECL26-UX",
+      "id": "ECL26-UX-003",
+      "path": "docs/specv1/features/eclipse-2026-08-12/UX_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Make scores decomposable"
+    },
+    {
+      "anchor": "ecl26-ux-004-keep-time-evidence-and-revision-synchronized",
+      "document_id": "ECL26-UX",
+      "id": "ECL26-UX-004",
+      "path": "docs/specv1/features/eclipse-2026-08-12/UX_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Keep time, evidence, and revision synchronized"
+    },
+    {
+      "anchor": "ecl26-ux-005-expose-provenance-and-changes",
+      "document_id": "ECL26-UX",
+      "id": "ECL26-UX-005",
+      "path": "docs/specv1/features/eclipse-2026-08-12/UX_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Expose provenance and changes"
+    },
+    {
+      "anchor": "ecl26-ux-006-preserve-mobile-offline-and-accessibility-fallbacks",
+      "document_id": "ECL26-UX",
+      "id": "ECL26-UX-006",
+      "path": "docs/specv1/features/eclipse-2026-08-12/UX_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Preserve mobile, offline, and accessibility fallbacks"
+    },
+    {
+      "anchor": "ecl26-ux-007-make-safety-unavoidable-but-useful",
+      "document_id": "ECL26-UX",
+      "id": "ECL26-UX-007",
+      "path": "docs/specv1/features/eclipse-2026-08-12/UX_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Make safety unavoidable but useful"
+    },
+    {
+      "anchor": "evd-api-001-use-asynchronous-capability-protected-plans",
+      "document_id": "RFC-001",
+      "id": "EVD-API-001",
+      "path": "docs/specv1/rfcs/RFC-001-EVIDENCE-REVISIONS-AND-PROVENANCE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Use asynchronous capability-protected plans"
+    },
+    {
+      "anchor": "evd-layer-001-keep-analytic-assets-renderer-neutral",
+      "document_id": "RFC-001",
+      "id": "EVD-LAYER-001",
+      "path": "docs/specv1/rfcs/RFC-001-EVIDENCE-REVISIONS-AND-PROVENANCE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Keep analytic assets renderer-neutral"
+    },
+    {
+      "anchor": "evd-mask-001-use-explicit-mask-semantics",
+      "document_id": "RFC-001",
+      "id": "EVD-MASK-001",
+      "path": "docs/specv1/rfcs/RFC-001-EVIDENCE-REVISIONS-AND-PROVENANCE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Use explicit mask semantics"
+    },
+    {
+      "anchor": "evd-prov-001-preserve-issued-source-identity",
+      "document_id": "RFC-001",
+      "id": "EVD-PROV-001",
+      "path": "docs/specv1/rfcs/RFC-001-EVIDENCE-REVISIONS-AND-PROVENANCE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Preserve issued-source identity"
+    },
+    {
+      "anchor": "evd-qual-001-keep-uncertainty-concepts-separate",
+      "document_id": "RFC-001",
+      "id": "EVD-QUAL-001",
+      "path": "docs/specv1/rfcs/RFC-001-EVIDENCE-REVISIONS-AND-PROVENANCE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Keep uncertainty concepts separate"
+    },
+    {
+      "anchor": "evd-rev-001-freeze-every-recommendation-revision",
+      "document_id": "RFC-001",
+      "id": "EVD-REV-001",
+      "path": "docs/specv1/rfcs/RFC-001-EVIDENCE-REVISIONS-AND-PROVENANCE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Freeze every recommendation revision"
+    },
+    {
+      "anchor": "evd-snap-001-sign-controlled-snapshots",
+      "document_id": "RFC-001",
+      "id": "EVD-SNAP-001",
+      "path": "docs/specv1/rfcs/RFC-001-EVIDENCE-REVISIONS-AND-PROVENANCE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Sign controlled snapshots"
+    },
+    {
+      "anchor": "gov-spec-001-specifications-are-authoritative",
+      "document_id": "GOV-001",
+      "id": "GOV-SPEC-001",
+      "path": "docs/specv1/GOVERNANCE.md",
+      "profiles": [
+        "all"
+      ],
+      "status": "accepted",
+      "title": "Specifications are authoritative"
+    },
+    {
+      "anchor": "gov-spec-002-human-approval-controls-normative-status",
+      "document_id": "GOV-001",
+      "id": "GOV-SPEC-002",
+      "path": "docs/specv1/GOVERNANCE.md",
+      "profiles": [
+        "all"
+      ],
+      "status": "accepted",
+      "title": "Human approval controls normative status"
+    },
+    {
+      "anchor": "gov-spec-003-requirements-use-stable-identifiers",
+      "document_id": "GOV-001",
+      "id": "GOV-SPEC-003",
+      "path": "docs/specv1/GOVERNANCE.md",
+      "profiles": [
+        "all"
+      ],
+      "status": "accepted",
+      "title": "Requirements use stable identifiers"
+    },
+    {
+      "anchor": "gov-spec-004-behavior-changes-are-spec-traceable",
+      "document_id": "GOV-001",
+      "id": "GOV-SPEC-004",
+      "path": "docs/specv1/GOVERNANCE.md",
+      "profiles": [
+        "all"
+      ],
+      "status": "accepted",
+      "title": "Behavior changes are spec-traceable"
+    },
+    {
+      "anchor": "gov-spec-005-conflicts-fail-closed",
+      "document_id": "GOV-001",
+      "id": "GOV-SPEC-005",
+      "path": "docs/specv1/GOVERNANCE.md",
+      "profiles": [
+        "all"
+      ],
+      "status": "accepted",
+      "title": "Conflicts fail closed"
+    },
+    {
+      "anchor": "gov-spec-006-verification-is-part-of-the-requirement",
+      "document_id": "GOV-001",
+      "id": "GOV-SPEC-006",
+      "path": "docs/specv1/GOVERNANCE.md",
+      "profiles": [
+        "all"
+      ],
+      "status": "accepted",
+      "title": "Verification is part of the requirement"
+    },
+    {
+      "anchor": "gov-spec-007-documents-remain-bounded",
+      "document_id": "GOV-001",
+      "id": "GOV-SPEC-007",
+      "path": "docs/specv1/GOVERNANCE.md",
+      "profiles": [
+        "all"
+      ],
+      "status": "accepted",
+      "title": "Documents remain bounded"
+    },
+    {
+      "anchor": "map-adapt-001-conform-to-one-map-surface-contract",
+      "document_id": "RFC-002",
+      "id": "MAP-ADAPT-001",
+      "path": "docs/specv1/rfcs/RFC-002-CLIENT-RENDERING-AND-OFFLINE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Conform to one map-surface contract"
+    },
+    {
+      "anchor": "map-base-001-use-an-open-operational-renderer-baseline",
+      "document_id": "RFC-002",
+      "id": "MAP-BASE-001",
+      "path": "docs/specv1/rfcs/RFC-002-CLIENT-RENDERING-AND-OFFLINE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Use an open operational renderer baseline"
+    },
+    {
+      "anchor": "map-native-001-gate-native-release-on-physical-evidence",
+      "document_id": "RFC-002",
+      "id": "MAP-NATIVE-001",
+      "path": "docs/specv1/rfcs/RFC-002-CLIENT-RENDERING-AND-OFFLINE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Gate native release on physical evidence"
+    },
+    {
+      "anchor": "map-off-001-keep-offline-products-distinct",
+      "document_id": "RFC-002",
+      "id": "MAP-OFF-001",
+      "path": "docs/specv1/rfcs/RFC-002-CLIENT-RENDERING-AND-OFFLINE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Keep offline products distinct"
+    },
+    {
+      "anchor": "map-off-002-verify-native-area-packs-atomically",
+      "document_id": "RFC-002",
+      "id": "MAP-OFF-002",
+      "path": "docs/specv1/rfcs/RFC-002-CLIENT-RENDERING-AND-OFFLINE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Verify native area packs atomically"
+    },
+    {
+      "anchor": "map-sem-001-preserve-evidence-semantics-in-presentation",
+      "document_id": "RFC-002",
+      "id": "MAP-SEM-001",
+      "path": "docs/specv1/rfcs/RFC-002-CLIENT-RENDERING-AND-OFFLINE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Preserve evidence semantics in presentation"
+    },
+    {
+      "anchor": "map-time-001-synchronize-one-decision-timeline",
+      "document_id": "RFC-002",
+      "id": "MAP-TIME-001",
+      "path": "docs/specv1/rfcs/RFC-002-CLIENT-RENDERING-AND-OFFLINE.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Synchronize one decision timeline"
+    },
+    {
+      "anchor": "ops-cap-001-enforce-initial-compute-envelopes",
+      "document_id": "RFC-003",
+      "id": "OPS-CAP-001",
+      "path": "docs/specv1/rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Enforce initial compute envelopes"
+    },
+    {
+      "anchor": "ops-db-001-bound-cross-cloud-database-access",
+      "document_id": "RFC-003",
+      "id": "OPS-DB-001",
+      "path": "docs/specv1/rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Bound cross-cloud database access"
+    },
+    {
+      "anchor": "ops-edge-001-make-cloudflare-the-canonical-public-boundary",
+      "document_id": "RFC-003",
+      "id": "OPS-EDGE-001",
+      "path": "docs/specv1/rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Make Cloudflare the canonical public boundary"
+    },
+    {
+      "anchor": "ops-obj-001-treat-object-identity-and-delivery-as-contracts",
+      "document_id": "RFC-003",
+      "id": "OPS-OBJ-001",
+      "path": "docs/specv1/rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Treat object identity and delivery as contracts"
+    },
+    {
+      "anchor": "ops-queue-001-bound-asynchronous-work",
+      "document_id": "RFC-003",
+      "id": "OPS-QUEUE-001",
+      "path": "docs/specv1/rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Bound asynchronous work"
+    },
+    {
+      "anchor": "ops-rel-001-promote-immutable-builds-and-fail-visibly",
+      "document_id": "RFC-003",
+      "id": "OPS-REL-001",
+      "path": "docs/specv1/rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Promote immutable builds and fail visibly"
+    },
+    {
+      "anchor": "ops-sec-001-use-workload-scoped-credentials",
+      "document_id": "RFC-003",
+      "id": "OPS-SEC-001",
+      "path": "docs/specv1/rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Use workload-scoped credentials"
+    },
+    {
+      "anchor": "ops-topo-001-use-the-approved-managed-topology",
+      "document_id": "RFC-003",
+      "id": "OPS-TOPO-001",
+      "path": "docs/specv1/rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Use the approved managed topology"
+    },
+    {
+      "anchor": "prd-acc-001-recommended-destinations-require-current-evidence",
+      "document_id": "PRD-001",
+      "id": "PRD-ACC-001",
+      "path": "docs/specv1/product/PRD-001-ASTRAEUS-V1.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Recommended destinations require current evidence"
+    },
+    {
+      "anchor": "prd-out-001-return-a-decision-oriented-recommendation",
+      "document_id": "PRD-001",
+      "id": "PRD-OUT-001",
+      "path": "docs/specv1/product/PRD-001-ASTRAEUS-V1.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Return a decision-oriented recommendation"
+    },
+    {
+      "anchor": "prd-out-002-optimize-within-real-constraints",
+      "document_id": "PRD-001",
+      "id": "PRD-OUT-002",
+      "path": "docs/specv1/product/PRD-001-ASTRAEUS-V1.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Optimize within real constraints"
+    },
+    {
+      "anchor": "prd-out-003-explain-evidence-and-uncertainty-honestly",
+      "document_id": "PRD-001",
+      "id": "PRD-OUT-003",
+      "path": "docs/specv1/product/PRD-001-ASTRAEUS-V1.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Explain evidence and uncertainty honestly"
+    },
+    {
+      "anchor": "prd-out-004-fail-closed",
+      "document_id": "PRD-001",
+      "id": "PRD-OUT-004",
+      "path": "docs/specv1/product/PRD-001-ASTRAEUS-V1.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Fail closed"
+    },
+    {
+      "anchor": "prd-out-005-preserve-reproducibility",
+      "document_id": "PRD-001",
+      "id": "PRD-OUT-005",
+      "path": "docs/specv1/product/PRD-001-ASTRAEUS-V1.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Preserve reproducibility"
+    },
+    {
+      "anchor": "prd-safe-001-solar-safety-cannot-be-optimized-away",
+      "document_id": "PRD-001",
+      "id": "PRD-SAFE-001",
+      "path": "docs/specv1/product/PRD-001-ASTRAEUS-V1.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Solar safety cannot be optimized away"
+    },
+    {
+      "anchor": "site-access-001-separate-ownership-from-lawful-use",
+      "document_id": "RFC-004",
+      "id": "SITE-ACCESS-001",
+      "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Separate ownership from lawful use"
+    },
+    {
+      "anchor": "site-cand-001-generate-reachable-diverse-candidates",
+      "document_id": "RFC-004",
+      "id": "SITE-CAND-001",
+      "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Generate reachable, diverse candidates"
+    },
+    {
+      "anchor": "site-hor-001-compute-obstruction-from-owned-analytic-sources",
+      "document_id": "RFC-004",
+      "id": "SITE-HOR-001",
+      "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Compute obstruction from owned analytic sources"
+    },
+    {
+      "anchor": "site-route-001-evaluate-the-complete-itinerary",
+      "document_id": "RFC-004",
+      "id": "SITE-ROUTE-001",
+      "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Evaluate the complete itinerary"
+    },
+    {
+      "anchor": "site-safe-001-prevent-cloud-chasing-hazards",
+      "document_id": "RFC-004",
+      "id": "SITE-SAFE-001",
+      "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Prevent cloud-chasing hazards"
+    },
+    {
+      "anchor": "sys-arch-001-maintain-explicit-service-boundaries",
+      "document_id": "RFC-000",
+      "id": "SYS-ARCH-001",
+      "path": "docs/specv1/rfcs/RFC-000-SYSTEM-OVERVIEW.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Maintain explicit service boundaries"
+    },
+    {
+      "anchor": "sys-arch-002-keep-authoritative-computation-server-side",
+      "document_id": "RFC-000",
+      "id": "SYS-ARCH-002",
+      "path": "docs/specv1/rfcs/RFC-000-SYSTEM-OVERVIEW.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Keep authoritative computation server-side"
+    },
+    {
+      "anchor": "sys-arch-003-use-one-monorepo-with-bounded-sharing",
+      "document_id": "RFC-000",
+      "id": "SYS-ARCH-003",
+      "path": "docs/specv1/rfcs/RFC-000-SYSTEM-OVERVIEW.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Use one monorepo with bounded sharing"
+    },
+    {
+      "anchor": "sys-arch-004-standardize-the-toolchain",
+      "document_id": "RFC-000",
+      "id": "SYS-ARCH-004",
+      "path": "docs/specv1/rfcs/RFC-000-SYSTEM-OVERVIEW.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Standardize the toolchain"
+    },
+    {
+      "anchor": "sys-arch-005-make-all-boundaries-versioned",
+      "document_id": "RFC-000",
+      "id": "SYS-ARCH-005",
+      "path": "docs/specv1/rfcs/RFC-000-SYSTEM-OVERVIEW.md",
+      "profiles": [
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Make all boundaries versioned"
+    }
+  ],
+  "schema_version": 1
+}

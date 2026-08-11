@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astraeus.example/schemas/layer-manifest.schema.json",
+  "title": "LayerManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "evidence_class", "data_kind", "assets", "provider", "crs", "bounds", "units", "valid_time_or_interval", "evaluation_revision", "provenance_id"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "evidence_class": {"enum": ["analytic", "explanatory", "decorative"]},
+    "data_kind": {"enum": ["raster", "vector", "point", "trajectory"]},
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["asset_id", "sha256", "byte_length", "media_type", "object_revision"],
+        "properties": {
+          "asset_id": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "byte_length": {"type": "integer", "minimum": 0},
+          "media_type": {"type": "string"},
+          "object_revision": {"type": "string"}
+        }
+      }
+    },
+    "provider": {"type": "string"},
+    "product": {"type": ["string", "null"]},
+    "licence": {"type": ["string", "null"]},
+    "attribution": {"type": ["string", "null"]},
+    "crs": {"type": "string"},
+    "vertical_datum": {"type": ["string", "null"]},
+    "bounds": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 4, "maxItems": 4},
+    "native_resolution": {"type": ["number", "null"], "minimum": 0},
+    "units": {"type": "string"},
+    "value_domain": {"type": ["array", "null"], "items": {"type": ["number", "string"]}},
+    "nodata_value": {"type": ["number", "string", "null"]},
+    "run_time": {"type": ["string", "null"], "format": "date-time"},
+    "valid_time_or_interval": {
+      "oneOf": [
+        {"type": "string", "format": "date-time"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "properties": {
+            "start": {"type": "string", "format": "date-time"},
+            "end": {"type": "string", "format": "date-time"}
+          }
+        }
+      ]
+    },
+    "retrieval_time": {"type": ["string", "null"], "format": "date-time"},
+    "coverage_mask_id": {"type": ["string", "null"]},
+    "quality_mask_id": {"type": ["string", "null"]},
+    "evaluation_revision": {"type": "string"},
+    "provenance_id": {"type": "string"},
+    "supported_renderers": {"type": "array", "items": {"enum": ["maplibre-gl-js", "maplibre-native", "deck", "cesium", "vtk"]}, "uniqueItems": true},
+    "required_renderer_capabilities": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  }
+}

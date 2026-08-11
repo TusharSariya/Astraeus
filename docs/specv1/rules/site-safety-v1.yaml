@@ -1,0 +1,39 @@
+rule_set_id: site-safety-v1
+version: 1.0.0-draft.1
+status: draft
+owner: "@TusharSariya"
+default_on_missing_critical_evidence: block_go_keep_exploratory
+hard_gates:
+  official_warning:
+    threshold: null
+    rationale: Requires jurisdiction/product mapping and human safety review.
+  lightning_or_convection:
+    threshold: null
+    rationale: Requires selected observation feed and reviewed distance/time rule.
+  wind_or_gust:
+    threshold: null
+    rationale: Requires site exposure and equipment/person mode review.
+  heavy_precipitation:
+    threshold: null
+    rationale: Requires source interval and travel/site distinction.
+  driving_visibility:
+    threshold: null
+    rationale: Requires road authority guidance and source representativeness.
+  walking_visibility:
+    threshold: null
+    rationale: Requires route, cliff/coast, and accessibility context.
+  coastal_tide_surge_surf:
+    threshold: null
+    rationale: Requires site-specific exposure and official-warning mapping.
+  temperature_heat_wind_chill:
+    threshold: null
+    rationale: Requires duration, clothing assumption, and official guidance.
+  road_condition:
+    threshold: null
+    rationale: Requires 511/product integration and closure semantics.
+  walking_slope_surface_accessibility:
+    threshold: null
+    rationale: Requires user needs and verified route evidence.
+approval:
+  accepted_by: null
+  accepted_at: null

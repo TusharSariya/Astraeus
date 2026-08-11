@@ -1,0 +1,14 @@
+# Normative specifications, governance, and enforcement
+/docs/specv1/ @TusharSariya
+/AGENTS.md @TusharSariya
+/.agents/skills/manage-astraeus-specs/ @TusharSariya
+/tools/specs/ @TusharSariya
+/.github/workflows/spec-governance.yml @TusharSariya
+/.github/CODEOWNERS @TusharSariya
+/.github/ISSUE_TEMPLATE/ @TusharSariya
+/.github/PULL_REQUEST_TEMPLATE.md @TusharSariya
+/.github/copilot-instructions.md @TusharSariya
+/.cursor/rules/ @TusharSariya
+/CONTRIBUTING.md @TusharSariya
+/CLAUDE.md @TusharSariya
+/GEMINI.md @TusharSariya

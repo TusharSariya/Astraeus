@@ -1,0 +1,423 @@
+openapi: 3.1.0
+info:
+  title: Astraeus Planning API
+  version: 1.0.0-draft.1
+  description: >-
+    Proposed capability-protected asynchronous API for Astraeus v1_web. The
+    event_day_preview does not expose dynamic plan creation.
+servers:
+  - url: https://astraeus.example/api
+    description: Canonical Cloudflare boundary; replaced by runtime config.
+tags:
+  - name: Plans
+  - name: Assets
+paths:
+  /v1/eclipse/plans:
+    post:
+      tags: [Plans]
+      operationId: createEclipsePlan
+      summary: Start an eclipse recommendation evaluation
+      description: >-
+        Anonymous by design because this operation issues the capability that
+        protects subsequent plan operations. Cloudflare and API admission
+        enforce per-origin/installation quotas, body limits, candidate limits,
+        and abuse controls under OPS-EDGE-001.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EclipsePlanRequest'
+      responses:
+        '202':
+          description: Evaluation accepted
+          headers:
+            Location:
+              schema: {type: string, format: uri-reference}
+            Retry-After:
+              schema: {type: integer, minimum: 1}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PlanAccepted'}
+        '400': {$ref: '#/components/responses/Problem'}
+        '409': {$ref: '#/components/responses/Problem'}
+        '422': {$ref: '#/components/responses/Problem'}
+        '429': {$ref: '#/components/responses/Problem'}
+        '503': {$ref: '#/components/responses/Problem'}
+  /v1/plans/{plan_id}:
+    parameters:
+      - $ref: '#/components/parameters/PlanId'
+    get:
+      tags: [Plans]
+      operationId: getPlan
+      security: [{planCapability: []}]
+      responses:
+        '200':
+          description: Current status or completed recommendation
+          headers:
+            ETag:
+              schema: {type: string}
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PlanStatus'
+                  - $ref: '#/components/schemas/RecommendationPlan'
+                discriminator:
+                  propertyName: object_type
+                  mapping:
+                    plan_status: '#/components/schemas/PlanStatus'
+                    recommendation_plan: '#/components/schemas/RecommendationPlan'
+        '401': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '410': {$ref: '#/components/responses/Problem'}
+    delete:
+      tags: [Plans]
+      operationId: deletePlan
+      security: [{planCapability: []}]
+      responses:
+        '204': {description: Plan and precise request scheduled for deletion}
+        '401': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+  /v1/plans/{plan_id}/events:
+    parameters:
+      - $ref: '#/components/parameters/PlanId'
+      - name: Last-Event-ID
+        in: header
+        required: false
+        schema: {type: string, maxLength: 128}
+    get:
+      tags: [Plans]
+      operationId: streamPlanEvents
+      security: [{planCapability: []}]
+      responses:
+        '200':
+          description: Durable Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/PlanEvent'
+        '401': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+        '410': {$ref: '#/components/responses/Problem'}
+  /v1/assets/resolve:
+    post:
+      tags: [Assets]
+      operationId: resolveAssets
+      security: [{planCapability: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [evaluation_revision, asset_ids]
+              properties:
+                evaluation_revision: {type: string, minLength: 1}
+                asset_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  uniqueItems: true
+                  items: {type: string, minLength: 1}
+      responses:
+        '200':
+          description: Short-lived authorized transport locations
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [expires_at, assets]
+                properties:
+                  expires_at: {type: string, format: date-time}
+                  assets:
+                    type: array
+                    maxItems: 50
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [asset_id, url, sha256, byte_length, media_type]
+                      properties:
+                        asset_id: {type: string}
+                        url: {type: string, format: uri}
+                        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+                        byte_length: {type: integer, minimum: 0}
+                        media_type: {type: string}
+        '400': {$ref: '#/components/responses/Problem'}
+        '401': {$ref: '#/components/responses/Problem'}
+        '404': {$ref: '#/components/responses/Problem'}
+components:
+  securitySchemes:
+    planCapability:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-plan-capability
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, minLength: 16, maxLength: 128}
+    PlanId:
+      name: plan_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^pln_[A-Za-z0-9_-]{20,64}$'}
+  responses:
+    Problem:
+      description: RFC 9457 problem response
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+  schemas:
+    Coordinates:
+      type: object
+      additionalProperties: false
+      required: [latitude_deg, longitude_deg]
+      properties:
+        latitude_deg: {type: number, minimum: -90, maximum: 90}
+        longitude_deg: {type: number, minimum: -180, maximum: 180}
+        height_m_ellipsoid: {type: [number, 'null']}
+    EclipsePlanRequest:
+      type: object
+      additionalProperties: false
+      required: [event_id, origin, availability, travel, observation]
+      properties:
+        event_id: {const: solar-eclipse-2026-08-12}
+        origin:
+          allOf:
+            - $ref: '#/components/schemas/Coordinates'
+            - type: object
+              required: [accuracy_m, observed_at_utc]
+              properties:
+                accuracy_m: {type: number, minimum: 0, maximum: 10000}
+                observed_at_utc: {type: string, format: date-time}
+        availability:
+          type: object
+          additionalProperties: false
+          required: [start, end, display_timezone]
+          properties:
+            start: {type: string, format: date-time}
+            end: {type: string, format: date-time}
+            display_timezone: {const: America/St_Johns}
+        travel:
+          type: object
+          additionalProperties: false
+          required: [max_one_way_minutes, mode, avoid_ferries, avoid_unpaved]
+          properties:
+            max_one_way_minutes: {type: integer, minimum: 0, maximum: 240}
+            mode: {enum: [drive]}
+            avoid_ferries: {type: boolean}
+            avoid_unpaved: {type: boolean}
+            max_walk_minutes: {type: integer, minimum: 0, maximum: 120}
+        observation:
+          type: object
+          additionalProperties: false
+          required: [modes, setup_minutes, teardown_minutes]
+          properties:
+            modes:
+              type: array
+              minItems: 1
+              uniqueItems: true
+              items: {enum: [filtered_visual, filtered_camera]}
+            setup_minutes: {type: integer, minimum: 0, maximum: 120}
+            teardown_minutes: {type: integer, minimum: 0, maximum: 120}
+            accessibility_needs:
+              type: array
+              items: {type: string, maxLength: 100}
+    PlanAccepted:
+      type: object
+      additionalProperties: false
+      required: [object_type, plan_id, capability, status, created_at, expires_at]
+      properties:
+        object_type: {const: plan_accepted}
+        plan_id: {type: string}
+        capability: {type: string, minLength: 32}
+        status: {const: queued}
+        created_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+    PlanStatus:
+      type: object
+      additionalProperties: false
+      required: [object_type, plan_id, status, updated_at]
+      properties:
+        object_type: {const: plan_status}
+        plan_id: {type: string}
+        status: {enum: [queued, running, failed, expired]}
+        phase: {type: [string, 'null']}
+        progress_fraction: {type: [number, 'null'], minimum: 0, maximum: 1}
+        updated_at: {type: string, format: date-time}
+        problem:
+          oneOf:
+            - $ref: '#/components/schemas/ProblemDetails'
+            - type: 'null'
+    RecommendationPlan:
+      type: object
+      additionalProperties: false
+      required:
+        - object_type
+        - plan_id
+        - evaluation_revision
+        - decision
+        - generated_at
+        - stale_at
+        - candidates
+        - rejection_reasons
+        - provenance_id
+      properties:
+        object_type: {const: recommendation_plan}
+        plan_id: {type: string}
+        evaluation_revision: {type: string}
+        decision: {enum: [stay, go, monitor, no_reliable_recommendation]}
+        generated_at: {type: string, format: date-time}
+        stale_at: {type: string, format: date-time}
+        primary_risk: {type: [string, 'null']}
+        fallback_action: {type: [string, 'null']}
+        candidates:
+          type: array
+          maxItems: 5
+          items: {$ref: '#/components/schemas/CandidateResult'}
+        rejection_reasons:
+          type: array
+          items: {type: string}
+        provenance_id: {type: string}
+    CandidateResult:
+      type: object
+      additionalProperties: false
+      required:
+        - candidate_id
+        - name
+        - location
+        - role
+        - rank
+        - eligibility
+        - planning_score
+        - score_components
+        - evidence_quality
+        - scenario_spread
+        - source_disagreement
+        - local_circumstances
+        - viewing_windows
+        - cloud_evidence
+        - horizon_state
+        - access_state
+        - safety_state
+        - itinerary
+      properties:
+        candidate_id: {type: string}
+        name: {type: string}
+        location: {$ref: '#/components/schemas/Coordinates'}
+        role: {enum: [origin_stay, recommended_destination, alternative, fallback, exploratory]}
+        rank: {type: [integer, 'null'], minimum: 1, maximum: 5}
+        eligibility: {enum: [eligible, exploratory, rejected]}
+        planning_score: {type: [number, 'null'], minimum: 0, maximum: 100}
+        score_components:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 100
+        evidence_quality: {enum: [high, medium, low, insufficient]}
+        scenario_spread: {type: [number, 'null'], minimum: 0}
+        source_disagreement: {enum: [low, medium, high, unknown]}
+        access_state: {enum: [approved, unknown, rejected]}
+        safety_state: {enum: [approved, unknown, rejected]}
+        local_circumstances:
+          type: object
+          additionalProperties: false
+          required: [local_type, maximum, magnitude, obscuration_fraction]
+          properties:
+            local_type: {enum: [none, partial, annular, total]}
+            c1: {type: [string, 'null'], format: date-time}
+            maximum: {type: string, format: date-time}
+            c4: {type: [string, 'null'], format: date-time}
+            magnitude: {type: number, minimum: 0}
+            obscuration_fraction: {type: number, minimum: 0, maximum: 1}
+            sun_altitude_geometric_deg: {type: number, minimum: -90, maximum: 90}
+            sun_azimuth_deg: {type: number, minimum: 0, exclusiveMaximum: 360}
+        viewing_windows:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [start, end, frame_cadence_minutes]
+            properties:
+              start: {type: string, format: date-time}
+              end: {type: string, format: date-time}
+              frame_cadence_minutes: {type: integer, minimum: 1}
+        cloud_evidence:
+          type: object
+          additionalProperties: false
+          required: [mode, state, limiting_time, limiting_layer]
+          properties:
+            mode: {enum: [quantitative, categorical, insufficient]}
+            state: {enum: [likely_clear, thin_or_broken, likely_blocked, unknown]}
+            utility: {type: [number, 'null'], minimum: 0, maximum: 1}
+            limiting_time: {type: [string, 'null'], format: date-time}
+            limiting_layer: {type: [string, 'null']}
+            visibility_m: {type: [number, 'null'], minimum: 0}
+        horizon_state:
+          type: object
+          additionalProperties: false
+          required: [terrain_clear, surface_obstructions_clear, overall_clear]
+          properties:
+            terrain_clear: {enum: [clear, blocked, unknown]}
+            surface_obstructions_clear: {enum: [clear, blocked, unknown]}
+            overall_clear: {enum: [clear, blocked, unknown]}
+        itinerary:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required:
+                - depart_at
+                - arrive_at
+                - setup_start
+                - observation_start
+                - observation_end
+                - return_at
+                - outbound_route_minutes
+                - return_route_minutes
+              properties:
+                depart_at: {type: string, format: date-time}
+                arrive_at: {type: string, format: date-time}
+                setup_start: {type: string, format: date-time}
+                observation_start: {type: string, format: date-time}
+                observation_end: {type: string, format: date-time}
+                return_at: {type: string, format: date-time}
+                outbound_route_minutes: {type: integer, minimum: 0}
+                return_route_minutes: {type: integer, minimum: 0}
+            - type: 'null'
+        primary_risk: {type: [string, 'null']}
+    PlanEvent:
+      type: object
+      additionalProperties: false
+      required: [event_id, event_type, plan_id, emitted_at]
+      properties:
+        event_id: {type: string}
+        event_type:
+          enum: [plan.queued, plan.started, plan.progress, plan.completed, plan.failed, plan.expired]
+        plan_id: {type: string}
+        emitted_at: {type: string, format: date-time}
+        phase: {type: [string, 'null']}
+        progress_fraction: {type: [number, 'null'], minimum: 0, maximum: 1}
+        problem:
+          oneOf:
+            - $ref: '#/components/schemas/ProblemDetails'
+            - type: 'null'
+    ProblemDetails:
+      type: object
+      additionalProperties: true
+      required: [type, title, status, code]
+      properties:
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        detail: {type: string}
+        instance: {type: string, format: uri-reference}
+        code: {type: string, pattern: '^ASTRAEUS_[A-Z0-9_]+$'}
+        retryable: {type: boolean}

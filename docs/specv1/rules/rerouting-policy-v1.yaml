@@ -1,0 +1,19 @@
+rule_set_id: rerouting-policy-v1
+version: 1.0.0-draft.1
+status: draft
+owner: "@TusharSariya"
+score_unit: planning_score_points_0_to_100
+before_departure:
+  minimum_advantage_points: 8
+  sustained_goes_refreshes: 2
+after_navigation_starts:
+  minimum_advantage_points: 12
+  sustained_goes_refreshes: 2
+  minimum_arrival_minutes_before_maximum: 20
+overrides:
+  closure_or_safety_hazard: safe_stop_or_fallback_only
+driver_interaction:
+  destination_change_requires_confirmed_passenger_or_parked: true
+approval:
+  accepted_by: null
+  accepted_at: null

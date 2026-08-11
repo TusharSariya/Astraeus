@@ -1,0 +1,39 @@
+name: Feature proposal
+description: Propose user-visible behavior against the specification system.
+title: "feat: "
+labels: [feature]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User outcome
+      description: What decision or capability improves for the user?
+    validations:
+      required: true
+  - type: input
+    id: spec_refs
+    attributes:
+      label: Existing requirement IDs
+      description: Accepted IDs, or "none — specification required".
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Release profile
+      options: [event_day_preview, v1_web, v1_native, cross-cutting]
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance evidence
+      description: Observable pass/fail outcomes, not implementation steps.
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Safety, science, data, privacy, and failure risks
+    validations:
+      required: true
