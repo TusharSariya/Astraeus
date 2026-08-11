@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astraeus.example/schemas/evaluation-revision.schema.json",
+  "title": "EvaluationRevision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["revision_id", "schema_version", "valid_interval", "source_objects", "algorithm_versions", "site_catalogue_revision", "created_at"],
+  "properties": {
+    "revision_id": {"type": "string", "minLength": 1},
+    "schema_version": {"type": "string", "const": "1.0.0-draft.1"},
+    "valid_interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "cadence_seconds"],
+      "properties": {
+        "start": {"type": "string", "format": "date-time"},
+        "end": {"type": "string", "format": "date-time"},
+        "cadence_seconds": {"type": "integer", "minimum": 1}
+      }
+    },
+    "source_objects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "product", "valid_time", "retrieval_time", "sha256", "normalization_version"],
+        "properties": {
+          "provider": {"type": "string"},
+          "product": {"type": "string"},
+          "run_time": {"type": ["string", "null"], "format": "date-time"},
+          "valid_time": {"type": "string", "format": "date-time"},
+          "retrieval_time": {"type": "string", "format": "date-time"},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "normalization_version": {"type": "string"},
+          "quality_flags": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "algorithm_versions": {"type": "object", "additionalProperties": {"type": "string"}},
+    "site_catalogue_revision": {"type": "string"},
+    "routing_graph_revision": {"type": ["string", "null"]},
+    "layer_manifest_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "created_at": {"type": "string", "format": "date-time"}
+  }
+}

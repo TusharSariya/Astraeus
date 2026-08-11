@@ -1,0 +1,47 @@
+rule_set_id: solar-eclipse-v1
+version: 1.0.0-draft.1
+status: draft
+owner: "@TusharSariya"
+units:
+  component_utility: fraction_0_to_1
+  planning_score: points_0_to_100
+eligibility_gates:
+  - geometry_available
+  - complete_round_trip_feasible
+  - access_approved_and_current
+  - site_safety_approved
+  - route_open
+  - horizon_not_conclusively_blocked
+  - critical_cloud_evidence_not_insufficient
+categorical_direct_sun_utility:
+  likely_clear: 0.85
+  thin_or_broken: 0.45
+  likely_blocked: 0.05
+  unknown: null
+sample_utility_weights:
+  direct_sun: 0.70
+  travel_and_site_visibility: 0.15
+  secondary_transparency: 0.10
+  precipitation_free: 0.05
+scenario_policy:
+  primary_statistic: p10
+  secondary_statistic: median
+  correlated_families_must_remain_separate: true
+time_policy:
+  cadence_minutes: 5
+  ranking_window_minutes_around_maximum: 30
+  emphasis_window_minutes_around_maximum: 10
+  aggregate: minimum_over_emphasis_then_p10_over_scenarios
+missing_data:
+  unknown_direct_sun: reject_recommendation
+  missing_optional_transparency: apply_versioned_penalty_without_renormalizing
+  missing_reps: cap_evidence_quality_and_label_scenario_spread_incomplete
+tie_break_order:
+  - higher_robust_utility
+  - higher_median_utility
+  - lower_travel_burden
+  - stronger_evidence_quality
+  - stable_candidate_id
+approval:
+  accepted_by: null
+  accepted_at: null
