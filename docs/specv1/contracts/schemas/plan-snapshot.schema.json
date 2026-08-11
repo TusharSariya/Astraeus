@@ -4,7 +4,7 @@
   "title": "PlanSnapshotEnvelope",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "snapshot_id", "issued_at", "stale_at", "expires_at", "key_id", "payload_sha256", "signature", "payload"],
+  "required": ["schema_version", "snapshot_id", "issued_at", "stale_at", "expires_at", "key_id", "signature_algorithm", "canonicalization", "payload_sha256", "signature", "payload"],
   "properties": {
     "schema_version": {"const": "1.0.0-draft.1"},
     "snapshot_id": {"type": "string", "minLength": 1},
@@ -12,6 +12,8 @@
     "stale_at": {"type": "string", "format": "date-time"},
     "expires_at": {"type": "string", "format": "date-time"},
     "key_id": {"type": "string", "minLength": 1},
+    "signature_algorithm": {"enum": ["Ed25519"]},
+    "canonicalization": {"enum": ["JCS-RFC8785"]},
     "payload_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "signature": {"type": "string", "contentEncoding": "base64"},
     "payload": {"type": "object"}

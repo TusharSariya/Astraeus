@@ -7,6 +7,7 @@ owners:
   - "@TusharSariya"
 profiles:
   - v1_web
+  - v1_native
 created: 2026-08-11
 updated: 2026-08-11
 depends_on:
@@ -16,9 +17,23 @@ supersedes: []
 
 # ADR-004 — Use self-hosted Valhalla
 
+## Context
+
+The planner needs reproducible drive-time isochrones and route feasibility, not
+straight-line radius estimates, for both web and native recommendations.
+
 ## Decision
 
 Use a pinned Newfoundland Valhalla graph on a private persistent Montreal VM.
+
+## Alternatives considered
+
+- OSRM: simpler and fast, but less suitable for the planned costing and
+  multimodal expansion.
+- GraphHopper: capable, with a different licensing and feature tradeoff.
+- Proprietary routing APIs: useful as optional navigation adapters, but their
+  caching, reproducibility, and pricing terms make them unsuitable as the
+  authoritative planning engine.
 
 ## Consequences
 

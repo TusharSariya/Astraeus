@@ -17,6 +17,12 @@ paths:
       tags: [Plans]
       operationId: createEclipsePlan
       summary: Start an eclipse recommendation evaluation
+      description: >-
+        Anonymous by design because this operation issues the capability that
+        protects subsequent plan operations. Cloudflare and API admission
+        enforce per-origin/installation quotas, body limits, candidate limits,
+        and abuse controls under OPS-EDGE-001.
+      security: []
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -62,6 +68,9 @@ paths:
                   - $ref: '#/components/schemas/RecommendationPlan'
                 discriminator:
                   propertyName: object_type
+                  mapping:
+                    plan_status: '#/components/schemas/PlanStatus'
+                    recommendation_plan: '#/components/schemas/RecommendationPlan'
         '401': {$ref: '#/components/responses/Problem'}
         '404': {$ref: '#/components/responses/Problem'}
         '410': {$ref: '#/components/responses/Problem'}
@@ -90,11 +99,7 @@ paths:
           content:
             text/event-stream:
               schema:
-                type: string
-                description: >-
-                  Events are plan.queued, plan.started, plan.progress,
-                  plan.completed, plan.failed, or plan.expired. Each has id,
-                  event, and JSON data matching PlanEvent.
+                $ref: '#/components/schemas/PlanEvent'
         '401': {$ref: '#/components/responses/Problem'}
         '404': {$ref: '#/components/responses/Problem'}
         '410': {$ref: '#/components/responses/Problem'}
@@ -132,6 +137,7 @@ paths:
                   expires_at: {type: string, format: date-time}
                   assets:
                     type: array
+                    maxItems: 50
                     items:
                       type: object
                       additionalProperties: false
@@ -261,6 +267,7 @@ components:
         - generated_at
         - stale_at
         - candidates
+        - rejection_reasons
         - provenance_id
       properties:
         object_type: {const: recommendation_plan}
@@ -273,6 +280,7 @@ components:
         fallback_action: {type: [string, 'null']}
         candidates:
           type: array
+          maxItems: 5
           items: {$ref: '#/components/schemas/CandidateResult'}
         rejection_reasons:
           type: array
@@ -285,16 +293,35 @@ components:
         - candidate_id
         - name
         - location
+        - role
+        - rank
         - eligibility
+        - planning_score
+        - score_components
+        - evidence_quality
+        - scenario_spread
+        - source_disagreement
         - local_circumstances
+        - viewing_windows
+        - cloud_evidence
+        - horizon_state
         - access_state
         - safety_state
+        - itinerary
       properties:
         candidate_id: {type: string}
         name: {type: string}
         location: {$ref: '#/components/schemas/Coordinates'}
+        role: {enum: [origin_stay, recommended_destination, alternative, fallback, exploratory]}
+        rank: {type: [integer, 'null'], minimum: 1, maximum: 5}
         eligibility: {enum: [eligible, exploratory, rejected]}
         planning_score: {type: [number, 'null'], minimum: 0, maximum: 100}
+        score_components:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 100
         evidence_quality: {enum: [high, medium, low, insufficient]}
         scenario_spread: {type: [number, 'null'], minimum: 0}
         source_disagreement: {enum: [low, medium, high, unknown]}
@@ -313,14 +340,58 @@ components:
             obscuration_fraction: {type: number, minimum: 0, maximum: 1}
             sun_altitude_geometric_deg: {type: number, minimum: -90, maximum: 90}
             sun_azimuth_deg: {type: number, minimum: 0, exclusiveMaximum: 360}
-        itinerary:
-          type: [object, 'null']
+        viewing_windows:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [start, end, frame_cadence_minutes]
+            properties:
+              start: {type: string, format: date-time}
+              end: {type: string, format: date-time}
+              frame_cadence_minutes: {type: integer, minimum: 1}
+        cloud_evidence:
+          type: object
           additionalProperties: false
+          required: [mode, state, limiting_time, limiting_layer]
           properties:
-            depart_at: {type: string, format: date-time}
-            arrive_at: {type: string, format: date-time}
-            return_at: {type: string, format: date-time}
-            route_minutes: {type: integer, minimum: 0}
+            mode: {enum: [quantitative, categorical, insufficient]}
+            state: {enum: [likely_clear, thin_or_broken, likely_blocked, unknown]}
+            utility: {type: [number, 'null'], minimum: 0, maximum: 1}
+            limiting_time: {type: [string, 'null'], format: date-time}
+            limiting_layer: {type: [string, 'null']}
+            visibility_m: {type: [number, 'null'], minimum: 0}
+        horizon_state:
+          type: object
+          additionalProperties: false
+          required: [terrain_clear, surface_obstructions_clear, overall_clear]
+          properties:
+            terrain_clear: {enum: [clear, blocked, unknown]}
+            surface_obstructions_clear: {enum: [clear, blocked, unknown]}
+            overall_clear: {enum: [clear, blocked, unknown]}
+        itinerary:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required:
+                - depart_at
+                - arrive_at
+                - setup_start
+                - observation_start
+                - observation_end
+                - return_at
+                - outbound_route_minutes
+                - return_route_minutes
+              properties:
+                depart_at: {type: string, format: date-time}
+                arrive_at: {type: string, format: date-time}
+                setup_start: {type: string, format: date-time}
+                observation_start: {type: string, format: date-time}
+                observation_end: {type: string, format: date-time}
+                return_at: {type: string, format: date-time}
+                outbound_route_minutes: {type: integer, minimum: 0}
+                return_route_minutes: {type: integer, minimum: 0}
+            - type: 'null'
         primary_risk: {type: [string, 'null']}
     PlanEvent:
       type: object

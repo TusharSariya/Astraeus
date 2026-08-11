@@ -52,6 +52,7 @@ ALLOWED_TYPES = {
     "rule-index",
 }
 REGISTERED_PREFIXES = {"GOV", "PRD", "SYS", "EVD", "MAP", "OPS", "SITE", "ECL26"}
+PREFIX_PATTERN = "|".join(re.escape(prefix) for prefix in sorted(REGISTERED_PREFIXES))
 REQUIRED_FRONTMATTER = {
     "id",
     "title",
@@ -65,10 +66,10 @@ REQUIRED_FRONTMATTER = {
     "supersedes",
 }
 REQUIREMENT_RE = re.compile(
-    r"^#{2,6}\s+((?:GOV|PRD|SYS|EVD|MAP|OPS|SITE|ECL26)-[A-Z0-9]+-\d{3})\s+—\s+(.+?)\s*$"
+    rf"^#{{2,6}}\s+((?:{PREFIX_PATTERN})-[A-Z0-9]+-\d{{3}})\s+—\s+(.+?)\s*$"
 )
 TEST_RE = re.compile(
-    r"\b((?:GOV|PRD|SYS|EVD|MAP|OPS|SITE|ECL26)-[A-Z0-9]+-\d{3}-T\d{2})\b"
+    rf"\b((?:{PREFIX_PATTERN})-[A-Z0-9]+-\d{{3}}-T\d{{2}})\b"
 )
 LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 CONVENTIONAL_RE = re.compile(
@@ -81,6 +82,8 @@ BEHAVIOR_PATH_PREFIXES = (
     "packages/contracts/",
     "packages/domain/",
     "packages/api-client/",
+    "packages/ui-web/",
+    "packages/ui-mobile/",
     "infra/",
     "docs/specv1/",
 )
@@ -416,14 +419,38 @@ def validate_index(validation: Validation, documents: list[Document]) -> None:
 
 
 def changed_files(base: str, head: str) -> list[str]:
-    result = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...{head}"],
-        cwd=ROOT,
-        check=True,
-        text=True,
-        capture_output=True,
-    )
+    base_sha = resolve_commit(base)
+    head_sha = resolve_commit(head)
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", f"{base_sha}...{head_sha}", "--"],
+            cwd=ROOT,
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"unable to diff revisions: {exc.stderr.strip()}") from exc
     return [line for line in result.stdout.splitlines() if line]
+
+
+def resolve_commit(revision: str) -> str:
+    if not revision or revision.startswith("-"):
+        raise ValueError(f"invalid revision {revision!r}")
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"],
+            cwd=ROOT,
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(f"unresolvable revision {revision!r}") from exc
+    sha = result.stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError(f"revision did not resolve to a commit SHA: {revision!r}")
+    return sha
 
 
 def behavior_changing(paths: Iterable[str]) -> bool:
@@ -435,25 +462,27 @@ def validate_pr_payload(
     payload: dict[str, Any],
     known_requirements: dict[str, dict[str, Any]],
     changed: list[str],
+    protected_status_changes: list[str] | None = None,
 ) -> None:
     pull_request = payload.get("pull_request", {})
     title = pull_request.get("title", "")
     body = pull_request.get("body") or ""
+    visible_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
     labels = {item.get("name") for item in pull_request.get("labels", [])}
 
     if not CONVENTIONAL_RE.fullmatch(title):
         validation.error(
             "PR title must be conventional: <type>(<scope>): <imperative summary>"
         )
-    match = re.search(r"^Spec-Refs:\s*(.+)$", body, re.MULTILINE)
-    no_impact = re.search(r"^Spec-Impact:\s*none\s*$", body, re.MULTILINE)
+    match = re.search(r"^Spec-Refs:\s*(.+)$", visible_body, re.MULTILINE)
+    no_impact = re.search(r"^Spec-Impact:\s*none\s*$", visible_body, re.MULTILINE)
 
     if behavior_changing(changed) and not match:
         validation.error("behavior-changing PR requires Spec-Refs")
     if not behavior_changing(changed) and not match and not no_impact:
         validation.error("PR requires Spec-Refs or Spec-Impact: none")
     if no_impact and not re.search(
-        r"^No-Spec-Impact-Rationale:\s*\S.+$", body, re.MULTILINE
+        r"^No-Spec-Impact-Rationale:\s*\S.+$", visible_body, re.MULTILINE
     ):
         validation.error("Spec-Impact: none requires No-Spec-Impact-Rationale")
     if match:
@@ -466,21 +495,16 @@ def validate_pr_payload(
                 validation.error(
                     f"PR references {entry['status']} requirement {ref}; production work requires accepted"
                 )
-            if not re.search(rf"\[{re.escape(ref)}\]\([^)]+\)", body):
+            if not re.search(rf"\[{re.escape(ref)}\]\([^)]+\)", visible_body):
                 validation.error(f"PR must include a clickable link for {ref}")
-        if not re.search(r"^Verification:\s*\S.+$", body, re.MULTILINE):
+        if not re.search(r"^Verification:\s*\S.+$", visible_body, re.MULTILINE):
             validation.error("PR with Spec-Refs requires Verification")
 
-    base_sha = pull_request.get("base", {}).get("sha")
-    head_sha = pull_request.get("head", {}).get("sha")
-    if base_sha and head_sha:
-        status_changes = detect_protected_status_changes(base_sha, head_sha)
-        if status_changes:
-            if "spec-status-approved" not in labels:
-                validation.error(
-                    "accepted/verified/superseded status transition requires "
-                    "the owner-controlled spec-status-approved label"
-                )
+    if protected_status_changes and "spec-status-approved" not in labels:
+        validation.error(
+            "accepted/verified/superseded status transition requires "
+            "the owner-controlled spec-status-approved label"
+        )
 
 
 def detect_protected_status_changes(base: str, head: str) -> list[str]:
@@ -550,7 +574,11 @@ def command_resolve(args: argparse.Namespace) -> int:
 
 
 def command_changed(args: argparse.Namespace) -> int:
-    paths = changed_files(args.base, args.head)
+    try:
+        paths = changed_files(args.base, args.head)
+    except ValueError as exc:
+        print(f"specctl: {exc}", file=sys.stderr)
+        return 2
     result = {"behavior_changing": behavior_changing(paths), "paths": paths}
     print(json.dumps(result, indent=2))
     return 0
@@ -565,8 +593,23 @@ def command_validate_pr(args: argparse.Namespace) -> int:
     pull_request = payload.get("pull_request", {})
     base = pull_request.get("base", {}).get("sha")
     head = pull_request.get("head", {}).get("sha")
-    paths = changed_files(base, head) if base and head else []
-    validate_pr_payload(validation, payload, known, paths)
+    paths: list[str] = []
+    protected_status_changes: list[str] = []
+    if not base or not head:
+        validation.error("pull request event is missing base.sha or head.sha")
+    elif not re.fullmatch(r"[0-9a-f]{40}", base) or not re.fullmatch(
+        r"[0-9a-f]{40}", head
+    ):
+        validation.error("pull request base.sha and head.sha must be full commit SHAs")
+    else:
+        try:
+            paths = changed_files(base, head)
+            protected_status_changes = detect_protected_status_changes(base, head)
+        except ValueError as exc:
+            validation.error(str(exc))
+    validate_pr_payload(
+        validation, payload, known, paths, protected_status_changes
+    )
     return validation.report()
 
 

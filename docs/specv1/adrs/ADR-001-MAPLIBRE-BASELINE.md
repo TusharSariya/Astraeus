@@ -17,10 +17,24 @@ supersedes: []
 
 # ADR-001 — Use MapLibre as the operational map baseline
 
+## Context
+
+Web and native clients need a renderer for owned, revisioned map layers without
+turning a rendering vendor into the scientific source of truth.
+
 ## Decision
 
 Use MapLibre GL JS with deck.gl on web and MapLibre React Native on mobile.
 Backend analytic evidence remains renderer-neutral.
+
+## Alternatives considered
+
+- Mapbox Native and GL JS: stronger licensed terrain support, with greater
+  vendor and redistribution constraints.
+- ArcGIS Maps SDK: capable enterprise GIS tooling, but a heavier licensed
+  baseline than V1 requires.
+- CesiumJS/Cesium Native: useful for 3-D inspection, but not the operational
+  decision surface for V1.
 
 ## Consequences
 

@@ -23,6 +23,8 @@ supersedes: []
 
 Normative requirement and user-visible acceptance outcome.
 
+Verification: `PRD-AREA-001-T01` in the owning feature verification document.
+
 ## Non-goals
 
 ## Risks and open questions

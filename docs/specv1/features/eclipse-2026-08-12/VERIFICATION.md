@@ -45,6 +45,7 @@ Tests are profile-specific. Passing the controlled preview does not mean
 | ECL26-SAFE-005-T01 | ECL26-SAFE-005, SITE-ROUTE-001 | all | Exact outbound/setup/view/return boundary cases enforce the canonical itinerary |
 | ECL26-SAFE-006-T01 | ECL26-SAFE-006 | web/native | Driver interaction cannot accept a destination change; passenger/parked flow can |
 | ECL26-PROD-002-T01 | ECL26-PROD-002 | all | Fixed origin returns eligible alternatives or explicit rejection reasons; current location can win |
+| ECL26-PROD-002-T02 | ECL26-PROD-002, ECL26-PROD-004 | all | OpenAPI validation proves every returned candidate carries role/rank, decomposed score/evidence, local circumstances, viewing windows, cloud and horizon states, and a complete or explicitly null itinerary |
 | ECL26-SCORE-001-T01 | ECL26-SCORE-001 | web | Golden hand calculations cover every mapping, missing rule, gate, clipping, tie, and boundary |
 | SITE-CAND-001-T01 | SITE-CAND-001 | web | Downselection meets agreed recall against exhaustive geographic/coastal/access/evidence fixtures |
 | SITE-HOR-001-T01 | SITE-HOR-001 | web | Synthetic terrain obstruction rejects; missing canopy/buildings keeps overall horizon unknown; datum mismatch fails |

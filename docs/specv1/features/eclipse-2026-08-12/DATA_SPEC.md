@@ -24,7 +24,7 @@ supersedes: []
 | HRDPS | Manually verified snapshot | Required primary |
 | RDPS | Optional cross-check | Required fallback/second opinion |
 | REPS | Omit unless validated | Optional spread; absence caps grade |
-| GOES-19 | Timestamped IR/mask | Required for event-day nowcast |
+| GOES-East | Timestamped IR/mask | Required for event-day nowcast |
 | SWOB/METAR | Timestamped anchor where available | Required ingest; absence explicit |
 | Radar | Optional precipitation context | Supporting only |
 | RAQDPS/RDAQA | Omitted | Optional transparency evidence |
@@ -42,8 +42,9 @@ and gust, precipitation, and pressure-level RH/depression/specific humidity
 where published from 1000–300 hPa. Derived layer-saturation evidence MUST NOT be
 labelled provider low/mid/high cloud fraction.
 
-RDPS is a deterministic second opinion and lacks silently invented HRDPS fog
-visibility. REPS preserves every member; ensemble mean is not a scenario.
+RDPS is a deterministic second opinion and MUST NOT synthesize or invent the
+HRDPS fog-visibility field. REPS preserves every member; ensemble mean is not a
+scenario.
 
 ## ECL26-DATA-003 — Use GOES full-disk evidence with QC
 
@@ -84,6 +85,13 @@ finer timeline. Satellite retains fixed-grid/DQF identity and evaluates local
 and upstream sectors without claiming resampled precision.
 
 ## ECL26-FRESH-001 — Enforce freshness policy
+
+Freshness age is evaluated at the recommendation evaluation clock. GOES and
+radar use scan end; station evidence uses observation time; deterministic and
+ensemble forecasts use initialization time plus completeness of the required
+valid-time manifest; RAQDPS uses initialization time. Retrieval time is shown
+and may reveal delivery delay, but MUST NOT replace the scientific reference
+timestamp.
 
 - GOES ideal ≤12 minutes; stale after 20.
 - Radar stale after 15 minutes.

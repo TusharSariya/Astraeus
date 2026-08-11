@@ -65,10 +65,11 @@ All services use:
 ```text
 arrival_deadline = critical_window_start - setup_minutes
 latest_departure = arrival_deadline
-  - outbound_drive - outbound_walk - route_buffer
+  - outbound_drive - outbound_walk - outbound_route_buffer
 return_arrival = critical_window_end + teardown
-  + return_walk + return_drive + route_buffer
-route_buffer = max(10 minutes, 15% of route ETA)
+  + return_walk + return_drive + return_route_buffer
+outbound_route_buffer = max(10 minutes, 15% of outbound_drive ETA)
+return_route_buffer = max(10 minutes, 15% of return_drive ETA)
 ```
 
 A candidate is eligible only when departure is within availability, arrival
@@ -77,12 +78,12 @@ does not exceed availability end.
 
 ## SITE-SAFE-001 — Prevent cloud-chasing hazards
 
-Before departure, change destination only for an eight-point advantage
-sustained across two GOES refreshes, except closures/safety hazards. After
-navigation begins, require a 12-point sustained advantage and arrival at least
-20 minutes before maximum. Suppress destination-changing interaction after the
-event-specific safe cutoff and while a user appears to be driving unless
-passenger mode is explicitly confirmed.
+Apply the versioned `rerouting-policy-v1.yaml` rule. While it remains draft,
+dynamic destination-changing recommendations are disabled. Closures and safety
+hazards MAY still trigger a safe-stop or fallback instruction. Suppress
+destination-changing interaction after the event-specific safe cutoff and
+while a user appears to be driving unless passenger mode is explicitly
+confirmed.
 
 ## Routing deployment
 

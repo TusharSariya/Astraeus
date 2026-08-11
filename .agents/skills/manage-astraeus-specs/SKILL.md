@@ -57,8 +57,8 @@ Use the repository templates and generator:
 
 ```text
 uv run --project tools/specs python tools/specs/specctl.py new feature <slug> --prefix <PREFIX>
-uv run --project tools/specs python tools/specs/specctl.py new rfc <title> --number <N>
-uv run --project tools/specs python tools/specs/specctl.py new adr <title> --number <N>
+uv run --project tools/specs python tools/specs/specctl.py new rfc "<title>" --number <N>
+uv run --project tools/specs python tools/specs/specctl.py new adr "<title>" --number <N>
 ```
 
 Keep requirements atomic and testable. Use stable registered IDs. Split a

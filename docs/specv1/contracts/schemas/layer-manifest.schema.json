@@ -4,7 +4,7 @@
   "title": "LayerManifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "title", "evidence_class", "data_kind", "assets", "provider", "crs", "bounds", "units", "evaluation_revision", "provenance_id"],
+  "required": ["id", "title", "evidence_class", "data_kind", "assets", "provider", "crs", "bounds", "units", "valid_time_or_interval", "evaluation_revision", "provenance_id"],
   "properties": {
     "id": {"type": "string", "minLength": 1},
     "title": {"type": "string", "minLength": 1},
@@ -39,7 +39,20 @@
     "value_domain": {"type": ["array", "null"], "items": {"type": ["number", "string"]}},
     "nodata_value": {"type": ["number", "string", "null"]},
     "run_time": {"type": ["string", "null"], "format": "date-time"},
-    "valid_time_or_interval": {"type": ["string", "object"]},
+    "valid_time_or_interval": {
+      "oneOf": [
+        {"type": "string", "format": "date-time"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "properties": {
+            "start": {"type": "string", "format": "date-time"},
+            "end": {"type": "string", "format": "date-time"}
+          }
+        }
+      ]
+    },
     "retrieval_time": {"type": ["string", "null"], "format": "date-time"},
     "coverage_mask_id": {"type": ["string", "null"]},
     "quality_mask_id": {"type": ["string", "null"]},

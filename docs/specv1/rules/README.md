@@ -23,5 +23,7 @@ supersedes: []
 - [`site-safety-v1.yaml`](site-safety-v1.yaml): proposed safety-rule structure;
   numeric environmental thresholds remain intentionally unaccepted until
   source and safety review.
+- [`rerouting-policy-v1.yaml`](rerouting-policy-v1.yaml): proposed score and
+  persistence thresholds for destination changes.
 
-Neither file may enter a production evaluation while its status is draft.
+No draft rule file may enter a production evaluation.

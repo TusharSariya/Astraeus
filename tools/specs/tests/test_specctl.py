@@ -76,6 +76,108 @@ class SpecctlTests(unittest.TestCase):
             validation.errors,
         )
 
+    def test_behavior_pr_without_spec_refs_is_rejected(self) -> None:
+        validation = specctl.Validation()
+        payload = {
+            "pull_request": {
+                "title": "feat(eclipse): implement local contact calculation",
+                "body": "No traceability here\n",
+                "labels": [],
+            }
+        }
+        specctl.validate_pr_payload(
+            validation, payload, {}, ["services/api/geometry.py"]
+        )
+        self.assertIn("behavior-changing PR requires Spec-Refs", validation.errors)
+
+    def test_proposed_requirement_is_rejected(self) -> None:
+        validation = specctl.Validation()
+        payload = {
+            "pull_request": {
+                "title": "feat(eclipse): implement local contact calculation",
+                "body": (
+                    "[ECL26-GEO-001](docs/spec.md#ecl26-geo-001)\n"
+                    "Spec-Refs: ECL26-GEO-001\n"
+                    "Verification: fixture passed\n"
+                ),
+                "labels": [],
+            }
+        }
+        specctl.validate_pr_payload(
+            validation,
+            payload,
+            {"ECL26-GEO-001": {"status": "proposed"}},
+            ["services/api/geometry.py"],
+        )
+        self.assertTrue(any("proposed requirement" in error for error in validation.errors))
+
+    def test_requirement_without_clickable_link_is_rejected(self) -> None:
+        validation = specctl.Validation()
+        payload = {
+            "pull_request": {
+                "title": "feat(eclipse): implement local contact calculation",
+                "body": (
+                    "Spec-Refs: ECL26-GEO-001\n"
+                    "Verification: fixture passed\n"
+                ),
+                "labels": [],
+            }
+        }
+        specctl.validate_pr_payload(
+            validation,
+            payload,
+            {"ECL26-GEO-001": {"status": "accepted"}},
+            ["services/api/geometry.py"],
+        )
+        self.assertIn(
+            "PR must include a clickable link for ECL26-GEO-001",
+            validation.errors,
+        )
+
+    def test_commented_template_example_is_inert(self) -> None:
+        validation = specctl.Validation()
+        payload = {
+            "pull_request": {
+                "title": "feat(eclipse): implement local contact calculation",
+                "body": (
+                    "<!-- [GOV-SPEC-001](docs/spec.md#gov-spec-001)\n"
+                    "Spec-Refs: GOV-SPEC-001 -->\n"
+                ),
+                "labels": [],
+            }
+        }
+        specctl.validate_pr_payload(
+            validation,
+            payload,
+            {"GOV-SPEC-001": {"status": "accepted"}},
+            ["services/api/geometry.py"],
+        )
+        self.assertIn("behavior-changing PR requires Spec-Refs", validation.errors)
+
+    def test_protected_status_change_requires_owner_label(self) -> None:
+        validation = specctl.Validation()
+        payload = {
+            "pull_request": {
+                "title": "spec(eclipse): accept geometry contract",
+                "body": (
+                    "[GOV-SPEC-002](docs/spec.md#gov-spec-002)\n"
+                    "Spec-Refs: GOV-SPEC-002\n"
+                    "Verification: owner review recorded\n"
+                ),
+                "labels": [],
+            }
+        }
+        specctl.validate_pr_payload(
+            validation,
+            payload,
+            {"GOV-SPEC-002": {"status": "accepted"}},
+            ["docs/specv1/features/example/README.md"],
+            ["docs/specv1/features/example/README.md"],
+        )
+        self.assertTrue(
+            any("spec-status-approved" in error for error in validation.errors)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

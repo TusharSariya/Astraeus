@@ -54,7 +54,8 @@ Masks are one of:
 - `obstruction`;
 - `selection`.
 
-Only the first six affect server-side analysis. Selection is visual only.
+`coverage`, `nodata`, `quality`, `geographic`, `access`, and `obstruction`
+affect server-side analysis. `selection` is visual only.
 Missing, failed-QC, or outside-coverage cells MUST NOT render or score as zero,
 clear sky, open horizon, clean air, or lawful access.
 

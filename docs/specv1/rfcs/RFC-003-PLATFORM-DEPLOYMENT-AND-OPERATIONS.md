@@ -48,9 +48,11 @@ authoritatively mask data.
 ## OPS-QUEUE-001 — Bound asynchronous work
 
 The Montreal plan queue starts at one dispatch/second, two concurrent
-dispatches, a 14-minute dispatch deadline, five attempts within 30 minutes,
-exponential backoff, deterministic task names, and a durable terminal failure
-state. Admission returns `429` for quota rejection and `503` only for retryable
+dispatches, a 14-minute per-attempt dispatch deadline, no more than five
+attempts, and a 30-minute total retry window. The total retry window is the
+governing bound and may stop retries before five attempts. Use exponential
+backoff, deterministic task names, and a durable terminal failure state.
+Admission returns `429` for quota rejection and `503` only for retryable
 platform saturation.
 
 Scheduled ingests use a unique provider/product/run/normalization key, durable

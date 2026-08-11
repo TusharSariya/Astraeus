@@ -24,8 +24,9 @@ document.
 ## Authority
 
 - Accepted specifications in this directory are normative.
-- Executable contracts and rule files are normative for their declared
-  interface, but must agree with their owning specification.
+- Accepted executable contracts and rule files are normative for their declared
+  interface and must agree with their owning specification. Draft or proposed
+  artifacts MUST NOT authorize production behavior.
 - [Research](../research/README.md) is supporting evidence, not a requirement.
 - GitHub Issues and pull requests track work; they do not redefine behavior.
 - A contradiction blocks implementation. Do not choose a convenient source.

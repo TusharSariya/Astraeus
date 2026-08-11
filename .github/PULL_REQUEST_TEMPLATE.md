@@ -14,11 +14,13 @@
 
 <!-- Use direct links. Delete the example. -->
 
-- [GOV-SPEC-001](../blob/main/docs/specv1/GOVERNANCE.md#gov-spec-001--specifications-are-authoritative)
+<!-- Example:
+- [GOV-SPEC-001](../blob/main/docs/specv1/GOVERNANCE.md#gov-spec-001-specifications-are-authoritative)
 
 Spec-Refs: GOV-SPEC-001
+-->
 
-<!-- For genuinely non-behavioral work, replace both lines above with: -->
+<!-- For genuinely non-behavioral work, use: -->
 <!-- Spec-Impact: none -->
 <!-- No-Spec-Impact-Rationale: concrete explanation -->
 
