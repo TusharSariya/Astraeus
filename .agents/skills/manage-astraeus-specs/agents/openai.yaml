@@ -1,0 +1,4 @@
+interface:
+  display_name: "Astraeus Spec Governance"
+  short_description: "Manage traceable Astraeus specifications"
+  default_prompt: "Use $manage-astraeus-specs to make this change against the accepted Astraeus requirements and prepare traceable verification and PR metadata."
