@@ -85,6 +85,18 @@
       "title": "Use observations for their measured quantities"
     },
     {
+      "anchor": "ecl26-data-005-maintain-a-signed-avalon-access-catalogue",
+      "document_id": "ECL26-DATA",
+      "id": "ECL26-DATA-005",
+      "path": "docs/specv1/features/eclipse-2026-08-12/DATA_SPEC.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web"
+      ],
+      "status": "proposed",
+      "title": "Maintain a signed Avalon access catalogue"
+    },
+    {
       "anchor": "ecl26-degr-001-degrade-explicitly",
       "document_id": "ECL26-DATA",
       "id": "ECL26-DEGR-001",
@@ -995,6 +1007,7 @@
       "id": "SITE-ACCESS-001",
       "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
       "profiles": [
+        "event_day_preview",
         "v1_web",
         "v1_native"
       ],
@@ -1002,11 +1015,25 @@
       "title": "Separate ownership from lawful use"
     },
     {
+      "anchor": "site-access-002-classify-sites-and-pair-entrances-with-view-nodes",
+      "document_id": "RFC-004",
+      "id": "SITE-ACCESS-002",
+      "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Classify sites and pair entrances with view nodes"
+    },
+    {
       "anchor": "site-cand-001-generate-reachable-diverse-candidates",
       "document_id": "RFC-004",
       "id": "SITE-CAND-001",
       "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
       "profiles": [
+        "event_day_preview",
         "v1_web",
         "v1_native"
       ],
@@ -1019,6 +1046,7 @@
       "id": "SITE-HOR-001",
       "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
       "profiles": [
+        "event_day_preview",
         "v1_web",
         "v1_native"
       ],
@@ -1031,6 +1059,7 @@
       "id": "SITE-ROUTE-001",
       "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
       "profiles": [
+        "event_day_preview",
         "v1_web",
         "v1_native"
       ],
@@ -1043,6 +1072,7 @@
       "id": "SITE-SAFE-001",
       "path": "docs/specv1/rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md",
       "profiles": [
+        "event_day_preview",
         "v1_web",
         "v1_native"
       ],

@@ -49,6 +49,11 @@ generic module behavior cannot weaken them.
 - Mode: certified-filter visual observation and front-filtered photography.
 - Ranking interval: local maximum ±30 minutes, emphasizing ±10 minutes.
 - Geographic package: Avalon Peninsula.
+- Destinations: human-approved catalogue only. Prefer municipal and national
+  park parking/entrances, signed lookouts with legal stops, and library or
+  community-centre grounds only when outdoor use and hours are confirmed.
+  Schools are rejected. Lookouts are recommended as entrance plus optional
+  walk, not as an unmarked cliff or viewpoint pin.
 
 Approximate St. John's validation values are C1 2:28:44 p.m. NDT, maximum
 3:34:55 p.m., C4 4:36:55 p.m., magnitude 0.617, and obscuration 53.1%. These

@@ -15,6 +15,7 @@ depends_on:
   - PRD-001
   - ECL26-SCIENCE
   - ECL26-SAFETY
+  - SITE-ACCESS-002
 supersedes: []
 ---
 
@@ -38,7 +39,7 @@ reasons rather than adding unsafe or unverified sites.
 
 Each result includes:
 
-- site name and coordinates;
+- site name, `site_class`, entrance coordinates, and optional view node;
 - route, departure, arrival, setup, observation, and return times;
 - local eclipse contacts, magnitude, obscuration, and Sun direction;
 - planning score and components;

@@ -12,6 +12,8 @@ created: 2026-08-11
 updated: 2026-08-11
 depends_on:
   - EVD-PROV-001
+  - SITE-ACCESS-001
+  - SITE-ACCESS-002
 supersedes: []
 ---
 
@@ -108,3 +110,28 @@ No HRDPS uses RDPS+REPS with reduced spatial evidence. No REPS labels scenario
 spread incomplete. No GOES disables nowcast. No local observation leaves fog/
 ceiling unverified. No COD/CTH prohibits quantitative optical claims. Conflicts
 remain visible. No critical cloud evidence returns no reliable recommendation.
+
+## ECL26-DATA-005 — Maintain a signed Avalon access catalogue
+
+The eclipse site catalogue is an immutable, signed revision referenced by
+`site_catalogue_revision`. Preview uses only a human-approved Avalon subset
+(approximately 20–40 sites). Dynamic web may seed additional candidates but
+MUST NOT score or navigate them until `SITE-ACCESS-001` approval.
+
+Allowed seed sources, none of which are permission by themselves:
+
+- City of St. John's parks and recreation GIS and named parking;
+- Parks Canada national historic sites with published grounds hours;
+- provincial park vehicle-access areas;
+- OSM `tourism=viewpoint`, `amenity=parking`, picnic sites, and trailheads,
+  and Overture Places library/park records, as exploratory seeds;
+- Mapillary or KartaView imagery for reviewer QA under their licences.
+
+Forbidden as access evidence or feature extraction: Google Street View
+imagery, Street View metadata coverage, and Google Places lat/lng used to
+build a substitute catalogue.
+
+Each approved row records `site_class`, entrance coordinates, optional view
+node, `max_walk_minutes`, hours/gate evidence, reviewer, review time, expiry,
+licence, and source checksum. Schools default to `rejected_school`. Access
+review older than the catalogue expiry cannot enter a fresh recommendation.

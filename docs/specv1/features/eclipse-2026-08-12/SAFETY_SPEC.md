@@ -14,6 +14,7 @@ updated: 2026-08-11
 depends_on:
   - PRD-SAFE-001
   - SITE-ACCESS-001
+  - SITE-ACCESS-002
 supersedes: []
 ---
 
@@ -55,9 +56,13 @@ version. Viewing score cannot offset a failed safety gate.
 
 Unknown, stale, private-without-permission, closed, gated, unsafe, or unlawfully
 stopped destinations cannot receive a score, go state, deadline, or navigation.
-The origin stay option still requires lawful stopping, non-moving state,
-obstruction, and environmental safety, but user-confirmed private permission is
-not treated as public destination access.
+Street View coverage, OSM or Overture type membership, Crown or shoreline
+reservation, and school grounds do not authorize a destination. Library and
+community-centre grounds require explicit public outdoor or parking use whose
+hours cover the observation window. Lookouts navigate to the approved entrance,
+not to an unmarked view node. The origin stay option still requires lawful
+stopping, non-moving state, obstruction, and environmental safety, but
+user-confirmed private permission is not treated as public destination access.
 
 ## ECL26-SAFE-005 — Enforce full travel safety
 

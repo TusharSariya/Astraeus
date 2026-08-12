@@ -17,6 +17,7 @@ depends_on:
   - ECL26-DATA
   - ECL26-SAFETY
   - ECL26-UX
+  - RFC-004
 supersedes: []
 ---
 
@@ -42,12 +43,15 @@ Tests are profile-specific. Passing the controlled preview does not mean
 | ECL26-SAFE-001-T01 | ECL26-SAFE-001, ECL26-SAFE-002 | all | No glasses-off path exists; sunglasses/improvised filters fail; no viewer gives indirect guidance; optics require objective filter |
 | ECL26-SAFE-003-T01 | ECL26-SAFE-003 | all | Wind, lightning, precipitation, travel/walking fog, warning, tide/surge/surf, and accessibility fixtures exercise independent gates |
 | ECL26-SAFE-004-T01 | ECL26-SAFE-004, SITE-ACCESS-001 | all | Unknown/stale/private/closed/gated/no-parking destination never gets score, go, deadline, or navigation |
+| SITE-ACCESS-001-T01 | SITE-ACCESS-001, PRD-ACC-001 | all | Street View coverage, OSM/Overture type, Crown/shoreline reservation, and missing private tags never approve a destination or appear on MapLibre as Street View |
+| SITE-ACCESS-002-T01 | SITE-ACCESS-002, ECL26-SAFE-004 | all | School fixture is `rejected_school`; library without covering hours stays exploratory; lookout without parking is exploratory; lookout with parking navigates to entrance and records view node walk |
+| ECL26-DATA-005-T01 | ECL26-DATA-005 | preview/web | Catalogue revision checksums, site_class, entrance/view pairing, licences, and expiry are present; Google Street View/Places cannot seed an approved row |
 | ECL26-SAFE-005-T01 | ECL26-SAFE-005, SITE-ROUTE-001 | all | Exact outbound/setup/view/return boundary cases enforce the canonical itinerary |
 | ECL26-SAFE-006-T01 | ECL26-SAFE-006 | web/native | Driver interaction cannot accept a destination change; passenger/parked flow can |
 | ECL26-PROD-002-T01 | ECL26-PROD-002 | all | Fixed origin returns eligible alternatives or explicit rejection reasons; current location can win |
-| ECL26-PROD-002-T02 | ECL26-PROD-002, ECL26-PROD-004 | all | OpenAPI validation proves every returned candidate carries role/rank, typed score/evidence, solar-eclipse circumstances, time-indexed view geometry, viewing windows, atmospheric and horizon states, and a complete or explicitly null itinerary |
+| ECL26-PROD-002-T02 | ECL26-PROD-002, ECL26-PROD-004, SITE-ACCESS-002 | all | OpenAPI validation proves every returned candidate carries role/rank, site_class, viewing_site or explicit null, typed score/evidence, solar-eclipse circumstances, time-indexed view geometry, viewing windows, atmospheric and horizon states, and a complete or explicitly null itinerary |
 | ECL26-SCORE-001-T01 | ECL26-SCORE-001 | web | Golden hand calculations cover every mapping, missing rule, gate, clipping, tie, and boundary |
-| SITE-CAND-001-T01 | SITE-CAND-001 | web | Downselection meets agreed recall against exhaustive geographic/coastal/access/evidence fixtures |
+| SITE-CAND-001-T01 | SITE-CAND-001 | web | Downselection meets agreed recall against exhaustive geographic/coastal/access/evidence fixtures; DEM peaks and Street View coverage do not appear as approved seeds |
 | SITE-HOR-001-T01 | SITE-HOR-001 | web | Synthetic terrain obstruction rejects; missing canopy/buildings keeps overall horizon unknown; datum mismatch fails |
 | SITE-ROUTE-001-T01 | SITE-ROUTE-001 | web | 90-minute/arrival/return boundaries, GPS accuracy, water/off-road origin, closure, and graph fallback behave explicitly |
 | ECL26-UX-001-T01 | ECL26-UX-001 | web | Mobile viewport, GPS denial, renderer failure, offline, and fixed-preview entry retain a usable decision flow |

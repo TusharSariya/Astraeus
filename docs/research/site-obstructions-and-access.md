@@ -1,6 +1,6 @@
 # Observation-site obstructions and public access
 
-Last reviewed: 2026-08-10
+Last reviewed: 2026-08-11
 
 ## Executive conclusion
 
@@ -343,6 +343,27 @@ OSM is **community raw geodata**, licensed under the
 Store the OSM object ID/version and extraction timestamp. A community mapper's
 `access=yes` remains weaker than a current official closure or park rule, and
 the absence of a gate or restriction tag is not positive evidence.
+
+Google Street View coverage is not public-access evidence. Cars image public
+roads, including private driveways and school frontage. Google Maps Platform
+terms forbid scraping Street View, creating derived datasets from it, and
+showing Street View with a non-Google map. Astraeus uses MapLibre, so Street
+View belongs only in a separate reviewer tab. Mapillary and KartaView (CC
+BY-SA) are better cached reviewer QA sources.
+
+Canadian school grounds are generally not public property even when empty or
+visible in Street View. Public libraries and community centres are useful
+seeds only when outdoor grounds or parking are explicitly public and hours
+cover the observation window. Lookouts should be stored as a legal entrance
+plus an optional view node and walk, not as a single cliff pin. DEM ridges
+must not invent lookouts.
+
+Useful Avalon starting sources include City of St. John's MapCentre parks
+layers, Parks Canada Signal Hill and Cape Spear, Grand Concourse observation
+decks, provincial park vehicle-access areas, and OSM
+`tourism=viewpoint` with nearby `amenity=parking`. The NL 15 m shoreline
+reservation and undesignated East Coast Trail spurs are not automatic
+recommendable sites.
 
 ## Runtime operational checks
 
