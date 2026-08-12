@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import yaml
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from openapi_spec_validator import validate as validate_openapi
 
 
@@ -24,6 +24,10 @@ ROOT = Path(__file__).resolve().parents[2]
 SPEC_ROOT = ROOT / "docs" / "specv1"
 TEMPLATE_ROOT = SPEC_ROOT / "_templates"
 REQUIREMENT_INDEX = SPEC_ROOT / "REQUIREMENTS.json"
+MODULE_REGISTRY = SPEC_ROOT / "contracts" / "observation-modules.yaml"
+MODULE_REGISTRY_SCHEMA = (
+    SPEC_ROOT / "contracts" / "schemas" / "observation-module-registry.schema.json"
+)
 
 ALLOWED_STATUSES = {
     "draft",
@@ -334,7 +338,9 @@ def _validate_dependency_cycles(
         visit(document_id, [document_id])
 
 
-def validate_contracts(validation: Validation) -> None:
+def validate_contracts(
+    validation: Validation, documents: list[Document]
+) -> None:
     for path in sorted((SPEC_ROOT / "contracts" / "schemas").glob("*.json")):
         try:
             schema = json.loads(path.read_text(encoding="utf-8"))
@@ -343,11 +349,17 @@ def validate_contracts(validation: Validation) -> None:
             validation.error(f"{path.relative_to(ROOT)}: invalid JSON Schema: {exc}")
 
     openapi_path = SPEC_ROOT / "contracts" / "openapi.yaml"
+    openapi_document: dict[str, Any] = {}
     try:
-        document = yaml.safe_load(openapi_path.read_text(encoding="utf-8"))
-        validate_openapi(document)
+        value = yaml.safe_load(openapi_path.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            raise ValueError("OpenAPI root must be a mapping")
+        openapi_document = value
+        validate_openapi(openapi_document)
     except Exception as exc:
         validation.error(f"{openapi_path.relative_to(ROOT)}: invalid OpenAPI: {exc}")
+
+    validate_module_registry(validation, documents, openapi_document)
 
     for path in sorted((SPEC_ROOT / "rules").glob("*.yaml")):
         try:
@@ -374,6 +386,163 @@ def validate_contracts(validation: Validation) -> None:
             if _contains_null_threshold(rule):
                 validation.error(
                     f"{path.relative_to(ROOT)}: accepted rule contains null threshold"
+                )
+
+
+def validate_module_registry_data(
+    validation: Validation,
+    registry: Any,
+    schema: dict[str, Any],
+) -> bool:
+    starting_error_count = len(validation.errors)
+    if not isinstance(registry, dict):
+        validation.error(
+            "docs/specv1/contracts/observation-modules.yaml: registry must be a mapping"
+        )
+        return False
+
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    errors = sorted(validator.iter_errors(registry), key=lambda error: list(error.path))
+    for error in errors:
+        location = ".".join(str(item) for item in error.absolute_path) or "<root>"
+        validation.error(
+            "docs/specv1/contracts/observation-modules.yaml: "
+            f"{location}: {error.message}"
+        )
+
+    seen_versions: set[tuple[str, str]] = set()
+    active_majors: set[tuple[str, str]] = set()
+    for module in registry.get("modules", []):
+        if not isinstance(module, dict):
+            continue
+        module_id = module.get("module_id")
+        version = module.get("version")
+        if not isinstance(module_id, str) or not isinstance(version, str):
+            continue
+        identity = (module_id, version)
+        if identity in seen_versions:
+            validation.error(
+                "docs/specv1/contracts/observation-modules.yaml: duplicate module "
+                f"identity {module_id}@{version}"
+            )
+        seen_versions.add(identity)
+        major = version.split(".", 1)[0]
+        active_identity = (module_id, major)
+        if module.get("status") == "active":
+            if active_identity in active_majors:
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: multiple active "
+                    f"{module_id} major version {major} entries"
+                )
+            active_majors.add(active_identity)
+    return not errors and len(validation.errors) == starting_error_count
+
+
+def validate_module_registry(
+    validation: Validation,
+    documents: list[Document],
+    openapi_document: dict[str, Any],
+) -> None:
+    try:
+        schema = json.loads(MODULE_REGISTRY_SCHEMA.read_text(encoding="utf-8"))
+        registry = yaml.safe_load(MODULE_REGISTRY.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        validation.error(
+            "docs/specv1/contracts/observation-modules.yaml: "
+            f"unable to load registry/schema: {exc}"
+        )
+        return
+
+    if not validate_module_registry_data(validation, registry, schema):
+        return
+
+    known_tests = {test for document in documents for test in document.tests}
+    document_status = {
+        str(document.metadata.get("id")): document.metadata.get("status")
+        for document in documents
+    }
+    components = openapi_document.get("components", {})
+    schemas = components.get("schemas", {}) if isinstance(components, dict) else {}
+    if not isinstance(schemas, dict):
+        schemas = {}
+    contract_root = MODULE_REGISTRY.parent
+    for module in registry["modules"]:
+        identity = f"{module['module_id']}@{module['version']}"
+        for field in ("request_schema", "result_schema"):
+            reference = module[field]
+            prefix = "openapi.yaml#/components/schemas/"
+            if not reference.startswith(prefix) or reference.removeprefix(prefix) not in schemas:
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: "
+                    f"{identity} has unresolved {field} {reference!r}"
+                )
+
+        resolved_paths: dict[str, Path] = {}
+        for field in ("science_spec", "safety_spec", "scoring_rule"):
+            resolved = (contract_root / module[field]).resolve()
+            resolved_paths[field] = resolved
+            if ROOT not in resolved.parents or not resolved.exists():
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: "
+                    f"{identity} has unresolved {field} {module[field]!r}"
+                )
+
+        for test_id in module["verification_refs"]:
+            if test_id not in known_tests:
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: "
+                    f"{identity} references unknown verification {test_id}"
+                )
+
+        if module["status"] != "active":
+            continue
+        if "-" in module["version"]:
+            validation.error(
+                "docs/specv1/contracts/observation-modules.yaml: active "
+                f"{identity} cannot use a prerelease version"
+            )
+        for owning_document in ("RFC-005", "SPECV1-CONTRACTS"):
+            if document_status.get(owning_document) not in {
+                "accepted",
+                "implemented",
+                "verified",
+            }:
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: active "
+                    f"{identity} depends on {document_status.get(owning_document)} "
+                    f"{owning_document}"
+                )
+        for field in ("science_spec", "safety_spec"):
+            path = resolved_paths[field]
+            if not path.exists():
+                continue
+            try:
+                metadata, _ = parse_frontmatter(path)
+            except (OSError, ValueError, yaml.YAMLError) as exc:
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: active "
+                    f"{identity} cannot read {field}: {exc}"
+                )
+                continue
+            if metadata.get("status") not in {"accepted", "implemented", "verified"}:
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: active "
+                    f"{identity} depends on {metadata.get('status')} {field}"
+                )
+        rule_path = resolved_paths["scoring_rule"]
+        if rule_path.exists():
+            try:
+                rule = yaml.safe_load(rule_path.read_text(encoding="utf-8"))
+            except (OSError, yaml.YAMLError) as exc:
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: active "
+                    f"{identity} cannot read scoring_rule: {exc}"
+                )
+                continue
+            if not isinstance(rule, dict) or rule.get("status") != "accepted":
+                validation.error(
+                    "docs/specv1/contracts/observation-modules.yaml: active "
+                    f"{identity} requires an accepted scoring rule"
                 )
 
 
@@ -542,7 +711,7 @@ def command_validate(_: argparse.Namespace) -> int:
     validation = Validation()
     documents = collect_documents(validation)
     validate_documents(validation, documents)
-    validate_contracts(validation)
+    validate_contracts(validation, documents)
     validate_index(validation, documents)
     return validation.report()
 

@@ -1,13 +1,26 @@
 from __future__ import annotations
 
+import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 import specctl
+import yaml
+from jsonschema import Draft202012Validator
 
 
 class SpecctlTests(unittest.TestCase):
+    def load_module_registry(self) -> tuple[dict, dict]:
+        registry = yaml.safe_load(
+            specctl.MODULE_REGISTRY.read_text(encoding="utf-8")
+        )
+        schema = json.loads(
+            specctl.MODULE_REGISTRY_SCHEMA.read_text(encoding="utf-8")
+        )
+        return registry, schema
+
     def test_markdown_slug_matches_github_style_for_requirement_heading(self) -> None:
         self.assertEqual(
             specctl.markdown_slug("ECL26-SAFE-001 — Unknown access"),
@@ -177,6 +190,90 @@ class SpecctlTests(unittest.TestCase):
         self.assertTrue(
             any("spec-status-approved" in error for error in validation.errors)
         )
+
+    def test_observation_module_registry_is_schema_valid(self) -> None:
+        registry, schema = self.load_module_registry()
+        validation = specctl.Validation()
+        self.assertTrue(
+            specctl.validate_module_registry_data(validation, registry, schema)
+        )
+        self.assertEqual(validation.errors, [])
+
+    def test_observation_module_registry_rejects_duplicate_identity(self) -> None:
+        registry, schema = self.load_module_registry()
+        registry["modules"].append(copy.deepcopy(registry["modules"][0]))
+        validation = specctl.Validation()
+        self.assertFalse(
+            specctl.validate_module_registry_data(validation, registry, schema)
+        )
+        self.assertTrue(any("duplicate module identity" in error for error in validation.errors))
+
+    def test_observation_module_registry_rejects_unknown_capability(self) -> None:
+        registry, schema = self.load_module_registry()
+        registry["modules"][0]["geometry_types"] = ["imaginary_geometry"]
+        validation = specctl.Validation()
+        self.assertFalse(
+            specctl.validate_module_registry_data(validation, registry, schema)
+        )
+        self.assertTrue(any("imaginary_geometry" in error for error in validation.errors))
+
+    def test_active_module_requires_owner_approval(self) -> None:
+        registry, schema = self.load_module_registry()
+        registry["modules"][0]["status"] = "active"
+        validation = specctl.Validation()
+        self.assertFalse(
+            specctl.validate_module_registry_data(validation, registry, schema)
+        )
+        self.assertTrue(any("accepted_by" in error for error in validation.errors))
+
+    def test_generic_plan_contract_has_no_eclipse_creation_path(self) -> None:
+        openapi = yaml.safe_load(
+            (specctl.SPEC_ROOT / "contracts" / "openapi.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertIn("/v1/plans", openapi["paths"])
+        self.assertNotIn("/v1/eclipse/plans", openapi["paths"])
+        plan_request = openapi["components"]["schemas"]["PlanRequest"]
+        self.assertEqual(plan_request["discriminator"]["propertyName"], "module_id")
+        self.assertEqual(
+            list(plan_request["discriminator"]["mapping"]), ["solar-eclipse"]
+        )
+
+    def test_score_component_applicability_is_fail_closed(self) -> None:
+        openapi = yaml.safe_load(
+            (specctl.SPEC_ROOT / "contracts" / "openapi.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        schema = openapi["components"]["schemas"]["ScoreComponent"]
+        validator = Draft202012Validator(schema)
+        base = {
+            "component_id": "atmospheric_transmission",
+            "applicability": "not_applicable",
+            "value": None,
+            "evidence_quality": "not_applicable",
+            "provenance_refs": [],
+        }
+        self.assertEqual(list(validator.iter_errors(base)), [])
+
+        bad_not_applicable = {**base, "value": 100}
+        self.assertTrue(list(validator.iter_errors(bad_not_applicable)))
+
+        insufficient = {
+            **base,
+            "applicability": "applicable",
+            "evidence_quality": "insufficient",
+            "provenance_refs": ["provider-run"],
+        }
+        self.assertEqual(list(validator.iter_errors(insufficient)), [])
+
+        bad_sufficient = {
+            **insufficient,
+            "evidence_quality": "high",
+            "value": None,
+        }
+        self.assertTrue(list(validator.iter_errors(bad_sufficient)))
 
 
 if __name__ == "__main__":
