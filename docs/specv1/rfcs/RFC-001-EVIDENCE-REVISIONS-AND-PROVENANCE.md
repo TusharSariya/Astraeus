@@ -23,6 +23,8 @@ supersedes: []
 An `EvaluationRevision` MUST freeze:
 
 - request and normalized origin;
+- observation subject, occurrence where applicable, module ID/version, and
+  observation profile;
 - candidate/site catalogue revision;
 - valid-time interval and frame cadence;
 - source objects, model runs/members, observations, and retrieval times;
@@ -68,10 +70,11 @@ calibration.
 
 ## EVD-API-001 — Use asynchronous capability-protected plans
 
-For dynamic profiles, `POST /v1/eclipse/plans` returns `202 PlanAccepted` with
-an opaque plan ID and bearer capability. Status, result, SSE progress, and
-deletion require that capability. Plans expire after 24 hours and precise
-origins MUST NOT enter application logs or analytics.
+For dynamic profiles, `POST /v1/plans` accepts a closed module-discriminated
+request union and returns `202 PlanAccepted` with an opaque plan ID and bearer
+capability. Status, result, SSE progress, and deletion require that capability.
+Plans expire after 24 hours and precise origins MUST NOT enter application logs
+or analytics.
 
 Required behavior:
 
@@ -83,6 +86,10 @@ Required behavior:
 - `/v1/assets/resolve` authorizes and returns short-lived transport locations.
 
 Exact wire shapes live in `contracts/openapi.yaml`.
+
+Only `active` entries in `contracts/observation-modules.yaml` may execute in a
+production profile. A proposed schema variant may be validated during contract
+development but MUST NOT be treated as callable production behavior.
 
 ## EVD-SNAP-001 — Sign controlled snapshots
 

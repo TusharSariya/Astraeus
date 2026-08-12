@@ -977,6 +977,19 @@
       "title": "Solar safety cannot be optimized away"
     },
     {
+      "anchor": "prd-safe-002-subject-specific-safety-cannot-be-optimized-away",
+      "document_id": "PRD-001",
+      "id": "PRD-SAFE-002",
+      "path": "docs/specv1/product/PRD-001-ASTRAEUS-V1.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Subject-specific safety cannot be optimized away"
+    },
+    {
       "anchor": "site-access-001-separate-ownership-from-lawful-use",
       "document_id": "RFC-004",
       "id": "SITE-ACCESS-001",
@@ -1095,6 +1108,110 @@
       ],
       "status": "proposed",
       "title": "Make all boundaries versioned"
+    },
+    {
+      "anchor": "sys-ext-001-add-modules-through-reviewed-contracts",
+      "document_id": "RFC-005",
+      "id": "SYS-EXT-001",
+      "path": "docs/specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Add modules through reviewed contracts"
+    },
+    {
+      "anchor": "sys-mod-001-give-every-supported-subject-one-versioned-module-owner",
+      "document_id": "RFC-005",
+      "id": "SYS-MOD-001",
+      "path": "docs/specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Give every supported subject one versioned module owner"
+    },
+    {
+      "anchor": "sys-mod-002-declare-capabilities-instead-of-assuming-common-physics",
+      "document_id": "RFC-005",
+      "id": "SYS-MOD-002",
+      "path": "docs/specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Declare capabilities instead of assuming common physics"
+    },
+    {
+      "anchor": "sys-mod-003-keep-subject-specific-physics-outside-the-common-optimizer",
+      "document_id": "RFC-005",
+      "id": "SYS-MOD-003",
+      "path": "docs/specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Keep subject-specific physics outside the common optimizer"
+    },
+    {
+      "anchor": "sys-mod-004-fail-closed-for-unsupported-or-incomplete-modules",
+      "document_id": "RFC-005",
+      "id": "SYS-MOD-004",
+      "path": "docs/specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Fail closed for unsupported or incomplete modules"
+    },
+    {
+      "anchor": "sys-safe-001-keep-module-safety-outside-score-tradeoffs",
+      "document_id": "RFC-005",
+      "id": "SYS-SAFE-001",
+      "path": "docs/specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Keep module safety outside score tradeoffs"
+    },
+    {
+      "anchor": "sys-score-001-preserve-applicability-and-comparison-boundaries",
+      "document_id": "RFC-005",
+      "id": "SYS-SCORE-001",
+      "path": "docs/specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Preserve applicability and comparison boundaries"
+    },
+    {
+      "anchor": "sys-subj-001-model-targets-and-occurrences-explicitly",
+      "document_id": "RFC-005",
+      "id": "SYS-SUBJ-001",
+      "path": "docs/specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md",
+      "profiles": [
+        "event_day_preview",
+        "v1_web",
+        "v1_native"
+      ],
+      "status": "proposed",
+      "title": "Model targets and occurrences explicitly"
     }
   ],
   "schema_version": 1

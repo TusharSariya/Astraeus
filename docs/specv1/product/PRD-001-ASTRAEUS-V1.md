@@ -20,53 +20,66 @@ supersedes: []
 
 ## Summary
 
-Astraeus answers a decision, not merely a forecast:
+Astraeus answers a decision about a selected optical observation subject, not
+merely a forecast:
 
 > Given where I am, how far I can travel, and when I am available, where should
 > I go, when should I be there, where should I look, and how good is the
 > opportunity?
 
-The first reusable vertical slice plans observation of the August 12, 2026
-solar eclipse from the Avalon Peninsula. The architecture must remain capable
-of adding aurora, deep-sky, meteor, comet, sunrise, and sunset event modules
-without pretending their physics or success criteria are interchangeable.
+The subject may be a persistent target, scheduled occurrence, forecast
+phenomenon, or discovered transient. The first reusable vertical slice plans
+observation of the August 12, 2026 solar eclipse from the Avalon Peninsula.
+The module architecture supports later aurora, lunar, planetary, asteroid,
+comet, stellar, deep-sky, meteor, transient, sunrise, and sunset work without
+pretending their physics or success criteria are interchangeable.
 
 ## Users
 
-- A general observer using certified solar viewers.
-- A photographer using a correctly front-mounted solar filter.
+- A general optical observer using the equipment and safety controls required
+  by the selected subject.
+- A photographer using fixed or tracking equipment appropriate to the selected
+  objective.
+- For the first release slice, an eclipse observer using certified solar
+  viewers or correctly front-filtered photographic equipment.
 - A user deciding whether travel offers enough robust benefit over staying.
 
 ## PRD-OUT-001 — Return a decision-oriented recommendation
 
 The product MUST answer stay or go, destination, departure and arrival time,
-viewing direction, opportunity quality, dominant risk, and fallback. It MUST
-include the current location as a distinct stay option.
+viewing direction or sky region over time, useful observation window,
+opportunity quality, dominant risk, and fallback for the selected subject and
+observation profile. It MUST include the current location as a distinct stay
+option.
 
 ## PRD-OUT-002 — Optimize within real constraints
 
-The result MUST honor availability, full round-trip travel, setup and teardown,
-walking, access, environmental safety, and observation interval constraints.
+The result MUST honor subject validity and critical intervals, availability,
+full round-trip travel, setup and teardown, walking, access, environmental
+safety, equipment limits, duration/continuity, and observation constraints.
 
 ## PRD-OUT-003 — Explain evidence and uncertainty honestly
 
-The product MUST separate deterministic event geometry, issued forecasts,
-current observations, evidence quality, scenario spread, source disagreement,
-and access/safety assertions. It MUST call the result a planning score until a
-success probability is empirically calibrated.
+The product MUST separate deterministic subject geometry where applicable,
+issued forecasts, current observations, evidence quality, scenario spread,
+source disagreement, and access/safety assertions. It MUST call the result a
+planning score until a success probability is empirically calibrated for the
+same module, subject, objective, observation profile, and outcome definition.
 
 ## PRD-OUT-004 — Fail closed
 
-The product MUST return `no reliable recommendation` when critical geometry,
-cloud evidence, access, route, or site-safety evidence is unavailable or stale.
-It MUST NOT silently substitute climatology, a consumer forecast, or an
+The product MUST return `no reliable recommendation` when critical subject
+resolution, module-required geometry/signal or atmospheric evidence, access,
+route, or site-safety evidence is unavailable or stale. It MUST NOT silently
+substitute climatology, a consumer forecast, an unrelated module, or an
 unverified site.
 
 ## PRD-OUT-005 — Preserve reproducibility
 
-Every recommendation MUST be reproducible from immutable inputs, provider/run
-metadata, retrieval times, checksums, ephemeris and Earth-orientation inputs,
-rules, algorithms, routing graph, site catalogue, and client-visible revision.
+Every recommendation MUST be reproducible from immutable inputs, subject and
+module identity/version, observation profile, provider/run metadata, retrieval
+times, checksums, applicable ephemeris and Earth-orientation inputs, rules,
+algorithms, routing graph, site catalogue, and client-visible revision.
 
 ## PRD-SAFE-001 — Solar safety cannot be optimized away
 
@@ -74,6 +87,14 @@ For a partial eclipse, the product MUST never show a glasses-off state. Weather,
 cloud, score, or apparent darkness MUST NOT relax certified viewer and
 front-mounted optical-filter requirements. Users without valid viewers receive
 authoritative indirect-viewing guidance only.
+
+## PRD-SAFE-002 — Subject-specific safety cannot be optimized away
+
+Every active observation module MUST declare its subject-specific safety
+policy. Safety gates are independent of planning utility and MUST NOT be
+inherited from an unrelated module, omitted because a target appears benign,
+or offset by a high score. Missing or incompatible required safety policy
+blocks activation or recommendation.
 
 ## PRD-ACC-001 — Recommended destinations require current evidence
 
@@ -112,5 +133,7 @@ privacy, permission, and store gates pass.
 
 - Numerical weather prediction or foundational weather-model training.
 - Calibrated visibility probability before outcome data exists.
-- Global coverage, all astronomical events, radiative-transfer perfection,
-  native immersive AR, or photorealistic 3-D obstruction inference in V1.
+- Shipping every planned observation module, global coverage, personalized
+  cross-subject discovery, non-optical or multi-messenger instruments,
+  radiative-transfer perfection, native immersive AR, or photorealistic 3-D
+  obstruction inference in V1.

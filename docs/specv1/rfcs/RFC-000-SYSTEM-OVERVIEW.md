@@ -28,7 +28,8 @@ units, immutable revisions, and provenance are system invariants.
 
 ```text
 request
-  -> event geometry
+  -> observation-subject and module resolution
+  -> subject-specific geometry and critical-window evaluation
   -> reachable candidate generation
   -> normalized forecast and observation evidence
   -> obstruction, access, route, and site-safety evaluation
@@ -42,10 +43,11 @@ domain objects, not GRIB, satellite, vendor, or renderer-specific structures.
 
 ## SYS-ARCH-002 — Keep authoritative computation server-side
 
-Event geometry, source normalization, scoring, line-of-sight evaluation,
-candidate eligibility, safety gates, alerts, and provenance MUST execute on the
-backend. Clients are trusted renderers and caches, not independent scientific
-pipelines. Exact point probes MUST use analytic data, never sampled pixels.
+Subject resolution, module-owned geometry, source normalization, scoring,
+line-of-sight evaluation, candidate eligibility, safety gates, alerts, and
+provenance MUST execute on the backend. Clients are trusted renderers and
+caches, not independent scientific pipelines. Exact point probes MUST use
+analytic data, never sampled pixels.
 
 ## SYS-ARCH-003 — Use one monorepo with bounded sharing
 
@@ -94,7 +96,8 @@ digest, and promoted without per-environment rebuilds.
 The committed OpenAPI document and JSON Schemas are the interface source of
 truth. A backend schema change MUST regenerate clients and fail CI on an
 uncommitted diff. Every normalized object, rule set, provider adapter, routing
-graph, site catalogue, and evaluation revision carries a version.
+graph, site catalogue, observation module, and evaluation revision carries a
+version.
 
 ## Alternatives
 

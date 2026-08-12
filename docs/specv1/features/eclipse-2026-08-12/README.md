@@ -15,6 +15,7 @@ depends_on:
   - PRD-001
   - RFC-001
   - RFC-004
+  - RFC-005
 supersedes: []
 ---
 
@@ -23,6 +24,11 @@ supersedes: []
 Recommend the strongest safe, lawful, reachable observation opportunity for
 the August 12, 2026 partial solar eclipse from the user's Avalon Peninsula
 origin.
+
+This feature composes the proposed `solar-eclipse` observation module. Its
+subject ID is `sun`, occurrence ID is `solar-eclipse-2026-08-12`, and its
+module-specific science and solar safety remain authoritative for this feature;
+generic module behavior cannot weaken them.
 
 ## Feature specifications
 

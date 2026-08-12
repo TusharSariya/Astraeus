@@ -19,6 +19,10 @@ supersedes: []
 # Executable contract catalogue
 
 - [`openapi.yaml`](openapi.yaml): dynamic web plan lifecycle and transport.
+- [`observation-modules.yaml`](observation-modules.yaml): registered module
+  identities, capabilities, contracts, rules, limitations, and lifecycle.
+- [`observation-module-registry.schema.json`](schemas/observation-module-registry.schema.json):
+  machine validation for the module registry.
 - [`evaluation-revision.schema.json`](schemas/evaluation-revision.schema.json):
   immutable evaluation identity.
 - [`layer-manifest.schema.json`](schemas/layer-manifest.schema.json): analytic
