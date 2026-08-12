@@ -13,6 +13,7 @@ created: 2026-08-11
 updated: 2026-08-11
 depends_on:
   - RFC-001
+  - RFC-004
 supersedes: []
 ---
 

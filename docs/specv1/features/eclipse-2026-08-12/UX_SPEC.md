@@ -15,6 +15,7 @@ depends_on:
   - RFC-002
   - ECL26-PRODUCT
   - ECL26-SAFETY
+  - SITE-ACCESS-002
 supersedes: []
 ---
 
@@ -50,8 +51,10 @@ explanatory 3-D. Daytime eclipse views keep light pollution off by default.
 
 Cards show planning score, components, evidence quality, scenario spread,
 source disagreement, primary risk, and fallback. No card labels score as
-probability. An exploratory access-unknown site has no planning score or go/
-navigation affordance.
+probability. An exploratory access-unknown site is clearly badged, has no
+planning score or go/navigation affordance, and is off by default on the
+controlled preview. Lookout cards navigate to the entrance and state any walk
+to the view node.
 
 ## ECL26-UX-004 — Keep time, evidence, and revision synchronized
 

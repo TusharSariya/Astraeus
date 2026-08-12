@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Astraeus Planning API
-  version: 1.0.0-draft.2
+  version: 1.0.0-draft.3
   description: >-
     Proposed capability-protected asynchronous API for selected optical
     observation subjects. The event_day_preview does not expose dynamic plan
@@ -200,6 +200,17 @@ components:
         latitude_deg: {type: number, minimum: -90, maximum: 90}
         longitude_deg: {type: number, minimum: -180, maximum: 180}
         height_m_ellipsoid: {type: [number, 'null']}
+    ViewingSite:
+      type: object
+      additionalProperties: false
+      required: [entrance, max_walk_minutes]
+      properties:
+        entrance: {$ref: '#/components/schemas/Coordinates'}
+        view_point:
+          oneOf:
+            - $ref: '#/components/schemas/Coordinates'
+            - type: 'null'
+        max_walk_minutes: {type: integer, minimum: 0, maximum: 120}
     ObservedOrigin:
       type: object
       additionalProperties: false
@@ -406,6 +417,8 @@ components:
         - horizon_state
         - access_state
         - safety_state
+        - site_class
+        - viewing_site
         - itinerary
       properties:
         candidate_id: {type: string}
@@ -441,6 +454,24 @@ components:
         horizon_state: {$ref: '#/components/schemas/HorizonState'}
         access_state: {enum: [approved, unknown, rejected]}
         safety_state: {enum: [approved, unknown, rejected]}
+        site_class:
+          enum:
+            - origin_stay
+            - municipal_park
+            - national_historic_site
+            - provincial_park
+            - signed_lookout
+            - library_grounds
+            - community_centre
+            - trailhead
+            - exploratory_unknown
+            - rejected_school
+            - rejected_private
+            - rejected_other
+        viewing_site:
+          oneOf:
+            - $ref: '#/components/schemas/ViewingSite'
+            - type: 'null'
         itinerary:
           oneOf:
             - $ref: '#/components/schemas/Itinerary'

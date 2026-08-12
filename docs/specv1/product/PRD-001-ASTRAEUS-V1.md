@@ -100,7 +100,9 @@ blocks activation or recommendation.
 
 A destination MUST NOT receive a score, go state, deadline, or navigation link
 unless lawful access/stopping, opening hours, and critical site safety are
-approved and current. Unknown sites MAY appear only in an exploratory view.
+approved and current. Street View coverage, map POI type, OSM tags, and Crown
+or shoreline designation alone are not current evidence. Unknown sites MAY
+appear only in an exploratory view.
 
 ## Release profiles
 
