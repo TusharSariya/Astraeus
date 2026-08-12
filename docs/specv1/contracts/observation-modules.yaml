@@ -1,0 +1,58 @@
+registry_version: 1.0.0-draft.1
+modules:
+  - module_id: solar-eclipse
+    title: Solar Eclipse Observation
+    version: 1.0.0-draft.1
+    status: proposed
+    owner: "@TusharSariya"
+    subject_classes:
+      - scheduled_occurrence
+    occurrence_semantics:
+      - deterministic_calculation
+    geometry_types:
+      - disc
+      - track
+    supported_observation_modes:
+      - filtered_visual
+      - filtered_camera
+    supported_objectives:
+      - visual_detection
+      - photographic_capture
+      - timelapse
+      - scientific_timing
+    score_components:
+      - physical_signal_potential
+      - geometric_visibility
+      - atmospheric_transmission
+      - observer_equipment_detectability
+      - usable_duration
+      - operational_feasibility
+      - travel_adjusted_utility
+    required_evidence_classes:
+      - deterministic_geometry
+      - cloud_line_of_sight
+      - site_obstruction
+      - access
+      - route
+      - site_safety
+    optional_evidence_classes:
+      - aerosol_transparency
+      - current_surface_observation
+      - radar_precipitation_context
+    request_schema: "openapi.yaml#/components/schemas/SolarEclipsePlanRequest"
+    result_schema: "openapi.yaml#/components/schemas/SolarEclipseEvaluation"
+    science_spec: "../features/eclipse-2026-08-12/SCIENCE_SPEC.md"
+    safety_spec: "../features/eclipse-2026-08-12/SAFETY_SPEC.md"
+    safety_policy: eclipse-2026-partial-solar-safety
+    scoring_rule: "../rules/solar-eclipse-v1.yaml"
+    region_limitations:
+      - Avalon Peninsula controlled-preview and V1 validation area
+    verification_refs:
+      - ECL26-GEO-001-T01
+      - ECL26-SAFE-001-T01
+      - ECL26-SCORE-001-T01
+    approval:
+      accepted_by: null
+      accepted_at: null
+      activated_by: null
+      activated_at: null

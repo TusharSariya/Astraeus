@@ -53,10 +53,11 @@ features or numeric probes; it MUST NOT sample rendered pixels.
 
 ## MAP-TIME-001 — Synchronize one decision timeline
 
-One timeline controls the map, Sun direction, recommendation cards, cloud
-evidence, observations, route deadlines, and horizon profile. Tracks separate
-deterministic eclipse geometry, obstruction, supported quantitative or
-categorical cloud evidence, observation markers, and travel cutoffs.
+One timeline controls the map, module-supplied subject direction or sky region,
+recommendation cards, atmospheric evidence, observations, route deadlines, and
+horizon profile. Tracks separate subject geometry/signal, obstruction,
+supported quantitative or categorical environmental evidence, observation
+markers, critical windows, and travel cutoffs.
 
 ## MAP-SEM-001 — Preserve evidence semantics in presentation
 

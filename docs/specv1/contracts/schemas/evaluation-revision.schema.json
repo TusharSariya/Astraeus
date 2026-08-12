@@ -4,10 +4,33 @@
   "title": "EvaluationRevision",
   "type": "object",
   "additionalProperties": false,
-  "required": ["revision_id", "schema_version", "valid_interval", "source_objects", "algorithm_versions", "site_catalogue_revision", "created_at"],
+  "required": ["revision_id", "schema_version", "module", "subject", "observation_profile", "scoring_version", "comparison_key", "valid_interval", "source_objects", "algorithm_versions", "site_catalogue_revision", "created_at"],
   "properties": {
     "revision_id": {"type": "string", "minLength": 1},
-    "schema_version": {"type": "string", "const": "1.0.0-draft.1"},
+    "schema_version": {"type": "string", "const": "1.0.0-draft.2"},
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module_id", "module_version", "registry_version"],
+      "properties": {
+        "module_id": {"type": "string", "minLength": 1},
+        "module_version": {"type": "string", "minLength": 1},
+        "registry_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject_class", "subject_id", "occurrence_id"],
+      "properties": {
+        "subject_class": {"enum": ["persistent_target", "scheduled_occurrence", "forecast_phenomenon", "discovered_transient"]},
+        "subject_id": {"type": "string", "minLength": 1},
+        "occurrence_id": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "observation_profile": {"type": "object"},
+    "scoring_version": {"type": "string", "minLength": 1},
+    "comparison_key": {"type": "string", "pattern": "^cmp_[A-Za-z0-9_-]{20,64}$"},
     "valid_interval": {
       "type": "object",
       "additionalProperties": false,

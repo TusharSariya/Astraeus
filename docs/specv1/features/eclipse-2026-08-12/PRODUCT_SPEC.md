@@ -22,10 +22,12 @@ supersedes: []
 
 ## ECL26-PROD-001 — Accept a constrained observation request
 
-Dynamic profiles accept foreground GPS or manual origin, origin accuracy/time,
-availability, maximum travel, observation mode, accessibility needs, walking
-tolerance, route avoids, and setup/return constraints. The controlled preview
-uses its fixed origin and collects no GPS.
+Dynamic profiles accept the `solar-eclipse` module ID/version, `sun` subject,
+August 12 occurrence, objective, foreground GPS or manual origin, origin
+accuracy/time, availability, maximum travel, filtered observation mode,
+duration/continuity, accessibility needs, walking tolerance, route avoids, and
+setup/return constraints. The controlled preview uses its fixed origin and
+collects no GPS.
 
 ## ECL26-PROD-002 — Return ranked contiguous opportunities
 

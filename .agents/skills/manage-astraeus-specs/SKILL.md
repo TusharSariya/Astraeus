@@ -66,6 +66,14 @@ feature by product, science, data, safety, UX, delivery, or verification only
 when those concerns exist. Put reusable cross-feature design in an RFC and one
 architectural choice in an ADR. Do not recreate a monolith.
 
+For an observation module, start from
+`docs/specv1/_templates/OBSERVATION_MODULE.md` and RFC-005. Distinguish the
+reusable subject-family module from a dated or regional release feature. Update
+the closed OpenAPI union and `contracts/observation-modules.yaml`; never add an
+arbitrary payload, claim capability-table entries are implemented, or activate
+a module whose science, safety, scoring, provenance, and verification are not
+accepted.
+
 ## Prepare Git history
 
 Use `<type>(<scope>): <imperative summary>`. The pull request is squash-merged,

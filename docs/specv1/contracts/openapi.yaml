@@ -1,10 +1,12 @@
 openapi: 3.1.0
 info:
   title: Astraeus Planning API
-  version: 1.0.0-draft.1
+  version: 1.0.0-draft.2
   description: >-
-    Proposed capability-protected asynchronous API for Astraeus v1_web. The
-    event_day_preview does not expose dynamic plan creation.
+    Proposed capability-protected asynchronous API for selected optical
+    observation subjects. The event_day_preview does not expose dynamic plan
+    creation. Only active observation-module registry entries are callable in a
+    production profile.
 servers:
   - url: https://astraeus.example/api
     description: Canonical Cloudflare boundary; replaced by runtime config.
@@ -12,16 +14,17 @@ tags:
   - name: Plans
   - name: Assets
 paths:
-  /v1/eclipse/plans:
+  /v1/plans:
     post:
       tags: [Plans]
-      operationId: createEclipsePlan
-      summary: Start an eclipse recommendation evaluation
+      operationId: createPlan
+      summary: Start an observation recommendation evaluation
       description: >-
-        Anonymous by design because this operation issues the capability that
-        protects subsequent plan operations. Cloudflare and API admission
-        enforce per-origin/installation quotas, body limits, candidate limits,
-        and abuse controls under OPS-EDGE-001.
+        The closed request union is discriminated by module_id. Anonymous by
+        design because this operation issues the capability that protects
+        subsequent plan operations. Cloudflare and API admission enforce
+        per-origin/installation quotas, body limits, candidate limits, and
+        abuse controls under OPS-EDGE-001.
       security: []
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -30,7 +33,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EclipsePlanRequest'
+              $ref: '#/components/schemas/PlanRequest'
       responses:
         '202':
           description: Evaluation accepted
@@ -44,7 +47,14 @@ paths:
               schema: {$ref: '#/components/schemas/PlanAccepted'}
         '400': {$ref: '#/components/responses/Problem'}
         '409': {$ref: '#/components/responses/Problem'}
-        '422': {$ref: '#/components/responses/Problem'}
+        '422':
+          description: >-
+            Invalid typed input or unavailable module. Module failures use
+            ASTRAEUS_MODULE_UNSUPPORTED, ASTRAEUS_MODULE_VERSION_UNSUPPORTED,
+            or ASTRAEUS_MODULE_REGION_UNSUPPORTED before evaluation work starts.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ProblemDetails'}
         '429': {$ref: '#/components/responses/Problem'}
         '503': {$ref: '#/components/responses/Problem'}
   /v1/plans/{plan_id}:
@@ -175,6 +185,13 @@ components:
         application/problem+json:
           schema: {$ref: '#/components/schemas/ProblemDetails'}
   schemas:
+    PlanRequest:
+      oneOf:
+        - $ref: '#/components/schemas/SolarEclipsePlanRequest'
+      discriminator:
+        propertyName: module_id
+        mapping:
+          solar-eclipse: '#/components/schemas/SolarEclipsePlanRequest'
     Coordinates:
       type: object
       additionalProperties: false
@@ -183,53 +200,115 @@ components:
         latitude_deg: {type: number, minimum: -90, maximum: 90}
         longitude_deg: {type: number, minimum: -180, maximum: 180}
         height_m_ellipsoid: {type: [number, 'null']}
-    EclipsePlanRequest:
+    ObservedOrigin:
       type: object
       additionalProperties: false
-      required: [event_id, origin, availability, travel, observation]
+      required:
+        - latitude_deg
+        - longitude_deg
+        - accuracy_m
+        - observed_at_utc
       properties:
-        event_id: {const: solar-eclipse-2026-08-12}
-        origin:
-          allOf:
-            - $ref: '#/components/schemas/Coordinates'
-            - type: object
-              required: [accuracy_m, observed_at_utc]
-              properties:
-                accuracy_m: {type: number, minimum: 0, maximum: 10000}
-                observed_at_utc: {type: string, format: date-time}
+        latitude_deg: {type: number, minimum: -90, maximum: 90}
+        longitude_deg: {type: number, minimum: -180, maximum: 180}
+        height_m_ellipsoid: {type: [number, 'null']}
+        accuracy_m: {type: number, minimum: 0, maximum: 10000}
+        observed_at_utc: {type: string, format: date-time}
+    SubjectRef:
+      type: object
+      additionalProperties: false
+      required: [subject_class, subject_id]
+      properties:
+        subject_class:
+          enum: [persistent_target, scheduled_occurrence, forecast_phenomenon, discovered_transient]
+        subject_id: {type: string, minLength: 1, maxLength: 128}
+        occurrence_id: {type: [string, 'null'], minLength: 1, maxLength: 128}
+      allOf:
+        - if:
+            properties:
+              subject_class: {const: scheduled_occurrence}
+          then:
+            required: [occurrence_id]
+            properties:
+              occurrence_id: {type: string, minLength: 1, maxLength: 128}
+    SolarEclipseSubjectRef:
+      type: object
+      additionalProperties: false
+      required: [subject_class, subject_id, occurrence_id]
+      properties:
+        subject_class: {const: scheduled_occurrence}
+        subject_id: {const: sun}
+        occurrence_id: {const: solar-eclipse-2026-08-12}
+    Availability:
+      type: object
+      additionalProperties: false
+      required: [start, end, display_timezone]
+      properties:
+        start: {type: string, format: date-time}
+        end: {type: string, format: date-time}
+        display_timezone: {type: string, minLength: 1, maxLength: 64}
+    TravelConstraints:
+      type: object
+      additionalProperties: false
+      required: [max_one_way_minutes, mode, avoid_ferries, avoid_unpaved]
+      properties:
+        max_one_way_minutes: {type: integer, minimum: 0, maximum: 240}
+        mode: {enum: [drive]}
+        avoid_ferries: {type: boolean}
+        avoid_unpaved: {type: boolean}
+        max_walk_minutes: {type: integer, minimum: 0, maximum: 120}
+    SolarEclipseObservationProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - objective
+        - modes
+        - setup_minutes
+        - teardown_minutes
+        - minimum_continuous_usable_minutes
+        - minimum_total_usable_minutes
+        - allowed_interruption_minutes
+      properties:
+        objective:
+          enum: [visual_detection, photographic_capture, timelapse, scientific_timing]
+        modes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {enum: [filtered_visual, filtered_camera]}
+        setup_minutes: {type: integer, minimum: 0, maximum: 120}
+        teardown_minutes: {type: integer, minimum: 0, maximum: 120}
+        minimum_continuous_usable_minutes: {type: integer, minimum: 0, maximum: 240}
+        minimum_total_usable_minutes: {type: integer, minimum: 0, maximum: 480}
+        allowed_interruption_minutes: {type: integer, minimum: 0, maximum: 120}
+        accessibility_needs:
+          type: array
+          maxItems: 20
+          items: {type: string, minLength: 1, maxLength: 100}
+    SolarEclipsePlanRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - module_id
+        - module_version
+        - subject
+        - origin
+        - availability
+        - travel
+        - observation_profile
+      properties:
+        module_id: {const: solar-eclipse}
+        module_version: {const: 1.0.0-draft.1}
+        subject: {$ref: '#/components/schemas/SolarEclipseSubjectRef'}
+        origin: {$ref: '#/components/schemas/ObservedOrigin'}
         availability:
-          type: object
-          additionalProperties: false
-          required: [start, end, display_timezone]
-          properties:
-            start: {type: string, format: date-time}
-            end: {type: string, format: date-time}
-            display_timezone: {const: America/St_Johns}
-        travel:
-          type: object
-          additionalProperties: false
-          required: [max_one_way_minutes, mode, avoid_ferries, avoid_unpaved]
-          properties:
-            max_one_way_minutes: {type: integer, minimum: 0, maximum: 240}
-            mode: {enum: [drive]}
-            avoid_ferries: {type: boolean}
-            avoid_unpaved: {type: boolean}
-            max_walk_minutes: {type: integer, minimum: 0, maximum: 120}
-        observation:
-          type: object
-          additionalProperties: false
-          required: [modes, setup_minutes, teardown_minutes]
-          properties:
-            modes:
-              type: array
-              minItems: 1
-              uniqueItems: true
-              items: {enum: [filtered_visual, filtered_camera]}
-            setup_minutes: {type: integer, minimum: 0, maximum: 120}
-            teardown_minutes: {type: integer, minimum: 0, maximum: 120}
-            accessibility_needs:
-              type: array
-              items: {type: string, maxLength: 100}
+          allOf:
+            - $ref: '#/components/schemas/Availability'
+            - type: object
+              properties:
+                display_timezone: {const: America/St_Johns}
+        travel: {$ref: '#/components/schemas/TravelConstraints'}
+        observation_profile: {$ref: '#/components/schemas/SolarEclipseObservationProfile'}
     PlanAccepted:
       type: object
       additionalProperties: false
@@ -257,12 +336,25 @@ components:
             - $ref: '#/components/schemas/ProblemDetails'
             - type: 'null'
     RecommendationPlan:
+      oneOf:
+        - $ref: '#/components/schemas/SolarEclipseRecommendationPlan'
+      discriminator:
+        propertyName: module_id
+        mapping:
+          solar-eclipse: '#/components/schemas/SolarEclipseRecommendationPlan'
+    SolarEclipseRecommendationPlan:
       type: object
       additionalProperties: false
       required:
         - object_type
         - plan_id
         - evaluation_revision
+        - module_id
+        - module_version
+        - subject
+        - observation_profile
+        - scoring_version
+        - comparison_key
         - decision
         - generated_at
         - stale_at
@@ -273,6 +365,12 @@ components:
         object_type: {const: recommendation_plan}
         plan_id: {type: string}
         evaluation_revision: {type: string}
+        module_id: {const: solar-eclipse}
+        module_version: {const: 1.0.0-draft.1}
+        subject: {$ref: '#/components/schemas/SolarEclipseSubjectRef'}
+        observation_profile: {$ref: '#/components/schemas/SolarEclipseObservationProfile'}
+        scoring_version: {type: string, minLength: 1}
+        comparison_key: {type: string, pattern: '^cmp_[A-Za-z0-9_-]{20,64}$'}
         decision: {enum: [stay, go, monitor, no_reliable_recommendation]}
         generated_at: {type: string, format: date-time}
         stale_at: {type: string, format: date-time}
@@ -301,9 +399,10 @@ components:
         - evidence_quality
         - scenario_spread
         - source_disagreement
-        - local_circumstances
+        - subject_evaluation
+        - view_geometry
         - viewing_windows
-        - cloud_evidence
+        - atmospheric_evidence
         - horizon_state
         - access_state
         - safety_state
@@ -317,82 +416,187 @@ components:
         eligibility: {enum: [eligible, exploratory, rejected]}
         planning_score: {type: [number, 'null'], minimum: 0, maximum: 100}
         score_components:
-          type: object
-          additionalProperties:
-            type: number
-            minimum: 0
-            maximum: 100
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {$ref: '#/components/schemas/ScoreComponent'}
         evidence_quality: {enum: [high, medium, low, insufficient]}
         scenario_spread: {type: [number, 'null'], minimum: 0}
         source_disagreement: {enum: [low, medium, high, unknown]}
-        access_state: {enum: [approved, unknown, rejected]}
-        safety_state: {enum: [approved, unknown, rejected]}
-        local_circumstances:
-          type: object
-          additionalProperties: false
-          required: [local_type, maximum, magnitude, obscuration_fraction]
-          properties:
-            local_type: {enum: [none, partial, annular, total]}
-            c1: {type: [string, 'null'], format: date-time}
-            maximum: {type: string, format: date-time}
-            c4: {type: [string, 'null'], format: date-time}
-            magnitude: {type: number, minimum: 0}
-            obscuration_fraction: {type: number, minimum: 0, maximum: 1}
-            sun_altitude_geometric_deg: {type: number, minimum: -90, maximum: 90}
-            sun_azimuth_deg: {type: number, minimum: 0, exclusiveMaximum: 360}
+        subject_evaluation:
+          oneOf:
+            - $ref: '#/components/schemas/SolarEclipseEvaluation'
+          discriminator:
+            propertyName: circumstance_type
+            mapping:
+              solar_eclipse: '#/components/schemas/SolarEclipseEvaluation'
+        view_geometry:
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/ViewGeometryFrame'}
         viewing_windows:
           type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [start, end, frame_cadence_minutes]
-            properties:
-              start: {type: string, format: date-time}
-              end: {type: string, format: date-time}
-              frame_cadence_minutes: {type: integer, minimum: 1}
-        cloud_evidence:
-          type: object
-          additionalProperties: false
-          required: [mode, state, limiting_time, limiting_layer]
-          properties:
-            mode: {enum: [quantitative, categorical, insufficient]}
-            state: {enum: [likely_clear, thin_or_broken, likely_blocked, unknown]}
-            utility: {type: [number, 'null'], minimum: 0, maximum: 1}
-            limiting_time: {type: [string, 'null'], format: date-time}
-            limiting_layer: {type: [string, 'null']}
-            visibility_m: {type: [number, 'null'], minimum: 0}
-        horizon_state:
-          type: object
-          additionalProperties: false
-          required: [terrain_clear, surface_obstructions_clear, overall_clear]
-          properties:
-            terrain_clear: {enum: [clear, blocked, unknown]}
-            surface_obstructions_clear: {enum: [clear, blocked, unknown]}
-            overall_clear: {enum: [clear, blocked, unknown]}
+          items: {$ref: '#/components/schemas/ViewingWindow'}
+        atmospheric_evidence: {$ref: '#/components/schemas/AtmosphericEvidence'}
+        horizon_state: {$ref: '#/components/schemas/HorizonState'}
+        access_state: {enum: [approved, unknown, rejected]}
+        safety_state: {enum: [approved, unknown, rejected]}
         itinerary:
           oneOf:
-            - type: object
-              additionalProperties: false
-              required:
-                - depart_at
-                - arrive_at
-                - setup_start
-                - observation_start
-                - observation_end
-                - return_at
-                - outbound_route_minutes
-                - return_route_minutes
-              properties:
-                depart_at: {type: string, format: date-time}
-                arrive_at: {type: string, format: date-time}
-                setup_start: {type: string, format: date-time}
-                observation_start: {type: string, format: date-time}
-                observation_end: {type: string, format: date-time}
-                return_at: {type: string, format: date-time}
-                outbound_route_minutes: {type: integer, minimum: 0}
-                return_route_minutes: {type: integer, minimum: 0}
+            - $ref: '#/components/schemas/Itinerary'
             - type: 'null'
         primary_risk: {type: [string, 'null']}
+    ScoreComponent:
+      type: object
+      additionalProperties: false
+      required: [component_id, applicability, value, evidence_quality, provenance_refs]
+      properties:
+        component_id:
+          enum:
+            - physical_signal_potential
+            - geometric_visibility
+            - atmospheric_transmission
+            - background_contrast
+            - observer_equipment_detectability
+            - usable_duration
+            - operational_feasibility
+            - travel_adjusted_utility
+        applicability: {enum: [applicable, not_applicable]}
+        value: {type: [number, 'null'], minimum: 0, maximum: 100}
+        evidence_quality: {enum: [high, medium, low, insufficient, not_applicable]}
+        limiting_reason: {type: [string, 'null']}
+        provenance_refs:
+          type: array
+          uniqueItems: true
+          items: {type: string, minLength: 1}
+      allOf:
+        - if:
+            properties:
+              applicability: {const: not_applicable}
+          then:
+            properties:
+              value: {type: 'null'}
+              evidence_quality: {const: not_applicable}
+              provenance_refs: {maxItems: 0}
+        - if:
+            properties:
+              evidence_quality: {const: insufficient}
+          then:
+            properties:
+              applicability: {const: applicable}
+              value: {type: 'null'}
+        - if:
+            properties:
+              evidence_quality: {const: not_applicable}
+          then:
+            properties:
+              applicability: {const: not_applicable}
+              value: {type: 'null'}
+        - if:
+            properties:
+              evidence_quality: {enum: [high, medium, low]}
+          then:
+            properties:
+              applicability: {const: applicable}
+              value: {type: number, minimum: 0, maximum: 100}
+    SolarEclipseEvaluation:
+      type: object
+      additionalProperties: false
+      required:
+        - circumstance_type
+        - local_type
+        - maximum
+        - magnitude
+        - obscuration_fraction
+        - safety_policy_id
+      properties:
+        circumstance_type: {const: solar_eclipse}
+        local_type: {enum: [none, partial, annular, total]}
+        c1: {type: [string, 'null'], format: date-time}
+        maximum: {type: string, format: date-time}
+        c4: {type: [string, 'null'], format: date-time}
+        magnitude: {type: number, minimum: 0}
+        obscuration_fraction: {type: number, minimum: 0, maximum: 1}
+        totality_safe_interval: {type: 'null'}
+        safety_policy_id: {const: eclipse-2026-partial-solar-safety}
+    ViewGeometryFrame:
+      type: object
+      additionalProperties: false
+      required:
+        - frame_key
+        - valid_time
+        - geometry_type
+        - azimuth_deg
+        - altitude_geometric_deg
+        - angular_extent_deg
+      properties:
+        frame_key: {type: string, minLength: 1}
+        valid_time: {type: string, format: date-time}
+        geometry_type: {enum: [point, disc, track, sky_region, extended_field, full_sky, volume]}
+        azimuth_deg: {type: [number, 'null'], minimum: 0, exclusiveMaximum: 360}
+        altitude_geometric_deg: {type: [number, 'null'], minimum: -90, maximum: 90}
+        angular_extent_deg: {type: [number, 'null'], minimum: 0, maximum: 360}
+        analytic_geometry_asset_id: {type: [string, 'null']}
+    ViewingWindow:
+      type: object
+      additionalProperties: false
+      required: [start, end, frame_cadence_minutes]
+      properties:
+        start: {type: string, format: date-time}
+        end: {type: string, format: date-time}
+        frame_cadence_minutes: {type: integer, minimum: 1}
+    AtmosphericEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - mode
+        - cloud_state
+        - transmission_utility
+        - visibility_m
+        - limiting_time
+        - limiting_layer
+        - provenance_refs
+      properties:
+        mode: {enum: [quantitative, categorical, insufficient, not_applicable]}
+        cloud_state: {enum: [likely_clear, thin_or_broken, likely_blocked, unknown, not_applicable]}
+        transmission_utility: {type: [number, 'null'], minimum: 0, maximum: 1}
+        visibility_m: {type: [number, 'null'], minimum: 0}
+        limiting_time: {type: [string, 'null'], format: date-time}
+        limiting_layer: {type: [string, 'null']}
+        aerosol_state: {enum: [clear, degraded, unknown, not_applicable]}
+        provenance_refs:
+          type: array
+          uniqueItems: true
+          items: {type: string, minLength: 1}
+    HorizonState:
+      type: object
+      additionalProperties: false
+      required: [terrain_clear, surface_obstructions_clear, overall_clear]
+      properties:
+        terrain_clear: {enum: [clear, blocked, unknown, not_applicable]}
+        surface_obstructions_clear: {enum: [clear, blocked, unknown, not_applicable]}
+        overall_clear: {enum: [clear, blocked, unknown, not_applicable]}
+    Itinerary:
+      type: object
+      additionalProperties: false
+      required:
+        - depart_at
+        - arrive_at
+        - setup_start
+        - observation_start
+        - observation_end
+        - return_at
+        - outbound_route_minutes
+        - return_route_minutes
+      properties:
+        depart_at: {type: string, format: date-time}
+        arrive_at: {type: string, format: date-time}
+        setup_start: {type: string, format: date-time}
+        observation_start: {type: string, format: date-time}
+        observation_end: {type: string, format: date-time}
+        return_at: {type: string, format: date-time}
+        outbound_route_minutes: {type: integer, minimum: 0}
+        return_route_minutes: {type: integer, minimum: 0}
     PlanEvent:
       type: object
       additionalProperties: false

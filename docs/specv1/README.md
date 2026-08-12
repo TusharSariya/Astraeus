@@ -52,6 +52,7 @@ document.
 - [RFC-002 — Client rendering and offline](rfcs/RFC-002-CLIENT-RENDERING-AND-OFFLINE.md)
 - [RFC-003 — Platform deployment and operations](rfcs/RFC-003-PLATFORM-DEPLOYMENT-AND-OPERATIONS.md)
 - [RFC-004 — Site selection and routing](rfcs/RFC-004-SITE-SELECTION-AND-ROUTING.md)
+- [RFC-005 — Observation subjects and modules](rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md)
 
 ### Architecture decisions
 
@@ -64,10 +65,18 @@ document.
 
 - [August 12, 2026 eclipse planner](features/eclipse-2026-08-12/README.md)
 
+The eclipse is the first fully specified composition of the generic observation-
+module protocol. Non-eclipse capability profiles in RFC-005 are planned, not
+implemented or callable.
+
 ### Executable contracts
 
 - [Contract catalogue](contracts/README.md)
 - [Rule catalogue](rules/README.md)
+
+### Cross-cutting verification
+
+- [Observation module verification matrix](verification/OBSERVATION-MODULES.md)
 
 ## Dependency order
 
