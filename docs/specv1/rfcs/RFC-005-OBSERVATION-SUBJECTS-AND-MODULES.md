@@ -77,7 +77,8 @@ pipelines.
 The schema-validated observation-module registry is the machine-readable source
 of module identity and capability declarations. It records subject classes,
 occurrence semantics, geometry types, supported optical modes/objectives,
-required evidence, contract references, rules, limitations, and verification.
+applicable score components, required evidence, contract references, safety and
+score rules, limitations, and verification.
 
 Direction geometry is one of `point`, `disc`, `track`, `sky_region`,
 `extended_field`, `full_sky`, or `volume`. Modules MUST evaluate the changing
@@ -124,6 +125,10 @@ The backend derives `comparison_key` as `cmp_` plus the unpadded base64url
 SHA-256 digest of RFC 8785 canonical JSON containing exactly those comparison
 fields. Clients compare the opaque key and MUST NOT independently recreate a
 more permissive equivalence relation.
+
+Within one candidate result, component IDs are unique. A module may emit only
+the component IDs declared in its registry entry; omitted common components are
+not applicable to that module and MUST NOT be synthesized by a client.
 
 The shared component vocabulary is:
 

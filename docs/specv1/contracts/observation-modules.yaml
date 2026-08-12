@@ -20,6 +20,14 @@ modules:
       - photographic_capture
       - timelapse
       - scientific_timing
+    score_components:
+      - physical_signal_potential
+      - geometric_visibility
+      - atmospheric_transmission
+      - observer_equipment_detectability
+      - usable_duration
+      - operational_feasibility
+      - travel_adjusted_utility
     required_evidence_classes:
       - deterministic_geometry
       - cloud_line_of_sight
@@ -35,6 +43,7 @@ modules:
     result_schema: "openapi.yaml#/components/schemas/SolarEclipseEvaluation"
     science_spec: "../features/eclipse-2026-08-12/SCIENCE_SPEC.md"
     safety_spec: "../features/eclipse-2026-08-12/SAFETY_SPEC.md"
+    safety_policy: eclipse-2026-partial-solar-safety
     scoring_rule: "../rules/solar-eclipse-v1.yaml"
     region_limitations:
       - Avalon Peninsula controlled-preview and V1 validation area

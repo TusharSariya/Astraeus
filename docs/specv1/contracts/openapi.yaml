@@ -418,6 +418,7 @@ components:
         score_components:
           type: array
           minItems: 1
+          uniqueItems: true
           items: {$ref: '#/components/schemas/ScoreComponent'}
         evidence_quality: {enum: [high, medium, low, insufficient]}
         scenario_spread: {type: [number, 'null'], minimum: 0}
