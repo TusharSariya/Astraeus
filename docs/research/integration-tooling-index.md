@@ -61,6 +61,7 @@ the upstream schema/product version used by the adapter.
 | ecCodes | [Documentation](https://confluence.ecmwf.int/display/ECC) | [ecmwf/eccodes](https://github.com/ecmwf/eccodes) | Official ECMWF decoder/toolkit |
 | cfgrib | [Documentation](https://github.com/ecmwf/cfgrib) | [ecmwf/cfgrib](https://github.com/ecmwf/cfgrib) | Official ECMWF xarray GRIB engine |
 | netCDF4-python | [Documentation](https://unidata.github.io/netcdf4-python/) | [Unidata/netcdf4-python](https://github.com/Unidata/netcdf4-python) | Official Unidata Python interface |
+| h5py | [Documentation](https://docs.h5py.org/) | [h5py/h5py](https://github.com/h5py/h5py) | Python HDF5 interface (NSRDB / S3) |
 | Zarr | [Documentation](https://zarr.readthedocs.io/) | [zarr-developers/zarr-python](https://github.com/zarr-developers/zarr-python) | Chunked array storage |
 | Dask | [Documentation](https://docs.dask.org/) | [dask/dask](https://github.com/dask/dask) | Parallel/lazy array execution |
 | kerchunk | [Documentation](https://fsspec.github.io/kerchunk/) | [fsspec/kerchunk](https://github.com/fsspec/kerchunk) | Community reference-file virtualization |
@@ -87,6 +88,18 @@ the upstream schema/product version used by the adapter.
 | NAIF SPICE | [Toolkit documentation](https://naif.jpl.nasa.gov/naif/toolkit.html) | [Generic kernels](https://naif.jpl.nasa.gov/naif/data_generic.html) | Official NASA toolkit and kernel archive |
 | SpiceyPy | [Documentation](https://spiceypy.readthedocs.io/) | [AndrewAnnex/SpiceyPy](https://github.com/AndrewAnnex/SpiceyPy) | Community Python wrapper around CSPICE |
 | USNO services | [API documentation](https://aa.usno.navy.mil/data/api.html) | [Hosted services](https://aa.usno.navy.mil/data/) | Official API, no general language SDK |
+| Space Weather Canada (STJ) | [API & data docs](https://www.spaceweather.gc.ca) | [Hosted services](https://spaceweather.gc.ca/api/) | Official NRCan CANMOS geomagnetic feed for St. John's |
+
+## Coastal and meteorological feeds
+
+| Project | Documentation | Repository or API | Status |
+| --- | --- | --- | --- |
+| SmartAtlantic | [Portal](https://www.smartatlantic.ca) | [ERDDAP server](https://www.smartatlantic.ca/erddap/index.html) | Official MUN Marine Institute ERDDAP REST API |
+| ECCC CIOPS-East | [Documentation](https://eccc-msc.github.io/open-data/msc-data/nwp_ciops/readme_ciops-east_en/) | [GeoMet / Datamart](https://dd.weather.gc.ca/model_ciops/east/2km/) | Official 2 km coupled hydrodynamic ocean model (SST, currents) |
+| NL 511 | [Developer Portal](https://511nl.ca) | [511 NL API](https://511nl.ca/api/v2/get/) | Official NL Dept of Transportation RWIS & Camera API |
+| Atlantic DataStream | [Documentation](https://atlanticdatastream.ca) | [Hosted Portal](https://atlanticdatastream.ca) | Open water quality and provincial climate data portal |
+| CWOP / APRS-WX | [Protocol Docs](http://www.findu.com/citizenweather.html) | [APRS-IS Servers](http://www.aprs-is.net/) | High-density crowdsourced PWS network across Avalon |
+| PurpleAir | [API Documentation](https://api.purpleair.com/) | [Hosted REST API](https://api.purpleair.com/) | Real-time optical laser particle aerosol counts |
 
 ## Routing and map tooling
 

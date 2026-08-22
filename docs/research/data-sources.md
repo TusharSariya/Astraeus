@@ -377,6 +377,211 @@ depth is more directly relevant to astronomical transparency than AQI alone.
 
 Source: [Canadian Wildland Fire Information System FAQ](https://cwfis.cfs.nrcan.gc.ca/en/faq)
 
+## NREL NSRDB: solar radiation and physical cloud property database
+
+The National Renewable Energy Laboratory (NREL) [National Solar Radiation Database (NSRDB)](https://nsrdb.nrel.gov/)
+provides high-resolution (4 km, half-hourly/hourly) gridded solar irradiance and
+physical atmospheric/cloud properties over the Americas (including Newfoundland)
+from 1998 to near-present via the Physical Solar Model (PSM).
+
+### Operational role in Astraeus
+
+NSRDB is a **historical and calibration dataset**, not a real-time operational forecast.
+Per [PRD-OUT-004](../specv1/product/PRD-001-ASTRAEUS-V1.md#prd-out-004--fail-closed),
+it must never be substituted for live NWP or satellite observations on event day.
+
+Primary research and offline utility:
+
+1. **Direct-sun optical depth calibration ([ECL26-CLOUD-002](../specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md#ecl26-cloud-002--restrict-quantitative-optical-claims))**:
+   Time-matched pairs of Direct Normal Irradiance (DNI), Cloud Optical Depth (COD),
+   Cloud Type, and solar zenith angle enable empirical validation of the direct solar
+   transmission proxy $1 - \exp(-\text{COD} / \mu)$.
+2. **August mid-afternoon cloud climatology**:
+   25+ years of August 10–14 afternoon (17:00–19:30 UTC) records over Avalon candidate
+   sites provide empirical microclimate frequency baselines (marine fog vs. clear sky).
+3. **Aerosol optical depth (AOD) baselines**:
+   Physical aerosol properties provide empirical clear-sky extinction baselines for
+   coastal maritime air masses.
+
+### Key variables
+
+- **Solar Irradiance**: Direct Normal Irradiance (DNI), Global Horizontal Irradiance (GHI), Diffuse Horizontal Irradiance (DHI), and clear-sky models.
+- **Cloud Properties**: Cloud Optical Depth (COD), Cloud Top Height/Pressure (CTH), Cloud Type, Cloud Fill Flag, Surface Albedo.
+- **Meteorological/Aerosol**: Aerosol Optical Depth (AOD), Precipitable Water (PWAT), Temperature, Relative Humidity, Wind Speed/Direction, Ozone.
+
+Sources:
+- [NSRDB Overview and Access](https://nsrdb.nrel.gov/)
+- [NREL Developer API](https://developer.nrel.gov/docs/solar/nsrdb/)
+- [AWS Open Data Registry: NREL-PDS NSRDB](https://registry.opendata.aws/nrel-pds-nsrdb/)
+
+## Newfoundland and St. John's localized meteorological networks
+
+The Avalon Peninsula of Newfoundland has sharp maritime microclimates, severe
+advection fog regimes, and rapid coastal-to-inland transitions. Several local
+observation networks provide high-density ground truth to complement regional NWP
+and satellite models.
+
+### 1. SmartAtlantic Alliance & MUN Marine Institute met-ocean buoys
+
+The SmartAtlantic Alliance (led by the Fisheries and Marine Institute of Memorial
+University of Newfoundland) operates high-rate oceanographic and meteorological
+buoy stations in coastal Newfoundland waters:
+
+- **St. John's Harbour Approach Buoy** (Station `44140` / `smartatlantic_st_johns`, 47.545° N, 52.613° W)
+- **Holyrood Buoy** (Conception Bay / `smartatlantic_holyrood`, 47.459° N, 53.134° W)
+- **Placentia Bay Buoy** (Station `44137` / `smartatlantic_placentia_bay`, 47.017° N, 54.917° W)
+
+**Key parameters**: 10-minute air temperature, dew point, relative humidity,
+barometric pressure, 10 m wind speed/direction/gust, sea surface temperature (SST),
+significant wave height, and wave spectrum.
+
+**Access protocol**: Programmatic [SmartAtlantic ERDDAP REST API](https://www.smartatlantic.ca/erddap/index.html)
+in JSON, CSV, and NetCDF formats under Creative Commons Attribution 4.0 (CC-BY 4.0).
+
+**Operational value for Astraeus**:
+- **Marine fog and stratus genesis detection**: Advection fog forms when air dew
+  point exceeds sea surface temperature ($T_{\text{dew}} \ge \text{SST}$).
+- **Microclimate bay contrast**: Compares exposed open Atlantic conditions (St. John's buoy)
+  against sheltered inland marine conditions (Holyrood / Conception Bay).
+
+### 2. Newfoundland & Labrador 511 RWIS and highway cameras
+
+The NL Department of Transportation and Infrastructure operates Road Weather
+Information System (RWIS) stations and traffic cameras along major Avalon corridors:
+- Route 1 (Trans-Canada Highway) across the Avalon Isthmus;
+- Route 2 (Pitts Memorial Drive);
+- Route 100 (Cape Shore / Argentia);
+- Route 80 (Trinity Bay).
+
+**Key parameters**: Road surface temperature, air temperature, relative humidity,
+dew point, precipitation type/rate, optical visibility distance (meters), and
+multi-directional highway camera snapshots updated every 10–20 minutes.
+
+**Access protocol**: REST API via [511nl.ca](https://511nl.ca) (requires free
+developer registration key; rate-limited to 10 calls/minute).
+
+**Operational value for Astraeus**:
+- Ground-truth optical visibility along travel corridors to detect localized valley/coastal fog.
+- Real-time road passability and safety validation during weather events.
+
+### 3. ECCC Holyrood S-band dual-polarization Doppler radar (`CASHR`)
+
+- **Location**: Holyrood, NL (`CASHR`, 47.417° N, 53.117° W).
+- Upgraded modern S-band radar with 240 km Doppler velocity range and 300 km conventional
+  reflectivity range covering the entire Avalon Peninsula and offshore waters.
+- **Capabilities**: Dual-polarization hydrometeor classification (separating drizzle, rain,
+  snow, sea spray, and biological clutter) and clear-air boundary-layer wind vectors.
+- **Access**: MSC Open Data / GeoMet OGC API.
+
+### 4. ECCC SWOB and aviation surface stations across the Avalon
+
+- **Key stations**:
+  - `CYYT` (St. John's International Airport): 1-minute SWOB, hourly METAR/SPECI,
+    optical transmissometer, and laser ceilometer cloud base heights.
+  - St. John's West (`71804`), Torbay, Cape Spear, Bay Bulls, Argentia (`CWQC`),
+    Grates Cove, Bonavista (`CWVA`), Heart's Content.
+- **Access**: MSC Datamart XML and GeoMet OGC API.
+
+### 5. NRCan St. John's Geomagnetic Observatory (`STJ`)
+
+- **Location**: St. John's, NL (`STJ`, 47.595° N, 52.677° W; Geomagnetic ~53.2° N),
+  operated by Natural Resources Canada (NRCan) under CANMOS.
+- **Parameters**: 1-second and 1-minute tri-axial magnetic fluxgate measurements ($X, Y, Z$),
+  total magnetic intensity ($F$), and local rate of change ($dH/dt$).
+- **Access**: [Space Weather Canada](https://www.spaceweather.gc.ca) REST / tabular feeds.
+- **Operational value**: Authoritative local ground truth for future Aurora Observation
+  Modules ([RFC-005](../specv1/rfcs/RFC-005-OBSERVATION-SUBJECTS-AND-MODULES.md)).
+  Local substorm magnetic deflection directly indicates auroral electrojet activity
+  above Newfoundland skies, far more responsive than planetary 3-hour $Kp$.
+
+### 6. Nav Canada Aviation Weather Cameras (WCAM)
+
+- **Stations**: CYYT (St. John's), Argentia, Bonavista, Gander, Marystown.
+- **Feeds**: 360° fixed camera horizons updated every 10 minutes with annotated
+  horizon reference distances via `plan.navcanada.ca/weather-cameras`.
+
+### 7. Marine fog microphysics: FATIMA-GB campaign insights
+
+The Office of Naval Research FATIMA (Fog and Turbulence Interactions in the Marine
+Atmosphere) Grand Banks field campaign (FATIMA-GB) and Memorial University / C-CORE
+research established key coastal fog dynamics for the Avalon:
+- **The "Fog Shadow" phenomenon**: Clearing of marine stratus/fog in the lee
+  (downwind) of headlands and islands under southwesterly summer flows.
+- **Terrain stratus lifting**: Higher terrain (e.g. Hawke Hills ~300 m, Butter Pot)
+  can lift low marine stratus into broken stratocumulus inland while coastlines remain
+  socked in.
+
+### 8. Offshore Grand Banks fixed platforms (upstream marine sentinel)
+
+Fixed oil platforms and FPSOs on the Grand Banks (~300 km east/southeast of St. John's)
+transmit hourly WMO Voluntary Observing Ship (VOS) surface synoptic observations:
+- **Hibernia Platform** (Call Sign: `VEP717`, 46.750° N, 48.783° W)
+- **Terra Nova FPSO** (Call Sign: `VCXF`, 46.400° N, 48.400° W)
+- **Hebron Platform** (46.544° N, 48.498° W)
+- **SeaRose FPSO** (46.800° N, 48.000° W)
+
+**Parameters**: Hourly air temperature, dew point, barometric pressure, wind speed and
+direction at helicopter deck level (50–80 m ASL), sea-surface temperature, and wave state.
+
+**Operational value**: Upstream physical sentinel. Because Atlantic marine air masses
+and dense fog banks advect from south/east over the Grand Banks toward the Avalon
+Peninsula, platform observations provide 3 to 6 hours of advance physical warning
+before coastal landfall.
+
+### 9. ECCC coupled coastal & ocean models (CIOPS-East & WW3-HRW)
+
+- **CIOPS-East (Coastal Integrated Ocean-atmosphere Prediction System)**:
+  2 km high-resolution hydrodynamic ocean model run by ECCC and DFO covering Atlantic Canada.
+  Provides gridded hourly Sea Surface Temperature (SST), coastal currents, and mixed-layer
+  depth. Essential for computing the high-resolution coastal fog trigger ($T_{\text{dew}} \ge \text{SST}$).
+- **WW3-HRW (High-Resolution Wave Model)**:
+  1 km coastal wave model providing significant wave height, peak period, and swell
+  direction for site safety along rocky oceanfront viewing locations (Cape Spear,
+  Ferryland, St. Vincent's beach).
+
+### 10. Local commercial meteorological & aerospace providers
+
+- **PAL Aerospace Weather & Oceanography / Oceans Ltd.** (85 LeMarchant Road, St. John's):
+  Operates a 24/7 dedicated commercial forecasting centre specializing in offshore helicopter
+  flight routing, low-altitude fog ceilings, vessel motion, and Grand Banks sea-surface
+  temperature isotherm tracking.
+- **Sheerr Weather (`sheerrweather.ca`)**:
+  Independent local platform by Chief Meteorologist Eddie Sheerr, incorporating high-resolution
+  250 m radar composites and bay-specific microclimate adjustments for Newfoundland terrain.
+- **C-CORE (Memorial University campus, St. John's)**:
+  Specialized research institution developing satellite synthetic aperture radar (SAR)
+  and marine remote-sensing techniques.
+
+### 11. Provincial hydrometric & municipal networks
+
+- **NL Water Resources Management Division (WRMD)**:
+  Operates automated climate and hydrometric stations across Newfoundland watersheds,
+  accessible via the [NL Water Resources GeoHub](https://www.gov.nl.ca/ecc/waterres/)
+  and [Atlantic DataStream](https://atlanticdatastream.ca).
+- **City of St. John's Open Data**:
+  Municipal weather and road condition sensors accessible via `map.stjohns.ca`.
+
+### 12. High-density citizen science & personal weather stations (PWS)
+
+- **CWOP / APRS-WX & Weather Underground (50+ Avalon Stations)**:
+  High-density 5-minute temperature, humidity, dew point, and pressure stations in
+  St. John's, Mount Pearl, Paradise, Conception Bay South, Torbay, Bay Bulls, Carbonear,
+  and Spaniard's Bay.
+- **Ingestion quality control**: Must apply **Interquartile Range (IQR) outlier rejection**
+  to filter uncalibrated or direct-sun-heated consumer sensors before computing
+  neighborhood consensus grids.
+- **PurpleAir Optical PM2.5 Monitors**:
+  Laser particle counters in the St. John's metro reporting continuous optical aerosol
+  scattering to verify local atmospheric transparency.
+
+### 13. Academic research observatories
+
+- **Memorial University CTec Holyrood Marine Base**:
+  Conception Bay met-ocean observation testbed.
+- **MUN Physics & Physical Oceanography Rooftop Observatory**:
+  Research-grade multi-spectral solar irradiance, sonic anemometers, and thermal flux
+  monitors on the St. John's university campus.
+
 ## Astrospheric as a benchmark source
 
 Astrospheric should be treated as an independent astronomy-forecast benchmark,

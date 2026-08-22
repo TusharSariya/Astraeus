@@ -7,3 +7,7 @@ __pycache__/
 node_modules/
 dist/
 coverage/
+
+# Pinned JPL kernels are fetched/verified locally; do not commit multi‑100MB binaries.
+*.bsp
+!.gitkeep

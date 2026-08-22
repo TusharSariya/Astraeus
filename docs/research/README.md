@@ -65,7 +65,7 @@ probability.
 The first operational stack should be:
 
 1. ECCC HRDPS deterministic weather.
-2. Skyfield astronomy with a pinned JPL ephemeris.
+2. Skyfield astronomy with a pinned JPL ephemeris (`de442.bsp` / DE442 for V1).
 3. NOAA OVATION and real-time solar wind.
 4. Curated Atlantic Canada candidate sites.
 5. Explainable heuristic scoring evaluated every ten minutes.

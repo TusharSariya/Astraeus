@@ -33,7 +33,7 @@ Use:
 
 ```text
 Skyfield
-+ pinned JPL DE440s or DE440 ephemeris
++ pinned JPL DE442 (`de442.bsp`) ephemeris
 + pinned leap-second and IERS Earth-orientation inputs
 + exact WGS84 observer location and elevation
 + explicit refraction and horizon conventions
@@ -91,7 +91,7 @@ information that was unavailable at issuance time.
 | Tool or source | Role | Access | Recommendation |
 | --- | --- | --- | --- |
 | [Skyfield](https://rhodesmill.org/skyfield/) | Application-level ephemeris, almanac, topocentric geometry | Free/local | Primary engine |
-| [JPL DE440/DE441](https://ssd.jpl.nasa.gov/doc/de440_de441.html) | Planetary and lunar ephemerides | Free/local | Pin DE440s or DE440 for modern dates |
+| [JPL DE440/DE441](https://ssd.jpl.nasa.gov/doc/de440_de441.html) and later DE442 kernels | Planetary and lunar ephemerides | Free/local | Pin `de442.bsp` (DE442) for V1 modern dates; retain DE440 docs for historical comparison |
 | [JPL Horizons API](https://ssd-api.jpl.nasa.gov/doc/horizons.html) | Authoritative observer/vector tables | Free hosted | Validation and diagnostics |
 | [NAIF SPICE kernels](https://naif.jpl.nasa.gov/naif/data_generic.html) | Precise kernels, frames, advanced geometry | Free/local | Advanced science and validation |
 | [Astropy coordinates/time](https://docs.astropy.org/en/latest/coordinates/solarsystem.html) | Coordinate frames, time scales, IERS integration | Free/local | Use where its ecosystem adds value |
@@ -590,7 +590,8 @@ forecast-vintage or optical-ground-truth gaps.
     "altitude_apparent_deg": 16.5
   },
   "inputs": {
-    "ephemeris": "DE440s",
+    "ephemeris": "DE442",
+    "ephemeris_file": "de442.bsp",
     "ephemeris_sha256": "...",
     "eop_sha256": "...",
     "definition_id": "..."
@@ -714,7 +715,7 @@ Include:
 
 ## Implementation and archival order
 
-1. Pin Skyfield, DE440s, leap-second, and EOP inputs.
+1. Pin Skyfield, DE442 (`de442.bsp`), leap-second, and EOP inputs.
 2. Implement and validate Sun/Moon position, twilight, rise/set, phase, and
    illumination for Atlantic Canada.
 3. Define the normalized event and provenance schemas.

@@ -56,6 +56,14 @@ interchangeable.
 | NASA Earthdata: MODIS/VIIRS/MAIAC | [Earthdata Search](https://search.earthdata.nasa.gov/), [Earthdata developer resources](https://www.earthdata.nasa.gov/learn/use-data/tools/developer-resources) | Official [earthaccess](https://github.com/nsidc/earthaccess) Python client and [Harmony](https://harmony.earthdata.nasa.gov/) services; LAADS has its own file API. | [pystac-client](https://github.com/stac-utils/pystac-client) applies only when the collection is exposed through STAC. |
 | AERONET | [Web-service documentation](https://aeronet.gsfc.nasa.gov/print_web_data_help_v3.html) | CGI web service; no official language SDK identified. | Direct HTTP plus archived raw response is simplest. |
 | OpenAQ | [API docs](https://docs.openaq.org/) | Official [openaq-api](https://github.com/openaq/openaq-api) server repository; consumers normally call the REST API. | Community clients can lag API versions; record source owner and sensor provenance, not only OpenAQ IDs. |
+| NREL NSRDB | [NSRDB docs](https://nsrdb.nrel.gov/), [API docs](https://developer.nrel.gov/docs/solar/nsrdb/), [AWS Open Data](https://registry.opendata.aws/nrel-pds-nsrdb/) | Developer REST API (CSV) and AWS S3 HDF5 (.h5) archives; no official dedicated SDK. | Use `h5py`/`xarray` for S3 access or `requests`/`pandas` for API extracts. Historical/calibration only—not for operational event-day forecasts. |
+| SmartAtlantic ERDDAP | [SmartAtlantic Portal](https://www.smartatlantic.ca), [ERDDAP server](https://www.smartatlantic.ca/erddap/index.html) | ERDDAP REST API (CSV, JSON, NetCDF); official client is direct HTTP or `erddapy`. | Real-time and historical coastal buoy feeds (St. John's, Holyrood, Placentia Bay); CC-BY 4.0. |
+| Grand Banks Platforms (VOS) | [MSC Datamart Marine](https://dd.weather.gc.ca/observations/xml/SWOB-ML/), [NDBC](https://www.ndbc.noaa.gov/) | ECCC MSC Datamart SWOB-ML XML / WMO synoptic feeds. | Upstream hourly surface marine observations from Hibernia (`VEP717`), Terra Nova (`VCXF`), Hebron, SeaRose. |
+| ECCC CIOPS-East / WW3 | [MSC Open Data](https://eccc-msc.github.io/open-data/msc-data/nwp_ciops/readme_ciops-east_en/) | GeoMet OGC API / NetCDF / GRIB2 on Datamart. | 2 km coupled hydrodynamic ocean model (SST, currents) and 1 km coastal wave grid. |
+| NL 511 API | [511 NL Portal](https://511nl.ca) | REST JSON API (requires developer registration key). | Real-time RWIS road weather conditions, optical visibility, and highway traffic camera imagery. |
+| Space Weather Canada / STJ | [Space Weather Canada](https://www.spaceweather.gc.ca), [NRCan Geomagnetism](https://geomag.nrcan.gc.ca) | Space Weather REST API / HTTP data services. | Real-time 1-sec/1-min magnetometer fluxgate data from St. John's Magnetic Observatory (`STJ`). |
+| CWOP / PWS Networks | [CWOP Info](http://www.findu.com/citizenweather.html), [Weather Underground API](https://www.wunderground.com/weather/api) | APRS-IS TCP stream / REST JSON. | High-density 5-min personal weather station feeds across Avalon; requires IQR outlier rejection. |
+| PurpleAir | [PurpleAir API](https://api.purpleair.com/) | REST JSON API. | Real-time optical laser particle counter PM2.5 measurements in St. John's metro. |
 | Generic scientific formats | [ecCodes docs](https://confluence.ecmwf.int/display/ECC), [xarray docs](https://docs.xarray.dev/), [netCDF4 docs](https://unidata.github.io/netcdf4-python/) | [ecCodes](https://github.com/ecmwf/eccodes), [cfgrib](https://github.com/ecmwf/cfgrib), [xarray](https://github.com/pydata/xarray), [netCDF4-python](https://github.com/Unidata/netcdf4-python) | [kerchunk](https://github.com/fsspec/kerchunk) can virtualize archival files, but references must be regenerated if objects move. |
 
 “Official client” here means maintained by the producing institution or the
@@ -811,6 +819,169 @@ Verify station ownership and completeness. Canadian platforms may be more
 complete in MEDS/ECCC. Most buoys do not directly measure cloud base or
 visibility, but they provide crucial marine-fog forcing variables.
 
+### SmartAtlantic ERDDAP coastal buoy retrieval (St. John's, Holyrood, Placentia Bay)
+
+The SmartAtlantic Alliance (Memorial University Marine Institute) hosts an ERDDAP
+server with near-real-time and archived met-ocean buoy observations:
+
+- **Server URL**: `https://www.smartatlantic.ca/erddap/index.html`
+- **Key dataset IDs**:
+  - `smartatlantic_st_johns`: St. John's Harbour Approach (Station 44140, 47.545° N, 52.613° W)
+  - `smartatlantic_holyrood`: Holyrood, Conception Bay (47.459° N, 53.134° W)
+  - `smartatlantic_placentia_bay`: Mouth of Placentia Bay (Station 44137, 47.017° N, 54.917° W)
+
+#### Python retrieval example (ERDDAP REST API via pandas / requests)
+
+```python
+import pandas as pd
+
+# Fetch last 24 hours of 10-minute meteorological data for St. John's buoy
+dataset_id = "smartatlantic_st_johns"
+base_url = f"https://www.smartatlantic.ca/erddap/tabledap/{dataset_id}.csv"
+
+params = {
+    "time>=": "2026-08-11T00:00:00Z",
+    "time<=": "2026-08-12T23:59:59Z",
+}
+columns = "time,latitude,longitude,air_temperature,dew_point,relative_humidity,sea_surface_temperature,wind_speed,wind_direction,gust,air_pressure"
+query_url = f"{base_url}?{columns}&time%3E={params['time>=']}&time%3C={params['time<=']}"
+
+# Read directly into DataFrame (skipping units row in header)
+df = pd.read_csv(query_url, skiprows=[1], parse_dates=["time"])
+
+# Compute marine advection fog trigger: air dew point >= sea surface temperature
+df["marine_fog_risk"] = df["dew_point"] >= df["sea_surface_temperature"]
+```
+
+### Newfoundland & Labrador 511 RWIS and road weather camera API
+
+The NL Department of Transportation and Infrastructure exposes real-time RWIS
+conditions and camera images for major Avalon highway routes:
+
+- **API endpoint**: `https://511nl.ca/api/v2/get/`
+- **Data available**: `roadconditions`, `cameras`, `weatherstations`, `ferries`, `alerts`.
+- **Authentication**: `api_key` header (obtained via free developer registration at 511nl.ca).
+- **Throttling**: Maximum 10 requests per 60 seconds.
+
+#### Python RWIS & camera query example
+
+```python
+import requests
+
+api_key = "YOUR_511NL_API_KEY"
+headers = {"X-API-KEY": api_key, "Accept": "application/json"}
+
+# Fetch active road conditions and optical visibility
+r_cond = requests.get("https://511nl.ca/api/v2/get/roadconditions", headers=headers, timeout=10)
+conditions = r_cond.json()
+
+# Fetch traffic & weather camera image feeds on the Avalon Peninsula
+r_cam = requests.get("https://511nl.ca/api/v2/get/cameras", headers=headers, timeout=10)
+cameras = r_cam.json()
+# Filter for Route 1 / Pitts Memorial Drive cameras:
+avalon_cams = [c for c in cameras if "Avalon" in c.get("region", "") or "St. John's" in c.get("name", "")]
+```
+
+### NRCan St. John's Geomagnetic Observatory (`STJ`) space weather retrieval
+
+Natural Resources Canada (CANMOS) operates the geomagnetic observatory in
+St. John's (`STJ`). Real-time fluxgate magnetometer data indicates local
+auroral electrojet disturbances in real time:
+
+- **Portal**: [Space Weather Canada](https://www.spaceweather.gc.ca)
+- **Data service**: `https://spaceweather.gc.ca/api/` and HTTP summary tables.
+
+#### Python STJ magnetometer query example
+
+```python
+import requests
+import pandas as pd
+
+# Query provisional 1-minute magnetic field vectors for STJ
+url = "https://spaceweather.gc.ca/api/geomag/data"
+params = {
+    "station": "STJ",
+    "format": "json",
+    "start": "2026-08-12T00:00:00Z",
+    "end": "2026-08-12T23:59:59Z",
+}
+res = requests.get(url, params=params, timeout=15)
+if res.ok:
+    data = res.json()
+    # Extracts X (North), Y (East), Z (Vertical) in nanoteslas (nT)
+    # Rapid rate of change (dH/dt > 50 nT/min) signals active local auroral substorm
+```
+
+### Grand Banks offshore platform marine synoptic data extraction
+
+Fixed oil platforms (Hibernia `VEP717`, Terra Nova `VCXF`, Hebron, SeaRose)
+transmit hourly surface observations to ECCC and WMO. These are available in real
+time via MSC Datamart and NDBC archives.
+
+#### Python example: Fetching offshore platform marine XML from MSC Datamart
+
+```python
+import xml.etree.ElementTree as ET
+import requests
+
+# Example: Read latest marine surface observation from MSC Datamart for Hibernia
+url = "https://dd.weather.gc.ca/observations/xml/SWOB-ML/latest/SWOB_VEP717_latest.xml"
+res = requests.get(url, timeout=10)
+if res.ok:
+    root = ET.fromstring(res.content)
+    # Extract temperature, dew point, air pressure, and wind speed/direction
+    obs = {}
+    for elem in root.findall(".//identification-elements/"):
+        obs[elem.tag] = elem.attrib.get("value")
+    # Upstream marine dew point and wind indicate incoming air masses 3-6h in advance
+```
+
+### ECCC CIOPS-East 2 km coastal SST and currents NetCDF extraction
+
+The Coastal Integrated Ocean-atmosphere Prediction System (CIOPS-East) produces
+daily 2 km hydrodynamic forecasts in NetCDF format on MSC Datamart and GeoMet.
+
+#### Python example: Subsetting Avalon SST grid via xarray
+
+```python
+import xarray as xr
+
+# Open CIOPS-East 2km NetCDF analysis directly or via OPeNDAP/HTTP
+ds = xr.open_dataset("https://dd.weather.gc.ca/model_ciops/east/2km/latest/ciops_east_sst.nc")
+
+# Crop to Avalon Peninsula bounding box [46.5°N–48.2°N, 54.5°W–52.5°W]
+avalon_sst = ds["votemper"].sel(
+    depth=0,
+    latitude=slice(46.5, 48.2),
+    longitude=slice(-54.5, -52.5),
+)
+
+# avalon_sst provides the 2 km skin temperature grid for high-res fog triggering
+```
+
+### CWOP & Personal Weather Station (PWS) consensus extraction with IQR filtering
+
+To ingest crowdsourced observations across St. John's and Avalon communities
+without being deceived by uncalibrated or sun-heated backyard sensors:
+
+#### Python example: Outlier rejection on local PWS clusters
+
+```python
+import pandas as pd
+import numpy as np
+
+def compute_filtered_neighborhood_temperature(pws_readings: pd.Series) -> float:
+    """Filter PWS readings using Interquartile Range (IQR) outlier rejection."""
+    q25 = pws_readings.quantile(0.25)
+    q75 = pws_readings.quantile(0.75)
+    iqr = q75 - q25
+    lower_bound = q25 - 1.5 * iqr
+    upper_bound = q75 + 1.5 * iqr
+    
+    valid_readings = pws_readings[(pws_readings >= lower_bound) & (pws_readings <= upper_bound)]
+    return float(valid_readings.median())
+```
+
 ## Ceilometers and all-sky cameras
 
 A uniform public archive of raw Atlantic Canadian airport ceilometer profiles
@@ -971,6 +1142,78 @@ GOES ABI AOD provides frequent daytime clear-sky aerosol retrievals at roughly
 
 It is useful for intraday smoke evolution but requires daylight and cloud-free
 pixels and can be contaminated near cloud edges. Treat no retrieval as missing.
+
+## NREL NSRDB: historical solar radiation and physical cloud property database
+
+The National Renewable Energy Laboratory (NREL) [National Solar Radiation Database (NSRDB)](https://nsrdb.nrel.gov/)
+provides serially complete 4 km $\times$ 4 km gridded half-hourly and hourly
+solar radiation and atmospheric property records over the Americas (including
+Newfoundland and Atlantic Canada) from 1998 to near-present.
+
+It uses the Physical Solar Model (PSM v3 / v4) to retrieve solar irradiance and
+cloud optical/physical properties from geostationary satellites (GOES-East).
+
+### Key variables for Astraeus
+
+```text
+Solar Irradiance:
+  DNI (Direct Normal Irradiance, W/m²)
+  GHI (Global Horizontal Irradiance, W/m²)
+  DHI (Diffuse Horizontal Irradiance, W/m²)
+  Clearsky DNI, GHI, DHI (empirical baseline models)
+
+Cloud & Atmospheric State:
+  Cloud Optical Depth (COD, dimensionless)
+  Cloud Top Height / Pressure (CTH, m / hPa)
+  Cloud Type (e.g. Clear, Cirrus, Stratocumulus, Stratus, Deep Convection)
+  Cloud Fill Flag (retrieval quality)
+  Aerosol Optical Depth (AOD at 550 nm)
+  Precipitable Water (PWAT, cm)
+  Solar Zenith Angle (degrees)
+  Surface Albedo
+```
+
+### Research and calibration role
+
+1. **Direct-sun visibility calibration ([ECL26-CLOUD-002](../specv1/features/eclipse-2026-08-12/SCIENCE_SPEC.md#ecl26-cloud-002--restrict-quantitative-optical-claims))**:
+   Correlate satellite-retrieved COD and DNI values across historical August
+   afternoons to validate the threshold where direct solar disk visibility is
+   extinguished ($DNI \to 0$), supporting the $1 - \exp(-\text{COD}/\mu)$ proxy.
+2. **August afternoon cloud climatology**:
+   Extract 25+ years of August 10–14 (17:00–19:30 UTC) records across Avalon
+   Peninsula candidate coordinates to quantify empirical microclimate variance
+   (e.g., probability of marine fog at Cape Spear vs. Conception Bay South).
+3. **Aerosol baseline calibration**:
+   Establish empirical AOD distributions for coastal Newfoundland air masses.
+
+### Access mechanisms
+
+- **NREL Developer REST API**: Extract point CSV time-series (1,000 requests/day free tier):
+  `GET https://developer.nrel.gov/api/nsrdb/v2/solar/psm3-download.csv?lat=47.609&lon=-52.692&names=2023&api_key=DEMO_KEY`
+- **AWS Open Data (S3)**: Bulk access to HDF5 (`.h5`) datasets at `s3://nrel-pds-nsrdb/` without API rate limits.
+
+### Minimal retrieval example (HDF5 via Python)
+
+```python
+import h5py
+
+# Open NSRDB PSM v3/v4 HDF5 file from local mount or S3
+with h5py.File("nsrdb_2023.h5", "r") as f:
+    # Coordinates array: (N_points, 2) -> [latitude, longitude]
+    coords = f["coordinates"][:]
+    # Find nearest index to Avalon seed origin (47.609, -52.692)
+    # Extract DNI, COD, solar zenith angle, and cloud type time-series
+    dni = f["dni"][:, site_idx]
+    cod = f["cld_opd_dcomp"][:, site_idx]
+    zenith = f["solar_zenith_angle"][:, site_idx]
+    cloud_type = f["cloud_type"][:, site_idx]
+```
+
+### Critical caveats
+
+- **Historical/Reanalysis only**: NSRDB is published retrospectively with a multi-month lag; it cannot be used for operational event-day forecasting.
+- **4 km spatial grid**: Coarser than native GOES-16 ABI visible channels (0.5–1 km) and HRDPS (2.5 km).
+- **Coastal boundary artifacts**: Satellite-derived coastal stratus and advection fog can have boundary retrieval artifacts near cold sea-surface margins.
 
 ## Surface air-quality observations
 

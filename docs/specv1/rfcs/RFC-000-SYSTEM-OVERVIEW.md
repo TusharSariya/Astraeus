@@ -9,7 +9,7 @@ profiles:
   - v1_web
   - v1_native
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-12
 depends_on:
   - PRD-001
 supersedes: []
@@ -80,7 +80,8 @@ Contracts, pure domain behavior, tokens, icons, and safety copy MAY be shared.
 - Node.js LTS, pnpm, and Turborepo own JavaScript builds.
 - React 19, Vite, TanStack Router, and TanStack Query own the web shell.
 - Expo development builds, React Native, and Expo Router own native clients.
-- Python 3.12 and `uv` own scientific and backend environments.
+- Python 3.14 and `uv` own scientific and backend environments. Fall back to
+  3.12 or 3.13 only when a required geospatial binary wheel lacks 3.14 support.
 - FastAPI/Pydantic define the HTTP API and OpenAPI output.
 - PostgreSQL/PostGIS store relational and spatial state.
 - R2 stores large immutable source and derived artifacts.

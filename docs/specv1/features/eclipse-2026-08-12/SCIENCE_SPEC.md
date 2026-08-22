@@ -9,7 +9,7 @@ profiles:
   - event_day_preview
   - v1_web
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-12
 depends_on:
   - ECL26-DATA
   - EVD-REV-001
@@ -21,9 +21,10 @@ supersedes: []
 ## ECL26-GEO-001 — Calculate local circumstances per candidate
 
 Use WGS84 geodetic latitude/longitude and ellipsoid height, UTC→TT/TDB and UT1
-with pinned leap seconds and IERS EOP, Skyfield with pinned DE440s, and frozen
-solar/lunar radii of 695700 km and 1737.4 km. Compute apparent topocentric Sun
-and Moon directions/distances separately at every candidate.
+with pinned leap seconds and IERS EOP, Skyfield with pinned DE442 (`de442.bsp`)
+including its content checksum in provenance, and frozen solar/lunar radii of
+695700 km and 1737.4 km. Compute apparent topocentric Sun and Moon
+directions/distances separately at every candidate.
 
 Let `d` be angular center separation. Root-find C1/C4 from
 `d - (r_sun + r_moon)` and C2/C3 from `d - abs(r_moon - r_sun)` only where
