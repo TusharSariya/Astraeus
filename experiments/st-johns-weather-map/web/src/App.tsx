@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, cloudBandOf, describeOffset, filterCloudLayers, groupLayers, loadCatalog, loadLayers, loadPoint, loadProfile, loadSourceStatus, loadStory, loadTimeline, pointProductFor, resolveFrame } from './api'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
+import { useTheme } from './theme'
 import type {
   AppMode, CatalogSource, CloudLayerReading, DataSource, EvidenceSnapshot, FallbackMode, FieldAttribution, FieldDataMode,
   LayerItem, LayerSelection, LocationPoint, ProfileResponse, ResolvedFrame, SourceStatusItem, StoryStep, TimelineResponse,
@@ -254,6 +255,7 @@ function evidenceRows(snapshot: EvidenceSnapshot, humidityGap: string): MapEvide
 }
 
 export default function App() {
+  const { theme, setTheme } = useTheme()
   const [mode, setMode] = useState<AppMode>('simple')
   const [location, setLocation] = useState<LocationPoint>(stations[0])
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
@@ -503,6 +505,10 @@ export default function App() {
       <header className="masthead">
         <div className="wordmark"><span>WX//47°N</span><h1>Avalon Evidence Desk</h1></div>
         <div className="experimental"><i /> experimental · not operational guidance</div>
+        <div className="theme-switch" role="group" aria-label="Colour theme">
+          <button type="button" aria-pressed={theme === 'light'} onClick={() => setTheme('light')}><span aria-hidden="true">☀</span> Light</button>
+          <button type="button" aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}><span aria-hidden="true">◐</span> Dark</button>
+        </div>
         <nav className="mode-switch" aria-label="Interface mode">
           <button aria-pressed={mode === 'simple'} onClick={() => setMode('simple')}>Brief</button>
           <button aria-pressed={mode === 'expert'} onClick={() => setMode('expert')}>Workbench</button>
@@ -611,6 +617,7 @@ export default function App() {
               layerNotices={layerNotices}
               evidence={mapEvidence}
               sourceStatuses={sourceStatuses}
+              theme={theme}
             />
             <section className="conditions evidence-surface" aria-labelledby="conditions-title">
               <div className="section-head">
@@ -946,6 +953,7 @@ export default function App() {
                 layerNotices={layerNotices}
                 evidence={mapEvidence}
                 sourceStatuses={sourceStatuses}
+                theme={theme}
               />
               <section className="comparison-unavailable"><strong>Pane B unavailable</strong><p>No second response-backed field is loaded. Comparison is not inferred.</p></section>
             </div>

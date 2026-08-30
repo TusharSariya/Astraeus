@@ -7,6 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { describeEvidenceBasis, describeOffset, groupLayers, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerRaster, loadLegendFailure, nearestFrame, renderPixelSize, resolveFrame } from './api'
 import type { RasterImage } from './api'
 import { stationCoverage, stations } from './fixtures'
+import { applyWeatherMapTheme, createWeatherMapStyle, REFERENCE_SOURCE_ID, WEATHER_REFERENCE_ANCHOR_ID, type Theme } from './mapStyle'
 import type { GeoJsonFeature, LayerItem, LayerSelection, LocationPoint, ResolvedFrame, SourceStatusItem, StationCoverage } from './types'
 
 export interface MapEvidenceRow {
@@ -43,6 +44,10 @@ interface MapPanelProps {
   /** `/sources/status` rows, or `null` when the endpoint could not be read.
    *  The only thing permitted to say a station marker has a live source. */
   sourceStatuses: SourceStatusItem[] | null
+  theme?: Theme
+  /** Defaults closed in the product. Exposed only so isolated render tests can
+   * exercise the dense drawer contents without repeating an opening click. */
+  initialDrawerOpen?: boolean
 }
 
 /** What one active layer resolved to for the requested instant. A layer is
@@ -284,7 +289,7 @@ function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: n
 
 export function MapPanel({
   label, field, comparison, selected, onSelect, validTime, fixtureMode = false,
-  layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses,
+  layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, theme = 'dark', initialDrawerOpen = false,
 }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -297,7 +302,8 @@ export function MapPanel({
   const [states, setStates] = useState<Record<string, LayerState>>({})
   const [rasters, setRasters] = useState<Record<string, RasterState>>({})
   const [extent, setExtent] = useState<ViewExtent | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(true)
+  const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen)
+  const [referenceMapError, setReferenceMapError] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const drawerOpenRef = useRef(drawerOpen)
   drawerOpenRef.current = drawerOpen
@@ -370,31 +376,7 @@ export function MapPanel({
       center: [-52.9, 47.55],
       zoom: 6.5,
       attributionControl: false,
-      style: {
-        version: 8,
-        sources: {
-          'esri-dark': {
-            type: 'raster',
-            tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-            ],
-            tileSize: 256,
-            attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-          },
-          'esri-labels': {
-            type: 'raster',
-            tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-            ],
-            tileSize: 256,
-            attribution: '',
-          },
-        },
-        layers: [
-          { id: 'ocean', type: 'background', paint: { 'background-color': '#06171d' } },
-          { id: 'esri-dark-layer', type: 'raster', source: 'esri-dark', minzoom: 0, maxzoom: 20 },
-        ],
-      },
+      style: createWeatherMapStyle(theme),
     })
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right')
     // MapLibre's own scale bar, recomputed from the map's real zoom and centre
@@ -404,6 +386,11 @@ export function MapPanel({
     // describes does.
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: 'metric' }), 'bottom-left')
     map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Experimental evidence · no navigation use' }))
+
+    map.on('error', (event) => {
+      const sourceId = 'sourceId' in event && typeof event.sourceId === 'string' ? event.sourceId : null
+      if (sourceId === REFERENCE_SOURCE_ID || (!sourceId && !map.isStyleLoaded())) setReferenceMapError(true)
+    })
 
     // The extent every image is requested over. `moveend` is debounced because an
     // in-flight pan has no stable extent to ask about, and because each refetch
@@ -419,14 +406,6 @@ export function MapPanel({
       mapLoadedRef.current = true
       map.once('idle', () => padForDrawer(map))
       commitExtent()
-      map.addLayer({
-        id: 'esri-labels-layer',
-        type: 'raster',
-        source: 'esri-labels',
-        minzoom: 0,
-        maxzoom: 20,
-        paint: { 'raster-opacity': 0.65 },
-      })
       const overlay = new MapboxOverlay({
         interleaved: false,
         layers: stationLayers(label, selectedRef.current, (point) => onSelectRef.current(point), () => { stationPickAtRef.current = performance.now() }, (point) => coverageRef.current(point)),
@@ -460,6 +439,15 @@ export function MapPanel({
       objectUrlsRef.current.clear()
     }
   }, [label, padForDrawer])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const apply = () => applyWeatherMapTheme(map, theme)
+    if (map.isStyleLoaded()) apply()
+    else map.once('load', apply)
+    return () => { map.off('load', apply) }
+  }, [theme])
 
   // One fetch per active layer per frame. A layer whose frame did not resolve is
   // recorded as such and never requested, so nothing is drawn off-time.
@@ -629,7 +617,7 @@ export function MapPanel({
         })
         map.addLayer(
           { id, type: 'raster', source: id, paint: { 'raster-opacity': Math.max(0, Math.min(1, entry.opacity)), 'raster-fade-duration': 0 } },
-          map.getLayer('esri-labels-layer') ? 'esri-labels-layer' : undefined,
+          WEATHER_REFERENCE_ANCHOR_ID,
         )
         rasterLayerIdsRef.current.push(id)
       }
@@ -649,6 +637,15 @@ export function MapPanel({
     if (!map || !mapLoadedRef.current) return
     padForDrawer(map)
   }, [drawerOpen, padForDrawer])
+
+  useEffect(() => {
+    if (!drawerOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [drawerOpen])
 
   // Redraw the overlay: stations, then each drawn layer in published order.
   useEffect(() => {
@@ -830,17 +827,36 @@ export function MapPanel({
 
       <div ref={containerRef} className="map-canvas" data-testid="map-canvas" />
       {fixtureMode && <span className="surface-watermark">FIXTURE</span>}
+      {referenceMapError && <p className="reference-map-status" role="status" aria-live="polite">Reference map unavailable · weather evidence remains available</p>}
+
+      {active.some(({ layer }) => layer.raster_available === true) && (
+        <aside className="map-legend-rail" aria-label="Active map legends">
+          <strong>Active legends</strong>
+          {active.filter(({ layer }) => layer.raster_available === true).map(({ layer }) => {
+            const failed = legendFailures[layer.id]
+            if (layer.legend_available !== true) return <p key={layer.id}><b>{layer.title}</b> · no provider legend</p>
+            if (failed) return <p key={layer.id}><b>{layer.title}</b> · provider legend unavailable</p>
+            const rendered = layerGroup(layer) === 'rendered_grid'
+            return (
+              <figure key={layer.id}>
+                <img src={layerLegendUrl(layer)} alt={`${rendered ? 'Rendering colormap' : 'Provider legend'} for ${layer.title}`} onError={() => onLegendError(layer)} />
+                <figcaption>{layer.title} · {rendered ? 'exact rendering colormap' : 'provider legend'}</figcaption>
+              </figure>
+            )
+          })}
+        </aside>
+      )}
 
       {/* The layer drawer: docked to the right edge, full pane height, and
           absorbing the old chip strip and stack panel. The strip was measured
           at 1321 px wide in an 867 px pane, painting over the caption; nothing
           but the caption is now absolutely positioned in the top band. */}
       <aside ref={drawerRef} className={`map-layer-drawer ${drawerOpen ? 'open' : 'closed'}`} aria-label="Published map layers">
-        <button type="button" className="drawer-toggle" aria-expanded={drawerOpen} onClick={() => setDrawerOpen((open) => !open)}>
+        <button type="button" className="drawer-toggle" aria-controls={`layer-drawer-${label}`} aria-expanded={drawerOpen} onClick={() => setDrawerOpen((open) => !open)}>
           Layers ({onCount} on)
         </button>
         {drawerOpen && (
-          <div className="drawer-body">
+          <div className="drawer-body" id={`layer-drawer-${label}`}>
             <p className="drawer-status" role="status">
               {layersLoading ? 'Loading published layers\u2026' : layersError ? `No layers: ${layersError}` : layers.length === 0 ? 'No layers are published by the API.' : `${layers.length} published layers \u00b7 each drawn at its own frame`}
             </p>

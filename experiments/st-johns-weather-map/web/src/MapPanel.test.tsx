@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MapPanel } from './MapPanel'
 import { stations } from './fixtures'
@@ -35,7 +35,7 @@ vi.mock('maplibre-gl', () => {
       return this
     }
     /** Test hook: fire an event the way MapLibre would once loading settles. */
-    fire(event: string) { [...(this.handlers[event] ?? [])].forEach((handler) => handler()) }
+    fire(event: string, payload?: unknown) { [...(this.handlers[event] ?? [])].forEach((handler) => handler(payload)) }
     getBounds() { return { getWest: () => -55.2, getSouth: () => 46.2, getEast: () => -50.8, getNorth: () => 48.8 } }
     getCanvas() { return { clientWidth: 1024, clientHeight: 768 } }
     // Layers and sources are recorded, not discarded: the raster path is only
@@ -152,6 +152,7 @@ const panel = (props: Partial<React.ComponentProps<typeof MapPanel>> = {}) => (
     layerNotices={[]}
     evidence={[]}
     sourceStatuses={liveStatuses}
+    initialDrawerOpen={true}
     {...props}
   />
 )
@@ -348,7 +349,7 @@ describe('MapPanel imagery', () => {
     const raster = adds.find((add) => add.id === `raster-${proxiedLayer.id}`)
     expect(raster).toBeDefined()
     // Beneath the labels, and at the opacity the stack already carries.
-    expect(raster?.beforeId).toBe('esri-labels-layer')
+    expect(raster?.beforeId).toBe('reference-water-casing')
     expect(raster?.paint?.['raster-opacity']).toBe(0.6)
     // The extent is the map's own bounds, sent as four separate parameters.
     const sources = (globalThis as Record<string, unknown>).__mapSourceAdds as Array<{ id: string; source: { coordinates: number[][] } }>
@@ -527,6 +528,25 @@ describe('MapPanel layer drawer', () => {
 
     fireEvent.click(toggle)
     expect(screen.getByRole('checkbox', { name: /eccc-radar radar/ })).toBeInTheDocument()
+  })
+
+  it('starts closed in the product and closes an open drawer with Escape', () => {
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    const { rerender } = render(panel({ initialDrawerOpen: false }))
+    expect(screen.getByRole('button', { name: /Layers \(1 on\)/ })).toHaveAttribute('aria-expanded', 'false')
+    rerender(panel({ initialDrawerOpen: true }))
+    fireEvent.click(screen.getByRole('button', { name: /Layers \(1 on\)/ }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByRole('button', { name: /Layers \(1 on\)/ })).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('announces a reference source failure without removing the weather text alternative', () => {
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    render(panel())
+    const map = ((globalThis as Record<string, unknown>).__fakeMaps as Array<{ fire: (event: string, payload?: unknown) => void }>).at(-1)
+    act(() => map?.fire('error', { sourceId: 'openfreemap' }))
+    expect(screen.getByText(/Reference map unavailable/)).toHaveAttribute('role', 'status')
+    expect(screen.getByText('Map contents as text')).toBeInTheDocument()
   })
 
   it('groups rows under headings from the layer group, deriving one only when the API gave none', () => {
