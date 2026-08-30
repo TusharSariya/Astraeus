@@ -435,6 +435,27 @@ const blendedPoint = () => ({
   ],
 })
 
+const gfsStrataPoint = () => {
+  const base = blendedPoint()
+  const gfs = (field: string, value: number) => ({
+    field, value,
+    provenance: { source_id: 'noaa-gfs', product: 'GFS', provider: 'NOAA/NCEP', normalized_units: 'percent', data_mode: 'live' },
+  })
+  return { ...base, fields: [...base.fields, gfs('cloud_low', 0), gfs('cloud_middle', 33.70000076293945), gfs('cloud_high', 45.20000076293945)] }
+}
+
+describe('provider cloud strata render as whole percentages', () => {
+  it('rounds each stratum and tags the metric with its source', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: gfsStrataPoint() }))
+    render(<App />)
+    const strata = () => screen.getByText('Cloud L / M / H').closest('.metric') as HTMLElement
+    await screen.findByText('0% · 34% · 45%')
+    expect(within(strata()).getByText('0% · 34% · 45%')).toBeInTheDocument()
+    expect(within(strata()).queryByText(/33\.70000076293945/)).not.toBeInTheDocument()
+    expect(within(strata()).getByText('noaa-gfs')).toBeInTheDocument()
+  })
+})
+
 describe('point readings are attributed to the source that produced them', () => {
   it('shows the selected source\u2019s temperature on the blended response, tagged, with the API\u2019s own badge in the header', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
@@ -667,6 +688,27 @@ describe('timeline coverage rows are grouped like the drawer', () => {
     await userEvent.click(screen.getByRole('button', { name: '+3h' }))
     const counts = within(ribbon).getAllByText('no frame here')
     expect(counts).toHaveLength(4)
+  })
+})
+
+describe('rendered-grid coverage rows', () => {
+  it('heads the three GFS strata layers under the rendered-grid group in the ribbon', async () => {
+    const times = ['2026-08-30T13:00:00Z', '2026-08-30T14:00:00Z']
+    const base = { kind: 'raster', product: 'Global Forecast System (GFS 0.25 deg)', units: 'percent', semantics: 'rendered by this experiment from retrieved NOAA GFS GRIB2 fields; never smoothed', cadence_seconds: 3600, staleness_tolerance_seconds: 1800, evidence_basis: 'published_artifact', raster_available: true, legend_available: true, group: 'rendered_grid', times }
+    const strata = [
+      { ...base, id: 'noaa-gfs-surface-cloud-low', title: 'Global Forecast System (GFS 0.25 deg) low cloud cover (rendered grid)', field: 'cloud_low' },
+      { ...base, id: 'noaa-gfs-surface-cloud-middle', title: 'Global Forecast System (GFS 0.25 deg) middle cloud cover (rendered grid)', field: 'cloud_middle' },
+      { ...base, id: 'noaa-gfs-surface-cloud-high', title: 'Global Forecast System (GFS 0.25 deg) high cloud cover (rendered grid)', field: 'cloud_high' },
+    ]
+    vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: strata, notices: [] } }))
+    render(<App />)
+
+    const ribbon = await screen.findByLabelText('Published frames per layer across the window')
+    const group = within(ribbon).getByRole('group', { name: 'Rendered grids (drawn here from stored model data) · 3 layers' })
+    expect(within(group).getAllByRole('button')).toHaveLength(3)
+    // The rows toggle like any other layer.
+    await userEvent.click(within(group).getByRole('button', { name: /low cloud cover/ }))
+    expect(within(group).getByRole('button', { name: /low cloud cover/ })).toHaveAttribute('aria-pressed', 'true')
   })
 })
 

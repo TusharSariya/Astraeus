@@ -46,13 +46,20 @@ FIELD_BY_VARIABLE = {
     "precipitation_accumulation": "precipitation_accumulation",
     "wind_u_10m": "wind_u",
     "wind_v_10m": "wind_v",
+    # Provider-declared cloud strata (e.g. GFS LCDC/MCDC/HCDC at the
+    # provider's own low/middle/high cloud layers). These are retrieved
+    # fields served as stored, not derivations; see the layer note below.
+    "cloud_low": "cloud_low",
+    "cloud_middle": "cloud_middle",
+    "cloud_high": "cloud_high",
 }
 
 # METAR/TAF cloud layers, published per layer as retrieved (cover code, cover
 # percent, base above ground) in provider order. Field name == variable name.
 # They are deliberately not folded into low/middle/high strata here or
-# anywhere: that would be a derived classification the owner has not approved,
-# so ``cloud_low``/``cloud_middle``/``cloud_high`` stay unavailable.
+# anywhere: that would be a derived classification the owner has not approved.
+# ``cloud_low``/``cloud_middle``/``cloud_high`` are served only where a
+# provider itself declares the stratum (mapped above), never from layers.
 MAX_CLOUD_LAYERS = 6
 CLOUD_LAYER_VARIABLES = tuple(
     f"cloud_layer_{slot}_{suffix}" for slot in range(1, MAX_CLOUD_LAYERS + 1) for suffix in ("cover_code", "cover", "base")

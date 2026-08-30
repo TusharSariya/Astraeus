@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALL_CLOUD_BANDS, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, cloudBandOf, describeEvidenceBasis, filterCloudLayers, groupLayers, layerGroup, layerRasterUrl, loadLayerRaster, loadStory, loadTimeline, normalizePoint, pointProductFor, type ApiPointResponse } from './api'
+import { ALL_CLOUD_BANDS, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, filterCloudLayers, groupLayers, layerGroup, layerRasterUrl, loadLayerRaster, loadStory, loadTimeline, normalizePoint, pointProductFor, renderPixelSize, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
 
 const rasterLayer: LayerItem = {
@@ -46,16 +46,34 @@ describe('raster request contract', () => {
   // substitute its default Avalon box, and return a well-formed image of the
   // wrong extent with no error at all. That is invisible on screen, so it is
   // asserted here on the URL itself.
-  it('names each bound separately and sends neither a packed bbox nor a crs', () => {
+  it('names each bound separately, requests web mercator, and sends no packed bbox', () => {
     const url = new URL(layerRasterUrl(rasterLayer, { ...bounds, validTime: '2026-08-31T04:00:00Z' }), 'http://localhost')
-    expect([...url.searchParams.keys()].sort()).toEqual(['east', 'height', 'north', 'south', 'valid_time', 'west', 'width'])
+    expect([...url.searchParams.keys()].sort()).toEqual(['crs', 'east', 'height', 'north', 'south', 'valid_time', 'west', 'width'])
     expect(url.searchParams.get('south')).toBe('46.20000')
     expect(url.searchParams.get('west')).toBe('-55.20000')
     expect(url.searchParams.get('north')).toBe('48.80000')
     expect(url.searchParams.get('east')).toBe('-50.80000')
     expect(url.searchParams.get('valid_time')).toBe('2026-08-31T04:00:00Z')
+    // The canvas is web mercator; a tile rendered in EPSG:3857 corner-pins
+    // onto it exactly. An EPSG:4326 tile pinned the same way is warped ~2-3 km
+    // through the middle of a 4 degree box at this latitude.
+    expect(url.searchParams.get('crs')).toBe('EPSG:3857')
+    expect(RASTER_CRS).toBe('EPSG:3857')
     expect(url.searchParams.has('bbox')).toBe(false)
-    expect(url.searchParams.has('crs')).toBe(false)
+  })
+
+  it('sizes requests in physical pixels with the device pixel ratio capped at 2', () => {
+    const originalRatio = globalThis.devicePixelRatio
+    try {
+      ;(globalThis as { devicePixelRatio: number }).devicePixelRatio = 1.5
+      expect(renderPixelSize(512)).toBe(768)
+      ;(globalThis as { devicePixelRatio: number }).devicePixelRatio = 3
+      expect(renderPixelSize(512)).toBe(1024) // capped: past 2x nothing gains legibility
+      ;(globalThis as { devicePixelRatio: number }).devicePixelRatio = 0.5
+      expect(renderPixelSize(512)).toBe(512) // never below the CSS size
+    } finally {
+      ;(globalThis as { devicePixelRatio: number }).devicePixelRatio = originalRatio
+    }
   })
 
   it('rounds pixel dimensions and clamps them to the size the endpoint will render', () => {
@@ -137,6 +155,30 @@ describe('raster retrieval', () => {
     const result = await loadLayerRaster(rasterLayer, bounds)
     expect(result.image?.coverage).toBe('not-inspected')
   })
+
+  it('accepts a rendered-grid image that names its source artifact instead of a WMS layer', async () => {
+    // A grid rendered by the API from the stored artifact has no upstream WMS
+    // layer; its provenance is the ingested source its pixels were drawn from.
+    const headers = rasterHeaders({ 'X-Weather-Image-Basis': 'rendered_grid', 'X-Weather-Source-Id': 'noaa-gfs', 'X-Weather-Evidence-Basis': 'published_artifact' })
+    delete headers['X-Weather-Wms-Layer']
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(pngBody(), { status: 200, headers })))
+
+    const result = await loadLayerRaster(rasterLayer, bounds)
+    expect(result.error).toBeNull()
+    expect(result.image?.provenance.wmsLayer).toBeNull()
+    expect(result.image?.provenance.sourceId).toBe('noaa-gfs')
+    expect(result.image?.provenance.imageBasis).toBe('rendered_grid')
+  })
+
+  it('still refuses a rendered-grid image that names no source at all', async () => {
+    const headers = rasterHeaders({ 'X-Weather-Image-Basis': 'rendered_grid' })
+    delete headers['X-Weather-Wms-Layer']
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(pngBody(), { status: 200, headers })))
+
+    const result = await loadLayerRaster(rasterLayer, bounds)
+    expect(result.image).toBeNull()
+    expect(result.error).toMatch(/no retrieval provenance/i)
+  })
 })
 
 describe('evidence basis wording', () => {
@@ -155,6 +197,13 @@ describe('evidence basis wording', () => {
   it('fails closed to unknown for an absent or unrecognised basis', () => {
     expect(describeEvidenceBasis(undefined)).toMatch(/unknown evidence basis/i)
     expect(describeEvidenceBasis('probably_fine')).toMatch(/unknown evidence basis/i)
+  })
+
+  it('says a rendered grid was drawn here from stored values, never fetched from a provider', () => {
+    const words = describeEvidenceBasis('published_artifact', 'rendered_grid')
+    expect(words).toMatch(/rendered by this experiment/i)
+    expect(words).toMatch(/nearest-neighbor, never smoothed/i)
+    expect(words).not.toMatch(/rendered live by the provider/i)
   })
 })
 
@@ -312,6 +361,22 @@ describe('layer grouping shared by the drawer and the coverage rows', () => {
     expect(layerGroup({ ...rasterLayer, evidence_basis: 'published_artifact' })).toBe('published_model')
     expect(layerGroup({ ...rasterLayer, kind: 'point', evidence_basis: 'published_artifact' })).toBe('observation')
     expect(layerGroup({ ...rasterLayer, evidence_basis: undefined })).toBe('unknown')
+  })
+
+  it('honours a declared rendered_grid group with its own heading after the published grids', () => {
+    const strata: LayerItem = {
+      id: 'noaa-gfs-surface-cloud-low', title: 'Global Forecast System (GFS 0.25 deg) low cloud cover (rendered grid)',
+      kind: 'raster', field: 'cloud_low', product: 'Global Forecast System (GFS 0.25 deg)', units: 'percent',
+      semantics: 'rendered by this experiment from retrieved NOAA GFS GRIB2 fields; nearest-neighbor; never smoothed',
+      times: ['2026-08-30T13:00:00Z'], cadence_seconds: 3600, staleness_tolerance_seconds: 1800,
+      evidence_basis: 'published_artifact', raster_available: true, legend_available: true, group: 'rendered_grid',
+    }
+    expect(layerGroup(strata)).toBe('rendered_grid')
+    expect(LAYER_GROUP_ORDER.indexOf('rendered_grid')).toBeGreaterThan(LAYER_GROUP_ORDER.indexOf('published_model'))
+    expect(LAYER_GROUP_LABELS.rendered_grid).toBe('Rendered grids (drawn here from stored model data)')
+    // Without the declaration it stays a published model grid: the group is
+    // never inferred from the id.
+    expect(layerGroup({ ...strata, group: undefined })).toBe('published_model')
   })
 
   it('buckets layers in the shared order, omits empty groups and keeps the API order inside a group', () => {

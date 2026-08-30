@@ -302,18 +302,70 @@ data-availability problem, since the files themselves are fetched (the ECCC
 reasons already documented in the session log (ECMWF 4-day retention window,
 DWD's icosahedral mesh) — this is intended, not a bug.
 
-`noaa-gfs` correctly refused to fetch a byte range exceeding its own safety
-ceiling rather than silently pulling the full 521 MiB file:
+`noaa-gfs` originally refused every lead with:
 
 ```
 Failed processing GFS subset https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.20260829/18/atmos/gfs.t18z.pgrb2.0p25.f007: ... range set exceeded the 26214400 byte ceiling
 ```
 
-This is fail-closed behavior working as intended (no fabricated GFS values,
-nothing published), though it also means GFS never actually lands data in
-this configuration — worth the ingest owner's attention if GFS was expected
-to be a working source, since the byte ceiling as configured appears to always
-reject its subsets.
+> **FIXED 2026-08-30 (`gfs-provider-cloud-strata`).** The ceiling was never the
+> problem and was not raised. The `.idx` selection matched on **parameter name
+> alone**, and GFS pgrb2 publishes TMP, RH, UGRD, VGRD and TCDC at every
+> isobaric level (`TMP:500 mb`, `TCDC:850 mb`, ...), so hundreds of messages
+> were selected and the 1 MiB gap-merge coalesced them into near-whole-file
+> spans — over the 25 MB per-lead ceiling on every lead, so every run failed
+> closed. Selection is now by exact (parameter, level) pair with an
+> instantaneous-forecast filter (`anl` / `N hour fcst`), which also drops the
+> time-averaged `6-7 hour ave fcst` cloud duplicates and APCP (accumulation
+> semantics still unpinned, so its bytes are no longer requested at all).
+>
+> Measured against the real inventory (gfs.20260830 06Z and 12Z): 11 selected
+> messages ≈ **8.32–8.39 MB** per lead, **10.44 MB** after the 1 MiB gap-merge
+> across 5–6 HTTP ranges — 40 % of the unchanged 26,214,400-byte ceiling.
+> Live smoke of one lead (`gfs.t12z.pgrb2.0p25.f008`): 10,443,974 bytes
+> fetched, and all eleven fields decoded with canonical units (`degC`, `hPa`,
+> `m s-1`, `m`, `percent`).
+>
+> A second, latent defect sat behind the first: the decode opened the whole
+> heterogeneous subset in **one** cfgrib call. Messages on disagreeing scalar
+> level coordinates (`heightAboveGround = 2` for t2m vs `= 10` for u10, plus
+> meanSea/surface/cloud layers) cannot assemble into one dataset that way, so
+> even correctly bounded ranges would have died in decode — the same
+> message-scalar failure `strip_message_scalars` was written for, which this
+> adapter never called. It now opens one shortName per cfgrib call, strips
+> each message's scalar coordinates into variable attrs, and assembles a flat
+> step dataset.
+>
+> The adapter also now retrieves GFS's **provider-declared cloud strata**
+> (`LCDC`/`MCDC`/`HCDC` at the provider's low/middle/high cloud layers) as
+> `cloud_low`/`cloud_middle`/`cloud_high` in percent. These are retrieved
+> provider fields, not a derivation; the `store.py` prohibition on deriving
+> strata from METAR layers is untouched and `UNAVAILABLE_POINT_FIELDS` is
+> unchanged.
+>
+> Evidence chain, all on 2026-08-30:
+>
+> ```
+> $ docker compose exec worker python /app/worker/runtime.py --once --source noaa-gfs
+> 2026-08-30T19:28:55.959061+00:00 scheduling 1 source(s): noaa-gfs
+> 2026-08-30T19:30:34.109958+00:00 noaa-gfs: succeeded - published 1 artifact(s)
+>
+> $ curl "localhost:8000/api/experiments/weather/v0/point?latitude=47.5615&longitude=-52.7126&product=GFS"
+> temperature: 20.68 degC · dew_point: 9.40 degC · mean_sea_level_pressure: 1012.32 hPa
+> relative_humidity: 48.4 percent · visibility: 24134.97 m · wind_speed 5.88 m s-1 / dir 262.8
+> cloud_low: 0.0 · cloud_middle: 33.7 · cloud_high: 45.2 · total_cloud: 45.2 (percent)
+> — every field source_id: noaa-gfs, data_mode: live, qc: passed, run 2026-08-30T12:00Z
+>
+> $ curl ".../point?latitude=47.5615&longitude=-52.7126"   # BLEND
+> strata appear with their own source: cloud_low/middle/high src=noaa-gfs beside
+> awc-metar-speci observations and eccc-hrdps/eccc-rdps temperatures
+>
+> $ curl .../timeline    # noaa-gfs in available_products for 27 of 28 hourly items
+> $ curl .../sources/status  # noaa-gfs: state implementing, data_mode live, fresh, operational false
+> ```
+>
+> `noaa-gfs` registry status stays `implementing`; only its `data_mode`
+> reflects the real retrievals above.
 
 `eccc-taf` (`awc-taf`) staged but did not qualify as complete/QC-passed and
 correctly did not publish, leaving the previous (nonexistent) revision
@@ -344,7 +396,7 @@ documented.
 |---|---|---|---|
 | `LiveStore` in-memory dataset cache never invalidates on storage outage; `/point` keeps serving previously-fetched live values indefinitely after MinIO becomes unreachable, instead of degrading to `unavailable` | `api/weather_api/store.py`, `LiveStore.__init__`/`_datasets` cache (~lines 117–180) | api owner | Release blocker per the smoke test's own bar — reproduced directly, not fixture fallthrough, but violates the same "storage outage must surface as unavailable" rule |
 | All HRDPS/RDPS GRIB2 fields fail to decode (`only 0-dimensional arrays can be converted to Python scalars`); every ECCC GRIB adapter run is `cancelled`/publishes nothing | `ingest/grib.py` + pinned `numpy`/`cfgrib`/`eccodes` versions in `api/pyproject.toml` | ingest/dependency owner | High — blocks all GRIB-based sources; correctly fails closed so no bad data leaks, but zero forecast coverage results |
-| `noaa-gfs` subset requests always exceed the configured 26,214,400-byte range ceiling and are rejected; GFS never publishes in this configuration | `ingest/adapters/noaa_s3.py` / storage cap config | ingest owner | Medium — fails closed correctly, but source is effectively dead as configured |
+| ~~`noaa-gfs` subset requests always exceed the configured 26,214,400-byte range ceiling and are rejected; GFS never publishes in this configuration~~ **Fixed 2026-08-30 (`gfs-provider-cloud-strata`):** param-only `.idx` selection was over-matching isobaric levels; now exact (param, level) pairs, ~10.44 MB per lead against the unchanged ceiling, publishing live incl. provider-declared cloud strata | `ingest/adapters/noaa_s3.py` | ingest owner | Closed — see the fixed note in section 3 |
 | `eccc_geomet.py` (2,066 lines) still not registered in `ingest/adapters/__init__.py`; present in both images, unexercised | `ingest/adapters/eccc_geomet.py`, `ingest/adapters/__init__.py` | Agent G | Informational — confirmed still true, did not touch either file per instructions |
 | ~~Worker image logs an ecCodes version warning (`2.28.0` installed vs. `2.42.0+` recommended) at every cfgrib import~~ **Fixed 2026-08-30 (WP1):** ecCodes 2.48.0 via the `eccodeslib` wheel, no warning | `worker/Dockerfile`, `api/pyproject.toml` `grib` extra | WP1 | Closed — and confirmed *not* to be the reason MSC total cloud decodes as `unknown`; see "TCDC finding" |
 | MSC total cloud (`HRDPS TCDC_Sfc`, `RDPS TotalCloudCover_Sfc`) decodes with `units='unknown'` under ecCodes 2.48.0; `total_cloud` withheld from all three Datamart var maps | `ingest/adapters/eccc_datamart.py` (comment above `HRDPS_VARS`) | owner decision (stop gate) | Medium — no cloud cover from ECCC models until the owner chooses between publishing from the WMO 0/6/1 keys or carrying a local ecCodes definitions overlay |

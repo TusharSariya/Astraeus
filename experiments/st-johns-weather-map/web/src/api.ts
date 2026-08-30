@@ -372,7 +372,7 @@ export function pointProductFor(source: { id: string }): string | null {
  *  never disagree about where a layer sits. Observed evidence comes first
  *  because it is the part that cannot be forecast: satellite frames exist only
  *  for the past. */
-export const LAYER_GROUP_ORDER = ['satellite', 'observation', 'alert', 'forecast_proxy', 'published_model', 'unknown'] as const
+export const LAYER_GROUP_ORDER = ['satellite', 'observation', 'alert', 'forecast_proxy', 'published_model', 'rendered_grid', 'unknown'] as const
 export type LayerGroup = typeof LAYER_GROUP_ORDER[number]
 export const LAYER_GROUP_LABELS: Record<LayerGroup, string> = {
   satellite: 'Satellite (observed, past only)',
@@ -380,6 +380,7 @@ export const LAYER_GROUP_LABELS: Record<LayerGroup, string> = {
   alert: 'Alerts',
   forecast_proxy: 'Forecast · live proxy',
   published_model: 'Published model grids',
+  rendered_grid: 'Rendered grids (drawn here from stored model data)',
   unknown: 'Undeclared group',
 }
 
@@ -390,7 +391,7 @@ export const LAYER_GROUP_LABELS: Record<LayerGroup, string> = {
  *  which is said out loud rather than resolved to a stronger group. */
 export function layerGroup(layer: LayerItem): LayerGroup {
   const declared = layer.group
-  if (declared === 'satellite' || declared === 'forecast_proxy' || declared === 'published_model' || declared === 'observation' || declared === 'alert') return declared
+  if (declared === 'satellite' || declared === 'forecast_proxy' || declared === 'published_model' || declared === 'observation' || declared === 'alert' || declared === 'rendered_grid') return declared
   if (layer.kind === 'alert') return 'alert'
   if (layer.evidence_basis === 'live_proxy') return 'forecast_proxy'
   if (layer.evidence_basis === 'published_artifact') return layer.kind === 'raster' ? 'published_model' : 'observation'
@@ -532,11 +533,27 @@ export interface RasterRequest {
  *  request is clamped here rather than discovering it as a 422. */
 const MAX_RENDER_PIXELS = 2048
 
+/** Every raster is requested in web mercator. The map canvas IS web mercator,
+ *  so a tile rendered in EPSG:3857 over the visible bounds corner-pins onto it
+ *  exactly; the EPSG:4326 tiles this client used to pin the same way were
+ *  warped by ~2-3 km through the middle of a 4 degree box at this latitude. */
+export const RASTER_CRS = 'EPSG:3857'
+
+/** Physical pixels for a CSS-pixel length, with the device pixel ratio capped
+ *  at 2. The provider rasterises server-side, so a DPR-sized request is what
+ *  keeps a forecast field sharp on a high-density display; past 2x nothing
+ *  gains legibility and the bytes only grow. */
+export function renderPixelSize(cssPx: number): number {
+  const ratio = Math.min(Math.max(globalThis.devicePixelRatio || 1, 1), 2)
+  return Math.round(cssPx * ratio)
+}
+
 /** Documented map-image contract: the API proxies one WMS `GetMap` per request so
  *  no upstream URL is ever hardcoded in the bundle. A layer may override the path.
  *
  *  The four bounds are sent as the four separate parameters the endpoint
- *  declares. A packed `bbox` (or a `crs`) is not in that signature: FastAPI would
+ *  declares, plus `crs=EPSG:3857` so the tile is rendered in the projection the
+ *  canvas displays. A packed `bbox` is not in that signature: FastAPI would
  *  ignore it, fall back to its default Avalon box, and answer 200 with a
  *  perfectly plausible image of the wrong extent. Nothing about that failure is
  *  visible, which is why `api.test.ts` asserts the parameter set directly. */
@@ -548,6 +565,7 @@ export function layerRasterUrl(layer: LayerItem, request: RasterRequest): string
     east: request.east.toFixed(5),
     width: String(Math.min(MAX_RENDER_PIXELS, Math.max(1, Math.round(request.widthPx)))),
     height: String(Math.min(MAX_RENDER_PIXELS, Math.max(1, Math.round(request.heightPx)))),
+    crs: RASTER_CRS,
   })
   if (request.validTime) params.set('valid_time', request.validTime)
   const base = layer.raster_url ?? `${prefix}/layers/${encodeURIComponent(layer.id)}/raster`
@@ -566,8 +584,13 @@ export function layerLegendUrl(layer: LayerItem): string {
  *  not carry the same assurance, and the reader cannot weigh what they are shown
  *  without being told which is which. An absent or unrecognised basis fails
  *  closed to unknown — never to the stronger of the two. */
-export function describeEvidenceBasis(basis: string | undefined | null): string {
+export function describeEvidenceBasis(basis: string | undefined | null, group?: string): string {
   if (basis === 'live_proxy') return 'Live-proxied imagery, rendered by the provider at request time. Not a published artifact: it has not passed ingest, QC or atomic publication.'
+  if (basis === 'published_artifact' && group === 'rendered_grid') {
+    // The one case where the drawn pixels come from the artifact itself: the
+    // API paints the stored cells, nearest-neighbor, and fetches nothing.
+    return 'Published artifact: this layer\u2019s evidence passed ingest, QC and atomic publication. Its imagery is rendered by this experiment from the stored grid values at their native cells - nearest-neighbor, never smoothed - not fetched from a provider.'
+  }
   // Even here the image itself is live-rendered, so the drawn pixels are never
   // described as the published artifact.
   if (basis === 'published_artifact') return 'Published artifact: this layer\u2019s evidence passed ingest, QC and atomic publication. Any imagery shown for it is still rendered live by the provider.'
@@ -606,7 +629,13 @@ async function inspectCoverage(blob: Blob): Promise<RasterCoverage> {
  *  read from an `X-Weather-*` header; none of it is inferred from the bytes. */
 export interface RasterProvenance {
   retrievalStatus: string
-  wmsLayer: string
+  /** The upstream WMS layer the image was drawn from, or null for a
+   *  rendered-grid image, which has no upstream: its pixels are the stored
+   *  artifact's own cells and `sourceId` names where they came from. */
+  wmsLayer: string | null
+  /** `X-Weather-Source-Id`: the ingested source a rendered-grid image was
+   *  drawn from. Null for provider-rendered imagery. */
+  sourceId: string | null
   evidenceBasis: string | null
   imageBasis: string | null
   validTime: string | null
@@ -662,8 +691,15 @@ export async function loadLayerRaster(layer: LayerItem, request: RasterRequest, 
     if (!contentType.startsWith('image/')) return { image: null, error: `map image request returned ${contentType || 'an unlabelled body'}, not an image` }
     const retrievalStatus = response.headers.get('X-Weather-Retrieval-Status')
     const wmsLayer = response.headers.get('X-Weather-Wms-Layer')
-    if (!retrievalStatus || !wmsLayer) {
-      return { image: null, error: 'the image carried no retrieval provenance (X-Weather-Retrieval-Status / X-Weather-Wms-Layer), so its bytes are not drawn' }
+    const imageBasis = response.headers.get('X-Weather-Image-Basis')
+    const sourceId = response.headers.get('X-Weather-Source-Id')
+    // Provenance is what makes bytes drawable. A provider-rendered image names
+    // its upstream WMS layer; a rendered-grid image has no upstream and names
+    // the ingested source its pixels were drawn from instead. Either statement
+    // suffices; neither is a 404-shaped guess.
+    const renderedGrid = imageBasis === 'rendered_grid' && !!sourceId
+    if (!retrievalStatus || (!wmsLayer && !renderedGrid)) {
+      return { image: null, error: 'the image carried no retrieval provenance (X-Weather-Retrieval-Status plus X-Weather-Wms-Layer or a rendered-grid X-Weather-Source-Id), so its bytes are not drawn' }
     }
     const blob = await response.blob()
     if (blob.size === 0) return { image: null, error: 'map image request returned an empty body' }
@@ -677,8 +713,9 @@ export async function loadLayerRaster(layer: LayerItem, request: RasterRequest, 
         provenance: {
           retrievalStatus,
           wmsLayer,
+          sourceId,
           evidenceBasis: response.headers.get('X-Weather-Evidence-Basis'),
-          imageBasis: response.headers.get('X-Weather-Image-Basis'),
+          imageBasis,
           validTime: response.headers.get('X-Weather-Valid-Time'),
           referenceTime: response.headers.get('X-Weather-Reference-Time'),
           upstreamUrl: response.headers.get('X-Weather-Upstream-Url'),

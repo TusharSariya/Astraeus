@@ -705,7 +705,8 @@ export default function App() {
                   label="Cloud L / M / H"
                   value={snapshot.cloud.low === null && snapshot.cloud.middle === null && snapshot.cloud.high === null
                     ? 'Unknown'
-                    : `${snapshot.cloud.low ?? 'Unknown'} · ${snapshot.cloud.middle ?? 'Unknown'} · ${snapshot.cloud.high ?? 'Unknown'}%`}
+                    : [snapshot.cloud.low, snapshot.cloud.middle, snapshot.cloud.high]
+                        .map((pct) => (pct === null ? 'Unknown' : `${Math.round(pct)}%`)).join(' · ')}
                   detail={snapshot.cloud.low === null && snapshot.cloud.middle === null && snapshot.cloud.high === null ? 'No cloud strata returned' : 'Separate strata'}
                   mode={snapshot.fieldModes.cloud_low}
                   source={snapshot.cloud.low === null && snapshot.cloud.middle === null && snapshot.cloud.high === null ? undefined : snapshot.fieldSources.cloud_low ?? snapshot.fieldSources.cloud_middle ?? snapshot.fieldSources.cloud_high}

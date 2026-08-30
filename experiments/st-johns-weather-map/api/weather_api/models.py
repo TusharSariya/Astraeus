@@ -223,7 +223,11 @@ class Layer(StrictModel):
     #: ``evidence_basis`` and ``kind`` so a client never has to infer it from
     #: the shape of an id. ``satellite`` is observed imagery relayed live:
     #: frames exist only for the past and it is never a forecast.
-    group: Literal["forecast_proxy", "published_model", "observation", "alert", "satellite"] = "published_model"
+    #: ``rendered_grid`` is a published-model forecast raster rendered by this
+    #: experiment itself from a retrieved grid artifact - stored values at
+    #: their native cells, nearest-neighbor, never smoothed - as opposed to
+    #: imagery rendered upstream by a provider.
+    group: Literal["forecast_proxy", "published_model", "observation", "alert", "satellite", "rendered_grid"] = "published_model"
     #: True when ``/layers/{id}/raster`` will serve an image for this layer.
     #: False means the 501 stands, with its reason.
     raster_available: bool = False

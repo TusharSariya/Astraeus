@@ -152,6 +152,40 @@ CANONICAL_BY_GEOMET_UNIT = {
 }
 
 
+
+# ``GetMap`` may be asked for in either of two coordinate reference systems.
+# EPSG:4326 (WMS 1.3.0: latitude-first bbox) is the historical default;
+# EPSG:3857 (WGS 84 / Pseudo-Mercator, bbox in metres, easting/northing order)
+# is what a web-mercator map canvas actually displays, so a tile requested in
+# it needs no client-side warp: corner-pinning it onto the mercator canvas is
+# exact. Anything else is refused client-side rather than sent upstream.
+SUPPORTED_GETMAP_CRS = ("EPSG:4326", "EPSG:3857")
+
+#: WGS 84 spherical mercator radius used by EPSG:3857, in metres.
+WEB_MERCATOR_RADIUS_M = 6378137.0
+#: EPSG:3857 is undefined at the poles; the projection's standard latitude cap.
+WEB_MERCATOR_MAX_LATITUDE = 85.051128779807
+
+
+def web_mercator_metres(latitude: float, longitude: float) -> tuple[float, float]:
+    """``(x, y)`` in EPSG:3857 metres for one WGS 84 coordinate.
+
+    The standard spherical formulas: ``x = R*lon_rad``,
+    ``y = R*ln(tan(pi/4 + lat_rad/2))``. Latitudes beyond the projection's
+    ~85.05 degree definition are refused rather than clamped, because a
+    silently clamped bound would place the tile edge somewhere the caller did
+    not ask about.
+    """
+    if abs(latitude) > WEB_MERCATOR_MAX_LATITUDE:
+        raise ValueError(
+            f"latitude {latitude} is outside EPSG:3857's defined range "
+            f"(+/-{WEB_MERCATOR_MAX_LATITUDE})"
+        )
+    x = WEB_MERCATOR_RADIUS_M * math.radians(longitude)
+    y = WEB_MERCATOR_RADIUS_M * math.log(math.tan(math.pi / 4 + math.radians(latitude) / 2))
+    return x, y
+
+
 class GeoMetError(RuntimeError):
     """GeoMet answered, but not with something this module may use."""
 
@@ -512,6 +546,10 @@ class GeoMetImage:
     width: int | None
     height: int | None
     bbox: tuple[float, float, float, float] | None
+    #: The CRS the render was requested in. The recorded ``bbox`` stays the
+    #: named geographic south/west/north/east mapping in every case; for an
+    #: EPSG:3857 render the wire bbox was those bounds projected to metres.
+    crs: str = "EPSG:4326"
 
     @property
     def byte_size(self) -> int:
@@ -540,7 +578,7 @@ class GeoMetImage:
                     "east": self.bbox[3],
                 }
             ),
-            "crs": "EPSG:4326",
+            "crs": self.crs,
             "endpoint": GEOMET_BASE_URL,
             "licence": LICENCE,
             "attribution": ATTRIBUTION,
@@ -843,6 +881,7 @@ class GeoMetClient:
         width: int | None,
         height: int | None,
         bbox: tuple[float, float, float, float] | None,
+        crs: str = "EPSG:4326",
     ) -> GeoMetImage:
         """Issue one render request and refuse anything that is not the image.
 
@@ -887,6 +926,7 @@ class GeoMetClient:
             width=width,
             height=height,
             bbox=bbox,
+            crs=crs,
         )
         self._remember_image(url, image)
         return image
@@ -903,14 +943,19 @@ class GeoMetClient:
         style: str | None = None,
         image_format: str = "image/png",
         transparent: bool = True,
+        crs: str = "EPSG:4326",
     ) -> GeoMetImage:
         """Render one ``GetMap`` tile for ``bounds``, with its provenance attached.
 
         ``bounds`` is the same ``south/west/north/east`` mapping the rest of this
-        module uses. WMS 1.3.0 with EPSG:4326 orders the bbox **latitude first**,
-        so the wire form is ``miny,minx,maxy,maxx``; getting that backwards is the
-        classic WMS bug and it fails silently — a transposed box was answered live
-        with HTTP 200 and a 96-byte PNG rather than an exception.
+        module uses, in degrees, whatever the ``crs``. WMS 1.3.0 with EPSG:4326
+        orders the bbox **latitude first**, so the wire form is
+        ``miny,minx,maxy,maxx``; getting that backwards is the classic WMS bug and
+        it fails silently — a transposed box was answered live with HTTP 200 and a
+        96-byte PNG rather than an exception. With ``crs="EPSG:3857"`` the bounds
+        are projected to spherical-mercator metres and sent ``minx,miny,maxx,maxy``
+        (easting/northing) — the axis order EPSG:3857 defines — which yields a tile
+        that corner-pins exactly onto a web-mercator canvas with no residual warp.
 
         ``TIME`` is resolved through :meth:`resolve_time`, which snaps onto the
         advertised extent and raises :class:`TimeOutsideExtent` client-side, so a
@@ -934,6 +979,16 @@ class GeoMetClient:
         )
         if south >= north or west >= east:
             raise ValueError(f"bounds {bounds!r} is not a south-west to north-east box")
+        if crs not in SUPPORTED_GETMAP_CRS:
+            raise ValueError(f"crs must be one of {', '.join(SUPPORTED_GETMAP_CRS)}, not {crs!r}")
+        if crs == "EPSG:3857":
+            # EPSG:3857 orders the bbox x,y (easting, northing), in metres.
+            min_x, min_y = web_mercator_metres(south, west)
+            max_x, max_y = web_mercator_metres(north, east)
+            wire_bbox = f"{min_x},{min_y},{max_x},{max_y}"
+        else:
+            # WMS 1.3.0 with EPSG:4326 orders the bbox latitude-first.
+            wire_bbox = f"{south},{west},{north},{east}"
 
         stamp = self.resolve_time(layer, valid_time) if resolve else valid_time
         reference = self.resolve_reference_time(layer) if resolve else None
@@ -941,9 +996,8 @@ class GeoMetClient:
             "request": "GetMap",
             "layers": layer,
             "styles": style,
-            "crs": "EPSG:4326",
-            # WMS 1.3.0 with EPSG:4326 orders the bbox latitude-first.
-            "bbox": f"{south},{west},{north},{east}",
+            "crs": crs,
+            "bbox": wire_bbox,
             "width": width,
             "height": height,
             "format": image_format,
@@ -963,6 +1017,7 @@ class GeoMetClient:
             width=width,
             height=height,
             bbox=(south, west, north, east),
+            crs=crs,
         )
 
     def legend_graphic(self, layer: str, *, style: str | None = None, image_format: str = "image/png") -> GeoMetImage:

@@ -36,6 +36,7 @@ detected". It is not an outage and must never be reported as one.
 from __future__ import annotations
 
 import logging
+import contextvars
 import threading
 import time
 from collections import deque
@@ -99,15 +100,12 @@ class _CountingClient:
 
     def __init__(self, inner: Any) -> None:
         self._inner = inner
-        self._budget: _Budget | None = None
-
-    def bind(self, budget: "_Budget | None") -> None:
-        self._budget = budget
 
     def _charge(self) -> None:
         _spend_process_budget()
-        if self._budget is not None:
-            self._budget.spend()
+        budget = _active_budget.get()
+        if budget is not None:
+            budget.spend()
 
     def get(self, url: str, **kwargs: Any) -> Any:
         self._charge()
@@ -177,6 +175,13 @@ _client: Any = None
 _counting: _CountingClient | None = None
 _client_lock = threading.Lock()
 
+#: The budget charged by upstream calls made while handling *this* request.
+#: A ContextVar, not a bound attribute: the counting client is shared by every
+#: request in the process, and a plain attribute made concurrent requests
+#: charge whichever budget was bound last - and unbind each other on exit - so
+#: a burst of /raster fetches could exhaust /layers' budget and drop layers.
+_active_budget: contextvars.ContextVar["_Budget | None"] = contextvars.ContextVar("geomet_request_budget", default=None)
+
 
 def geomet_client() -> Any:
     """The one shared GeoMet client for this process.
@@ -217,13 +222,11 @@ class budgeted:
 
     def __enter__(self) -> _Budget:
         geomet_client()
-        if _counting is not None:
-            _counting.bind(self.budget)
+        self._token = _active_budget.set(self.budget)
         return self.budget
 
     def __exit__(self, *_exc: object) -> None:
-        if _counting is not None:
-            _counting.bind(None)
+        _active_budget.reset(self._token)
 
 
 # ------------------------------------------------- proxied forecast layers
@@ -570,6 +573,9 @@ class ProxiedImage:
     reference_time: datetime | None
     byte_size: int
     evidence_basis: str
+    #: The CRS the tile was rendered in, read back from the request that made
+    #: it; disclosed so a client can place the pixels in the right projection.
+    crs: str = "EPSG:4326"
 
     def headers(self, *, layer_id: str, time_semantics: str | None = None) -> dict[str, str]:
         """Provenance a browser can read off the response itself.
@@ -599,6 +605,7 @@ class ProxiedImage:
                 "a fully transparent image means retrieved and nothing detected, not unavailable"
             ),
             "X-Weather-Wms-Layer": self.wms_layer,
+            "X-Weather-Crs": self.crs,
             "X-Weather-Upstream-Url": self.url,
             "X-Weather-Byte-Size": str(self.byte_size),
             "X-Weather-Licence": "Environment and Climate Change Canada Data Servers End-use Licence",
@@ -631,7 +638,14 @@ def _as_proxied(image: Any, *, evidence_basis: str) -> ProxiedImage:
         reference_time=image.reference_time,
         byte_size=image.byte_size,
         evidence_basis=evidence_basis,
+        crs=getattr(image, "crs", "EPSG:4326"),
     )
+
+
+#: The two CRS a proxied render may be asked for. Mirrors the client's own
+#: ``SUPPORTED_GETMAP_CRS``; validated here as well so an unsupported value is
+#: a 422 at the API boundary rather than a ValueError from deep inside.
+SUPPORTED_RENDER_CRS = ("EPSG:4326", "EPSG:3857")
 
 
 def render(
@@ -643,6 +657,9 @@ def render(
     width: int = 512,
     height: int = 512,
     style: str | None = None,
+    crs: str = "EPSG:4326",
+    image_format: str = "image/png",
+    transparent: bool = True,
 ) -> ProxiedImage:
     """Render one tile, or raise with a reason that names what went wrong.
 
@@ -653,6 +670,8 @@ def render(
     """
     if width < 1 or height < 1 or width > MAX_RENDER_PIXELS or height > MAX_RENDER_PIXELS:
         raise ValueError(f"width and height must be between 1 and {MAX_RENDER_PIXELS}")
+    if crs not in SUPPORTED_RENDER_CRS:
+        raise ValueError(f"crs must be one of {', '.join(SUPPORTED_RENDER_CRS)}, not {crs!r}")
     client = geomet_client()
     try:
         image = client.map_image(
@@ -662,6 +681,9 @@ def render(
             height=height,
             valid_time=valid_time,
             style=style,
+            crs=crs,
+            image_format=image_format,
+            transparent=transparent,
         )
     except UpstreamBudgetExhausted:
         raise

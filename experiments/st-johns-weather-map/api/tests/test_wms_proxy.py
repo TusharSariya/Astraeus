@@ -747,6 +747,42 @@ def test_a_request_cannot_fan_out_into_unbounded_upstream_calls():
             budget.spend()
 
 
+def test_concurrent_requests_charge_their_own_budgets_not_each_other():
+    """The per-request budget is request-scoped: a burst of raster fetches in
+    one request must never exhaust the /layers budget of another."""
+    import threading as _threading
+
+    wms.reset_process_budget()
+    counting = wms._CountingClient(object())
+    results: dict[str, Exception | int] = {}
+
+    def run(name: str, charges: int) -> None:
+        try:
+            with wms.budgeted(limit=5) as budget:
+                for _ in range(charges):
+                    counting._charge()
+                results[name] = budget.spent
+        except Exception as error:  # pragma: no cover - the failure being tested
+            results[name] = error
+
+    threads = [_threading.Thread(target=run, args=(f"r{i}", 5)) for i in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    # 4 x 5 = 20 charges: under the old shared binding at least one request
+    # would blow its limit of 5; request-scoped budgets each see exactly 5.
+    assert results == {"r0": 5, "r1": 5, "r2": 5, "r3": 5}
+    wms.reset_process_budget()
+
+
+def test_a_charge_outside_any_request_budget_only_pays_the_process_budget():
+    wms.reset_process_budget()
+    counting = wms._CountingClient(object())
+    counting._charge()  # must not raise: no request budget is active here
+    wms.reset_process_budget()
+
+
 def test_the_process_budget_bounds_a_scrub_across_many_frames():
     wms.reset_process_budget()
     for _ in range(wms.PROCESS_BUDGET_CALLS):
@@ -754,3 +790,145 @@ def test_the_process_budget_bounds_a_scrub_across_many_frames():
     with pytest.raises(wms.UpstreamBudgetExhausted):
         wms._spend_process_budget()
     wms.reset_process_budget()
+
+
+# --- CRS fidelity and image format ---------------------------------------
+
+class _CapturingHttp:
+    """A stand-in PoliteClient that records the one URL it was asked for."""
+
+    def __init__(self) -> None:
+        self.urls: list[str] = []
+
+    def get(self, url: str, **kwargs):
+        self.urls.append(url)
+
+        class _Response:
+            content = TRANSPARENT_PNG
+            headers = {"Content-Type": "image/png"}
+
+        return _Response()
+
+
+def _bare_geomet_client():
+    from ingest.adapters.eccc_geomet import GeoMetClient
+
+    http = _CapturingHttp()
+    return GeoMetClient(client=http), http
+
+
+BOUNDS = {"south": 46.5, "west": -55.0, "north": 48.5, "east": -51.0}
+
+
+def test_epsg_4326_getmap_sends_the_bbox_latitude_first():
+    from urllib.parse import parse_qs, urlparse
+
+    client_obj, http = _bare_geomet_client()
+    client_obj.map_image("HRDPS.CONTINENTAL_TT", BOUNDS, width=64, height=64, resolve=False)
+    params = parse_qs(urlparse(http.urls[0]).query)
+    assert params["crs"] == ["EPSG:4326"]
+    assert params["bbox"] == ["46.5,-55.0,48.5,-51.0"]
+
+
+def test_epsg_3857_getmap_sends_mercator_metres_in_x_y_order():
+    """EPSG:3857 orders the bbox easting,northing in metres. The expected
+    numbers are computed independently here from the standard spherical
+    formulas, so a transposed or degree-valued bbox fails loudly."""
+    import math
+    from urllib.parse import parse_qs, urlparse
+
+    client_obj, http = _bare_geomet_client()
+    client_obj.map_image("HRDPS.CONTINENTAL_TT", BOUNDS, width=64, height=64, resolve=False, crs="EPSG:3857")
+    params = parse_qs(urlparse(http.urls[0]).query)
+    assert params["crs"] == ["EPSG:3857"]
+    radius = 6378137.0
+
+    def x(lon: float) -> float:
+        return radius * math.radians(lon)
+
+    def y(lat: float) -> float:
+        return radius * math.log(math.tan(math.pi / 4 + math.radians(lat) / 2))
+
+    sent = [float(piece) for piece in params["bbox"][0].split(",")]
+    expected = [x(-55.0), y(46.5), x(-51.0), y(48.5)]
+    for got, want in zip(sent, expected):
+        assert abs(got - want) < 0.01, (sent, expected)
+    # And the image's provenance names the CRS it was really rendered in.
+    image = client_obj.map_image("HRDPS.CONTINENTAL_TT", BOUNDS, width=64, height=64, resolve=False, crs="EPSG:3857")
+    assert image.as_provenance()["crs"] == "EPSG:3857"
+    assert image.as_provenance()["bbox"] == {"south": 46.5, "west": -55.0, "north": 48.5, "east": -51.0}
+
+
+def test_an_unsupported_getmap_crs_is_refused_client_side():
+    client_obj, http = _bare_geomet_client()
+    with pytest.raises(ValueError):
+        client_obj.map_image("HRDPS.CONTINENTAL_TT", BOUNDS, width=64, height=64, resolve=False, crs="EPSG:26919")
+    assert http.urls == []
+
+
+def stub_capturing_render(monkeypatch, *, content_type_by_format: bool = True):
+    """A geomet client whose map_image records its kwargs and answers with the
+    content type it was asked for - which is what the real _render enforces."""
+    calls: list[dict] = []
+
+    class FakeClient:
+        @staticmethod
+        def map_image(layer, bounds, **kwargs):
+            calls.append({"layer": layer, **kwargs})
+            image = FakeImage(layer, valid_time=kwargs.get("valid_time"))
+            image.content_type = kwargs.get("image_format", "image/png")
+            return image
+
+    monkeypatch.setattr(wms, "geomet_client", lambda: FakeClient())
+    return calls
+
+
+def test_a_satellite_raster_is_requested_and_served_as_jpeg(monkeypatch, data_mode):
+    """GOES-East imagery is opaque; JPEG carries the same picture at a third
+    the bytes and there is no transparency to lose. The content type on the
+    response is what the upstream declared, not an assertion."""
+    use_live_store(monkeypatch, data_mode, ArtifactStore([]))
+    calls = stub_capturing_render(monkeypatch)
+
+    response = client.get(f"{PREFIX}/layers/geomet-live-goes-east-dayvis-nightir/raster")
+
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"] == "image/jpeg"
+    assert calls[-1]["image_format"] == "image/jpeg"
+    assert calls[-1]["transparent"] is False
+
+
+def test_every_non_satellite_raster_stays_transparent_png(monkeypatch, data_mode):
+    published = artifact(source_id="eccc-radar", logical_name="rain", provenance={"geomet_layer": "RADAR_1KM_RRAI"})
+    use_live_store(monkeypatch, data_mode, ArtifactStore([published]))
+    calls = stub_capturing_render(monkeypatch)
+
+    for layer_id in ("geomet-live-hrdps-tt", "eccc-radar-rain"):
+        response = client.get(f"{PREFIX}/layers/{layer_id}/raster")
+        assert response.status_code == 200, response.text
+        assert response.headers["content-type"] == "image/png"
+        assert calls[-1]["image_format"] == "image/png"
+        assert calls[-1]["transparent"] is True
+
+
+def test_the_crs_query_parameter_reaches_the_upstream_request_and_the_headers(monkeypatch, data_mode):
+    use_live_store(monkeypatch, data_mode, ArtifactStore([]))
+    calls = stub_capturing_render(monkeypatch)
+
+    default = client.get(f"{PREFIX}/layers/geomet-live-hrdps-tt/raster")
+    assert calls[-1]["crs"] == "EPSG:4326"
+    assert default.headers["x-weather-crs"] == "EPSG:4326"
+
+    mercator = client.get(f"{PREFIX}/layers/geomet-live-hrdps-tt/raster?crs=EPSG:3857")
+    assert mercator.status_code == 200, mercator.text
+    assert calls[-1]["crs"] == "EPSG:3857"
+    # FakeImage carries no crs of its own; the header reports the render's
+    # declared CRS wherever the image object states one.
+
+
+def test_an_unsupported_crs_query_parameter_is_a_422(monkeypatch, data_mode):
+    use_live_store(monkeypatch, data_mode, ArtifactStore([]))
+    stub_capturing_render(monkeypatch)
+    response = client.get(f"{PREFIX}/layers/geomet-live-hrdps-tt/raster?crs=EPSG:26919")
+    assert response.status_code == 422
+    assert "EPSG:3857" in response.json()["detail"]

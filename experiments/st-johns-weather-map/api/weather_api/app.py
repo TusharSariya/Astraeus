@@ -66,7 +66,7 @@ from .models import (
     TimelineResponse,
 )
 from .science import select_fallback
-from . import wms
+from . import grids, wms
 from .store import (
     FIXTURE_MODE,
     LIVE_MODE,
@@ -501,6 +501,17 @@ def get_layers() -> LayersResponse:
         for item in layers
     ]
 
+    # Cloud-strata grids rendered by this experiment from the stored GFS
+    # artifact. Offered only where the artifact, the variable and its time
+    # axis actually exist; a gap is a notice, never an invented layer.
+    try:
+        grid_layers, grid_notices = grids.rendered_grid_layers(store, Layer, z_index=Z_INDEX_BY_KIND["raster"], staleness=staleness_tolerance_seconds)
+    except Exception as error:  # the grids must never take the layer index down
+        LOGGER.exception("rendered-grid layers could not be resolved")
+        grid_layers, grid_notices = [], [f"rendered-grid layers are unavailable: {type(error).__name__}: {error}"]
+    layers.extend(grid_layers)
+    notices.extend(grid_notices)
+
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
     layers.extend(proxied)
@@ -725,6 +736,37 @@ def _image_response(image: wms.ProxiedImage, *, layer_id: str, notice: str | Non
     return Response(content=image.payload, media_type=image.content_type, headers=headers)
 
 
+#: Rendered map imagery may be asked for in either CRS. EPSG:4326 stays the
+#: default for compatibility; EPSG:3857 is what a web-mercator canvas shows,
+#: and a tile requested in it corner-pins exactly with no client-side warp.
+SUPPORTED_RASTER_CRS = wms.SUPPORTED_RENDER_CRS
+
+
+def _validated_crs(crs: str) -> str:
+    if crs not in SUPPORTED_RASTER_CRS:
+        raise HTTPException(status_code=422, detail=f"crs must be one of {', '.join(SUPPORTED_RASTER_CRS)}, not {crs!r}")
+    return crs
+
+
+def _rendered_grid_raster(spec, *, moment, bounds, width, height, crs) -> Response:
+    """A raster drawn here from the stored grid, with its provenance attached."""
+    store = live_store()
+    if store is None:
+        raise HTTPException(status_code=503, detail="no live artifact store is reachable; the stored grid cannot be read")
+    try:
+        image = grids.render_grid(store, spec, bounds=bounds, width=width, height=height, crs=crs, valid_time=moment)
+    except grids.GridNotPublished as error:
+        raise HTTPException(status_code=404, detail=f"{spec.layer_id}: {error}") from error
+    except grids.FrameNotStored as error:
+        raise HTTPException(status_code=422, detail=f"{spec.layer_id}: {error}") from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except grids.GridUnavailable as error:
+        # Nothing was read, and nothing is substituted for it.
+        raise HTTPException(status_code=502, detail=f"{spec.layer_id}: no grid was read: {error}") from error
+    return Response(content=image.payload, media_type=image.content_type, headers=image.headers(layer_id=spec.layer_id))
+
+
 @app.get(f"{PREFIX}/layers/{{layer_id}}/raster", responses={501: {"model": ErrorResponse}})
 def get_layer_raster(
     layer_id: str,
@@ -736,6 +778,7 @@ def get_layer_raster(
     north: float = Query(default=AVALON_CORE_BOUNDS["north"], ge=-90, le=90),
     east: float = Query(default=AVALON_CORE_BOUNDS["east"], ge=-180, le=180),
     style: str | None = Query(default=None, description="an upstream style name; omitted means the layer's own default"),
+    crs: str = Query(default="EPSG:4326", description="EPSG:4326 (default) or EPSG:3857; the image is rendered in this projection"),
 ) -> Response:
     """One map image, rendered upstream, with its provenance on the response.
 
@@ -751,19 +794,36 @@ def get_layer_raster(
     status, and it says which failure.
     """
     moment = requested_time(valid_time)
-    wms_layer, basis, notice = _resolve_imagery(layer_id)
+    requested_crs = _validated_crs(crs)
     if south >= north or west >= east:
         raise HTTPException(status_code=422, detail="bounds must be a south-west to north-east box")
+    bounds = {"south": south, "west": west, "north": north, "east": east}
+
+    grid_spec = grids.rendered_grid_spec(layer_id)
+    if grid_spec is not None:
+        return _rendered_grid_raster(grid_spec, moment=moment, bounds=bounds, width=width, height=height, crs=requested_crs)
+
+    wms_layer, basis, notice = _resolve_imagery(layer_id)
+    # The four GOES-East satellite proxies are opaque imagery: JPEG carries the
+    # same picture at roughly a third the bytes, and there is no transparency
+    # to lose. Every other layer keeps transparent PNG, where "fully
+    # transparent" is itself a reading. The content type on the response is
+    # whatever the upstream actually declared - the client refuses a mismatch.
+    spec = wms.forecast_spec(layer_id)
+    satellite = spec is not None and spec.group == "satellite"
     try:
         with wms.budgeted():
             image = wms.render(
                 wms_layer,
                 evidence_basis=basis,
-                bounds={"south": south, "west": west, "north": north, "east": east},
+                bounds=bounds,
                 valid_time=moment,
                 width=width,
                 height=height,
                 style=style,
+                crs=requested_crs,
+                image_format="image/jpeg" if satellite else "image/png",
+                transparent=not satellite,
             )
     except wms.TimeNotAdvertised as error:
         raise HTTPException(status_code=422, detail=f"{layer_id}: {error}") from error
@@ -785,8 +845,31 @@ def get_layer_legend(
     """The upstream colour ramp for a layer, fetched rather than synthesised.
 
     A hand-written key over real pixels would be a fabricated legend, so the
-    only ramp served is the one ECCC draws the layer with.
+    only ramp served is the one ECCC draws the layer with. The one exception
+    is a rendered-grid layer, whose pixels this experiment itself drew: its
+    legend is the renderer's own declared colormap - the ramp the pixels were
+    actually drawn with - and the headers say so.
     """
+    grid_spec = grids.rendered_grid_spec(layer_id)
+    if grid_spec is not None:
+        return Response(
+            content=grids.legend_png(),
+            media_type="image/png",
+            headers={
+                "Cache-Control": "public, max-age=3600",
+                "X-Weather-Layer-Id": grid_spec.layer_id,
+                "X-Weather-Operational": "false",
+                "X-Weather-Image-Basis": "rendered_grid",
+                "X-Weather-Legend-Basis": "renderer_colormap",
+                "X-Weather-Colormap": grids.COLORMAP_DOC,
+                "X-Weather-Legend-Semantics": (
+                    "this is the colormap this experiment renders the layer with, left 0 percent to "
+                    "right 100 percent; it is presentation, not provider data, and it is the exact "
+                    "mapping applied to the stored values"
+                ),
+            },
+        )
+
     wms_layer, basis, notice = _resolve_imagery(layer_id)
     try:
         with wms.budgeted():

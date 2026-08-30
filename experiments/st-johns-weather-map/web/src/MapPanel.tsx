@@ -4,7 +4,7 @@ import { GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer } fro
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { describeEvidenceBasis, describeOffset, groupLayers, layerLegendUrl, loadLayerFeatures, loadLayerRaster, loadLegendFailure, nearestFrame, resolveFrame } from './api'
+import { describeEvidenceBasis, describeOffset, groupLayers, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerRaster, loadLegendFailure, nearestFrame, renderPixelSize, resolveFrame } from './api'
 import type { RasterImage } from './api'
 import { stationCoverage, stations } from './fixtures'
 import type { GeoJsonFeature, LayerItem, LayerSelection, LocationPoint, ResolvedFrame, SourceStatusItem, StationCoverage } from './types'
@@ -82,13 +82,16 @@ interface ViewExtent {
 function readExtent(map: MapLibreMap): ViewExtent {
   const bounds = map.getBounds()
   const canvas = map.getCanvas()
+  // Physical pixels, DPR-capped at 2 (renderPixelSize): the provider
+  // rasterises server-side, so a CSS-pixel request is what made forecast
+  // fields soft on high-density displays.
   return {
     west: bounds.getWest(),
     south: bounds.getSouth(),
     east: bounds.getEast(),
     north: bounds.getNorth(),
-    widthPx: canvas.clientWidth || 512,
-    heightPx: canvas.clientHeight || 512,
+    widthPx: renderPixelSize(canvas.clientWidth || 512),
+    heightPx: renderPixelSize(canvas.clientHeight || 512),
   }
 }
 
@@ -700,7 +703,13 @@ export function MapPanel({
       ? 'current image, not time-indexed'
       : `valid ${provenance.validTime ?? new Date(state.frame.time).toISOString()}`
     const run = provenance.referenceTime && provenance.referenceTime !== 'none' ? `, model run ${provenance.referenceTime}` : ''
-    const head = `Imagery retrieved from ${provenance.wmsLayer}, ${when}${run}`
+    // A rendered-grid image was drawn here from the stored artifact; naming a
+    // WMS layer for it would invent an upstream it never had.
+    const drawnFrom = provenance.wmsLayer
+      ?? (provenance.imageBasis === 'rendered_grid'
+        ? `the stored ${provenance.sourceId ?? 'grid'} artifact, rendered by this experiment at its native cells (nearest-neighbor, never smoothed)`
+        : 'an unnamed source')
+    const head = `Imagery retrieved from ${drawnFrom}, ${when}${run}`
     const notice = provenance.notice ? ` Notice: ${provenance.notice}.` : ''
     if (coverage === 'fully-transparent') return `${head}. The image is fully transparent: retrieved, and nothing was detected. That is a reading, not an outage.${notice}`
     if (coverage === 'not-inspected') return `${head}. Its pixels were not inspected in this browser, so "nothing detected" cannot be distinguished from a drawn field here.${notice}`
@@ -772,11 +781,18 @@ export function MapPanel({
             {/* The evidence basis is the condition on which the proxied route
                 was permitted, so it is rendered as words rather than encoded
                 in the swatch beside it. */}
-            <p className={`stack-basis basis-${layer.evidence_basis ?? 'unknown'}`}>{describeEvidenceBasis(layer.evidence_basis)}</p>
+            <p className={`stack-basis basis-${layer.evidence_basis ?? 'unknown'}`}>{describeEvidenceBasis(layer.evidence_basis, layerGroup(layer))}</p>
             {layer.raster_available === true && (layer.legend_available === true
               ? legendFailure
                 ? <p className="stack-legend-missing">No legend was retrieved from the provider: {legendFailure}. The layer is drawn without one; none is invented here.</p>
-                : (
+                : layerGroup(layer) === 'rendered_grid'
+                  ? (
+                    <figure className="stack-legend">
+                      <img src={layerLegendUrl(layer)} alt={`Colour scale for ${layer.title}: the exact colormap this experiment renders the stored values with, 0 to 100 percent`} onError={() => onLegendError(layer)} />
+                      <figcaption>Rendering colormap, served by this experiment&apos;s API: the exact mapping applied to the stored values (0% transparent to 100% opaque). It is presentation, not provider data.</figcaption>
+                    </figure>
+                  )
+                  : (
                   <figure className="stack-legend">
                     <img src={layerLegendUrl(layer)} alt={`Colour scale for ${layer.title}, drawn and served by the provider that rendered the image`} onError={() => onLegendError(layer)} />
                     <figcaption>Provider legend, fetched from the provider. No colour scale is constructed here.</figcaption>
@@ -851,7 +867,7 @@ export function MapPanel({
           ? <p>Basemap only. No meteorological layer is requested.</p>
           : <ul className="layer-text-list">{active.map(({ layer }) => (
             <li key={layer.id}>
-              <strong>{layer.title}</strong>: {describeState(layer)} {describeRaster(layer)} {describeEvidenceBasis(layer.evidence_basis)}
+              <strong>{layer.title}</strong>: {describeState(layer)} {describeRaster(layer)} {describeEvidenceBasis(layer.evidence_basis, layerGroup(layer))}
             </li>
           ))}</ul>}
         <dl aria-label={`Evidence at ${selected.name}`}>

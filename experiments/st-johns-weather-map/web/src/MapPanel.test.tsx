@@ -553,6 +553,26 @@ describe('MapPanel layer drawer', () => {
     expect(within(screen.getByRole('group', { name: 'Forecast · live proxy' })).queryByRole('checkbox', { name: /GOES-East/ })).not.toBeInTheDocument()
   })
 
+  it('files a rendered-grid layer under its own heading with its own legend caption', () => {
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    const strata: LayerItem = {
+      id: 'noaa-gfs-surface-cloud-low', title: 'Global Forecast System (GFS 0.25 deg) low cloud cover (rendered grid)',
+      kind: 'raster', field: 'cloud_low', product: 'Global Forecast System (GFS 0.25 deg)', units: 'percent',
+      semantics: 'rendered by this experiment from retrieved NOAA GFS GRIB2 fields; nearest-neighbor at the native 0.25 deg cells; never smoothed',
+      times: ['2026-08-30T04:00:00Z'], cadence_seconds: 3600, staleness_tolerance_seconds: 1800,
+      evidence_basis: 'published_artifact', raster_available: true, legend_available: true, group: 'rendered_grid',
+    }
+    render(panel({ layers: [strata], selections: [{ id: strata.id, visible: true, opacity: 0.85 }] }))
+    const group = screen.getByRole('group', { name: 'Rendered grids (drawn here from stored model data)' })
+    expect(within(group).getByRole('checkbox', { name: /low cloud cover/ })).toBeChecked()
+    // The legend is OUR colormap and must not be captioned as a provider's.
+    expect(screen.getByText(/Rendering colormap, served by this experiment/)).toBeInTheDocument()
+    expect(screen.queryByText(/Provider legend, fetched from the provider/)).not.toBeInTheDocument()
+    // The basis sentence says the imagery was drawn here from stored values.
+    expect(screen.getAllByText(/rendered by this experiment from the stored grid values/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/rendered live by the provider/)).not.toBeInTheDocument()
+  })
+
   it('shows a stored grid that has no map image as a disabled row with the one reason, and no contradicting sentence', () => {
     vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
     render(panel({ layers: [storedGrid], selections: [{ id: storedGrid.id, visible: true, opacity: 0.85 }] }))
