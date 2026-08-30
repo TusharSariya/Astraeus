@@ -1,0 +1,69 @@
+schema: spec-driven
+
+context: |
+  St. John's / Avalon Peninsula (47.5615, -52.7126) meteorological evidence map.
+  A 28-hour window: now-3h through now+24h. Isolated experiment; classification
+  is "Experiment, Spec-Impact: none". `operational: false` on every response.
+
+  THE GOVERNING RULE, which outranks every other consideration:
+  Nothing is displayed or returned that was not actually retrieved. Missing data
+  must be null / unknown / unavailable WITH provenance. Never fabricate, never
+  interpolate into a gap, never silently substitute, and never fall back from a
+  live failure to a fixture value. A control that appears to do something must
+  do it. An empty result that IS the answer ("radar detected nothing") must be
+  distinguishable from "we did not retrieve anything".
+
+  Tech stack: FastAPI + Pydantic (StrictModel, extra="forbid"); React 19 +
+  TypeScript + Vite + Vitest; MapLibre GL + deck.gl; xarray/Zarr (zipped),
+  GeoJSON, Parquet, COG; Postgres/PostGIS + MinIO + titiler under Docker Compose.
+
+  Data modes are explicit end to end: live | fixture | mixed | unavailable. A
+  malformed or missing mode fails closed to unavailable. Fixtures are reachable
+  only behind `WEATHER_DATA_MODE=fixture` (API) and
+  `import.meta.env.DEV && VITE_WEATHER_FIXTURES === 'true'` (web), and are
+  watermarked on screen and stamped per field.
+
+  Registry (`registry/source_data.py`) is the canonical catalogue: 59 sources.
+  No source is ever `active` - the registry status is a CEILING that a live
+  retrieval cannot promote. Promotion requires owner approval plus fixture test,
+  live smoke, artifact validation, API readback and provenance checks.
+
+  Hard-won facts. Do not re-derive these, and do not regress them:
+  - ECCC GeoMet WMS `GetFeatureInfo` answers ONE PIXEL at one time. It is not a
+    field. Layer kind is derived from an artifact's STORED GEOMETRY, never from
+    its media type.
+  - An unadvertised WMS TIME returns HTTP 200 with `text/xml` carrying
+    `ServiceException code="NoMatch"`. Checking the status code alone hands an
+    XML blob to the browser as if it were a PNG.
+  - WMS 1.3.0 with CRS=EPSG:4326 is LAT,LON axis order. A transposed BBOX is
+    answered 200 with a ~96-byte near-empty PNG, silently and with no error.
+  - HRDPS and RDPS publish on a ROTATED lat/lon grid, so cfgrib returns 2-D
+    `latitude`/`longitude` over anonymous y/x dims. Code assuming 1-D axes breaks.
+    This was long misattributed to a numpy/cfgrib version conflict; it never was
+    one, and the pins have never been changed.
+  - Per-layer time axes at native cadence (radar 6 min, lightning 10 min, METAR
+    hourly). A layer publishes `staleness_tolerance_seconds`; beyond it the layer
+    renders explicitly unavailable rather than showing an older frame.
+
+rules:
+  proposal:
+    - State plainly what evidence exists for the change and what remains unverified.
+    - Never propose displaying a value the system cannot actually retrieve.
+  specs:
+    - Every requirement about displayed data must say what happens when the data
+      is absent, not only when it is present.
+    - Prefer scenarios that pin fail-closed behaviour; a green path alone is not
+      sufficient for this project.
+  tasks:
+    - Name the exact verification command for each task.
+    - Call out which files are owned, since work here is often parallelised
+      across agents with disjoint ownership.
+
+operations:
+  apply:
+    guidance:
+      - Do not weaken validation, QC or completeness checks to make a test pass.
+      - Report partial success precisely; an overstated claim is worse than a gap.
+  archive:
+    guidance:
+      - Archive only after the verification commands in tasks.md have actually run.

@@ -1,0 +1,51 @@
+[project]
+name = "astraeus-st-johns-weather-api"
+version = "0.1.0"
+description = "Fixture-first API for the isolated St. John's weather evidence experiment"
+requires-python = ">=3.13,<3.14"
+# cfgrib is loaded through xarray's engine="cfgrib" rather than imported by
+# name, and needs the ecCodes system library present in the worker image.
+dependencies = [
+  "boto3==1.43.83",
+  "cfgrib==0.9.15.1",
+  "fastapi==0.116.1",
+  "httpx==0.28.1",
+  "metpy==1.7.1",
+  "numpy==2.5.2",
+  "pandas==3.0.5",
+  "psycopg[binary]==3.3.4",
+  "pydantic==2.11.7",
+  "uvicorn==0.35.0",
+  "xarray==2026.7.0",
+  "zarr==3.3.0",
+]
+
+# The worker image selects this extra so the ecCodes C library arrives as a
+# manylinux wheel matching the pinned python bindings, instead of Debian's
+# 2.28.0 apt package. The API image does not select it and never loads GRIB.
+[project.optional-dependencies]
+grib = [
+  "eccodeslib==2.48.0.26",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==8.4.1",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+# Registered so `make live-smoke` selects real tests. Before this, the target
+# selected on a marker no test carried, deselected all 284 and exited 0 - a gate
+# that reported success while testing nothing.
+markers = [
+  "live_smoke: contacts a real upstream provider; opt in with WEATHER_LIVE_SMOKE=1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["weather_api"]

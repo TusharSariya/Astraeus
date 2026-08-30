@@ -1,0 +1,407 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Avenir Next Condensed', 'Franklin Gothic Condensed', sans-serif;
+  background: #071419;
+  color: #e5eee9;
+  font-synthesis: none;
+  --ink: #e5eee9;
+  --muted: #8ea6a7;
+  --ocean: #071419;
+  --panel: #0b1f25;
+  --line: #29434a;
+  --cyan: #75cbd1;
+  --orange: #ffb84d;
+  --alarm: #ef6a4d;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--ocean); }
+button, input, select { font: inherit; }
+button, select, input { accent-color: var(--orange); }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+
+.workbench {
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgb(117 203 209 / .035) 1px, transparent 1px),
+    linear-gradient(rgb(117 203 209 / .03) 1px, transparent 1px),
+    radial-gradient(circle at 67% -20%, #16434a 0, transparent 39%),
+    var(--ocean);
+  background-size: 44px 44px, 44px 44px, auto, auto;
+}
+
+.masthead { min-height: 76px; display: grid; grid-template-columns: 1fr auto auto; align-items: stretch; border-bottom: 1px solid var(--line); }
+.wordmark { display: flex; gap: 18px; align-items: center; padding: 12px 24px; }
+.wordmark span { color: var(--orange); font: 600 12px/1 ui-monospace, monospace; letter-spacing: .08em; writing-mode: vertical-rl; transform: rotate(180deg); }
+h1, h2, p { margin: 0; }
+.wordmark h1 { font: 650 clamp(23px, 3vw, 35px)/1 Georgia, serif; letter-spacing: -.025em; }
+.experimental { border-left: 1px solid var(--line); display: flex; align-items: center; gap: 9px; padding: 0 24px; color: var(--muted); font: 500 11px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+.experimental i { width: 7px; height: 7px; border-radius: 50%; background: var(--alarm); box-shadow: 0 0 12px var(--alarm); }
+.mode-switch { display: flex; border-left: 1px solid var(--line); }
+.mode-switch button { min-width: 100px; border: 0; border-left: 1px solid var(--line); color: var(--muted); background: transparent; cursor: pointer; text-transform: uppercase; letter-spacing: .12em; font-size: 12px; }
+.mode-switch button[aria-pressed='true'] { color: #051318; background: var(--orange); font-weight: 700; }
+
+main { max-width: 1720px; margin: auto; padding: 18px 24px 40px; }
+.location-strip { min-height: 80px; display: grid; grid-template-columns: 1.1fr .75fr .9fr 1.05fr auto; align-items: center; border: 1px solid var(--line); border-bottom: 0; background: rgb(7 20 25 / .78); }
+.location-strip > * { min-height: 78px; display: flex; flex-direction: column; justify-content: center; padding: 10px 18px; border-right: 1px solid var(--line); }
+.location-strip > :last-child { border-right: 0; }
+.eyebrow, .station-picker > span, .source-state span { color: var(--muted); text-transform: uppercase; font: 500 10px ui-monospace, monospace; letter-spacing: .14em; }
+.location-strip h2 { margin: 3px 0; font: 650 22px Georgia, serif; }
+code, .location-strip code { color: var(--cyan); font: 500 11px 'IBM Plex Mono', monospace; }
+select { color: var(--ink); background: #0c252c; border: 1px solid #37545b; border-radius: 0; padding: 8px 28px 8px 9px; }
+.station-picker select { margin-top: 5px; }
+.gps-block { flex-direction: row; align-items: center; gap: 12px; }
+.gps-block small { max-width: 230px; color: var(--muted); line-height: 1.25; }
+.locate { color: var(--ink); border: 1px solid var(--cyan); background: transparent; padding: 9px 13px; cursor: pointer; white-space: nowrap; }
+.locate:hover { color: #06171b; background: var(--cyan); }
+.source-state { min-width: 130px; }
+.source-state strong { margin-top: 5px; font: 600 13px 'IBM Plex Mono', monospace; color: var(--orange); }
+.source-state.live strong { color: #70d59a; }
+.source-state.unavailable strong { color: var(--alarm); }
+
+/* The row scrolls; it never squashes. Cards are `flex: 0 0 auto` because a
+   flex item's default `flex-shrink: 1` collapsed every card to its min-width
+   at 1024 and wrapped the producer badge onto three lines before the strip's
+   own `overflow-x: auto` ever engaged. */
+.model-strip { min-width: 0; display: flex; align-items: center; gap: 14px; padding: 10px 18px; background: #07171c; border: 1px solid var(--line); border-top: 0; overflow-x: auto; }
+.model-strip .eyebrow { white-space: nowrap; color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
+.model-buttons { display: flex; gap: 8px; flex-wrap: nowrap; align-items: stretch; }
+/* One producer's cards, labelled once. The group is itself a non-shrinking
+   flex item so the strip stays a single scrolling row at 1024. */
+.model-group { flex: 0 0 auto; display: flex; align-items: stretch; gap: 8px; padding-left: 10px; border-left: 1px solid var(--line); }
+.model-group-label { align-self: center; max-width: 96px; color: var(--muted); font: 500 9px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .1em; line-height: 1.25; }
+.model-buttons button { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; padding: 6px 12px; background: #0c252c; border: 1px solid #23434c; color: var(--ink); cursor: pointer; border-radius: 3px; min-width: 110px; transition: all 0.15s ease; text-align: left; }
+.model-buttons button:hover { border-color: var(--cyan); background: #10323c; }
+.model-buttons button.active { border-color: var(--orange); background: #133842; box-shadow: 0 0 10px rgba(255, 158, 64, 0.2); }
+.model-buttons button strong { font-size: 13px; font-weight: 600; margin-top: 2px; }
+.model-buttons button small { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.model-badge { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px; border-radius: 2px; font: 700 9px 'IBM Plex Mono', monospace; color: #071a22; background: var(--cyan); }
+/* Catalogued but nothing ingested by this deployment. Kept in place (not
+   hidden) and still pressable, so the API's own reason stays reachable; the
+   dashed border and muted ink say "inert" without saying "disabled". */
+.model-buttons button.model-unavailable { border-style: dashed; color: var(--muted); opacity: .7; }
+.model-buttons button.model-unavailable:hover { border-color: var(--cyan); }
+.model-buttons button.model-unavailable .model-badge { background: var(--line); color: var(--muted); }
+.model-empty { color: var(--muted); font: 500 11px 'IBM Plex Mono', monospace; padding: 6px 2px; }
+.coordinate-entry { display: grid !important; grid-template-columns: 1fr 1fr auto; gap: 6px; align-content: center; }
+.coordinate-entry label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+.coordinate-entry input { width: 100%; margin-top: 3px; padding: 6px; color: var(--ink); background: #0c252c; border: 1px solid #37545b; }
+.coordinate-entry button { align-self: end; padding: 6px 9px; color: var(--ink); background: transparent; border: 1px solid var(--cyan); }
+.coordinate-entry small { grid-column: 1 / -1; color: var(--alarm); }
+.source-error { padding: 9px 18px; border: 1px solid var(--alarm); background: rgb(239 106 77 / .1); color: #ff9c86; font: 11px ui-monospace, monospace; }
+.unknown-time { color: var(--muted); font: 11px ui-monospace, monospace; }
+.fixture-watermark { position: sticky; top: 0; z-index: 20; padding: 5px; text-align: center; color: #071419; background: repeating-linear-gradient(135deg, var(--orange) 0 12px, #ffd176 12px 24px); font: 700 11px ui-monospace, monospace; letter-spacing: .12em; }
+.evidence-surface { position: relative; }
+.fixture-mode .evidence-surface::after, .surface-watermark { content: 'DEVELOPMENT FIXTURE'; position: absolute; z-index: 8; right: 10px; bottom: 10px; padding: 4px 7px; color: #071419; background: var(--orange); font: 700 9px ui-monospace, monospace; letter-spacing: .1em; pointer-events: none; }
+
+.fallback-badge { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 15px; padding: 11px 18px; border: 1px solid var(--line); border-left: 5px solid var(--cyan); background: #102930; }
+.fallback-badge.hrdps, .fallback-badge.rdps { border-left-color: var(--orange); }
+.fallback-badge.unavailable { border-left-color: var(--alarm); }
+.fallback-badge div { display: flex; gap: 10px; align-items: baseline; }
+.fallback-badge small { color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
+.fallback-badge strong { text-transform: uppercase; letter-spacing: .06em; }
+.fallback-badge time { color: var(--muted); font: 500 11px 'IBM Plex Mono', monospace; }
+.signal-bars { height: 22px; display: flex; align-items: end; gap: 3px; }
+.signal-bars i { display: block; width: 3px; background: var(--cyan); }
+.signal-bars i:nth-child(1) { height: 7px; } .signal-bars i:nth-child(2) { height: 14px; } .signal-bars i:nth-child(3) { height: 21px; }
+
+.simple-grid { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(390px, .86fr); }
+.map-pane { min-width: 0; height: 610px; border: 1px solid var(--line); border-top: 0; position: relative; overflow: hidden; background: #071a22; }
+.map-canvas { position: absolute; inset: 0; }
+.map-canvas::after { content: ''; pointer-events: none; position: absolute; inset: 0; z-index: 2; background: repeating-radial-gradient(circle at 65% 40%, transparent 0 34px, rgb(117 203 209 / .035) 35px 36px); }
+.map-caption { position: absolute; z-index: 4; left: 16px; top: 16px; display: flex; flex-direction: column; padding: 10px 14px; background: rgb(5 19 24 / .9); border-left: 3px solid var(--orange); box-shadow: 0 8px 28px rgb(0 0 0 / .24); }
+.map-caption span, .map-caption small { color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .1em; }
+.map-caption strong { margin: 2px 0; font-size: 17px; letter-spacing: .04em; }
+/* Screen-reader alternative to the map canvas: present in the accessibility
+   tree, never in the visual layout. Standard sr-only clip pattern, not
+   `display:none` (which some assistive tech skips) and not `visibility:hidden`. */
+.map-text-alternative {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* MapLibre's ScaleControl, which recomputes from the map's own zoom. Styled to
+   match the panel; the distance it prints is the library's, never ours. */
+.maplibregl-ctrl-scale { background: rgb(5 19 24 / .78); border: 1px solid var(--ink); border-top: 0; color: var(--ink); font: 10px 'IBM Plex Mono', monospace; }
+.maplibregl-ctrl-attrib { font-size: 9px; }
+.maplibregl-ctrl-group { background: #0c252c; }
+.maplibregl-ctrl button .maplibregl-ctrl-icon { filter: invert(1); }
+
+/* ---- Layer drawer: docked right, full pane height, grouped rows ----
+   Replaces the absolute chip strip (measured 1321 px wide in an 867 px pane,
+   painting over the caption) and the stack panel that sat under it. Only the
+   caption is absolutely positioned in the top band now; MapLibre keeps the
+   bottom edge, and its bottom-right control shifts left while the drawer is
+   open so it is never covered. */
+.map-layer-drawer { position: absolute; z-index: 4; top: 0; right: 0; bottom: 0; width: 300px; max-width: calc(100% - 32px); display: flex; flex-direction: column; pointer-events: none; }
+.map-layer-drawer.closed { width: auto; bottom: auto; }
+.map-layer-drawer > * { pointer-events: auto; }
+.drawer-toggle { align-self: flex-end; margin: 16px 16px 0 0; padding: 7px 11px; color: var(--ink); background: rgb(5 19 24 / .9); border: 1px solid var(--line); border-radius: 3px; box-shadow: 0 8px 28px rgb(0 0 0 / .24); font: 500 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
+.drawer-toggle:hover { border-color: var(--cyan); }
+.drawer-toggle[aria-expanded='true'] { color: #071a22; background: var(--cyan); border-color: var(--cyan); font-weight: 600; }
+.drawer-body { flex: 1 1 auto; min-height: 0; margin: 8px 16px 16px; overflow-y: auto; background: rgb(5 19 24 / .92); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 8px 28px rgb(0 0 0 / .3); padding: 8px 10px 10px; }
+/* Fixed height, so "Loading published layers…" resolving into the group list
+   moves nothing above it. */
+.drawer-status { min-height: 18px; margin: 0 0 6px; color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .08em; line-height: 18px; }
+.drawer-group { margin-top: 8px; }
+.drawer-group h4 { margin: 0 0 4px; padding-bottom: 3px; border-bottom: 1px solid var(--line); color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
+.drawer-row { margin-top: 4px; }
+.drawer-row-head { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.drawer-row-head input { margin: 0; flex: 0 0 auto; }
+.drawer-row-head strong { min-width: 0; font: 600 12px 'IBM Plex Mono', monospace; color: var(--ink); }
+.drawer-row-head small { color: var(--muted); font-size: 10px; margin-left: auto; white-space: nowrap; }
+.drawer-row.undrawable .drawer-row-head { cursor: not-allowed; }
+.drawer-row.undrawable strong { color: var(--muted); }
+.drawer-row.off .stack-swatch { opacity: .5; }
+.stack-jump { margin-left: 4px; padding: 2px 7px; color: var(--orange); background: transparent; border: 1px solid var(--orange); border-radius: 2px; font: 600 10px 'IBM Plex Mono', monospace; cursor: pointer; }
+.stack-jump:hover { color: #071a22; background: var(--orange); }
+.stack-notice { margin: 4px 0 0; padding: 5px 7px; border-left: 2px solid var(--orange); color: var(--ink); font-size: 11px; line-height: 1.4; }
+.drawer-notices { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.drawer-notices p { margin: 0 0 6px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.map-pane.drawer-open .maplibregl-ctrl-bottom-right { right: 300px; }
+
+/* The `.legend-bar.temp` / `.radar` / `.cloud` / `.wind` gradients that used to
+   sit here were hand-built colour ramps, unreferenced by any component. A ramp
+   the client draws is a legend for a scale it does not know; the only legend
+   shown now is the provider's own graphic, fetched from the provider that
+   rendered the image. */
+
+.conditions { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 22px; background: linear-gradient(145deg, #102930, #0a1c22); }
+.section-head { display: flex; gap: 13px; align-items: center; }
+.section-head > span { color: var(--orange); font: 600 12px 'IBM Plex Mono', monospace; border-right: 1px solid var(--line); padding-right: 12px; }
+.section-head small { color: var(--muted); text-transform: uppercase; letter-spacing: .13em; }
+.section-head h2 { font: 650 25px 'Newsreader', Georgia, serif; }
+.hero-reading { display: flex; align-items: end; justify-content: space-between; padding: 22px 0 18px; border-bottom: 1px solid var(--line); }
+.hero-reading > strong { font: 600 76px/.8 'Barlow Condensed', sans-serif; letter-spacing: -.04em; }
+.hero-reading sup { color: var(--orange); font-size: 23px; vertical-align: top; }
+.hero-reading p { max-width: 180px; color: var(--muted); text-align: right; }
+/* No value was returned. Read as a deliberate, calm state — not a broken
+   number — so it drops out of the display type scale entirely rather than
+   rendering an oversized dash or zero in its place. */
+.hero-reading > strong.hero-unknown {
+  font: 600 30px/1 'IBM Plex Mono', monospace;
+  letter-spacing: .02em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Per-field honesty labels. Small and quiet by design: real values must
+   always read as the primary content, these only qualify them. */
+.mode-chip {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--muted);
+  background: rgb(255 255 255 / .03);
+  font: 500 9px 'IBM Plex Mono', monospace;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.mode-chip.fixture { border-color: rgb(255 184 77 / .5); color: var(--orange); }
+.mode-chip.mixed { border-color: rgb(117 203 209 / .5); color: var(--cyan); }
+.mode-chip.unavailable { border-color: rgb(239 106 77 / .4); color: #ff9c86; }
+.metric-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+/* The source that produced the number, in the same quiet register as the
+   mode chip: it qualifies the value and must never compete with it. */
+.metric-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.metric-tags:empty { display: none; }
+.source-tag { display: inline-block; margin-top: 5px; padding: 1px 6px; border: 1px solid rgb(117 203 209 / .35); border-radius: 2px; color: var(--cyan); font: 500 9px 'IBM Plex Mono', monospace; font-style: normal; letter-spacing: .06em; }
+.hero-reading .source-tag { margin-top: 6px; }
+.metric { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.metric:nth-child(odd) { border-right: 1px solid var(--line); padding-right: 12px; }
+.metric:nth-child(even) { padding-left: 12px; }
+.metric span { display: block; color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
+.metric strong { display: block; margin: 4px 0; font-size: 22px; }
+.metric small { color: var(--cyan); }
+/* The cloud band filter: three pressed toggles above the as-reported list.
+   Quiet by design — it qualifies the list, it is not a reading of its own. */
+.cloud-bands { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.cloud-bands button { padding: 2px 7px; color: var(--muted); background: transparent; border: 1px dashed var(--line); border-radius: 2px; font: 500 9px 'IBM Plex Mono', monospace; letter-spacing: .04em; cursor: pointer; }
+.cloud-bands button[aria-pressed='true'] { color: #071a22; background: var(--cyan); border: 1px solid var(--cyan); font-weight: 600; }
+.cloud-bands button:hover { border-color: var(--cyan); }
+.marine-rule { margin-top: 17px; padding-left: 12px; border-left: 3px solid var(--cyan); }
+.marine-rule span { display: block; color: var(--cyan); text-transform: uppercase; letter-spacing: .12em; font-size: 11px; }
+.marine-rule strong { font-size: 20px; }
+.marine-rule p { color: var(--muted); }
+.warning { margin-top: 16px; padding: 12px; border: 1px solid rgb(239 106 77 / .55); background: rgb(239 106 77 / .08); }
+.warning span, .warning small { display: block; color: #ff947c; font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; }
+.warning strong { display: block; margin: 4px 0; }
+.warning-list { margin: 6px 0 0; padding-left: 16px; color: var(--ink); font-size: 12px; line-height: 1.5; }
+.warning-list li { margin-top: 2px; }
+
+.story { grid-column: 1 / -1; border: 1px solid var(--line); border-top: 0; padding: 20px 22px 24px; }
+.story-head-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.story-scrubber-badge { display: flex; align-items: center; gap: 8px; padding: 5px 12px; background: #071c22; border: 1px solid var(--orange); border-radius: 3px; }
+.story-scrubber-badge span { color: var(--muted); font: 500 11px 'IBM Plex Mono', monospace; text-transform: uppercase; }
+.story-scrubber-badge strong { color: var(--orange); font: 700 13px 'IBM Plex Mono', monospace; letter-spacing: .04em; }
+
+.timeline-scrubber-controls { margin-top: 18px; padding: 14px 18px; background: #07171c; border: 1px solid #23434c; border-radius: 4px; }
+.scrubber-bar-wrapper { display: flex; flex-direction: column; gap: 6px; }
+.scrubber-labels { display: flex; justify-content: space-between; color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; }
+.scrubber-labels .scrubber-now { color: var(--orange); font-weight: 700; }
+.timeline-slider { width: 100%; height: 6px; appearance: none; background: linear-gradient(90deg, #3498db 0%, #1abc9c 15%, #f39c12 50%, #e74c3c 100%); border-radius: 3px; outline: none; cursor: pointer; }
+.timeline-slider::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--orange); border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 8px rgba(255, 158, 64, 0.8); }
+.timeline-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--orange); border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 8px rgba(255, 158, 64, 0.8); }
+
+.scrubber-quick-jumps { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.scrubber-quick-jumps button { padding: 4px 10px; background: #0c252c; border: 1px solid #23434c; color: var(--ink); cursor: pointer; border-radius: 3px; font: 600 11px 'IBM Plex Mono', monospace; transition: all 0.15s ease; }
+.scrubber-quick-jumps button:hover { border-color: var(--cyan); background: #10323c; }
+.scrubber-quick-jumps button.active { border-color: var(--orange); background: #183e48; color: var(--orange); box-shadow: 0 0 8px rgba(255, 158, 64, 0.3); }
+
+.story-track { display: grid; grid-template-columns: repeat(8, 1fr); margin-top: 18px; border-top: 1px solid var(--line); }
+/* A real <button>, so the browser gives it Enter, Space and focus. Everything
+   below undoes the UA button chrome; nothing here changes the card's layout. */
+.story-track .story-card { position: relative; display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 18px 12px 12px; animation: rise .45s both; animation-delay: calc(var(--step) * 50ms); cursor: pointer; transition: all 0.15s ease; }
+.story-track .story-card:hover { background: rgba(255, 158, 64, 0.08); }
+.story-track .story-card:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
+.story-track .story-card.active-hour { background: rgba(255, 158, 64, 0.14); border-top: 2px solid var(--orange); box-shadow: inset 0 0 16px rgba(255, 158, 64, 0.15); }
+.story-track .story-card:last-child { border-right: 0; }
+.story-track .story-card::before { content: ''; position: absolute; width: 7px; height: 7px; background: var(--orange); top: -4px; left: 14px; transform: rotate(45deg); }
+.story-track time { color: var(--orange); font: 600 11px 'IBM Plex Mono', monospace; }
+.story-track .temp { display: block; font-size: 28px; font-weight: 600; margin: 2px 0; }
+.story-track strong { display: block; min-height: 38px; font-size: 13px; }
+.story-readings { display: flex; gap: 10px; margin: 10px 0 0; }
+.story-readings > span { display: flex; flex-direction: column; }
+.story-key { color: var(--muted); text-transform: uppercase; font-size: 9px; }
+.story-value { margin: 1px 0; font: 500 11px 'IBM Plex Mono', monospace; }
+.evidence-unavailable { margin-top: 18px; padding: 22px; border: 1px dashed var(--line); color: var(--muted); font: 500 12px 'IBM Plex Mono', monospace; }
+
+.expert-layout { display: grid; grid-template-columns: 252px 1fr; }
+.expert-controls { border: 1px solid var(--line); border-top: 0; padding: 18px; background: #0a1d23; }
+.field-control { display: flex; flex-direction: column; gap: 5px; margin-top: 15px; color: var(--muted); text-transform: uppercase; font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: .09em; }
+.field-control select { width: 100%; text-transform: none; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0; }
+.field-control input { width: 100%; }
+.control-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.one-raster-note { color: var(--muted); margin-top: 22px; line-height: 1.4; }
+.unwired-notice { margin-top: 15px; padding: 10px; border: 1px solid var(--orange); color: var(--orange); line-height: 1.35; }
+.one-raster-note i { display: inline-block; width: 8px; height: 8px; border: 1px solid var(--orange); margin-right: 5px; }
+.comparison { min-width: 0; display: grid; grid-template-columns: 1fr 1fr; }
+.comparison-unavailable { min-height: 580px; display: grid; place-content: center; padding: 30px; text-align: center; border: 1px dashed var(--line); color: var(--muted); }
+.comparison-unavailable strong { color: var(--ink); text-transform: uppercase; letter-spacing: .1em; }
+.comparison-unavailable p { margin-top: 8px; }
+.comparison .map-pane { height: 580px; }
+.comparison .map-pane:first-child { border-right: 0; }
+.analysis-tray { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr 1.4fr; border: 1px solid var(--line); border-top: 0; }
+.analysis-tray details { padding: 16px; border-right: 1px solid var(--line); min-width: 0; content-visibility: auto; contain-intrinsic-size: auto 220px; }
+.analysis-tray details:last-child { border-right: 0; }
+.analysis-tray summary { cursor: pointer; color: var(--cyan); text-transform: uppercase; font: 600 11px 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.analysis-tray p, .analysis-tray small { margin-top: 12px; color: var(--muted); line-height: 1.4; }
+.profile-chart { margin-top: 15px; display: grid; grid-template-columns: 30px 1fr; gap: 4px 7px; align-items: center; }
+.profile-chart span { color: var(--muted); font: 10px 'IBM Plex Mono', monospace; }
+.profile-chart i { display: block; height: 6px; background: linear-gradient(90deg, #28727b, var(--cyan)); }
+table { width: 100%; margin-top: 12px; border-collapse: collapse; font: 10px 'IBM Plex Mono', monospace; }
+caption { padding-bottom: 7px; color: var(--muted); text-align: left; }
+th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); }
+.disagreement { color: var(--orange) !important; }
+
+footer { display: flex; justify-content: space-between; gap: 20px; padding: 20px 24px 40px; color: var(--muted); font: 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; border-top: 1px solid var(--line); }
+footer p { text-align: right; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 1050px) {
+  .experimental { display: none; }
+  .masthead { grid-template-columns: 1fr auto; }
+  .location-strip { grid-template-columns: 1fr 1fr; }
+  .location-strip > * { border-bottom: 1px solid var(--line); }
+  /* `1fr` is `minmax(auto, 1fr)`: the track could not shrink below the map
+     pane's content and the whole document scrolled sideways at ≤1050 px. */
+  .simple-grid { grid-template-columns: minmax(0, 1fr); }
+  .conditions { border-left: 1px solid var(--line); }
+  .story { grid-column: auto; }
+  .expert-layout { grid-template-columns: 220px 1fr; }
+  .comparison { grid-template-columns: 1fr; }
+  .comparison .map-pane { height: 430px; border-right: 1px solid var(--line); }
+  .analysis-tray { grid-template-columns: 1fr 1fr; }
+  .analysis-tray details:nth-child(2) { border-right: 0; }
+  .analysis-tray details { border-bottom: 1px solid var(--line); }
+}
+
+@media (max-width: 700px) {
+  main { padding: 10px 10px 30px; }
+  .wordmark { padding: 10px 12px; }
+  .wordmark span { display: none; }
+  .mode-switch button { min-width: 76px; }
+  .location-strip { grid-template-columns: 1fr; }
+  .location-strip > * { border-right: 0; }
+  .fallback-badge { grid-template-columns: auto 1fr; }
+  .fallback-badge time { grid-column: 2; }
+  .map-pane { height: 480px; }
+  .story-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .story-track .story-card { min-width: 160px; scroll-snap-align: start; }
+  .expert-layout { grid-template-columns: 1fr; }
+  .expert-controls { border-right: 1px solid var(--line); }
+  .comparison { grid-column: 1; }
+  .analysis-tray { grid-column: 1; grid-template-columns: 1fr; }
+  .analysis-tray details { border-right: 0; }
+  footer { flex-direction: column; }
+  footer p { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* ---- Drawer rows: several layers at once, each at its own frame ---- */
+
+.stack-entry { border-left: 2px solid var(--line); padding: 4px 0 6px 8px; }
+.stack-entry.drawn, .stack-entry.imagery-only { border-left-color: var(--cyan); }
+.stack-entry.no-frame, .stack-entry.empty, .stack-entry.off { border-left-color: var(--line); }
+.stack-entry.error { border-left-color: var(--orange); }
+.stack-swatch { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
+.stack-frame, .stack-state, .stack-semantics, .stack-raster, .stack-basis, .stack-legend-missing { margin: 3px 0 0; font-size: 11px; line-height: 1.35; color: var(--muted); }
+/* The evidence basis is words, never a colour: it is the condition on which the
+   proxied route was permitted, so it has to survive in the text alternative and
+   for a reader who cannot see the swatch above it. */
+.stack-basis { color: var(--ink); opacity: .85; }
+.stack-basis.basis-live_proxy { border-left: 2px solid var(--orange); padding-left: 6px; }
+.stack-basis.basis-unknown { border-left: 2px solid var(--muted); padding-left: 6px; }
+/* The provider's own legend graphic, at its served size. Nothing here scales or
+   recolours it, because a re-rendered ramp is no longer the provider's. */
+.stack-legend { margin: 6px 0 0; }
+.stack-legend img { max-width: 100%; background: #fff; border-radius: 2px; }
+.stack-legend figcaption { margin-top: 3px; font-size: 10px; color: var(--muted); }
+.stack-frame time { color: var(--ink); }
+.stack-noframe { color: var(--orange); }
+.stack-semantics { font-style: italic; opacity: .8; }
+.stack-opacity { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.stack-opacity input { flex: 1; }
+.layer-text-list { margin: 6px 0 0; padding-left: 18px; }
+.layer-text-list li { margin-bottom: 4px; line-height: 1.4; }
+
+/* Live-source coverage, spelled out. The leading glyph mirrors the marker on
+   the canvas (filled disc vs open ring) so the two readings agree, and the
+   sentence carries the whole claim on its own for anyone who never sees it. */
+.station-coverage-list { margin: 6px 0 0; padding-left: 18px; list-style: none; }
+.station-coverage { margin-bottom: 4px; line-height: 1.4; color: var(--muted); }
+.station-coverage strong { color: var(--ink); }
+.station-coverage::before { display: inline-block; width: 14px; margin-left: -18px; content: '\25CB'; }
+.station-coverage.live::before { content: '\25CF'; color: #70d59a; }
+
+/* ---- Coverage ribbon: where each layer actually has frames ---- */
+
+.coverage-ribbon { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+.coverage-empty { color: var(--muted); font-size: 12px; }
+/* One section per layer group, headed the way the drawer heads it. */
+.coverage-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.coverage-group + .coverage-group { margin-top: 8px; }
+.coverage-group h4 { margin: 0; padding-bottom: 3px; border-bottom: 1px solid var(--line); color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .12em; }
+.coverage-group-note { margin: 0; color: var(--orange); font: 500 10px 'IBM Plex Mono', monospace; }
+.coverage-row { display: grid; grid-template-columns: 190px minmax(0, 1fr) 92px; align-items: center; gap: 10px; }
+.coverage-label { text-align: left; background: transparent; border: 1px solid var(--line); border-radius: 2px; color: var(--muted); font: 500 11px 'IBM Plex Mono', monospace; padding: 3px 7px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.coverage-row.on .coverage-label { color: #071a22; background: var(--cyan); border-color: var(--cyan); font-weight: 600; }
+.coverage-track { position: relative; height: 12px; border: 1px solid var(--line); border-radius: 2px; background: rgb(255 255 255 / .03); overflow: hidden; }
+.coverage-frame { position: absolute; top: 1px; bottom: 1px; width: 2px; margin-left: -1px; background: var(--cyan); opacity: .55; }
+.coverage-row.on .coverage-frame { opacity: 1; }
+.coverage-count { color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-align: right; }

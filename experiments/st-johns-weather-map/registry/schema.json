@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astraeus.invalid/experiments/st-johns-weather-map/source-registry.schema.json",
+  "title": "St. John's weather evidence source registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registry_version", "as_of", "classification", "sources"],
+  "properties": {
+    "registry_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "as_of": {"type": "string", "format": "date"},
+    "classification": {"const": "experiment"},
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/source"}
+    }
+  },
+  "$defs": {
+    "nonempty": {"type": "string", "minLength": 1},
+    "url": {"type": "string", "pattern": "^https://"},
+    "status": {
+      "enum": ["active", "implementing", "credential_required", "licence_review", "unavailable", "duplicate_evidence", "unsupported_field", "retired", "rejected"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "status", "reason", "producer", "product", "documentation_urls", "access_endpoints", "integration", "variables", "coverage", "cadence", "forecast_horizon", "authentication", "licence", "attribution", "caching", "archival", "redistribution", "schema_version", "freshness_threshold", "poc_role", "consensus", "fixture_status", "live_smoke_test_status"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "category": {"$ref": "#/$defs/nonempty"},
+        "status": {"$ref": "#/$defs/status"},
+        "reason": {"$ref": "#/$defs/nonempty"},
+        "producer": {"$ref": "#/$defs/nonempty"},
+        "product": {"$ref": "#/$defs/nonempty"},
+        "documentation_urls": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/url"}},
+        "access_endpoints": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/url"}},
+        "integration": {
+          "type": "object", "additionalProperties": false,
+          "required": ["kind", "client", "metadata_contract"],
+          "properties": {"kind": {"enum": ["official_sdk", "community_client", "generated_client", "typed_adapter", "raw_protocol", "link_only"]}, "client": {"$ref": "#/$defs/nonempty"}, "metadata_contract": {"$ref": "#/$defs/nonempty"}}
+        },
+        "variables": {
+          "type": "array", "minItems": 1,
+          "items": {"type": "object", "additionalProperties": false, "required": ["names", "levels"], "properties": {"names": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/nonempty"}}, "levels": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/nonempty"}}}}
+        },
+        "coverage": {"$ref": "#/$defs/nonempty"},
+        "cadence": {"$ref": "#/$defs/nonempty"},
+        "forecast_horizon": {"$ref": "#/$defs/nonempty"},
+        "authentication": {
+          "type": "object", "additionalProperties": false, "required": ["required", "mechanism", "registration_url"],
+          "properties": {"required": {"type": "boolean"}, "mechanism": {"$ref": "#/$defs/nonempty"}, "registration_url": {"type": ["string", "null"], "pattern": "^https://"}}
+        },
+        "licence": {
+          "type": "object", "additionalProperties": false, "required": ["name", "url", "review_state"],
+          "properties": {"name": {"$ref": "#/$defs/nonempty"}, "url": {"$ref": "#/$defs/url"}, "review_state": {"enum": ["verified", "pending", "restricted", "unknown"]}}
+        },
+        "attribution": {"$ref": "#/$defs/nonempty"},
+        "caching": {"$ref": "#/$defs/nonempty"},
+        "archival": {"$ref": "#/$defs/nonempty"},
+        "redistribution": {"$ref": "#/$defs/nonempty"},
+        "schema_version": {"$ref": "#/$defs/nonempty"},
+        "freshness_threshold": {"$ref": "#/$defs/nonempty"},
+        "poc_role": {"$ref": "#/$defs/nonempty"},
+        "consensus": {
+          "type": "object", "additionalProperties": false, "required": ["eligible", "family", "reason"],
+          "properties": {"eligible": {"type": "boolean"}, "family": {"type": ["string", "null"]}, "reason": {"$ref": "#/$defs/nonempty"}}
+        },
+        "fixture_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
+        "live_smoke_test_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]}
+      }
+    }
+  }
+}

@@ -1,0 +1,188 @@
+name: astraeus-st-johns-weather
+
+# Every host port binds to 127.0.0.1 on purpose: this is an isolated research
+# stack with local-only credentials and must never be reachable off the machine.
+
+x-postgres-url: &postgres-url
+  postgresql://${POSTGRES_USER:-weather}:${POSTGRES_PASSWORD:-weather-local-only}@postgres:5432/${POSTGRES_DB:-weather}
+
+services:
+  web:
+    build:
+      context: ./web
+    environment:
+      # The dev server proxies /api to the API container. vite.config.ts defaults
+      # to 127.0.0.1 for local development, which is not reachable from inside
+      # this container, so the compose network name is supplied explicitly. Until
+      # 2026-08-30 a stale compiled `vite.config.js` shadowed the .ts and hardcoded
+      # this value, which meant the .ts was dead everywhere; the artifact is gone
+      # and this variable is what replaces it.
+      WEATHER_API_PROXY_TARGET: http://api:8000
+    ports:
+      - "127.0.0.1:${WEATHER_WEB_PORT:-5173}:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5173/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [weather]
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      # Explicit and fail-closed: an unset or unrecognised value must not be
+      # read as "fixture", or an outage would quietly serve invented numbers.
+      WEATHER_DATA_MODE: ${WEATHER_DATA_MODE:-live}
+      WEATHER_DATABASE_URL: *postgres-url
+      WEATHER_MINIO_ENDPOINT: http://minio:9000
+      WEATHER_MINIO_BUCKET: ${WEATHER_MINIO_BUCKET:-weather-artifacts}
+      # Read-only credentials. The API never writes an artifact.
+      WEATHER_MINIO_ACCESS_KEY: ${WEATHER_MINIO_READER_KEY:-weather-reader}
+      WEATHER_MINIO_SECRET_KEY: ${WEATHER_MINIO_READER_SECRET:-weather-reader-local-only}
+      WEATHER_ARTIFACT_CACHE: /tmp/weather-artifacts
+    ports:
+      - "127.0.0.1:${WEATHER_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/experiments/weather/v0/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [weather]
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    environment:
+      WEATHER_DATABASE_URL: *postgres-url
+      WEATHER_MINIO_ENDPOINT: http://minio:9000
+      WEATHER_MINIO_BUCKET: ${WEATHER_MINIO_BUCKET:-weather-artifacts}
+      # Scoped writer: object read/write/delete on one bucket, no admin rights.
+      WEATHER_MINIO_ACCESS_KEY: ${WEATHER_MINIO_WRITER_KEY:-weather-writer}
+      WEATHER_MINIO_SECRET_KEY: ${WEATHER_MINIO_WRITER_SECRET:-weather-writer-local-only}
+      WEATHER_STORAGE_CAP: ${WEATHER_STORAGE_CAP:-25GiB}
+      WEATHER_WORKER_HEARTBEAT: /tmp/weather-worker-heartbeat
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-bootstrap:
+        condition: service_completed_successfully
+    # The check fails on a stale beat OR on stalled ingestion: a live process
+    # that has stopped publishing is not healthy. See worker/runtime.py.
+    healthcheck:
+      test: ["CMD", "python", "/app/worker/runtime.py", "--check-heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks: [weather]
+
+  postgres:
+    image: ghcr.io/baosystems/postgis:17-3.5
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-weather}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weather-local-only}
+      POSTGRES_DB: ${POSTGRES_DB:-weather}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [weather]
+
+  minio:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-weather-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-weather-local-only}
+    ports:
+      - "127.0.0.1:${WEATHER_MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${WEATHER_MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks: [weather]
+
+  # One-shot. The only place root MinIO credentials are used: it creates the
+  # bucket, its quota, and the scoped writer/reader users the other services
+  # authenticate with.
+  minio-bootstrap:
+    image: minio/mc:RELEASE.2025-07-21T05-28-08Z
+    entrypoint: ["/bin/sh", "/bootstrap.sh"]
+    environment:
+      WEATHER_MINIO_ENDPOINT: http://minio:9000
+      WEATHER_MINIO_BUCKET: ${WEATHER_MINIO_BUCKET:-weather-artifacts}
+      WEATHER_STORAGE_CAP: ${WEATHER_STORAGE_CAP:-25GiB}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-weather-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-weather-local-only}
+      WEATHER_MINIO_WRITER_KEY: ${WEATHER_MINIO_WRITER_KEY:-weather-writer}
+      WEATHER_MINIO_WRITER_SECRET: ${WEATHER_MINIO_WRITER_SECRET:-weather-writer-local-only}
+      WEATHER_MINIO_READER_KEY: ${WEATHER_MINIO_READER_KEY:-weather-reader}
+      WEATHER_MINIO_READER_SECRET: ${WEATHER_MINIO_READER_SECRET:-weather-reader-local-only}
+    volumes:
+      - ./infra/minio/bootstrap.sh:/bootstrap.sh:ro
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    networks: [weather]
+
+  titiler:
+    image: ghcr.io/developmentseed/titiler:1.1.0
+    environment:
+      # Read-only: the tile server renders published objects, never writes one.
+      AWS_ACCESS_KEY_ID: ${WEATHER_MINIO_READER_KEY:-weather-reader}
+      AWS_SECRET_ACCESS_KEY: ${WEATHER_MINIO_READER_SECRET:-weather-reader-local-only}
+      AWS_S3_ENDPOINT: minio:9000
+      AWS_HTTPS: "NO"
+      AWS_VIRTUAL_HOSTING: "FALSE"
+      AWS_REGION: us-east-1
+      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif,.tiff
+    ports:
+      - "127.0.0.1:${WEATHER_TITILER_PORT:-8001}:80"
+    depends_on:
+      minio-bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1/healthz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+    networks: [weather]
+
+volumes:
+  postgres-data:
+  minio-data:
+
+networks:
+  weather:
+    driver: bridge

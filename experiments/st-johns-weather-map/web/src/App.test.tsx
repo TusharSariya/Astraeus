@@ -1,0 +1,884 @@
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import App from './App'
+
+vi.mock('./MapPanel', () => ({
+  MapPanel: ({ label, onSelect, onJumpToTime }: { label: string; onSelect: (point: unknown) => void; onJumpToTime: (date: Date) => void }) => (
+    <section aria-label={`${label} map pane`}>
+      <button onClick={() => onSelect({ id: 'map-test', name: 'Map point 47.500°N, 52.600°W', latitude: 47.5, longitude: -52.6, kind: 'map' })}>Choose map point</button>
+      <button onClick={() => onJumpToTime(new Date(Date.now() + 3 * 3600 * 1000))}>Jump to nearest frame</button>
+      <button onClick={() => onJumpToTime(new Date(Date.now() - 10 * 60 * 1000))}>Jump ten minutes back</button>
+      <button onClick={() => onJumpToTime(new Date(Date.now() + 80 * 60 * 1000))}>Jump eighty minutes ahead</button>
+    </section>
+  ),
+}))
+
+// dataMode uses `null` (never a default-triggering `undefined`) to mean
+// "omit data_mode from the response entirely" — the fail-closed case.
+const apiPoint = (fields: unknown[] = [], selection = { mode: 'fallback', badge: 'HRDPS primary - consensus unavailable', reason: 'test' }, dataMode: string | null = 'live') => {
+  const body: Record<string, unknown> = { latitude: 47.6186, longitude: -52.7519, valid_time: '2026-08-29T15:00:00Z', selection, fields }
+  if (dataMode !== null) body.data_mode = dataMode
+  return body
+}
+const response = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
+const emptyLayers = { layers: [] }
+const emptyCatalog = { sources: [] }
+const emptyTimeline = { data_mode: 'live', start: '', end: '', items: [] }
+/** Shaped as the running API returns it: CYYT's METAR/TAF feeds have a recorded
+ *  retrieval, the SmartAtlantic buoy is catalogued with none. Cape Spear claims
+ *  no source, so it never appears here. */
+const sourceStatus = {
+  data_mode: 'mixed',
+  statuses: [
+    { source_id: 'awc-metar-speci', state: 'implementing', data_mode: 'live', last_retrieval: '2026-08-30T04:23:44Z', detail: 'live retrieval recorded by the ingestion worker' },
+    { source_id: 'awc-taf', state: 'implementing', data_mode: 'live', last_retrieval: '2026-08-30T04:28:46Z', detail: 'live retrieval recorded by the ingestion worker' },
+    { source_id: 'smartatlantic-st-johns', state: 'implementing', data_mode: 'unavailable', last_retrieval: null, detail: 'no live retrieval recorded' },
+  ],
+  notices: [],
+}
+
+/** A URL-routed fetch mock. Unlike `mockResolvedValue`, each matched call gets
+ *  its own fresh `Response` — the app fetches `/catalog`, `/layers` and
+ *  `/timeline` before `/point`, and a shared Response body can only be
+ *  consumed once. */
+function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown }) {
+  return vi.fn(async (url: string) => {
+    if (url.includes('/sources/status')) return response(routes.sources ?? sourceStatus)
+    if (url.includes('/point')) return response(routes.point ?? apiPoint())
+    if (url.includes('/layers')) return response(routes.layers ?? emptyLayers)
+    if (url.includes('/catalog')) return response(routes.catalog ?? emptyCatalog)
+    if (url.includes('/timeline')) return response(routes.timeline ?? emptyTimeline)
+    return response({})
+  })
+}
+
+describe('weather workbench fail-closed behavior', () => {
+  beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('API offline'))))
+
+  it('shows unavailable unknown evidence on API outage instead of fixtures', async () => {
+    render(<App />)
+    expect(screen.getByText('Checking API')).toBeInTheDocument()
+    expect(screen.getByText('Forecast unavailable · evidence only')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Unavailable')).toBeInTheDocument())
+    expect(screen.queryByText('Experimental consensus')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Unknown').length).toBeGreaterThan(1)
+    expect(screen.getByText(/No previous point evidence is being shown/i)).toBeInTheDocument()
+  })
+
+  it('clears previous point evidence while a new point is loading', async () => {
+    let resolveSecond!: (value: Response) => void
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/point')) {
+        return new Promise<Response>((resolve) => { resolveSecond = resolve })
+      }
+      if (url.includes('/layers')) return response(emptyLayers)
+      if (url.includes('/catalog')) return response(emptyCatalog)
+      if (url.includes('/timeline')) return response(emptyTimeline)
+      return response({})
+    })
+    // First /point call resolves immediately with evidence; every subsequent
+    // /point call hangs until the test resolves it explicitly.
+    let firstPointCall = true
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/point')) {
+        if (firstPointCall) {
+          firstPointCall = false
+          return response(apiPoint([{ field: 'temperature', value: 16, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]))
+        }
+        return new Promise<Response>((resolve) => { resolveSecond = resolve })
+      }
+      if (url.includes('/layers')) return response(emptyLayers)
+      if (url.includes('/catalog')) return response(emptyCatalog)
+      if (url.includes('/timeline')) return response(emptyTimeline)
+      return response({})
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await screen.findByText('16')
+    await userEvent.click(screen.getByRole('button', { name: 'Choose map point' }))
+    await waitFor(() => expect(screen.getByText('Checking API')).toBeInTheDocument())
+    expect(screen.queryByText('16')).not.toBeInTheDocument()
+    resolveSecond(response(apiPoint()))
+  })
+
+  it('converts response wind m/s to km/h and preserves fog enum semantics', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      point: apiPoint([
+        { field: 'wind_speed', value: 10, provenance: { provider: 'ECCC', product: 'HRDPS', normalized_units: 'm/s', data_mode: 'live' } },
+        { field: 'wind_gust', value: 12.5, provenance: { provider: 'ECCC', product: 'HRDPS', original_units: 'm/s', data_mode: 'live' } },
+        { field: 'fog_state', value: 'not_indicated', provenance: { provider: 'CYYT', product: 'METAR', data_mode: 'live' } },
+      ]),
+    }))
+    render(<App />)
+    expect(await screen.findByText('36 / 45')).toBeInTheDocument()
+    expect(screen.getByText('Fog not indicated by available evidence')).toBeInTheDocument()
+    // No direction field came back, so none is claimed — and the old literal
+    // "direction unavailable", which was printed even when one had, is gone.
+    expect(screen.getByText(/km\/h · direction Unknown/)).toBeInTheDocument()
+    expect(screen.queryByText(/direction unavailable/)).not.toBeInTheDocument()
+  })
+
+  it('requests GPS only after action and reports denial with retained location', async () => {
+    const getCurrentPosition = vi.fn((_success, failure) => failure({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }))
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } })
+    render(<App />)
+    expect(getCurrentPosition).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    expect(await screen.findByText(/permission was denied.*CYYT.*remains selected/i)).toBeInTheDocument()
+  })
+
+  it('reports unavailable GPS separately', async () => {
+    const getCurrentPosition = vi.fn((_success, failure) => failure({ code: 2, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }))
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } })
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    expect(await screen.findByText(/position could not be determined/i)).toBeInTheDocument()
+  })
+
+  it('supports keyboard coordinate entry and validates bounds', async () => {
+    render(<App />)
+    await userEvent.clear(screen.getByLabelText('Latitude'))
+    await userEvent.type(screen.getByLabelText('Latitude'), '47.55')
+    await userEvent.clear(screen.getByLabelText('Longitude'))
+    await userEvent.type(screen.getByLabelText('Longitude'), '-52.7')
+    await userEvent.click(screen.getByRole('button', { name: 'Go' }))
+    expect(screen.getByRole('heading', { name: 'Coordinates 47.550, -52.700' })).toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText('Latitude'))
+    await userEvent.type(screen.getByLabelText('Latitude'), '100')
+    await userEvent.click(screen.getByRole('button', { name: 'Go' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('latitude from -90 to 90')
+  })
+
+  it('labels expert controls and comparison honestly, and never accepts a run/member/level it would discard', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
+    expect(screen.getByText(/Every option below comes from a response\. A selector with no returned options stays disabled and says why\./i)).toBeInTheDocument()
+    expect(screen.getByText('No run time in returned provenance')).toBeInTheDocument()
+    expect(screen.getByText('No ensemble member in returned provenance')).toBeInTheDocument()
+    expect(screen.getByText('No vertical level in returned provenance')).toBeInTheDocument()
+    expect(screen.getByText('Pane B unavailable')).toBeInTheDocument()
+    expect(screen.queryByText(/ECMWF|2.4°C|moderate/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('table')).toHaveAccessibleName('Provenance returned for the selected point')
+
+    // The API's /point takes latitude, longitude, valid_time and product only.
+    // Run, member and level therefore must not present themselves as choices:
+    // each is disabled and each says, in its own accessible description, that
+    // it cannot change what is fetched.
+    for (const name of ['Run', 'Member', 'Level']) {
+      const control = screen.getByRole('combobox', { name })
+      expect(control).toBeDisabled()
+      expect(control).toHaveAccessibleDescription(/could not change what is fetched/i)
+    }
+    // Provider, product and variable genuinely do reach the request, so they
+    // must not have been swept into the same read-only treatment.
+    expect(screen.getByRole('combobox', { name: 'Provider' })).not.toHaveAccessibleDescription(/could not change what is fetched/i)
+  })
+
+  it('never sends a run, member or level parameter on any request', async () => {
+    const fetchMock = routedFetch({
+      point: apiPoint([{ field: 'temperature', value: 11, provenance: { provider: 'ECCC', product: 'HRDPS', run_time: '2026-08-30 06Z', member: 'control', vertical_level: '2 m above ground', data_mode: 'live' } }]),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await screen.findByText('11')
+    await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
+    // The provenance values are on screen to read...
+    expect(await screen.findByRole('option', { name: '2026-08-30 06Z' })).toBeInTheDocument()
+    // ...but no request carries them, because no such parameter exists.
+    const urls = fetchMock.mock.calls.map(([url]) => String(url))
+    expect(urls.length).toBeGreaterThan(0)
+    expect(urls.some((url) => /[?&](run|member|level)=/.test(url))).toBe(false)
+  })
+
+  it('renders the fixture banner for a data_mode:"fixture" response and never claims Live API', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      point: apiPoint([{ field: 'temperature', value: 9, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'fixture' } }], undefined, 'fixture'),
+    }))
+    render(<App />)
+    expect(await screen.findByText('9')).toBeInTheDocument()
+    expect(screen.getByText('Development fixture')).toBeInTheDocument()
+    expect(screen.getByText('DEVELOPMENT FIXTURE · NOT LIVE EVIDENCE')).toBeInTheDocument()
+    expect(screen.queryByText('Live API')).not.toBeInTheDocument()
+  })
+
+  it('fails closed to unavailable when the response declares no data_mode at all', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      point: apiPoint([{ field: 'temperature', value: 9, provenance: { provider: 'ECCC', product: 'HRDPS' } }], undefined, null),
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Unavailable', { selector: '.source-state strong' })).toBeInTheDocument())
+    expect(screen.queryByText('Live API')).not.toBeInTheDocument()
+    expect(screen.getByText('NO LIVE EVIDENCE RETRIEVED')).toBeInTheDocument()
+    expect(screen.getByText(/Response declared no data_mode/i)).toBeInTheDocument()
+  })
+
+  it('renders Unknown/Unavailable for a response with null fields and shows no numeric value anywhere', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      point: apiPoint([
+        { field: 'temperature', value: null, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } },
+        { field: 'wind_speed', value: null, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } },
+      ]),
+    }))
+    render(<App />)
+    await waitFor(() => expect(screen.getAllByText('Unknown').length).toBeGreaterThan(0))
+    expect(screen.getByText('Unavailable', { selector: '.marine-rule strong' })).toBeInTheDocument()
+    // No digit should appear anywhere in the rendered evidence values (the
+    // "01" section-head index is decorative chrome, not a data value).
+    const evidenceValues = ['.hero-reading', '.metric-grid', '.marine-rule', '.warning']
+      .map((selector) => document.querySelector(selector)?.textContent ?? '')
+      .join(' ')
+    expect(evidenceValues).not.toMatch(/\d/)
+  })
+
+  it('renders the empty-story state for a single-point response, with no fabricated narrative', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      point: apiPoint([{ field: 'temperature', value: 12, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]),
+      timeline: emptyTimeline,
+    }))
+    render(<App />)
+    await screen.findByText('12')
+    expect(screen.getByText(/24-hour narrative unavailable from this point response\. No forecast story has been inferred\./i)).toBeInTheDocument()
+  })
+
+  it('shows the marine section as Unavailable, never a number, when marine fields are absent', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      point: apiPoint([{ field: 'temperature', value: 5, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]),
+    }))
+    render(<App />)
+    await screen.findByText('5')
+    const marineRule = document.querySelector('.marine-rule')
+    expect(marineRule?.textContent ?? '').toMatch(/Unavailable/)
+    expect(marineRule?.textContent ?? '').not.toMatch(/\d/)
+  })
+})
+
+describe('story card keyboard activation', () => {
+  const storyPoint = (temperature: number) => apiPoint([
+    { field: 'temperature', value: temperature, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } },
+  ])
+
+  /** A timeline publishing now and now+3h, so the story builds two real cards
+   *  and activating the second is observably different from doing nothing. */
+  const publishedTimeline = () => {
+    const hour = new Date()
+    hour.setUTCMinutes(0, 0, 0)
+    const at = (offset: number) => new Date(hour.getTime() + offset * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z')
+    return {
+      // Declared live: an undeclared timeline fails closed and publishes no hour,
+      // which is asserted separately below.
+      data_mode: 'live',
+      start: '', end: '',
+      items: [0, 3].map((offset) => ({ valid_time_utc: at(offset), valid_time_newfoundland: '', available_products: ['HRDPS'] })),
+    }
+  }
+
+  it('activates a story card from the keyboard alone, with the readings in its accessible name', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: storyPoint(7), timeline: publishedTimeline() }))
+    render(<App />)
+
+    // A real <button>, so it is reachable by Tab and fires on Enter without the
+    // panel hand-rolling a key handler that could drift from the click path.
+    const card = await screen.findByRole('button', { name: /^Scrub to \+3h\./ })
+    expect(card).toHaveAccessibleName(/temperature 7 \u00b0C/)
+    expect(card).toHaveAccessibleName(/dew point unknown/)
+    expect(card).toHaveAttribute('aria-pressed', 'false')
+
+    card.focus()
+    expect(card).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    expect(card).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('+3h (Forecast)')).toBeInTheDocument()
+  })
+
+  it('activates a story card with Space as well, having been tabbed to', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: storyPoint(7), timeline: publishedTimeline() }))
+    render(<App />)
+    const card = await screen.findByRole('button', { name: /^Scrub to \+3h\./ })
+    // Tab there rather than calling focus(): the point is that the card sits in
+    // the natural focus order, which a div with tabIndex could fake but a
+    // keyboard user could still never activate.
+    for (let step = 0; step < 40 && document.activeElement !== card; step += 1) await userEvent.tab()
+    expect(card).toHaveFocus()
+    await userEvent.keyboard(' ')
+    expect(card).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+describe('station markers and live-source coverage', () => {
+  it('says in the picker which stations have a live ingested source and which do not', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    expect(await screen.findByRole('option', { name: /CYYT.*live source/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /SmartAtlantic.*no live retrieval/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Cape Spear.*no ingested source/i })).toBeInTheDocument()
+    expect(await screen.findByText(/A live ingested source stands behind 1 of 3 stations/i)).toBeInTheDocument()
+  })
+
+  it('shows coverage as unknown, never as live, when the status endpoint fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/sources/status')) return new Response('nope', { status: 503 })
+      if (url.includes('/point')) return response(apiPoint())
+      if (url.includes('/layers')) return response(emptyLayers)
+      if (url.includes('/catalog')) return response(emptyCatalog)
+      if (url.includes('/timeline')) return response(emptyTimeline)
+      return response({})
+    }))
+    render(<App />)
+    expect(await screen.findByText(/Live-source coverage unknown: source status returned 503/i)).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /live source/i })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('option', { name: /coverage unknown/i }).length).toBe(2)
+  })
+})
+
+/** Two catalogue rows shaped as `/catalog` really returns them: no source is
+ *  `active`, because the registry state is a ceiling that never reads active. */
+const catalogWithModels = {
+  data_mode: 'live',
+  sources: [
+    {
+      id: 'eccc-hrdps', producer: 'Environment and Climate Change Canada', product: 'HRDPS raw', state: 'implementing',
+      status_reason: 'Official product is catalogued; ingestion is not implemented yet.', role: 'Primary deterministic forecast',
+      may_enter_consensus: true, cadence: '4 runs/day', forecast_horizon: 'approximately 48 h',
+      geographic_coverage: 'Published native domain', licence: 'MSC Open Data licence', attribution: 'Credit ECCC',
+    },
+    {
+      id: 'eccc-radar', producer: 'Environment and Climate Change Canada', product: 'Weather radar composite', state: 'implementing',
+      status_reason: 'Catalogued; not yet ingested.', role: 'Observation',
+      may_enter_consensus: false, cadence: '6 min', forecast_horizon: 'nowcast',
+      geographic_coverage: 'Composite', licence: 'MSC Open Data licence', attribution: 'Credit ECCC',
+    },
+  ],
+}
+
+describe('product selection is reachable, not permanently disabled', () => {
+  it('offers a model the point endpoint accepts even though no catalogue source is ever active', async () => {
+    const fetchMock = routedFetch({ catalog: catalogWithModels })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+
+    const hrdps = await screen.findByRole('button', { name: /HRDPS/ })
+    expect(hrdps).not.toBeDisabled()
+    expect(hrdps).not.toHaveAttribute('aria-disabled', 'true')
+
+    await userEvent.click(hrdps)
+    // The token sent is the one `/point` declares, not the catalogue's prose
+    // product name ("HRDPS raw"), which the endpoint answers 422 to.
+    await waitFor(() => expect(fetchMock.mock.calls.map(([url]) => String(url)).some((url) => url.includes('/point') && url.includes('product=HRDPS'))).toBe(true))
+    expect(fetchMock.mock.calls.map(([url]) => String(url)).some((url) => url.includes('product=HRDPS+raw'))).toBe(false)
+  })
+
+  it('renders no control for a catalogue source the endpoint has no product value for', async () => {
+    vi.stubGlobal('fetch', routedFetch({ catalog: catalogWithModels }))
+    render(<App />)
+    await screen.findByRole('button', { name: /HRDPS/ })
+    // A radar button could never be enabled by any response, so it is not an
+    // affordance at all rather than a permanently disabled one.
+    expect(screen.queryByRole('button', { name: /Weather radar composite/ })).not.toBeInTheDocument()
+  })
+
+  it('shows the API’s own reason when a selected product has nothing published', async () => {
+    const noArtifact = {
+      data_mode: 'unavailable',
+      valid_time: '2026-08-29T15:00:00Z',
+      selection: { mode: 'evidence_only', badge: 'evidence unavailable', reason: 'HRDPS has no published artifact covering this coordinate and time' },
+      fields: [],
+    }
+    vi.stubGlobal('fetch', routedFetch({ catalog: catalogWithModels, point: noArtifact }))
+    render(<App />)
+
+    await userEvent.click(await screen.findByRole('button', { name: /HRDPS/ }))
+    expect(await screen.findByText(/HRDPS has no published artifact covering this coordinate and time/i)).toBeInTheDocument()
+  })
+})
+
+describe('timeline mode is applied like every other fetch', () => {
+  const undeclaredTimeline = () => {
+    const hour = new Date()
+    hour.setUTCMinutes(0, 0, 0)
+    const at = (offset: number) => new Date(hour.getTime() + offset * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z')
+    // No data_mode at all: the fail-closed case.
+    return { start: '', end: '', items: [0, 3].map((offset) => ({ valid_time_utc: at(offset), valid_time_newfoundland: '', available_products: ['HRDPS'] })) }
+  }
+
+  it('does not present an undeclared timeline’s hours as published coverage', async () => {
+    const fetchMock = routedFetch({
+      point: apiPoint([{ field: 'temperature', value: 7, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]),
+      timeline: undeclaredTimeline(),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+
+    expect(await screen.findByText(/timeline declared no data_mode/i)).toBeInTheDocument()
+    // No story card is built from hours the response never claimed.
+    expect(screen.queryByRole('button', { name: /^Scrub to \+3h\./ })).not.toBeInTheDocument()
+  })
+})
+
+/** The blended response as `/point` really returns it: the same field name
+ *  once per contributing source, the METAR observation listed first, and a
+ *  `selection` that names the source the API answered with. */
+const blendedPoint = () => ({
+  data_mode: 'live',
+  latitude: 47.5615, longitude: -52.7126, valid_time: '2026-08-30T13:00:00Z',
+  selection: { mode: 'fallback', selected_source_id: 'eccc-hrdps', selected_product_id: 'hrdps', badge: 'HRDPS primary - consensus unavailable', reason: 'minimum consensus evidence not met' },
+  fields: [
+    { field: 'temperature', value: 17.0, provenance: { source_id: 'awc-metar-speci', product: 'METAR/SPECI', provider: 'NOAA/NWS Aviation Weather Center', normalized_units: 'degC', data_mode: 'live' } },
+    { field: 'visibility', value: 24140.16, provenance: { source_id: 'awc-metar-speci', product: 'METAR/SPECI', provider: 'NOAA/NWS Aviation Weather Center', normalized_units: 'm', data_mode: 'live' } },
+    { field: 'total_cloud', value: 75, provenance: { source_id: 'awc-metar-speci', product: 'METAR/SPECI', provider: 'NOAA/NWS Aviation Weather Center', normalized_units: 'percent', data_mode: 'live' } },
+    { field: 'mean_sea_level_pressure', value: 1013.7, provenance: { source_id: 'awc-metar-speci', product: 'METAR/SPECI', provider: 'NOAA/NWS Aviation Weather Center', normalized_units: 'hPa', data_mode: 'live' } },
+    { field: 'temperature', value: 18.053, provenance: { source_id: 'eccc-hrdps', product: 'HRDPS raw', provider: 'Environment and Climate Change Canada', normalized_units: 'degC', data_mode: 'live' } },
+    { field: 'wind_speed', value: 10, provenance: { source_id: 'eccc-hrdps', product: 'HRDPS raw', provider: 'Environment and Climate Change Canada', normalized_units: 'm s-1', derivation: 'MetPy wind_speed from u/v components', derivation_version: 'metpy-1.7.1-wind-v1', data_mode: 'live' } },
+    { field: 'wind_direction', value: 240, provenance: { source_id: 'eccc-hrdps', product: 'HRDPS raw', provider: 'Environment and Climate Change Canada', normalized_units: 'degree', derivation: 'MetPy wind_direction from u/v components, meteorological convention (from)', derivation_version: 'metpy-1.7.1-wind-v1', data_mode: 'live' } },
+    { field: 'mean_sea_level_pressure', value: 101383, provenance: { source_id: 'eccc-hrdps', product: 'HRDPS raw', provider: 'Environment and Climate Change Canada', normalized_units: 'Pa', data_mode: 'live' } },
+    { field: 'relative_humidity', value: 79.5, provenance: { source_id: 'eccc-rdps', product: 'RDPS', provider: 'Environment and Climate Change Canada', normalized_units: 'percent', derivation: 'MetPy relative_humidity_from_dewpoint with explicit liquid-water phase', derivation_version: 'metpy-1.7.1-liquid-v1', data_mode: 'live' } },
+  ],
+})
+
+describe('point readings are attributed to the source that produced them', () => {
+  it('shows the selected source\u2019s temperature on the blended response, tagged, with the API\u2019s own badge in the header', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    render(<App />)
+    // The hero is the HRDPS sample the selection names, not the METAR listed first.
+    expect(await screen.findByText('18.1')).toBeInTheDocument()
+    expect(screen.queryByText('17')).not.toBeInTheDocument()
+    expect(within(document.querySelector('.hero-reading') as HTMLElement).getByText('eccc-hrdps')).toBeInTheDocument()
+    expect(screen.getByText('HRDPS primary - consensus unavailable')).toBeInTheDocument()
+  })
+
+  it('converts visibility from the declared metres, and never prints the raw number under km', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    render(<App />)
+    expect(await screen.findByText('24.1 km')).toBeInTheDocument()
+    expect(screen.queryByText(/24140/)).not.toBeInTheDocument()
+  })
+
+  it('gives total cloud its own metric and never fills the low stratum with it', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    render(<App />)
+    await screen.findByText('18.1')
+    const total = screen.getByText('Total cloud').closest('.metric') as HTMLElement
+    expect(within(total).getByText('75%')).toBeInTheDocument()
+    expect(within(total).getByText('awc-metar-speci')).toBeInTheDocument()
+    const strata = screen.getByText('Cloud L / M / H').closest('.metric') as HTMLElement
+    expect(within(strata).getByText('Unknown')).toBeInTheDocument()
+  })
+
+  it('shows wind speed and the from-direction, disclosing the MetPy derivation', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    render(<App />)
+    const wind = (await screen.findByText('Wind / gust')).closest('.metric') as HTMLElement
+    expect(within(wind).getByText('36 / Unknown')).toBeInTheDocument()
+    expect(within(wind).getByText(/from 240°/)).toBeInTheDocument()
+    expect(within(wind).getByText(/derived · MetPy/)).toBeInTheDocument()
+    expect(within(wind).queryByText(/direction unavailable/)).not.toBeInTheDocument()
+  })
+
+  it('shows the derived-humidity chip and a pressure metric converted from the declared unit', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    render(<App />)
+    const humidity = (await screen.findByText('Humidity')).closest('.metric') as HTMLElement
+    expect(within(humidity).getByText(/derived · MetPy/)).toBeInTheDocument()
+    // The selected source (HRDPS) published Pa; it is shown as hPa, one decimal.
+    const pressure = screen.getByText('MSLP').closest('.metric') as HTMLElement
+    expect(within(pressure).getByText('1013.8 hPa')).toBeInTheDocument()
+    expect(within(pressure).getByText('eccc-hrdps')).toBeInTheDocument()
+  })
+
+  it('lists each derivation in the provenance table', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    render(<App />)
+    await screen.findByText('18.1')
+    await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
+    const table = screen.getByRole('table', { name: 'Provenance returned for the selected point' })
+    expect(within(table).getByRole('columnheader', { name: 'Derivation' })).toBeInTheDocument()
+    expect(within(table).getByText(/relative_humidity_from_dewpoint/)).toBeInTheDocument()
+  })
+
+  it('moves the scrubber when a layer row asks to jump to its nearest frame', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    expect(screen.getByText('Now (0h)', { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Jump to nearest frame' }))
+    expect(screen.getByText('+3h (Forecast)')).toBeInTheDocument()
+  })
+
+  it('shows the true minute offset after a jump, and never rounds a nearby frame to Now', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    const badge = () => (document.querySelector('.story-scrubber-badge strong') as HTMLElement).textContent
+    expect(badge()).toBe('Now (0h)')
+    // A radar frame ten minutes ago is not "Now": the badge used to round the
+    // offset to the hour and claim an instant the reader had not chosen.
+    await userEvent.click(screen.getByRole('button', { name: 'Jump ten minutes back' }))
+    expect(badge()).toBe('-10 min (Past)')
+    expect(screen.queryByText('Now (0h)', { selector: '.story-scrubber-badge strong' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '10 min ago on the headland' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Jump eighty minutes ahead' }))
+    expect(badge()).toBe('+1 h 20 min (Forecast)')
+  })
+})
+
+describe('model row states its own coverage', () => {
+  const hour = new Date()
+  hour.setUTCMinutes(0, 0, 0)
+  const at = (offset: number) => new Date(hour.getTime() + offset * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const catalogWithReps = {
+    ...catalogWithModels,
+    sources: [
+      ...catalogWithModels.sources,
+      {
+        id: 'eccc-reps', producer: 'Environment and Climate Change Canada', product: 'REPS', state: 'implementing',
+        status_reason: 'Official product is catalogued; ingestion is not implemented yet.', role: 'Regional ensemble',
+        may_enter_consensus: true, cadence: '4 runs/day', forecast_horizon: '72 h',
+        geographic_coverage: 'Published native domain', licence: 'MSC Open Data licence', attribution: 'Credit ECCC',
+      },
+    ],
+  }
+  const statusWithModels = {
+    data_mode: 'mixed',
+    statuses: [
+      ...sourceStatus.statuses,
+      { source_id: 'eccc-hrdps', state: 'implementing', data_mode: 'live', last_retrieval: '2026-08-30T12:13:06Z', detail: 'live retrieval recorded by the ingestion worker' },
+      { source_id: 'eccc-reps', state: 'implementing', data_mode: 'unavailable', last_retrieval: null, detail: 'no live retrieval recorded' },
+    ],
+  }
+  const timelineWithModels = {
+    data_mode: 'live', start: '', end: '',
+    items: [0, 3, 18].map((offset) => ({ valid_time_utc: at(offset), valid_time_newfoundland: '', available_products: ['eccc-hrdps'] })),
+  }
+
+  it('says how far this deployment\u2019s ingested hours reach, and that an unwired model has nothing ingested', async () => {
+    vi.stubGlobal('fetch', routedFetch({ catalog: catalogWithReps, sources: statusWithModels, timeline: timelineWithModels }))
+    render(<App />)
+    // The newest published hour is +18 h from the top of the current hour, so
+    // rounded from the session's real reference instant it reads +17 or +18.
+    const hrdps = await screen.findByRole('button', { name: /HRDPS.*covers to \+1[78] h/ })
+    expect(hrdps).toHaveAttribute('aria-pressed', 'false')
+    // Registry prose moves to the tooltip, labelled for what it is.
+    expect(hrdps).toHaveAttribute('title', expect.stringMatching(/approximately 48 h.*provider documentation, not verified here/))
+    expect(within(hrdps).queryByText(/approximately 48 h/)).not.toBeInTheDocument()
+
+    const reps = screen.getByRole('button', { name: /REPS.*nothing ingested/ })
+    expect(reps).toHaveClass('model-unavailable')
+    expect(reps).not.toBeDisabled()
+    // No radiogroup any more: plain pressed buttons, no roving focus to hand-roll.
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+    await userEvent.click(reps)
+    expect(reps).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+/** The METAR fields `/point` serves for a two-layer report: the cover code is
+ *  the retrieved meaning string, the base is metres (original feet), and the
+ *  fog state is derived from the present-weather group and says so. */
+const cloudLayerPoint = () => apiPoint([
+  { field: 'cloud_layer_1_cover_code', value: 'BKN', provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'code', original_units: 'code', data_mode: 'live' } },
+  { field: 'cloud_layer_1_cover', value: 75, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'percent', data_mode: 'live' } },
+  { field: 'cloud_layer_1_base', value: 4267.2, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'm', original_units: 'ft', data_mode: 'live' } },
+  { field: 'cloud_layer_2_cover_code', value: 'OVC', provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'code', data_mode: 'live' } },
+  { field: 'cloud_layer_2_base', value: null, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'm', original_units: 'ft', data_mode: 'live' } },
+  { field: 'fog_state', value: 'evidence_present', provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'category', derivation: 'ingest.meteorology.fog_state from the METAR/TAF present-weather group', derivation_version: 'fog-state-present-weather-v1', data_mode: 'live' } },
+])
+
+describe('cloud layers and fog are shown as reported', () => {
+  it('renders each reported layer in provider order with its base in metres, and leaves the strata Unknown', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: cloudLayerPoint() }))
+    render(<App />)
+    const layers = (await screen.findByText('Cloud layers')).closest('.metric') as HTMLElement
+    expect(within(layers).getByText(/BKN · 4267 m/)).toBeInTheDocument()
+    expect(within(layers).getByText(/OVC · base Unknown/)).toBeInTheDocument()
+    expect(within(layers).getByText(/not bucketed into strata/)).toBeInTheDocument()
+    expect(within(layers).getByText('awc-metar-speci')).toBeInTheDocument()
+    // The layers never fill a stratum: no low/middle/high is derived from them.
+    const strata = screen.getByText('Cloud L / M / H').closest('.metric') as HTMLElement
+    expect(within(strata).getByText('Unknown')).toBeInTheDocument()
+  })
+
+  it('shows Unknown for the layers when no layer field was returned', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: apiPoint([{ field: 'temperature', value: 8, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]) }))
+    render(<App />)
+    await screen.findByText('8')
+    const layers = screen.getByText('Cloud layers').closest('.metric') as HTMLElement
+    expect(within(layers).getByText('Unknown')).toBeInTheDocument()
+    expect(within(layers).getByText('No cloud layer returned')).toBeInTheDocument()
+    expect(within(layers).queryByText(/awc-metar-speci/)).not.toBeInTheDocument()
+  })
+
+  it('gives fog its own metric, credited to the source that derived it', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: cloudLayerPoint() }))
+    render(<App />)
+    const fog = (await screen.findByText('Fog', { selector: '.metric > span' })).closest('.metric') as HTMLElement
+    expect(within(fog).getByText('Fog evidence present')).toBeInTheDocument()
+    expect(within(fog).getByText('awc-metar-speci')).toBeInTheDocument()
+    expect(within(fog).getByText('derived from the present-weather group')).toBeInTheDocument()
+  })
+
+  it('credits no source for an unknown fog state', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: apiPoint([{ field: 'temperature', value: 8, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]) }))
+    render(<App />)
+    await screen.findByText('8')
+    const fog = screen.getByText('Fog', { selector: '.metric > span' }).closest('.metric') as HTMLElement
+    expect(within(fog).getByText('Fog evidence unknown')).toBeInTheDocument()
+    expect(within(fog).queryByText(/HRDPS|ECCC/)).not.toBeInTheDocument()
+  })
+})
+
+/** Four GOES-East proxies shaped as Agent A's `/layers` publishes them:
+ *  `group: satellite`, ten-minute frames, all of them in the past. */
+const satelliteLayers = () => {
+  const now = Date.now()
+  const past = (minutesAgo: number) => new Date(Math.floor((now - minutesAgo * 60_000) / 600_000) * 600_000).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const times = [120, 60, 30, 20].map(past)
+  const base = { kind: 'raster', product: 'GOES-East', units: 'unknown', cadence_seconds: 600, staleness_tolerance_seconds: 300, evidence_basis: 'live_proxy', raster_available: true, legend_available: false, group: 'satellite', times }
+  return [
+    { ...base, id: 'geomet-live-goes-east-dayvis-nightir', title: 'GOES-East day visible / night IR (1 km, live proxy)', field: 'satellite_day_visible_night_ir', semantics: 'observed imagery; frames exist only for the past; never forecast' },
+    { ...base, id: 'geomet-live-goes-east-snowfog-nightmicro', title: 'GOES-East snow-fog / night microphysics (1 km, live proxy)', field: 'satellite_snow_fog_night_microphysics', semantics: 'observed imagery; never forecast' },
+    { ...base, id: 'geomet-live-goes-east-naturalcolor', title: 'GOES-East natural color (1 km, live proxy)', field: 'satellite_natural_color', semantics: 'observed imagery; never forecast' },
+    { ...base, id: 'geomet-live-goes-east-nightir-2km', title: 'GOES-East night IR (2 km, live proxy)', field: 'satellite_night_ir', semantics: 'observed imagery; never forecast' },
+  ]
+}
+
+describe('timeline coverage rows are grouped like the drawer', () => {
+  it('heads each non-empty group in the shared order, satellite first with its past-only note', async () => {
+    const hrdps = { id: 'geomet-live-hrdps-tt', title: 'HRDPS air temperature (live proxy)', kind: 'raster', field: 'air_temperature', product: 'HRDPS', units: 'degC', semantics: 'live-proxied imagery', times: [], evidence_basis: 'live_proxy', raster_available: true, group: 'forecast_proxy' }
+    const radar = { id: 'eccc-radar-radar', title: 'eccc-radar radar', kind: 'point', field: 'radar', product: 'radar', units: 'mixed', semantics: 'No echo means no detected precipitating echo, not clear sky.', times: [], group: 'observation' }
+    vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: [hrdps, radar, ...satelliteLayers()], notices: [] } }))
+    render(<App />)
+
+    const ribbon = await screen.findByLabelText('Published frames per layer across the window')
+    const headings = within(ribbon).getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent)
+    expect(headings).toEqual(['Satellite (observed, past only) · 4 layers', 'Observations · 1 layer', 'Forecast · live proxy · 1 layer'])
+    const satellite = within(ribbon).getByRole('group', { name: 'Satellite (observed, past only) · 4 layers' })
+    expect(within(satellite).getAllByRole('button')).toHaveLength(4)
+    expect(within(satellite).getByRole('button', { name: 'GOES-East natural color (1 km, live proxy)' })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(satellite).getByText('observed imagery: frames exist only for the past')).toBeInTheDocument()
+    // The note is a claim about satellite imagery only; no other group makes it.
+    expect(within(ribbon).getAllByText('observed imagery: frames exist only for the past')).toHaveLength(1)
+    // Row semantics are untouched: the label still toggles the layer.
+    await userEvent.click(within(satellite).getByRole('button', { name: 'GOES-East natural color (1 km, live proxy)' }))
+    expect(within(satellite).getByRole('button', { name: 'GOES-East natural color (1 km, live proxy)' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('says a satellite row has no frame at a forward hour rather than reusing a past one', async () => {
+    vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: satelliteLayers(), notices: [] } }))
+    render(<App />)
+    const ribbon = await screen.findByLabelText('Published frames per layer across the window')
+    await userEvent.click(screen.getByRole('button', { name: '+3h' }))
+    const counts = within(ribbon).getAllByText('no frame here')
+    expect(counts).toHaveLength(4)
+  })
+})
+
+describe('model row is grouped by producer', () => {
+  const catalogTwoProducers = {
+    data_mode: 'live',
+    sources: [
+      ...catalogWithModels.sources,
+      {
+        id: 'noaa-gfs', producer: 'NOAA', product: 'GFS', state: 'implementing',
+        status_reason: 'Catalogued.', role: 'Global deterministic forecast',
+        may_enter_consensus: true, cadence: '4 runs/day', forecast_horizon: '384 h',
+        geographic_coverage: 'Global', licence: 'US public domain', attribution: 'Credit NOAA',
+      },
+      {
+        id: 'eccc-reps', producer: 'Environment and Climate Change Canada', product: 'REPS', state: 'implementing',
+        status_reason: 'Catalogued.', role: 'Regional ensemble',
+        may_enter_consensus: true, cadence: '4 runs/day', forecast_horizon: '72 h',
+        geographic_coverage: 'Published native domain', licence: 'MSC Open Data licence', attribution: 'Credit ECCC',
+      },
+    ],
+  }
+
+  it('labels each producer once, keeps BLEND first and ungrouped, and keeps catalogue order inside a group', async () => {
+    vi.stubGlobal('fetch', routedFetch({ catalog: catalogTwoProducers }))
+    render(<App />)
+    await screen.findByRole('button', { name: /GFS/ })
+    const strip = screen.getByLabelText('Select forecast model')
+    const buttons = within(strip).getAllByRole('button').map((button) => button.textContent)
+    expect(buttons[0]).toMatch(/^BLENDConsensus/)
+    expect(buttons.map((text) => text?.replace(/^.*?(HRDPS|REPS|GFS|Consensus).*$/, '$1'))).toEqual(['Consensus', 'HRDPS', 'REPS', 'GFS'])
+    // One label per producer, in catalogue order.
+    const labels = [...strip.querySelectorAll('.model-group-label')].map((label) => label.textContent)
+    expect(labels).toEqual(['Environment and Climate Change Canada', 'NOAA'])
+    const eccc = within(strip).getByRole('group', { name: 'Environment and Climate Change Canada' })
+    expect(within(eccc).getAllByRole('button')).toHaveLength(2)
+    expect(within(within(strip).getByRole('group', { name: 'NOAA' })).getByRole('button', { name: /GFS/ })).toBeInTheDocument()
+    // BLEND is outside every producer group.
+    expect(screen.getByRole('button', { name: /BLEND/ }).closest('.model-group')).toBeNull()
+    // Selection still works through the group.
+    await userEvent.click(within(eccc).getByRole('button', { name: /REPS/ }))
+    expect(within(eccc).getByRole('button', { name: /REPS/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /BLEND/ })).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
+describe('station picker is grouped by live-source coverage', () => {
+  const picker = () => document.querySelector('.station-picker select') as HTMLSelectElement
+
+  it('puts live stations under one optgroup and places to query under another', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    await screen.findByRole('option', { name: /CYYT.*live source/i })
+    const groups = within(picker()).getAllByRole('group').map((group) => (group as HTMLOptGroupElement).label)
+    expect(groups).toEqual(['Live ingested source', 'No ingested source (place to query)'])
+    const live = within(picker()).getByRole('group', { name: 'Live ingested source' })
+    expect(within(live).getAllByRole('option')).toHaveLength(1)
+    expect(within(live).getByRole('option', { name: /CYYT/ })).toBeInTheDocument()
+    const query = within(picker()).getByRole('group', { name: 'No ingested source (place to query)' })
+    expect(within(query).getByRole('option', { name: /SmartAtlantic.*no live retrieval/i })).toBeInTheDocument()
+    expect(within(query).getByRole('option', { name: /Cape Spear.*no ingested source/i })).toBeInTheDocument()
+    // The placeholder stays outside every group and stays disabled.
+    expect(screen.getByRole('option', { name: 'Custom map point' }).closest('optgroup')).toBeNull()
+    expect(screen.getByRole('option', { name: 'Custom map point' })).toBeDisabled()
+    // Choosing through a group still selects the station.
+    await userEvent.selectOptions(picker(), 'cape-spear')
+    expect(screen.getByRole('heading', { name: 'Cape Spear' })).toBeInTheDocument()
+  })
+
+  it('never files an unknown-coverage station under the live group when status cannot be read', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/sources/status')) return new Response('nope', { status: 503 })
+      if (url.includes('/point')) return response(apiPoint())
+      if (url.includes('/layers')) return response(emptyLayers)
+      if (url.includes('/catalog')) return response(emptyCatalog)
+      if (url.includes('/timeline')) return response(emptyTimeline)
+      return response({})
+    }))
+    render(<App />)
+    await screen.findByText(/Live-source coverage unknown: source status returned 503/i)
+    const groups = within(picker()).getAllByRole('group').map((group) => (group as HTMLOptGroupElement).label)
+    expect(groups).toEqual(['Live-source coverage unknown', 'No ingested source (place to query)'])
+    expect(within(picker()).queryByRole('group', { name: 'Live ingested source' })).not.toBeInTheDocument()
+  })
+})
+
+/** Today's CYYT report as `/point` serves it (FEW020 BKN130): FEW at 609.6 m
+ *  and BKN at 3,962.4 m, both declared in metres. */
+const fewBknPoint = (extra: unknown[] = []) => apiPoint([
+  { field: 'cloud_layer_1_cover_code', value: 'FEW', provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'code', data_mode: 'live' } },
+  { field: 'cloud_layer_1_cover', value: 25, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'percent', data_mode: 'live' } },
+  { field: 'cloud_layer_1_base', value: 609.6, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'm', original_units: 'ft', data_mode: 'live' } },
+  { field: 'cloud_layer_2_cover_code', value: 'BKN', provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'code', data_mode: 'live' } },
+  { field: 'cloud_layer_2_cover', value: 75, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'percent', data_mode: 'live' } },
+  { field: 'cloud_layer_2_base', value: 3962.4, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'm', original_units: 'ft', data_mode: 'live' } },
+  ...extra,
+])
+
+describe('cloud band filter is a view filter over the as-reported layers', () => {
+  const bandButton = (name: RegExp) => screen.getByRole('button', { name })
+  const cloudMetric = () => screen.getByText('Cloud layers').closest('.metric') as HTMLElement
+  const strataMetric = () => screen.getByText('Cloud L / M / H').closest('.metric') as HTMLElement
+
+  it('offers three pressed band buttons naming their bounds, all on, showing the full list', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: fewBknPoint() }))
+    render(<App />)
+    const metric = (await screen.findByText('Cloud layers')).closest('.metric') as HTMLElement
+    const group = within(metric).getByRole('group', { name: 'Cloud layer bands' })
+    const buttons = within(group).getAllByRole('button')
+    expect(buttons.map((button) => button.textContent)).toEqual(['Low · <6,500 ft', 'Middle · 6,500–20,000 ft', 'High · ≥20,000 ft'])
+    buttons.forEach((button) => expect(button).toHaveAttribute('aria-pressed', 'true'))
+    expect(within(metric).getByText(/FEW · 610 m \| BKN · 3962 m/)).toBeInTheDocument()
+    expect(within(metric).getByText(/not bucketed into strata/)).toBeInTheDocument()
+    expect(within(metric).queryByText(/reported layers shown/)).not.toBeInTheDocument()
+  })
+
+  it('turning Low off leaves only BKN and says 1 of 2 reported layers shown, and back on restores the list', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: fewBknPoint() }))
+    render(<App />)
+    await screen.findByText(/FEW · 610 m/)
+    await userEvent.click(bandButton(/^Low ·/))
+    expect(bandButton(/^Low ·/)).toHaveAttribute('aria-pressed', 'false')
+    expect(within(cloudMetric()).queryByText(/FEW/)).not.toBeInTheDocument()
+    expect(within(cloudMetric()).getByText('BKN · 3962 m')).toBeInTheDocument()
+    expect(within(cloudMetric()).getByText('1 of 2 reported layers shown · view filter, not a classification')).toBeInTheDocument()
+    // The source tag stays on the metric: the list is still METAR's.
+    expect(within(cloudMetric()).getByText('awc-metar-speci')).toBeInTheDocument()
+    // The strata metric is untouched by the filter: nothing was derived.
+    expect(within(strataMetric()).getByText('Unknown')).toBeInTheDocument()
+    expect(within(strataMetric()).getByText('No cloud strata returned')).toBeInTheDocument()
+
+    await userEvent.click(bandButton(/^Low ·/))
+    expect(bandButton(/^Low ·/)).toHaveAttribute('aria-pressed', 'true')
+    expect(within(cloudMetric()).getByText(/FEW · 610 m \| BKN · 3962 m/)).toBeInTheDocument()
+    expect(within(cloudMetric()).getByText(/not bucketed into strata/)).toBeInTheDocument()
+  })
+
+  it('turning Middle off hides BKN instead, and every band off shows no layer without calling it Unknown', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: fewBknPoint() }))
+    render(<App />)
+    await screen.findByText(/FEW · 610 m/)
+    await userEvent.click(bandButton(/^Middle ·/))
+    expect(within(cloudMetric()).getByText('FEW · 610 m')).toBeInTheDocument()
+    expect(within(cloudMetric()).queryByText(/BKN/)).not.toBeInTheDocument()
+    await userEvent.click(bandButton(/^Low ·/))
+    await userEvent.click(bandButton(/^High ·/))
+    expect(within(cloudMetric()).getByText('No reported layer in the bands left on')).toBeInTheDocument()
+    expect(within(cloudMetric()).getByText('0 of 2 reported layers shown · view filter, not a classification')).toBeInTheDocument()
+    expect(within(cloudMetric()).queryByText('Unknown')).not.toBeInTheDocument()
+  })
+
+  it('never hides a layer whose base is unknown, and says it is not filterable', async () => {
+    const ovcNoBase = [
+      { field: 'cloud_layer_3_cover_code', value: 'OVC', provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'code', data_mode: 'live' } },
+      { field: 'cloud_layer_3_base', value: null, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'm', original_units: 'ft', data_mode: 'live' } },
+    ]
+    vi.stubGlobal('fetch', routedFetch({ point: fewBknPoint(ovcNoBase) }))
+    render(<App />)
+    await screen.findByText(/FEW · 610 m/)
+    expect(within(cloudMetric()).getByText(/OVC · base Unknown — not filterable/)).toBeInTheDocument()
+    await userEvent.click(bandButton(/^Low ·/))
+    await userEvent.click(bandButton(/^Middle ·/))
+    await userEvent.click(bandButton(/^High ·/))
+    expect(within(cloudMetric()).getByText('OVC · base Unknown — not filterable')).toBeInTheDocument()
+    expect(within(cloudMetric()).getByText('1 of 3 reported layers shown · view filter, not a classification')).toBeInTheDocument()
+  })
+
+  it('offers no band buttons when no layer was returned', async () => {
+    vi.stubGlobal('fetch', routedFetch({ point: apiPoint([{ field: 'temperature', value: 8, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]) }))
+    render(<App />)
+    await screen.findByText('8')
+    expect(screen.queryByRole('group', { name: 'Cloud layer bands' })).not.toBeInTheDocument()
+    expect(within(cloudMetric()).getByText('Unknown')).toBeInTheDocument()
+  })
+})
+
+describe('observations stay visible under a selected model', () => {
+  it('shows METAR-tagged observation metrics beside HRDPS-tagged model metrics when HRDPS is selected', async () => {
+    const hrdpsWithMetar = {
+      data_mode: 'live',
+      latitude: 47.5615, longitude: -52.7126, valid_time: '2026-08-30T13:00:00Z',
+      selection: { mode: 'fallback', selected_source_id: 'eccc-hrdps', selected_product_id: 'hrdps', badge: 'HRDPS selected model', reason: 'product requested' },
+      fields: [
+        { field: 'temperature', value: 18.053, provenance: { source_id: 'eccc-hrdps', product: 'HRDPS raw', provider: 'Environment and Climate Change Canada', normalized_units: 'degC', data_mode: 'live' } },
+        { field: 'relative_humidity', value: 79.5, provenance: { source_id: 'eccc-hrdps', product: 'HRDPS raw', provider: 'Environment and Climate Change Canada', normalized_units: 'percent', data_mode: 'live' } },
+        { field: 'visibility', value: 24140.16, provenance: { source_id: 'awc-metar-speci', product: 'METAR/SPECI', provider: 'NOAA/NWS Aviation Weather Center', normalized_units: 'm', data_mode: 'live' } },
+        { field: 'fog_state', value: 'not_indicated', provenance: { source_id: 'awc-metar-speci', product: 'METAR/SPECI', provider: 'NOAA/NWS Aviation Weather Center', normalized_units: 'category', data_mode: 'live' } },
+        ...(fewBknPoint().fields as unknown[]),
+      ],
+    }
+    const fetchMock = routedFetch({ catalog: catalogWithModels, point: hrdpsWithMetar })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /HRDPS/ }))
+    await waitFor(() => expect(fetchMock.mock.calls.map(([url]) => String(url)).some((url) => url.includes('product=HRDPS'))).toBe(true))
+
+    // Header names the model; the hero and humidity are the model's.
+    expect(await screen.findByText('HRDPS selected model')).toBeInTheDocument()
+    expect(within(document.querySelector('.hero-reading') as HTMLElement).getByText('eccc-hrdps')).toBeInTheDocument()
+    expect(within(screen.getByText('Humidity').closest('.metric') as HTMLElement).getByText('eccc-hrdps')).toBeInTheDocument()
+    // The observations survive the selection, each under its own tag.
+    const visibility = screen.getByText('Visibility').closest('.metric') as HTMLElement
+    expect(within(visibility).getByText('24.1 km')).toBeInTheDocument()
+    expect(within(visibility).getByText('awc-metar-speci')).toBeInTheDocument()
+    const fog = screen.getByText('Fog', { selector: '.metric > span' }).closest('.metric') as HTMLElement
+    expect(within(fog).getByText('Fog not indicated by available evidence')).toBeInTheDocument()
+    expect(within(fog).getByText('awc-metar-speci')).toBeInTheDocument()
+    const clouds = screen.getByText('Cloud layers').closest('.metric') as HTMLElement
+    expect(within(clouds).getByText(/FEW · 610 m/)).toBeInTheDocument()
+    expect(within(clouds).getByText('awc-metar-speci')).toBeInTheDocument()
+    // Nothing is borrowed: no HRDPS tag lands on an observation metric.
+    expect(within(visibility).queryByText('eccc-hrdps')).not.toBeInTheDocument()
+    expect(within(clouds).queryByText('eccc-hrdps')).not.toBeInTheDocument()
+  })
+})
