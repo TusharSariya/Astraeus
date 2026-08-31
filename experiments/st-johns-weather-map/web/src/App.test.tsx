@@ -42,8 +42,27 @@ const sourceStatus = {
  *  its own fresh `Response` — the app fetches `/catalog`, `/layers` and
  *  `/timeline` before `/point`, and a shared Response body can only be
  *  consumed once. */
-function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown }) {
+const liveAstronomy = {
+  data_mode: 'live', operational: false, latitude: 47.5615, longitude: -52.7126,
+  window_start: '2026-08-30T19:00:00Z', window_end: '2026-08-31T22:00:00Z', valid_time: '2026-08-30T22:00:00Z',
+  sun_altitude_deg: 1.7, moon_altitude_deg: -9.9, core_altitude_deg: 12.8,
+  twilight_bands: [
+    { kind: 'day', start: '2026-08-30T19:00:00Z', end: '2026-08-30T22:16:00Z' },
+    { kind: 'civil_twilight', start: '2026-08-30T22:16:00Z', end: '2026-08-30T22:48:00Z' },
+    { kind: 'nautical_twilight', start: '2026-08-30T22:48:00Z', end: '2026-08-30T23:26:00Z' },
+    { kind: 'astronomical_twilight', start: '2026-08-30T23:26:00Z', end: '2026-08-31T00:08:00Z' },
+    { kind: 'night', start: '2026-08-31T00:08:00Z', end: '2026-08-31T06:56:00Z' },
+    { kind: 'day', start: '2026-08-31T08:49:00Z', end: '2026-08-31T22:00:00Z' },
+  ],
+  moon: { rise: '2026-08-30T22:58:00Z', set: '2026-08-31T12:43:00Z', above_horizon: [{ kind: 'moon_up', start: '2026-08-30T22:58:00Z', end: '2026-08-31T12:43:00Z' }], phase_deg: 213.2, illuminated_fraction: 0.918 },
+  milky_way_core: { windows: [], max_altitude_deg: 13.4, caption: 'Geometry only - says nothing about cloud, transparency, or light pollution; at this latitude the galactic core culminates low (about 10-15 degrees at 47.6 N).' },
+  provenance: { source_id: 'nasa-jpl-de442', kernel_id: 'DE442', kernel_sha256: 'abc', derivation: 'skyfield 1.55 + JPL DE442', derivation_version: 'astronomy-de442-v1', operational: false },
+  notices: [],
+}
+
+function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown }) {
   return vi.fn(async (url: string) => {
+    if (url.includes('/astronomy')) return response(routes.astronomy ?? liveAstronomy)
     if (url.includes('/sources/status')) return response(routes.sources ?? sourceStatus)
     if (url.includes('/point')) return response(routes.point ?? apiPoint())
     if (url.includes('/layers')) return response(routes.layers ?? emptyLayers)
@@ -117,6 +136,24 @@ describe('weather workbench fail-closed behavior', () => {
     // "direction unavailable", which was printed even when one had, is gone.
     expect(screen.getByText(/km\/h · direction Unknown/)).toBeInTheDocument()
     expect(screen.queryByText(/direction unavailable/)).not.toBeInTheDocument()
+  })
+
+  it('shows jet-level wind and precipitable water as evidence with interpretation as caption, never a seeing verdict', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      point: apiPoint([
+        { field: 'wind_speed_200hPa', value: 40, provenance: { provider: 'NOAA / NCEP', product: 'GFS', normalized_units: 'm s-1', data_mode: 'live', vertical_level: '200 hPa' } },
+        { field: 'wind_speed_300hPa', value: 30, provenance: { provider: 'NOAA / NCEP', product: 'GFS', normalized_units: 'm s-1', data_mode: 'live', vertical_level: '300 hPa' } },
+        { field: 'precipitable_water', value: 12.5, provenance: { provider: 'NOAA / NCEP', product: 'GFS', normalized_units: 'kg m-2', data_mode: 'live' } },
+      ]),
+    }))
+    render(<App />)
+    // 40 and 30 m/s convert to 144 and 108 km/h; the caption interprets, the
+    // value never becomes a "seeing" category.
+    expect(await screen.findByText('144 km/h · 108 km/h')).toBeInTheDocument()
+    expect(screen.getByText(/strong jet flow degrades astronomical seeing/)).toBeInTheDocument()
+    expect(screen.getByText('12.5 kg/m²')).toBeInTheDocument()
+    expect(screen.getByText(/more degrades sky transparency/)).toBeInTheDocument()
+    expect(screen.queryByText(/seeing: (good|poor|fair)/i)).not.toBeInTheDocument()
   })
 
   it('requests GPS only after action and reports denial with retained location', async () => {
@@ -689,6 +726,35 @@ describe('timeline coverage rows are grouped like the drawer', () => {
     const counts = within(ribbon).getAllByText('no frame here')
     expect(counts).toHaveLength(4)
   })
+
+  it('files the rendered cloud mask beside the four proxies in the same satellite group', async () => {
+    // The GOES-19 cloud mask this experiment renders itself: published
+    // artifact, observed 10-minute scans, standing NEXT TO the untouched
+    // provider composites so the two views can be compared side by side.
+    const cloudMask = {
+      id: 'noaa-goes19-cloud-mask',
+      title: 'GOES-19 observed clouds (cloud mask)',
+      kind: 'raster',
+      field: 'cloud_mask',
+      product: 'GOES-19 ABI L2 Enterprise Cloud Mask (ACMF Full Disk) + Cloud Top Height (ACHAF)',
+      units: 'cloud-mask class / probability 0-1',
+      semantics: 'rendered by this experiment from the retrieved NOAA GOES-19 Enterprise Cloud Mask; opacity encodes detection confidence, never a definitive statement of clear sky',
+      times: satelliteLayers()[0].times,
+      cadence_seconds: 600,
+      staleness_tolerance_seconds: 1800,
+      evidence_basis: 'published_artifact',
+      raster_available: true,
+      legend_available: true,
+      group: 'satellite',
+    }
+    vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: [...satelliteLayers(), cloudMask], notices: [] } }))
+    render(<App />)
+    const ribbon = await screen.findByLabelText('Published frames per layer across the window')
+    const satellite = within(ribbon).getByRole('group', { name: 'Satellite (observed, past only) · 5 layers' })
+    expect(within(satellite).getAllByRole('button')).toHaveLength(5)
+    expect(within(satellite).getByRole('button', { name: 'GOES-19 observed clouds (cloud mask)' })).toBeInTheDocument()
+    expect(within(satellite).getByRole('button', { name: 'GOES-East natural color (1 km, live proxy)' })).toBeInTheDocument()
+  })
 })
 
 describe('rendered-grid coverage rows', () => {
@@ -922,5 +988,30 @@ describe('observations stay visible under a selected model', () => {
     // Nothing is borrowed: no HRDPS tag lands on an observation metric.
     expect(within(visibility).queryByText('eccc-hrdps')).not.toBeInTheDocument()
     expect(within(clouds).queryByText('eccc-hrdps')).not.toBeInTheDocument()
+  })
+})
+
+describe('computed astronomy bands and Tonight cards', () => {
+  it('renders darkness and moon bands with text alternatives naming the intervals', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    const darkness = await screen.findByRole('img', { name: /Darkness: .*night/ })
+    expect(darkness).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Moon above the horizon: moon up/ })).toBeInTheDocument()
+    // The Tonight cards state the computed facts and the geometry-only caption.
+    expect(screen.getByText('Astronomical darkness')).toBeInTheDocument()
+    expect(screen.getByText(/92% illuminated, waning/)).toBeInTheDocument()
+    expect(screen.getByText('No geometric window')).toBeInTheDocument()
+    expect(screen.getByText(/says nothing about cloud, transparency, or light pollution/)).toBeInTheDocument()
+  })
+
+  it('says the bands are unavailable instead of drawing an empty band when astronomy fails closed', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      astronomy: { data_mode: 'unavailable', twilight_bands: [], notices: ['Pinned ephemeris missing: /data/ephemeris/de442.bsp'], provenance: null },
+    }))
+    render(<App />)
+    expect(await screen.findByText(/Darkness and moon bands unavailable: Pinned ephemeris missing/)).toBeInTheDocument()
+    expect(screen.getByText(/No band is drawn from a failure/)).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /Darkness:/ })).not.toBeInTheDocument()
   })
 })

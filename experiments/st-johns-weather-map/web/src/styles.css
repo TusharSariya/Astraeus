@@ -476,3 +476,19 @@ html[data-theme='light'] .surface-watermark { color: #fff; }
 .coverage-frame { position: absolute; top: 1px; bottom: 1px; width: 2px; margin-left: -1px; background: var(--cyan); opacity: .55; }
 .coverage-row.on .coverage-frame { opacity: 1; }
 .coverage-count { color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; text-align: right; }
+
+/* --- computed astronomy bands (drawn only from a served /astronomy response) --- */
+.sky-bands { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 4px; }
+.sky-band-row { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; }
+.sky-band-label { font-size: 11px; color: var(--text-soft, #667); }
+.sky-band-track { position: relative; height: 12px; border-radius: 4px; background: color-mix(in srgb, currentColor 8%, transparent); overflow: hidden; }
+.sky-band { position: absolute; top: 0; bottom: 0; display: block; }
+.sky-band-civil_twilight { background: rgba(30, 44, 90, 0.25); }
+.sky-band-nautical_twilight { background: rgba(24, 34, 80, 0.45); }
+.sky-band-astronomical_twilight { background: rgba(18, 26, 66, 0.65); }
+.sky-band-night { background: rgba(10, 14, 40, 0.9); }
+.sky-band-moon_up { background: rgba(228, 214, 160, 0.8); }
+.sky-bands-note { font-size: 10px; color: var(--text-soft, #778); }
+.tonight { margin-top: 12px; }
+.tonight h3 { font-size: 13px; margin: 0 0 6px; }
+.tonight h3 small { font-weight: normal; color: var(--text-soft, #778); margin-left: 6px; }

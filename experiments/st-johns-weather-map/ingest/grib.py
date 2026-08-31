@@ -378,6 +378,8 @@ def normalize_units(dataset: Any) -> Any:
             variable.attrs = {**variable.attrs, "units": "percent", "original_units": units}
         elif units in {"m/s", "m s**-1", "m s-1"}:
             variable.attrs = {**variable.attrs, "units": "m s-1", "original_units": units}
+        elif units in {"kg m**-2", "kg/m^2", "kg m-2"}:
+            variable.attrs = {**variable.attrs, "units": "kg m-2", "original_units": units}
     return result
 
 

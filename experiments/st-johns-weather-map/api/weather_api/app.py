@@ -45,6 +45,7 @@ from .fixtures import (
 from ingest.contract import MEDIA_COG, MEDIA_GEOJSON, MEDIA_PARQUET, MEDIA_ZARR
 
 from .jobs import job_store
+from .ephemeris import EPHEMERIS_ID, EPHEMERIS_SHA256
 from .models import (
     CatalogResponse,
     CrossSectionRequest,
@@ -64,9 +65,14 @@ from .models import (
     SourceStatusResponse,
     TimelineItem,
     TimelineResponse,
+    AstronomyCoreWindow,
+    AstronomyInterval,
+    AstronomyMoon,
+    AstronomyProvenance,
+    AstronomyResponse,
 )
 from .science import select_fallback
-from . import grids, wms
+from . import astronomy, grids, satellite as goes_satellite, wms
 from .store import (
     FIXTURE_MODE,
     LIVE_MODE,
@@ -452,6 +458,11 @@ def get_layers() -> LayersResponse:
     notices = skip_notices(store)
     layers: list[Layer] = []
     for artifact in artifacts:
+        if goes_satellite.claims(artifact):
+            # The cloud-mask artifact is offered once, by the satellite
+            # module below, with its real semantics; the generic entry would
+            # duplicate it as an un-renderable published_model layer.
+            continue
         identifier = layer_id_for(artifact.source_id, artifact.logical_name)
         entry = coverage.get(identifier)
         kind = layer_kind(artifact.media_type, entry)
@@ -511,6 +522,18 @@ def get_layers() -> LayersResponse:
         grid_layers, grid_notices = [], [f"rendered-grid layers are unavailable: {type(error).__name__}: {error}"]
     layers.extend(grid_layers)
     notices.extend(grid_notices)
+
+    # The GOES-19 cloud mask rendered by this experiment from the published
+    # artifact. Same satellite group as the four proxied composites so the
+    # processed and unprocessed views stand side by side; fail-closed
+    # staleness so a feed gap is never shown as a clear sky.
+    try:
+        satellite_layers, satellite_notices = goes_satellite.satellite_layers(store, Layer, z_index=Z_INDEX_BY_KIND["raster"])
+    except Exception as error:  # the cloud mask must never take the layer index down
+        LOGGER.exception("the satellite cloud-mask layer could not be resolved")
+        satellite_layers, satellite_notices = [], [f"the satellite cloud-mask layer is unavailable: {type(error).__name__}: {error}"]
+    layers.extend(satellite_layers)
+    notices.extend(satellite_notices)
 
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
@@ -767,6 +790,25 @@ def _rendered_grid_raster(spec, *, moment, bounds, width, height, crs) -> Respon
     return Response(content=image.payload, media_type=image.content_type, headers=image.headers(layer_id=spec.layer_id))
 
 
+def _satellite_raster(*, moment, bounds, width, height, crs) -> Response:
+    """The cloud-mask frame drawn here from the published artifact."""
+    store = live_store()
+    if store is None:
+        raise HTTPException(status_code=503, detail="no live artifact store is reachable; the stored cloud mask cannot be read")
+    try:
+        image = goes_satellite.render_satellite(store, bounds=bounds, width=width, height=height, crs=crs, valid_time=moment)
+    except grids.GridNotPublished as error:
+        raise HTTPException(status_code=404, detail=f"{goes_satellite.LAYER_ID}: {error}") from error
+    except grids.FrameNotStored as error:
+        raise HTTPException(status_code=422, detail=f"{goes_satellite.LAYER_ID}: {error}") from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except grids.GridUnavailable as error:
+        # Nothing was read, and nothing is substituted for it.
+        raise HTTPException(status_code=502, detail=f"{goes_satellite.LAYER_ID}: no cloud-mask grid was read: {error}") from error
+    return Response(content=image.payload, media_type=image.content_type, headers=image.headers())
+
+
 @app.get(f"{PREFIX}/layers/{{layer_id}}/raster", responses={501: {"model": ErrorResponse}})
 def get_layer_raster(
     layer_id: str,
@@ -802,6 +844,9 @@ def get_layer_raster(
     grid_spec = grids.rendered_grid_spec(layer_id)
     if grid_spec is not None:
         return _rendered_grid_raster(grid_spec, moment=moment, bounds=bounds, width=width, height=height, crs=requested_crs)
+
+    if layer_id == goes_satellite.LAYER_ID:
+        return _satellite_raster(moment=moment, bounds=bounds, width=width, height=height, crs=requested_crs)
 
     wms_layer, basis, notice = _resolve_imagery(layer_id)
     # The four GOES-East satellite proxies are opaque imagery: JPEG carries the
@@ -850,6 +895,9 @@ def get_layer_legend(
     legend is the renderer's own declared colormap - the ramp the pixels were
     actually drawn with - and the headers say so.
     """
+    if layer_id == goes_satellite.LAYER_ID:
+        return Response(content=goes_satellite.legend_png(), media_type="image/png", headers=goes_satellite.legend_headers())
+
     grid_spec = grids.rendered_grid_spec(layer_id)
     if grid_spec is not None:
         return Response(
@@ -899,6 +947,84 @@ def get_point(
     if mode == LIVE_MODE:
         return _live_point(latitude, longitude, time, product)
     return _unavailable_point(latitude, longitude, time, reason="WEATHER_DATA_MODE is not set to live or fixture", flags=["data_mode_unconfigured"], notices=["WEATHER_DATA_MODE is missing or malformed; this deployment fails closed"])
+
+
+@app.get(f"{PREFIX}/astronomy", response_model=AstronomyResponse)
+def get_astronomy(
+    latitude: float = Query(default=47.5615, ge=-90, le=90),
+    longitude: float = Query(default=-52.7126, ge=-180, le=180),
+    valid_time: datetime | None = None,
+) -> AstronomyResponse:
+    """Astronomical darkness geometry over the evidence window.
+
+    Everything here is computed from the pinned, checksum-verified DE442
+    kernel - never retrieved per request, never blended with weather
+    evidence. The kernel failing verification makes this capability alone
+    answer unavailable; the rest of the API is untouched.
+    """
+    require_core_coverage(latitude, longitude)
+    time = requested_time(valid_time)
+    reference = now()
+    start, end = window_start(reference), window_end(reference)
+
+    def unavailable(reason: str) -> AstronomyResponse:
+        return AstronomyResponse(
+            data_mode=DataMode.UNAVAILABLE,
+            latitude=latitude,
+            longitude=longitude,
+            window_start=start,
+            window_end=end,
+            valid_time=time,
+            sun_altitude_deg=0.0,
+            moon_altitude_deg=0.0,
+            core_altitude_deg=0.0,
+            twilight_bands=[],
+            moon=AstronomyMoon(rise=None, set=None, above_horizon=[], phase_deg=0.0, illuminated_fraction=0.0),
+            milky_way_core=AstronomyCoreWindow(windows=[], max_altitude_deg=0.0, caption=astronomy.CORE_CAPTION),
+            provenance=None,
+            notices=[reason, "No astronomical value is computed from an unverified ephemeris; nothing is substituted."],
+        )
+
+    try:
+        geometry = astronomy.sky_geometry(latitude, longitude, start, end, time)
+    except astronomy.AstronomyUnavailable as error:
+        return unavailable(str(error))
+
+    def intervals(items) -> list[AstronomyInterval]:
+        return [AstronomyInterval(kind=item.kind, start=item.start, end=item.end) for item in items]
+
+    return AstronomyResponse(
+        data_mode=DataMode.LIVE,
+        latitude=latitude,
+        longitude=longitude,
+        window_start=start,
+        window_end=end,
+        valid_time=time,
+        sun_altitude_deg=geometry.sun_altitude_deg,
+        moon_altitude_deg=geometry.moon_altitude_deg,
+        core_altitude_deg=geometry.core_altitude_deg,
+        twilight_bands=intervals(geometry.twilight_bands),
+        moon=AstronomyMoon(
+            rise=geometry.moon.rise,
+            set=geometry.moon.set,
+            above_horizon=intervals(geometry.moon.above_horizon),
+            phase_deg=geometry.moon.phase_deg,
+            illuminated_fraction=geometry.moon.illuminated_fraction,
+        ),
+        milky_way_core=AstronomyCoreWindow(
+            windows=intervals(geometry.core.windows),
+            max_altitude_deg=geometry.core.max_altitude_deg,
+            caption=astronomy.CORE_CAPTION,
+        ),
+        provenance=AstronomyProvenance(
+            source_id=astronomy.SOURCE_ID,
+            kernel_id=EPHEMERIS_ID,
+            kernel_sha256=EPHEMERIS_SHA256,
+            derivation=astronomy.derivation(),
+            derivation_version=astronomy.DERIVATION_VERSION,
+        ),
+        notices=[],
+    )
 
 
 @app.get(f"{PREFIX}/profile", response_model=ProfileResponse)

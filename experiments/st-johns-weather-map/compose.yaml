@@ -47,6 +47,12 @@ services:
       WEATHER_MINIO_ACCESS_KEY: ${WEATHER_MINIO_READER_KEY:-weather-reader}
       WEATHER_MINIO_SECRET_KEY: ${WEATHER_MINIO_READER_SECRET:-weather-reader-local-only}
       WEATHER_ARTIFACT_CACHE: /tmp/weather-artifacts
+      # Pinned DE442 kernel for the astronomy capability, mounted read-only
+      # below. Absent file = astronomy alone answers unavailable; the API
+      # never downloads it.
+      WEATHER_EPHEMERIS_PATH: /data/ephemeris/de442.bsp
+    volumes:
+      - ./data/ephemeris:/data/ephemeris:ro
     ports:
       - "127.0.0.1:${WEATHER_API_PORT:-8000}:8000"
     depends_on:

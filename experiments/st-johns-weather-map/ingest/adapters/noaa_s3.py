@@ -83,6 +83,14 @@ GFS_IDX_SELECTORS: frozenset[tuple[str, str]] = frozenset(
         ("LCDC", "low cloud layer"),
         ("MCDC", "middle cloud layer"),
         ("HCDC", "high cloud layer"),
+        # Upper-air seeing/transparency ingredients: jet-level winds and
+        # column moisture. Exact-pair matching keeps every other isobaric
+        # level out, exactly as for the surface set above.
+        ("UGRD", "200 mb"),
+        ("VGRD", "200 mb"),
+        ("UGRD", "300 mb"),
+        ("VGRD", "300 mb"),
+        ("PWAT", "entire atmosphere (considered as a single layer)"),
     }
 )
 
@@ -99,23 +107,43 @@ _INSTANTANEOUS_FORECAST = re.compile(r"^(anl|\d+ hour fcst)$")
 # headroom without ever permitting a whole-file pull.
 MAX_BYTES_PER_LEAD = 25 * 1024 * 1024
 
-# GRIB shortNames decoded from the subset file, one cfgrib open per name so a
-# single heterogeneous file (meanSea + heightAboveGround 2 m and 10 m +
-# surface + cloud layers) never has to merge as one dataset. Keys are the
-# .idx parameter names, used to skip shortNames the inventory did not carry.
-GFS_DECODE_SHORTNAMES: dict[str, str] = {
-    "prmsl": "PRMSL",
-    "2t": "TMP",
-    "2d": "DPT",
-    "2r": "RH",
-    "10u": "UGRD",
-    "10v": "VGRD",
-    "vis": "VIS",
-    "tcc": "TCDC",
-    "lcc": "LCDC",
-    "mcc": "MCDC",
-    "hcc": "HCDC",
-}
+# GRIB shortNames decoded from the subset file, one cfgrib open per
+# (shortName, extra cfgrib filter) so a single heterogeneous file (meanSea +
+# heightAboveGround 2 m and 10 m + surface + cloud layers + isobaric jet
+# levels + column water) never has to merge as one dataset. Each spec names
+# the .idx (parameter, level) pairs that justify the open, used to skip
+# messages the inventory did not carry - per level, so a missing 300 mb
+# message is that level's absence, not the shortName's.
+#
+# The isobaric u/v open with an explicit typeOfLevel filter (the subset file
+# only holds selected messages today, but the filter keeps a future selector
+# widening from silently merging foreign levels) and are split by level into
+# flat suffixed variables: /point sampling skips pressure-dim datasets when
+# no pressure is requested, and these fields must reach /point.
+GFS_DECODE_SPECS: tuple[tuple[str, dict[str, object], tuple[tuple[str, str], ...]], ...] = (
+    ("prmsl", {}, (("PRMSL", "mean sea level"),)),
+    ("2t", {}, (("TMP", "2 m above ground"),)),
+    ("2d", {}, (("DPT", "2 m above ground"),)),
+    ("2r", {}, (("RH", "2 m above ground"),)),
+    ("10u", {}, (("UGRD", "10 m above ground"),)),
+    ("10v", {}, (("VGRD", "10 m above ground"),)),
+    ("vis", {}, (("VIS", "surface"),)),
+    ("tcc", {}, (("TCDC", "entire atmosphere"),)),
+    ("lcc", {}, (("LCDC", "low cloud layer"),)),
+    ("mcc", {}, (("MCDC", "middle cloud layer"),)),
+    ("hcc", {}, (("HCDC", "high cloud layer"),)),
+    ("u", {"typeOfLevel": "isobaricInhPa"}, (("UGRD", "200 mb"), ("UGRD", "300 mb"))),
+    ("v", {"typeOfLevel": "isobaricInhPa"}, (("VGRD", "200 mb"), ("VGRD", "300 mb"))),
+    ("pwat", {}, (("PWAT", "entire atmosphere (considered as a single layer)"),)),
+)
+
+# The isobaric wind shortNames and the canonical prefix their split levels
+# publish under; the level suffix comes from the .idx level ("200 mb" ->
+# 200hPa).
+_ISOBARIC_PREFIXES = {"u": "wind_u", "v": "wind_v"}
+
+# Variables that belong to the upper_air artifact rather than surface.
+UPPER_AIR_VARIABLES = ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa")
 
 # Only the fields this experiment actually reads off the GFS surface subset.
 # ``vis``, ``tcc``, ``r2`` and the provider-declared cloud strata are declared
@@ -139,6 +167,15 @@ GFS_MANIFEST = RunManifest(
         RequiredField("cloud_low", "percent", level="low cloud layer", optional=True),
         RequiredField("cloud_middle", "percent", level="middle cloud layer", optional=True),
         RequiredField("cloud_high", "percent", level="high cloud layer", optional=True),
+        # Upper-air seeing/transparency ingredients. Optional for the same
+        # reason as the strata: presence depends on the product inventory for
+        # a given lead, and inventory absence must degrade the run rather
+        # than fabricate a value.
+        RequiredField("wind_u_200hPa", "m s-1", level="200 hPa", optional=True),
+        RequiredField("wind_v_200hPa", "m s-1", level="200 hPa", optional=True),
+        RequiredField("wind_u_300hPa", "m s-1", level="300 hPa", optional=True),
+        RequiredField("wind_v_300hPa", "m s-1", level="300 hPa", optional=True),
+        RequiredField("precipitable_water", "kg m-2", level="column", optional=True),
     ),
 )
 
@@ -155,6 +192,7 @@ GFS_VAR_MAP = {
     "lcc": "cloud_low",
     "mcc": "cloud_middle",
     "hcc": "cloud_high",
+    "pwat": "precipitable_water",
 }
 
 
@@ -162,9 +200,11 @@ def select_gfs_ranges(idx_text: str, *, merge_gap_bytes: int = 1 << 20) -> tuple
     """Resolve one sidecar to the byte ranges and the .idx params they carry.
 
     Selection is by exact (parameter, level) pair plus the instantaneous
-    forecast filter, so only the eleven declared messages ever qualify. The
-    returned param set lets the decode loop distinguish "the inventory did not
-    publish this optional field" from "we fetched it and could not read it".
+    forecast filter, so only the sixteen declared messages ever qualify. The
+    returned (parameter, level) pair set lets the decode loop distinguish
+    "the inventory did not publish this optional message" from "we fetched it
+    and could not read it" - per level, because UGRD at 10 m and UGRD at
+    200 mb are different messages with different fates.
     """
     selected = [
         record
@@ -172,8 +212,26 @@ def select_gfs_ranges(idx_text: str, *, merge_gap_bytes: int = 1 << 20) -> tuple
         if (record.param.upper(), record.level.lower()) in GFS_IDX_SELECTORS
         and _INSTANTANEOUS_FORECAST.match(record.forecast.strip().lower())
     ]
-    params = {record.param.upper() for record in selected}
-    return byte_ranges(selected, merge_gap_bytes=merge_gap_bytes), params
+    pairs = {(record.param.upper(), record.level.lower()) for record in selected}
+    return byte_ranges(selected, merge_gap_bytes=merge_gap_bytes), pairs
+
+
+def _select_isobaric_level(array: "xarray.DataArray", level_hpa: int) -> "xarray.DataArray":
+    """The single requested pressure level from a decoded isobaric message.
+
+    Handles both shapes cfgrib produces: a real ``isobaricInhPa`` dimension
+    when two levels decode together, and a scalar coordinate when only one
+    did. A level that is not actually present raises rather than guessing.
+    """
+    for name in ("isobaricInhPa", "pressure", "level"):
+        if name in array.dims:
+            return array.sel({name: level_hpa})
+        if name in array.coords:
+            actual = float(array.coords[name].values)
+            if actual != float(level_hpa):
+                raise ValueError(f"decoded level {actual} hPa is not the requested {level_hpa} hPa")
+            return array
+    raise ValueError("no pressure coordinate on decoded isobaric message")
 
 
 class NOAAS3Adapter:
@@ -285,7 +343,7 @@ class NOAAS3Adapter:
             # Byte-range subsetting is mandatory here: one f003 file is 521 MiB.
             # ``select_gfs_ranges`` picks exactly the declared (param, level)
             # messages, so the request stays ~10.5 MB per lead.
-            ranges, present_params = select_gfs_ranges(idx_text)
+            ranges, present_pairs = select_gfs_ranges(idx_text)
             ranges = cap_open_range(ranges)
             if not ranges:
                 decode_errors.append(f"no_selected_messages:{idx_url}")
@@ -315,19 +373,40 @@ class NOAAS3Adapter:
             # are moved into attrs (strip_message_scalars), and the fields are
             # then assembled into one flat step dataset.
             step_fields: dict[str, xarray.DataArray] = {}
-            for short_name, idx_param in GFS_DECODE_SHORTNAMES.items():
-                if idx_param not in present_params:
+            for short_name, extra_filter, idx_pairs in GFS_DECODE_SPECS:
+                wanted_pairs = [pair for pair in idx_pairs if pair in present_pairs]
+                if not wanted_pairs:
                     # The inventory did not publish this message for this lead;
                     # manifest optionality decides what that means for the run.
                     continue
                 try:
-                    decoded = open_grib(local_grib, filter_by_keys={"shortName": short_name})
+                    filter_by_keys: dict[str, Any] = {"shortName": short_name, **extra_filter}
+                    decoded = open_grib(local_grib, filter_by_keys=filter_by_keys)
                     normalized = normalize_units(crop_to_bbox(decoded, self._bounds))
                     data_var_names = list(normalized.data_vars)
                     if not data_var_names:
                         raise ValueError(f"no data variable decoded for shortName {short_name}")
                     for var_name in data_var_names:
-                        canonical = GFS_VAR_MAP.get(str(var_name).lower())
+                        lowered = str(var_name).lower()
+                        if lowered in _ISOBARIC_PREFIXES:
+                            # Split the isobaric dimension by level into flat
+                            # suffixed variables; a level the inventory did
+                            # not carry stays absent for this lead.
+                            for level_hpa in sorted({int(level.split()[0]) for _, level in wanted_pairs}):
+                                canonical = f"{_ISOBARIC_PREFIXES[lowered]}_{level_hpa}hPa"
+                                try:
+                                    selected_level = _select_isobaric_level(normalized[var_name], level_hpa)
+                                except Exception as error:
+                                    decode_errors.append(f"decode:{base_filename}:{short_name}:{level_hpa}hPa")
+                                    _log.warning(
+                                        "Failed selecting GFS %s %s at %d hPa: %s",
+                                        base_filename, short_name, level_hpa, error,
+                                    )
+                                    continue
+                                # ``load`` materialises before the finally-unlink below.
+                                step_fields[canonical] = strip_message_scalars(selected_level.load())
+                            continue
+                        canonical = GFS_VAR_MAP.get(lowered)
                         if canonical is None:
                             continue
                         # ``load`` materialises before the finally-unlink below.
@@ -359,9 +438,6 @@ class NOAAS3Adapter:
         )
         validation = validate_run(manifest, combined, window=window, decode_errors=decode_errors)
 
-        zarr_path = workdir / "noaa_gfs.zarr.zip"
-        write_zarr(combined, zarr_path)
-
         provenance = {
             "source_id": self.source_id,
             "producer": "NOAA / NCEP",
@@ -373,12 +449,36 @@ class NOAAS3Adapter:
             "coverage": validation.as_coverage(),
         }
 
-        artifact = Artifact(
-            logical_name="surface",
-            media_type=MEDIA_ZARR,
-            payload_path=zarr_path,
-            provenance=provenance,
+        # The run is validated as one dataset, then written as two artifacts:
+        # the surface set (which includes the column total precipitable
+        # water) and the jet-level winds as ``upper_air``. The upper_air
+        # artifact simply does not exist when no isobaric message decoded -
+        # absence over an empty shell.
+        surface_names = [str(name) for name in combined.data_vars if str(name) not in UPPER_AIR_VARIABLES]
+        upper_names = [str(name) for name in combined.data_vars if str(name) in UPPER_AIR_VARIABLES]
+
+        artifacts: list[Artifact] = []
+        zarr_path = workdir / "noaa_gfs.zarr.zip"
+        write_zarr(combined[surface_names], zarr_path)
+        artifacts.append(
+            Artifact(
+                logical_name="surface",
+                media_type=MEDIA_ZARR,
+                payload_path=zarr_path,
+                provenance=provenance,
+            )
         )
+        if upper_names:
+            upper_path = workdir / "noaa_gfs_upper_air.zarr.zip"
+            write_zarr(combined[upper_names], upper_path)
+            artifacts.append(
+                Artifact(
+                    logical_name="upper_air",
+                    media_type=MEDIA_ZARR,
+                    payload_path=upper_path,
+                    provenance={**provenance, "vertical_levels": "200/300 hPa isobaric"},
+                )
+            )
 
         return RunResult(
             source_id=self.source_id,
@@ -387,7 +487,7 @@ class NOAAS3Adapter:
             retrieved_at=retrieved_at,
             complete=validation.complete,
             qc_passed=validation.qc_passed,
-            artifacts=[artifact],
+            artifacts=artifacts,
             native_crs="EPSG:4326",
             notes=f"Retrieved {len(hourly_datasets)} GFS lead steps via .idx byte ranges; {validation.detail}",
         )

@@ -9,3 +9,6 @@ vite.config.d.ts
 
 # Local copy of provider keys; never committed.
 .env.keys-backup
+
+# Pinned JPL ephemeris kernel: fetched out of band, verified by checksum.
+data/ephemeris/

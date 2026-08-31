@@ -214,6 +214,55 @@ def _cell_indices(targets: Any, centres: Any) -> Any:
     return index
 
 
+def sample_field(
+    values: Any,
+    latitudes: Any,
+    longitudes: Any,
+    *,
+    bounds: Mapping[str, float],
+    width: int,
+    height: int,
+    crs: str = "EPSG:4326",
+) -> tuple[Any, Any]:
+    """Nearest-neighbor sample of one stored 2-D field at each pixel centre.
+
+    The shared core of every locally rendered layer: pixel centres are
+    computed in the requested CRS, converted to the geographic coordinate they
+    represent, and each is assigned the stored cell containing it. Returns the
+    sampled values and the inside-the-grid mask; pixels outside the grid carry
+    cell 0's value and inside=False, and the caller must not paint them.
+    """
+    import numpy  # noqa: PLC0415
+
+    south, west = float(bounds["south"]), float(bounds["west"])
+    north, east = float(bounds["north"]), float(bounds["east"])
+    field = numpy.asarray(values, dtype="float64")
+    if field.ndim != 2:
+        raise GridUnavailable("the stored variable is not a 2-D (latitude, longitude) field")
+
+    # Pixel-centre longitudes are linear in both CRS (mercator x is linear in
+    # longitude). Latitudes are linear in EPSG:4326 and linear in mercator y
+    # for EPSG:3857. Row 0 is the top of the image (north).
+    column_lon = west + (numpy.arange(width, dtype="float64") + 0.5) * (east - west) / width
+    if crs == "EPSG:3857":
+        if abs(south) > WEB_MERCATOR_MAX_LATITUDE or abs(north) > WEB_MERCATOR_MAX_LATITUDE:
+            raise ValueError(f"latitude bounds are outside EPSG:3857's defined range (+/-{WEB_MERCATOR_MAX_LATITUDE})")
+        y_north, y_south = float(_mercator_y(north)), float(_mercator_y(south))
+        row_y = y_north - (numpy.arange(height, dtype="float64") + 0.5) * (y_north - y_south) / height
+        row_lat = numpy.degrees(numpy.arctan(numpy.sinh(row_y / WEB_MERCATOR_RADIUS_M)))
+    else:
+        row_lat = north - (numpy.arange(height, dtype="float64") + 0.5) * (north - south) / height
+
+    row_index = _cell_indices(row_lat, latitudes)
+    column_index = _cell_indices(column_lon, longitudes)
+
+    inside = (row_index[:, None] >= 0) & (column_index[None, :] >= 0)
+    safe_rows = numpy.where(row_index < 0, 0, row_index)
+    safe_columns = numpy.where(column_index < 0, 0, column_index)
+    sampled = field[safe_rows[:, None], safe_columns[None, :]]
+    return sampled, inside
+
+
 def rasterize(
     values: Any,
     latitudes: Any,
@@ -245,31 +294,7 @@ def rasterize(
     if width < 1 or height < 1:
         raise ValueError("a rendered image needs at least one pixel in each dimension")
 
-    field = numpy.asarray(values, dtype="float64")
-    if field.ndim != 2:
-        raise GridUnavailable("the stored variable is not a 2-D (latitude, longitude) field")
-
-    # Pixel-centre longitudes are linear in both CRS (mercator x is linear in
-    # longitude). Latitudes are linear in EPSG:4326 and linear in mercator y
-    # for EPSG:3857. Row 0 is the top of the image (north).
-    column_lon = west + (numpy.arange(width, dtype="float64") + 0.5) * (east - west) / width
-    if crs == "EPSG:3857":
-        if abs(south) > WEB_MERCATOR_MAX_LATITUDE or abs(north) > WEB_MERCATOR_MAX_LATITUDE:
-            raise ValueError(f"latitude bounds are outside EPSG:3857's defined range (+/-{WEB_MERCATOR_MAX_LATITUDE})")
-        y_north, y_south = float(_mercator_y(north)), float(_mercator_y(south))
-        row_y = y_north - (numpy.arange(height, dtype="float64") + 0.5) * (y_north - y_south) / height
-        row_lat = numpy.degrees(numpy.arctan(numpy.sinh(row_y / WEB_MERCATOR_RADIUS_M)))
-    else:
-        row_lat = north - (numpy.arange(height, dtype="float64") + 0.5) * (north - south) / height
-
-    row_index = _cell_indices(row_lat, latitudes)
-    column_index = _cell_indices(column_lon, longitudes)
-
-    inside = (row_index[:, None] >= 0) & (column_index[None, :] >= 0)
-    safe_rows = numpy.where(row_index < 0, 0, row_index)
-    safe_columns = numpy.where(column_index < 0, 0, column_index)
-    sampled = field[safe_rows[:, None], safe_columns[None, :]]
-
+    sampled, inside = sample_field(values, latitudes, longitudes, bounds=bounds, width=width, height=height, crs=crs)
     finite = numpy.isfinite(sampled) & inside
     percent = numpy.clip(numpy.where(finite, sampled, 0.0), 0.0, 100.0)
     alpha = numpy.rint(percent * 2.55).astype("uint8")

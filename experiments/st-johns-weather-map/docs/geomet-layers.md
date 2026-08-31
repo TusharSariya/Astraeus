@@ -315,6 +315,17 @@ service answers the requests with the media type asked for.
 
 ## GOES-East satellite (live proxies)
 
+> **Companion layer:** the API also offers `noaa-goes19-cloud-mask` ("GOES-19
+> observed clouds"), rendered by this experiment from the NOAA GOES-19
+> Enterprise Cloud Mask (ABI-L2-ACMF Full Disk) ingested from the public
+> `noaa-goes19` bucket, with parallax correction from the ACHAF cloud-top
+> height product. It sits in the same `satellite` group as the four proxies
+> below so the processed (cloud-only, palette identical day and night) and
+> unprocessed (provider RGB composites, which change character at the
+> terminator) views can be compared side by side. See
+> `weather_api/satellite.py` and `ingest/adapters/goes_abi.py`; the four
+> GeoMet proxies below are unchanged.
+
 Four NOAA GOES-East imagery layers, served by GeoMet as ECCC's copy of the
 NOAA product, are offered by the API as **live-proxied imagery only**
 (`evidence_basis: live_proxy`, group `satellite`, `product: GOES-East`),

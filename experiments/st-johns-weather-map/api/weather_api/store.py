@@ -52,6 +52,10 @@ FIELD_BY_VARIABLE = {
     "cloud_low": "cloud_low",
     "cloud_middle": "cloud_middle",
     "cloud_high": "cloud_high",
+    # Column total precipitable water, a retrieved provider value served as
+    # stored. Its reading for transparency is caption text in the interface,
+    # never a derived verdict here.
+    "precipitable_water": "precipitable_water",
 }
 
 # METAR/TAF cloud layers, published per layer as retrieved (cover code, cover
@@ -66,10 +70,36 @@ CLOUD_LAYER_VARIABLES = tuple(
 )
 FIELD_BY_VARIABLE.update({name: name for name in CLOUD_LAYER_VARIABLES})
 
+# The upper-air wind components must pass the sampling filter to reach the
+# derivation below, so they map to themselves here; DERIVATION_INPUTS then
+# keeps them out of the served fields, exactly like the 10 m components.
+FIELD_BY_VARIABLE.update({name: name for name in ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa")})
+
+# Levels stated per variable where the artifact-wide default ("surface") would
+# be untrue. Explicit and short rather than inferred from GRIB attrs.
+VARIABLE_LEVELS = {
+    "wind_u_200hPa": "200 hPa",
+    "wind_v_200hPa": "200 hPa",
+    "wind_u_300hPa": "300 hPa",
+    "wind_v_300hPa": "300 hPa",
+    "precipitable_water": "entire atmosphere (column)",
+}
+
 # Sampled so they can be derived from, never served as readings: a reader asks
 # for a wind speed and a direction, not the components a model stores. The
 # derivation that consumes them discloses itself in the provenance it emits.
-DERIVATION_INPUTS = frozenset({"wind_u_10m", "wind_v_10m"})
+DERIVATION_INPUTS = frozenset({
+    "wind_u_10m", "wind_v_10m",
+    "wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa",
+})
+
+# The u/v pairs the MetPy wind derivation consumes and the fields it emits.
+# One disclosed derivation, three levels; a missing component yields nothing.
+WIND_COMPONENT_PAIRS = (
+    ("wind_u_10m", "wind_v_10m", "wind_speed", "wind_direction"),
+    ("wind_u_200hPa", "wind_v_200hPa", "wind_speed_200hPa", "wind_direction_200hPa"),
+    ("wind_u_300hPa", "wind_v_300hPa", "wind_speed_300hPa", "wind_direction_300hPa"),
+)
 
 # The present-weather flags the AWC adapter stores (FG, VCFG, BR as 0/1).
 # Sampled so ``fog_state`` can be derived from them; never served raw, because
@@ -615,7 +645,7 @@ class LiveStore:
                     variable=name,
                     value=value,
                     units=str(dataset[name].attrs.get("units", "unknown")),
-                    level=str(level),
+                    level=VARIABLE_LEVELS.get(name, str(level)),
                     valid_time=valid_time,
                     run_time=artifact.run_time,
                     retrieved_at=artifact.retrieved_at,
@@ -1090,13 +1120,14 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
             basis = replace(fog if fog is not None else vicinity, variable="fog_state", value=None, units="category")
             fields.append(EvidenceField(field="fog_state", value=state, provenance=live_provenance(basis, field_name="fog_state", reference=reference, derivation=FOG_DERIVATION, derivation_version=FOG_DERIVATION_VERSION)))
 
-        u, v = variables.get("wind_u_10m"), variables.get("wind_v_10m")
-        if u is None or v is None or u.value is None or v.value is None:
-            continue
-        speed, direction, derivation, version = resolve_wind(u.value, v.value)
-        for name, value, units in (("wind_speed", speed, WIND_SPEED_UNITS), ("wind_direction", direction, WIND_DIRECTION_UNITS)):
-            basis = replace(u, variable=name, value=value, units=units)
-            fields.append(EvidenceField(field=name, value=value, provenance=live_provenance(basis, field_name=name, reference=reference, derivation=derivation, derivation_version=version)))
+        for u_name, v_name, speed_field, direction_field in WIND_COMPONENT_PAIRS:
+            u, v = variables.get(u_name), variables.get(v_name)
+            if u is None or v is None or u.value is None or v.value is None:
+                continue
+            speed, direction, derivation, version = resolve_wind(u.value, v.value)
+            for name, value, units in ((speed_field, speed, WIND_SPEED_UNITS), (direction_field, direction, WIND_DIRECTION_UNITS)):
+                basis = replace(u, variable=name, value=value, units=units)
+                fields.append(EvidenceField(field=name, value=value, provenance=live_provenance(basis, field_name=name, reference=reference, derivation=derivation, derivation_version=version)))
 
     return fields, consensus, sorted(by_source)
 

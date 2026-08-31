@@ -205,6 +205,15 @@ describe('evidence basis wording', () => {
     expect(words).toMatch(/nearest-neighbor, never smoothed/i)
     expect(words).not.toMatch(/rendered live by the provider/i)
   })
+
+  it('says the satellite cloud mask was drawn here from stored NOAA values, never attributed to the provider', () => {
+    const words = describeEvidenceBasis('published_artifact', 'satellite')
+    expect(words).toMatch(/drawn by this experiment from stored NOAA cloud-mask values/i)
+    expect(words).toMatch(/nearest-neighbor, never smoothed/i)
+    expect(words).not.toMatch(/rendered live by the provider/i)
+    // The four provider composites stay live_proxy and keep their own sentence.
+    expect(describeEvidenceBasis('live_proxy', 'satellite')).toMatch(/rendered by the provider at request time/i)
+  })
 })
 
 describe('timeline mode', () => {

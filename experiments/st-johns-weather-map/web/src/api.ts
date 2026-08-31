@@ -1,5 +1,6 @@
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
-import type { CatalogResult, CatalogSource, CloudLayerReading, EvidenceSnapshot, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult } from './types'
+import type { CatalogResult, CatalogSource, CloudLayerReading, EvidenceSnapshot, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult,
+} from './types'
 
 const prefix = '/api/experiments/weather/v0'
 
@@ -140,6 +141,7 @@ const DISPLAYED_FIELDS = [
   'temperature', 'dew_point', 'relative_humidity', 'wind_speed', 'wind_direction', 'wind_gust',
   'precipitation_probability', 'cloud_low', 'cloud_middle', 'cloud_high', 'total_cloud',
   'mean_sea_level_pressure', 'visibility', 'fog_state', 'aqhi', 'wave_height', 'sea_surface_temperature',
+  'wind_speed_200hPa', 'wind_speed_300hPa', 'precipitable_water',
   ...CLOUD_LAYER_FIELDS,
 ]
 
@@ -249,6 +251,11 @@ export function normalizePoint(point: ApiPointResponse): EvidenceSnapshot {
     visibilityKm: distanceKm(fields, 'visibility', selectedSourceId),
     fogRisk,
     aqhi: numericField(fields, 'aqhi', selectedSourceId),
+    upperAir: {
+      jet200Kmh: speedKmh(fields, 'wind_speed_200hPa', selectedSourceId),
+      jet300Kmh: speedKmh(fields, 'wind_speed_300hPa', selectedSourceId),
+      precipitableWaterKgM2: numericField(fields, 'precipitable_water', selectedSourceId),
+    },
     marine: { waveHeightM: numericField(fields, 'wave_height', selectedSourceId), sstC: numericField(fields, 'sea_surface_temperature', selectedSourceId), tide: 'Tide feed unavailable' },
     warnings: alertTexts(fields),
     story: [],
@@ -315,6 +322,30 @@ export async function loadProfile(location: LocationPoint, validTime?: string, s
  *  `mixed` resolves to `unavailable`, and its hours are not presented as
  *  coverage. `timeline` is null when the endpoint could not be read at all —
  *  "no hour is published" is a claim of its own and is not made on a failure. */
+/** Computed darkness/moon geometry over the window. Same fail-closed rule:
+ *  a response that is not `live` keeps its notices as the reason, and a
+ *  transport failure yields null — an empty band is a claim ("no darkness"),
+ *  so it is never synthesized from a failure. */
+export async function loadAstronomy(signal?: AbortSignal): Promise<AstronomyResult> {
+  try {
+    const response = await fetch(`${prefix}/astronomy`, { signal, headers: { Accept: 'application/json' } })
+    if (!response.ok) return { astronomy: null, error: `astronomy returned ${response.status}` }
+    const body: unknown = await response.json()
+    if (!body || typeof body !== 'object' || !Array.isArray((body as { twilight_bands?: unknown }).twilight_bands)) {
+      return { astronomy: null, error: 'astronomy returned an incompatible schema' }
+    }
+    const astronomy = body as AstronomyResponse
+    if (toDataMode(astronomy.data_mode) !== 'live') {
+      const reason = astronomy.notices?.[0] ?? `astronomy declared data_mode "${String(astronomy.data_mode)}"`
+      return { astronomy: null, error: reason }
+    }
+    return { astronomy, error: null }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    return { astronomy: null, error: error instanceof Error ? error.message : 'astronomy fetch failed' }
+  }
+}
+
 export async function loadTimeline(signal?: AbortSignal): Promise<TimelineResult> {
   try {
     const response = await fetch(`${prefix}/timeline`, { signal, headers: { Accept: 'application/json' } })
@@ -590,6 +621,13 @@ export function describeEvidenceBasis(basis: string | undefined | null, group?: 
     // The one case where the drawn pixels come from the artifact itself: the
     // API paints the stored cells, nearest-neighbor, and fetches nothing.
     return 'Published artifact: this layer\u2019s evidence passed ingest, QC and atomic publication. Its imagery is rendered by this experiment from the stored grid values at their native cells - nearest-neighbor, never smoothed - not fetched from a provider.'
+  }
+  if (basis === 'published_artifact' && group === 'satellite') {
+    // The satellite group's one published-artifact member is the cloud mask
+    // this experiment renders itself; the four provider composites stay
+    // live_proxy. Saying “rendered live by the provider” here would
+    // attribute our own pixels to NOAA.
+    return 'Published artifact: this layer\u2019s evidence passed ingest, QC and atomic publication. Its imagery is drawn by this experiment from stored NOAA cloud-mask values at their stored cells - nearest-neighbor, never smoothed - not fetched from a provider.'
   }
   // Even here the image itself is live-rendered, so the drawn pixels are never
   // described as the published artifact.

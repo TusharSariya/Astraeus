@@ -162,10 +162,90 @@ def registry() -> dict[str, Any]:
 
     # Satellite and atmospheric composition.
     s.extend([
-        _source("noaa-goes-east", "satellite", "implementing", "Official GOES-R AWS products are public; coverage over Newfoundland, DQF and parallax fixtures remain.", "NOAA/NESDIS", "GOES-East ABI L1b/L2+ and derived cloud/moisture products", ["https://www.goes-r.gov/downloads/resources/documents/Beginners_Guide_to_GOES-R_Series_Data.pdf", "https://www.goes-r.gov/products/overview.html"], ["https://noaa-goes19.s3.amazonaws.com/"], ("community_client", "goes2go discovery + Satpy calibration/resampling + s3fs official bucket"), ["ABI_channels", "RGB", "cloud_mask", "cloud_probability", "cloud_top_height", "cloud_top_pressure", "cloud_top_temperature", "cloud_phase", "cloud_optical_depth", "derived_motion_winds", "nighttime_microphysics", "fog_low_stratus_when_available", "total_precipitable_water", "vertical_moisture", "DQF", "parallax", "zenith_angle", "coverage"], ["satellite pixels", "derived cloud top", "derived layer/profile products"], "GOES-East full disk; Newfoundland is high-zenith-angle edge coverage requiring masks", "full disk/product dependent, typically minutes", "observations/derived products only", (False, "Anonymous public S3", None), OPEN_US_POLICY, "GOES-R ABI L1b/L2+ product versions embedded in NetCDF", "30 minutes, product-dependent", "Satellite cloud/moisture/fog evidence with DQF and coverage", (False, None, "Satellite retrievals are not forecast-centre votes.")),
+        _source("noaa-goes-east", "satellite", "implementing", "Official GOES-R AWS products are public; coverage over Newfoundland, DQF and parallax fixtures remain.", "NOAA/NESDIS", "GOES-East ABI L1b/L2+ and derived cloud/moisture products", ["https://www.goes-r.gov/downloads/resources/documents/Beginners_Guide_to_GOES-R_Series_Data.pdf", "https://www.goes-r.gov/products/overview.html"], ["https://noaa-goes19.s3.amazonaws.com/"], ("community_client", "goes2go discovery + Satpy calibration/resampling + s3fs official bucket"), ["ABI_channels", "RGB", "cloud_mask", "cloud_probability", "cloud_top_height", "cloud_top_pressure", "cloud_top_temperature", "cloud_phase", "cloud_optical_depth", "derived_motion_winds", "nighttime_microphysics", "fog_low_stratus_when_available", "total_precipitable_water", "vertical_moisture", "DQF", "parallax", "zenith_angle", "coverage"], ["satellite pixels", "derived cloud top", "derived layer/profile products"], "GOES-East full disk; Newfoundland is high-zenith-angle edge coverage requiring masks", "10 minutes (full disk L2 cloud products)", "observations/derived products only", (False, "Anonymous public S3", None), OPEN_US_POLICY, "GOES-R ABI L1b/L2+ product versions embedded in NetCDF", "30 minutes, product-dependent", "Satellite cloud/moisture/fog evidence with DQF and coverage", (False, None, "Satellite retrievals are not forecast-centre votes.")),
         _source("copernicus-cams", "air_quality", "credential_required", "Official CAMS store uses Copernicus/ECMWF credentials; adapter can be tested only after a key is supplied later.", "Copernicus Atmosphere Monitoring Service / ECMWF", "CAMS global atmospheric composition forecasts", ["https://ads.atmosphere.copernicus.eu/datasets/cams-global-atmospheric-composition-forecasts", "https://cds.climate.copernicus.eu/licences/licence-to-use-copernicus-products"], ["https://ads.atmosphere.copernicus.eu/api"], ("official_sdk", "ecmwf-datastores-client"), ["aerosol_optical_depth", "extinction_coefficient", "dust", "sea_salt", "organic_matter", "black_carbon", "sulphate", "nitrate", "ammonium", "PM1", "PM2.5", "PM10", "vertical_mixing_ratios", "water_vapour_and_humidity_when_available"], ["surface", "model levels", "pressure levels", "column"], "Global", "operational CAMS cycles", "global composition forecast", (True, "Copernicus ADS personal access token", "https://ads.atmosphere.copernicus.eu/how-to-api"), {"licence": {"name": "Licence to use Copernicus Products", "url": "https://cds.climate.copernicus.eu/licences/licence-to-use-copernicus-products", "review_state": "verified"}, "attribution": "Use the required 'Contains modified Copernicus Atmosphere Monitoring Service information [year]' notice for adaptations.", "caching": "Cache bounded subsets only after authentication and licence acceptance.", "archival": "Retain bounded immutable artifacts under local retention policy.", "redistribution": "Permitted under the Copernicus licence with required notices; third-party products may differ."}, "dataset version returned by ADS", "two nominal cycles", "Independent atmospheric-composition evidence; keep AOD/extinction/PM distinct", (False, None, "Composition fields do not vote in weather consensus."), "blocked", "blocked"),
         _source("nasa-earthdata-aerosol", "air_quality", "credential_required", "MODIS/VIIRS/MAIAC near-real-time products require Earthdata authentication and pass/latency validation.", "NASA", "MODIS, VIIRS and MAIAC aerosol observations", ["https://www.earthdata.nasa.gov/data/instruments/viirs", "https://www.earthdata.nasa.gov/s3fs-public/2025-04/MCD19_User_Guide_V6.pdf"], ["https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/"], ("typed_adapter", "earthaccess/httpx discovery plus rasterio/xarray reader"), ["aerosol_optical_depth", "aerosol_type_or_quality_flags", "cloud_mask", "observation_geometry", "pass_time"], ["satellite swath/pixel", "column AOD"], "Polar-orbiting global swaths; pass-dependent Avalon coverage", "satellite pass-dependent", "observations only", (True, "NASA Earthdata Login bearer/cookie", "https://urs.earthdata.nasa.gov/users/new"), {"licence": {"name": "NASA Earth Science data policy and product-specific terms", "url": "https://www.earthdata.nasa.gov/engage/open-data-services-and-software/data-and-information-policy", "review_state": "verified"}, "attribution": "Credit NASA and the named instrument/product/science team; preserve DOI and quality flags.", "caching": "Cache only relevant swath/subsets under the cap.", "archival": "Retain immutable granules for the local POC window; cite provider archive identifiers.", "redistribution": "Generally open with attribution, subject to product-specific notices."}, "collection/version embedded in granule, e.g. MAIAC Collection 6", "one useful satellite pass; mark unavailable outside coverage", "Satellite aerosol evidence; AOD is never PM", (False, None, "Satellite aerosol observations are not blended."), "blocked", "blocked"),
     ])
+
+    # Space weather: NOAA SWPC keyless JSON feeds. The category is
+    # deliberately absent from FORECAST_CATEGORIES (no synthesized lead
+    # hours for a 3-day Kp outlook) and from the observation categories (a
+    # planetary index is not a local observation).
+    swpc_docs = ["https://www.swpc.noaa.gov/products", "https://services.swpc.noaa.gov/"]
+    s.extend([
+        _source(
+            "noaa-swpc-kp", "space_weather", "implementing",
+            "Official SWPC planetary K index feeds are public JSON; live schema pinned by smoke test 2026-08-31.",
+            "NOAA Space Weather Prediction Center", "Planetary K index (observed series and 3-day forecast)",
+            swpc_docs,
+            ["https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json"],
+            ("typed_adapter", "httpx JSON via PoliteClient; observed and forecast series kept separate with the provider's own per-value status"),
+            ["kp_index", "a_running", "kp_status"], ["planetary index (no vertical level)"],
+            "Planetary; no spatial coordinates are stored or claimed",
+            "3 hours", "observed series plus provider 3-day outlook with per-value status; no lead hours",
+            (False, "Anonymous HTTPS", None), OPEN_US_POLICY,
+            "SWPC products JSON schema as served", "6 hours",
+            "Geomagnetic activity evidence for aurora photography; never blended into weather consensus",
+            (False, None, "A planetary index is not a forecast-centre vote."),
+        ),
+        _source(
+            "noaa-swpc-rtsw", "space_weather", "implementing",
+            "Official SWPC real-time solar wind magnetometer JSON is public; the feed's own source field names the measuring spacecraft.",
+            "NOAA Space Weather Prediction Center", "Real-time solar wind magnetic field (1-minute)",
+            swpc_docs,
+            ["https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json"],
+            ("typed_adapter", "httpx JSON via PoliteClient; stored on a bare time axis, no coordinates"),
+            ["bz_gsm", "bt"], ["L1 solar wind (no vertical level)"],
+            "Upstream solar wind at L1; no spatial coordinates are stored or claimed",
+            "1 minute", "nowcast only; ~30-60 min advance warning of geomagnetic response",
+            (False, "Anonymous HTTPS", None), OPEN_US_POLICY,
+            "SWPC rtsw JSON schema as served", "15 minutes",
+            "Southward Bz is the aurora tripwire; served with its measurement instant and age",
+            (False, None, "Solar wind measurements are not forecast votes."),
+        ),
+        _source(
+            "noaa-swpc-ovation", "space_weather", "implementing",
+            "Official OVATION aurora nowcast grid is public JSON with its own observation and forecast instants.",
+            "NOAA Space Weather Prediction Center", "OVATION aurora probability nowcast grid",
+            swpc_docs,
+            ["https://services.swpc.noaa.gov/json/ovation_aurora_latest.json"],
+            ("typed_adapter", "httpx JSON via PoliteClient; global 1-degree grid cropped to the Atlantic context box"),
+            ["aurora_probability"], ["auroral emission altitude (single layer)"],
+            "Global grid; stored crop covers the Atlantic context box",
+            "10 minutes", "model nowcast ~30-40 minutes ahead of its observation instant",
+            (False, "Anonymous HTTPS", None), OPEN_US_POLICY,
+            "OVATION aurora JSON schema as served", "30 minutes",
+            "Aurora probability evidence; a model nowcast, disclosed as such",
+            (False, None, "A model nowcast grid is not a forecast-centre vote."),
+        ),
+    ])
+
+    # Astronomy: the one pinned static dataset. Its cadence prose deliberately
+    # does not parse to a schedule and its freshness is "not applicable", so
+    # the ingestion worker never schedules it; the API verifies the local
+    # file's sha256 before computing anything from it.
+    s.append(_source(
+        "nasa-jpl-de442", "astronomy", "implementing",
+        "Pinned planetary ephemeris for computed darkness/moon geometry; retrieved once out of band and checksum-verified (sha256 8d5001fab315eeff222cc51f7cf7ffcdb43fb38fb9ac73ff09e09a5b361fd388).",
+        "NASA JPL", "DE442 planetary ephemeris kernel",
+        ["https://ssd.jpl.nasa.gov/planets/eph_export.html", "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/aa_summaries.txt"],
+        ["https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de442.bsp"],
+        ("typed_adapter", "out-of-band fetch script + Skyfield reader against the checksum-verified local file"),
+        ["sun_position", "moon_position", "moon_phase", "moon_illuminated_fraction", "twilight_altitudes"],
+        ["geocentric/topocentric geometry"],
+        "Solar system barycentric ephemeris, 1550-2650",
+        "static kernel; pinned release",
+        "deterministic geometry over any requested window",
+        (False, "Anonymous HTTPS from NAIF", None),
+        {"licence": {"name": "United States government public data (NASA)", "url": "https://science.data.nasa.gov/license/", "review_state": "verified"},
+         "attribution": "Credit NASA JPL Solar System Dynamics; name the DE release and checksum in derivations.",
+         "caching": "One immutable kernel file, checksum-pinned; no repeated retrieval.",
+         "archival": "The pinned kernel is the archive; a changed checksum is a different source version.",
+         "redistribution": "US government work; redistributable with attribution."},
+        "DE442 (2025-02 NAIF export)", "not applicable",
+        "Computed astronomical darkness/moon geometry; never blended with weather evidence",
+        (False, None, "A pinned ephemeris is not a forecast centre and casts no vote."),
+    ))
 
     # Aviation, marine/coastal, local transport and optional observations.
     aviation_policy = {"licence": {"name": "AviationWeather.gov terms / US government data", "url": "https://www.aviationweather.gov/data/api/", "review_state": "verified"}, "attribution": "Credit NOAA/NWS Aviation Weather Center and preserve raw report, issue/valid times and station/report identifiers.", "caching": "Respect rate limits; prefer official cache files for broad requests.", "archival": "Up to 30 days are available from the API; local POC retains bounded artifacts only.", "redistribution": "Preserve attribution and any embedded international provider notices."}

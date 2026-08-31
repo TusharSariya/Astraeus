@@ -40,6 +40,20 @@ DEFAULT_VARIABLES = (
 )
 
 VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
+    # What the GFS adapter actually stores: the surface set plus the
+    # provider-declared cloud strata, the jet-level winds and column water.
+    # Stated so run metadata does not inherit a default that no longer
+    # matches (precipitation_accumulation is deliberately not retrieved).
+    "noaa-gfs": (
+        "temperature_2m", "dew_point_2m", "relative_humidity_2m",
+        "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure", "visibility",
+        "total_cloud", "cloud_low", "cloud_middle", "cloud_high",
+        "wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa",
+        "precipitable_water",
+    ),
+    "noaa-swpc-kp": ("kp_index", "a_running", "kp_status"),
+    "noaa-swpc-rtsw": ("bz_gsm", "bt"),
+    "noaa-swpc-ovation": ("aurora_probability",),
     "eccc-radar": ("precipitation_rate", "precipitation_type"),
     "eccc-lightning": ("lightning_strike",),
     "awc-metar-speci": ("temperature", "dew_point", "visibility", "cloud_layers", "weather_codes", "wind_u_10m", "wind_v_10m"),
@@ -54,7 +68,7 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
 # context box; anything intended for the Avalon map is cropped hard.
 CONTEXT_BOX_SOURCES = frozenset({
     "noaa-gfs", "noaa-gefs", "ecmwf-ifs", "ecmwf-ens", "ecmwf-aifs-single",
-    "ecmwf-aifs-ens", "dwd-icon-global", "eccc-gdps", "eccc-geps", "noaa-goes-east",
+    "ecmwf-aifs-ens", "dwd-icon-global", "eccc-gdps", "eccc-geps", "noaa-goes-east", "noaa-swpc-ovation",
 })
 
 # Only categories where *every* member carries forecast lead times get

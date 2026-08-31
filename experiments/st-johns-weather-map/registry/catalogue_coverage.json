@@ -1,48 +1,158 @@
 {
   "catalogue_version": "0.1.0",
   "plan_candidates": {
-    "HRDPS raw and statistical post-processing": ["eccc-hrdps", "eccc-hrdps-weg-prognos"],
-    "RDPS": ["eccc-rdps"],
-    "REPS all members and control": ["eccc-reps"],
-    "GDPS and GEPS": ["eccc-gdps", "eccc-geps"],
-    "Integrated Nowcasting System": ["eccc-integrated-nowcasting"],
-    "HRDPA RDPA and HREPA": ["eccc-hrdpa", "eccc-rdpa", "eccc-hrepa"],
-    "HRDLPS and CaLDAS": ["eccc-hrdlps", "eccc-caldas"],
-    "ECMWF IFS ENS AIFS Single and AIFS ENS": ["ecmwf-ifs", "ecmwf-ens", "ecmwf-aifs-single", "ecmwf-aifs-ens"],
-    "NOAA GFS and GEFS": ["noaa-gfs", "noaa-gefs"],
-    "DWD ICON Global": ["dwd-icon-global"],
-    "WeatherNext 2": ["google-weathernext-2"],
-    "CYYT and nearby ECCC SWOB stations": ["eccc-swob"],
-    "METAR and SPECI": ["awc-metar-speci"],
-    "radiosonde profiles": ["eccc-radiosonde"],
-    "SmartAtlantic St Johns and other validated buoys": ["smartatlantic-st-johns", "smartatlantic-other-validated"],
-    "official marine ship and buoy SYNOP observations": ["eccc-marine-buoys-synop"],
-    "MADIS and personal weather station observations": ["noaa-madis", "raw-cwop-pws"],
-    "GOES-East ABI cloud moisture fog and DQF products": ["noaa-goes-east"],
-    "weather radar rate type and extrapolation": ["eccc-radar"],
-    "ten-minute lightning density": ["eccc-lightning"],
-    "official CAP alerts": ["eccc-cap-alerts"],
-    "thunderstorm outlooks": ["eccc-thunderstorm-outlooks"],
-    "hurricane products when active": ["eccc-hurricane-products"],
-    "CYYT TAF": ["awc-taf"],
-    "SIGMET and AIRMET": ["awc-sigmet-airmet"],
-    "PIREP and AIREP": ["awc-pirep-airep"],
-    "AQHI observations and forecasts": ["eccc-aqhi"],
-    "RAQDPS and RDAQA": ["eccc-raqdps", "eccc-rdaqa"],
-    "CAMS composition and humidity where available": ["copernicus-cams"],
-    "NASA MODIS VIIRS and MAIAC aerosol": ["nasa-earthdata-aerosol"],
-    "Canadian wildfire hotspots": ["eccc-wildfire-hotspots"],
-    "PurpleAir and OpenAQ": ["purpleair", "openaq"],
-    "retired standalone RAQDPS FireWork": ["eccc-raqdps-firework"],
-    "CIOPS-East": ["eccc-ciops-east"],
-    "RDWPS and REWPS": ["eccc-rdwps", "eccc-rewps"],
-    "GDSPS and RESPS storm surge": ["eccc-gdsps", "eccc-resps"],
-    "DFO CHS IWLS tides observed levels and forecasts": ["dfo-iwls"],
-    "marine forecasts alerts and coastal flooding": ["eccc-marine-forecasts-alerts"],
-    "NL 511 road conditions cameras events advisories ferries and Wreckhouse": ["nl-511"],
-    "raw RWIS telemetry": ["nl-511-rwis"],
-    "ECCC real-time hydrometric stations": ["eccc-hydrometric"],
-    "provincial and municipal hydrometric networks": ["provincial-hydrometric", "municipal-hydrometric"],
-    "Nav Canada weather cameras": ["nav-canada-weather-cameras"]
+    "HRDPS raw and statistical post-processing": [
+      "eccc-hrdps",
+      "eccc-hrdps-weg-prognos"
+    ],
+    "RDPS": [
+      "eccc-rdps"
+    ],
+    "REPS all members and control": [
+      "eccc-reps"
+    ],
+    "GDPS and GEPS": [
+      "eccc-gdps",
+      "eccc-geps"
+    ],
+    "Integrated Nowcasting System": [
+      "eccc-integrated-nowcasting"
+    ],
+    "HRDPA RDPA and HREPA": [
+      "eccc-hrdpa",
+      "eccc-rdpa",
+      "eccc-hrepa"
+    ],
+    "HRDLPS and CaLDAS": [
+      "eccc-hrdlps",
+      "eccc-caldas"
+    ],
+    "ECMWF IFS ENS AIFS Single and AIFS ENS": [
+      "ecmwf-ifs",
+      "ecmwf-ens",
+      "ecmwf-aifs-single",
+      "ecmwf-aifs-ens"
+    ],
+    "NOAA GFS and GEFS": [
+      "noaa-gfs",
+      "noaa-gefs"
+    ],
+    "DWD ICON Global": [
+      "dwd-icon-global"
+    ],
+    "WeatherNext 2": [
+      "google-weathernext-2"
+    ],
+    "CYYT and nearby ECCC SWOB stations": [
+      "eccc-swob"
+    ],
+    "METAR and SPECI": [
+      "awc-metar-speci"
+    ],
+    "radiosonde profiles": [
+      "eccc-radiosonde"
+    ],
+    "SmartAtlantic St Johns and other validated buoys": [
+      "smartatlantic-st-johns",
+      "smartatlantic-other-validated"
+    ],
+    "official marine ship and buoy SYNOP observations": [
+      "eccc-marine-buoys-synop"
+    ],
+    "MADIS and personal weather station observations": [
+      "noaa-madis",
+      "raw-cwop-pws"
+    ],
+    "GOES-East ABI cloud moisture fog and DQF products": [
+      "noaa-goes-east"
+    ],
+    "weather radar rate type and extrapolation": [
+      "eccc-radar"
+    ],
+    "ten-minute lightning density": [
+      "eccc-lightning"
+    ],
+    "official CAP alerts": [
+      "eccc-cap-alerts"
+    ],
+    "thunderstorm outlooks": [
+      "eccc-thunderstorm-outlooks"
+    ],
+    "hurricane products when active": [
+      "eccc-hurricane-products"
+    ],
+    "CYYT TAF": [
+      "awc-taf"
+    ],
+    "SIGMET and AIRMET": [
+      "awc-sigmet-airmet"
+    ],
+    "PIREP and AIREP": [
+      "awc-pirep-airep"
+    ],
+    "AQHI observations and forecasts": [
+      "eccc-aqhi"
+    ],
+    "RAQDPS and RDAQA": [
+      "eccc-raqdps",
+      "eccc-rdaqa"
+    ],
+    "CAMS composition and humidity where available": [
+      "copernicus-cams"
+    ],
+    "NASA MODIS VIIRS and MAIAC aerosol": [
+      "nasa-earthdata-aerosol"
+    ],
+    "Canadian wildfire hotspots": [
+      "eccc-wildfire-hotspots"
+    ],
+    "PurpleAir and OpenAQ": [
+      "purpleair",
+      "openaq"
+    ],
+    "retired standalone RAQDPS FireWork": [
+      "eccc-raqdps-firework"
+    ],
+    "CIOPS-East": [
+      "eccc-ciops-east"
+    ],
+    "RDWPS and REWPS": [
+      "eccc-rdwps",
+      "eccc-rewps"
+    ],
+    "GDSPS and RESPS storm surge": [
+      "eccc-gdsps",
+      "eccc-resps"
+    ],
+    "DFO CHS IWLS tides observed levels and forecasts": [
+      "dfo-iwls"
+    ],
+    "marine forecasts alerts and coastal flooding": [
+      "eccc-marine-forecasts-alerts"
+    ],
+    "NL 511 road conditions cameras events advisories ferries and Wreckhouse": [
+      "nl-511"
+    ],
+    "raw RWIS telemetry": [
+      "nl-511-rwis"
+    ],
+    "ECCC real-time hydrometric stations": [
+      "eccc-hydrometric"
+    ],
+    "provincial and municipal hydrometric networks": [
+      "provincial-hydrometric",
+      "municipal-hydrometric"
+    ],
+    "Nav Canada weather cameras": [
+      "nav-canada-weather-cameras"
+    ],
+    "Pinned JPL DE442 ephemeris (astronomy geometry)": [
+      "nasa-jpl-de442"
+    ],
+    "NOAA SWPC space weather (Kp, solar wind, OVATION aurora)": [
+      "noaa-swpc-kp",
+      "noaa-swpc-rtsw",
+      "noaa-swpc-ovation"
+    ]
   }
 }

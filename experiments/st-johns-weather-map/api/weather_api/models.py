@@ -360,3 +360,57 @@ class ReadyResponse(StrictModel):
 
 class ErrorResponse(StrictModel):
     detail: str
+
+
+# --- astronomy ------------------------------------------------------------
+
+
+class AstronomyInterval(StrictModel):
+    """One labelled interval over the evidence window."""
+
+    kind: str
+    start: datetime
+    end: datetime
+
+
+class AstronomyMoon(StrictModel):
+    rise: datetime | None
+    set: datetime | None
+    above_horizon: list[AstronomyInterval]
+    phase_deg: float
+    illuminated_fraction: float
+
+
+class AstronomyCoreWindow(StrictModel):
+    """The geometric Milky Way core window: geometry only, never blended."""
+
+    windows: list[AstronomyInterval]
+    max_altitude_deg: float
+    caption: str
+
+
+class AstronomyProvenance(StrictModel):
+    source_id: str
+    kernel_id: str
+    kernel_sha256: str
+    derivation: str
+    derivation_version: str
+    operational: Literal[False] = False
+
+
+class AstronomyResponse(StrictModel):
+    data_mode: DataMode
+    operational: Literal[False] = False
+    latitude: float
+    longitude: float
+    window_start: datetime
+    window_end: datetime
+    valid_time: datetime
+    sun_altitude_deg: float
+    moon_altitude_deg: float
+    core_altitude_deg: float
+    twilight_bands: list[AstronomyInterval]
+    moon: AstronomyMoon
+    milky_way_core: AstronomyCoreWindow
+    provenance: AstronomyProvenance | None
+    notices: list[str]

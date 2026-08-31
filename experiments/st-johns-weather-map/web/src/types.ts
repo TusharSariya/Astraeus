@@ -103,6 +103,10 @@ export interface EvidenceSnapshot {
   visibilityKm: number | null
   fogRisk: 'evidence_present' | 'not_indicated' | 'unknown'
   aqhi: number | null
+  /** Upper-air seeing/transparency ingredients: jet-level wind speeds
+   *  (derived by the API from stored GFS u/v) and column precipitable water
+   *  as stored. Interpretation is caption text, never a computed verdict. */
+  upperAir: { jet200Kmh: number | null; jet300Kmh: number | null; precipitableWaterKgM2: number | null }
   marine: { waveHeightM: number | null; sstC: number | null; tide: string }
   warnings: string[]
   story: StoryStep[]
@@ -110,6 +114,36 @@ export interface EvidenceSnapshot {
 }
 
 export type DataSource = 'loading' | 'live' | 'mixed' | 'fixture' | 'unavailable'
+
+export interface AstronomyInterval { kind: string; start: string; end: string }
+
+export interface AstronomyMoon {
+  rise: string | null
+  set: string | null
+  above_horizon: AstronomyInterval[]
+  phase_deg: number
+  illuminated_fraction: number
+}
+
+export interface AstronomyResponse {
+  data_mode: FieldDataMode
+  operational: false
+  latitude: number
+  longitude: number
+  window_start: string
+  window_end: string
+  valid_time: string
+  sun_altitude_deg: number
+  moon_altitude_deg: number
+  core_altitude_deg: number
+  twilight_bands: AstronomyInterval[]
+  moon: AstronomyMoon
+  milky_way_core: { windows: AstronomyInterval[]; max_altitude_deg: number; caption: string }
+  provenance: { source_id: string; kernel_id: string; kernel_sha256: string; derivation: string; derivation_version: string; operational: false } | null
+  notices: string[]
+}
+
+export interface AstronomyResult { astronomy: AstronomyResponse | null; error: string | null }
 
 export interface TimelineItem {
   valid_time_utc: string

@@ -29,6 +29,8 @@ _MODULES = (
     "dwd_icon",
     "awc",
     "eccc_ogc",
+    "goes_abi",
+    "swpc",
 )
 
 

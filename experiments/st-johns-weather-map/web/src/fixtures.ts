@@ -94,6 +94,7 @@ export const fixtureSnapshot: EvidenceSnapshot = {
   visibilityKm: 5.8,
   fogRisk: 'evidence_present',
   aqhi: 2,
+  upperAir: { jet200Kmh: 145, jet300Kmh: 122, precipitableWaterKgM2: 14.2 },
   marine: { waveHeightM: 2.3, sstC: 11.8, tide: 'Rising · high 17:42 NDT' },
   warnings: ['Marine wind warning · Avalon waters'],
   story: [
@@ -118,6 +119,7 @@ export const unavailableSnapshot: EvidenceSnapshot = {
   precipitation: 'Unavailable', precipitationProbabilityPct: null,
   cloud: { low: null, middle: null, high: null }, totalCloudPct: null, cloudLayers: [], pressureHpa: null,
   visibilityKm: null, fogRisk: 'unknown', aqhi: null,
+  upperAir: { jet200Kmh: null, jet300Kmh: null, precipitableWaterKgM2: null },
   marine: { waveHeightM: null, sstC: null, tide: 'Unavailable' },
   warnings: [], story: [], provenance: [],
 }

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, cloudBandOf, describeOffset, filterCloudLayers, groupLayers, loadCatalog, loadLayers, loadPoint, loadProfile, loadSourceStatus, loadStory, loadTimeline, pointProductFor, resolveFrame } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, cloudBandOf, describeOffset, filterCloudLayers, groupLayers, loadAstronomy, loadCatalog, loadLayers, loadPoint, loadProfile, loadSourceStatus, loadStory, loadTimeline, pointProductFor, resolveFrame } from './api'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
 import { useTheme } from './theme'
 import type {
   AppMode, CatalogSource, CloudLayerReading, DataSource, EvidenceSnapshot, FallbackMode, FieldAttribution, FieldDataMode,
-  LayerItem, LayerSelection, LocationPoint, ProfileResponse, ResolvedFrame, SourceStatusItem, StoryStep, TimelineResponse,
+  LayerItem, LayerSelection, LocationPoint, ProfileResponse, ResolvedFrame, SourceStatusItem, StoryStep, TimelineResponse, AstronomyInterval, AstronomyResponse,
 } from './types'
 
 /** The evidence window, in minutes from the session reference instant. */
@@ -238,6 +238,47 @@ function sourced(snapshot: EvidenceSnapshot, field: string): string {
   return source ? ` (${source.sourceId ?? source.product ?? source.provider})` : ''
 }
 
+/** A time in Newfoundland local clock for band and card text. */
+function nlTime(iso: string | null): string {
+  if (!iso) return 'Unknown'
+  const stamp = new Date(iso)
+  if (Number.isNaN(stamp.getTime())) return 'Unknown'
+  return stamp.toLocaleTimeString('en-CA', { timeZone: 'America/St_Johns', hour: '2-digit', minute: '2-digit' })
+}
+
+/** One astronomy band beside the coverage rows: spans positioned by the same
+ *  window fraction mapping, with the intervals named in a text alternative.
+ *  Rendered only from a served response — never synthesized. */
+function SkyBandRow({ label, intervals, windowStartMs, windowEndMs, description }: {
+  label: string
+  intervals: AstronomyInterval[]
+  windowStartMs: number
+  windowEndMs: number
+  description: string
+}) {
+  const domain = windowEndMs - windowStartMs
+  return (
+    <div className="sky-band-row">
+      <span className="sky-band-label">{label}</span>
+      <div className="sky-band-track" role="img" aria-label={description}>
+        {intervals.map((interval) => {
+          const startMs = Math.max(new Date(interval.start).getTime(), windowStartMs)
+          const endMs = Math.min(new Date(interval.end).getTime(), windowEndMs)
+          if (!(endMs > startMs) || domain <= 0) return null
+          const left = ((startMs - windowStartMs) / domain) * 100
+          const width = ((endMs - startMs) / domain) * 100
+          return <i key={`${interval.kind}-${interval.start}`} className={`sky-band sky-band-${interval.kind}`} style={{ left: `${left}%`, width: `${width}%` }} />
+        })}
+      </div>
+    </div>
+  )
+}
+
+function describeIntervals(name: string, intervals: AstronomyInterval[], empty: string): string {
+  if (intervals.length === 0) return `${name}: ${empty}`
+  return `${name}: ${intervals.map((interval) => `${interval.kind.replaceAll('_', ' ')} ${nlTime(interval.start)}-${nlTime(interval.end)} NT`).join(', ')}`
+}
+
 function evidenceRows(snapshot: EvidenceSnapshot, humidityGap: string): MapEvidenceRow[] {
   const direction = snapshot.windDirectionDeg === null ? 'direction Unknown' : `from ${Math.round(snapshot.windDirectionDeg)}°`
   return [
@@ -250,6 +291,8 @@ function evidenceRows(snapshot: EvidenceSnapshot, humidityGap: string): MapEvide
     { label: 'Cloud layers', value: cloudLayersText(snapshot.cloudLayers) === null ? 'Unknown — no cloud layer was returned' : `${cloudLayersText(snapshot.cloudLayers)}, as reported and not bucketed into strata${sourced(snapshot, 'cloud_layer_1_cover_code')}` },
     { label: 'Visibility', value: snapshot.visibilityKm === null ? 'Unknown — no visibility value in a recognised unit was returned' : `${snapshot.visibilityKm.toFixed(1)} km${sourced(snapshot, 'visibility')}` },
     { label: 'Fog', value: `${fogCopy[snapshot.fogRisk]}${snapshot.fogRisk === 'unknown' ? '' : sourced(snapshot, 'fog_state')}` },
+    { label: 'Jet-level wind', value: snapshot.upperAir.jet200Kmh === null && snapshot.upperAir.jet300Kmh === null ? 'Unknown — no upper-air wind value was returned' : `${snapshot.upperAir.jet200Kmh === null ? 'unknown' : Math.round(snapshot.upperAir.jet200Kmh)} / ${snapshot.upperAir.jet300Kmh === null ? 'unknown' : Math.round(snapshot.upperAir.jet300Kmh)} km/h at 200/300 hPa — strong jet flow degrades astronomical seeing${sourced(snapshot, 'wind_speed_200hPa')}` },
+    { label: 'Precipitable water', value: snapshot.upperAir.precipitableWaterKgM2 === null ? 'Unknown — no precipitable water value was returned' : `${snapshot.upperAir.precipitableWaterKgM2.toFixed(1)} kg/m² of column moisture — more degrades sky transparency${sourced(snapshot, 'precipitable_water')}` },
     { label: 'Valid time', value: snapshot.validAt ?? 'Unknown — no valid time was returned' },
   ]
 }
@@ -280,6 +323,8 @@ export default function App() {
   const [selections, setSelections] = useState<LayerSelection[]>([])
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null)
   const [timelineNotice, setTimelineNotice] = useState<string | null>(null)
+  const [astronomy, setAstronomy] = useState<AstronomyResponse | null>(null)
+  const [astronomyNotice, setAstronomyNotice] = useState<string | null>(null)
   const [story, setStory] = useState<StoryStep[]>([])
   const [provider, setProvider] = useState('')
   const [sourceStatuses, setSourceStatuses] = useState<SourceStatusItem[] | null>(null)
@@ -341,6 +386,13 @@ export default function App() {
     // Station markers are drawn from a hardcoded picker list, so this is the
     // only thing that can say whether anything has actually been ingested for
     // one. Until it answers, every station reads as coverage unknown.
+    // Computed darkness/moon geometry. Fail-closed like everything else: a
+    // failure keeps the reason and no band is drawn, because an empty band
+    // would read as "no darkness tonight".
+    loadAstronomy(controller.signal).then((result) => {
+      setAstronomy(result.astronomy)
+      setAstronomyNotice(result.error)
+    }).catch(() => undefined)
     loadSourceStatus(controller.signal).then((result) => {
       setSourceStatuses(result.statuses)
       setSourceStatusError(result.error)
@@ -733,6 +785,24 @@ export default function App() {
                   source={snapshot.pressureHpa === null ? undefined : snapshot.fieldSources.mean_sea_level_pressure}
                 />
                 <Metric label="AQHI" value={snapshot.aqhi === null ? 'Unknown' : String(snapshot.aqhi)} detail={snapshot.aqhi === null ? 'Health risk unavailable' : snapshot.aqhi <= 3 ? 'Low health risk' : snapshot.aqhi <= 6 ? 'Moderate health risk' : 'Elevated health risk'} mode={snapshot.fieldModes.aqhi} source={snapshot.aqhi === null ? undefined : snapshot.fieldSources.aqhi} />
+                <Metric
+                  label="Jet-level wind"
+                  value={snapshot.upperAir.jet200Kmh === null && snapshot.upperAir.jet300Kmh === null
+                    ? 'Unknown'
+                    : [snapshot.upperAir.jet200Kmh, snapshot.upperAir.jet300Kmh].map((v) => (v === null ? 'Unknown' : `${Math.round(v)} km/h`)).join(' · ')}
+                  detail={snapshot.upperAir.jet200Kmh === null && snapshot.upperAir.jet300Kmh === null
+                    ? 'No upper-air wind returned'
+                    : 'At 200 · 300 hPa — strong jet flow degrades astronomical seeing'}
+                  mode={snapshot.fieldModes.wind_speed_200hPa ?? snapshot.fieldModes.wind_speed_300hPa}
+                  source={snapshot.fieldSources.wind_speed_200hPa ?? snapshot.fieldSources.wind_speed_300hPa}
+                />
+                <Metric
+                  label="Precipitable water"
+                  value={snapshot.upperAir.precipitableWaterKgM2 === null ? 'Unknown' : `${snapshot.upperAir.precipitableWaterKgM2.toFixed(1)} kg/m²`}
+                  detail={snapshot.upperAir.precipitableWaterKgM2 === null ? 'No precipitable water returned' : 'Column moisture — more degrades sky transparency'}
+                  mode={snapshot.fieldModes.precipitable_water}
+                  source={snapshot.upperAir.precipitableWaterKgM2 === null ? undefined : snapshot.fieldSources.precipitable_water}
+                />
               </div>
               <div className="marine-rule">
                 <span>Offshore</span>
@@ -741,6 +811,35 @@ export default function App() {
                   {snapshot.marine.sstC === null ? 'SST Unavailable' : `SST ${snapshot.marine.sstC}°C`} · {snapshot.marine.tide}
                   {snapshot.marine.waveHeightM === null && snapshot.marine.sstC === null && ' · No marine field was returned for this point.'}
                 </p>
+              </div>
+              <div className="tonight">
+                <h3>Tonight <small>computed geometry, JPL DE442</small></h3>
+                {astronomy === null
+                  ? <p className="unwired-notice" role="status">Astronomy unavailable: {astronomyNotice ?? 'astronomy was not read'}</p>
+                  : (
+                    <div className="metric-grid">
+                      <Metric
+                        label="Astronomical darkness"
+                        value={astronomy.twilight_bands.some((band) => band.kind === 'night')
+                          ? astronomy.twilight_bands.filter((band) => band.kind === 'night').map((band) => `${nlTime(band.start)}–${nlTime(band.end)}`).join(', ')
+                          : 'None in this window'}
+                        detail="Sun below −18° · Newfoundland time"
+                      />
+                      <Metric
+                        label="Moon"
+                        value={`${astronomy.moon.rise === null ? 'no rise' : `rises ${nlTime(astronomy.moon.rise)}`} · ${astronomy.moon.set === null ? 'no set' : `sets ${nlTime(astronomy.moon.set)}`}`}
+                        detail={`${Math.round(astronomy.moon.illuminated_fraction * 100)}% illuminated, ${astronomy.moon.phase_deg < 180 ? 'waxing' : 'waning'}`}
+                      />
+                      <Metric
+                        label="Milky Way core"
+                        value={astronomy.milky_way_core.windows.length === 0
+                          ? 'No geometric window'
+                          : astronomy.milky_way_core.windows.map((band) => `${nlTime(band.start)}–${nlTime(band.end)}`).join(', ')}
+                        detail={`Peaks at ${astronomy.milky_way_core.max_altitude_deg}° · ${astronomy.milky_way_core.caption}`}
+                        detailTitle={astronomy.milky_way_core.caption}
+                      />
+                    </div>
+                  )}
               </div>
               <div className="warning">
                 <span>{dataSource === 'fixture' ? 'Fixture hazard example' : 'Hazard evidence'}</span>
@@ -793,6 +892,28 @@ export default function App() {
                   ))}
                 </div>
               </div>
+
+              {astronomy !== null
+                ? (
+                  <div className="sky-bands">
+                    <SkyBandRow
+                      label="Darkness"
+                      intervals={astronomy.twilight_bands.filter((band) => band.kind !== 'day')}
+                      windowStartMs={windowStartMs}
+                      windowEndMs={windowEndMs}
+                      description={describeIntervals('Darkness', astronomy.twilight_bands.filter((band) => band.kind !== 'day'), 'the sun stays up for this whole window')}
+                    />
+                    <SkyBandRow
+                      label="Moon up"
+                      intervals={astronomy.moon.above_horizon}
+                      windowStartMs={windowStartMs}
+                      windowEndMs={windowEndMs}
+                      description={describeIntervals('Moon above the horizon', astronomy.moon.above_horizon, 'the moon stays below the horizon for this whole window')}
+                    />
+                    <small className="sky-bands-note">Computed geometry (JPL DE442) — darkness and moon only; not cloud, transparency or light pollution.</small>
+                  </div>
+                )
+                : <p className="unwired-notice" role="status">Darkness and moon bands unavailable: {astronomyNotice ?? 'astronomy was not read'}. No band is drawn from a failure.</p>}
 
               <div className="coverage-ribbon" aria-label="Published frames per layer across the window">
                 {layers.length === 0

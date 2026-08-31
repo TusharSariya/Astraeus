@@ -351,3 +351,88 @@ def test_the_dataset_cache_is_bounded():
     from weather_api.store import MAX_CACHED_DATASETS
 
     assert MAX_CACHED_DATASETS > 0
+
+
+def make_upper_air(*, u200: float | None = 40.0, v200: float | None = -10.0, u300: float | None = 30.0, v300: float | None = -6.0) -> tuple[CurrentArtifact, xarray.Dataset]:
+    """A GFS-shaped upper_air artifact: flat level-suffixed jet-wind components."""
+    latitudes = numpy.array([47.5, 47.6])
+    longitudes = numpy.array([-52.8, -52.7])
+    stamps = numpy.array([numpy.datetime64(VALID_TIME.replace(tzinfo=None), "ns")])
+
+    def grid(value: float | None) -> numpy.ndarray:
+        return numpy.full((1, 2, 2), numpy.nan if value is None else value, dtype="float64")
+
+    variables = {
+        name: (("valid_time", "latitude", "longitude"), grid(value), {"units": "m s-1"})
+        for name, value in (
+            ("wind_u_200hPa", u200), ("wind_v_200hPa", v200),
+            ("wind_u_300hPa", u300), ("wind_v_300hPa", v300),
+        )
+    }
+    dataset = xarray.Dataset(variables, coords={"valid_time": stamps, "latitude": latitudes, "longitude": longitudes})
+    artifact = CurrentArtifact(
+        source_id="noaa-gfs",
+        logical_name="upper_air",
+        revision_id="revision-upper-1",
+        object_key="artifacts/noaa-gfs/upper_air",
+        media_type="application/zarr+zip",
+        byte_size=1024,
+        provenance={"native_resolution": "0.25 deg", "adapter_version": "noaa-gfs-v2", "vertical_levels": "200/300 hPa isobaric"},
+        published_at=datetime(2026, 8, 29, 13, tzinfo=UTC),
+        run_time=datetime(2026, 8, 29, 12, tzinfo=UTC),
+        retrieved_at=datetime(2026, 8, 29, 12, 40, tzinfo=UTC),
+        provider_run_id="2026082912",
+        native_crs="EPSG:4326",
+    )
+    return artifact, dataset
+
+
+def test_upper_air_winds_are_served_only_as_level_suffixed_derivations():
+    store = StubStore([make_upper_air(u200=0.0, v200=-40.0, u300=0.0, v300=-30.0)])
+    fields, _, _ = live_point_fields(store, *ST_JOHNS, VALID_TIME)
+    by_field = {item.field: item for item in fields}
+
+    assert by_field["wind_speed_200hPa"].value == 40.0
+    assert by_field["wind_speed_300hPa"].value == 30.0
+    assert by_field["wind_direction_200hPa"].value in (0.0, 360.0)
+    for name in ("wind_speed_200hPa", "wind_direction_200hPa"):
+        item = by_field[name]
+        assert item.provenance.derivation is not None and "MetPy" in item.provenance.derivation
+        assert item.provenance.vertical_level == "200 hPa"
+    assert by_field["wind_speed_300hPa"].provenance.vertical_level == "300 hPa"
+    # The stored components are derivation inputs, never readings.
+    for raw in ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa"):
+        assert raw not in by_field
+
+
+def test_upper_air_wind_is_absent_when_a_component_is_missing():
+    store = StubStore([make_upper_air(u300=None)])
+    fields, _, _ = live_point_fields(store, *ST_JOHNS, VALID_TIME)
+    names = {item.field for item in fields}
+    assert "wind_speed_200hPa" in names
+    assert "wind_speed_300hPa" not in names and "wind_direction_300hPa" not in names
+
+
+def test_no_upper_air_artifact_means_no_upper_wind_fields():
+    store = StubStore([(make_artifact(), make_dataset(wind_u=1.0, wind_v=1.0))])
+    fields, _, _ = live_point_fields(store, *ST_JOHNS, VALID_TIME)
+    names = {item.field for item in fields}
+    assert names.isdisjoint({"wind_speed_200hPa", "wind_direction_200hPa", "wind_speed_300hPa", "wind_direction_300hPa"})
+
+
+def test_precipitable_water_is_served_as_stored_with_a_column_level():
+    latitudes = numpy.array([47.5, 47.6])
+    longitudes = numpy.array([-52.8, -52.7])
+    stamps = numpy.array([numpy.datetime64(VALID_TIME.replace(tzinfo=None), "ns")])
+    dataset = xarray.Dataset(
+        {"precipitable_water": (("valid_time", "latitude", "longitude"), numpy.full((1, 2, 2), 12.5), {"units": "kg m-2"})},
+        coords={"valid_time": stamps, "latitude": latitudes, "longitude": longitudes},
+    )
+    store = StubStore([(make_artifact(source_id="noaa-gfs"), dataset)])
+    fields, _, _ = live_point_fields(store, *ST_JOHNS, VALID_TIME)
+    by_field = {item.field: item for item in fields}
+    item = by_field["precipitable_water"]
+    assert item.value == 12.5
+    assert item.provenance.normalized_units == "kg m-2"
+    assert item.provenance.vertical_level == "entire atmosphere (column)"
+    assert item.provenance.derivation is None

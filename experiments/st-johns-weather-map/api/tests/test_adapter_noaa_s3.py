@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import os
+
 import httpx
 import numpy
 import pytest
@@ -12,7 +14,7 @@ import xarray
 import zarr
 
 from ingest.adapters.noaa_s3 import (
-    GFS_DECODE_SHORTNAMES,
+    GFS_DECODE_SPECS,
     GFS_IDX_SELECTORS,
     MAX_BYTES_PER_LEAD,
     NOAAS3Adapter,
@@ -57,6 +59,18 @@ SAMPLE_GFS_IDX_LINES = [
     ("TCDC", "entire atmosphere", "3 hour fcst", True),
     ("TCDC", "entire atmosphere", "2-3 hour ave fcst", False),
     ("HGT", "500 mb", "3 hour fcst", False),
+    # Upper-air seeing/transparency messages, with the neighbouring isobaric
+    # levels as distractors: only 200 and 300 mb are declared.
+    ("UGRD", "200 mb", "3 hour fcst", True),
+    ("VGRD", "200 mb", "3 hour fcst", True),
+    ("UGRD", "250 mb", "3 hour fcst", False),
+    ("VGRD", "250 mb", "3 hour fcst", False),
+    ("UGRD", "300 mb", "3 hour fcst", True),
+    ("VGRD", "300 mb", "3 hour fcst", True),
+    ("PWAT", "entire atmosphere (considered as a single layer)", "3 hour fcst", True),
+    # A trailing unwanted message so the last selected range is closed, as in
+    # the real inventory where hundreds of messages follow PWAT.
+    ("HGT", "1000 mb", "3 hour fcst", False),
 ]
 
 SAMPLE_GFS_IDX = "\n".join(
@@ -73,8 +87,8 @@ def _covered(ranges, offset: int) -> bool:
 
 
 def test_select_gfs_ranges_picks_only_declared_messages():
-    ranges, params = select_gfs_ranges(SAMPLE_GFS_IDX)
-    assert params == {p for p, _ in GFS_IDX_SELECTORS}
+    ranges, pairs = select_gfs_ranges(SAMPLE_GFS_IDX)
+    assert pairs == set(GFS_IDX_SELECTORS)
     for offset in WANTED_OFFSETS:
         assert _covered(ranges, offset), f"wanted message at {offset} not covered"
     for offset in UNWANTED_OFFSETS:
@@ -116,8 +130,8 @@ def test_select_gfs_ranges_full_inventory_stays_under_ceiling():
         offset += msg
     idx_text = "\n".join(lines) + "\n"
 
-    ranges, params = select_gfs_ranges(idx_text)
-    assert params == {p for p, _ in GFS_IDX_SELECTORS}
+    ranges, pairs = select_gfs_ranges(idx_text)
+    assert pairs == set(GFS_IDX_SELECTORS)
     total = selected_bytes(ranges)
     assert total is not None
     assert total < MAX_BYTES_PER_LEAD
@@ -157,6 +171,20 @@ def _message(name: str, value: float, units: str, scalar_coords: dict[str, float
     return xarray.Dataset({name: array})
 
 
+def _isobaric_message(name: str, values_by_level: dict[int, float], units: str) -> xarray.Dataset:
+    """A two-level isobaric message the way cfgrib returns it: one variable on
+    an ``isobaricInhPa`` dimension."""
+    levels = numpy.array(sorted(values_by_level), dtype=float)
+    data = numpy.stack([numpy.full((2, 2), values_by_level[int(level)]) for level in levels])
+    array = xarray.DataArray(
+        data,
+        dims=("isobaricInhPa", "latitude", "longitude"),
+        coords={"isobaricInhPa": levels, "latitude": LATITUDES, "longitude": LONGITUDES},
+        attrs={"units": units, "GRIB_typeOfLevel": "isobaricInhPa"},
+    )
+    return xarray.Dataset({name: array})
+
+
 def full_message_set() -> dict[str, xarray.Dataset]:
     return {
         "prmsl": _message("prmsl", 101300.0, "Pa", {"meanSea": 0.0}),
@@ -170,6 +198,9 @@ def full_message_set() -> dict[str, xarray.Dataset]:
         "lcc": _message("lcc", 55.0, "%", {"lowCloudLayer": 0.0}),
         "mcc": _message("mcc", 25.0, "%", {"middleCloudLayer": 0.0}),
         "hcc": _message("hcc", 10.0, "%", {"highCloudLayer": 0.0}),
+        "u": _isobaric_message("u", {200: 45.0, 300: 35.0}, "m s**-1"),
+        "v": _isobaric_message("v", {200: -12.0, 300: -8.0}, "m s**-1"),
+        "pwat": _message("pwat", 12.5, "kg m**-2", {"atmosphereSingleLayer": 0.0}),
     }
 
 
@@ -247,7 +278,7 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
     assert result.complete is True
     assert result.qc_passed is True
     assert len(download_calls) == 4
-    assert len(result.artifacts) == 1
+    assert len(result.artifacts) == 2
 
     # Every requested range set stays bounded and covers no distractor message.
     for _, ranges, max_bytes in download_calls:
@@ -283,6 +314,26 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
     assert float(ds["total_cloud"].values[0, 0, 0]) == 90.0
     for name in ("cloud_low", "cloud_middle", "cloud_high", "total_cloud"):
         assert ds[name].attrs["units"] == "percent"
+
+    # Precipitable water is a column total stored beside the surface set,
+    # normalized only in unit spelling.
+    assert float(ds["precipitable_water"].values[0, 0, 0]) == 12.5
+    assert ds["precipitable_water"].attrs["units"] == "kg m-2"
+    # The jet-level winds live in their own artifact, flat and level-suffixed.
+    for name in ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa"):
+        assert name not in ds.data_vars
+
+    upper = result.artifacts[1]
+    assert upper.logical_name == "upper_air"
+    upper_store = zarr.storage.ZipStore(str(upper.payload_path), mode="r")
+    upper_ds = xarray.open_zarr(upper_store, consolidated=False)
+    assert "isobaricInhPa" not in upper_ds.dims
+    assert float(upper_ds["wind_u_200hPa"].values[0, 0, 0]) == 45.0
+    assert float(upper_ds["wind_v_200hPa"].values[0, 0, 0]) == -12.0
+    assert float(upper_ds["wind_u_300hPa"].values[0, 0, 0]) == 35.0
+    assert float(upper_ds["wind_v_300hPa"].values[0, 0, 0]) == -8.0
+    for name in ("wind_u_200hPa", "wind_u_300hPa"):
+        assert upper_ds[name].attrs["units"] == "m s-1"
 
 
 def test_noaa_gfs_message_scalar_levels_survive_assembly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -372,7 +423,96 @@ def _flags_of(result) -> list[str]:
     return list(provenance["quality"]["flags"])
 
 
-def test_decode_shortnames_and_selectors_agree():
-    """Every shortName the decode loop asks cfgrib for maps back to an .idx
-    parameter the range selection actually fetches, and vice versa."""
-    assert set(GFS_DECODE_SHORTNAMES.values()) == {param for param, _ in GFS_IDX_SELECTORS}
+def test_decode_specs_and_selectors_agree():
+    """Every (param, level) pair a decode spec claims to justify its open is a
+    pair the range selection actually fetches, and vice versa - so nothing is
+    decoded that was not selected and nothing is selected that nothing reads."""
+    spec_pairs = {pair for _, _, idx_pairs in GFS_DECODE_SPECS for pair in idx_pairs}
+    assert spec_pairs == set(GFS_IDX_SELECTORS)
+
+
+def test_noaa_gfs_missing_pwat_is_optional_absence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """A lead whose inventory carries no PWAT message publishes without
+    ``precipitable_water`` and the run stays complete: optional inventory
+    absence is not a failure and is never filled in."""
+    idx_without_pwat = "\n".join(
+        line for line in SAMPLE_GFS_IDX.splitlines() if ":PWAT:" not in line
+    ) + "\n"
+    client = make_mock_client(
+        {
+            f"gfs.20260829/12/atmos/gfs.t12z.pgrb2.0p25.f{lead:03d}.idx": (200, idx_without_pwat)
+            for lead in range(4)
+        }
+    )
+    adapter = NOAAS3Adapter(client=client)
+    monkeypatch.setattr(client, "download_ranges", lambda url, dest, ranges, max_bytes: dest.write_bytes(b"x") or 100)
+    messages = full_message_set()
+    del messages["pwat"]  # not in the inventory, so never even asked for
+    monkeypatch.setattr("ingest.adapters.noaa_s3.open_grib", make_mock_open_grib(messages))
+    monkeypatch.setattr("ingest.adapters.noaa_s3.crop_to_bbox", lambda ds, bounds: ds)
+
+    now = datetime(2026, 8, 29, 13, tzinfo=UTC)
+    window = FetchWindow(now=now, back_hours=1, forward_hours=2)
+    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+
+    assert result.complete is True
+    store = zarr.storage.ZipStore(str(result.artifacts[0].payload_path), mode="r")
+    ds = xarray.open_zarr(store, consolidated=False)
+    assert "precipitable_water" not in ds.data_vars
+
+
+def test_noaa_gfs_single_isobaric_level_still_publishes_that_level(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Only the 200 mb wind messages in the inventory: the 200 hPa fields
+    publish, the 300 hPa fields are simply absent - never guessed from the
+    level that did arrive."""
+    idx_without_300 = "\n".join(
+        line for line in SAMPLE_GFS_IDX.splitlines() if ":300 mb:" not in line
+    ) + "\n"
+    client = make_mock_client(
+        {
+            f"gfs.20260829/12/atmos/gfs.t12z.pgrb2.0p25.f{lead:03d}.idx": (200, idx_without_300)
+            for lead in range(4)
+        }
+    )
+    adapter = NOAAS3Adapter(client=client)
+    monkeypatch.setattr(client, "download_ranges", lambda url, dest, ranges, max_bytes: dest.write_bytes(b"x") or 100)
+    messages = full_message_set()
+    # cfgrib would decode a single-level message with a scalar coordinate.
+    single_u = _isobaric_message("u", {200: 45.0}, "m s**-1")
+    messages["u"] = xarray.Dataset({"u": single_u["u"].isel(isobaricInhPa=0)})
+    messages["v"] = xarray.Dataset({"v": _isobaric_message("v", {200: -12.0}, "m s**-1")["v"].isel(isobaricInhPa=0)})
+    monkeypatch.setattr("ingest.adapters.noaa_s3.open_grib", make_mock_open_grib(messages))
+    monkeypatch.setattr("ingest.adapters.noaa_s3.crop_to_bbox", lambda ds, bounds: ds)
+
+    now = datetime(2026, 8, 29, 13, tzinfo=UTC)
+    window = FetchWindow(now=now, back_hours=1, forward_hours=2)
+    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+
+    upper = next(a for a in result.artifacts if a.logical_name == "upper_air")
+    upper_ds = xarray.open_zarr(zarr.storage.ZipStore(str(upper.payload_path), mode="r"), consolidated=False)
+    assert float(upper_ds["wind_u_200hPa"].values[0, 0, 0]) == 45.0
+    assert "wind_u_300hPa" not in upper_ds.data_vars
+    assert "wind_v_300hPa" not in upper_ds.data_vars
+
+@pytest.mark.live_smoke
+@pytest.mark.skipif(os.environ.get("WEATHER_LIVE_SMOKE") != "1", reason="set WEATHER_LIVE_SMOKE=1 to hit the noaa-gfs-bdp-pds bucket")
+def test_live_gfs_idx_carries_upper_air_messages_under_the_ceiling():
+    """Against the real bucket: a recent cycle's f000 inventory carries every
+    declared (param, level) message - the five upper-air additions included -
+    and the merged selected span stays under MAX_BYTES_PER_LEAD as measured,
+    not assumed."""
+    from datetime import timedelta
+
+    from ingest.grib import selected_bytes
+
+    client = PoliteClient()
+    adapter = NOAAS3Adapter(client=client)
+    window = FetchWindow(now=datetime.now(UTC).replace(minute=0, second=0, microsecond=0))
+    candidate = adapter.discover(window)[0]
+    idx_text = client.get_text(candidate.urls[0])
+
+    ranges, pairs = select_gfs_ranges(idx_text)
+    assert pairs == set(GFS_IDX_SELECTORS), f"missing from live inventory: {set(GFS_IDX_SELECTORS) - pairs}"
+    total = selected_bytes(ranges)
+    assert total is not None
+    assert total < MAX_BYTES_PER_LEAD, f"merged span {total} bytes exceeds the {MAX_BYTES_PER_LEAD} ceiling"
