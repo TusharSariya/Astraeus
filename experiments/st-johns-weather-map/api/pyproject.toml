@@ -17,6 +17,7 @@ dependencies = [
   "psycopg[binary]==3.3.4",
   "pydantic==2.11.7",
   "pyproj==3.7.2",
+  "scipy==1.18.1",
   "skyfield==1.55",
   "uvicorn==0.35.0",
   "xarray==2026.7.0",
@@ -29,6 +30,12 @@ dependencies = [
 [project.optional-dependencies]
 grib = [
   "eccodeslib==2.48.0.26",
+]
+# The worker image selects this extra for derived display-support artifacts
+# (cloud-motion optical flow). The API image never computes flow and does not
+# select it.
+derive = [
+  "opencv-python-headless==5.0.0.93",
 ]
 
 [dependency-groups]

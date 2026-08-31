@@ -9,7 +9,23 @@ context: |
   Nothing is displayed or returned that was not actually retrieved. Missing data
   must be null / unknown / unavailable WITH provenance. Never fabricate, never
   interpolate into a gap, never silently substitute, and never fall back from a
-  live failure to a fixture value. A control that appears to do something must
+  live failure to a fixture value. One owner-approved carve-out, display
+  paths only (frame-fallback-and-viewport-layout 2026-08-31; extended by
+  scrub-performance-and-motion-interpolation 2026-08-31 and by
+  multi-frame-cloud-motion 2026-08-31): the web map MAY
+  draw a neighbouring published frame beyond a layer's staleness tolerance,
+  MAY display-composite two retrieved forecast frames under an opt-in
+  default-off setting, and for rendered-grid layers MAY draw that composite
+  as advection-corrected interpolation - the two retrieved frames warped
+  toward each other along a disclosed, precomputed motion field derived
+  from the layer's own retrieved frame sequence (the pair's flow, with
+  neighbouring adjacent pairs' flows informing C1 Hermite knot velocities
+  and nothing else ever informing motion), endpoint-exact so every real
+  frame shows untouched, falling back to linear advection and then to a
+  plain linear crossfade where no tangents, no motion or no confidence
+  exist - all only with a visible on-map disclosure naming the
+  real frame time(s) and method, and never on a data path: /point,
+  /features, stories and readings stay frame-exact. A control that appears to do something must
   do it. An empty result that IS the answer ("radar detected nothing") must be
   distinguishable from "we did not retrieve anything".
 
@@ -42,8 +58,10 @@ context: |
     This was long misattributed to a numpy/cfgrib version conflict; it never was
     one, and the pins have never been changed.
   - Per-layer time axes at native cadence (radar 6 min, lightning 10 min, METAR
-    hourly). A layer publishes `staleness_tolerance_seconds`; beyond it the layer
-    renders explicitly unavailable rather than showing an older frame.
+    hourly). A layer publishes `staleness_tolerance_seconds`; within it a frame
+    draws quietly, beyond it the web map may show a neighbouring frame only with
+    a visible disclosure (observed groups previous-only, never for future
+    instants), and with nothing drawable it says why.
 
 rules:
   proposal:

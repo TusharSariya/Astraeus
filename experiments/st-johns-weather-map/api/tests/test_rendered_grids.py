@@ -81,7 +81,7 @@ def gfs_artifact() -> CurrentArtifact:
         object_key="artifacts/noaa-gfs/surface",
         media_type="application/zarr+zip",
         byte_size=1024,
-        provenance={"product": "Global Forecast System (GFS 0.25 deg)"},
+        provenance={"product": "Global Forecast System (GFS 0.25 deg)", "native_resolution": "0.25 deg (~25 km)"},
         published_at=stamp,
         run_time=stamp - timedelta(hours=6),
         retrieved_at=stamp,
@@ -262,9 +262,9 @@ def test_the_three_strata_layers_are_offered_with_only_ingested_times(monkeypatc
         assert layer["cadence_seconds"] == 3600
         assert layer["staleness_tolerance_seconds"] == 1800
         semantics = layer["semantics"]
-        assert "rendered by this experiment from retrieved NOAA GFS GRIB2 fields" in semantics
+        assert "rendered by this experiment from the retrieved Global Forecast System (GFS 0.25 deg) field" in semantics
         assert "provider-declared" in semantics
-        assert "0.25 deg native resolution" in semantics
+        assert "native grid 0.25 deg (~25 km)" in semantics
         assert "nearest-neighbor" in semantics
         assert "never smoothed" in semantics
     assert payload["operational"] is False
@@ -377,5 +377,9 @@ def test_the_legend_is_the_renderers_own_declared_colormap(monkeypatch, data_mod
     assert response.headers["x-weather-legend-basis"] == "renderer_colormap"
     assert response.headers["x-weather-image-basis"] == "rendered_grid"
     assert "alpha = round(percent * 2.55)" in response.headers["x-weather-colormap"]
+    assert "composited over a neutral grey backdrop" in response.headers["x-weather-legend-semantics"]
     rgba = decode_png(response.content)
-    assert rgba[0, 0, 3] == 0 and rgba[0, -1, 3] == 255  # 0 percent to 100 percent
+    # The ramp is served composited over mid grey (196) so it is visible as a
+    # graphic: 0 percent shows the bare backdrop, 100 percent is opaque white.
+    assert rgba[0, 0, 3] == 255 and rgba[0, -1, 3] == 255
+    assert rgba[0, 0, 0] == 196 and rgba[0, -1, 0] == 255

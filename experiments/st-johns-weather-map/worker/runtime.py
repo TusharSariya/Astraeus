@@ -320,6 +320,13 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
         outcomes = scheduler.cycle(force=True, heartbeat=beat)
         if store is not None:
             try:
+                from ingest.derive.cloud_motion import cloud_motion_cycle  # noqa: PLC0415
+
+                for line in cloud_motion_cycle(store):
+                    log(line)
+            except Exception as error:
+                log(f"cloud-motion derive pass failed: {error!r}")
+            try:
                 store.prune()
             except Exception as error:
                 log(f"retention pass failed: {error!r}")
@@ -340,6 +347,17 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
         try:
             scheduler.cycle(heartbeat=beat)
             scheduler.drain_jobs(heartbeat=beat)
+            # Derived display-support artifacts (cloud motion) follow the runs
+            # that produced their inputs. Cheap when nothing changed: one
+            # current_artifacts read and a revision comparison per source.
+            if store is not None:
+                try:
+                    from ingest.derive.cloud_motion import cloud_motion_cycle  # noqa: PLC0415
+
+                    for line in cloud_motion_cycle(store):
+                        log(line)
+                except Exception as error:
+                    log(f"cloud-motion derive pass failed: {error!r}")
             if store is not None and time.monotonic() - last_prune > 3600:
                 store.prune()
                 last_prune = time.monotonic()

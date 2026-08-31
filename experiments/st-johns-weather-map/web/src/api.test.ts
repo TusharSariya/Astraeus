@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALL_CLOUD_BANDS, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, filterCloudLayers, groupLayers, layerGroup, layerRasterUrl, loadLayerRaster, loadStory, loadTimeline, normalizePoint, pointProductFor, renderPixelSize, type ApiPointResponse } from './api'
+import { ALL_CLOUD_BANDS, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, groupLayers, layerGroup, layerRasterUrl, loadLayerRaster, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
 
 const rasterLayer: LayerItem = {
@@ -397,6 +397,92 @@ describe('layer grouping shared by the drawer and the coverage rows', () => {
   })
 })
 
+describe('space weather is read fail-closed', () => {
+  const liveBody = {
+    data_mode: 'live', operational: false, generated_at: '2026-08-31T02:00:00Z',
+    kp_observed: { available: true, source_id: 'noaa-swpc-kp', product: 'Planetary K index (observed)', readings: [{ time: '2026-08-31T00:00:00Z', value: 4.33, status: null }], freshness: { status: 'fresh', age_seconds: 1800, threshold_seconds: 21600 }, notices: [] },
+    kp_forecast: { available: true, source_id: 'noaa-swpc-kp', product: 'Planetary K index (3-day outlook, per-value status)', readings: [{ time: '2026-08-31T06:00:00Z', value: 5.0, status: 'predicted' }], freshness: { status: 'fresh', age_seconds: 1800, threshold_seconds: 21600 }, notices: [] },
+    solar_wind: { available: true, source_id: 'noaa-swpc-rtsw', product: 'Real-time solar wind magnetic field (1-minute)', bz_gsm_nt: -4.1, bt_nt: 4.3, measured_at: '2026-08-31T01:59:00Z', feed_declared_spacecraft: 'SOLAR1', freshness: { status: 'fresh', age_seconds: 120, threshold_seconds: 900 }, notices: [] },
+    notices: [],
+  }
+
+  it('returns a live response with the provider status intact', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(liveBody), { status: 200 })))
+    const result = await loadSpaceWeather()
+    expect(result.error).toBeNull()
+    expect(result.spaceWeather?.kp_forecast.readings[0].status).toBe('predicted')
+    expect(result.spaceWeather?.solar_wind.bz_gsm_nt).toBe(-4.1)
+  })
+
+  it('fails closed on a non-live mode, keeping the API notice as the reason', async () => {
+    const unavailable = { ...liveBody, data_mode: 'unavailable', notices: ['no fixture space weather exists; fixture mode answers unavailable rather than inventing planetary indices'] }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(unavailable), { status: 200 })))
+    const result = await loadSpaceWeather()
+    expect(result.spaceWeather).toBeNull()
+    expect(result.error).toMatch(/no fixture space weather exists/)
+  })
+
+  it('fails closed on a missing or unrecognised mode', async () => {
+    const { data_mode: _dropped, ...noMode } = liveBody
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(noMode), { status: 200 })))
+    expect((await loadSpaceWeather()).spaceWeather).toBeNull()
+  })
+
+  it('returns null with the transport failure, never an invented zero', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
+    const result = await loadSpaceWeather()
+    expect(result.spaceWeather).toBeNull()
+    expect(result.error).toMatch(/offline/)
+  })
+
+  it('refuses an incompatible schema', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data_mode: 'live' }), { status: 200 })))
+    const result = await loadSpaceWeather()
+    expect(result.spaceWeather).toBeNull()
+    expect(result.error).toMatch(/incompatible schema/)
+  })
+})
+
+describe('the aurora layer files under the rendered-grid group', () => {
+  const auroraLayer: LayerItem = {
+    id: 'noaa-swpc-aurora-oval', title: 'Aurora probability (OVATION model nowcast)',
+    kind: 'raster', field: 'aurora_probability', product: 'OVATION aurora probability nowcast', units: 'percent',
+    semantics: 'rendered by this experiment from the stored NOAA SWPC OVATION aurora nowcast grid; a model nowcast, not an observation',
+    times: ['2026-08-31T02:50:00Z'], cadence_seconds: null, staleness_tolerance_seconds: 3600,
+    evidence_basis: 'published_artifact', raster_available: true, legend_available: true, group: 'rendered_grid',
+  }
+
+  it('sits in the rendered-grid group by declaration, never by id', () => {
+    expect(layerGroup(auroraLayer)).toBe('rendered_grid')
+    const grouped = groupLayers([auroraLayer])
+    expect(grouped).toHaveLength(1)
+    expect(grouped[0].group).toBe('rendered_grid')
+    expect(grouped[0].label).toBe(LAYER_GROUP_LABELS.rendered_grid)
+  })
+
+  it('is treated as a forecast-type layer: its future frame resolves with disclosure, never refused as observed', () => {
+    const reference = new Date('2026-08-31T02:00:00Z')
+    const resolution = resolveLayerFrame(auroraLayer, new Date('2026-08-31T04:00:00Z'), { interpolate: false, reference })
+    expect(resolution.kind).toBe('snapped')
+    if (resolution.kind === 'snapped') {
+      expect(resolution.frame.time).toBe('2026-08-31T02:50:00Z')
+      expect(describeResolution(resolution)).toMatch(/showing/)
+    }
+  })
+
+  it('normalizes the sampled aurora probability, null when the response carried none', () => {
+    const withValue = normalizePoint({
+      valid_time: '2026-08-31T02:50:00Z',
+      selection: { mode: 'evidence_only', badge: 'evidence' },
+      fields: [{ field: 'aurora_probability', value: 12, provenance: { source_id: 'noaa-swpc-ovation', provider: 'NOAA Space Weather Prediction Center', product: 'OVATION aurora probability nowcast', data_mode: 'live' } }],
+    } as ApiPointResponse)
+    expect(withValue.auroraProbabilityPct).toBe(12)
+    expect(withValue.fieldSources.aurora_probability?.sourceId).toBe('noaa-swpc-ovation')
+    const without = normalizePoint({ valid_time: '2026-08-31T02:50:00Z', selection: { mode: 'evidence_only', badge: 'evidence' }, fields: [] } as unknown as ApiPointResponse)
+    expect(without.auroraProbabilityPct).toBeNull()
+  })
+})
+
 describe('cloud band view filter', () => {
   // Today's CYYT report as /point serves it: FEW020 (609.6 m) and BKN130
   // (3962.4 m), plus an OVC slot whose base was not declared in metres.
@@ -437,5 +523,153 @@ describe('cloud band view filter', () => {
   it('does not alter the readings it lets through', () => {
     const [kept] = filterCloudLayers([bkn], { low: false, middle: true, high: true })
     expect(kept).toBe(bkn)
+  })
+})
+
+describe('frame fallback resolution (resolveLayerFrame)', () => {
+  // The reference deliberately carries nonzero seconds: exact frame instants
+  // must survive it, because a whole-minute offset never lands on them.
+  const reference = new Date('2026-08-30T04:00:37.421Z')
+  const opts = { interpolate: false, reference }
+  const forecast: LayerItem = {
+    id: 'forecast', title: 'Forecast', kind: 'raster', field: 'tt', product: 'HRDPS', units: 'degC',
+    semantics: 'live-proxied imagery',
+    times: ['2026-08-30T03:00:00Z', '2026-08-30T04:00:00Z', '2026-08-30T05:00:00Z'],
+    cadence_seconds: 3600, staleness_tolerance_seconds: 1800, evidence_basis: 'live_proxy', group: 'forecast_proxy',
+  }
+  const observed: LayerItem = {
+    id: 'radar', title: 'Radar', kind: 'point', field: 'radar', product: 'radar', units: 'mixed',
+    semantics: 'no echo is not clear sky',
+    times: ['2026-08-30T03:54:00Z', '2026-08-30T04:00:00Z'],
+    cadence_seconds: 360, staleness_tolerance_seconds: 180, group: 'observation',
+  }
+
+  it('resolves an exact frame quietly inside the tolerance', () => {
+    const resolution = resolveLayerFrame(observed, new Date('2026-08-30T04:01:00Z'), opts)
+    expect(resolution.kind).toBe('exact')
+    expect(describeResolution(resolution)).toBeNull()
+  })
+
+  it('keeps the tolerance meaning even a hair past the reference', () => {
+    // 04:02 is after the reference but within the 180 s tolerance of 04:00:
+    // effectively the same instant, drawn quietly exactly as before.
+    expect(resolveLayerFrame(observed, new Date('2026-08-30T04:02:00Z'), opts).kind).toBe('exact')
+  })
+
+  it('never pulls an observed frame backward to stand for an earlier instant', () => {
+    const resolution = resolveLayerFrame(observed, new Date('2026-08-30T03:30:00Z'), { interpolate: false, reference: new Date('2026-08-30T05:00:00Z') })
+    // 03:54 is the nearest frame, but it observed weather AFTER 03:30.
+    // Previous-only fallback finds nothing at or before 03:30, so nothing
+    // resolves and the reason says exactly that.
+    expect(resolution.kind).toBe('none')
+    if (resolution.kind === 'none') expect(resolution.reason).toMatch(/no earlier frame/)
+  })
+
+  it('falls back to the previous frame, disclosed, for an observed layer', () => {
+    const resolution = resolveLayerFrame(observed, new Date('2026-08-30T04:10:00Z'), { interpolate: false, reference: new Date('2026-08-30T04:30:00Z') })
+    expect(resolution).toMatchObject({ kind: 'snapped', direction: 'previous', frame: { time: '2026-08-30T04:00:00Z' } })
+    expect(describeResolution(resolution)).toMatch(/10 min earlier than the selected time/)
+  })
+
+  it('never draws an observed layer by fallback for a future instant', () => {
+    const resolution = resolveLayerFrame(observed, new Date('2026-08-30T06:00:00Z'), opts)
+    expect(resolution.kind).toBe('none')
+    if (resolution.kind === 'none') {
+      expect(resolution.reason).toMatch(/no frames for future instants/)
+      expect(resolution.nearest?.time).toBe('2026-08-30T04:00:00Z')
+    }
+  })
+
+  it('falls back to the nearest frame in either direction for a forecast layer', () => {
+    // A gap in the published frames: 04:00 is missing, so 05:37 sits beyond
+    // the half-cadence tolerance of both neighbours and must fall back.
+    const gappy = { ...forecast, times: ['2026-08-30T03:00:00Z', '2026-08-30T06:00:00Z'] }
+    // 04:20 is 80 minutes past 03:00 and 100 before 06:00 — outside the
+    // 30-minute tolerance of both, so the nearer one is a disclosed fallback.
+    const resolution = resolveLayerFrame(gappy, new Date('2026-08-30T04:20:00Z'), opts)
+    expect(resolution).toMatchObject({ kind: 'snapped', direction: 'nearest', frame: { time: '2026-08-30T03:00:00Z' } })
+    expect(describeResolution(resolution)).toMatch(/80 min earlier than the selected time/)
+  })
+
+  it('composites a forecast layer between two frames when interpolation is on', () => {
+    const resolution = resolveLayerFrame(forecast, new Date('2026-08-30T04:15:00Z'), { interpolate: true, reference })
+    expect(resolution.kind).toBe('blend')
+    if (resolution.kind === 'blend') {
+      expect(resolution.previous.time).toBe('2026-08-30T04:00:00Z')
+      expect(resolution.next.time).toBe('2026-08-30T05:00:00Z')
+      expect(resolution.fraction).toBeCloseTo(0.25, 5)
+      expect(describeResolution(resolution)).toMatch(/display compositing .* display only, not evidence/)
+    }
+  })
+
+  it('never composites an observed layer, whatever the setting says', () => {
+    const resolution = resolveLayerFrame(observed, new Date('2026-08-30T03:57:00Z'), { interpolate: true, reference })
+    expect(resolution.kind).not.toBe('blend')
+  })
+
+  it('resolves none with the reason when a layer published no frames', () => {
+    const bare = { ...forecast, times: [] }
+    expect(resolveLayerFrame(bare, reference, opts)).toMatchObject({ kind: 'none', reason: 'this layer published no frames' })
+  })
+
+  it('exposes 0, 1 or 2 drawable frames per resolution kind', () => {
+    expect(drawableFrames(resolveLayerFrame(forecast, new Date('2026-08-30T04:00:00Z'), opts))).toHaveLength(1)
+    expect(drawableFrames(resolveLayerFrame(forecast, new Date('2026-08-30T04:15:00Z'), { interpolate: true, reference }))).toHaveLength(2)
+    expect(drawableFrames(resolveLayerFrame({ ...forecast, times: [] }, reference, opts))).toHaveLength(0)
+  })
+
+  it('finds directional neighbours exactly', () => {
+    const at = new Date('2026-08-30T04:30:00Z')
+    expect(previousFrame(forecast, at)?.time).toBe('2026-08-30T04:00:00Z')
+    expect(nextFrame(forecast, at)?.time).toBe('2026-08-30T05:00:00Z')
+    expect(nextFrame(forecast, new Date('2026-08-30T06:00:00Z'))).toBeNull()
+    expect(previousFrame(forecast, new Date('2026-08-30T02:00:00Z'))).toBeNull()
+  })
+})
+
+describe('scrubber snapping helpers', () => {
+  const windowStart = new Date('2026-08-30T01:00:37.421Z').getTime()
+  const windowEnd = new Date('2026-08-31T04:00:37.421Z').getTime()
+  const layerA: LayerItem = {
+    id: 'a', title: 'A', kind: 'raster', field: 'a', product: 'a', units: 'a', semantics: 'a',
+    times: ['2026-08-30T03:00:00Z', '2026-08-30T04:00:00Z'],
+  }
+  const layerB: LayerItem = {
+    id: 'b', title: 'B', kind: 'point', field: 'b', product: 'b', units: 'b', semantics: 'b',
+    times: ['2026-08-30T03:54:00Z', '2026-08-30T04:00:00Z', '2026-09-05T00:00:00Z'],
+  }
+
+  it('unions only visible layers, inside the window, sorted and deduplicated', () => {
+    const instants = unionFrameInstants([layerA, layerB], [{ id: 'a', visible: true }, { id: 'b', visible: true }], windowStart, windowEnd)
+    expect(instants).toEqual([
+      new Date('2026-08-30T03:00:00Z').getTime(),
+      new Date('2026-08-30T03:54:00Z').getTime(),
+      new Date('2026-08-30T04:00:00Z').getTime(),
+    ])
+    expect(unionFrameInstants([layerA, layerB], [{ id: 'b', visible: false }], windowStart, windowEnd)).toEqual([])
+  })
+
+  it('snaps to the nearest exact frame instant, ties resolving earlier', () => {
+    const instants = unionFrameInstants([layerB], [{ id: 'b', visible: true }], windowStart, windowEnd)
+    // 03:57 is equidistant from 03:54 and 04:00: the earlier one wins.
+    expect(snapInstant(instants, new Date('2026-08-30T03:57:00Z').getTime())).toBe(new Date('2026-08-30T03:54:00Z').getTime())
+    // The snapped value is the frame's exact epoch instant, seconds and all.
+    expect(snapInstant(instants, new Date('2026-08-30T03:58:30Z').getTime())).toBe(new Date('2026-08-30T04:00:00Z').getTime())
+  })
+
+  it('is the identity on an empty axis, inventing no instant', () => {
+    expect(snapInstant([], 12345)).toBe(12345)
+  })
+
+  it('steps to the neighbouring instant and stays put at the ends', () => {
+    const instants = [100, 200, 300]
+    expect(stepInstant(instants, 200, 1)).toBe(300)
+    expect(stepInstant(instants, 200, -1)).toBe(100)
+    expect(stepInstant(instants, 300, 1)).toBe(300)
+    expect(stepInstant(instants, 100, -1)).toBe(100)
+    // From between instants, either direction lands on a real one.
+    expect(stepInstant(instants, 250, 1)).toBe(300)
+    expect(stepInstant(instants, 250, -1)).toBe(200)
+    expect(stepInstant([], 250, 1)).toBe(250)
   })
 })

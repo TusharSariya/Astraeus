@@ -56,6 +56,12 @@ FIELD_BY_VARIABLE = {
     # stored. Its reading for transparency is caption text in the interface,
     # never a derived verdict here.
     "precipitable_water": "precipitable_water",
+    # OVATION aurora probability: the one genuinely gridded space-weather
+    # product, sampled at the requested coordinate exactly as stored (percent).
+    # The Kp and solar-wind series deliberately carry no coordinates, so they
+    # can never pass the sampling filter and appear here; they are served only
+    # by /space-weather via read_series.
+    "aurora_probability": "aurora_probability",
 }
 
 # METAR/TAF cloud layers, published per layer as retrieved (cover code, cover
@@ -247,6 +253,37 @@ class LayerCoverage:
     sites: list[tuple[float, float]]
     #: True when latitude and longitude both vary, i.e. a real field.
     gridded: bool
+
+
+@dataclass(frozen=True)
+class SeriesVariable:
+    """One coordinate-free series variable, values exactly as stored.
+
+    A flag-coded value is the retrieved meaning string (``"predicted"``), never
+    the bare integer; a NaN is ``None`` - absence, not a reading.
+    """
+
+    values: list[float | str | None]
+    units: str
+
+
+@dataclass(frozen=True)
+class SeriesData:
+    """A planetary time series read from one published artifact.
+
+    Deliberately carries no latitude/longitude: these artifacts are stored on
+    a bare time axis so a planetary quantity can never wear a sample distance,
+    and this reader refuses any dataset that does carry horizontal coordinates.
+    """
+
+    source_id: str
+    logical_name: str
+    times: list[datetime]
+    variables: dict[str, SeriesVariable]
+    run_time: datetime | None
+    retrieved_at: datetime | None
+    provenance: dict[str, Any] = field(default_factory=dict)
+    attrs: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -550,6 +587,10 @@ class LiveStore:
                 # artifact told every caller that evidence had been lost when
                 # none had. Alerts are served by /layers/{id}/features.
                 continue
+            if artifact.logical_name == "cloud_motion":
+                # Derived display-support motion (interpolation shader input);
+                # it carries no reading and must never reach a data path.
+                continue
             try:
                 dataset = self.open(artifact)
             except Exception as error:
@@ -678,6 +719,72 @@ class LiveStore:
                 if found:
                     result.setdefault(pressure, []).extend(found)
         return result
+
+    def read_series(self, source_id: str, logical_name: str) -> SeriesData | None:
+        """A coordinate-free time series from one published artifact, as stored.
+
+        The read path is the same one ``sample_point`` uses - resolution
+        through ``current_artifacts``, the integrity-verified local copy, the
+        bounded dataset cache - so a series value carries exactly the same
+        assurance as a sampled one. What it never does is claim a location:
+        a dataset carrying horizontal coordinates is refused here (it is a
+        field, served by sampling), and the returned series carries no
+        coordinates for a caller to mistake for local evidence.
+
+        Returns ``None`` when no current artifact matches; an unreadable or
+        wrong-shaped artifact is recorded in ``skipped`` and also yields
+        ``None`` - the caller reports the skip rather than inventing a series.
+        """
+        self.assert_object_store_reachable()
+        artifacts = self.current()
+        self._forget_stale_datasets({str(item.revision_id) for item in artifacts})
+        artifact = next(
+            (item for item in artifacts if item.source_id == source_id and item.logical_name == logical_name),
+            None,
+        )
+        if artifact is None:
+            return None
+        try:
+            dataset = self.open(artifact)
+        except Exception as error:
+            self._record_skip(artifact, error)
+            return None
+        if _coordinate_name(dataset, LATITUDE_COORDINATES) is not None or _coordinate_name(dataset, LONGITUDE_COORDINATES) is not None:
+            self._record_skip(artifact, ValueError("dataset carries horizontal coordinates; a gridded field is not served as a planetary series"))
+            return None
+        time_name = _coordinate_name(dataset, TIME_COORDINATES)
+        if time_name is None:
+            self._record_skip(artifact, ValueError("dataset carries no time coordinate"))
+            return None
+        import pandas  # noqa: PLC0415
+
+        times = [pandas.Timestamp(value).to_pydatetime().replace(tzinfo=UTC) for value in dataset[time_name].values]
+        variables: dict[str, SeriesVariable] = {}
+        for name in dataset.data_vars:
+            array = dataset[str(name)]
+            attrs = array.attrs
+            values: list[float | str | None] = []
+            for raw in array.values:
+                try:
+                    value: float | str | None = float(raw)
+                except (TypeError, ValueError):
+                    value = None
+                if value is not None and value != value:  # NaN is absence, not a reading
+                    value = None
+                if value is not None and _is_flag_coded(attrs):
+                    value = _flag_meaning(attrs, value)
+                values.append(value)
+            variables[str(name)] = SeriesVariable(values=values, units=str(attrs.get("units", "unknown")))
+        return SeriesData(
+            source_id=artifact.source_id,
+            logical_name=artifact.logical_name,
+            times=times,
+            variables=variables,
+            run_time=artifact.run_time,
+            retrieved_at=artifact.retrieved_at,
+            provenance=dict(artifact.provenance or {}),
+            attrs=dict(dataset.attrs),
+        )
 
     def published_layer_times(self) -> dict[str, LayerCoverage]:
         """The valid times each published artifact covers, keyed by layer.

@@ -15,7 +15,7 @@ ENV PATH="/app/.venv/bin:${PATH}"
 # The worker shares the API's pinned dependency set; one lock file keeps the
 # two images resolving to the same versions of xarray, cfgrib and zarr.
 COPY api/pyproject.toml api/uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project --extra grib
+RUN uv sync --frozen --no-dev --no-install-project --extra grib --extra derive
 
 COPY ingest ./ingest
 COPY registry/source_data.py ./registry/source_data.py

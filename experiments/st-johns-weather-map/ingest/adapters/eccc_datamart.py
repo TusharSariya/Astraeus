@@ -40,7 +40,15 @@ from ingest.contract import (
     RunCandidate,
     RunResult,
 )
-from ingest.grib import crop_to_bbox, normalize_units, open_grib, strip_message_scalars, write_zarr
+from ingest.grib import (
+    WMO_IDENTITY_READ_KEYS,
+    crop_to_bbox,
+    declare_wmo_total_cloud,
+    normalize_units,
+    open_grib,
+    strip_message_scalars,
+    write_zarr,
+)
 from ingest.http import PoliteClient
 from ingest.manifest import RequiredField, RunManifest, required_leads, validate_run
 from ingest.registry import register
@@ -56,7 +64,8 @@ _FILE_RUN_STAMP = re.compile(r"(?P<date>\d{8})T(?P<hour>\d{2})Z")
 _CYCLE_DIR = re.compile(r"^\d{2}/?$")
 _LEAD_DIR = re.compile(r"^\d{3}/?$")
 
-# ``total_cloud`` is deliberately absent from all three maps below.
+# ``total_cloud`` is published from the message's own WMO keys, not from
+# ecCodes' concept files.
 #
 # MSC publishes it (HRDPS ``TCDC_Sfc``, RDPS ``TotalCloudCover_Sfc``) and the
 # files download fine, but the message decodes with ``paramId=0`` and
@@ -75,14 +84,13 @@ _LEAD_DIR = re.compile(r"^\d{3}/?$")
 # quantity); CWAO stamps 255 (missing), and ecCodes ships no
 # ``localConcepts/cwao`` that would say otherwise. Setting the second surface
 # to 8 on an otherwise identical message makes 2.48.0 name it ``tcc`` /
-# ``%``, so the gap is a definitions mismatch, not a library age. The values
-# span 0.0-100.0, which is what a percentage looks like, but a value range is
-# an inference, not a retrieval, and this experiment does not publish a field
-# whose units the decoder declines to declare. Publishing it as ``percent``
-# on the strength of the WMO table entry or its range would be the invention
-# the units check exists to catch, so the field is withheld pending the
-# owner's decision (publish from the WMO 0/6/1 keys, or carry a local
-# ecCodes definitions overlay), and the other six fields publish.
+# ``%``, so the gap is a definitions mismatch, not a library age. The field
+# was withheld until the owner decided how to declare its units; the owner's
+# decision (2026-08-31) is to publish from the coded WMO 0/6/1 keys - which
+# are retrieved facts in the message itself, unlike the 0.0-100.0 value range,
+# which is only an inference. ``ingest.grib.declare_wmo_total_cloud`` performs
+# exactly that declaration and records its basis in the variable's attrs; a
+# message whose coded keys do not match is still refused, never ranged-guessed.
 
 # HRDPS variable map: canonical -> (GRIB file var prefix, level token)
 HRDPS_VARS = {
@@ -92,6 +100,7 @@ HRDPS_VARS = {
     "wind_u_10m": ("UGRD", "AGL-10m"),
     "wind_v_10m": ("VGRD", "AGL-10m"),
     "mean_sea_level_pressure": ("PRMSL", "MSL"),
+    "total_cloud": ("TCDC", "Sfc"),
 }
 
 # RDPS variable map (CamelCase upstream naming)
@@ -101,6 +110,7 @@ RDPS_VARS = {
     "wind_u_10m": ("WindU", "AGL-10m"),
     "wind_v_10m": ("WindV", "AGL-10m"),
     "mean_sea_level_pressure": ("Pressure_MSL", "MSL"),
+    "total_cloud": ("TotalCloudCover", "Sfc"),
 }
 
 # GDPS variable map (CamelCase upstream naming)
@@ -132,6 +142,21 @@ def manifest_for(source_id: str, var_map: Mapping[str, tuple[str, str]]) -> RunM
         units, level = CANONICAL_FIELD_UNITS[name]
         fields.append(RequiredField(name, units, level=level))
     return RunManifest(source_id=source_id, fields=tuple(fields))
+
+
+def _cloud_units_declared(dataset: Any) -> bool:
+    """True when every decoded variable's units are declared, one way or another.
+
+    First the WMO-key declaration is attempted (it only touches variables
+    ecCodes left ``unknown``); then any variable still without declared units
+    means the field must be refused rather than published.
+    """
+    declare_wmo_total_cloud(dataset)
+    for name in dataset.data_vars:
+        units = str(dataset[name].attrs.get("units", "")).strip().lower()
+        if units in {"", "unknown"}:
+            return False
+    return bool(dataset.data_vars)
 
 
 def parse_run_stamp(filename: str) -> datetime | None:
@@ -296,7 +321,20 @@ class ECCCDataMartAdapter:
                 local_grib = workdir / f"{canonical_name}_{hour_str}.grib2"
                 try:
                     client.download(file_url, local_grib, max_bytes=10 * 1024 * 1024)
-                    decoded = normalize_units(crop_to_bbox(open_grib(local_grib), self.bounds))
+                    # total_cloud's identity must be read from the message's own
+                    # WMO keys (see the map comment above), so those keys are
+                    # requested for it and the declaration is applied - or the
+                    # field is refused, never published with unknown units.
+                    opened = (
+                        open_grib(local_grib, read_keys=WMO_IDENTITY_READ_KEYS)
+                        if canonical_name == "total_cloud"
+                        else open_grib(local_grib)
+                    )
+                    decoded = crop_to_bbox(opened, self.bounds)
+                    if canonical_name == "total_cloud" and not _cloud_units_declared(decoded):
+                        decode_errors.append(f"undeclared_units:{match_file}")
+                        continue
+                    decoded = normalize_units(decoded)
                     data_var_names = list(decoded.data_vars)
                     if not data_var_names:
                         decode_errors.append(f"no_variable:{match_file}")

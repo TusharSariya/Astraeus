@@ -1,5 +1,5 @@
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
-import type { CatalogResult, CatalogSource, CloudLayerReading, EvidenceSnapshot, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult,
+import type { CatalogResult, CatalogSource, CloudLayerReading, EvidenceSnapshot, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
 } from './types'
 
 const prefix = '/api/experiments/weather/v0'
@@ -141,7 +141,7 @@ const DISPLAYED_FIELDS = [
   'temperature', 'dew_point', 'relative_humidity', 'wind_speed', 'wind_direction', 'wind_gust',
   'precipitation_probability', 'cloud_low', 'cloud_middle', 'cloud_high', 'total_cloud',
   'mean_sea_level_pressure', 'visibility', 'fog_state', 'aqhi', 'wave_height', 'sea_surface_temperature',
-  'wind_speed_200hPa', 'wind_speed_300hPa', 'precipitable_water',
+  'wind_speed_200hPa', 'wind_speed_300hPa', 'precipitable_water', 'aurora_probability',
   ...CLOUD_LAYER_FIELDS,
 ]
 
@@ -256,6 +256,7 @@ export function normalizePoint(point: ApiPointResponse): EvidenceSnapshot {
       jet300Kmh: speedKmh(fields, 'wind_speed_300hPa', selectedSourceId),
       precipitableWaterKgM2: numericField(fields, 'precipitable_water', selectedSourceId),
     },
+    auroraProbabilityPct: numericField(fields, 'aurora_probability', selectedSourceId),
     marine: { waveHeightM: numericField(fields, 'wave_height', selectedSourceId), sstC: numericField(fields, 'sea_surface_temperature', selectedSourceId), tide: 'Tide feed unavailable' },
     warnings: alertTexts(fields),
     story: [],
@@ -343,6 +344,31 @@ export async function loadAstronomy(signal?: AbortSignal): Promise<AstronomyResu
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
     return { astronomy: null, error: error instanceof Error ? error.message : 'astronomy fetch failed' }
+  }
+}
+
+/** Planetary space weather: latest Bz, observed Kp, and the provider's Kp
+ *  outlook with its own per-value status. Same fail-closed rule as astronomy:
+ *  only a response declaring `live` is shown, the API's own notices are the
+ *  reason otherwise, and a transport failure yields null — a Kp card showing
+ *  zero on an outage would be an invented reading. */
+export async function loadSpaceWeather(signal?: AbortSignal): Promise<SpaceWeatherResult> {
+  try {
+    const response = await fetch(`${prefix}/space-weather`, { signal, headers: { Accept: 'application/json' } })
+    if (!response.ok) return { spaceWeather: null, error: `space-weather returned ${response.status}` }
+    const body: unknown = await response.json()
+    if (!body || typeof body !== 'object' || !(body as { kp_observed?: unknown }).kp_observed || !(body as { solar_wind?: unknown }).solar_wind) {
+      return { spaceWeather: null, error: 'space-weather returned an incompatible schema' }
+    }
+    const spaceWeather = body as SpaceWeatherResponse
+    if (toDataMode(spaceWeather.data_mode) !== 'live') {
+      const reason = spaceWeather.notices?.[0] ?? `space-weather declared data_mode "${String(spaceWeather.data_mode)}"`
+      return { spaceWeather: null, error: reason }
+    }
+    return { spaceWeather, error: null }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    return { spaceWeather: null, error: error instanceof Error ? error.message : 'space-weather fetch failed' }
   }
 }
 
@@ -608,6 +634,98 @@ export function layerLegendUrl(layer: LayerItem): string {
   return layer.legend_url ?? `${prefix}/layers/${encodeURIComponent(layer.id)}/legend`
 }
 
+/** The server-derived motion texture between two adjacent published frames of
+ *  a rendered-grid layer. Display-support for the opt-in interpolation
+ *  shader; requested over exactly the frame rasters' extent so its pixels
+ *  align with theirs. */
+export interface FlowTexture {
+  objectUrl: string
+  /** Max displacement in output pixels encoded at channel value 255. */
+  scalePixels: number
+  /** The pair's Hermite knot velocities (start | end, side by side), or null
+   *  when the artifact predates them - the shader then advects linearly. */
+  tangentsUrl: string | null
+  tangentsScalePixels: number
+  frameFrom: string
+  frameTo: string
+  request: RasterRequest
+}
+
+export function layerFlowUrl(layer: LayerItem, request: RasterRequest & { from: string; to: string }, texture: 'motion' | 'tangents' = 'motion'): string {
+  const params = new URLSearchParams({
+    from: request.from,
+    to: request.to,
+    south: request.south.toFixed(5),
+    west: request.west.toFixed(5),
+    north: request.north.toFixed(5),
+    east: request.east.toFixed(5),
+    width: String(Math.min(MAX_RENDER_PIXELS, Math.max(1, Math.round(request.widthPx)))),
+    height: String(Math.min(MAX_RENDER_PIXELS, Math.max(1, Math.round(request.heightPx)))),
+    crs: RASTER_CRS,
+    texture,
+  })
+  return `${prefix}/layers/${encodeURIComponent(layer.id)}/flow?${params}`
+}
+
+/** Fetch one pair's motion texture. ``absent: true`` (a 404) is the disclosed
+ *  crossfade fallback, not an error; anything else unusable is an error and
+ *  equally falls back to the crossfade - never to an invented motion field. */
+export async function loadLayerFlow(
+  layer: LayerItem,
+  request: RasterRequest & { from: string; to: string },
+  signal?: AbortSignal,
+): Promise<{ flow: FlowTexture | null; absent: boolean; error: string | null }> {
+  const fetchTexture = async (texture: 'motion' | 'tangents'): Promise<{ objectUrl: string; scale: number; frameFrom: string | null; frameTo: string | null } | 'absent' | { error: string }> => {
+    const response = await fetch(layerFlowUrl(layer, request, texture), { signal, headers: { Accept: 'image/png,image/*' } })
+    if (response.status === 404) return 'absent'
+    if (!response.ok) return { error: `motion texture request returned ${response.status}` }
+    const scale = Number(response.headers.get('X-Weather-Flow-Scale'))
+    if (response.headers.get('X-Weather-Image-Basis') !== 'derived_motion' || !Number.isFinite(scale) || scale <= 0) {
+      return { error: 'the motion texture carried no derived-motion provenance, so it is not used' }
+    }
+    const blob = await response.blob()
+    if (blob.size === 0 || typeof URL.createObjectURL !== 'function') return { error: 'motion texture body unusable' }
+    return {
+      objectUrl: URL.createObjectURL(blob),
+      scale,
+      frameFrom: response.headers.get('X-Weather-Frame-From'),
+      frameTo: response.headers.get('X-Weather-Frame-To'),
+    }
+  }
+  try {
+    const motion = await fetchTexture('motion')
+    if (motion === 'absent') return { flow: null, absent: true, error: null }
+    if ('error' in motion) return { flow: null, absent: false, error: motion.error }
+    // The Hermite tangents are an upgrade, not a requirement: an artifact
+    // predating them answers 404 and the shader advects linearly - one honest
+    // rung down, never an invented curve.
+    let tangents: { objectUrl: string; scale: number } | null = null
+    const fetched = await fetchTexture('tangents').catch(() => 'absent' as const)
+    if (fetched !== 'absent' && !('error' in fetched)) tangents = { objectUrl: fetched.objectUrl, scale: fetched.scale }
+    return {
+      flow: {
+        objectUrl: motion.objectUrl,
+        scalePixels: motion.scale,
+        tangentsUrl: tangents?.objectUrl ?? null,
+        tangentsScalePixels: tangents?.scale ?? 0,
+        frameFrom: motion.frameFrom ?? request.from,
+        frameTo: motion.frameTo ?? request.to,
+        request,
+      },
+      absent: false,
+      error: null,
+    }
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') return { flow: null, absent: false, error: 'aborted' }
+    return { flow: null, absent: false, error: `motion texture request failed: ${(error as Error).message}` }
+  }
+}
+
+/** Every object URL a FlowTexture holds, for revocation on eviction. */
+export function flowObjectUrls(flow: FlowTexture): string[] {
+  return flow.tangentsUrl ? [flow.objectUrl, flow.tangentsUrl] : [flow.objectUrl]
+}
+
 /** What a layer's evidence rests on, in words.
  *
  *  A live-proxied layer bypassed ingestion, QC, manifest validation and atomic
@@ -816,12 +934,13 @@ export async function loadStory(location: LocationPoint, timeline: TimelineRespo
   return results.filter((step): step is StoryStep => step !== null)
 }
 
-/** Which frame of a layer answers `at`, or null if none may.
+/** Which frame of a layer answers `at` QUIETLY, or null if none may.
 
  *  Nearest wins, but only inside the layer's own declared tolerance. Outside it
- *  the answer is null and the caller draws nothing: silently showing the closest
- *  older frame is how a six-minute radar sweep ends up presented as the weather
- *  an hour later, which is exactly the fabrication this project forbids. */
+ *  the answer is null: a frame beyond the tolerance may still be drawn, but
+ *  only through `resolveLayerFrame`'s fallback path, whose every frame carries
+ *  a mandatory visible disclosure — an undisclosed older frame is how a
+ *  six-minute radar sweep ends up presented as the weather an hour later. */
 export function resolveFrame(layer: LayerItem, at: Date): ResolvedFrame | null {
   const best = nearestFrame(layer, at)
   if (!best) return null
@@ -831,10 +950,9 @@ export function resolveFrame(layer: LayerItem, at: Date): ResolvedFrame | null {
   return best
 }
 
-/** The published frame closest to `at`, with no tolerance applied. This is
- *  what the drawer names when nothing may be drawn: the reader is told how far
- *  away the nearest evidence is and offered a jump to it, instead of being
- *  shown it as though it were current. Never used to draw. */
+/** The published frame closest to `at`, with no tolerance applied. Used by
+ *  the drawer and ribbon to say how far away the nearest evidence is, and by
+ *  the fallback resolver below — never drawn without its disclosure. */
 export function nearestFrame(layer: LayerItem, at: Date): ResolvedFrame | null {
   const times = layer.times ?? []
   const target = at.getTime()
@@ -847,6 +965,175 @@ export function nearestFrame(layer: LayerItem, at: Date): ResolvedFrame | null {
   }
   if (!best) return null
   return { time: best.time, offsetSeconds: Math.round((new Date(best.time).getTime() - target) / 1000) }
+}
+
+function asFrame(time: string, targetMs: number): ResolvedFrame {
+  return { time, offsetSeconds: Math.round((new Date(time).getTime() - targetMs) / 1000) }
+}
+
+/** The latest published frame at or before `at`, or null when none is. */
+export function previousFrame(layer: LayerItem, at: Date): ResolvedFrame | null {
+  const target = at.getTime()
+  let best: { time: string; stamp: number } | null = null
+  for (const time of layer.times ?? []) {
+    const stamp = new Date(time).getTime()
+    if (Number.isNaN(stamp) || stamp > target) continue
+    if (!best || stamp > best.stamp) best = { time, stamp }
+  }
+  return best ? asFrame(best.time, target) : null
+}
+
+/** The earliest published frame at or after `at`, or null when none is. */
+export function nextFrame(layer: LayerItem, at: Date): ResolvedFrame | null {
+  const target = at.getTime()
+  let best: { time: string; stamp: number } | null = null
+  for (const time of layer.times ?? []) {
+    const stamp = new Date(time).getTime()
+    if (Number.isNaN(stamp) || stamp < target) continue
+    if (!best || stamp < best.stamp) best = { time, stamp }
+  }
+  return best ? asFrame(best.time, target) : null
+}
+
+/** What one layer resolves to for a requested instant, under the
+ *  owner-approved fallback rules (change frame-fallback-and-viewport-layout).
+ *
+ *  `exact` is the quiet case: the nearest frame inside the layer's declared
+ *  tolerance, drawn as before. Beyond the tolerance the layer falls back —
+ *  previous-only for observed groups, and never for an observed instant after
+ *  the session reference; nearest either way for forecast groups — and every
+ *  fallback is `snapped`, which the map MUST disclose visibly. `blend` is the
+ *  opt-in display composite of a forecast layer's two neighbouring frames;
+ *  it exists only for imagery and is display derivation, never evidence.
+ *  `none` names why nothing may be drawn, keeping the nearest frame so the
+ *  reader can still jump to the evidence. */
+export type FrameResolution =
+  | { kind: 'exact'; frame: ResolvedFrame }
+  | { kind: 'snapped'; frame: ResolvedFrame; direction: 'previous' | 'nearest' }
+  | { kind: 'blend'; previous: ResolvedFrame; next: ResolvedFrame; fraction: number }
+  | { kind: 'none'; reason: string; nearest: ResolvedFrame | null }
+
+/** Groups whose frames are observations or issuances: falling forward would
+ *  show evidence of something that had not yet happened at the requested
+ *  instant. An undeclared group fails toward the stricter rule. */
+function isObservedGroup(layer: LayerItem): boolean {
+  const group = layerGroup(layer)
+  return group === 'satellite' || group === 'observation' || group === 'alert' || group === 'unknown'
+}
+
+export function resolveLayerFrame(layer: LayerItem, at: Date, opts: { interpolate: boolean; reference: Date }): FrameResolution {
+  if ((layer.times?.length ?? 0) === 0) return { kind: 'none', reason: 'this layer published no frames', nearest: null }
+  const observed = isObservedGroup(layer)
+  // A forecast layer under the display-interpolation setting composites its
+  // two neighbouring frames whenever the instant sits strictly between them —
+  // including inside the tolerance, where the fraction is simply near an end.
+  if (opts.interpolate && !observed) {
+    const previous = previousFrame(layer, at)
+    const next = nextFrame(layer, at)
+    if (previous && next && previous.time !== next.time) {
+      const prevMs = new Date(previous.time).getTime()
+      const nextMs = new Date(next.time).getTime()
+      return { kind: 'blend', previous, next, fraction: (at.getTime() - prevMs) / (nextMs - prevMs) }
+    }
+  }
+  const exact = resolveFrame(layer, at)
+  if (exact) return { kind: 'exact', frame: exact }
+  if (observed) {
+    // The tolerance check above keeps its published meaning even a hair past
+    // the reference; only the fallback path refuses future instants.
+    if (at.getTime() > opts.reference.getTime()) {
+      return { kind: 'none', reason: 'observed imagery has no frames for future instants', nearest: nearestFrame(layer, at) }
+    }
+    const previous = previousFrame(layer, at)
+    if (!previous) return { kind: 'none', reason: 'no earlier frame exists in this window', nearest: nearestFrame(layer, at) }
+    return { kind: 'snapped', frame: previous, direction: 'previous' }
+  }
+  const nearest = nearestFrame(layer, at)
+  if (!nearest) return { kind: 'none', reason: 'this layer published no readable frames', nearest: null }
+  return { kind: 'snapped', frame: nearest, direction: 'nearest' }
+}
+
+/** The frames a resolution permits drawing: none, one, or a blend pair. */
+export function drawableFrames(resolution: FrameResolution): ResolvedFrame[] {
+  if (resolution.kind === 'exact' || resolution.kind === 'snapped') return [resolution.frame]
+  if (resolution.kind === 'blend') return [resolution.previous, resolution.next]
+  return []
+}
+
+/** A time on the St. John's clock, for disclosure sentences. */
+export function stJohnsTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-CA', { timeZone: 'America/St_Johns', hour: '2-digit', minute: '2-digit' })
+}
+
+/** A time in Newfoundland local clock, Unknown when absent or unreadable. */
+export function nlTime(iso: string | null): string {
+  if (!iso) return 'Unknown'
+  const stamp = new Date(iso)
+  if (Number.isNaN(stamp.getTime())) return 'Unknown'
+  return stamp.toLocaleTimeString('en-CA', { timeZone: 'America/St_Johns', hour: '2-digit', minute: '2-digit' })
+}
+
+/** One decimal for display, and nothing else changed. Presentational only —
+ *  the retrieved value is what travels in provenance — and it deliberately
+ *  does not collapse null, because "no value was returned" must never read
+ *  as a number. */
+export function reading(value: number | null): string | null {
+  if (value === null || !Number.isFinite(value)) return null
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
+/** The one disclosure sentence for a resolution, reused verbatim by the
+ *  on-map note, the drawer row and the text alternative so the three can
+ *  never disagree. Exact resolutions return null: they carry no note. */
+export function describeResolution(resolution: FrameResolution): string | null {
+  if (resolution.kind === 'exact') return null
+  if (resolution.kind === 'snapped') {
+    return `showing ${stJohnsTime(resolution.frame.time)} NT (${describeOffset(resolution.frame.offsetSeconds)} than the selected time)`
+  }
+  if (resolution.kind === 'blend') {
+    return `display compositing of the ${stJohnsTime(resolution.previous.time)} and ${stJohnsTime(resolution.next.time)} NT frames — display only, not evidence`
+  }
+  return `not shown — ${resolution.reason}`
+}
+
+/** Sorted unique epoch-ms instants of every visible layer's published frames
+ *  inside the window: the axis the scrubber snaps onto when display
+ *  interpolation is off. Empty when nothing is active or nothing published. */
+export function unionFrameInstants(layers: LayerItem[], selections: Array<{ id: string; visible: boolean }>, windowStartMs: number, windowEndMs: number): number[] {
+  const visible = new Set(selections.filter((entry) => entry.visible).map((entry) => entry.id))
+  const instants = new Set<number>()
+  for (const layer of layers) {
+    if (!visible.has(layer.id)) continue
+    for (const time of layer.times ?? []) {
+      const stamp = new Date(time).getTime()
+      if (!Number.isNaN(stamp) && stamp >= windowStartMs && stamp <= windowEndMs) instants.add(stamp)
+    }
+  }
+  return [...instants].sort((a, b) => a - b)
+}
+
+/** The member of `instants` closest to `rawMs`, ties resolving earlier.
+ *  Identity when the list is empty, so a caller never invents an instant. */
+export function snapInstant(instants: number[], rawMs: number): number {
+  let best: number | null = null
+  for (const instant of instants) {
+    if (best === null || Math.abs(instant - rawMs) < Math.abs(best - rawMs)) best = instant
+  }
+  return best ?? rawMs
+}
+
+/** The neighbouring member of `instants` in `direction`, for keyboard
+ *  movement across the snap axis. Stays put at the ends. */
+export function stepInstant(instants: number[], currentMs: number, direction: 1 | -1): number {
+  if (instants.length === 0) return currentMs
+  if (direction === 1) {
+    for (const instant of instants) if (instant > currentMs) return instant
+    return currentMs
+  }
+  for (let index = instants.length - 1; index >= 0; index -= 1) {
+    if (instants[index] < currentMs) return instants[index]
+  }
+  return currentMs
 }
 
 /** The 502 body the legend endpoint returns when the provider served nothing.

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -60,8 +60,40 @@ const liveAstronomy = {
   notices: [],
 }
 
-function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown }) {
+/** Shaped as the running API returns it: observed and forecast Kp separate,
+ *  the forecast carrying the provider's own per-value status, and the latest
+ *  Bz with the instant it was measured. */
+const liveSpaceWeather = {
+  data_mode: 'live', operational: false, generated_at: '2026-08-31T02:00:00Z',
+  kp_observed: {
+    available: true, source_id: 'noaa-swpc-kp', product: 'Planetary K index (observed)',
+    readings: [
+      { time: '2026-08-30T21:00:00Z', value: 3.67, status: null },
+      { time: new Date(Date.now() - 30 * 60 * 1000).toISOString(), value: 4.33, status: null },
+    ],
+    freshness: { status: 'fresh', age_seconds: 1800, threshold_seconds: 21600 }, notices: [],
+  },
+  kp_forecast: {
+    available: true, source_id: 'noaa-swpc-kp', product: 'Planetary K index (3-day outlook, per-value status)',
+    readings: [
+      { time: new Date(Date.now() + 3 * 3600 * 1000).toISOString(), value: 4.0, status: 'estimated' },
+      { time: new Date(Date.now() + 6 * 3600 * 1000).toISOString(), value: 5.0, status: 'predicted' },
+      { time: new Date(Date.now() + 48 * 3600 * 1000).toISOString(), value: 7.0, status: 'predicted' },
+    ],
+    freshness: { status: 'fresh', age_seconds: 1800, threshold_seconds: 21600 }, notices: [],
+  },
+  solar_wind: {
+    available: true, source_id: 'noaa-swpc-rtsw', product: 'Real-time solar wind magnetic field (1-minute)',
+    bz_gsm_nt: -4.1, bt_nt: 4.3, measured_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+    feed_declared_spacecraft: 'SOLAR1',
+    freshness: { status: 'fresh', age_seconds: 120, threshold_seconds: 900 }, notices: [],
+  },
+  notices: [],
+}
+
+function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown; spaceWeather?: unknown }) {
   return vi.fn(async (url: string) => {
+    if (url.includes('/space-weather')) return response(routes.spaceWeather ?? liveSpaceWeather)
     if (url.includes('/astronomy')) return response(routes.astronomy ?? liveAstronomy)
     if (url.includes('/sources/status')) return response(routes.sources ?? sourceStatus)
     if (url.includes('/point')) return response(routes.point ?? apiPoint())
@@ -70,6 +102,12 @@ function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unkn
     if (url.includes('/timeline')) return response(routes.timeline ?? emptyTimeline)
     return response({})
   })
+}
+
+/** The story cards, coverage ribbon and sky bands live in the panel expanded
+ *  from the timeline dock; tests about them open it the way a reader would. */
+async function openStory() {
+  await userEvent.click(await screen.findByRole('button', { name: /Weather story/ }))
 }
 
 describe('weather workbench fail-closed behavior', () => {
@@ -275,6 +313,7 @@ describe('weather workbench fail-closed behavior', () => {
     }))
     render(<App />)
     await screen.findByText('12')
+    await openStory()
     expect(screen.getByText(/24-hour narrative unavailable from this point response\. No forecast story has been inferred\./i)).toBeInTheDocument()
   })
 
@@ -313,6 +352,7 @@ describe('story card keyboard activation', () => {
   it('activates a story card from the keyboard alone, with the readings in its accessible name', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: storyPoint(7), timeline: publishedTimeline() }))
     render(<App />)
+    await openStory()
 
     // A real <button>, so it is reachable by Tab and fires on Enter without the
     // panel hand-rolling a key handler that could drift from the click path.
@@ -325,12 +365,13 @@ describe('story card keyboard activation', () => {
     expect(card).toHaveFocus()
     await userEvent.keyboard('{Enter}')
     expect(card).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('+3h (Forecast)')).toBeInTheDocument()
+    expect(screen.getByText(/\+3h \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
   })
 
   it('activates a story card with Space as well, having been tabbed to', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: storyPoint(7), timeline: publishedTimeline() }))
     render(<App />)
+    await openStory()
     const card = await screen.findByRole('button', { name: /^Scrub to \+3h\./ })
     // Tab there rather than calling focus(): the point is that the card sits in
     // the natural focus order, which a div with tabIndex could fake but a
@@ -445,6 +486,7 @@ describe('timeline mode is applied like every other fetch', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
     render(<App />)
+    await openStory()
 
     expect(await screen.findByText(/timeline declared no data_mode/i)).toBeInTheDocument()
     // No story card is built from hours the response never claimed.
@@ -556,24 +598,24 @@ describe('point readings are attributed to the source that produced them', () =>
   it('moves the scrubber when a layer row asks to jump to its nearest frame', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
     render(<App />)
-    expect(screen.getByText('Now (0h)', { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+    expect(screen.getByText(/^Now \(0h\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Jump to nearest frame' }))
-    expect(screen.getByText('+3h (Forecast)')).toBeInTheDocument()
+    expect(screen.getByText(/\+3h \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
   })
 
   it('shows the true minute offset after a jump, and never rounds a nearby frame to Now', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
     render(<App />)
     const badge = () => (document.querySelector('.story-scrubber-badge strong') as HTMLElement).textContent
-    expect(badge()).toBe('Now (0h)')
+    expect(badge()).toMatch(/^Now \(0h\) · .+ NT$/)
     // A radar frame ten minutes ago is not "Now": the badge used to round the
     // offset to the hour and claim an instant the reader had not chosen.
     await userEvent.click(screen.getByRole('button', { name: 'Jump ten minutes back' }))
-    expect(badge()).toBe('-10 min (Past)')
-    expect(screen.queryByText('Now (0h)', { selector: '.story-scrubber-badge strong' })).not.toBeInTheDocument()
+    expect(badge()).toMatch(/^-10 min \(Past\)/)
+    expect(screen.queryByText(/^Now \(0h\)/, { selector: '.story-scrubber-badge strong' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '10 min ago on the headland' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Jump eighty minutes ahead' }))
-    expect(badge()).toBe('+1 h 20 min (Forecast)')
+    expect(badge()).toMatch(/^\+1 h 20 min \(Forecast\)/)
   })
 })
 
@@ -703,6 +745,7 @@ describe('timeline coverage rows are grouped like the drawer', () => {
     const radar = { id: 'eccc-radar-radar', title: 'eccc-radar radar', kind: 'point', field: 'radar', product: 'radar', units: 'mixed', semantics: 'No echo means no detected precipitating echo, not clear sky.', times: [], group: 'observation' }
     vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: [hrdps, radar, ...satelliteLayers()], notices: [] } }))
     render(<App />)
+    await openStory()
 
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
     const headings = within(ribbon).getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent)
@@ -721,6 +764,7 @@ describe('timeline coverage rows are grouped like the drawer', () => {
   it('says a satellite row has no frame at a forward hour rather than reusing a past one', async () => {
     vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: satelliteLayers(), notices: [] } }))
     render(<App />)
+    await openStory()
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
     await userEvent.click(screen.getByRole('button', { name: '+3h' }))
     const counts = within(ribbon).getAllByText('no frame here')
@@ -749,6 +793,7 @@ describe('timeline coverage rows are grouped like the drawer', () => {
     }
     vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: [...satelliteLayers(), cloudMask], notices: [] } }))
     render(<App />)
+    await openStory()
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
     const satellite = within(ribbon).getByRole('group', { name: 'Satellite (observed, past only) · 5 layers' })
     expect(within(satellite).getAllByRole('button')).toHaveLength(5)
@@ -768,6 +813,7 @@ describe('rendered-grid coverage rows', () => {
     ]
     vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: strata, notices: [] } }))
     render(<App />)
+    await openStory()
 
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
     const group = within(ribbon).getByRole('group', { name: 'Rendered grids (drawn here from stored model data) · 3 layers' })
@@ -995,6 +1041,7 @@ describe('computed astronomy bands and Tonight cards', () => {
   it('renders darkness and moon bands with text alternatives naming the intervals', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
     render(<App />)
+    await openStory()
     const darkness = await screen.findByRole('img', { name: /Darkness: .*night/ })
     expect(darkness).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /Moon above the horizon: moon up/ })).toBeInTheDocument()
@@ -1010,8 +1057,137 @@ describe('computed astronomy bands and Tonight cards', () => {
       astronomy: { data_mode: 'unavailable', twilight_bands: [], notices: ['Pinned ephemeris missing: /data/ephemeris/de442.bsp'], provenance: null },
     }))
     render(<App />)
+    await openStory()
     expect(await screen.findByText(/Darkness and moon bands unavailable: Pinned ephemeris missing/)).toBeInTheDocument()
     expect(screen.getByText(/No band is drawn from a failure/)).toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /Darkness:/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('space weather cards: Kp and Bz, fail-closed', () => {
+  it('renders the latest observed Kp, the windowed forecast max with its provider status, and Bz with its instant', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    expect(await screen.findByText('Kp observed')).toBeInTheDocument()
+    expect(screen.getByText('4.33')).toBeInTheDocument()
+    // The forecast max is the largest value INSIDE the 28-hour window (5.0,
+    // predicted) — the 7.0 two days out never stands in for it — and the
+    // provider's own status label rides the caption.
+    expect(screen.getByText('Kp forecast max')).toBeInTheDocument()
+    expect(screen.getByText('5.00')).toBeInTheDocument()
+    expect(screen.getByText(/provider status: predicted/)).toBeInTheDocument()
+    expect(screen.getByText(/photographable at St. John's from about Kp 4-5/)).toBeInTheDocument()
+    expect(screen.getByText('-4.1 nT')).toBeInTheDocument()
+    expect(screen.getByText(/southward \(negative\) Bz is the aurora tripwire/)).toBeInTheDocument()
+    // Planetary indices, never local readings: the section says so.
+    expect(screen.getByText(/planetary indices, not local readings/)).toBeInTheDocument()
+  })
+
+  it('says space weather is unavailable, with the API reason, instead of showing a quiet zero', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      spaceWeather: {
+        data_mode: 'unavailable', operational: false, generated_at: '2026-08-31T02:00:00Z',
+        kp_observed: { available: false, source_id: 'noaa-swpc-kp', product: 'unavailable', readings: [], freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 21600 }, notices: [] },
+        kp_forecast: { available: false, source_id: 'noaa-swpc-kp', product: 'unavailable', readings: [], freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 21600 }, notices: [] },
+        solar_wind: { available: false, source_id: 'noaa-swpc-rtsw', product: 'unavailable', bz_gsm_nt: null, bt_nt: null, measured_at: null, feed_declared_spacecraft: null, freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 900 }, notices: [] },
+        notices: ['no fixture space weather exists; fixture mode answers unavailable rather than inventing planetary indices'],
+      },
+    }))
+    render(<App />)
+    expect(await screen.findByText(/Space weather unavailable: no fixture space weather exists/)).toBeInTheDocument()
+    expect(screen.queryByText('Kp observed')).not.toBeInTheDocument()
+    expect(screen.queryByText(/0\.0 nT/)).not.toBeInTheDocument()
+  })
+
+  it('marks a stale Bz as stale with its age rather than presenting it as current', async () => {
+    const staleWind = {
+      ...liveSpaceWeather,
+      solar_wind: {
+        ...liveSpaceWeather.solar_wind,
+        measured_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        freshness: { status: 'stale', age_seconds: 7200, threshold_seconds: 900 },
+        notices: ['solar_wind: the newest Bz record is 7200 s old, past the 900 s freshness threshold; it is served stale, not as current'],
+      },
+    }
+    vi.stubGlobal('fetch', routedFetch({ spaceWeather: staleWind }))
+    render(<App />)
+    expect(await screen.findByText('-4.1 nT')).toBeInTheDocument()
+    expect(screen.getByText(/stale, 2\.0 h old/)).toBeInTheDocument()
+  })
+})
+
+describe('timeline dock: interpolation setting and frame snapping', () => {
+  /** One toggleable layer with two published frames inside the past window,
+   *  minute-aligned but at instants a 5-minute scrub could never land on. */
+  const snappableLayers = () => {
+    const at = (minutesAgo: number) => {
+      const stamp = new Date(Date.now() - minutesAgo * 60_000)
+      stamp.setUTCSeconds(0, 0)
+      return stamp.toISOString().replace(/\.\d{3}Z$/, 'Z')
+    }
+    return {
+      data_mode: 'live',
+      layers: [{
+        id: 'eccc-radar-radar', title: 'eccc-radar radar', kind: 'point', field: 'radar', product: 'radar',
+        units: 'mixed', semantics: 'No echo means no detected precipitating echo, not clear sky.',
+        times: [at(66), at(36)], cadence_seconds: 1800, staleness_tolerance_seconds: 900, group: 'observation',
+      }],
+      notices: [],
+    }
+  }
+
+  it('offers interpolation off by default, worded as display-only', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    const toggle = await screen.findByRole('button', { name: /Interpolate forecast · display only/ })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    // The disclosure travels with the control itself.
+    expect(toggle).toHaveAttribute('title', expect.stringMatching(/for display .*Never applied to observed layers; not evidence/))
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('snaps keyboard scrubbing to the exact published frame instants of the active layers', async () => {
+    vi.stubGlobal('fetch', routedFetch({ layers: snappableLayers() }))
+    render(<App />)
+    await openStory()
+    // Toggle the layer on through its coverage-ribbon row.
+    await userEvent.click(await screen.findByRole('button', { name: 'eccc-radar radar' }))
+
+    const slider = screen.getByLabelText('Valid timeline scrubber')
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' })
+    // The selection lands on the newer frame's exact instant: ~36 minutes ago,
+    // an offset no 5-minute step could produce.
+    expect(screen.getByText(/-3[67] min \(Past\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+    expect(slider).toHaveAttribute('aria-valuetext', expect.stringMatching(/snapped to the nearest published frame/))
+
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' })
+    expect(screen.getByText(/-1 h [67] min \(Past\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+    // At the axis end the selection stays put rather than inventing an instant.
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' })
+    expect(screen.getByText(/-1 h [67] min \(Past\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+  })
+
+  it('scrubs freely in five-minute steps when nothing active publishes frames', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    const slider = await screen.findByLabelText('Valid timeline scrubber')
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    expect(screen.getByText(/\+5 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+    expect(slider).toHaveAttribute('aria-valuetext', expect.not.stringMatching(/snapped/))
+  })
+
+  it('opens the story panel from the dock and returns focus to the toggle on Escape', async () => {
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    const toggle = await screen.findByRole('button', { name: /Weather story/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const flyout = document.getElementById('story-flyout') as HTMLElement
+    expect(flyout).toHaveFocus()
+    fireEvent.keyDown(flyout, { key: 'Escape' })
+    expect(document.getElementById('story-flyout')).toBeNull()
+    expect(toggle).toHaveFocus()
   })
 })

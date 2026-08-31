@@ -362,6 +362,67 @@ class ErrorResponse(StrictModel):
     detail: str
 
 
+# --- space weather --------------------------------------------------------
+# Planetary quantities: served with times, ages and provider statuses, never
+# with a coordinate, a sample distance, or an invented value. An absent feed is
+# an absent series with a notice; a stale feed says so with its age.
+
+
+class SpaceWeatherReading(StrictModel):
+    """One retrieved series value at the feed's own instant.
+
+    ``status`` is the provider's own per-value label (``observed`` |
+    ``estimated`` | ``predicted``) on the Kp forecast series, exactly as the
+    feed declared it; ``None`` everywhere the provider declared none. A null
+    ``value`` is a gap in the feed, never zero.
+    """
+
+    time: datetime
+    value: float | None
+    status: str | None = None
+
+
+class SpaceWeatherSeries(StrictModel):
+    """A planetary index series, or its honest absence."""
+
+    available: bool
+    source_id: str
+    product: str
+    readings: list[SpaceWeatherReading] = Field(default_factory=list)
+    freshness: Freshness
+    notices: list[str] = Field(default_factory=list)
+
+
+class SolarWindLatest(StrictModel):
+    """The newest retrieved solar-wind magnetometer reading, with its instant.
+
+    ``measured_at`` is the instant the served ``bz_gsm_nt`` was measured -
+    the newest record carrying a finite Bz, never a gap filled with zero.
+    ``feed_declared_spacecraft`` is whatever the feed's own source field said,
+    verbatim; no spacecraft is ever named beyond that.
+    """
+
+    available: bool
+    source_id: str
+    product: str
+    bz_gsm_nt: float | None
+    bt_nt: float | None
+    measured_at: datetime | None
+    feed_declared_spacecraft: str | None
+    freshness: Freshness
+    notices: list[str] = Field(default_factory=list)
+
+
+class SpaceWeatherResponse(StrictModel):
+    data_mode: DataMode
+    operational: Literal[False] = False
+    generated_at: datetime
+    kp_observed: SpaceWeatherSeries
+    kp_forecast: SpaceWeatherSeries
+    solar_wind: SolarWindLatest
+    notices: list[str] = Field(default_factory=list)
+
+
 # --- astronomy ------------------------------------------------------------
 
 

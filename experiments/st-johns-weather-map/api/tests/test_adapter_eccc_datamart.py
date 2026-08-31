@@ -288,57 +288,116 @@ def test_a_rotated_hrdps_grid_survives_the_real_crop(tmp_path: Path, monkeypatch
 
 
 HRDPS_PUBLISHED_FIELDS = frozenset(
-    {"temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure"}
+    {
+        "temperature_2m",
+        "dew_point_2m",
+        "relative_humidity_2m",
+        "wind_u_10m",
+        "wind_v_10m",
+        "mean_sea_level_pressure",
+        "total_cloud",
+    }
 )
 
+_TCDC_URL_MAP = {
+    "20260830/WXO-DD/model_hrdps/continental/2.5km/": make_html_listing(["12/"]),
+    "20260830/WXO-DD/model_hrdps/continental/2.5km/12/": make_html_listing(["000/"]),
+    "20260830/WXO-DD/model_hrdps/continental/2.5km/12/000/": make_html_listing(
+        ["20260830T12Z_MSC_HRDPS_TCDC_Sfc_RLatLon0.0225_PT000H.grib2"]
+    ),
+}
 
-def test_total_cloud_is_not_declared_until_the_decoder_states_its_units(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+#: What cfgrib hands back for the live ``TCDC_Sfc`` file: a variable named
+#: ``unknown`` whose ``units`` attr is the literal string ``unknown``. With
+#: ``read_keys`` requested, the message's own WMO identity keys ride along as
+#: ``GRIB_*`` attrs.
+def _mock_tcdc_dataset(*, with_wmo_keys: bool) -> xarray.Dataset:
+    dataset = xarray.Dataset(
+        {"unknown": (("latitude", "longitude"), numpy.array([[0.0, 100.0], [37.5, 62.5]]))},
+        coords={"latitude": numpy.array([47.5, 47.6]), "longitude": numpy.array([-52.8, -52.7])},
+    )
+    dataset["unknown"].attrs["units"] = "unknown"
+    if with_wmo_keys:
+        dataset["unknown"].attrs.update(
+            {
+                "GRIB_discipline": 0,
+                "GRIB_parameterCategory": 6,
+                "GRIB_parameterNumber": 1,
+                "GRIB_typeOfFirstFixedSurface": 1,
+                "GRIB_typeOfSecondFixedSurface": 255,
+            }
+        )
+    return dataset
+
+
+def test_total_cloud_is_published_from_the_messages_own_wmo_keys(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """MSC's ``TCDC_Sfc`` decodes as ``unknown``/``unknown`` in ecCodes 2.48.0.
 
     Live on 2026-08-30 the message carries WMO 0/6/1 with
     ``typeOfSecondFixedSurface=255``; ecCodes' ``tcc`` concept requires 8, so
-    the decoder declares no units. The adapter maps stay silent about the
-    field, and the validator is what would refuse it if someone declared it.
+    the decoder declares no units. Owner decision 2026-08-31: publish from the
+    coded WMO keys themselves - they are retrieved facts in the message - with
+    the basis recorded in the variable's attrs.
     """
-    assert "total_cloud" not in HRDPS_VARS
-    assert "total_cloud" not in RDPS_VARS
+    assert "total_cloud" in HRDPS_VARS
+    assert "total_cloud" in RDPS_VARS
     assert "total_cloud" not in GDPS_VARS
     assert set(HRDPS_VARS) == HRDPS_PUBLISHED_FIELDS
 
-    url_map = {
-        "20260830/WXO-DD/model_hrdps/continental/2.5km/": make_html_listing(["12/"]),
-        "20260830/WXO-DD/model_hrdps/continental/2.5km/12/": make_html_listing(["000/"]),
-        "20260830/WXO-DD/model_hrdps/continental/2.5km/12/000/": make_html_listing(
-            ["20260830T12Z_MSC_HRDPS_TCDC_Sfc_RLatLon0.0225_PT000H.grib2"]
-        ),
-    }
-    client = make_mock_client(url_map)
+    client = make_mock_client(_TCDC_URL_MAP)
     adapter = make_adapter(client, var_map={"total_cloud": ("TCDC", "Sfc")})
     monkeypatch.setattr(client, "download", lambda url, dest, max_bytes: dest.write_bytes(b"dummy"))
 
-    def mock_open_grib(path: Path):
-        # Exactly what cfgrib hands back for the live file: a variable named
-        # ``unknown`` whose ``units`` attr is the literal string ``unknown``.
-        dataset = xarray.Dataset(
-            {"unknown": (("latitude", "longitude"), numpy.array([[0.0, 100.0], [37.5, 62.5]]))},
-            coords={"latitude": numpy.array([47.5, 47.6]), "longitude": numpy.array([-52.8, -52.7])},
-        )
-        dataset["unknown"].attrs["units"] = "unknown"
-        return dataset
+    seen_read_keys: list[tuple[str, ...] | None] = []
+
+    def mock_open_grib(path: Path, *, read_keys=None):
+        seen_read_keys.append(tuple(read_keys) if read_keys else None)
+        return _mock_tcdc_dataset(with_wmo_keys=True)
 
     monkeypatch.setattr("ingest.adapters.eccc_datamart.open_grib", mock_open_grib)
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.crop_to_bbox", lambda ds, bounds: ds)
+
+    window = FetchWindow(now=datetime(2026, 8, 30, 13, tzinfo=UTC), back_hours=3, forward_hours=24)
+    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+
+    # The identity keys were actually requested from the decoder.
+    assert seen_read_keys and "parameterNumber" in (seen_read_keys[0] or ())
+    assert result.qc_passed is True
+    assert result.complete is True
+
+    store = zarr.storage.ZipStore(str(result.artifacts[0].payload_path), mode="r")
+    try:
+        stored = xarray.open_zarr(store, consolidated=False)
+        cloud = stored["total_cloud"]
+        assert cloud.attrs["units"] == "percent"
+        assert cloud.attrs["original_units"] == "unknown"
+        assert "WMO GRIB2 code table 4.2" in cloud.attrs["units_basis"]
+        assert float(cloud.max()) == 100.0
+    finally:
+        store.close()
+
+
+def test_total_cloud_without_its_wmo_identity_is_still_refused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """A message whose coded keys do not say 'total cloud cover' stays refused.
+
+    The 0-100 value range alone is an inference, not a retrieval; without the
+    WMO 0/6/1 identity the field must not be published, and the run fails
+    loudly rather than shipping an artifact with undeclared units.
+    """
+    client = make_mock_client(_TCDC_URL_MAP)
+    adapter = make_adapter(client, var_map={"total_cloud": ("TCDC", "Sfc")})
+    monkeypatch.setattr(client, "download", lambda url, dest, max_bytes: dest.write_bytes(b"dummy"))
+    monkeypatch.setattr(
+        "ingest.adapters.eccc_datamart.open_grib",
+        lambda path, *, read_keys=None: _mock_tcdc_dataset(with_wmo_keys=False),
+    )
     monkeypatch.setattr("ingest.adapters.eccc_datamart.crop_to_bbox", lambda ds, bounds: ds)
     # The real normalize_units runs: it must leave ``unknown`` untouched rather
     # than guessing ``percent`` from the 0-100 value range.
 
     window = FetchWindow(now=datetime(2026, 8, 30, 13, tzinfo=UTC), back_hours=3, forward_hours=24)
-    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
-
-    assert result.qc_passed is False
-    assert result.complete is False
-    quality = result.artifacts[0].provenance["quality"]
-    assert quality["status"] == "failed"
-    assert "bad_units:total_cloud:unknown" in quality["flags"]
+    with pytest.raises(AdapterUnavailable):
+        adapter.fetch(adapter.discover(window)[0], window, tmp_path)
 
 
 @pytest.mark.live_smoke

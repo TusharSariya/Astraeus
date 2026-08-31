@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, cloudBandOf, describeOffset, filterCloudLayers, groupLayers, loadAstronomy, loadCatalog, loadLayers, loadPoint, loadProfile, loadSourceStatus, loadStory, loadTimeline, pointProductFor, resolveFrame } from './api'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, cloudBandOf, filterCloudLayers, loadAstronomy, loadCatalog, loadLayers, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
+import { ModeChip } from './ModeChip'
+import { StoryFlyout } from './StoryFlyout'
+import { TimelineDock } from './TimelineDock'
 import { useTheme } from './theme'
 import type {
   AppMode, CatalogSource, CloudLayerReading, DataSource, EvidenceSnapshot, FallbackMode, FieldAttribution, FieldDataMode,
-  LayerItem, LayerSelection, LocationPoint, ProfileResponse, ResolvedFrame, SourceStatusItem, StoryStep, TimelineResponse, AstronomyInterval, AstronomyResponse,
+  LayerItem, LayerSelection, LocationPoint, ProfileResponse, SourceStatusItem, StoryStep, TimelineResponse, AstronomyResponse,
+  SpaceWeatherReading, SpaceWeatherResponse, SpaceWeatherSeries,
 } from './types'
 
 /** The evidence window, in minutes from the session reference instant. */
@@ -16,12 +20,9 @@ const FORWARD_MINUTES = 24 * 60
  *  (radar, every six), so no layer's frames are unreachable between steps. */
 const SCRUB_STEP_MINUTES = 5
 
-/** Text alternative for a coverage row, so the ribbon is not graphics-only. */
-function coverageDescription(layer: LayerItem, frameCount: number, current: ResolvedFrame | null): string {
-  if (frameCount === 0) return `${layer.title} published no frames in this window.`
-  const where = current ? `the selected time resolves to a frame ${describeOffset(current.offsetSeconds)}` : 'the selected time has no frame within this layer\u2019s tolerance'
-  return `${layer.title}: ${frameCount} published frame${frameCount === 1 ? '' : 's'}; ${where}.`
-}
+/** The key the interpolation preference persists under. A per-viewer display
+ *  convenience only; nothing evidential lives in browser storage. */
+const INTERPOLATE_STORAGE_KEY = 'weather-interpolate-forecast'
 
 /** The scrubber offset in words, at the minute. A jump to a radar frame lands
  *  on -10 min, and a badge that rounded that to "Now (0h)" claimed an instant
@@ -56,12 +57,6 @@ const bannerCopy: Record<Exclude<DataSource, 'live'>, string> = {
   mixed: 'MIXED EVIDENCE · SOME FIELDS ARE NOT LIVE',
   fixture: 'DEVELOPMENT FIXTURE · NOT LIVE EVIDENCE',
   unavailable: 'NO LIVE EVIDENCE RETRIEVED',
-}
-
-function ModeChip({ mode }: { mode: FieldDataMode | undefined }) {
-  if (!mode || mode === 'live') return null
-  const copy = mode === 'fixture' ? 'fixture value' : mode === 'mixed' ? 'mixed provenance' : 'not declared live'
-  return <em className={`mode-chip ${mode}`}>{copy}</em>
 }
 
 /** "derived · MetPy" beside any value the API says it computed rather than
@@ -137,20 +132,6 @@ function ProvenanceReadout({ label, values, emptyReason }: {
   )
 }
 
-/** One decimal for display, and nothing else changed.
- *
- *  Observation sources report already-rounded values, so this was invisible
- *  until the gridded models published: a sampled HRDPS cell carries the float
- *  it was stored as, and 17.27401733398437 rendered raw overflowed the panel it
- *  sits in. The rounding is presentational only - the retrieved value is what
- *  travels in provenance and what /point returns - and it deliberately does not
- *  collapse null, because "no value was returned" must never read as a number.
- */
-function reading(value: number | null): string | null {
-  if (value === null || !Number.isFinite(value)) return null
-  return Number.isInteger(value) ? String(value) : value.toFixed(1)
-}
-
 function unique(values: string[]): string[] {
   return [...new Set(values.filter((value) => value.trim().length > 0))]
 }
@@ -212,71 +193,48 @@ function CloudBandFilter({ bands, onChange }: { bands: CloudBands; onChange: (ne
   )
 }
 
+/** The freshness suffix a space-weather card shows. Stale is said out loud —
+ *  an old planetary reading shown as current would misdate the sky. */
+function staleSuffix(freshness: { status: string; age_seconds: number | null }): string {
+  if (freshness.status !== 'stale') return ''
+  const age = freshness.age_seconds
+  return age === null ? ' · stale' : ` · stale, ${age < 5400 ? `${Math.round(age / 60)} min` : `${(age / 3600).toFixed(1)} h`} old`
+}
+
+/** The newest observed Kp reading that actually carries a value, or null.
+ *  Readings arrive in feed order (ascending time); a trailing gap stays a gap. */
+function latestKpReading(series: SpaceWeatherSeries | undefined): SpaceWeatherReading | null {
+  if (!series?.available) return null
+  for (let index = series.readings.length - 1; index >= 0; index -= 1) {
+    if (series.readings[index].value !== null) return series.readings[index]
+  }
+  return null
+}
+
+/** The maximum forecast Kp inside the evidence window, with the provider's own
+ *  per-value status. Null when no forecast value falls in the window — never
+ *  the window-less maximum standing in for it. */
+function maxForecastKp(series: SpaceWeatherSeries | undefined, windowStartMs: number, windowEndMs: number): SpaceWeatherReading | null {
+  if (!series?.available) return null
+  let best: SpaceWeatherReading | null = null
+  for (const item of series.readings) {
+    const stamp = new Date(item.time).getTime()
+    if (Number.isNaN(stamp) || stamp < windowStartMs || stamp > windowEndMs || item.value === null) continue
+    if (!best || item.value > (best.value ?? -Infinity)) best = item
+  }
+  return best
+}
+
 const fogCopy: Record<EvidenceSnapshot['fogRisk'], string> = {
   evidence_present: 'Fog evidence present',
   not_indicated: 'Fog not indicated by available evidence',
   unknown: 'Fog evidence unknown',
 }
 
-/** The accessible name of one story card. Every reading is named with its unit
- *  and an absent one is spoken as Unknown, so the card carries the same evidence
- *  by ear as by eye — a silently skipped field would read as a value not worth
- *  mentioning rather than one that was never returned. */
-function storyCardLabel(item: StoryStep): string {
-  const readings = [
-    `temperature ${reading(item.temperatureC) === null ? 'unknown' : `${reading(item.temperatureC)} °C`}`,
-    `dew point ${reading(item.dewPointC) === null ? 'unknown' : `${reading(item.dewPointC)} °C`}`,
-    `precipitation probability ${item.precipPct === null ? 'unknown' : `${item.precipPct}%`}`,
-    `wind ${item.windKmh === null ? 'unknown' : `${item.windKmh} km/h`}`,
-  ]
-  return `Scrub to ${item.time}. ${item.label}. ${readings.join(', ')}.`
-}
-
 /** The source suffix for a text-alternative row, or nothing for an Unknown. */
 function sourced(snapshot: EvidenceSnapshot, field: string): string {
   const source = snapshot.fieldSources[field]
   return source ? ` (${source.sourceId ?? source.product ?? source.provider})` : ''
-}
-
-/** A time in Newfoundland local clock for band and card text. */
-function nlTime(iso: string | null): string {
-  if (!iso) return 'Unknown'
-  const stamp = new Date(iso)
-  if (Number.isNaN(stamp.getTime())) return 'Unknown'
-  return stamp.toLocaleTimeString('en-CA', { timeZone: 'America/St_Johns', hour: '2-digit', minute: '2-digit' })
-}
-
-/** One astronomy band beside the coverage rows: spans positioned by the same
- *  window fraction mapping, with the intervals named in a text alternative.
- *  Rendered only from a served response — never synthesized. */
-function SkyBandRow({ label, intervals, windowStartMs, windowEndMs, description }: {
-  label: string
-  intervals: AstronomyInterval[]
-  windowStartMs: number
-  windowEndMs: number
-  description: string
-}) {
-  const domain = windowEndMs - windowStartMs
-  return (
-    <div className="sky-band-row">
-      <span className="sky-band-label">{label}</span>
-      <div className="sky-band-track" role="img" aria-label={description}>
-        {intervals.map((interval) => {
-          const startMs = Math.max(new Date(interval.start).getTime(), windowStartMs)
-          const endMs = Math.min(new Date(interval.end).getTime(), windowEndMs)
-          if (!(endMs > startMs) || domain <= 0) return null
-          const left = ((startMs - windowStartMs) / domain) * 100
-          const width = ((endMs - startMs) / domain) * 100
-          return <i key={`${interval.kind}-${interval.start}`} className={`sky-band sky-band-${interval.kind}`} style={{ left: `${left}%`, width: `${width}%` }} />
-        })}
-      </div>
-    </div>
-  )
-}
-
-function describeIntervals(name: string, intervals: AstronomyInterval[], empty: string): string {
-  if (intervals.length === 0) return `${name}: ${empty}`
-  return `${name}: ${intervals.map((interval) => `${interval.kind.replaceAll('_', ' ')} ${nlTime(interval.start)}-${nlTime(interval.end)} NT`).join(', ')}`
 }
 
 function evidenceRows(snapshot: EvidenceSnapshot, humidityGap: string): MapEvidenceRow[] {
@@ -293,6 +251,7 @@ function evidenceRows(snapshot: EvidenceSnapshot, humidityGap: string): MapEvide
     { label: 'Fog', value: `${fogCopy[snapshot.fogRisk]}${snapshot.fogRisk === 'unknown' ? '' : sourced(snapshot, 'fog_state')}` },
     { label: 'Jet-level wind', value: snapshot.upperAir.jet200Kmh === null && snapshot.upperAir.jet300Kmh === null ? 'Unknown — no upper-air wind value was returned' : `${snapshot.upperAir.jet200Kmh === null ? 'unknown' : Math.round(snapshot.upperAir.jet200Kmh)} / ${snapshot.upperAir.jet300Kmh === null ? 'unknown' : Math.round(snapshot.upperAir.jet300Kmh)} km/h at 200/300 hPa — strong jet flow degrades astronomical seeing${sourced(snapshot, 'wind_speed_200hPa')}` },
     { label: 'Precipitable water', value: snapshot.upperAir.precipitableWaterKgM2 === null ? 'Unknown — no precipitable water value was returned' : `${snapshot.upperAir.precipitableWaterKgM2.toFixed(1)} kg/m² of column moisture — more degrades sky transparency${sourced(snapshot, 'precipitable_water')}` },
+    { label: 'Aurora probability', value: snapshot.auroraProbabilityPct === null ? 'Unknown — no aurora probability value was returned' : `${Math.round(snapshot.auroraProbabilityPct)}% — OVATION model nowcast at the sampled grid cell, not an observation${sourced(snapshot, 'aurora_probability')}` },
     { label: 'Valid time', value: snapshot.validAt ?? 'Unknown — no valid time was returned' },
   ]
 }
@@ -304,10 +263,22 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
   const [snapshot, setSnapshot] = useState<EvidenceSnapshot>(unavailableSnapshot)
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
-  const [offsetMinutes, setOffsetMinutes] = useState<number>(0)
   // One reference instant for the whole session. Recomputing `now` on every
   // render would slide every layer's resolved frame under the reader.
   const [reference] = useState<Date>(() => new Date())
+  // The selected instant, exact to the millisecond. The reference carries the
+  // seconds of the moment the page loaded, so a whole-minute offset could
+  // never land exactly on a published frame timestamp; snapping and frame
+  // jumps set the exact epoch instant instead.
+  const [selectedMs, setSelectedMs] = useState<number>(reference.getTime())
+  // Owner-approved display setting: composite forecast imagery between its
+  // two neighbouring frames. Off by default; a per-viewer convenience only,
+  // so the stored value is read best-effort and never trusted as evidence.
+  const [interpolate, setInterpolate] = useState<boolean>(() => {
+    try { return localStorage.getItem(INTERPOLATE_STORAGE_KEY) === 'true' } catch { return false }
+  })
+  const [storyOpen, setStoryOpen] = useState(false)
+  const storyToggleRef = useRef<HTMLButtonElement | null>(null)
   const [dataSource, setDataSource] = useState<DataSource>('loading')
   const [sourceError, setSourceError] = useState('')
   const [locationNotice, setLocationNotice] = useState('Location stays off until you ask for it.')
@@ -325,6 +296,8 @@ export default function App() {
   const [timelineNotice, setTimelineNotice] = useState<string | null>(null)
   const [astronomy, setAstronomy] = useState<AstronomyResponse | null>(null)
   const [astronomyNotice, setAstronomyNotice] = useState<string | null>(null)
+  const [spaceWeather, setSpaceWeather] = useState<SpaceWeatherResponse | null>(null)
+  const [spaceWeatherNotice, setSpaceWeatherNotice] = useState<string | null>(null)
   const [story, setStory] = useState<StoryStep[]>([])
   const [provider, setProvider] = useState('')
   const [sourceStatuses, setSourceStatuses] = useState<SourceStatusItem[] | null>(null)
@@ -333,18 +306,76 @@ export default function App() {
   // reaches no request and derives no value.
   const [cloudBands, setCloudBands] = useState<CloudBands>(ALL_CLOUD_BANDS)
 
-  /** The instant the reader is asking about. Minute resolution, because radar
-   *  publishes every six minutes and lightning every ten: rounding to the hour
-   *  made those layers unscrubbable at the cadence they actually have. */
-  const validTime = useMemo(() => new Date(reference.getTime() + offsetMinutes * 60_000), [reference, offsetMinutes])
+  /** The instant the reader is asking about, exact. The badge and headings
+   *  speak in whole minutes; the frames and requests use the instant itself. */
+  const validTime = useMemo(() => new Date(selectedMs), [selectedMs])
+  const offsetMinutes = useMemo(() => Math.round((selectedMs - reference.getTime()) / 60_000), [selectedMs, reference])
   const scrubOffset = useMemo(() => describeScrubOffset(offsetMinutes), [offsetMinutes])
   const windowStartMs = useMemo(() => reference.getTime() - BACK_MINUTES * 60_000, [reference])
   const windowEndMs = useMemo(() => reference.getTime() + FORWARD_MINUTES * 60_000, [reference])
 
   const validTimeIso = useMemo(() => {
-    if (offsetMinutes === 0) return undefined
+    if (selectedMs === reference.getTime()) return undefined
     return validTime.toISOString().replace(/\.\d{3}Z$/, 'Z')
-  }, [offsetMinutes, validTime])
+  }, [selectedMs, reference, validTime])
+
+  // The axis a scrub snaps onto when display interpolation is off: the union
+  // of the active visible layers' published frame instants in the window.
+  // Empty (free five-minute scrubbing) when interpolation is on or nothing
+  // active publishes a frame. Toggling a layer changes this axis but never
+  // moves the current selection — only a scrub action snaps.
+  const snapInstants = useMemo(
+    () => (interpolate ? [] : unionFrameInstants(layers, selections, windowStartMs, windowEndMs)),
+    [interpolate, layers, selections, windowStartMs, windowEndMs],
+  )
+  const snapping = snapInstants.length > 0
+  const clampMs = useCallback((ms: number) => Math.max(windowStartMs, Math.min(windowEndMs, ms)), [windowStartMs, windowEndMs])
+
+  /** Every scrub-shaped selection routes through here: slider drags, quick
+   *  jumps and story cards, so all of them obey the same snap rule. */
+  const selectMinutes = useCallback((rawMinutes: number) => {
+    const target = reference.getTime() + rawMinutes * 60_000
+    if (snapInstants.length > 0) {
+      setSelectedMs(clampMs(snapInstant(snapInstants, target)))
+      return
+    }
+    const rounded = Math.round(rawMinutes / SCRUB_STEP_MINUTES) * SCRUB_STEP_MINUTES
+    setSelectedMs(clampMs(reference.getTime() + rounded * 60_000))
+  }, [reference, snapInstants, clampMs])
+
+  const onScrubKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    const step = (direction: 1 | -1, minutes: number) => {
+      event.preventDefault()
+      if (snapInstants.length > 0) setSelectedMs(clampMs(stepInstant(snapInstants, selectedMs, direction)))
+      else setSelectedMs(clampMs(selectedMs + direction * minutes * 60_000))
+    }
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowUp': step(1, SCRUB_STEP_MINUTES); break
+      case 'ArrowLeft':
+      case 'ArrowDown': step(-1, SCRUB_STEP_MINUTES); break
+      case 'PageUp': step(1, 60); break
+      case 'PageDown': step(-1, 60); break
+      case 'Home': event.preventDefault(); setSelectedMs(snapInstants.length > 0 ? snapInstants[0] : windowStartMs); break
+      case 'End': event.preventDefault(); setSelectedMs(snapInstants.length > 0 ? snapInstants[snapInstants.length - 1] : windowEndMs); break
+      default: break
+    }
+  }, [snapInstants, selectedMs, clampMs, windowStartMs, windowEndMs])
+
+  const scrubValueText = `${scrubOffset} — ${stJohnsTime(validTime.toISOString())} NT${snapping ? ', snapped to the nearest published frame' : ''}`
+
+  const toggleInterpolate = useCallback(() => {
+    setInterpolate((previous) => {
+      const next = !previous
+      try { localStorage.setItem(INTERPOLATE_STORAGE_KEY, String(next)) } catch { /* display preference only */ }
+      return next
+    })
+  }, [])
+
+  const closeStory = useCallback(() => {
+    setStoryOpen(false)
+    storyToggleRef.current?.focus()
+  }, [])
 
   const toggleLayer = useCallback((layerId: string) => {
     setSelections((previous) => previous.some((entry) => entry.id === layerId)
@@ -356,13 +387,12 @@ export default function App() {
     setSelections((previous) => previous.map((entry) => (entry.id === layerId ? { ...entry, opacity } : entry)))
   }, [])
 
-  // A layer row asked for the scrubber to go to its nearest frame. The offset
-  // is kept at the minute so a 6-minute radar sweep is reachable exactly;
-  // outside the window it is clamped, and the row will say so in its own words.
+  // A layer row asked for the scrubber to go to its nearest frame. The exact
+  // instant is kept — it IS a published frame time — and only clamped to the
+  // window; the row will say so in its own words if that moved it.
   const jumpToTime = useCallback((date: Date) => {
-    const minutes = Math.round((date.getTime() - reference.getTime()) / 60_000)
-    setOffsetMinutes(Math.max(-BACK_MINUTES, Math.min(FORWARD_MINUTES, minutes)))
-  }, [reference])
+    setSelectedMs(clampMs(date.getTime()))
+  }, [clampMs])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -392,6 +422,13 @@ export default function App() {
     loadAstronomy(controller.signal).then((result) => {
       setAstronomy(result.astronomy)
       setAstronomyNotice(result.error)
+    }).catch(() => undefined)
+    // Planetary space weather (Kp, Bz). Fail-closed like astronomy: a failure
+    // keeps the reason and no card shows a number, because a Kp of zero on an
+    // outage would be an invented reading.
+    loadSpaceWeather(controller.signal).then((result) => {
+      setSpaceWeather(result.spaceWeather)
+      setSpaceWeatherNotice(result.error)
     }).catch(() => undefined)
     loadSourceStatus(controller.signal).then((result) => {
       setSourceStatuses(result.statuses)
@@ -478,7 +515,6 @@ export default function App() {
     ]
     return groups.filter(({ entries }) => entries.length > 0)
   }, [stationOptions])
-  const groupedLayers = useMemo(() => groupLayers(layers), [layers])
   const stationCoverageNotice = useMemo(() => {
     if (sourceStatusError) return `Live-source coverage unknown: ${sourceStatusError}. No station is being shown as live.`
     if (sourceStatuses === null) return 'Checking which stations have a live ingested source…'
@@ -551,23 +587,24 @@ export default function App() {
         : dataSource === 'loading' ? 'Checking the API for evidence points'
           : 'No response-backed evidence points'
 
-  return (
-    <div className={`workbench ${dataSource === 'fixture' ? 'fixture-mode' : ''}`}>
-      {dataSource !== 'live' && <div className={`fixture-watermark ${dataSource}`} role="status">{bannerCopy[dataSource]}</div>}
-      <header className="masthead">
-        <div className="wordmark"><span>WX//47°N</span><h1>Avalon Evidence Desk</h1></div>
-        <div className="experimental"><i /> experimental · not operational guidance</div>
-        <div className="theme-switch" role="group" aria-label="Colour theme">
-          <button type="button" aria-pressed={theme === 'light'} onClick={() => setTheme('light')}><span aria-hidden="true">☀</span> Light</button>
-          <button type="button" aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}><span aria-hidden="true">◐</span> Dark</button>
-        </div>
-        <nav className="mode-switch" aria-label="Interface mode">
-          <button aria-pressed={mode === 'simple'} onClick={() => setMode('simple')}>Brief</button>
-          <button aria-pressed={mode === 'expert'} onClick={() => setMode('expert')}>Workbench</button>
-        </nav>
-      </header>
+  // Shared between the two layouts: in simple mode these live inside the
+  // scrollable right strip, in expert mode they keep their full-width rows.
+  const masthead = (
+    <header className="masthead">
+      <div className="wordmark"><span>WX//47°N</span><h1>Avalon Evidence Desk</h1></div>
+      <div className="experimental"><i /> experimental · not operational guidance</div>
+      <div className="theme-switch" role="group" aria-label="Colour theme">
+        <button type="button" aria-pressed={theme === 'light'} onClick={() => setTheme('light')}><span aria-hidden="true">☀</span> Light</button>
+        <button type="button" aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}><span aria-hidden="true">◐</span> Dark</button>
+      </div>
+      <nav className="mode-switch" aria-label="Interface mode">
+        <button aria-pressed={mode === 'simple'} onClick={() => setMode('simple')}>Brief</button>
+        <button aria-pressed={mode === 'expert'} onClick={() => setMode('expert')}>Workbench</button>
+      </nav>
+    </header>
+  )
 
-      <main>
+  const locationStrip = (
         <section className="location-strip" aria-label="Place and data status">
           <div><span className="eyebrow">Evidence point</span><h2>{location.name}</h2><code>{location.latitude.toFixed(3)} / {location.longitude.toFixed(3)}</code></div>
           {/* A picker, not a coverage claim. Every option carries whether a live
@@ -592,7 +629,9 @@ export default function App() {
           </form>
           <div className={`source-state ${dataSource}`}><span>Data path</span><strong>{dataPathCopy[dataSource]}</strong></div>
         </section>
+  )
 
+  const modelStrip = (
         <section className="model-strip" aria-label="Forecast models">
           <span className="eyebrow">Forecast model</span>
           {/* Plain pressed buttons, not a radiogroup: a radiogroup promises
@@ -641,36 +680,101 @@ export default function App() {
             )}
           </div>
         </section>
+  )
 
-        {sourceError && <p className="source-error" role="status">{sourceError}. No previous point evidence is being shown.</p>}
+  const sourceErrorLine = sourceError
+    ? <p className="source-error" role="status">{sourceError}. No previous point evidence is being shown.</p>
+    : null
 
+  const fallbackBadge = (
         <section className={`fallback-badge evidence-surface ${snapshot.mode}`} aria-label="Forecast selection">
           <span className="signal-bars" aria-hidden="true"><i /><i /><i /></span>
           <div><small>Selected forecast</small><strong>{selectionLabel}</strong></div>
           {snapshot.validAt ? <time dateTime={snapshot.validAt}>Valid {new Date(snapshot.validAt).toLocaleString('en-CA', { timeZone: 'America/St_Johns', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</time> : <span className="unknown-time">Valid time unknown</span>}
         </section>
+  )
 
+  const stripFooter = (
+    <div className="strip-footer">
+      <span>POC // St. John’s · Avalon · Grand Banks</span>
+      <p>Experimental evidence display. Not a calibrated probability, warning service, or navigation product.</p>
+    </div>
+  )
+
+  return (
+    <div className={`workbench ${mode === 'simple' ? 'app-shell' : ''} ${dataSource === 'fixture' ? 'fixture-mode' : ''}`}>
+      {dataSource !== 'live' && <div className={`fixture-watermark ${dataSource}`} role="status">{bannerCopy[dataSource]}</div>}
+      {masthead}
+
+      <main className={mode === 'simple' ? 'app-main' : undefined}>
         {mode === 'simple' ? (
-          <div className="simple-grid">
-            <MapPanel
-              label="Avalon / upstream Atlantic"
-              field={mapField}
-              selected={location}
-              onSelect={setLocation}
-              validTime={validTime}
-              fixtureMode={dataSource === 'fixture'}
-              layers={layers}
-              layersError={layersError}
-              layersLoading={layersLoading}
-              selections={selections}
-              onToggleLayer={toggleLayer}
-              onSetOpacity={setLayerOpacity}
-              onJumpToTime={jumpToTime}
-              layerNotices={layerNotices}
-              evidence={mapEvidence}
-              sourceStatuses={sourceStatuses}
-              theme={theme}
+          <div className="viewport-grid">
+            <div className="map-stage">
+              <MapPanel
+                label="Avalon / upstream Atlantic"
+                field={mapField}
+                selected={location}
+                onSelect={setLocation}
+                validTime={validTime}
+                reference={reference}
+                interpolate={interpolate}
+                fixtureMode={dataSource === 'fixture'}
+                layers={layers}
+                layersError={layersError}
+                layersLoading={layersLoading}
+                selections={selections}
+                onToggleLayer={toggleLayer}
+                onSetOpacity={setLayerOpacity}
+                onJumpToTime={jumpToTime}
+                layerNotices={layerNotices}
+                evidence={mapEvidence}
+                sourceStatuses={sourceStatuses}
+                theme={theme}
+              />
+              {storyOpen && (
+                <StoryFlyout
+                  astronomy={astronomy}
+                  astronomyNotice={astronomyNotice}
+                  windowStartMs={windowStartMs}
+                  windowEndMs={windowEndMs}
+                  layers={layers}
+                  selections={selections}
+                  onToggleLayer={toggleLayer}
+                  validTime={validTime}
+                  reference={reference}
+                  timelineNotice={timelineNotice}
+                  story={story}
+                  offsetMinutes={offsetMinutes}
+                  onSelectOffsetHours={(offsetHours) => selectMinutes(offsetHours * 60)}
+                  onClose={closeStory}
+                />
+              )}
+            </div>
+            <TimelineDock
+              offsetMinutes={offsetMinutes}
+              scrubOffset={scrubOffset}
+              validClock={stJohnsTime(validTime.toISOString())}
+              backMinutes={BACK_MINUTES}
+              forwardMinutes={FORWARD_MINUTES}
+              snapping={snapping}
+              ariaValueText={scrubValueText}
+              onScrubMinutes={selectMinutes}
+              onScrubKeyDown={onScrubKeyDown}
+              onQuickJump={(offsetHours) => selectMinutes(offsetHours * 60)}
+              interpolate={interpolate}
+              onToggleInterpolate={toggleInterpolate}
+              storyOpen={storyOpen}
+              onToggleStory={() => setStoryOpen((open) => !open)}
+              storyToggleRef={storyToggleRef}
             />
+            <aside className="conditions-strip" aria-label="Evidence point, models and conditions">
+              {locationStrip}
+              <details className="model-details">
+                <summary>Forecast model · {selectedProduct ?? 'Consensus (BLEND)'}</summary>
+                {modelStrip}
+              </details>
+              {sourceErrorLine}
+              {fallbackBadge}
             <section className="conditions evidence-surface" aria-labelledby="conditions-title">
               <div className="section-head">
                 <span>01</span>
@@ -841,6 +945,44 @@ export default function App() {
                     </div>
                   )}
               </div>
+              <div className="tonight space-weather">
+                <h3>Space weather <small>NOAA SWPC · planetary indices, not local readings</small></h3>
+                {spaceWeather === null
+                  ? <p className="unwired-notice" role="status">Space weather unavailable: {spaceWeatherNotice ?? 'space weather was not read'}</p>
+                  : (() => {
+                    const observed = latestKpReading(spaceWeather.kp_observed)
+                    const forecast = maxForecastKp(spaceWeather.kp_forecast, windowStartMs, windowEndMs)
+                    const wind = spaceWeather.solar_wind
+                    return (
+                      <div className="metric-grid">
+                        <Metric
+                          label="Kp observed"
+                          value={observed === null || observed.value === null ? 'Unknown' : observed.value.toFixed(2)}
+                          detail={observed === null
+                            ? spaceWeather.kp_observed.notices[0] ?? 'No observed Kp value was returned'
+                            : `Planetary K index at ${nlTime(observed.time)} NT${staleSuffix(spaceWeather.kp_observed.freshness)}`}
+                        />
+                        <Metric
+                          label="Kp forecast max"
+                          value={forecast === null || forecast.value === null ? 'Unknown' : forecast.value.toFixed(2)}
+                          detail={forecast === null
+                            ? (spaceWeather.kp_forecast.available
+                              ? 'No forecast Kp value falls inside this window'
+                              : spaceWeather.kp_forecast.notices[0] ?? 'No forecast series is available')
+                            : `provider status: ${forecast.status ?? 'undeclared'} · at ${nlTime(forecast.time)} NT — NOAA guidance: photographable at St. John's from about Kp 4-5`}
+                          detailTitle="The status label (observed | estimated | predicted) is the provider's own, per value."
+                        />
+                        <Metric
+                          label="Solar wind Bz"
+                          value={wind.available && wind.bz_gsm_nt !== null ? `${wind.bz_gsm_nt.toFixed(1)} nT` : 'Unknown'}
+                          detail={wind.available && wind.bz_gsm_nt !== null
+                            ? `measured ${wind.measured_at ? `${nlTime(wind.measured_at)} NT` : 'at an unknown instant'}${staleSuffix(wind.freshness)} — southward (negative) Bz is the aurora tripwire`
+                            : wind.notices[0] ?? 'No Bz value was returned'}
+                        />
+                      </div>
+                    )
+                  })()}
+              </div>
               <div className="warning">
                 <span>{dataSource === 'fixture' ? 'Fixture hazard example' : 'Hazard evidence'}</span>
                 <strong>{snapshot.warnings[0] ?? 'Hazard feed unavailable'}</strong>
@@ -850,152 +992,15 @@ export default function App() {
                   : 'Always check the issuing authority before decisions.'}</small>
               </div>
             </section>
-            <section className="story evidence-surface" aria-labelledby="story-title">
-              <div className="story-head-row">
-                <div className="section-head">
-                  <span>02</span>
-                  <div><small>Scrub timeline (-3h to +24h)</small><h2 id="story-title">Weather story</h2></div>
-                </div>
-                <div className="story-scrubber-badge">
-                  <span>Valid Hour:</span>
-                  <strong>{offsetMinutes === 0 ? 'Now (0h)' : offsetMinutes < 0 ? `${scrubOffset} (Past)` : `${scrubOffset} (Forecast)`}</strong>
-                </div>
-              </div>
-
-              <div className="timeline-scrubber-controls">
-                <div className="scrubber-bar-wrapper">
-                  <div className="scrubber-labels">
-                    <span>-3h (Past)</span>
-                    <span>-1h</span>
-                    <span className="scrubber-now">Now (0h)</span>
-                    <span>+6h</span>
-                    <span>+12h</span>
-                    <span>+18h</span>
-                    <span>+24h (Forecast)</span>
-                  </div>
-                  <input
-                    aria-label="Valid timeline scrubber"
-                    type="range"
-                    min={-BACK_MINUTES}
-                    max={FORWARD_MINUTES}
-                    step={SCRUB_STEP_MINUTES}
-                    value={offsetMinutes}
-                    onChange={(e) => setOffsetMinutes(Number(e.target.value))}
-                    className="timeline-slider"
-                  />
-                </div>
-                <div className="scrubber-quick-jumps">
-                  {[-3, -1, 0, 3, 6, 12, 18, 24].map((offset) => (
-                    <button key={offset} type="button" className={offsetMinutes === offset * 60 ? 'active' : ''} onClick={() => setOffsetMinutes(offset * 60)}>
-                      {offset === 0 ? 'Now' : offset > 0 ? `+${offset}h` : `${offset}h`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {astronomy !== null
-                ? (
-                  <div className="sky-bands">
-                    <SkyBandRow
-                      label="Darkness"
-                      intervals={astronomy.twilight_bands.filter((band) => band.kind !== 'day')}
-                      windowStartMs={windowStartMs}
-                      windowEndMs={windowEndMs}
-                      description={describeIntervals('Darkness', astronomy.twilight_bands.filter((band) => band.kind !== 'day'), 'the sun stays up for this whole window')}
-                    />
-                    <SkyBandRow
-                      label="Moon up"
-                      intervals={astronomy.moon.above_horizon}
-                      windowStartMs={windowStartMs}
-                      windowEndMs={windowEndMs}
-                      description={describeIntervals('Moon above the horizon', astronomy.moon.above_horizon, 'the moon stays below the horizon for this whole window')}
-                    />
-                    <small className="sky-bands-note">Computed geometry (JPL DE442) — darkness and moon only; not cloud, transparency or light pollution.</small>
-                  </div>
-                )
-                : <p className="unwired-notice" role="status">Darkness and moon bands unavailable: {astronomyNotice ?? 'astronomy was not read'}. No band is drawn from a failure.</p>}
-
-              <div className="coverage-ribbon" aria-label="Published frames per layer across the window">
-                {layers.length === 0
-                  ? <p className="coverage-empty">No layer is published, so there are no frames to show.</p>
-                  : groupedLayers.map(({ group, label, rows }) => (
-                    // The same groups, order and headings as the layer drawer.
-                    // Rows keep the API's order inside each group.
-                    <section key={group} className="coverage-group" role="group" aria-labelledby={`coverage-group-${group}`}>
-                      <h4 id={`coverage-group-${group}`}>{label} · {rows.length} layer{rows.length === 1 ? '' : 's'}</h4>
-                      {group === 'satellite' && <p className="coverage-group-note">observed imagery: frames exist only for the past</p>}
-                      {rows.map((layer) => {
-                        const frames = (layer.times ?? [])
-                          .map((time) => new Date(time).getTime())
-                          .filter((stamp) => !Number.isNaN(stamp))
-                        const on = selections.some((entry) => entry.id === layer.id && entry.visible)
-                        const current = resolveFrame(layer, validTime)
-                        return (
-                          <div key={layer.id} className={`coverage-row ${on ? 'on' : 'off'}`}>
-                            <button type="button" className="coverage-label" aria-pressed={on} onClick={() => toggleLayer(layer.id)}>
-                              {layer.title}
-                            </button>
-                            <div className="coverage-track" role="img" aria-label={coverageDescription(layer, frames.length, current)}>
-                              {frames.map((stamp) => {
-                                const fraction = (stamp - windowStartMs) / (windowEndMs - windowStartMs)
-                                if (fraction < 0 || fraction > 1) return null
-                                return <i key={stamp} className="coverage-frame" style={{ left: `${fraction * 100}%` }} />
-                              })}
-                            </div>
-                            <span className="coverage-count">
-                              {frames.length === 0 ? 'no frames' : current ? describeOffset(current.offsetSeconds) : 'no frame here'}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </section>
-                  ))}
-              </div>
-
-              {/* The hours in the story come from /timeline. If that response did
-                  not declare a usable mode, it is said here rather than letting
-                  its hours read as coverage. */}
-              {timelineNotice && <p className="unwired-notice" role="status">Published-hour coverage unavailable: {timelineNotice}. No story card is built from it.</p>}
-
-              {story.length > 0 ? (
-                <div className="story-track">
-                  {story.map((item, index) => (
-                    // A real <button>, not a div wearing role="button": Enter,
-                    // Space, focus order and the button role all come for free
-                    // and cannot drift apart. Its readings are laid out for the
-                    // eye, so the accessible name restates them in order with
-                    // their units — including every Unknown, which is the
-                    // reading that matters most and the easiest one to lose.
-                    <button
-                      key={item.time}
-                      type="button"
-                      style={{ '--step': index } as React.CSSProperties}
-                      className={`story-card ${item.offset * 60 === offsetMinutes ? 'active-hour' : ''}`}
-                      onClick={() => setOffsetMinutes(item.offset * 60)}
-                      aria-pressed={item.offset * 60 === offsetMinutes}
-                      aria-label={storyCardLabel(item)}
-                    >
-                      <time>{item.time}</time>
-                      <span className="temp">{reading(item.temperatureC) === null ? 'Unknown' : `${reading(item.temperatureC)}°`}</span>
-                      <strong>{item.label}</strong>
-                      <ModeChip mode={item.dataMode} />
-                      {/* Spans, not a <dl>: a button may only contain phrasing
-                          content, and the button flattens list semantics into
-                          its accessible name regardless. */}
-                      <span className="story-readings">
-                        <span><span className="story-key">Dew</span><span className="story-value">{reading(item.dewPointC) === null ? 'Unknown' : `${reading(item.dewPointC)}°`}</span></span>
-                        <span><span className="story-key">Rain</span><span className="story-value">{item.precipPct === null ? 'Unknown' : `${item.precipPct}%`}</span></span>
-                        <span><span className="story-key">Wind</span><span className="story-value">{item.windKmh === null ? 'Unknown' : item.windKmh}</span></span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="evidence-unavailable">24-hour narrative unavailable from this point response. No forecast story has been inferred.</p>
-              )}
-            </section>
+              {stripFooter}
+            </aside>
           </div>
         ) : (
+          <>
+            {locationStrip}
+            {modelStrip}
+            {sourceErrorLine}
+            {fallbackBadge}
           <div className="expert-layout">
             <aside className="expert-controls" aria-label="Evidence controls">
               <div className="section-head"><span>EX</span><div><small>Native evidence</small><h2>Field selector</h2></div></div>
@@ -1045,12 +1050,14 @@ export default function App() {
               <FieldControl label={`Valid time (${scrubOffset})`}>
                 <input
                   aria-label="Valid forecast time"
+                  aria-valuetext={scrubValueText}
                   type="range"
                   min={-BACK_MINUTES}
                   max={FORWARD_MINUTES}
-                  step={SCRUB_STEP_MINUTES}
+                  step={1}
                   value={offsetMinutes}
-                  onChange={(e) => setOffsetMinutes(Number(e.target.value))}
+                  onChange={(e) => selectMinutes(Number(e.target.value))}
+                  onKeyDown={onScrubKeyDown}
                 />
               </FieldControl>
               <p className="one-raster-note"><i /> Layers draw only response-backed values, each at the frame it published. Nothing is drawn where a layer has no frame.</p>
@@ -1063,6 +1070,8 @@ export default function App() {
                 selected={location}
                 onSelect={setLocation}
                 validTime={validTime}
+                reference={reference}
+                interpolate={interpolate}
                 fixtureMode={dataSource === 'fixture'}
                 layers={layers}
                 layersError={layersError}
@@ -1112,9 +1121,10 @@ export default function App() {
               <details open><summary>Provenance</summary><table><caption>Provenance returned for the selected point</caption><thead><tr><th scope="col">Provider / product</th><th scope="col">Run</th><th scope="col">Role</th><th scope="col">Freshness</th><th scope="col">Data mode</th><th scope="col">Derivation</th></tr></thead><tbody>{snapshot.provenance.map((row) => <tr key={`${row.provider}-${row.product}`}><th scope="row">{row.provider} / {row.product}</th><td>{row.run}</td><td>{row.role}</td><td>{row.freshness}</td><td>{row.dataMode}</td><td>{row.derivations.length === 0 ? 'Provider values' : row.derivations.join('; ')}</td></tr>)}</tbody></table>{snapshot.provenance.length === 0 && <p>No provenance is available.</p>}</details>
             </section>
           </div>
+          </>
         )}
       </main>
-      <footer><span>POC // St. John’s · Avalon · Grand Banks</span><p>Experimental evidence display. Not a calibrated probability, warning service, or navigation product.</p></footer>
+      {mode === 'expert' && <footer><span>POC // St. John’s · Avalon · Grand Banks</span><p>Experimental evidence display. Not a calibrated probability, warning service, or navigation product.</p></footer>}
     </div>
   )
 }

@@ -71,11 +71,20 @@ from .models import (
     AstronomyProvenance,
     AstronomyResponse,
 )
+from .models import (
+    SolarWindLatest,
+    SpaceWeatherReading,
+    SpaceWeatherResponse,
+    SpaceWeatherSeries,
+    Freshness,
+)
 from .science import select_fallback
-from . import astronomy, grids, satellite as goes_satellite, wms
+from . import astronomy, aurora, grids, satellite as goes_satellite, wms
 from .store import (
     FIXTURE_MODE,
     LIVE_MODE,
+    SeriesData,
+    StoreUnavailable,
     configured_mode,
     known_source_ids,
     LayerCoverage,
@@ -463,6 +472,15 @@ def get_layers() -> LayersResponse:
             # module below, with its real semantics; the generic entry would
             # duplicate it as an un-renderable published_model layer.
             continue
+        if aurora.claims(artifact):
+            # Same rule for the OVATION aurora grid: the aurora module below
+            # lists it once, rendered, with its model disclosure.
+            continue
+        if artifact.logical_name == grids.CLOUD_MOTION_LOGICAL_NAME:
+            # Derived display-support material (cloud motion for the
+            # interpolation shader). It is not a layer, not evidence, and is
+            # served only through /layers/{id}/flow with its derivation.
+            continue
         identifier = layer_id_for(artifact.source_id, artifact.logical_name)
         entry = coverage.get(identifier)
         kind = layer_kind(artifact.media_type, entry)
@@ -534,6 +552,18 @@ def get_layers() -> LayersResponse:
         satellite_layers, satellite_notices = [], [f"the satellite cloud-mask layer is unavailable: {type(error).__name__}: {error}"]
     layers.extend(satellite_layers)
     notices.extend(satellite_notices)
+
+    # The aurora oval rendered by this experiment from the stored OVATION
+    # nowcast grid, filed with the other rendered grids. Fail-closed both
+    # ways: an absent or stale grid removes the layer with a notice - a feed
+    # gap is never rendered as absence of aurora.
+    try:
+        aurora_layer_list, aurora_notices = aurora.aurora_layers(store, Layer, z_index=Z_INDEX_BY_KIND["raster"])
+    except Exception as error:  # the aurora layer must never take the layer index down
+        LOGGER.exception("the aurora layer could not be resolved")
+        aurora_layer_list, aurora_notices = [], [f"the aurora layer is unavailable: {type(error).__name__}: {error}"]
+    layers.extend(aurora_layer_list)
+    notices.extend(aurora_notices)
 
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
@@ -809,6 +839,25 @@ def _satellite_raster(*, moment, bounds, width, height, crs) -> Response:
     return Response(content=image.payload, media_type=image.content_type, headers=image.headers())
 
 
+def _aurora_raster(*, moment, bounds, width, height, crs) -> Response:
+    """The aurora frame drawn here from the published OVATION artifact."""
+    store = live_store()
+    if store is None:
+        raise HTTPException(status_code=503, detail="no live artifact store is reachable; the stored aurora grid cannot be read")
+    try:
+        image = aurora.render_aurora(store, bounds=bounds, width=width, height=height, crs=crs, valid_time=moment)
+    except grids.GridNotPublished as error:
+        raise HTTPException(status_code=404, detail=f"{aurora.LAYER_ID}: {error}") from error
+    except grids.FrameNotStored as error:
+        raise HTTPException(status_code=422, detail=f"{aurora.LAYER_ID}: {error}") from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except grids.GridUnavailable as error:
+        # Nothing was read, and nothing is substituted for it.
+        raise HTTPException(status_code=502, detail=f"{aurora.LAYER_ID}: no aurora grid was read: {error}") from error
+    return Response(content=image.payload, media_type=image.content_type, headers=image.headers())
+
+
 @app.get(f"{PREFIX}/layers/{{layer_id}}/raster", responses={501: {"model": ErrorResponse}})
 def get_layer_raster(
     layer_id: str,
@@ -848,6 +897,9 @@ def get_layer_raster(
     if layer_id == goes_satellite.LAYER_ID:
         return _satellite_raster(moment=moment, bounds=bounds, width=width, height=height, crs=requested_crs)
 
+    if layer_id == aurora.LAYER_ID:
+        return _aurora_raster(moment=moment, bounds=bounds, width=width, height=height, crs=requested_crs)
+
     wms_layer, basis, notice = _resolve_imagery(layer_id)
     # The four GOES-East satellite proxies are opaque imagery: JPEG carries the
     # same picture at roughly a third the bytes, and there is no transparency
@@ -882,6 +934,58 @@ def get_layer_raster(
     return _image_response(image, layer_id=layer_id, notice=notice)
 
 
+@app.get(f"{PREFIX}/layers/{{layer_id}}/flow", responses={404: {"model": ErrorResponse}})
+def get_layer_flow(
+    layer_id: str,
+    frame_from: datetime = Query(alias="from", description="the earlier published frame instant, exactly"),
+    frame_to: datetime = Query(alias="to", description="the later published frame instant, exactly"),
+    width: int = Query(default=512, ge=1, le=wms.MAX_RENDER_PIXELS),
+    height: int = Query(default=512, ge=1, le=wms.MAX_RENDER_PIXELS),
+    south: float = Query(default=AVALON_CORE_BOUNDS["south"], ge=-90, le=90),
+    west: float = Query(default=AVALON_CORE_BOUNDS["west"], ge=-180, le=180),
+    north: float = Query(default=AVALON_CORE_BOUNDS["north"], ge=-90, le=90),
+    east: float = Query(default=AVALON_CORE_BOUNDS["east"], ge=-180, le=180),
+    crs: str = Query(default="EPSG:4326", description="EPSG:4326 (default) or EPSG:3857; must match the frame rasters it will warp"),
+    texture: str = Query(default="motion", description="'motion' (pairwise flow + consistency) or 'tangents' (the pair's Hermite knot velocities, side by side)"),
+) -> Response:
+    """The derived motion field between two adjacent published frames.
+
+    Display-support material for the opt-in interpolation shader: a texture of
+    per-pixel motion vectors computed offline between the two named frames
+    (method and version in the headers), aligned pixel-for-pixel with the
+    frame raster of the same bounds and size. `texture=tangents` adds the
+    pair's cubic Hermite knot velocities so displayed motion is C1 across
+    real frames. It is a derivation, disclosed as such; it is never sampled,
+    never a reading, and its absence is answered 404 - the client then falls
+    back one honest rung (linear advection, then crossfade) and says so.
+    """
+    requested_crs = _validated_crs(crs)
+    if south >= north or west >= east:
+        raise HTTPException(status_code=422, detail="bounds must be a south-west to north-east box")
+    grid_spec = grids.rendered_grid_spec(layer_id)
+    if grid_spec is None:
+        raise HTTPException(status_code=404, detail=f"{layer_id}: derived motion exists only for rendered-grid layers")
+    store = live_store()
+    if store is None:
+        raise HTTPException(status_code=503, detail="no live artifact store is reachable; the derived motion cannot be read")
+    try:
+        image = grids.render_flow(
+            store, grid_spec,
+            frame_from=frame_from, frame_to=frame_to,
+            bounds={"south": south, "west": west, "north": north, "east": east},
+            width=width, height=height, crs=requested_crs, texture=texture,
+        )
+    except grids.FlowNotAvailable as error:
+        raise HTTPException(status_code=404, detail=f"{layer_id}: {error}") from error
+    except grids.GridNotPublished as error:
+        raise HTTPException(status_code=404, detail=f"{layer_id}: {error}") from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except grids.GridUnavailable as error:
+        raise HTTPException(status_code=502, detail=f"{layer_id}: no motion field was read: {error}") from error
+    return Response(content=image.payload, media_type=image.content_type, headers=image.headers(layer_id=layer_id))
+
+
 @app.get(f"{PREFIX}/layers/{{layer_id}}/legend", responses={501: {"model": ErrorResponse}})
 def get_layer_legend(
     layer_id: str,
@@ -898,6 +1002,9 @@ def get_layer_legend(
     if layer_id == goes_satellite.LAYER_ID:
         return Response(content=goes_satellite.legend_png(), media_type="image/png", headers=goes_satellite.legend_headers())
 
+    if layer_id == aurora.LAYER_ID:
+        return Response(content=aurora.legend_png(), media_type="image/png", headers=aurora.legend_headers())
+
     grid_spec = grids.rendered_grid_spec(layer_id)
     if grid_spec is not None:
         return Response(
@@ -913,7 +1020,9 @@ def get_layer_legend(
                 "X-Weather-Legend-Semantics": (
                     "this is the colormap this experiment renders the layer with, left 0 percent to "
                     "right 100 percent; it is presentation, not provider data, and it is the exact "
-                    "mapping applied to the stored values"
+                    "mapping applied to the stored values. The ramp is a transparency ramp, so this "
+                    "graphic shows it composited over a neutral grey backdrop; the backdrop is not "
+                    "part of the mapping"
                 ),
             },
         )
@@ -1024,6 +1133,177 @@ def get_astronomy(
             derivation_version=astronomy.DERIVATION_VERSION,
         ),
         notices=[],
+    )
+
+
+# --- space weather --------------------------------------------------------
+# Planetary evidence for the night-sky audience: the observed and forecast Kp
+# series (kept separate, the forecast carrying the provider's own per-value
+# status) and the latest solar-wind Bz with the instant it was measured. None
+# of it is localized - these series are stored with no coordinates and never
+# reach /point - and every absence or staleness is said out loud.
+
+SWPC_KP_SOURCE = "noaa-swpc-kp"
+SWPC_RTSW_SOURCE = "noaa-swpc-rtsw"
+
+
+def _swpc_threshold(source_id: str) -> int | None:
+    """The registry freshness threshold, or None when it cannot be read."""
+    try:
+        from ingest.registry import get_config  # noqa: PLC0415
+
+        config = get_config(source_id)
+        return config.freshness_threshold_seconds if config else None
+    except Exception:  # pragma: no cover - registry read is best effort here
+        LOGGER.debug("registry threshold unavailable for %s", source_id, exc_info=True)
+        return None
+
+
+def _absent_series(source_id: str, notice: str) -> SpaceWeatherSeries:
+    return SpaceWeatherSeries(
+        available=False, source_id=source_id, product="unavailable", readings=[],
+        freshness=Freshness.evaluate(None, _swpc_threshold(source_id)), notices=[notice],
+    )
+
+
+def _absent_solar_wind(notice: str) -> SolarWindLatest:
+    return SolarWindLatest(
+        available=False, source_id=SWPC_RTSW_SOURCE, product="unavailable",
+        bz_gsm_nt=None, bt_nt=None, measured_at=None, feed_declared_spacecraft=None,
+        freshness=Freshness.evaluate(None, _swpc_threshold(SWPC_RTSW_SOURCE)), notices=[notice],
+    )
+
+
+def _unavailable_space_weather(reference: datetime, reason: str, *, extra_notices: list[str] | None = None) -> SpaceWeatherResponse:
+    return SpaceWeatherResponse(
+        data_mode=DataMode.UNAVAILABLE,
+        generated_at=reference,
+        kp_observed=_absent_series(SWPC_KP_SOURCE, reason),
+        kp_forecast=_absent_series(SWPC_KP_SOURCE, reason),
+        solar_wind=_absent_solar_wind(reason),
+        notices=[reason, *(extra_notices or [])],
+    )
+
+
+def _kp_series(series: SeriesData | None, reference: datetime, *, with_status: bool, name: str) -> SpaceWeatherSeries:
+    """One Kp series as retrieved, with per-feed freshness against the registry.
+
+    ``with_status`` marks the forecast series: each reading carries the
+    provider's own ``observed|estimated|predicted`` label, and no lead hours
+    exist anywhere. Freshness is judged from the feed's own newest reference
+    instant - for the observed series the newest record, for the forecast the
+    run time the adapter took from the feed's newest observed record.
+    """
+    if series is None:
+        return _absent_series(SWPC_KP_SOURCE, f"no {name} artifact is currently published; the series is absent, and nothing is substituted for it")
+    kp = series.variables.get("kp_index")
+    if kp is None:
+        return _absent_series(SWPC_KP_SOURCE, f"the published {name} artifact does not carry kp_index; the series is absent")
+    statuses = series.variables.get("kp_status") if with_status else None
+    readings: list[SpaceWeatherReading] = []
+    for index, stamp in enumerate(series.times):
+        raw = kp.values[index]
+        value = raw if isinstance(raw, float) else None
+        status = None
+        if statuses is not None:
+            declared = statuses.values[index]
+            status = declared if isinstance(declared, str) else None
+        readings.append(SpaceWeatherReading(time=stamp, value=value, status=status))
+
+    threshold = _swpc_threshold(SWPC_KP_SOURCE)
+    if with_status:
+        anchor = series.run_time or max((stamp for stamp in series.times if stamp <= reference), default=None)
+    else:
+        anchor = max(series.times) if series.times else None
+    age = int((reference - anchor).total_seconds()) if anchor is not None else None
+    freshness = Freshness.evaluate(age, threshold)
+    notices: list[str] = []
+    if freshness.status == "stale":
+        notices.append(f"{name}: the newest record is {age} s old, past the {threshold} s freshness threshold; the series is stale, not current")
+    return SpaceWeatherSeries(
+        available=True,
+        source_id=series.source_id,
+        product=str(series.provenance.get("product", series.logical_name)),
+        readings=readings,
+        freshness=freshness,
+        notices=notices,
+    )
+
+
+def _solar_wind_latest(series: SeriesData | None, reference: datetime) -> SolarWindLatest:
+    """The newest finite Bz with the instant it was measured. A gap stays a gap."""
+    if series is None:
+        return _absent_solar_wind("no solar_wind artifact is currently published; the latest Bz is absent, and nothing is substituted for it")
+    bz = series.variables.get("bz_gsm")
+    if bz is None:
+        return _absent_solar_wind("the published solar_wind artifact does not carry bz_gsm; the latest Bz is absent")
+    finite = [(stamp, index) for index, stamp in enumerate(series.times) if isinstance(bz.values[index], float)]
+    spacecraft_raw = series.attrs.get("feed_declared_spacecraft") or series.provenance.get("feed_declared_spacecraft")
+    spacecraft = str(spacecraft_raw) if spacecraft_raw else None
+    threshold = _swpc_threshold(SWPC_RTSW_SOURCE)
+    if not finite:
+        return _absent_solar_wind("the stored solar-wind series carries no finite Bz record; a gap in the feed is a gap, never zero")
+    measured_at, index = max(finite)
+    bt = series.variables.get("bt")
+    bt_value = bt.values[index] if bt is not None and isinstance(bt.values[index], float) else None
+    age = int((reference - measured_at).total_seconds())
+    freshness = Freshness.evaluate(age, threshold)
+    notices: list[str] = []
+    if freshness.status == "stale":
+        notices.append(f"solar_wind: the newest Bz record is {age} s old, past the {threshold} s freshness threshold; it is served stale, not as current")
+    return SolarWindLatest(
+        available=True,
+        source_id=series.source_id,
+        product=str(series.provenance.get("product", series.logical_name)),
+        bz_gsm_nt=bz.values[index] if isinstance(bz.values[index], float) else None,
+        bt_nt=bt_value,
+        measured_at=measured_at,
+        feed_declared_spacecraft=spacecraft,
+        freshness=freshness,
+        notices=notices,
+    )
+
+
+@app.get(f"{PREFIX}/space-weather", response_model=SpaceWeatherResponse)
+def get_space_weather() -> SpaceWeatherResponse:
+    """Latest Bz, the observed Kp series, and the provider's Kp outlook.
+
+    Every value is read from the published SWPC artifacts through the same
+    integrity-checked path ``/point`` uses, minus any spatial claim. Fixture
+    mode fails closed: no fixture space weather exists, and none is invented.
+    """
+    reference = datetime.now(timezone.utc)
+    mode = configured_mode()
+    if mode == FIXTURE_MODE:
+        return _unavailable_space_weather(reference, "no fixture space weather exists; fixture mode answers unavailable rather than inventing planetary indices")
+    if mode != LIVE_MODE:
+        return _unavailable_space_weather(reference, "WEATHER_DATA_MODE is missing or malformed; this deployment fails closed")
+
+    store = live_store()
+    if store is None:
+        return _unavailable_space_weather(reference, "no live artifact store is reachable; no space-weather series can be read")
+    store.skipped = []
+    try:
+        kp_observed_data = store.read_series(SWPC_KP_SOURCE, "kp_observed")
+        kp_forecast_data = store.read_series(SWPC_KP_SOURCE, "kp_forecast")
+        solar_wind_data = store.read_series(SWPC_RTSW_SOURCE, "solar_wind")
+    except StoreUnavailable as error:
+        return _unavailable_space_weather(reference, f"the object store is unreachable: {error}")
+    except Exception:
+        LOGGER.exception("space-weather series could not be read")
+        return _unavailable_space_weather(reference, "the live artifact store raised while reading the space-weather series")
+
+    kp_observed = _kp_series(kp_observed_data, reference, with_status=False, name="kp_observed")
+    kp_forecast = _kp_series(kp_forecast_data, reference, with_status=True, name="kp_forecast")
+    solar_wind = _solar_wind_latest(solar_wind_data, reference)
+    available = kp_observed.available or kp_forecast.available or solar_wind.available
+    return SpaceWeatherResponse(
+        data_mode=DataMode.LIVE if available else DataMode.UNAVAILABLE,
+        generated_at=reference,
+        kp_observed=kp_observed,
+        kp_forecast=kp_forecast,
+        solar_wind=solar_wind,
+        notices=skip_notices(store) if available else [*skip_notices(store), "no SWPC space-weather artifact is currently published; every series is absent and nothing is invented"],
     )
 
 

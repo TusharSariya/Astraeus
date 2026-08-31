@@ -107,6 +107,10 @@ export interface EvidenceSnapshot {
    *  (derived by the API from stored GFS u/v) and column precipitable water
    *  as stored. Interpretation is caption text, never a computed verdict. */
   upperAir: { jet200Kmh: number | null; jet300Kmh: number | null; precipitableWaterKgM2: number | null }
+  /** OVATION aurora probability at the sampled grid cell, in percent as
+   *  stored — a model nowcast, never an observation. Null when the response
+   *  carried none; never defaulted to zero. */
+  auroraProbabilityPct: number | null
   marine: { waveHeightM: number | null; sstC: number | null; tide: string }
   warnings: string[]
   story: StoryStep[]
@@ -144,6 +148,57 @@ export interface AstronomyResponse {
 }
 
 export interface AstronomyResult { astronomy: AstronomyResponse | null; error: string | null }
+
+/** `/space-weather` shapes. Planetary quantities: no coordinates, no sample
+ *  distance, nothing localized. A null value is a gap in the feed, never zero. */
+export interface SpaceWeatherFreshness {
+  status: 'fresh' | 'stale' | 'unknown'
+  age_seconds: number | null
+  threshold_seconds: number | null
+}
+
+export interface SpaceWeatherReading {
+  time: string
+  value: number | null
+  /** The provider's own per-value label on the Kp forecast series
+   *  (`observed` | `estimated` | `predicted`); null where none was declared. */
+  status?: string | null
+}
+
+export interface SpaceWeatherSeries {
+  available: boolean
+  source_id: string
+  product: string
+  readings: SpaceWeatherReading[]
+  freshness: SpaceWeatherFreshness
+  notices: string[]
+}
+
+export interface SolarWindLatest {
+  available: boolean
+  source_id: string
+  product: string
+  bz_gsm_nt: number | null
+  bt_nt: number | null
+  /** The instant the served Bz was actually measured. */
+  measured_at: string | null
+  /** Whatever the feed's own source field declared, verbatim; never a guess. */
+  feed_declared_spacecraft: string | null
+  freshness: SpaceWeatherFreshness
+  notices: string[]
+}
+
+export interface SpaceWeatherResponse {
+  data_mode: FieldDataMode
+  operational: false
+  generated_at: string
+  kp_observed: SpaceWeatherSeries
+  kp_forecast: SpaceWeatherSeries
+  solar_wind: SolarWindLatest
+  notices: string[]
+}
+
+export interface SpaceWeatherResult { spaceWeather: SpaceWeatherResponse | null; error: string | null }
 
 export interface TimelineItem {
   valid_time_utc: string

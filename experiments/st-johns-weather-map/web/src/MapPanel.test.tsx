@@ -55,13 +55,31 @@ vi.mock('maplibre-gl', () => {
       this.record('__mapLayerAdds', { ...layer, beforeId })
     }
     addSource(id: string, source: unknown) {
-      this.sources[id] = source
+      // Image sources answer `updateImage` like MapLibre's do, and updates are
+      // recorded: the in-place frame swap is only trustworthy if the fake
+      // remembers what the source was last told to show.
+      const record = this.record.bind(this)
+      this.sources[id] = {
+        ...(source as Record<string, unknown>),
+        updateImage(options: { url: string; coordinates?: unknown }) {
+          Object.assign(this, options)
+          record('__mapSourceUpdates', { id, ...options })
+        },
+      }
       this.record('__mapSourceAdds', { id, source })
     }
     getLayer(id: string) { return this.layers[id] }
     getSource(id: string) { return this.sources[id] }
+    setPaintProperty(id: string, name: string, value: unknown) {
+      const layer = this.layers[id] as { paint?: Record<string, unknown> } | undefined
+      if (layer?.paint) layer.paint[name] = value
+      this.record('__mapPaintUpdates', { id, name, value })
+    }
     removeLayer(id: string) {
       delete this.layers[id]
+      // Removals are recorded too: stack stability across a scrub is only
+      // provable if a teardown that should not happen leaves a trace.
+      this.record('__mapLayerRemovals', id)
       ;(globalThis as Record<string, unknown>).__mapLayersNow = Object.keys(this.layers)
     }
     removeSource(id: string) { delete this.sources[id] }
@@ -140,6 +158,8 @@ const panel = (props: Partial<React.ComponentProps<typeof MapPanel>> = {}) => (
     label="Test"
     field="Response-backed evidence points"
     validTime={NOW}
+    reference={NOW}
+    interpolate={false}
     selected={stations[0]}
     onSelect={() => undefined}
     layers={[radarLayer]}
@@ -171,16 +191,38 @@ describe('MapPanel layer stack', () => {
     expect(screen.getAllByText('No echo means no detected precipitating echo, not clear sky.').length).toBeGreaterThan(0)
   })
 
-  it('draws nothing and says so when no frame falls inside the layer tolerance', async () => {
+  it('draws nothing for an observed layer scrubbed past the reference, and says why on the map', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    // Two hours past the newest frame, against a 180 s tolerance.
+    // Two hours past the newest frame AND past the session reference: an
+    // observed layer never falls forward, and never falls back for a future
+    // instant — an old sweep under a future timestamp would misdate it.
     render(panel({ validTime: new Date('2026-08-30T06:00:00Z') }))
 
-    expect((await screen.findAllByText(/no frame within 3 min of the selected time/i)).length).toBeGreaterThan(0)
-    // The guarantee that matters: an out-of-tolerance layer is never requested,
+    expect((await screen.findAllByText(/observed imagery has no frames for future instants/i)).length).toBeGreaterThan(0)
+    // The disclosure is on the map itself, not only in the drawer.
+    expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/observed imagery has no frames for future instants/i)
+    // The guarantee that matters: nothing drawable means nothing requested,
     // so a stale frame cannot arrive and be drawn as though it were current.
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the previous frame for an observed layer at a past instant, disclosing it on the map', async () => {
+    const feature = { type: 'Feature', geometry: { type: 'Point', coordinates: [-52.71, 47.56] }, properties: { radar_echo: 0 } }
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', features: [feature] }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    // 03:30Z is beyond the 180 s tolerance of both frames but before the
+    // reference; only the earlier frame (03:54 is later — the PREVIOUS frame
+    // relative to 03:30 does not exist, so use 03:58 style instead). Here the
+    // requested instant sits between nothing earlier and the frames later, so
+    // shift the reference: ask for 04:10 with reference 04:30 — previous
+    // frame is 04:00, 10 minutes earlier.
+    render(panel({ validTime: new Date('2026-08-30T04:10:00Z'), reference: new Date('2026-08-30T04:30:00Z') }))
+
+    // The previous frame is fetched and drawn, never the nothing of before.
+    expect((await screen.findAllByText(/1 value drawn from frame/i)).length).toBeGreaterThan(0)
+    // And the fallback is disclosed on the map, naming the real frame time.
+    expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/showing .* \(10 min earlier than the selected time\)/i)
   })
 
   it('names the frame it drew and how far it sits from the requested time', async () => {
@@ -313,12 +355,33 @@ function rasterResponse(overrides: Record<string, string> = {}, drop: string[] =
 }
 
 /** Routes by URL so `/features` and `/raster` can answer differently in one test. */
-function routedFetch(raster: () => Response, legend?: () => Response) {
+function routedFetch(raster: () => Response, legend?: () => Response, flow?: () => Response, tangents?: () => Response) {
+  const notFound = (detail: string) => new Response(JSON.stringify({ detail }), { status: 404, headers: { 'content-type': 'application/json' } })
   return vi.fn(async (url: string) => (url.includes('/raster')
     ? raster()
-    : url.includes('/legend') && legend
-      ? legend()
-      : new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 })))
+    : url.includes('/flow')
+      // No derived motion (and no Hermite tangents) unless a test provides
+      // them: absence is the disclosed fallback at each rung.
+      ? (url.includes('texture=tangents')
+        ? (tangents ? tangents() : notFound('no tangents'))
+        : (flow ? flow() : notFound('no derived motion')))
+      : url.includes('/legend') && legend
+        ? legend()
+        : new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 })))
+}
+
+function flowResponse(overrides: Record<string, string> = {}) {
+  return new Response(new Blob([new Uint8Array([0x89, 0x50])], { type: 'image/png' }), {
+    status: 200,
+    headers: {
+      'content-type': 'image/png',
+      'X-Weather-Image-Basis': 'derived_motion',
+      'X-Weather-Flow-Scale': '12.5000',
+      'X-Weather-Frame-From': '2026-08-30T04:00:00+00:00',
+      'X-Weather-Frame-To': '2026-08-30T05:00:00+00:00',
+      ...overrides,
+    },
+  })
 }
 
 describe('MapPanel imagery', () => {
@@ -329,6 +392,7 @@ describe('MapPanel imagery', () => {
     ;(globalThis as Record<string, unknown>).__mapLayerAdds = []
     ;(globalThis as Record<string, unknown>).__mapSourceAdds = []
     ;(globalThis as Record<string, unknown>).__mapLayersNow = []
+    ;(globalThis as Record<string, unknown>).__mapLayerRemovals = []
     ;(URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => `blob:image-${++created}`)
     ;(URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn()
   })
@@ -346,14 +410,14 @@ describe('MapPanel imagery', () => {
 
     expect((await screen.findAllByText(/Imagery retrieved from HRDPS\.CONTINENTAL_TT/i)).length).toBeGreaterThan(0)
     const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string; beforeId?: string; paint?: Record<string, unknown> }>
-    const raster = adds.find((add) => add.id === `raster-${proxiedLayer.id}`)
+    const raster = adds.find((add) => add.id === `raster-${proxiedLayer.id}-0`)
     expect(raster).toBeDefined()
     // Beneath the labels, and at the opacity the stack already carries.
     expect(raster?.beforeId).toBe('reference-water-casing')
     expect(raster?.paint?.['raster-opacity']).toBe(0.6)
     // The extent is the map's own bounds, sent as four separate parameters.
     const sources = (globalThis as Record<string, unknown>).__mapSourceAdds as Array<{ id: string; source: { coordinates: number[][] } }>
-    expect(sources.find((entry) => entry.id === `raster-${proxiedLayer.id}`)?.source.coordinates)
+    expect(sources.find((entry) => entry.id === `raster-${proxiedLayer.id}-0`)?.source.coordinates)
       .toEqual([[-55.2, 48.8], [-50.8, 48.8], [-50.8, 46.2], [-55.2, 46.2]])
   })
 
@@ -390,14 +454,197 @@ describe('MapPanel imagery', () => {
     expect(document.querySelector('.stack-legend img')).toBeNull()
   })
 
-  it('releases the object URL of the frame it replaces', async () => {
+  it('composites a forecast layer as two real frames at fractional opacities when interpolation is on', async () => {
     vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    // 04:30 sits exactly halfway between the layer's 04:00 and 05:00 frames.
+    render(proxiedPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
+
+    await screen.findAllByText(/Display composite of two retrieved frames/i)
+    const findSlots = () => {
+      const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string; paint?: Record<string, unknown> }>
+      return [adds.find((add) => add.id === `raster-${proxiedLayer.id}-0`), adds.find((add) => add.id === `raster-${proxiedLayer.id}-1`)]
+    }
+    await waitFor(() => expect(findSlots().every(Boolean)).toBe(true))
+    const [previous, next] = findSlots()
+    // Each slot is the stack opacity (0.6) times its time-fraction weight (0.5).
+    expect(previous?.paint?.['raster-opacity']).toBeCloseTo(0.3, 5)
+    expect(next?.paint?.['raster-opacity']).toBeCloseTo(0.3, 5)
+    // The on-map note calls it display compositing, naming both frames.
+    expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/display compositing of the .* and .* NT frames — display only, not evidence/i)
+  })
+
+  it('never shows a half blend: one failed frame falls back to the nearer whole frame', async () => {
+    let call = 0
+    // The 05:00 frame request fails; the 04:00 one succeeds.
+    vi.stubGlobal('fetch', routedFetch(() => (call++ === 0
+      ? rasterResponse()
+      : new Response(JSON.stringify({ detail: 'connection reset' }), { status: 502, headers: { 'content-type': 'application/json' } }))))
+    // 04:12 is nearer the 04:00 frame.
+    render(proxiedPanel({ interpolate: true, validTime: new Date('2026-08-30T04:12:00Z') }))
+
+    await screen.findAllByText(/Imagery retrieved/i)
+    const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string; paint?: Record<string, unknown> }>
+    const shown = adds.filter((add) => add.id.startsWith(`raster-${proxiedLayer.id}`))
+    // One slot, at the full stack opacity — never a lone fractional slot
+    // presenting a partial retrieval as a blend.
+    expect(shown).toHaveLength(1)
+    expect(shown[0].paint?.['raster-opacity']).toBeCloseTo(0.6, 5)
+    expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/the second frame of the display composite was not retrieved/i)
+  })
+
+  const strataBlend: LayerItem = {
+    id: 'noaa-gfs-surface-cloud-low', title: 'Global Forecast System (GFS 0.25 deg) low cloud cover (rendered grid)',
+    kind: 'raster', field: 'cloud_low', product: 'Global Forecast System (GFS 0.25 deg)', units: 'percent',
+    semantics: 'rendered by this experiment; nearest-neighbor; never smoothed',
+    times: ['2026-08-30T04:00:00Z', '2026-08-30T05:00:00Z'], cadence_seconds: 3600, staleness_tolerance_seconds: 1800,
+    evidence_basis: 'published_artifact', raster_available: true, legend_available: true, group: 'rendered_grid',
+  }
+  const renderedRaster = () => rasterResponse(
+    { 'X-Weather-Image-Basis': 'rendered_grid', 'X-Weather-Source-Id': 'noaa-gfs', 'X-Weather-Evidence-Basis': 'published_artifact' },
+    ['X-Weather-Wms-Layer'],
+  )
+  const strataPanel = (props: Partial<React.ComponentProps<typeof MapPanel>> = {}) => panel({
+    layers: [strataBlend],
+    selections: [{ id: strataBlend.id, visible: true, opacity: 0.85 }],
+    ...props,
+  })
+
+  it('interpolates a rendered-grid blend through one shader layer, crossfading when no motion exists', async () => {
+    const fetchMock = routedFetch(() => renderedRaster())
+    vi.stubGlobal('fetch', fetchMock)
+    render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
+
+    await waitFor(() => {
+      const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string; type?: string; beforeId?: string }>
+      expect(adds.some((add) => add.id === `flowblend-${strataBlend.id}` && add.type === 'custom')).toBe(true)
+    })
+    const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string; beforeId?: string }>
+    // One shader layer under the labels; never the stacked opacity pair whose
+    // composite is 1-(1-a)(1-b) rather than a linear cross-dissolve.
+    expect(adds.find((add) => add.id === `flowblend-${strataBlend.id}`)?.beforeId).toBe('reference-water-casing')
+    expect(adds.some((add) => add.id.startsWith(`raster-${strataBlend.id}`))).toBe(false)
+    // The flow endpoint was asked; its 404 is the disclosed crossfade fallback.
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.map(([url]) => String(url)).some((url) => url.includes('/flow'))).toBe(true)
+      const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
+      expect(note).toMatch(/temporally interpolated for display between the .* and .* NT frames/i)
+      expect(note).toMatch(/linear cross-dissolve; no derived motion field for this pair/i)
+      expect(note).toMatch(/display only, not evidence/i)
+    })
+  })
+
+  it('keeps the same painted stack while scrubbing across a real frame with interpolation on', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => renderedRaster()))
+    // Exactly on the 04:00 frame: the layer still draws through the shader
+    // layer (both inputs the real frame, t = 0 — the identity), never a
+    // raster slot, so the stack has the same shape as a between-frames blend.
+    const { rerender } = render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:00:00Z') }))
+    await waitFor(() => {
+      expect((globalThis as Record<string, unknown>).__mapLayersNow as string[]).toContain(`flowblend-${strataBlend.id}`)
+    })
+    const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string }>
+    expect(adds.some((add) => add.id.startsWith(`raster-${strataBlend.id}`))).toBe(false)
+    // An exact frame carries no blend disclosure: nothing is composited.
+    expect(document.querySelector('.map-frame-notes')?.textContent ?? '').not.toMatch(/temporally interpolated/i)
+
+    // Scrub into the pair and across to the next real frame: the shader layer
+    // is updated in place — nothing is ever torn down, so nothing can flash.
+    ;(globalThis as Record<string, unknown>).__mapLayerRemovals = []
+    rerender(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
+    await waitFor(() => {
+      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/temporally interpolated for display/i)
+    })
+    rerender(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T05:00:00Z') }))
+    await waitFor(() => {
+      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').not.toMatch(/temporally interpolated/i)
+    })
+    expect((globalThis as Record<string, unknown>).__mapLayerRemovals as string[]).toEqual([])
+    expect((globalThis as Record<string, unknown>).__mapLayersNow as string[]).toContain(`flowblend-${strataBlend.id}`)
+  })
+
+  it('names the advection-corrected method when the pair has a derived motion field', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse()))
+    render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
+    await waitFor(() => {
+      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/advection-corrected along a motion field derived from the two published frames/i)
+    })
+  })
+
+  it('names the C1 trajectory method when the pair also has Hermite tangents', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse(), () => flowResponse({ 'X-Weather-Flow-Texture': 'tangents' })))
+    render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
+    await waitFor(() => {
+      const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
+      expect(note).toMatch(/advection-corrected along motion fitted through neighbouring published frames \(C1 trajectories\)/i)
+      expect(note).toMatch(/display only, not evidence/i)
+    })
+  })
+
+  it('keeps the previous frame drawn, at its own instant, while the next one loads', async () => {
+    let resolveSecond: (response: Response) => void = () => undefined
+    let rasterCalls = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/raster')) {
+        rasterCalls += 1
+        if (rasterCalls === 1) return rasterResponse()
+        return new Promise<Response>((resolve) => { resolveSecond = resolve })
+      }
+      if (url.includes('/flow')) return new Response('{}', { status: 404 })
+      return new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 })
+    }))
     const { rerender } = render(proxiedPanel())
     await screen.findAllByText(/Imagery retrieved/i)
 
     rerender(proxiedPanel({ validTime: new Date('2026-08-30T05:00:00Z') }))
-    await waitFor(() => expect((URL as unknown as { revokeObjectURL: ReturnType<typeof vi.fn> }).revokeObjectURL).toHaveBeenCalled())
-    // Whatever else happened, the first frame's blob is not still held.
+    // The map never blanks: the last retrieved frame stays painted while the
+    // newly selected one is in flight, and the text says exactly that.
+    await screen.findAllByText(/until it arrives the last retrieved frame stays drawn at its own instant/i)
+    expect((globalThis as Record<string, unknown>).__mapLayersNow as string[]).toContain(`raster-${proxiedLayer.id}-0`)
+
+    resolveSecond(rasterResponse({ 'X-Weather-Valid-Time': '2026-08-30T05:00:00+00:00' }))
+    await waitFor(() => expect(screen.queryAllByText(/stays drawn at its own instant/i)).toHaveLength(0))
+  })
+
+  it('prefetches every frame of a locally rendered layer without touching proxied budgets', async () => {
+    const fetchMock = routedFetch(() => renderedRaster())
+    vi.stubGlobal('fetch', fetchMock)
+    render(strataPanel())
+    // The 04:00 frame draws now; the 05:00 frame is warmed at idle priority
+    // so a scrub to it costs nothing.
+    await waitFor(() => {
+      const requested = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/raster'))
+      expect(requested.some((url) => url.includes('2026-08-30T05'))).toBe(true)
+    }, { timeout: 3000 })
+  })
+
+  it('exposes the frame notes as a polite status region', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    render(proxiedPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
+    await screen.findAllByText(/Display composite/i)
+    const notes = document.querySelector('.map-frame-notes')
+    expect(notes?.getAttribute('role')).toBe('status')
+    expect(notes?.getAttribute('aria-live')).toBe('polite')
+  })
+
+  it('reuses a recently retrieved frame instead of refetching it, and releases every frame on unmount', async () => {
+    const fetchMock = routedFetch(() => rasterResponse())
+    vi.stubGlobal('fetch', fetchMock)
+    const { rerender, unmount } = render(proxiedPanel())
+    await screen.findAllByText(/Imagery retrieved/i)
+    const rasterCalls = () => fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/raster')).length
+    const afterFirst = rasterCalls()
+
+    rerender(proxiedPanel({ validTime: new Date('2026-08-30T05:00:00Z') }))
+    await waitFor(() => expect(rasterCalls()).toBe(afterFirst + 1))
+
+    // Scrubbing back to the first frame reuses its retained image: no third
+    // request is spent from the upstream budget for bytes already held.
+    rerender(proxiedPanel({ validTime: NOW }))
+    await screen.findAllByText(/Imagery retrieved/i)
+    expect(rasterCalls()).toBe(afterFirst + 1)
+
+    // On unmount every retained frame is released; none outlives the map.
+    unmount()
     const revoked = (URL as unknown as { revokeObjectURL: ReturnType<typeof vi.fn> }).revokeObjectURL.mock.calls.flat()
     expect(revoked).toContain('blob:image-1')
   })
@@ -440,7 +687,7 @@ describe('MapPanel imagery', () => {
     expect((await screen.findAllByText(/no image was retrieved from the provider: connection reset/i)).length).toBeGreaterThan(0)
     // The previously drawn frame is removed rather than left under a new time.
     await waitFor(() => {
-      expect((globalThis as Record<string, unknown>).__mapLayersNow as string[]).not.toContain(`raster-${proxiedLayer.id}`)
+      expect((globalThis as Record<string, unknown>).__mapLayersNow as string[]).not.toContain(`raster-${proxiedLayer.id}-0`)
     })
     expect(screen.queryAllByText(/Imagery retrieved from/i).length).toBe(0)
   })
@@ -450,20 +697,20 @@ describe('MapPanel imagery', () => {
     const globals = globalThis as Record<string, unknown>
     const { rerender } = render(proxiedPanel())
     await screen.findAllByText(/Imagery retrieved/i)
-    await waitFor(() => expect(globals.__mapLayersNow as string[]).toContain(`raster-${proxiedLayer.id}`))
+    await waitFor(() => expect(globals.__mapLayersNow as string[]).toContain(`raster-${proxiedLayer.id}-0`))
 
     // MapLibre reports the style as not loaded while the image source it was
     // just handed is still being read. An untoggle landing in that window used
     // to be skipped, and the image stayed painted under a drawer saying "0 on".
     globals.__mapStyleLoaded = false
     rerender(proxiedPanel({ selections: [] }))
-    expect(globals.__mapLayersNow as string[]).not.toContain(`raster-${proxiedLayer.id}`)
+    expect(globals.__mapLayersNow as string[]).not.toContain(`raster-${proxiedLayer.id}-0`)
     expect(screen.queryAllByText(/Imagery retrieved from/i).length).toBe(0)
 
     globals.__mapStyleLoaded = true
     const maps = globals.__fakeMaps as Array<{ fire: (event: string) => void }>
     maps[maps.length - 1].fire('idle')
-    expect(globals.__mapLayersNow as string[]).not.toContain(`raster-${proxiedLayer.id}`)
+    expect(globals.__mapLayersNow as string[]).not.toContain(`raster-${proxiedLayer.id}-0`)
   })
 
   it('draws nothing when the response carries no retrieval provenance', async () => {
@@ -616,14 +863,16 @@ describe('MapPanel layer drawer', () => {
     expect(within(footer).queryByText(/RADAR_1KM_RRAI alone/)).not.toBeInTheDocument()
   })
 
-  it('names the nearest frame, its age and the tolerance when nothing may be drawn, and offers a jump to it', () => {
+  it('names the reason and the nearest frame when nothing may be drawn, and offers a jump to it', () => {
     const fetchMock = routedFetch(() => rasterResponse())
     vi.stubGlobal('fetch', fetchMock)
     const onJumpToTime = vi.fn()
-    // Two hours past the newest frame, against a 180 s tolerance.
+    // Two hours past the newest frame AND past the reference: an observed
+    // layer resolves nothing there, and the drawer names why plus how far
+    // away the nearest real evidence sits.
     render(panel({ validTime: new Date('2026-08-30T06:00:00Z'), onJumpToTime }))
+    expect(screen.getAllByText(/observed imagery has no frames for future instants/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/Nearest frame/)).toHaveTextContent(/2\.0 h earlier/)
-    expect(screen.getByText(/tolerance 3 min/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Jump to nearest frame/ }))
     expect(onJumpToTime).toHaveBeenCalledWith(new Date('2026-08-30T04:00:00Z'))
     // Still nothing requested: the jump is the reader's choice, not an auto-draw.

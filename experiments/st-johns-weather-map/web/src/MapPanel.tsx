@@ -4,8 +4,10 @@ import { GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer } fro
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { describeEvidenceBasis, describeOffset, groupLayers, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerRaster, loadLegendFailure, nearestFrame, renderPixelSize, resolveFrame } from './api'
-import type { RasterImage } from './api'
+import { describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, stJohnsTime } from './api'
+import { flowObjectUrls } from './api'
+import type { FlowTexture, FrameResolution, RasterImage } from './api'
+import { FlowBlendLayer } from './FlowBlendLayer'
 import { stationCoverage, stations } from './fixtures'
 import { applyWeatherMapTheme, createWeatherMapStyle, REFERENCE_SOURCE_ID, WEATHER_REFERENCE_ANCHOR_ID, type Theme } from './mapStyle'
 import type { GeoJsonFeature, LayerItem, LayerSelection, LocationPoint, ResolvedFrame, SourceStatusItem, StationCoverage } from './types'
@@ -21,8 +23,16 @@ interface MapPanelProps {
   comparison?: string
   fixtureMode?: boolean
   /** The instant the reader asked for. Each layer answers it from its own
-   *  frames, or declines; nothing is resampled onto a shared clock. */
+   *  frames, or falls back with a visible disclosure; nothing is resampled
+   *  onto a shared clock and nothing is drawn undated. */
   validTime: Date
+  /** The session reference instant. Observed layers never fall back for an
+   *  instant after it: their frames are of what had already happened. */
+  reference: Date
+  /** Owner-approved display setting: when true, a forecast layer between two
+   *  frames is drawn as both real retrieved frames composited by opacity.
+   *  Display derivation only — it never touches features or point data. */
+  interpolate: boolean
   selected: LocationPoint
   onSelect: (point: LocationPoint) => void
   /** Layer list exactly as published by `/layers`. No layer is invented here. */
@@ -64,12 +74,56 @@ type LayerState =
 /** What one layer's imagery resolved to. `none` covers every case where no
  *  request was issued at all, and carries the reason; `unavailable` covers a
  *  request that was issued and did not come back as drawable evidence. Neither
- *  is ever presented as an absence of weather. */
+ *  is ever presented as an absence of weather. `shown` holds one slot
+ *  normally, or two for a display composite — each slot a real retrieved
+ *  image at the fractional opacity weight it is drawn with. */
+type RasterSlot = { frame: ResolvedFrame; weight: number; image: RasterImage }
 type RasterState =
   | { status: 'none'; reason: string }
-  | { status: 'requesting'; frame: ResolvedFrame }
+  | { status: 'requesting'; frames: ResolvedFrame[] }
+  // The previous frame stays drawn, at its own disclosed timestamp, while the
+  // newly selected one is retrieved: a scrub never blanks the map, and what is
+  // on screen is always a named real frame (`slots`), never the pending one.
+  | { status: 'refreshing'; slots: RasterSlot[]; frames: ResolvedFrame[] }
   | { status: 'unavailable'; frame: ResolvedFrame; reason: string }
-  | { status: 'shown'; frame: ResolvedFrame; image: RasterImage }
+  | { status: 'shown'; slots: RasterSlot[] }
+
+/** The one frame a stored-feature request may use. A blend never applies to
+ *  features — the nearer of its pair answers instead. */
+function featureFrame(resolution: FrameResolution): ResolvedFrame | null {
+  if (resolution.kind === 'exact' || resolution.kind === 'snapped') return resolution.frame
+  if (resolution.kind === 'blend') return resolution.fraction <= 0.5 ? resolution.previous : resolution.next
+  return null
+}
+
+/** The imagery slots a resolution asks for, with their opacity weights. */
+function slotPlan(resolution: FrameResolution): Array<{ frame: ResolvedFrame; weight: number }> {
+  if (resolution.kind === 'exact' || resolution.kind === 'snapped') return [{ frame: resolution.frame, weight: 1 }]
+  if (resolution.kind === 'blend') return [{ frame: resolution.previous, weight: 1 - resolution.fraction }, { frame: resolution.next, weight: resolution.fraction }]
+  return []
+}
+
+/** Retrieved images a layer may hold at once. Forty holds a layer's whole
+ *  28-hour frame axis at one extent - which is what makes a scrub across the
+ *  window instant once the frames are in - plus room for blend pairs. */
+const IMAGE_CACHE_PER_LAYER = 40
+
+/** Locally rendered layers (stored-grid renders: cloud grids, satellite mask,
+ *  aurora) cost no upstream budget and their sources are far coarser than the
+ *  screen, so their rasters are requested at a bounded pixel size and scaled
+ *  on the GPU with nearest-neighbor - same cells, far smaller PNGs. */
+const RENDERED_REQUEST_MAX_EDGE_PX = 1024
+
+function isLocallyRendered(layer: LayerItem): boolean {
+  return layer.evidence_basis === 'published_artifact' && layer.raster_available === true
+}
+
+function requestExtentFor(layer: LayerItem, extent: ViewExtent): ViewExtent {
+  if (!isLocallyRendered(layer)) return extent
+  const scale = RENDERED_REQUEST_MAX_EDGE_PX / Math.max(extent.widthPx, extent.heightPx)
+  if (scale >= 1) return extent
+  return { ...extent, widthPx: Math.max(1, Math.round(extent.widthPx * scale)), heightPx: Math.max(1, Math.round(extent.heightPx * scale)) }
+}
 
 /** The extent and pixel size one image is requested over. Taken from the map
  *  itself, never from a constant: the image has to cover what the reader is
@@ -288,7 +342,7 @@ function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: n
 }
 
 export function MapPanel({
-  label, field, comparison, selected, onSelect, validTime, fixtureMode = false,
+  label, field, comparison, selected, onSelect, validTime, reference, interpolate, fixtureMode = false,
   layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, theme = 'dark', initialDrawerOpen = false,
 }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -314,17 +368,36 @@ export function MapPanel({
   // Why a legend `<img>` failed, per layer, in the API's words. Set only after
   // the image itself errored; cleared when the layer leaves the stack.
   const [legendFailures, setLegendFailures] = useState<Record<string, string>>({})
-  // One object URL per layer, so a scrub across the window releases the frame it
-  // replaces instead of leaking one blob per step.
-  const objectUrlsRef = useRef<Map<string, string>>(new Map())
+  // Retrieved images per layer, keyed by frame time + extent and capped per
+  // layer (LRU). A scrub across a blend boundary reuses the frame that moved
+  // between slots instead of refetching it, and toggling a layer back on at
+  // the same frame reuses its image — every avoided request is one back in
+  // the proxy's upstream budget. Eviction revokes the object URL.
+  const imageCacheRef = useRef<Map<string, Map<string, RasterImage>>>(new Map())
+  // What each layer is currently being fetched for, so a pair of blend images
+  // arriving after the selection moved on is cached but never committed.
+  const generationRef = useRef<Map<string, string>>(new Map())
+  // In-flight requests keyed layer|frame|extent: concurrent wants (a scrub
+  // revisit, the prefetcher, a blend pair sharing a frame) share one promise.
+  const inflightRef = useRef<Map<string, Promise<{ image: RasterImage | null; error: string | null }>>>(new Map())
+  // The abort scope for raster fetches, keyed by viewport: frame changes never
+  // abort (results are cacheable); viewport changes and unmount do.
+  const fetchScopeRef = useRef<{ key: string; controller: AbortController } | null>(null)
+  // Derived motion textures per layer, keyed by frame pair + extent.
+  // 'absent' records a 404: the pair has no derived motion and the blend
+  // crossfades - cached so the 404 is asked once, not per scrub tick.
+  const flowCacheRef = useRef<Map<string, Map<string, FlowTexture | 'absent'>>>(new Map())
+  const flowInflightRef = useRef<Set<string>>(new Set())
+  // The custom shader layers this panel owns, by map layer id.
+  const flowLayersRef = useRef<Map<string, FlowBlendLayer>>(new Map())
+  // Bumped when a motion texture lands, so the map-sync effect re-runs.
+  const [flowVersion, setFlowVersion] = useState(0)
   // The map layers this panel owns, so it removes exactly what it added, and
   // what stack they were painted for, so an unchanged stack is left alone.
   const rasterLayerIdsRef = useRef<string[]>([])
-  const paintedKeyRef = useRef('')
-  // What each layer's held image was requested for, so toggling another layer on
-  // does not re-request an image already drawn at the same frame and extent.
-  // Every avoided request is one back in the proxy's upstream budget.
-  const retrievedKeyRef = useRef<Map<string, string>>(new Map())
+  // What each painted slot currently shows (url, opacity, coordinates), so an
+  // unchanged slot is left alone and a changed one is updated in place.
+  const paintedContentRef = useRef<Map<string, string>>(new Map())
 
   // The drawer body covers the right 300 px of the pane. Padding the map by
   // that much moves the view's centre into the uncovered part, so the initial
@@ -336,12 +409,45 @@ export function MapPanel({
     map.setPadding({ top: 0, bottom: 0, left: 0, right })
   }, [])
 
-  const retainObjectUrl = useCallback((layerId: string, objectUrl: string | null) => {
-    const previous = objectUrlsRef.current.get(layerId)
-    if (previous && previous !== objectUrl) URL.revokeObjectURL(previous)
-    if (objectUrl) objectUrlsRef.current.set(layerId, objectUrl)
-    else objectUrlsRef.current.delete(layerId)
-    if (!objectUrl) retrievedKeyRef.current.delete(layerId)
+  const cacheGet = useCallback((layerId: string, key: string): RasterImage | null => {
+    const held = imageCacheRef.current.get(layerId)
+    const image = held?.get(key)
+    if (held && image) {
+      // Refresh recency: Map iteration order is insertion order.
+      held.delete(key)
+      held.set(key, image)
+    }
+    return image ?? null
+  }, [])
+
+  const cachePut = useCallback((layerId: string, key: string, image: RasterImage) => {
+    let held = imageCacheRef.current.get(layerId)
+    if (!held) {
+      held = new Map()
+      imageCacheRef.current.set(layerId, held)
+    }
+    const previous = held.get(key)
+    if (previous && previous.objectUrl !== image.objectUrl) URL.revokeObjectURL(previous.objectUrl)
+    held.delete(key)
+    held.set(key, image)
+    while (held.size > IMAGE_CACHE_PER_LAYER) {
+      const [oldestKey, oldest] = held.entries().next().value as [string, RasterImage]
+      held.delete(oldestKey)
+      URL.revokeObjectURL(oldest.objectUrl)
+    }
+  }, [])
+
+  const cacheDropLayer = useCallback((layerId: string) => {
+    const flows = flowCacheRef.current.get(layerId)
+    if (flows) {
+      flows.forEach((entry) => { if (entry !== 'absent') flowObjectUrls(entry).forEach((url) => URL.revokeObjectURL(url)) })
+      flowCacheRef.current.delete(layerId)
+    }
+    const held = imageCacheRef.current.get(layerId)
+    if (!held) return
+    held.forEach((image) => URL.revokeObjectURL(image.objectUrl))
+    imageCacheRef.current.delete(layerId)
+    generationRef.current.delete(layerId)
   }, [])
 
   // Held in a ref as well as a memo: the map setup effect runs once and closes
@@ -361,13 +467,48 @@ export function MapPanel({
     [selections, byId],
   )
 
-  // Each active layer resolves the requested instant against its own frames.
-  // A layer with no frame inside its tolerance is not fetched and not drawn.
+  // Each active layer resolves the requested instant against its own frames:
+  // quietly within tolerance, by disclosed fallback beyond it, and by the
+  // opt-in display composite for forecast imagery between two frames.
   const resolved = useMemo(
-    () => active.map(({ entry, layer }) => ({ entry, layer, frame: resolveFrame(layer, validTime) })),
-    [active, validTime],
+    () => active.map(({ entry, layer }) => ({ entry, layer, resolution: resolveLayerFrame(layer, validTime, { interpolate, reference }) })),
+    [active, validTime, interpolate, reference],
   )
-  const frameKey = resolved.map(({ layer, frame }) => `${layer.id}@${frame?.time ?? 'none'}`).join('|')
+  const frameKey = resolved.map(({ layer, resolution }) => {
+    const frames = drawableFrames(resolution).map((frame) => frame.time).join('+') || 'none'
+    const fraction = resolution.kind === 'blend' ? `~${resolution.fraction.toFixed(3)}` : ''
+    return `${layer.id}@${frames}${fraction}`
+  }).join('|')
+
+  // The disclosure sentences for every active layer not drawn at an exact
+  // frame, shared verbatim by the on-map notes, the drawer rows and the text
+  // alternative. A blend that lost one image mid-pair says so.
+  const layerNoteFor = (layer: LayerItem, resolution: FrameResolution): string | null => {
+    if (resolution.kind === 'blend') {
+      const state = rasters[layer.id]
+      if (state?.status === 'shown' && state.slots.length === 1) {
+        const slot = state.slots[0]
+        return `showing ${stJohnsTime(slot.frame.time)} NT (${describeOffset(slot.frame.offsetSeconds)} than the selected time); the second frame of the display composite was not retrieved`
+      }
+      if (isLocallyRendered(layer)) {
+        // Rendered-grid blends draw through the interpolation shader; the
+        // note names the method actually applied to this pair.
+        const held = [...(flowCacheRef.current.get(layer.id)?.entries() ?? [])]
+          .find(([key]) => key.startsWith(`${resolution.previous.time}->${resolution.next.time}|`))?.[1]
+        const method = held && held !== 'absent'
+          ? (held.tangentsUrl
+            ? 'advection-corrected along motion fitted through neighbouring published frames (C1 trajectories)'
+            : 'advection-corrected along a motion field derived from the two published frames')
+          : 'a linear cross-dissolve; no derived motion field for this pair'
+        return `temporally interpolated for display between the ${stJohnsTime(resolution.previous.time)} and ${stJohnsTime(resolution.next.time)} NT frames (${method}) — display only, not evidence`
+      }
+    }
+    return describeResolution(resolution)
+  }
+  const fallbackNotes = resolved.flatMap(({ layer, resolution }) => {
+    const text = layerNoteFor(layer, resolution)
+    return text ? [{ layer, text }] : []
+  })
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -433,10 +574,18 @@ export function MapPanel({
       overlayRef.current = null
       mapLoadedRef.current = false
       rasterLayerIdsRef.current = []
-      paintedKeyRef.current = ''
+      paintedContentRef.current.clear()
       // Every retained image is released on unmount; none of them outlives the map.
-      objectUrlsRef.current.forEach((objectUrl) => URL.revokeObjectURL(objectUrl))
-      objectUrlsRef.current.clear()
+      fetchScopeRef.current?.controller.abort()
+      fetchScopeRef.current = null
+      inflightRef.current.clear()
+      imageCacheRef.current.forEach((held) => held.forEach((image) => URL.revokeObjectURL(image.objectUrl)))
+      imageCacheRef.current.clear()
+      generationRef.current.clear()
+      flowCacheRef.current.forEach((held) => held.forEach((entry) => { if (entry !== 'absent') flowObjectUrls(entry).forEach((url) => URL.revokeObjectURL(url)) }))
+      flowCacheRef.current.clear()
+      flowInflightRef.current.clear()
+      flowLayersRef.current.clear()
     }
   }, [label, padForDrawer])
 
@@ -457,7 +606,7 @@ export function MapPanel({
 
     setStates((previous) => {
       const next: Record<string, LayerState> = {}
-      for (const { layer, frame } of resolved) {
+      for (const { layer, resolution } of resolved) {
         // Layer kind comes from the artifact's stored geometry, so a `raster`
         // layer has no stored features to ask for: /features answers 404 for the
         // proxied ones. Its evidence is the image, reported separately below.
@@ -465,13 +614,11 @@ export function MapPanel({
           next[layer.id] = { status: 'imagery-only' }
           continue
         }
+        const frame = featureFrame(resolution)
         if (!frame) {
-          const tolerance = layer.staleness_tolerance_seconds
           next[layer.id] = {
             status: 'no-frame',
-            reason: (layer.times?.length ?? 0) === 0
-              ? 'this layer published no frames'
-              : `no frame within ${typeof tolerance === 'number' ? `${Math.round(tolerance / 60)} min` : 'its declared tolerance'} of the selected time`,
+            reason: resolution.kind === 'none' ? resolution.reason : 'no frame of this layer answers the selected time',
           }
           continue
         }
@@ -481,7 +628,8 @@ export function MapPanel({
       return next
     })
 
-    for (const { layer, entry, frame } of resolved) {
+    for (const { layer, entry, resolution } of resolved) {
+      const frame = featureFrame(resolution)
       if (!frame || layer.kind === 'raster') continue
       void loadLayerFeatures(layer, frame, controller.signal).then((result) => {
         if (cancelled) return
@@ -503,23 +651,93 @@ export function MapPanel({
     }
   }, [frameKey, resolved])
 
-  // One image per visible layer per frame, over the extent the reader is looking
-  // at. Nothing is requested for a layer that declares no imagery, and nothing is
-  // requested for a frame that did not resolve, so no image can arrive off-time.
-  // Requesting only the visible layers is also what keeps a scrub inside the
+  // One image per visible layer per drawable frame, over the extent the reader
+  // is looking at. Nothing is requested for a layer that declares no imagery,
+  // and nothing is requested for a frame that did not resolve, so no image can
+  // arrive off-time. Requesting only visible layers, reusing cached frames,
+  // and committing blend pairs atomically is what keeps a scrub inside the
   // proxy's 16-call-per-request, 240-per-minute upstream budget.
   useEffect(() => {
-    const controller = new AbortController()
     let cancelled = false
-    if (!extent) return () => controller.abort()
+    if (!extent) return
 
-    const requestKey = (frame: ResolvedFrame) => `${frame.time}|${extent.south},${extent.west},${extent.north},${extent.east},${Math.round(extent.widthPx)}x${Math.round(extent.heightPx)}`
+    // One abort scope per viewport, not per frame: a scrub to the next frame
+    // must not cancel a request the server is already rendering - its result
+    // lands in the cache and a scrub back reuses it. Only a viewport change
+    // (new bounds/size make the bytes unusable) or unmount aborts.
+    const viewKey = `${extent.south},${extent.west},${extent.north},${extent.east},${Math.round(extent.widthPx)}x${Math.round(extent.heightPx)}`
+    if (fetchScopeRef.current?.key !== viewKey) {
+      fetchScopeRef.current?.controller.abort()
+      fetchScopeRef.current = { key: viewKey, controller: new AbortController() }
+    }
+    const controller = fetchScopeRef.current.controller
+
+    const frameCacheKey = (layer: LayerItem, frame: { time: string }) => {
+      const request = requestExtentFor(layer, extent)
+      return `${frame.time}|${request.south},${request.west},${request.north},${request.east},${Math.round(request.widthPx)}x${Math.round(request.heightPx)}`
+    }
+
+    // One request per (layer, frame, extent) no matter how many effect runs
+    // want it: concurrent wants share the same promise, and every settled
+    // image is cached even if the selection has moved on.
+    const fetchFrame = (layer: LayerItem, frame: { time: string }): Promise<{ image: RasterImage | null; error: string | null }> => {
+      const key = frameCacheKey(layer, frame)
+      const held = cacheGet(layer.id, key)
+      if (held) return Promise.resolve({ image: held, error: null })
+      const inflightKey = `${layer.id}|${key}`
+      const pending = inflightRef.current.get(inflightKey)
+      if (pending) return pending
+      const promise = loadLayerRaster(layer, { ...requestExtentFor(layer, extent), validTime: frame.time }, controller.signal)
+        .then((result) => {
+          if (result.image) cachePut(layer.id, key, result.image)
+          return result
+        })
+        .finally(() => inflightRef.current.delete(inflightKey))
+      inflightRef.current.set(inflightKey, promise)
+      return promise
+    }
+
+    // One motion texture per (layer, frame pair, extent): fetched once, a 404
+    // remembered as the disclosed crossfade fallback. Never blocks a frame.
+    const flowPairKey = (layer: LayerItem, from: string, to: string) => {
+      const request = requestExtentFor(layer, extent)
+      return `${from}->${to}|${request.south},${request.west},${request.north},${request.east},${Math.round(request.widthPx)}x${Math.round(request.heightPx)}`
+    }
+    const ensureFlow = (layer: LayerItem, from: string, to: string): Promise<unknown> => {
+      const key = flowPairKey(layer, from, to)
+      if (flowCacheRef.current.get(layer.id)?.get(key) !== undefined) return Promise.resolve()
+      const inflightKey = `${layer.id}|${key}`
+      if (flowInflightRef.current.has(inflightKey)) return Promise.resolve()
+      flowInflightRef.current.add(inflightKey)
+      return loadLayerFlow(layer, { ...requestExtentFor(layer, extent), from, to }, controller.signal)
+        .then(({ flow, absent }) => {
+          if (!flow && !absent) return
+          let held = flowCacheRef.current.get(layer.id)
+          if (!held) {
+            held = new Map()
+            flowCacheRef.current.set(layer.id, held)
+          }
+          held.set(key, flow ?? 'absent')
+          while (held.size > IMAGE_CACHE_PER_LAYER) {
+            const [oldestKey, oldest] = held.entries().next().value as [string, FlowTexture | 'absent']
+            held.delete(oldestKey)
+            if (oldest !== 'absent') flowObjectUrls(oldest).forEach((url) => URL.revokeObjectURL(url))
+          }
+          if (!cancelled) setFlowVersion((version) => version + 1)
+        })
+        .catch(() => undefined)
+        .finally(() => flowInflightRef.current.delete(inflightKey))
+    }
+
+    // A layer toggled off keeps nothing, so toggling it back on at the same
+    // frame issues a real request rather than sitting at "requesting" forever.
+    const activeIds = new Set(resolved.map(({ layer }) => layer.id))
+    for (const id of [...imageCacheRef.current.keys()]) if (!activeIds.has(id)) cacheDropLayer(id)
 
     setRasters((previous) => {
       const next: Record<string, RasterState> = {}
-      for (const { layer, frame } of resolved) {
+      for (const { layer, resolution } of resolved) {
         if (layer.raster_available !== true) {
-          retainObjectUrl(layer.id, null)
           next[layer.id] = {
             status: 'none',
             reason: layer.raster_available === false
@@ -528,53 +746,111 @@ export function MapPanel({
           }
           continue
         }
-        if (!frame) {
-          retainObjectUrl(layer.id, null)
-          next[layer.id] = { status: 'none', reason: 'no frame of this layer answers the selected time' }
+        const plan = slotPlan(resolution)
+        if (plan.length === 0) {
+          next[layer.id] = { status: 'none', reason: resolution.kind === 'none' ? resolution.reason : 'no frame of this layer answers the selected time' }
           continue
         }
-        const held = previous[layer.id]
-        next[layer.id] = held?.status === 'shown' && retrievedKeyRef.current.get(layer.id) === requestKey(frame)
-          ? held
-          : { status: 'requesting', frame }
+        const held = plan.map(({ frame }) => cacheGet(layer.id, frameCacheKey(layer, frame)))
+        if (held.every((image): image is RasterImage => image !== null)) {
+          next[layer.id] = { status: 'shown', slots: plan.map((slot, index) => ({ ...slot, image: held[index] as RasterImage })) }
+          continue
+        }
+        // Keep the previous real frame on screen while the wanted one loads:
+        // the drawn slots keep their own timestamps, so nothing on the map is
+        // ever mislabelled - it is simply the last retrieved frame, disclosed.
+        const prior = previous[layer.id]
+        const priorSlots = prior && (prior.status === 'shown' || prior.status === 'refreshing') ? prior.slots : null
+        next[layer.id] = priorSlots
+          ? { status: 'refreshing', slots: priorSlots, frames: plan.map(({ frame }) => frame) }
+          : { status: 'requesting', frames: plan.map(({ frame }) => frame) }
       }
-      // A layer toggled off keeps nothing. Its retrieval key in particular
-      // must go: with it retained, toggling the layer back on at the same
-      // frame skipped the request as already held, and the row sat at
-      // "requesting" with no image and no request in flight.
-      for (const id of Object.keys(previous)) if (!(id in next)) retainObjectUrl(id, null)
       return next
     })
 
-    for (const { layer, frame } of resolved) {
-      if (!frame || layer.raster_available !== true) continue
-      // Already held for this exact frame and extent; asking again would spend
-      // upstream budget to receive the same image.
-      if (retrievedKeyRef.current.get(layer.id) === requestKey(frame)) continue
-      void loadLayerRaster(layer, { ...extent, validTime: frame.time }, controller.signal).then((result) => {
-        if (cancelled) {
-          // The frame moved under this response; release it rather than retain it.
-          if (result.image) URL.revokeObjectURL(result.image.objectUrl)
-          return
-        }
-        retainObjectUrl(layer.id, result.image?.objectUrl ?? null)
-        if (result.image) retrievedKeyRef.current.set(layer.id, requestKey(frame))
-        setRasters((previous) => ({
-          ...previous,
-          [layer.id]: result.image
-            ? { status: 'shown', frame, image: result.image }
-            // A failed request clears whatever was drawn: stale pixels under a new
-            // timestamp are the fabrication this project forbids.
-            : { status: 'unavailable', frame, reason: result.error ?? 'imagery unavailable' },
-        }))
+    for (const { layer, resolution } of resolved) {
+      if (layer.raster_available !== true) continue
+      if (resolution.kind === 'blend' && isLocallyRendered(layer)) {
+        void ensureFlow(layer, resolution.previous.time, resolution.next.time)
+      }
+      const plan = slotPlan(resolution)
+      if (plan.length === 0) continue
+      const generation = plan.map(({ frame }) => frameCacheKey(layer, frame)).join('+')
+      generationRef.current.set(layer.id, generation)
+      // Every wanted frame already held: the updater above committed it.
+      if (plan.every(({ frame }) => cacheGet(layer.id, frameCacheKey(layer, frame)))) continue
+      void Promise.all(plan.map(async ({ frame }) => {
+        const result = await fetchFrame(layer, frame)
+        return { frame, image: result.image, error: result.error }
+      })).then((results) => {
+        if (cancelled || generationRef.current.get(layer.id) !== generation) return
+        setRasters((previous) => {
+          const succeeded = results.filter((row): row is { frame: ResolvedFrame; image: RasterImage; error: string | null } => row.image !== null)
+          let state: RasterState
+          if (succeeded.length === results.length) {
+            state = { status: 'shown', slots: plan.map((slot, index) => ({ ...slot, image: results[index].image as RasterImage })) }
+          } else if (succeeded.length > 0) {
+            // One frame of a display composite failed. A lone half-opacity
+            // slot would present a partial retrieval as a blend, so the
+            // nearest retrieved frame is drawn whole and the note says why.
+            const nearest = succeeded.reduce((best, row) => (Math.abs(row.frame.offsetSeconds) < Math.abs(best.frame.offsetSeconds) ? row : best))
+            state = { status: 'shown', slots: [{ frame: nearest.frame, weight: 1, image: nearest.image }] }
+          } else {
+            // A failed request clears whatever was drawn: stale pixels under a
+            // new timestamp are the fabrication this project forbids.
+            state = { status: 'unavailable', frame: plan[0].frame, reason: results.find((row) => row.error)?.error ?? 'imagery unavailable' }
+          }
+          return { ...previous, [layer.id]: state }
+        })
       }).catch(() => undefined)
+    }
+
+    // Prefetch the full frame axis of every locally rendered active layer
+    // (stored-grid renders only: they cost no upstream budget, so warming
+    // them is free of the proxy's spending rules; proxied layers stay
+    // strictly on-demand). Two at a time, at idle priority, sharing the
+    // viewport abort scope and the in-flight dedupe above.
+    const prefetchQueue: Array<() => Promise<unknown>> = resolved
+      .filter(({ layer }) => isLocallyRendered(layer))
+      .flatMap(({ layer }) => (layer.times ?? []).map((time) => ({ layer, frame: { time } })))
+      .filter(({ layer, frame }) => !cacheGet(layer.id, frameCacheKey(layer, frame)))
+      .map(({ layer, frame }) => () => fetchFrame(layer, frame))
+    if (interpolate) {
+      // With display interpolation on, the motion texture of every adjacent
+      // pair is warmed too, so a scrub crosses pairs without a crossfade
+      // flash while its flow loads. Same idle queue, same budget-free layers.
+      for (const { layer } of resolved) {
+        if (!isLocallyRendered(layer)) continue
+        const times = layer.times ?? []
+        for (let index = 0; index + 1 < times.length; index += 1) {
+          const from = times[index]
+          const to = times[index + 1]
+          if (flowCacheRef.current.get(layer.id)?.get(flowPairKey(layer, from, to)) === undefined) {
+            prefetchQueue.push(() => ensureFlow(layer, from, to))
+          }
+        }
+      }
+    }
+    if (prefetchQueue.length > 0) {
+      const schedule: (callback: () => void) => number = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback
+        ? (callback) => (window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(callback, { timeout: 1500 })
+        : (callback) => window.setTimeout(callback, 250)
+      schedule(() => {
+        if (cancelled || controller.signal.aborted) return
+        void Promise.all(Array.from({ length: 2 }, async () => {
+          while (!cancelled && !controller.signal.aborted) {
+            const task = prefetchQueue.shift()
+            if (!task) return
+            await task().catch(() => undefined)
+          }
+        }))
+      })
     }
 
     return () => {
       cancelled = true
-      controller.abort()
     }
-  }, [frameKey, resolved, extent, retainObjectUrl])
+  }, [frameKey, resolved, extent, interpolate, cacheGet, cachePut, cacheDropLayer])
 
   // Sync the map with the images actually held. When the painted stack differs
   // from the held one, every managed layer is removed and re-added in published
@@ -592,43 +868,167 @@ export function MapPanel({
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    // `refreshing` draws its held previous slots exactly like `shown`: the
+    // slots name the real frame they carry, so nothing is mislabelled while
+    // the newly selected frame loads.
     const shown = resolved
       .map(({ layer, entry }) => ({ layer, entry, state: rasters[layer.id] }))
-      .filter((row): row is { layer: LayerItem; entry: LayerSelection; state: Extract<RasterState, { status: 'shown' }> } => row.state?.status === 'shown')
+      .filter((row): row is { layer: LayerItem; entry: LayerSelection; state: Extract<RasterState, { status: 'shown' } | { status: 'refreshing' }> } =>
+        row.state?.status === 'shown' || row.state?.status === 'refreshing')
       .sort((a, b) => (a.layer.z_index ?? 0) - (b.layer.z_index ?? 0))
-    const desiredKey = shown.map(({ layer, entry, state }) => `${layer.id}|${state.image.objectUrl}|${entry.opacity}|${Object.values(state.image.request).join(',')}`).join('\n')
+    // One image source per slot: one for a plain frame, two for a display
+    // composite, earlier frame below the later. Stacked translucent layers
+    // compose as 1-(1-a)(1-b) rather than a linear crossfade, which is why
+    // every disclosure calls this display compositing, not blending of values.
+    //
+    // The exception is a blend of a locally rendered layer: those draw
+    // through one custom shader layer that cross-dissolves the two frames
+    // linearly and, when the pair's derived motion texture is held, warps
+    // them along it (advection-corrected interpolation, disclosed in the
+    // layer note). Both inputs are the same two retrieved frames.
+    type ImageEntry = {
+      kind: 'image'
+      id: string
+      url: string
+      coordinates: [[number, number], [number, number], [number, number], [number, number]]
+      opacity: number
+      resampling: 'nearest' | 'linear'
+    }
+    type FlowEntry = {
+      kind: 'flowblend'
+      id: string
+      frame0Url: string
+      frame1Url: string
+      flowUrl: string | null
+      flowScalePixels: number
+      tangentsUrl: string | null
+      tangentsScalePixels: number
+      bounds: { west: number; south: number; east: number; north: number }
+      widthPx: number
+      heightPx: number
+      t: number
+      opacity: number
+    }
+    const desired: Array<ImageEntry | FlowEntry> = shown.flatMap(({ layer, entry, state }): Array<ImageEntry | FlowEntry> => {
+      // A locally rendered layer under display interpolation draws through
+      // the blend layer even at an exact frame (both inputs the real frame,
+      // t = 0: the identity), so the painted stack keeps the same shape on
+      // both sides of a real-frame crossing and the reconcile below never
+      // tears it down mid-scrub.
+      const blendPair = state.slots.length === 2
+      if (isLocallyRendered(layer) && (blendPair || (interpolate && state.slots.length === 1))) {
+        const previous = state.slots[0]
+        const next = blendPair ? state.slots[1] : state.slots[0]
+        const request = previous.image.request
+        const pairKey = blendPair
+          ? [...(flowCacheRef.current.get(layer.id)?.keys() ?? [])]
+            .find((key) => key.startsWith(`${previous.frame.time}->${next.frame.time}|`))
+          : undefined
+        const flow = pairKey ? flowCacheRef.current.get(layer.id)?.get(pairKey) : undefined
+        return [{
+          kind: 'flowblend',
+          id: `flowblend-${layer.id}`,
+          frame0Url: previous.image.objectUrl,
+          frame1Url: next.image.objectUrl,
+          flowUrl: flow && flow !== 'absent' ? flow.objectUrl : null,
+          flowScalePixels: flow && flow !== 'absent' ? flow.scalePixels : 0,
+          tangentsUrl: flow && flow !== 'absent' ? flow.tangentsUrl : null,
+          tangentsScalePixels: flow && flow !== 'absent' ? flow.tangentsScalePixels : 0,
+          bounds: { west: request.west, south: request.south, east: request.east, north: request.north },
+          widthPx: request.widthPx,
+          heightPx: request.heightPx,
+          t: blendPair ? next.weight : 0,
+          opacity: entry.opacity,
+        }]
+      }
+      return state.slots.map((slot, index): ImageEntry => {
+        const { west, south, east, north } = slot.image.request
+        return {
+          kind: 'image',
+          id: `raster-${layer.id}-${index}`,
+          url: slot.image.objectUrl,
+          coordinates: [[west, north], [east, north], [east, south], [west, south]],
+          opacity: Math.max(0, Math.min(1, entry.opacity * slot.weight)),
+          // Locally rendered grids are requested at a bounded pixel size and
+          // scaled here with nearest-neighbor, so the blocky stored cells
+          // stay blocky instead of smoothed by the GPU's default resampling.
+          resampling: isLocallyRendered(layer) ? ('nearest' as const) : ('linear' as const),
+        }
+      })
+    })
+    const contentOf = (slot: ImageEntry | FlowEntry) => slot.kind === 'image'
+      ? `${slot.url}|${slot.opacity}|${slot.coordinates.flat().join(',')}`
+      : `${slot.frame0Url}|${slot.frame1Url}|${slot.flowUrl}|${slot.flowScalePixels}|${slot.tangentsUrl}|${slot.tangentsScalePixels}|${slot.t}|${slot.opacity}|${Object.values(slot.bounds).join(',')}`
+
+    const updateFlowLayer = (slot: FlowEntry) => {
+      flowLayersRef.current.get(slot.id)?.update({
+        frame0Url: slot.frame0Url,
+        frame1Url: slot.frame1Url,
+        flowUrl: slot.flowUrl,
+        flowScalePixels: slot.flowScalePixels,
+        tangentsUrl: slot.tangentsUrl,
+        tangentsScalePixels: slot.tangentsScalePixels,
+        bounds: slot.bounds,
+        widthPx: slot.widthPx,
+        heightPx: slot.heightPx,
+        t: slot.t,
+        opacity: slot.opacity,
+      })
+    }
 
     const reconcile = () => {
       const painted = rasterLayerIdsRef.current
-      const consistent = paintedKeyRef.current === desiredKey && painted.every((id) => map.getLayer(id) && map.getSource(id))
-      if (consistent) return
-      for (const id of painted) {
-        if (map.getLayer(id)) map.removeLayer(id)
-        if (map.getSource(id)) map.removeSource(id)
+      const structureChanged = painted.join(';') !== desired.map((slot) => slot.id).join(';')
+        || desired.some((slot) => !map.getLayer(slot.id) || (slot.kind === 'image' && !map.getSource(slot.id)))
+      if (structureChanged) {
+        for (const id of painted) {
+          if (map.getLayer(id)) map.removeLayer(id)
+          if (map.getSource(id)) map.removeSource(id)
+          flowLayersRef.current.delete(id)
+        }
+        rasterLayerIdsRef.current = []
+        paintedContentRef.current.clear()
+        for (const slot of desired) {
+          if (slot.kind === 'flowblend') {
+            const instance = new FlowBlendLayer(slot.id)
+            flowLayersRef.current.set(slot.id, instance)
+            map.addLayer(instance as unknown as maplibregl.LayerSpecification & { type: 'custom' }, WEATHER_REFERENCE_ANCHOR_ID)
+            updateFlowLayer(slot)
+          } else {
+            map.addSource(slot.id, { type: 'image', url: slot.url, coordinates: slot.coordinates })
+            map.addLayer(
+              { id: slot.id, type: 'raster', source: slot.id, paint: { 'raster-opacity': slot.opacity, 'raster-fade-duration': 0, 'raster-resampling': slot.resampling } },
+              WEATHER_REFERENCE_ANCHOR_ID,
+            )
+          }
+          rasterLayerIdsRef.current.push(slot.id)
+          paintedContentRef.current.set(slot.id, contentOf(slot))
+        }
+        return
       }
-      rasterLayerIdsRef.current = []
-      for (const { layer, entry, state } of shown) {
-        const id = `raster-${layer.id}`
-        const { west, south, east, north } = state.image.request
-        map.addSource(id, {
-          type: 'image',
-          url: state.image.objectUrl,
-          coordinates: [[west, north], [east, north], [east, south], [west, south]],
-        })
-        map.addLayer(
-          { id, type: 'raster', source: id, paint: { 'raster-opacity': Math.max(0, Math.min(1, entry.opacity)), 'raster-fade-duration': 0 } },
-          WEATHER_REFERENCE_ANCHOR_ID,
-        )
-        rasterLayerIdsRef.current.push(id)
+      // Same stack: swap image bytes / uniforms in place. No source or layer
+      // churn, no style diff, no texture re-add - this is what makes a scrub
+      // over cached frames paint at animation speed, and an interpolation
+      // tick within one pair costs only a uniform update.
+      for (const slot of desired) {
+        const content = contentOf(slot)
+        if (paintedContentRef.current.get(slot.id) === content) continue
+        if (slot.kind === 'flowblend') {
+          updateFlowLayer(slot)
+        } else {
+          const source = map.getSource(slot.id) as maplibregl.ImageSource
+          source.updateImage({ url: slot.url, coordinates: slot.coordinates })
+          map.setPaintProperty(slot.id, 'raster-opacity', slot.opacity)
+        }
+        paintedContentRef.current.set(slot.id, content)
       }
-      paintedKeyRef.current = desiredKey
     }
 
     reconcile()
     if (map.isStyleLoaded()) return
     map.once('idle', reconcile)
     return () => { map.off('idle', reconcile) }
-  }, [rasters, resolved, extent])
+  }, [rasters, resolved, extent, flowVersion, interpolate])
 
   // Re-pad when the drawer opens or closes. The first application is made by
   // the `load` handler above; before that the map is not ready to be padded.
@@ -684,21 +1084,17 @@ export function MapPanel({
   /** One layer's imagery, in words. Every clause here is a retrieved fact: the
    *  upstream layer name, the instant and the run come off the response headers,
    *  and "nothing detected" is only ever said about an image that arrived. */
-  const describeRaster = (layer: LayerItem): string => {
-    const state = rasters[layer.id]
-    if (!state) return 'No map image has been requested.'
-    if (state.status === 'none') return `No map image requested: ${state.reason}.`
-    if (state.status === 'requesting') return `Requesting map imagery for frame ${new Date(state.frame.time).toISOString()}.`
-    // "Not retrieved" and "retrieved, nothing detected" are different sentences
-    // on purpose; collapsing them would erase a real observation of absence.
-    if (state.status === 'unavailable') return `Imagery not retrieved: ${state.reason}. Nothing has been drawn in its place.`
-    const { provenance, coverage } = state.image
+  /** One retrieved image, in words. Every clause is a retrieved fact off the
+   *  response headers; "nothing detected" is only said about an image that
+   *  arrived. */
+  const describeImage = (slot: RasterSlot): string => {
+    const { provenance, coverage } = slot.image
     // The alerts image is served untimed (`x-weather-valid-time: none`). It
     // used to be stamped with the scrubbed time, which is a timestamp the
     // provider never gave; it is now called what it is.
     const when = provenance.validTime === 'none'
       ? 'current image, not time-indexed'
-      : `valid ${provenance.validTime ?? new Date(state.frame.time).toISOString()}`
+      : `valid ${provenance.validTime ?? new Date(slot.frame.time).toISOString()}`
     const run = provenance.referenceTime && provenance.referenceTime !== 'none' ? `, model run ${provenance.referenceTime}` : ''
     // A rendered-grid image was drawn here from the stored artifact; naming a
     // WMS layer for it would invent an upstream it never had.
@@ -711,6 +1107,27 @@ export function MapPanel({
     if (coverage === 'fully-transparent') return `${head}. The image is fully transparent: retrieved, and nothing was detected. That is a reading, not an outage.${notice}`
     if (coverage === 'not-inspected') return `${head}. Its pixels were not inspected in this browser, so "nothing detected" cannot be distinguished from a drawn field here.${notice}`
     return `${head}.${notice}`
+  }
+
+  const describeRaster = (layer: LayerItem): string => {
+    const state = rasters[layer.id]
+    if (!state) return 'No map image has been requested.'
+    if (state.status === 'none') return `No map image requested: ${state.reason}.`
+    if (state.status === 'requesting') return `Requesting map imagery for frame${state.frames.length === 1 ? '' : 's'} ${state.frames.map((frame) => new Date(frame.time).toISOString()).join(' and ')}.`
+    if (state.status === 'refreshing') {
+      return `Requesting map imagery for frame${state.frames.length === 1 ? '' : 's'} ${state.frames.map((frame) => new Date(frame.time).toISOString()).join(' and ')}; until it arrives the last retrieved frame stays drawn at its own instant. ${state.slots.map(describeImage).join(' ')}`
+    }
+    // "Not retrieved" and "retrieved, nothing detected" are different sentences
+    // on purpose; collapsing them would erase a real observation of absence.
+    if (state.status === 'unavailable') return `Imagery not retrieved: ${state.reason}. Nothing has been drawn in its place.`
+    if (state.slots.length === 2) {
+      const [previous, next] = state.slots
+      if (isLocallyRendered(layer)) {
+        return `Display interpolation between two retrieved frames at fraction ${next.weight.toFixed(2)} — advection-corrected along a derived motion field when one exists for the pair, a linear cross-dissolve otherwise; display derivation, not evidence. ${describeImage(previous)} ${describeImage(next)}`
+      }
+      return `Display composite of two retrieved frames at ${Math.round(previous.weight * 100)}% and ${Math.round(next.weight * 100)}% opacity — display derivation, not evidence. ${describeImage(previous)} ${describeImage(next)}`
+    }
+    return describeImage(state.slots[0])
   }
 
   const onLegendError = (layer: LayerItem) => {
@@ -733,9 +1150,9 @@ export function MapPanel({
     const entry = selections.find((item) => item.id === layer.id)
     const on = Boolean(entry?.visible)
     const undrawable = isUndrawable(layer)
-    const frame = on ? resolveFrame(layer, validTime) : null
-    const nearest = on && !frame ? nearestFrame(layer, validTime) : null
-    const tolerance = layer.staleness_tolerance_seconds
+    const resolution = on ? resolveLayerFrame(layer, validTime, { interpolate, reference }) : null
+    const note = resolution ? layerNoteFor(layer, resolution) : null
+    const frame = resolution && (resolution.kind === 'exact' || resolution.kind === 'snapped') ? resolution.frame : null
     const state = states[layer.id]
     const status = on ? state?.status ?? 'loading' : 'off'
     const lead = frame ? describeLead(frame.time, wallClock) : null
@@ -753,26 +1170,35 @@ export function MapPanel({
         {on && entry && (
           <>
             <p className="stack-frame">
-              {frame
+              {frame && (
                 // JSX text does not process JavaScript escapes, so the joiner
                 // is a real character in a JS expression rather than a
                 // "\u00b7" printed on every frame line. A stored-feature layer
                 // (points, alert polygons) is fetched at this instant, so the
                 // line calls it a retrieval; "Frame" is kept for imagery,
                 // whose valid time is the image's own.
-                ? <>{layer.kind === 'raster' ? 'Frame' : 'Retrieved'} <time dateTime={frame.time}>{stJohns(frame.time)}</time>{' \u00b7 '}{describeOffset(frame.offsetSeconds)}{lead && <>{' \u00b7 '}{lead}</>}</>
-                : nearest
+                <>{resolution?.kind === 'snapped' ? (layer.kind === 'raster' ? 'Fallback frame' : 'Fallback retrieval') : layer.kind === 'raster' ? 'Frame' : 'Retrieved'} <time dateTime={frame.time}>{stJohns(frame.time)}</time>{' \u00b7 '}{describeOffset(frame.offsetSeconds)}{lead && <>{' \u00b7 '}{lead}</>}</>
+              )}
+              {resolution?.kind === 'blend' && (
+                <>Display composite of <time dateTime={resolution.previous.time}>{stJohns(resolution.previous.time)}</time> and <time dateTime={resolution.next.time}>{stJohns(resolution.next.time)}</time> frames{' \u00b7 '}display only, not evidence</>
+              )}
+              {resolution?.kind === 'none' && (
+                resolution.nearest
                   ? (
-                    // Nothing is drawn: the nearest frame is named with its age
-                    // and the tolerance it failed, and the reader may go to it.
+                    // Nothing is drawn: the reason is named, so is the nearest
+                    // frame with its distance, and the reader may go to it.
                     <span className="stack-noframe">
-                      No frame within {typeof tolerance === 'number' ? `${Math.round(tolerance / 60)} min` : 'the declared tolerance'} of this time.
-                      {' '}Nearest frame <time dateTime={nearest.time}>{stJohns(nearest.time)}</time> ({describeOffset(nearest.offsetSeconds)}){typeof tolerance === 'number' ? `; tolerance ${Math.round(tolerance / 60)} min` : ''}.
-                      {' '}<button type="button" className="stack-jump" onClick={() => onJumpToTime(new Date(nearest.time))}>Jump to nearest frame</button>
+                      Not shown: {resolution.reason}.
+                      {' '}Nearest frame <time dateTime={resolution.nearest.time}>{stJohns(resolution.nearest.time)}</time> ({describeOffset(resolution.nearest.offsetSeconds)}).
+                      {' '}<button type="button" className="stack-jump" onClick={() => resolution.nearest && onJumpToTime(new Date(resolution.nearest.time))}>Jump to nearest frame</button>
                     </span>
                   )
-                  : <span className="stack-noframe">No frame at this time: this layer published none.</span>}
+                  : <span className="stack-noframe">No frame at this time: this layer published none.</span>
+              )}
             </p>
+            {/* The same disclosure sentence the on-map note carries, so the
+                drawer, the note and the text alternative cannot disagree. */}
+            {note && <p className="stack-fallback-note">{note}</p>}
             {!undrawable && <p className="stack-state">{describeState(layer)}</p>}
             <p className="stack-raster">{describeRaster(layer)}</p>
             {/* The evidence basis is the condition on which the proxied route
@@ -829,6 +1255,18 @@ export function MapPanel({
       {fixtureMode && <span className="surface-watermark">FIXTURE</span>}
       {referenceMapError && <p className="reference-map-status" role="status" aria-live="polite">Reference map unavailable · weather evidence remains available</p>}
 
+      {/* One note per active layer not drawn at an exact frame: the fallback
+          frame it shows, the display composite it draws, or why nothing is
+          shown. The disclosure the fallback rules require lives here, on the
+          map itself, not only in the drawer. */}
+      {fallbackNotes.length > 0 && (
+        <div className="map-frame-notes" role="status" aria-live="polite" aria-label="Layers not at the selected time">
+          {fallbackNotes.map(({ layer, text }) => (
+            <p key={layer.id}><b>{layer.title}</b> — {text}</p>
+          ))}
+        </div>
+      )}
+
       {active.some(({ layer }) => layer.raster_available === true) && (
         <aside className="map-legend-rail" aria-label="Active map legends">
           <strong>Active legends</strong>
@@ -881,11 +1319,14 @@ export function MapPanel({
         <h3>Map contents as text</h3>
         {active.length === 0
           ? <p>Basemap only. No meteorological layer is requested.</p>
-          : <ul className="layer-text-list">{active.map(({ layer }) => (
-            <li key={layer.id}>
-              <strong>{layer.title}</strong>: {describeState(layer)} {describeRaster(layer)} {describeEvidenceBasis(layer.evidence_basis, layerGroup(layer))}
-            </li>
-          ))}</ul>}
+          : <ul className="layer-text-list">{resolved.map(({ layer, resolution }) => {
+            const note = layerNoteFor(layer, resolution)
+            return (
+              <li key={layer.id}>
+                <strong>{layer.title}</strong>: {note ? `${note}. ` : ''}{describeState(layer)} {describeRaster(layer)} {describeEvidenceBasis(layer.evidence_basis, layerGroup(layer))}
+              </li>
+            )
+          })}</ul>}
         <dl aria-label={`Evidence at ${selected.name}`}>
           <div><dt>Selected point</dt><dd>{selected.name} · {selected.latitude.toFixed(3)}, {selected.longitude.toFixed(3)}</dd></div>
           {evidence.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}

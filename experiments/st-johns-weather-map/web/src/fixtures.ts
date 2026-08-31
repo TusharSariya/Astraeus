@@ -95,6 +95,8 @@ export const fixtureSnapshot: EvidenceSnapshot = {
   fogRisk: 'evidence_present',
   aqhi: 2,
   upperAir: { jet200Kmh: 145, jet300Kmh: 122, precipitableWaterKgM2: 14.2 },
+  // Deliberately null: no fixture space weather exists, and none is invented.
+  auroraProbabilityPct: null,
   marine: { waveHeightM: 2.3, sstC: 11.8, tide: 'Rising · high 17:42 NDT' },
   warnings: ['Marine wind warning · Avalon waters'],
   story: [
@@ -120,6 +122,7 @@ export const unavailableSnapshot: EvidenceSnapshot = {
   cloud: { low: null, middle: null, high: null }, totalCloudPct: null, cloudLayers: [], pressureHpa: null,
   visibilityKm: null, fogRisk: 'unknown', aqhi: null,
   upperAir: { jet200Kmh: null, jet300Kmh: null, precipitableWaterKgM2: null },
+  auroraProbabilityPct: null,
   marine: { waveHeightM: null, sstC: null, tide: 'Unavailable' },
   warnings: [], story: [], provenance: [],
 }

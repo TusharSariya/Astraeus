@@ -255,7 +255,7 @@ def test_profile_and_cross_section_enforce_same_space_time_boundaries():
 
 def test_openapi_contains_every_planned_endpoint():
     paths = client.get("/openapi.json").json()["paths"]
-    expected = {"catalog", "timeline", "layers", "point", "profile", "cross-section", "sources/status", "refresh", "jobs/{job_id}", "health", "ready"}
+    expected = {"catalog", "timeline", "layers", "point", "profile", "cross-section", "sources/status", "refresh", "jobs/{job_id}", "health", "ready", "space-weather"}
     assert {f"{PREFIX}/{name}" for name in expected} <= set(paths)
 
 

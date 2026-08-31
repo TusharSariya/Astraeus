@@ -18,6 +18,7 @@ from ingest.grib import (
     GribError,
     byte_ranges,
     crop_to_bbox,
+    declare_wmo_total_cloud,
     is_curvilinear,
     normalize_units,
     parse_idx,
@@ -302,3 +303,71 @@ def test_a_pressure_level_field_records_its_own_level_type():
     stripped = strip_message_scalars(_message("gh", level_type="isobaricInhPa", level=500.0))
     assert stripped.attrs["level_type"] == "isobaricInhPa"
     assert stripped.attrs["level_value"] == 500.0
+
+
+# --- WMO-key declaration of total cloud ------------------------------------
+
+def _unknown_cloud(**attr_overrides) -> xarray.Dataset:
+    """A CWAO-style total-cloud message as cfgrib decodes it: name and units
+    ``unknown``, identity carried only in the coded WMO keys."""
+    dataset = xarray.Dataset(
+        {"unknown": (("latitude", "longitude"), numpy.array([[0.0, 100.0]]))},
+        coords={"latitude": numpy.array([47.5]), "longitude": numpy.array([-52.8, -52.7])},
+    )
+    attrs = {
+        "units": "unknown",
+        "GRIB_discipline": 0,
+        "GRIB_parameterCategory": 6,
+        "GRIB_parameterNumber": 1,
+        # ecCodes hands the coded surface 1 back as its abbreviation, exactly
+        # as observed live; the numeric form is pinned in the adapter test.
+        "GRIB_typeOfFirstFixedSurface": "sfc",
+        "GRIB_typeOfSecondFixedSurface": 255,
+    }
+    attrs.update(attr_overrides)
+    dataset["unknown"].attrs = attrs
+    return dataset
+
+
+def test_total_cloud_is_declared_from_its_own_wmo_keys():
+    dataset = _unknown_cloud()
+    assert declare_wmo_total_cloud(dataset) is True
+    attrs = dataset["unknown"].attrs
+    assert attrs["units"] == "percent"
+    assert attrs["original_units"] == "unknown"
+    assert "WMO GRIB2 code table 4.2" in attrs["units_basis"]
+    # Values are untouched: the declaration names the field, it never scales it.
+    assert dataset["unknown"].values.tolist() == [[0.0, 100.0]]
+
+
+def test_a_field_with_declared_units_is_left_alone():
+    dataset = _unknown_cloud(units="%")
+    assert declare_wmo_total_cloud(dataset) is False
+    assert dataset["unknown"].attrs["units"] == "%"
+    assert "units_basis" not in dataset["unknown"].attrs
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"GRIB_parameterCategory": 1},
+        {"GRIB_parameterNumber": 3},
+        {"GRIB_discipline": 2},
+        {"GRIB_typeOfFirstFixedSurface": 8},
+        {"GRIB_parameterNumber": None},
+    ],
+)
+def test_the_wrong_identity_keys_declare_nothing(override):
+    """A 0-100 value range alone is never enough; the coded identity is."""
+    dataset = _unknown_cloud(**override)
+    assert declare_wmo_total_cloud(dataset) is False
+    assert dataset["unknown"].attrs["units"] == "unknown"
+
+
+def test_normalize_units_keeps_the_declared_basis_record():
+    dataset = _unknown_cloud()
+    declare_wmo_total_cloud(dataset)
+    normalized = normalize_units(dataset)
+    attrs = normalized["unknown"].attrs
+    assert attrs["units"] == "percent"
+    assert attrs["original_units"] == "unknown"
