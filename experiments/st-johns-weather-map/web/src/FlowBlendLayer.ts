@@ -5,7 +5,10 @@
  *
  *  Honesty properties, by construction:
  *  - at t=0 and t=1 the output is exactly the real frame, untouched;
- *  - the backward warp uses the negated forward field; the texture's blue
+ *  - the backward warp uses the negated forward field, unless the selected
+ *    method's construction is `intermediate`, which reads the pair's own
+ *    derived backward field instead of assuming the forward one inverts;
+ *    the texture's blue
  *    channel is the server's display weight - how well the two frames warped
  *    to the midpoint agree, gated by the support behind that flow - so cells
  *    where cloud grew or decayed in place rather than moved, and cells with
@@ -37,6 +40,14 @@ export interface FlowBlendState {
    *  the left half, end knot in the right), or null for linear advection. */
   tangentsUrl: string | null
   tangentsScalePixels: number
+  /** Object URL of the pair's BACKWARD (frame1 -> frame0) motion texture, or
+   *  null when the server does not serve one. */
+  backwardUrl: string | null
+  backwardScalePixels: number
+  /** Which construction to evaluate, as the server's method registry named it.
+   *  Selected by a uniform: one compiled program serves every branch, so
+   *  switching methods mid-scrub never rebuilds a shader. */
+  construction?: 'hermite' | 'intermediate' | string
   /** The shared request extent of frames and flow. */
   bounds: { west: number; south: number; east: number; north: number }
   /** Pixel size of the frame textures (for pixels -> uv conversion). */
@@ -66,12 +77,15 @@ uniform sampler2D u_frame0;
 uniform sampler2D u_frame1;
 uniform sampler2D u_flow;
 uniform sampler2D u_tangents; // start knot velocity | end knot velocity
+uniform sampler2D u_backward; // the pair's frame1 -> frame0 field
 uniform float u_t;
 uniform float u_opacity;
 uniform float u_has_flow;
 uniform float u_has_tangents;
+uniform float u_intermediate; // 1 = Super SloMo intermediate flow branch
 uniform vec2 u_flow_scale_uv; // max displacement, in uv units per axis
 uniform vec2 u_tangent_scale_uv;
+uniform vec2 u_backward_scale_uv;
 void main() {
   vec4 flow_sample = texture2D(u_flow, v_uv);
   vec2 flow_uv = (flow_sample.rg * 2.0 - 1.0) * u_flow_scale_uv;
@@ -92,6 +106,22 @@ void main() {
     d0 = vs * u_t + b * u_t * u_t + c * u_t * u_t * u_t;
   }
   vec2 d1 = flow_uv - d0;
+  // The intermediate-flow branch (Super SloMo, Jiang et al. 2018), selected by
+  // a uniform so one compiled program serves every method. Both intermediate
+  // flows are approximated from the forward AND backward derived fields,
+  // instead of the forward one used twice on the assumption that it inverts:
+  //   d0 = -F_{t->0} = (1-t) t F01 - t^2 F10
+  //   d1 =  F_{t->1} = (1-t)^2 F01 - t (1-t) F10
+  // At F10 = -F01 both collapse exactly to t*F and (1-t)*F above, and both
+  // vanish at their own endpoint, so this branch is endpoint-exact too. This
+  // is the same arithmetic as IntermediateFlowMethod.composite in
+  // ingest/derive/methods.py; the two must be changed together or the bench
+  // ranks a construction the map does not draw.
+  if (u_intermediate > 0.5) {
+    vec2 back_uv = (texture2D(u_backward, v_uv).rg * 2.0 - 1.0) * u_backward_scale_uv;
+    d0 = (1.0 - u_t) * u_t * flow_uv - u_t * u_t * back_uv;
+    d1 = (1.0 - u_t) * (1.0 - u_t) * flow_uv - u_t * (1.0 - u_t) * back_uv;
+  }
   float warped = mix(
     texture2D(u_frame0, v_uv - d0).a,
     texture2D(u_frame1, v_uv + d1).a,
@@ -123,7 +153,7 @@ export class FlowBlendLayer implements CustomLayerInterface {
 
   private state: FlowBlendState | null = null
   /** Decoded textures keyed by slot; each remembers the URL it holds. */
-  private textures: { frame0?: LoadedTexture; frame1?: LoadedTexture; flow?: LoadedTexture; tangents?: LoadedTexture } = {}
+  private textures: { frame0?: LoadedTexture; frame1?: LoadedTexture; flow?: LoadedTexture; tangents?: LoadedTexture; backward?: LoadedTexture } = {}
   private loading = new Map<string, Promise<void>>()
 
   constructor(id: string) {
@@ -158,7 +188,7 @@ export class FlowBlendLayer implements CustomLayerInterface {
       position: gl.getAttribLocation(program, 'a_position'),
       uv: gl.getAttribLocation(program, 'a_uv'),
     }
-    for (const name of ['u_matrix', 'u_frame0', 'u_frame1', 'u_flow', 'u_tangents', 'u_t', 'u_opacity', 'u_has_flow', 'u_has_tangents', 'u_flow_scale_uv', 'u_tangent_scale_uv']) {
+    for (const name of ['u_matrix', 'u_frame0', 'u_frame1', 'u_flow', 'u_tangents', 'u_backward', 'u_t', 'u_opacity', 'u_has_flow', 'u_has_tangents', 'u_intermediate', 'u_flow_scale_uv', 'u_tangent_scale_uv', 'u_backward_scale_uv']) {
       this.locations[name] = gl.getUniformLocation(program, name)
     }
     this.positionBuffer = gl.createBuffer()
@@ -192,9 +222,10 @@ export class FlowBlendLayer implements CustomLayerInterface {
     this.ensureTexture('frame1', state.frame1Url)
     if (state.flowUrl) this.ensureTexture('flow', state.flowUrl)
     if (state.tangentsUrl) this.ensureTexture('tangents', state.tangentsUrl)
+    if (state.backwardUrl) this.ensureTexture('backward', state.backwardUrl)
   }
 
-  private ensureTexture(slot: 'frame0' | 'frame1' | 'flow' | 'tangents', url: string): void {
+  private ensureTexture(slot: 'frame0' | 'frame1' | 'flow' | 'tangents' | 'backward', url: string): void {
     const gl = this.gl
     if (!gl) return
     if (this.textures[slot]?.url === url || this.loading.has(`${slot}|${url}`)) return
@@ -225,11 +256,12 @@ export class FlowBlendLayer implements CustomLayerInterface {
     image.src = url
   }
 
-  private wantedUrl(slot: 'frame0' | 'frame1' | 'flow' | 'tangents'): string | null {
+  private wantedUrl(slot: 'frame0' | 'frame1' | 'flow' | 'tangents' | 'backward'): string | null {
     if (!this.state) return null
     if (slot === 'frame0') return this.state.frame0Url
     if (slot === 'frame1') return this.state.frame1Url
     if (slot === 'tangents') return this.state.tangentsUrl
+    if (slot === 'backward') return this.state.backwardUrl
     return this.state.flowUrl
   }
 
@@ -259,6 +291,13 @@ export class FlowBlendLayer implements CustomLayerInterface {
     // Tangents only ever refine a held flow: without the flow texture there
     // is no F to build the cubic on, so the shader stays on its crossfade.
     const tangentsReady = flowReady && !!tangents && tangents.url === state.tangentsUrl
+    // The intermediate construction needs BOTH derived directions. Without the
+    // backward texture there is no second estimate to combine, so the shader
+    // stays on the advection the baseline already draws - one honest rung
+    // down, never a backward field invented by negating the forward one.
+    const backward = state.backwardUrl ? this.textures.backward : undefined
+    const backwardReady = flowReady && !!backward && backward.url === state.backwardUrl
+    const intermediate = state.construction === 'intermediate' && backwardReady
 
     const corners = [
       maplibregl.MercatorCoordinate.fromLngLat({ lng: state.bounds.west, lat: state.bounds.north }),
@@ -273,7 +312,10 @@ export class FlowBlendLayer implements CustomLayerInterface {
     gl.uniform1f(this.locations.u_t, Math.max(0, Math.min(1, state.t)))
     gl.uniform1f(this.locations.u_opacity, Math.max(0, Math.min(1, state.opacity)))
     gl.uniform1f(this.locations.u_has_flow, flowReady ? 1 : 0)
-    gl.uniform1f(this.locations.u_has_tangents, tangentsReady ? 1 : 0)
+    // The intermediate branch replaces the trajectory outright, so the two are
+    // never both on: it reads the pair's own two flows, not a knot velocity.
+    gl.uniform1f(this.locations.u_has_tangents, tangentsReady && !intermediate ? 1 : 0)
+    gl.uniform1f(this.locations.u_intermediate, intermediate ? 1 : 0)
     gl.uniform2f(
       this.locations.u_flow_scale_uv,
       state.flowScalePixels / Math.max(1, state.widthPx),
@@ -283,6 +325,11 @@ export class FlowBlendLayer implements CustomLayerInterface {
       this.locations.u_tangent_scale_uv,
       state.tangentsScalePixels / Math.max(1, state.widthPx),
       state.tangentsScalePixels / Math.max(1, state.heightPx),
+    )
+    gl.uniform2f(
+      this.locations.u_backward_scale_uv,
+      state.backwardScalePixels / Math.max(1, state.widthPx),
+      state.backwardScalePixels / Math.max(1, state.heightPx),
     )
 
     gl.activeTexture(gl.TEXTURE0)
@@ -297,6 +344,9 @@ export class FlowBlendLayer implements CustomLayerInterface {
     gl.activeTexture(gl.TEXTURE3)
     gl.bindTexture(gl.TEXTURE_2D, (tangentsReady ? tangents : frame0).texture)
     gl.uniform1i(this.locations.u_tangents, 3)
+    gl.activeTexture(gl.TEXTURE4)
+    gl.bindTexture(gl.TEXTURE_2D, (backwardReady ? backward : frame0).texture)
+    gl.uniform1i(this.locations.u_backward, 4)
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer)
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
@@ -322,6 +372,30 @@ export function hermiteDisplacement(flow: number, vStart: number, vEnd: number, 
   const b = 3 * flow - 2 * vStart - vEnd
   const c = -2 * flow + vStart + vEnd
   return vStart * t + b * t * t + c * t * t * t
+}
+
+/** CPU reference of the shader's intermediate-flow branch, for tests: the two
+ *  displacements the fragment shader evaluates per component when the
+ *  `intermediate` construction is selected. `flow` is the pair's forward field
+ *  F01 and `backward` its derived backward field F10 (NOT -F01 - reading the
+ *  measured backward field instead of assuming that identity is the whole
+ *  point of the method).
+ *
+ *  Returns `{ d0, d1 }`: frame 0 is sampled at `uv - d0` and frame 1 at
+ *  `uv + d1`, the same convention the Hermite branch uses. `d0(0) = 0` and
+ *  `d1(1) = 0`, so the branch is endpoint-exact whatever the two fields say;
+ *  at `backward === -flow` it is exactly `t*F` and `(1-t)*F`, the construction
+ *  already shipping. Mirrors IntermediateFlowMethod.composite in
+ *  ingest/derive/methods.py. */
+export function intermediateDisplacement(
+  flow: number,
+  backward: number,
+  t: number,
+): { d0: number; d1: number } {
+  return {
+    d0: (1 - t) * t * flow - t * t * backward,
+    d1: (1 - t) * (1 - t) * flow - t * (1 - t) * backward,
+  }
 }
 
 /** CPU reference of the shader's blend, for tests: the exact formula the

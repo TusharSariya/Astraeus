@@ -55,8 +55,11 @@ from .models import (
     HealthResponse,
     Job,
     JobState,
+    InterpolationMethodItem,
     Layer,
     LayersResponse,
+    MethodScore,
+    MethodsResponse,
     PointResponse,
     ProfileResponse,
     ReadyResponse,
@@ -946,7 +949,8 @@ def get_layer_flow(
     north: float = Query(default=AVALON_CORE_BOUNDS["north"], ge=-90, le=90),
     east: float = Query(default=AVALON_CORE_BOUNDS["east"], ge=-180, le=180),
     crs: str = Query(default="EPSG:4326", description="EPSG:4326 (default) or EPSG:3857; must match the frame rasters it will warp"),
-    texture: str = Query(default="motion", description="'motion' (pairwise flow + consistency) or 'tangents' (the pair's Hermite knot velocities, side by side)"),
+    texture: str = Query(default="motion", description="'motion' (pairwise flow + consistency), 'tangents' (the pair's Hermite knot velocities, side by side) or 'backward' (the pair's frame1 -> frame0 field)"),
+    method: str = Query(default=grids.DEFAULT_FLOW_METHOD, description="which interpolation method's fields to serve; see /methods"),
 ) -> Response:
     """The derived motion field between two adjacent published frames.
 
@@ -955,7 +959,9 @@ def get_layer_flow(
     (method and version in the headers), aligned pixel-for-pixel with the
     frame raster of the same bounds and size. `texture=tangents` adds the
     pair's cubic Hermite knot velocities so displayed motion is C1 across
-    real frames. It is a derivation, disclosed as such; it is never sampled,
+    real frames; `texture=backward` adds the pair's frame1 -> frame0 field,
+    for a construction that reads both directions rather than assuming the
+    forward one inverts. It is a derivation, disclosed as such; it is never sampled,
     never a reading, and its absence is answered 404 - the client then falls
     back one honest rung (linear advection, then crossfade) and says so.
     """
@@ -973,7 +979,7 @@ def get_layer_flow(
             store, grid_spec,
             frame_from=frame_from, frame_to=frame_to,
             bounds={"south": south, "west": west, "north": north, "east": east},
-            width=width, height=height, crs=requested_crs, texture=texture,
+            width=width, height=height, crs=requested_crs, texture=texture, method=method,
         )
     except grids.FlowNotAvailable as error:
         raise HTTPException(status_code=404, detail=f"{layer_id}: {error}") from error
@@ -984,6 +990,101 @@ def get_layer_flow(
     except grids.GridUnavailable as error:
         raise HTTPException(status_code=502, detail=f"{layer_id}: no motion field was read: {error}") from error
     return Response(content=image.payload, media_type=image.content_type, headers=image.headers(layer_id=layer_id))
+
+
+@app.get(f"{PREFIX}/methods", response_model=MethodsResponse)
+def get_interpolation_methods() -> MethodsResponse:
+    """The interpolation bench: what the map can be switched between, and how each scores.
+
+    The registry is the server's, so the menu can never offer a method the
+    derivation does not publish. Scores are read from the motion artifacts'
+    own provenance - every enabled method is derived on the same held-out
+    frames of the same cycle, which is what makes them comparable. A method
+    with no scores has not met real frames yet; that is stated by an empty
+    list rather than by a zero.
+    """
+    catalogue = grids.flow_method_catalogue()
+    if not catalogue:
+        return MethodsResponse(
+            data_mode=DataMode.UNAVAILABLE,
+            default_method=grids.DEFAULT_FLOW_METHOD,
+            methods=[],
+            notices=["the interpolation method registry could not be read; the map falls back to the default construction"],
+        )
+    items = {
+        entry["id"]: InterpolationMethodItem(**entry, published=False, scores=[])
+        for entry in catalogue
+    }
+    if fixture_mode():
+        return MethodsResponse(
+            data_mode=DataMode.FIXTURE,
+            default_method=grids.DEFAULT_FLOW_METHOD,
+            methods=list(items.values()),
+            notices=["fixture mode: no motion artifact has been scored"],
+        )
+    store = live_store()
+    if store is None:
+        return MethodsResponse(
+            data_mode=DataMode.UNAVAILABLE,
+            default_method=grids.DEFAULT_FLOW_METHOD,
+            methods=list(items.values()),
+            notices=["no live artifact store is reachable; no method can report a measured score"],
+        )
+    notices: list[str] = []
+    try:
+        artifacts = [
+            artifact for artifact in store.current()
+            if artifact.logical_name == grids.CLOUD_MOTION_LOGICAL_NAME
+        ]
+    except Exception:
+        LOGGER.exception("published motion artifacts could not be listed for the method bench")
+        return MethodsResponse(
+            data_mode=DataMode.UNAVAILABLE,
+            default_method=grids.DEFAULT_FLOW_METHOD,
+            methods=list(items.values()),
+            notices=["the live artifact store raised while listing published motion artifacts"],
+        )
+    for artifact in artifacts:
+        provenance = artifact.provenance or {}
+        version = provenance.get("derivation_version")
+        per_variable = ((provenance.get("quality") or {}).get("per_variable") or {})
+        for variable, block in per_variable.items():
+            spec = next(
+                (item for item in grids.RENDERED_GRID_SPECS
+                 if item.source_id == artifact.source_id and item.variable == variable),
+                None,
+            )
+            for method_id, measured in (block.get("per_method") or {}).items():
+                item = items.get(method_id)
+                if item is None:
+                    # Published by a derivation this API does not know. Said
+                    # out loud rather than dropped: the two are out of step.
+                    notices.append(f"{artifact.source_id} publishes an unknown interpolation method {method_id!r}")
+                    continue
+                item.published = True
+                skill = measured.get("leave_one_out")
+                if not skill:
+                    continue
+                item.scores.append(MethodScore(
+                    layer_id=spec.layer_id if spec else f"{artifact.source_id}:{variable}",
+                    source_id=artifact.source_id,
+                    variable=variable,
+                    held_out_frames=int(skill.get("held_out_frames", 0)),
+                    improvement_over_reversed_flow=float(skill.get("improvement_over_reversed_flow", 0.0)),
+                    improvement_over_crossfade=float(skill.get("improvement_over_crossfade", 0.0)),
+                    midpoint_mae_percent=float(skill.get("midpoint_mae_percent", 0.0)),
+                    midpoint_ssim=skill.get("midpoint_ssim"),
+                    advect_weight_median=measured.get("advect_weight_median"),
+                    derivation_version=str(version) if version else None,
+                ))
+    if not artifacts:
+        notices.append("no cloud-motion artifact is currently published; no method has been scored")
+    return MethodsResponse(
+        data_mode=DataMode.LIVE if artifacts else DataMode.UNAVAILABLE,
+        default_method=grids.DEFAULT_FLOW_METHOD,
+        methods=list(items.values()),
+        notices=notices,
+    )
 
 
 @app.get(f"{PREFIX}/layers/{{layer_id}}/legend", responses={501: {"model": ErrorResponse}})

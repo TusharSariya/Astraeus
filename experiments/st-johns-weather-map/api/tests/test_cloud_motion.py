@@ -19,10 +19,19 @@ import xarray
 
 pytest.importorskip("cv2")
 
+from ingest.derive.methods import (
+    BaselineMethod,
+    IntermediateFlowMethod,
+    PairMotion,
+    _score_one,
+    method_by_id,
+)
 from ingest.derive.cloud_motion import (
+    DEFAULT_METHOD_ID,
     LOGICAL_NAME,
     MIN_HELD_OUT_IMPROVEMENT,
     VERSION,
+    enabled_methods,
     _consistency,
     _development_agreement,
     _dis_flow,
@@ -235,6 +244,98 @@ def test_leave_one_out_beats_a_crossfade_on_a_moving_field():
     assert skill["improvement_over_reversed_flow"] > 0.1
 
 
+def wide_blob(centre_col: float, *, size: int = 96, sigma: float = 7.0) -> numpy.ndarray:
+    """One blob on a grid wide enough that a warp never runs off an edge.
+
+    Edge clamping in ``_warp_nearest`` is honest behaviour at a grid boundary,
+    but it is not what these tests are measuring, and on a 64-cell grid it was
+    larger than the difference between the two methods.
+    """
+    return blob_field(size, size, centre=(size // 2, centre_col), sigma=sigma)
+
+
+def held_pair(forward: float, backward: float, *, size: int = 96) -> PairMotion:
+    """A pair whose two derived directions are supplied rather than estimated.
+
+    The claim of intermediate-flow is about the COMPOSITE, so the two flows are
+    handed in directly: DIS would decide both, and there would be no way to
+    construct the disagreement the method exists to exploit.
+    """
+    return PairMotion(
+        flow01=uniform_flow(forward, 0.0, shape=(size, size)),
+        flow10=uniform_flow(backward, 0.0, shape=(size, size)),
+        confidence=numpy.ones((size, size)),
+        support=numpy.ones((size, size)),
+        advect_weight=numpy.ones((size, size)),
+    )
+
+
+def test_intermediate_flow_is_registered_with_its_own_shader():
+    method = method_by_id("intermediate-flow")
+    assert method is not None
+    assert method.enabled and not method.generative
+    # A new client construction: the fields are the baseline's, but they are
+    # combined differently, so the shader branch must be named separately.
+    assert method.shader == "intermediate"
+    assert method.shader != BaselineMethod.shader
+
+
+def test_intermediate_flow_is_endpoint_exact():
+    # Non-negotiable for every method on the bench: at a real instant the real
+    # frame shows untouched, whatever the two flows claim - including flows
+    # that disagree wildly with each other.
+    previous, following = wide_blob(30), wide_blob(42)
+    motion = held_pair(14.0, 3.0)
+    method = IntermediateFlowMethod()
+    assert numpy.array_equal(method.composite(previous, following, motion, 0.0), previous)
+    assert numpy.array_equal(method.composite(previous, following, motion, 1.0), following)
+
+
+def test_intermediate_flow_reduces_to_the_baseline_when_the_flow_inverts():
+    # F10 = -F01 is exactly the assumption the shipped construction makes. Where
+    # it holds, the quadratic forms collapse to it, so this method can only ever
+    # differ where the two measured directions actually disagree.
+    previous, following = wide_blob(30), wide_blob(42)
+    motion = held_pair(12.0, -12.0)
+    for fraction in (0.25, 0.5, 0.75):
+        baseline = BaselineMethod().composite(previous, following, motion, fraction)
+        intermediate = IntermediateFlowMethod().composite(previous, following, motion, fraction)
+        assert numpy.allclose(baseline, intermediate, atol=1e-12)
+
+
+def test_intermediate_flow_matches_the_baseline_on_a_purely_translating_field():
+    # The same held-out harness both methods are ranked by, on a field that
+    # genuinely translates and whose forward and backward flows therefore very
+    # nearly invert. The method must not cost anything here: it is the
+    # disagreement case it is for.
+    frames = [wide_blob(20 + 8 * step) for step in range(5)]
+    baseline = _interpolation_skill(frames, method=BaselineMethod(), variable="total_cloud")
+    intermediate = _interpolation_skill(frames, method=IntermediateFlowMethod(), variable="total_cloud")
+    assert baseline is not None and intermediate is not None
+    assert intermediate["midpoint_mae_percent"] <= baseline["midpoint_mae_percent"] + 1e-3
+    assert intermediate["midpoint_ssim"] >= baseline["midpoint_ssim"] - 1e-4
+    assert intermediate["improvement_over_reversed_flow"] > MIN_HELD_OUT_IMPROVEMENT
+
+
+def test_intermediate_flow_beats_the_baseline_when_the_two_directions_disagree():
+    # The whole claim, deliberately constructed. Content really moves 12 cells
+    # east, but both derived directions carry the same 2-cell eastward bias:
+    # F01 = +14 and F10 = -10 rather than the -14 that would invert it. The
+    # baseline uses F01 alone and drags everything two cells too far; the
+    # intermediate form's (1-t)F01 - t F10 cancels the shared bias at the
+    # midpoint and lands on the frame that was held out.
+    previous, truth, following = wide_blob(30), wide_blob(36), wide_blob(42)
+    motion = held_pair(14.0, -10.0)
+    baseline_mae, baseline_ssim = _score_one(BaselineMethod().composite(previous, following, motion, 0.5), truth)
+    intermediate_mae, intermediate_ssim = _score_one(
+        IntermediateFlowMethod().composite(previous, following, motion, 0.5), truth
+    )
+    assert intermediate_mae < baseline_mae
+    assert intermediate_ssim >= baseline_ssim
+    # Not a marginal win: the bias is removed rather than reduced.
+    assert intermediate_mae < 0.1 * baseline_mae
+
+
 def test_leave_one_out_is_absent_not_zero_when_nothing_can_be_held_out():
     assert _interpolation_skill([blob_field(), blob_field()]) is None
 
@@ -324,11 +425,17 @@ def test_derive_publishes_flow_with_full_derivation_provenance(tmp_path: Path):
         stored = xarray.open_zarr(zip_store, consolidated=False)
         for suffix in ("u01", "v01", "u10", "v10", "confidence", "advect_weight", "vs_u", "vs_v", "ve_u", "ve_v"):
             assert f"total_cloud_{suffix}" in stored.data_vars
+        # Every enabled method is published, on its own axis, and the default
+        # is first so a reader that ignores the axis still gets the baseline.
+        published = [str(value) for value in stored["method"].values]
+        assert published == [method.id for method in enabled_methods()]
+        assert published[0] == DEFAULT_METHOD_ID
+        baseline = stored.isel(method=published.index(DEFAULT_METHOD_ID))
         # Constant velocity (a 4-cell roll per frame): the Hermite tangents
         # agree with the segment flow, so playback matches linear advection.
         core = blob_field() > 20.0
         assert float(numpy.median(numpy.abs(
-            stored["total_cloud_vs_u"].values[0][core] - stored["total_cloud_u01"].values[0][core]
+            baseline["total_cloud_vs_u"].values[0][core] - baseline["total_cloud_u01"].values[0][core]
         ))) < 1.0
         assert stored.sizes["pair"] == 2
         assert stored.attrs["derivation_version"] == VERSION

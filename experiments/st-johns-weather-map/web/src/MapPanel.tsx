@@ -4,7 +4,7 @@ import { GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer } fro
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, stJohnsTime } from './api'
+import { DEFAULT_INTERPOLATION_METHOD, describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, stJohnsTime } from './api'
 import { flowObjectUrls } from './api'
 import type { FlowTexture, FrameResolution, RasterImage } from './api'
 import { FlowBlendLayer } from './FlowBlendLayer'
@@ -33,6 +33,10 @@ interface MapPanelProps {
    *  frames is drawn as both real retrieved frames composited by opacity.
    *  Display derivation only — it never touches features or point data. */
   interpolate: boolean
+  /** Which interpolation construction to draw with, from the server's bench.
+   *  Named in the disclosure whenever it is not the default, so a screenshot
+   *  is never ambiguous about what produced the picture. */
+  interpolationMethod?: string
   selected: LocationPoint
   onSelect: (point: LocationPoint) => void
   /** Layer list exactly as published by `/layers`. No layer is invented here. */
@@ -342,7 +346,8 @@ function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: n
 }
 
 export function MapPanel({
-  label, field, comparison, selected, onSelect, validTime, reference, interpolate, fixtureMode = false,
+  label, field, comparison, selected, onSelect, validTime, reference, interpolate,
+  interpolationMethod = DEFAULT_INTERPOLATION_METHOD, fixtureMode = false,
   layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, theme = 'dark', initialDrawerOpen = false,
 }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -495,11 +500,20 @@ export function MapPanel({
         // note names the method actually applied to this pair.
         const held = [...(flowCacheRef.current.get(layer.id)?.entries() ?? [])]
           .find(([key]) => key.startsWith(`${resolution.previous.time}->${resolution.next.time}|`))?.[1]
-        const method = held && held !== 'absent'
-          ? (held.tangentsUrl
+        const construction = held && held !== 'absent'
+          ? (held.shader === 'intermediate' && held.backwardUrl
+            ? 'advection-corrected along intermediate motion approximated from both the forward and the backward field derived for this pair, dissolving where the two frames say cloud grew or decayed in place rather than moved'
+            : held.tangentsUrl
             ? 'advection-corrected along motion fitted through neighbouring published frames (C1 trajectories), dissolving where the two frames say cloud grew or decayed in place rather than moved'
             : 'advection-corrected along a motion field derived from the two published frames, dissolving where cloud grew or decayed in place rather than moved')
           : 'a linear cross-dissolve; no derived motion field for this pair'
+        // Any construction other than the default is named outright: an
+        // admin menu that silently changes what is drawn is the one thing
+        // this map's governing rule does not tolerate.
+        const served = held && held !== 'absent' ? held.method : interpolationMethod
+        const method = served && served !== DEFAULT_INTERPOLATION_METHOD
+          ? `${construction}; interpolation method "${served}"`
+          : construction
         return `temporally interpolated for display between the ${stJohnsTime(resolution.previous.time)} and ${stJohnsTime(resolution.next.time)} NT frames (${method}) — display only, not evidence`
       }
     }
@@ -699,9 +713,11 @@ export function MapPanel({
 
     // One motion texture per (layer, frame pair, extent): fetched once, a 404
     // remembered as the disclosed crossfade fallback. Never blocks a frame.
+    // The method is part of the key: two methods are two different published
+    // fields for the same pair, so switching must fetch rather than reuse.
     const flowPairKey = (layer: LayerItem, from: string, to: string) => {
       const request = requestExtentFor(layer, extent)
-      return `${from}->${to}|${request.south},${request.west},${request.north},${request.east},${Math.round(request.widthPx)}x${Math.round(request.heightPx)}`
+      return `${from}->${to}|${interpolationMethod}|${request.south},${request.west},${request.north},${request.east},${Math.round(request.widthPx)}x${Math.round(request.heightPx)}`
     }
     const ensureFlow = (layer: LayerItem, from: string, to: string): Promise<unknown> => {
       const key = flowPairKey(layer, from, to)
@@ -709,7 +725,7 @@ export function MapPanel({
       const inflightKey = `${layer.id}|${key}`
       if (flowInflightRef.current.has(inflightKey)) return Promise.resolve()
       flowInflightRef.current.add(inflightKey)
-      return loadLayerFlow(layer, { ...requestExtentFor(layer, extent), from, to }, controller.signal)
+      return loadLayerFlow(layer, { ...requestExtentFor(layer, extent), from, to }, controller.signal, interpolationMethod)
         .then(({ flow, absent }) => {
           if (!flow && !absent) return
           let held = flowCacheRef.current.get(layer.id)
@@ -903,6 +919,9 @@ export function MapPanel({
       flowScalePixels: number
       tangentsUrl: string | null
       tangentsScalePixels: number
+      backwardUrl: string | null
+      backwardScalePixels: number
+      construction: string
       bounds: { west: number; south: number; east: number; north: number }
       widthPx: number
       heightPx: number
@@ -934,6 +953,12 @@ export function MapPanel({
           flowScalePixels: flow && flow !== 'absent' ? flow.scalePixels : 0,
           tangentsUrl: flow && flow !== 'absent' ? flow.tangentsUrl : null,
           tangentsScalePixels: flow && flow !== 'absent' ? flow.tangentsScalePixels : 0,
+          backwardUrl: flow && flow !== 'absent' ? flow.backwardUrl : null,
+          backwardScalePixels: flow && flow !== 'absent' ? flow.backwardScalePixels : 0,
+          // Which construction the shader evaluates is the server's answer,
+          // read from the headers of the fields it actually served - never
+          // inferred from which textures happened to load.
+          construction: flow && flow !== 'absent' ? flow.shader : 'hermite',
           bounds: { west: request.west, south: request.south, east: request.east, north: request.north },
           widthPx: request.widthPx,
           heightPx: request.heightPx,
@@ -958,7 +983,7 @@ export function MapPanel({
     })
     const contentOf = (slot: ImageEntry | FlowEntry) => slot.kind === 'image'
       ? `${slot.url}|${slot.opacity}|${slot.coordinates.flat().join(',')}`
-      : `${slot.frame0Url}|${slot.frame1Url}|${slot.flowUrl}|${slot.flowScalePixels}|${slot.tangentsUrl}|${slot.tangentsScalePixels}|${slot.t}|${slot.opacity}|${Object.values(slot.bounds).join(',')}`
+      : `${slot.frame0Url}|${slot.frame1Url}|${slot.flowUrl}|${slot.flowScalePixels}|${slot.tangentsUrl}|${slot.tangentsScalePixels}|${slot.backwardUrl}|${slot.backwardScalePixels}|${slot.construction}|${slot.t}|${slot.opacity}|${Object.values(slot.bounds).join(',')}`
 
     const updateFlowLayer = (slot: FlowEntry) => {
       flowLayersRef.current.get(slot.id)?.update({
@@ -968,6 +993,9 @@ export function MapPanel({
         flowScalePixels: slot.flowScalePixels,
         tangentsUrl: slot.tangentsUrl,
         tangentsScalePixels: slot.tangentsScalePixels,
+        backwardUrl: slot.backwardUrl,
+        backwardScalePixels: slot.backwardScalePixels,
+        construction: slot.construction,
         bounds: slot.bounds,
         widthPx: slot.widthPx,
         heightPx: slot.heightPx,

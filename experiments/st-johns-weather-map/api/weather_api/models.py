@@ -247,6 +247,54 @@ class LayersResponse(StrictModel):
     notices: list[str] = Field(default_factory=list)
 
 
+class MethodScore(StrictModel):
+    """One method's measured skill for one layer's variable, as published.
+
+    Every field here is read out of a motion artifact's provenance. A score
+    that was not measured is absent, never a zero - a method with no scores
+    has not been derived against real frames yet, which is a different fact
+    from a method that was measured and lost.
+    """
+
+    layer_id: str
+    source_id: str
+    variable: str
+    held_out_frames: int
+    #: Improvement over the same construction with its motion reversed. The
+    #: honest margin: beating a plain crossfade is available to any blur.
+    improvement_over_reversed_flow: float
+    improvement_over_crossfade: float
+    midpoint_mae_percent: float
+    midpoint_ssim: float | None = None
+    advect_weight_median: float | None = None
+    derivation_version: str | None = None
+
+
+class InterpolationMethodItem(StrictModel):
+    """One entry in the interpolation bench."""
+
+    id: str
+    title: str
+    summary: str
+    #: The client construction these fields are meant for.
+    shader: str
+    enabled: bool
+    #: True where the disclosure must say the pixels were generated rather
+    #: than retrieved. Never true without an owner-approved carve-out.
+    generative: bool = False
+    #: Whether any currently published motion artifact carries this method.
+    published: bool = False
+    scores: list[MethodScore] = Field(default_factory=list)
+
+
+class MethodsResponse(StrictModel):
+    data_mode: DataMode = DataMode.FIXTURE
+    operational: Literal[False] = False
+    default_method: str
+    methods: list[InterpolationMethodItem]
+    notices: list[str] = Field(default_factory=list)
+
+
 class Selection(StrictModel):
     mode: Literal["consensus", "fallback", "evidence_only"]
     selected_source_id: str | None

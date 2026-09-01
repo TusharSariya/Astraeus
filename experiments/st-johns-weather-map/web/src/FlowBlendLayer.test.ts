@@ -9,7 +9,7 @@ vi.mock('maplibre-gl', () => ({
   default: { MercatorCoordinate: { fromLngLat: (point: { lng: number; lat: number }) => ({ x: point.lng, y: point.lat }) } },
 }))
 
-import { FlowBlendLayer, blendReference, hermiteDisplacement } from './FlowBlendLayer'
+import { FlowBlendLayer, blendReference, hermiteDisplacement, intermediateDisplacement } from './FlowBlendLayer'
 
 describe('hermiteDisplacement (the fragment shader cubic)', () => {
   it('is endpoint-exact: d0(0) = 0 and d0(1) = F, whatever the tangents claim', () => {
@@ -42,6 +42,43 @@ describe('hermiteDisplacement (the fragment shader cubic)', () => {
     const mid = hermiteDisplacement(3, 2, 4, 0.5)
     expect(mid).toBeLessThan(1.5)
     expect(mid).toBeGreaterThan(0)
+  })
+})
+
+describe('intermediateDisplacement (the fragment shader intermediate branch)', () => {
+  it('is endpoint-exact: each frame is sampled unshifted at its own instant', () => {
+    // Two flows that disagree badly (the round trip does not invert at all):
+    // the branch must still show each real frame untouched at its own end.
+    expect(intermediateDisplacement(5, 1, 0).d0).toBeCloseTo(0, 10)
+    expect(intermediateDisplacement(5, 1, 1).d1).toBeCloseTo(0, 10)
+    // And the blend weight at each endpoint is entirely that frame's, so the
+    // other frame's displacement there is never displayed.
+    expect(intermediateDisplacement(5, 1, 1).d0).toBeCloseTo(-1, 10)
+  })
+
+  it('reduces exactly to the shipped construction when F10 = -F01', () => {
+    // The current shader assumes the forward flow inverts. Where it does, this
+    // branch must be indistinguishable from it - so any visible difference is
+    // a measured disagreement between the two derived directions, never a new
+    // trajectory model applied everywhere.
+    for (const t of [0, 0.1, 0.25, 0.5, 0.9, 1]) {
+      const { d0, d1 } = intermediateDisplacement(4, -4, t)
+      expect(d0).toBeCloseTo(4 * t, 10)
+      expect(d1).toBeCloseTo(4 * (1 - t), 10)
+    }
+  })
+
+  it('splits the difference between the two directions where they disagree', () => {
+    // F01 = 14 and F10 = -10: both directions carry the same +2 bias. At the
+    // midpoint the construction reads (F01 - F10)/2 = 12 - the motion without
+    // the shared bias - where the forward field alone would carry 14.
+    const { d0, d1 } = intermediateDisplacement(14, -10, 0.5)
+    expect(d0).toBeCloseTo(6, 10)
+    expect(d1).toBeCloseTo(6, 10)
+    expect(d0 + d1).toBeCloseTo(12, 10)
+    // The shipped construction moves the pair 14 cells apart across the same
+    // interval, which is the two-cell error this method removes.
+    expect(0.5 * 14 + 0.5 * 14).toBeCloseTo(14, 10)
   })
 })
 
@@ -83,6 +120,7 @@ describe('FlowBlendLayer before GL exists', () => {
     layer.update({
       frame0Url: 'blob:a', frame1Url: 'blob:b', flowUrl: null, flowScalePixels: 0,
       tangentsUrl: null, tangentsScalePixels: 0,
+      backwardUrl: null, backwardScalePixels: 0, construction: 'intermediate',
       bounds: { west: -55, south: 46, east: -50, north: 49 }, widthPx: 100, heightPx: 100,
       t: 0.5, opacity: 0.85,
     })

@@ -5,7 +5,8 @@
  *  playback clock live in one place (App) for both this and the expert
  *  slider. */
 
-import { stJohnsTime, type FrameMarkers } from './api'
+import { stJohnsTime, type FrameMarkers, type InterpolationMethodItem } from './api'
+import { MethodMenu } from './MethodMenu'
 import { describeSpeed, PLAYBACK_SPEEDS, type PlaybackDirection, type PlaybackSpeed } from './playback'
 
 export interface TimelineDockProps {
@@ -38,6 +39,14 @@ export interface TimelineDockProps {
   onToggleDirection: () => void
   interpolate: boolean
   onToggleInterpolate: () => void
+  /** The interpolation bench, exactly as the server publishes it, plus the
+   *  method currently drawn. Offered next to the interpolation toggle because
+   *  it settles the same question: what is shown between two real frames. */
+  methods: InterpolationMethodItem[]
+  method: string
+  onSelectMethod: (methodId: string) => void
+  methodNotices: string[]
+  methodError: string | null
   storyOpen: boolean
   onToggleStory: () => void
   storyToggleRef: React.RefObject<HTMLButtonElement | null>
@@ -63,7 +72,9 @@ export function TimelineDock({
   offsetMinutes, scrubOffset, validClock, backMinutes, forwardMinutes, snapping, ariaValueText,
   onScrubMinutes, onScrubKeyDown, onQuickJump, windowStartMs, windowEndMs, markers, onJumpToInstant,
   playing, speed, direction, onTogglePlay, onFaster, onSlower, onToggleDirection,
-  interpolate, onToggleInterpolate, storyOpen, onToggleStory, storyToggleRef,
+  interpolate, onToggleInterpolate,
+  methods, method, onSelectMethod, methodNotices, methodError,
+  storyOpen, onToggleStory, storyToggleRef,
 }: TimelineDockProps) {
   const span = windowEndMs - windowStartMs
   // One swatch per layer that actually has a tick on the rail, in the order
@@ -93,6 +104,15 @@ export function TimelineDock({
         >
           Interpolate forecast · display only
         </button>
+        {interpolate && methods.length > 0 && (
+          <MethodMenu
+            methods={methods}
+            active={method}
+            onSelect={onSelectMethod}
+            notices={methodNotices}
+            error={methodError}
+          />
+        )}
         <button
           type="button"
           ref={storyToggleRef}

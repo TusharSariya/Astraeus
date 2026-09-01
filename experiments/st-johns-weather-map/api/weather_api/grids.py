@@ -757,9 +757,53 @@ TANGENT_SEMANTICS_DOC = (
     "retrieved frames; display derivation - not provider output, not evidence"
 )
 
+BACKWARD_SEMANTICS_DOC = (
+    "the pair's BACKWARD derived motion, frame 1 -> frame 0: R/G the vector in output pixels over "
+    "the frame interval, quantized to 8 bits over the declared scale exactly as the motion texture "
+    "is, blue unused, alpha opaque - a vector component never rides the alpha channel, where "
+    "browser premultiplication would destroy its precision near zero; it is derived from the same "
+    "two published frames as the forward field and is served so a construction can approximate the "
+    "intermediate flows from both directions instead of assuming the forward field inverts; "
+    "display derivation - not provider output, not evidence"
+)
+
 #: The texture variants /flow serves. ``motion`` is the pairwise flow the
-#: first carve-out approved; ``tangents`` is the C1 Hermite extension.
-FLOW_TEXTURES = ("motion", "tangents")
+#: first carve-out approved; ``tangents`` is the C1 Hermite extension;
+#: ``backward`` is the frame1 -> frame0 field, derived and stored since the
+#: first cycle and unserved until a method had a use for it.
+FLOW_TEXTURES = ("motion", "tangents", "backward")
+
+#: What each texture's ``X-Weather-Render-Semantics`` says, verbatim.
+FLOW_SEMANTICS_BY_TEXTURE = {
+    "motion": FLOW_SEMANTICS_DOC,
+    "tangents": TANGENT_SEMANTICS_DOC,
+    "backward": BACKWARD_SEMANTICS_DOC,
+}
+
+#: The interpolation method served when a request names none. Mirrors
+#: ``ingest.derive.methods.DEFAULT_METHOD_ID``, which is imported lazily
+#: everywhere else because the ingest package is a runtime companion rather
+#: than an import-time dependency of the API; a test pins the two together.
+DEFAULT_FLOW_METHOD = "baseline"
+
+
+def flow_method_catalogue() -> list[dict[str, Any]]:
+    """The bench registry, or an empty list where ingest is unavailable."""
+    try:
+        from ingest.derive.methods import method_catalogue  # noqa: PLC0415
+    except Exception:  # noqa: BLE001 - the API must not die of a missing bench
+        return []
+    return method_catalogue()
+
+
+def flow_shader_for(method_id: str) -> str:
+    """Which client construction a method's fields are meant for.
+
+    The registry answers, never the client: a method whose shader the API
+    cannot name falls back to the construction every method's fields support,
+    which is the Hermite advection the first carve-out approved.
+    """
+    return next((str(item.get("shader") or "hermite") for item in flow_method_catalogue() if item["id"] == method_id), "hermite")
 
 
 class FlowNotAvailable(LookupError):
@@ -780,6 +824,12 @@ class FlowImage:
     method: str
     version: str
     texture: str = "motion"
+    #: The bench method these fields were derived by, named so a screenshot
+    #: is never ambiguous about which construction produced it.
+    interpolation_method: str = DEFAULT_FLOW_METHOD
+    #: The client construction that method's fields are meant for, from the
+    #: server's own registry.
+    shader: str = "hermite"
 
     def headers(self, *, layer_id: str) -> dict[str, str]:
         return {
@@ -789,7 +839,12 @@ class FlowImage:
             "X-Weather-Image-Basis": "derived_motion",
             "X-Weather-Evidence-Basis": "published_artifact",
             "X-Weather-Flow-Texture": self.texture,
-            "X-Weather-Render-Semantics": TANGENT_SEMANTICS_DOC if self.texture == "tangents" else FLOW_SEMANTICS_DOC,
+            "X-Weather-Interpolation-Method": self.interpolation_method,
+            "X-Weather-Render-Semantics": FLOW_SEMANTICS_BY_TEXTURE.get(self.texture, FLOW_SEMANTICS_DOC),
+            # Which client construction these fields are meant for. The
+            # registry is the server's, so the shader is never inferred from
+            # which textures happened to load.
+            "X-Weather-Flow-Shader": self.shader,
             "X-Weather-Derivation": self.method,
             "X-Weather-Derivation-Version": self.version,
             "X-Weather-Flow-Scale": f"{self.scale_pixels:.4f}",
@@ -821,15 +876,25 @@ def render_flow(
     height: int,
     crs: str = "EPSG:4326",
     texture: str = "motion",
+    method: str = DEFAULT_FLOW_METHOD,
 ) -> FlowImage:
     """One derived-motion texture for one adjacent frame pair.
+
+    ``method`` selects one interpolation method from the bench. Every enabled
+    method is derived each cycle, so the switch is a selection among published
+    fields and never a recomputation. A method the artifact does not carry
+    raises :class:`FlowNotAvailable` naming it, which is the disclosed
+    crossfade rung rather than a silent substitution of another method.
 
     ``texture="motion"`` is the pairwise flow (R/G vector, B consistency).
     ``texture="tangents"`` is the pair's two cubic Hermite knot velocities,
     side by side in one double-width image (left = start knot, right = end
     knot), alpha opaque - a vector component never rides the alpha channel,
     where browser premultiplication would destroy its precision near zero.
-    Both are resampled with the same pixel-to-cell rule as the frame raster,
+    ``texture="backward"`` is the pair's frame1 -> frame0 field, R/G on the
+    same rule, for a construction that approximates the intermediate flows
+    from both directions rather than assuming the forward one inverts.
+    All are resampled with the same pixel-to-cell rule as the frame raster,
     so their pixels align with frame pixels, vectors converted from grid
     cells to output pixels of exactly this request. A pair with no derived
     motion - or an artifact predating tangents - raises
@@ -842,6 +907,9 @@ def render_flow(
         raise ValueError(f"crs must be one of {', '.join(SUPPORTED_GRID_CRS)}, not {crs!r}")
     if texture not in FLOW_TEXTURES:
         raise ValueError(f"texture must be one of {', '.join(FLOW_TEXTURES)}, not {texture!r}")
+    known = [item["id"] for item in flow_method_catalogue()] or [DEFAULT_FLOW_METHOD]
+    if method not in known:
+        raise ValueError(f"method must be one of {', '.join(known)}, not {method!r}")
     south, west = float(bounds["south"]), float(bounds["west"])
     north, east = float(bounds["north"]), float(bounds["east"])
     if south >= north or west >= east:
@@ -883,8 +951,25 @@ def render_flow(
             f"no derived motion pair covers {wanted_from.isoformat()} -> {wanted_to.isoformat()}; "
             "motion exists only between adjacent published frames"
         )
+    # An artifact derived before the bench has no method axis at all; it is
+    # read as the single method it was, which is the baseline.
+    published_methods = (
+        [str(value) for value in motion_dataset["method"].values]
+        if "method" in motion_dataset.coords or "method" in motion_dataset.dims
+        else [DEFAULT_FLOW_METHOD]
+    )
+    if method not in published_methods:
+        raise FlowNotAvailable(
+            f"the published cloud-motion artifact carries no {method!r} method "
+            f"(it has {', '.join(published_methods)})"
+        )
+    method_index = published_methods.index(method)
     if texture == "tangents":
         suffixes = ("vs_u", "vs_v", "ve_u", "ve_v")
+    elif texture == "backward":
+        # The frame1 -> frame0 field, alone: the blue channel would only
+        # repeat the display weight the motion texture already carries.
+        suffixes = ("u10", "v10")
     else:
         # The blue channel is the weight the client mixes advection against a
         # crossfade on. Newer artifacts publish the display weight (support
@@ -898,7 +983,10 @@ def render_flow(
     if any(name not in motion_dataset.data_vars for name in names):
         raise FlowNotAvailable(
             f"the cloud-motion artifact carries no {texture} data for {spec.variable}"
-            + (" (it predates the Hermite derivation)" if texture == "tangents" else "")
+            + {
+                "tangents": " (it predates the Hermite derivation)",
+                "backward": " (it predates the stored backward flow)",
+            }.get(texture, "")
         )
 
     lat_name = "latitude" if "latitude" in surface_dataset.coords else "lat"
@@ -913,10 +1001,14 @@ def render_flow(
         lon_wrapped = ((lon_values + 180.0) % 360.0) - 180.0
         lat2d, lon2d = numpy.meshgrid(lat_values, lon_wrapped, indexing="ij")
 
-    fields = {
-        suffix: numpy.asarray(motion_dataset[f"{spec.variable}_{suffix}"].isel(pair=pair_index).values, dtype="float64")
-        for suffix in suffixes
-    }
+    def one_field(suffix: str) -> Any:
+        array = motion_dataset[f"{spec.variable}_{suffix}"]
+        selector = {"pair": pair_index}
+        if "method" in array.dims:
+            selector["method"] = method_index
+        return numpy.asarray(array.isel(selector).values, dtype="float64")
+
+    fields = {suffix: one_field(suffix) for suffix in suffixes}
     if any(field.shape != lat2d.shape for field in fields.values()):
         raise GridUnavailable("the motion grid does not match the stored grid it claims to describe")
 
@@ -962,6 +1054,16 @@ def render_flow(
         rgba[:, width:, 0] = quantized(end_dx, scale)
         rgba[:, width:, 1] = quantized(end_dy, scale)
         rgba[..., 3] = 255
+    elif texture == "backward":
+        # Same quantization and same cell-to-pixel conversion as the motion
+        # texture, so a client can mix the two fields componentwise after
+        # scaling each by its own declared scale.
+        pixel_dx, pixel_dy = pixel_vectors(fields["u10"], fields["v10"])
+        scale = float(max(numpy.max(numpy.abs(pixel_dx)), numpy.max(numpy.abs(pixel_dy)), 1e-6))
+        rgba = numpy.zeros((height, width, 4), dtype="uint8")
+        rgba[..., 0] = quantized(pixel_dx, scale)
+        rgba[..., 1] = quantized(pixel_dy, scale)
+        rgba[..., 3] = 255
     else:
         pixel_dx, pixel_dy = pixel_vectors(fields["u01"], fields["v01"])
         pixel_confidence = numpy.where(inside, fields[suffixes[2]][rows, cols], 0.0)
@@ -984,6 +1086,8 @@ def render_flow(
         method=str(attrs.get("method", "derived motion")),
         version=str(attrs.get("derivation_version", "unversioned")),
         texture=texture,
+        interpolation_method=method,
+        shader=flow_shader_for(method),
     )
 
 

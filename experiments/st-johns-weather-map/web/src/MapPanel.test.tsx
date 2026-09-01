@@ -580,6 +580,33 @@ describe('MapPanel imagery', () => {
     })
   })
 
+  it('names a non-default interpolation method in the disclosure, and asks the server for it', async () => {
+    // An admin menu that silently changes what is drawn is the one thing this
+    // map's governing rule does not tolerate. The name that appears is the
+    // one the SERVER says it served, not the one that was requested.
+    const urls: string[] = []
+    const fetcher = routedFetch(() => renderedRaster(), undefined, () => flowResponse({ 'X-Weather-Interpolation-Method': 'scale-cascade' }))
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      urls.push(String(url))
+      return fetcher(url)
+    }))
+    render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z'), interpolationMethod: 'scale-cascade' }))
+    await waitFor(() => {
+      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/interpolation method "scale-cascade"/)
+    })
+    expect(urls.some((url) => url.includes('/flow?') && url.includes('method=scale-cascade'))).toBe(true)
+  })
+
+  it('leaves the default method unnamed, because it is what the disclosure already describes', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse()))
+    render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
+    await waitFor(() => {
+      const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
+      expect(note).toMatch(/advection-corrected/i)
+      expect(note).not.toMatch(/interpolation method/i)
+    })
+  })
+
   it('keeps the previous frame drawn, at its own instant, while the next one loads', async () => {
     let resolveSecond: (response: Response) => void = () => undefined
     let rasterCalls = 0

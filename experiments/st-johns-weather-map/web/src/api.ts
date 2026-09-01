@@ -646,12 +646,93 @@ export interface FlowTexture {
    *  when the artifact predates them - the shader then advects linearly. */
   tangentsUrl: string | null
   tangentsScalePixels: number
+  /** The pair's backward (frame1 -> frame0) motion, or null when the artifact
+   *  predates it - the intermediate construction then has only one direction
+   *  to read and the shader stays on the advection already approved. */
+  backwardUrl: string | null
+  backwardScalePixels: number
   frameFrom: string
   frameTo: string
   request: RasterRequest
+  /** The client construction the server says these fields are meant for, from
+   *  its own registry: 'hermite' | 'intermediate' | whatever a method adds. */
+  shader: string
+  /** The interpolation method these fields were derived by, as the server
+   *  named it back. Carried so the on-map disclosure can say which
+   *  construction produced the picture. */
+  method: string
 }
 
-export function layerFlowUrl(layer: LayerItem, request: RasterRequest & { from: string; to: string }, texture: 'motion' | 'tangents' = 'motion'): string {
+/** One entry of the interpolation bench, exactly as `/methods` declares it.
+ *  The registry is the server's: the menu can never offer a construction the
+ *  derivation does not publish. */
+export interface InterpolationMethodItem {
+  id: string
+  title: string
+  summary: string
+  shader: string
+  enabled: boolean
+  generative: boolean
+  published: boolean
+  scores: Array<{
+    layerId: string
+    sourceId: string
+    variable: string
+    heldOutFrames: number
+    improvementOverReversedFlow: number
+    improvementOverCrossfade: number
+    midpointMaePercent: number
+    midpointSsim: number | null
+  }>
+}
+
+export const DEFAULT_INTERPOLATION_METHOD = 'baseline'
+
+/** The bench, or an empty list. A method list that could not be read is never
+ *  guessed at: the map then draws the default construction and the menu says
+ *  the registry was unreadable. */
+export async function loadMethods(signal?: AbortSignal): Promise<{ methods: InterpolationMethodItem[]; defaultMethod: string; notices: string[]; error: string | null }> {
+  try {
+    const response = await fetch(`${prefix}/methods`, { signal, headers: { Accept: 'application/json' } })
+    if (!response.ok) return { methods: [], defaultMethod: DEFAULT_INTERPOLATION_METHOD, notices: [], error: `the interpolation bench returned ${response.status}` }
+    const payload = await response.json()
+    const methods: InterpolationMethodItem[] = (payload.methods ?? []).map((item: Record<string, unknown>) => ({
+      id: String(item.id),
+      title: String(item.title ?? item.id),
+      summary: String(item.summary ?? ''),
+      shader: String(item.shader ?? 'hermite'),
+      enabled: item.enabled !== false,
+      generative: item.generative === true,
+      published: item.published === true,
+      scores: ((item.scores ?? []) as Array<Record<string, unknown>>).map((score) => ({
+        layerId: String(score.layer_id),
+        sourceId: String(score.source_id),
+        variable: String(score.variable),
+        heldOutFrames: Number(score.held_out_frames ?? 0),
+        improvementOverReversedFlow: Number(score.improvement_over_reversed_flow ?? 0),
+        improvementOverCrossfade: Number(score.improvement_over_crossfade ?? 0),
+        midpointMaePercent: Number(score.midpoint_mae_percent ?? 0),
+        midpointSsim: score.midpoint_ssim === null || score.midpoint_ssim === undefined ? null : Number(score.midpoint_ssim),
+      })),
+    }))
+    return {
+      methods,
+      defaultMethod: String(payload.default_method ?? DEFAULT_INTERPOLATION_METHOD),
+      notices: (payload.notices ?? []).map(String),
+      error: null,
+    }
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') return { methods: [], defaultMethod: DEFAULT_INTERPOLATION_METHOD, notices: [], error: 'aborted' }
+    return { methods: [], defaultMethod: DEFAULT_INTERPOLATION_METHOD, notices: [], error: `the interpolation bench could not be read: ${(error as Error).message}` }
+  }
+}
+
+export function layerFlowUrl(
+  layer: LayerItem,
+  request: RasterRequest & { from: string; to: string },
+  texture: 'motion' | 'tangents' | 'backward' = 'motion',
+  method: string = DEFAULT_INTERPOLATION_METHOD,
+): string {
   const params = new URLSearchParams({
     from: request.from,
     to: request.to,
@@ -663,6 +744,7 @@ export function layerFlowUrl(layer: LayerItem, request: RasterRequest & { from: 
     height: String(Math.min(MAX_RENDER_PIXELS, Math.max(1, Math.round(request.heightPx)))),
     crs: RASTER_CRS,
     texture,
+    method,
   })
   return `${prefix}/layers/${encodeURIComponent(layer.id)}/flow?${params}`
 }
@@ -674,9 +756,10 @@ export async function loadLayerFlow(
   layer: LayerItem,
   request: RasterRequest & { from: string; to: string },
   signal?: AbortSignal,
+  method: string = DEFAULT_INTERPOLATION_METHOD,
 ): Promise<{ flow: FlowTexture | null; absent: boolean; error: string | null }> {
-  const fetchTexture = async (texture: 'motion' | 'tangents'): Promise<{ objectUrl: string; scale: number; frameFrom: string | null; frameTo: string | null } | 'absent' | { error: string }> => {
-    const response = await fetch(layerFlowUrl(layer, request, texture), { signal, headers: { Accept: 'image/png,image/*' } })
+  const fetchTexture = async (texture: 'motion' | 'tangents' | 'backward'): Promise<{ objectUrl: string; scale: number; frameFrom: string | null; frameTo: string | null; method: string | null; shader: string | null } | 'absent' | { error: string }> => {
+    const response = await fetch(layerFlowUrl(layer, request, texture, method), { signal, headers: { Accept: 'image/png,image/*' } })
     if (response.status === 404) return 'absent'
     if (!response.ok) return { error: `motion texture request returned ${response.status}` }
     const scale = Number(response.headers.get('X-Weather-Flow-Scale'))
@@ -690,6 +773,8 @@ export async function loadLayerFlow(
       scale,
       frameFrom: response.headers.get('X-Weather-Frame-From'),
       frameTo: response.headers.get('X-Weather-Frame-To'),
+      method: response.headers.get('X-Weather-Interpolation-Method'),
+      shader: response.headers.get('X-Weather-Flow-Shader'),
     }
   }
   try {
@@ -702,15 +787,30 @@ export async function loadLayerFlow(
     let tangents: { objectUrl: string; scale: number } | null = null
     const fetched = await fetchTexture('tangents').catch(() => 'absent' as const)
     if (fetched !== 'absent' && !('error' in fetched)) tangents = { objectUrl: fetched.objectUrl, scale: fetched.scale }
+    // The backward field is the same kind of upgrade: an artifact that never
+    // stored it answers 404 and the intermediate construction degrades one
+    // honest rung to the advection already approved - never to a backward
+    // field guessed at by negating the forward one, which is exactly the
+    // assumption the intermediate method exists to stop making.
+    let backward: { objectUrl: string; scale: number } | null = null
+    const backwardFetched = await fetchTexture('backward').catch(() => 'absent' as const)
+    if (backwardFetched !== 'absent' && !('error' in backwardFetched)) {
+      backward = { objectUrl: backwardFetched.objectUrl, scale: backwardFetched.scale }
+    }
     return {
       flow: {
         objectUrl: motion.objectUrl,
         scalePixels: motion.scale,
         tangentsUrl: tangents?.objectUrl ?? null,
         tangentsScalePixels: tangents?.scale ?? 0,
+        backwardUrl: backward?.objectUrl ?? null,
+        backwardScalePixels: backward?.scale ?? 0,
         frameFrom: motion.frameFrom ?? request.from,
         frameTo: motion.frameTo ?? request.to,
         request,
+        // What the server says it served, not what was asked for.
+        method: motion.method ?? method,
+        shader: motion.shader ?? 'hermite',
       },
       absent: false,
       error: null,
@@ -723,7 +823,7 @@ export async function loadLayerFlow(
 
 /** Every object URL a FlowTexture holds, for revocation on eviction. */
 export function flowObjectUrls(flow: FlowTexture): string[] {
-  return flow.tangentsUrl ? [flow.objectUrl, flow.tangentsUrl] : [flow.objectUrl]
+  return [flow.objectUrl, flow.tangentsUrl, flow.backwardUrl].filter((url): url is string => !!url)
 }
 
 /** What a layer's evidence rests on, in words.

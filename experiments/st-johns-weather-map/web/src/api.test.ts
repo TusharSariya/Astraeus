@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALL_CLOUD_BANDS, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerRasterUrl, loadLayerRaster, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
+import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadLayerFlow, loadLayerRaster, loadMethods, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
 
 const rasterLayer: LayerItem = {
@@ -80,6 +80,96 @@ describe('raster request contract', () => {
     const url = new URL(layerRasterUrl(rasterLayer, { ...bounds, widthPx: 4000, heightPx: 768.6 }), 'http://localhost')
     expect(url.searchParams.get('width')).toBe('2048')
     expect(url.searchParams.get('height')).toBe('769')
+  })
+})
+
+describe('the interpolation bench', () => {
+  beforeEach(() => {
+    ;(URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:flow-1')
+    ;(URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn()
+  })
+
+  it('asks for the default method when none is named, and for the named one when one is', () => {
+    const request = { ...bounds, from: '2026-08-31T04:00:00Z', to: '2026-08-31T05:00:00Z' }
+    const fallback = new URL(layerFlowUrl(rasterLayer, request), 'http://localhost')
+    expect(fallback.searchParams.get('method')).toBe(DEFAULT_INTERPOLATION_METHOD)
+    const chosen = new URL(layerFlowUrl(rasterLayer, request, 'motion', 'scale-cascade'), 'http://localhost')
+    expect(chosen.searchParams.get('method')).toBe('scale-cascade')
+  })
+
+  it('records the method the server says it served, not the one that was asked for', async () => {
+    // The server is the authority on what it returned. Believing the request
+    // would let the disclosure name a construction that did not draw the map.
+    const headers = new Headers({
+      'X-Weather-Flow-Scale': '12',
+      'X-Weather-Image-Basis': 'derived_motion',
+      'X-Weather-Interpolation-Method': 'baseline',
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['x']), { status: 200, headers })))
+    const result = await loadLayerFlow(rasterLayer, { ...bounds, from: 'a', to: 'b' }, undefined, 'visibility-blend')
+    expect(result.flow?.method).toBe('baseline')
+    vi.unstubAllGlobals()
+  })
+
+  it('fetches the backward flow as an upgrade, and degrades one rung when it is absent', async () => {
+    // The intermediate construction reads BOTH derived directions. An artifact
+    // that never stored the backward field answers 404 for it; the shader must
+    // then fall back to the construction the forward field alone supports,
+    // never to a backward field invented by negating the forward one.
+    const served = (texture: string | null) => new Headers({
+      'X-Weather-Flow-Scale': texture === 'backward' ? '9' : '12',
+      'X-Weather-Image-Basis': 'derived_motion',
+      'X-Weather-Interpolation-Method': 'intermediate-flow',
+      'X-Weather-Flow-Shader': 'intermediate',
+    })
+    const textureOf = (input: RequestInfo | URL) => new URL(String(input), 'http://localhost').searchParams.get('texture')
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const texture = textureOf(input)
+      if (texture === 'tangents') return new Response('missing', { status: 404 })
+      return new Response(new Blob(['x']), { status: 200, headers: served(texture) })
+    }))
+    const held = await loadLayerFlow(rasterLayer, { ...bounds, from: 'a', to: 'b' }, undefined, 'intermediate-flow')
+    expect(held.flow?.backwardUrl).toBe('blob:flow-1')
+    expect(held.flow?.backwardScalePixels).toBe(9)
+    expect(held.flow?.shader).toBe('intermediate')
+
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (textureOf(input) === 'motion') return new Response(new Blob(['x']), { status: 200, headers: served('motion') })
+      return new Response('missing', { status: 404 })
+    }))
+    const degraded = await loadLayerFlow(rasterLayer, { ...bounds, from: 'a', to: 'b' }, undefined, 'intermediate-flow')
+    expect(degraded.flow).not.toBeNull()
+    expect(degraded.absent).toBe(false)
+    expect(degraded.flow?.backwardUrl).toBeNull()
+    expect(degraded.flow?.backwardScalePixels).toBe(0)
+    vi.unstubAllGlobals()
+  })
+
+  it('reads the bench, and reports an unreadable registry rather than inventing one', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      default_method: 'baseline',
+      methods: [{
+        id: 'baseline', title: 'Baseline advection', summary: 'warped both ways',
+        shader: 'hermite', enabled: true, generative: false, published: true,
+        scores: [{
+          layer_id: 'eccc-hrdps-surface-total-cloud', source_id: 'eccc-hrdps', variable: 'total_cloud',
+          held_out_frames: 3, improvement_over_reversed_flow: 0.114, improvement_over_crossfade: 0.09,
+          midpoint_mae_percent: 12.5, midpoint_ssim: 0.81,
+        }],
+      }],
+      notices: [],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    const ok = await loadMethods()
+    expect(ok.error).toBeNull()
+    expect(ok.methods[0].scores[0].improvementOverReversedFlow).toBeCloseTo(0.114)
+    expect(ok.methods[0].published).toBe(true)
+
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 503 })))
+    const failed = await loadMethods()
+    expect(failed.methods).toEqual([])
+    expect(failed.error).toContain('503')
+    expect(failed.defaultMethod).toBe(DEFAULT_INTERPOLATION_METHOD)
+    vi.unstubAllGlobals()
   })
 })
 

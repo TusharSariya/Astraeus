@@ -91,8 +91,9 @@ const liveSpaceWeather = {
   notices: [],
 }
 
-function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown; spaceWeather?: unknown }) {
+function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown; spaceWeather?: unknown; methods?: unknown }) {
   return vi.fn(async (url: string) => {
+    if (url.includes('/methods')) return response(routes.methods ?? { default_method: 'baseline', methods: [], notices: [] })
     if (url.includes('/space-weather')) return response(routes.spaceWeather ?? liveSpaceWeather)
     if (url.includes('/astronomy')) return response(routes.astronomy ?? liveAstronomy)
     if (url.includes('/sources/status')) return response(routes.sources ?? sourceStatus)
@@ -1149,6 +1150,63 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     expect(toggle).toHaveAttribute('title', expect.stringMatching(/for display .*Never applied to observed layers; not evidence/))
     await userEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  const benchMethods = {
+    default_method: 'baseline',
+    methods: [
+      {
+        id: 'baseline', title: 'Baseline advection', summary: 'warped both ways along the pair flow',
+        shader: 'hermite', enabled: true, generative: false, published: true,
+        scores: [{
+          layer_id: 'eccc-hrdps-surface-total-cloud', source_id: 'eccc-hrdps', variable: 'total_cloud',
+          held_out_frames: 3, improvement_over_reversed_flow: 0.114, improvement_over_crossfade: 0.09,
+          midpoint_mae_percent: 12.5, midpoint_ssim: 0.81,
+        }],
+      },
+      {
+        id: 'scale-cascade', title: 'Scale cascade', summary: 'coarse structure advects, fine texture dissolves',
+        shader: 'hermite', enabled: true, generative: false, published: false, scores: [],
+      },
+    ],
+    notices: [],
+  }
+
+  it('offers the interpolation bench only once interpolation is on, and reports each method honestly', async () => {
+    vi.stubGlobal('fetch', routedFetch({ methods: benchMethods }))
+    render(<App />)
+    const toggle = await screen.findByRole('button', { name: /Interpolate forecast · display only/ })
+    // The bench answers a question that does not arise while every frame is
+    // drawn exactly: it appears with the setting it qualifies.
+    expect(screen.queryByRole('button', { name: /^Interpolation:/ })).not.toBeInTheDocument()
+    await userEvent.click(toggle)
+    const menu = await screen.findByRole('button', { name: /^Interpolation:/ })
+    expect(menu).toHaveTextContent('Baseline advection')
+    await userEvent.click(menu)
+    // A measured method reports its margin against the reversed-motion
+    // control; an unpublished one says so rather than showing a zero.
+    expect(screen.getByText(/11\.4% over the reversed-motion control/)).toBeInTheDocument()
+    expect(screen.getByText('not published by the current cycle')).toBeInTheDocument()
+  })
+
+  it('remembers the chosen method and drops one the server stops publishing', async () => {
+    vi.stubGlobal('fetch', routedFetch({ methods: benchMethods }))
+    const first = render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast · display only/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
+    await userEvent.click(screen.getByRole('radio', { name: /Scale cascade/ }))
+    expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Scale cascade')
+    first.unmount()
+
+    // The same viewer, next session, against a server that no longer offers
+    // it: the map falls back to the default rather than asking for fields
+    // nobody publishes.
+    vi.stubGlobal('fetch', routedFetch({ methods: { ...benchMethods, methods: [benchMethods.methods[0]] } }))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast · display only/ }))
+    await waitFor(async () =>
+      expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Baseline advection'),
+    )
   })
 
   it('snaps keyboard scrubbing to the exact published frame instants of the active layers', async () => {

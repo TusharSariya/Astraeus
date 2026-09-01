@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
@@ -24,6 +24,7 @@ const SCRUB_STEP_MINUTES = 5
 /** The key the interpolation preference persists under. A per-viewer display
  *  convenience only; nothing evidential lives in browser storage. */
 const INTERPOLATE_STORAGE_KEY = 'weather-interpolate-forecast'
+const METHOD_STORAGE_KEY = 'weather-interpolation-method'
 
 /** The scrubber offset in words, at the minute. A jump to a radar frame lands
  *  on -10 min, and a badge that rounded that to "Now (0h)" claimed an instant
@@ -278,6 +279,16 @@ export default function App() {
   const [interpolate, setInterpolate] = useState<boolean>(() => {
     try { return localStorage.getItem(INTERPOLATE_STORAGE_KEY) === 'true' } catch { return false }
   })
+  // Which interpolation method the map draws with. A per-viewer display
+  // choice, stored best-effort like the interpolation toggle; the registry
+  // that says which methods exist is the server's, so a stored id the server
+  // no longer publishes falls back to the default rather than 404ing.
+  const [method, setMethod] = useState<string>(() => {
+    try { return localStorage.getItem(METHOD_STORAGE_KEY) || DEFAULT_INTERPOLATION_METHOD } catch { return DEFAULT_INTERPOLATION_METHOD }
+  })
+  const [methods, setMethods] = useState<InterpolationMethodItem[]>([])
+  const [methodNotices, setMethodNotices] = useState<string[]>([])
+  const [methodError, setMethodError] = useState<string | null>(null)
   // The transport: a clock over the same selected instant the scrubber
   // moves. It resolves frames by exactly the rules a scrub does.
   const [playing, setPlaying] = useState(false)
@@ -405,6 +416,27 @@ export default function App() {
     () => frameMarkers(layers, selections, windowStartMs, windowEndMs),
     [layers, selections, windowStartMs, windowEndMs],
   )
+
+  const selectMethod = useCallback((methodId: string) => {
+    setMethod(methodId)
+    try { localStorage.setItem(METHOD_STORAGE_KEY, methodId) } catch { /* display preference only */ }
+  }, [])
+
+  // The bench, read once. A stored method the server no longer publishes is
+  // dropped back to the default rather than left asking for fields that do
+  // not exist - the map would fall to a crossfade and say so, but silently
+  // asking for a method nobody offers is not a state worth keeping.
+  useEffect(() => {
+    const controller = new AbortController()
+    loadMethods(controller.signal).then((result) => {
+      if (result.error === 'aborted') return
+      setMethods(result.methods)
+      setMethodNotices(result.notices)
+      setMethodError(result.error)
+      setMethod((current) => (result.methods.some((item) => item.id === current) ? current : result.defaultMethod))
+    }).catch(() => undefined)
+    return () => controller.abort()
+  }, [])
 
   const toggleInterpolate = useCallback(() => {
     setInterpolate((previous) => {
@@ -761,6 +793,7 @@ export default function App() {
                 validTime={validTime}
                 reference={reference}
                 interpolate={interpolate}
+                interpolationMethod={method}
                 fixtureMode={dataSource === 'fixture'}
                 layers={layers}
                 layersError={layersError}
@@ -817,6 +850,11 @@ export default function App() {
               onToggleDirection={() => setDirection((towards) => (towards === 1 ? -1 : 1))}
               interpolate={interpolate}
               onToggleInterpolate={toggleInterpolate}
+              methods={methods}
+              method={method}
+              onSelectMethod={selectMethod}
+              methodNotices={methodNotices}
+              methodError={methodError}
               storyOpen={storyOpen}
               onToggleStory={() => setStoryOpen((open) => !open)}
               storyToggleRef={storyToggleRef}
@@ -1126,6 +1164,7 @@ export default function App() {
                 validTime={validTime}
                 reference={reference}
                 interpolate={interpolate}
+                interpolationMethod={method}
                 fixtureMode={dataSource === 'fixture'}
                 layers={layers}
                 layersError={layersError}
