@@ -11,21 +11,35 @@ context: |
   interpolate into a gap, never silently substitute, and never fall back from a
   live failure to a fixture value. One owner-approved carve-out, display
   paths only (frame-fallback-and-viewport-layout 2026-08-31; extended by
-  scrub-performance-and-motion-interpolation 2026-08-31 and by
-  multi-frame-cloud-motion 2026-08-31): the web map MAY
+  scrub-performance-and-motion-interpolation 2026-08-31, by
+  multi-frame-cloud-motion 2026-08-31 and by believable-cloud-motion
+  2026-08-31): the web map MAY
   draw a neighbouring published frame beyond a layer's staleness tolerance,
   MAY display-composite two retrieved forecast frames under an opt-in
   default-off setting, and for rendered-grid layers MAY draw that composite
   as advection-corrected interpolation - the two retrieved frames warped
   toward each other along a disclosed, precomputed motion field derived
   from the layer's own retrieved frame sequence (the pair's flow, with
-  neighbouring adjacent pairs' flows informing C1 Hermite knot velocities
-  and nothing else ever informing motion), endpoint-exact so every real
+  neighbouring adjacent pairs' flows informing C1 Hermite knot velocities),
+  endpoint-exact so every real
   frame shows untouched, falling back to linear advection and then to a
   plain linear crossfade where no tangents, no motion or no confidence
   exist - all only with a visible on-map disclosure naming the
   real frame time(s) and method, and never on a data path: /point,
-  /features, stories and readings stay frame-exact. A control that appears to do something must
+  /features, stories and readings stay frame-exact.
+  The motion field MAY additionally be informed by the SAME MODEL RUN's own
+  retrieved steering wind at the stratum's pressure level, and by nothing
+  else, under every one of these conditions together (believable-cloud-motion
+  2026-08-31): the wind only fills cells whose image flow is unsupported and
+  never overrides an observed motion; its weight is proportional to its
+  agreement with the trusted image flow, so an uncorroborated wind reaches
+  nothing; it is refused wherever a well-supported image flow reports the
+  field standing still, which is the orographic in-place-development case
+  this peninsula lives in; and it is applied at all only for a variable
+  whose held-out midpoint reconstruction it measurably improves, with both
+  scores published in provenance. A variable whose motion does not beat the
+  same construction with its motion reversed is published with a zero
+  display weight and crossfades everywhere. A control that appears to do something must
   do it. An empty result that IS the answer ("radar detected nothing") must be
   distinguishable from "we did not retrieve anything".
 

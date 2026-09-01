@@ -497,8 +497,8 @@ export function MapPanel({
           .find(([key]) => key.startsWith(`${resolution.previous.time}->${resolution.next.time}|`))?.[1]
         const method = held && held !== 'absent'
           ? (held.tangentsUrl
-            ? 'advection-corrected along motion fitted through neighbouring published frames (C1 trajectories)'
-            : 'advection-corrected along a motion field derived from the two published frames')
+            ? 'advection-corrected along motion fitted through neighbouring published frames (C1 trajectories), dissolving where the two frames say cloud grew or decayed in place rather than moved'
+            : 'advection-corrected along a motion field derived from the two published frames, dissolving where cloud grew or decayed in place rather than moved')
           : 'a linear cross-dissolve; no derived motion field for this pair'
         return `temporally interpolated for display between the ${stJohnsTime(resolution.previous.time)} and ${stJohnsTime(resolution.next.time)} NT frames (${method}) — display only, not evidence`
       }

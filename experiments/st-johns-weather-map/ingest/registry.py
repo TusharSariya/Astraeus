@@ -39,6 +39,11 @@ DEFAULT_VARIABLES = (
     "visibility",
 )
 
+#: The cloud steering levels the motion derivation reads (display only).
+STEERING_WIND_VARIABLES = (
+    "wind_u_850hPa", "wind_v_850hPa", "wind_u_700hPa", "wind_v_700hPa", "wind_u_500hPa", "wind_v_500hPa",
+)
+
 VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
     # What the GFS adapter actually stores: the surface set plus the
     # provider-declared cloud strata, the jet-level winds and column water.
@@ -49,11 +54,18 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure", "visibility",
         "total_cloud", "cloud_low", "cloud_middle", "cloud_high",
         "wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa",
+        "wind_u_850hPa", "wind_v_850hPa", "wind_u_700hPa", "wind_v_700hPa",
+        "wind_u_500hPa", "wind_v_500hPa",
         "precipitable_water",
     ),
     "noaa-swpc-kp": ("kp_index", "a_running", "kp_status"),
     "noaa-swpc-rtsw": ("bz_gsm", "bt"),
     "noaa-swpc-ovation": ("aurora_probability",),
+    # HRDPS and RDPS carry the default surface set plus the cloud steering
+    # winds; both are declared optional in the adapter manifest, so a level a
+    # cycle omits costs the display prior and nothing else.
+    "eccc-hrdps": DEFAULT_VARIABLES + STEERING_WIND_VARIABLES,
+    "eccc-rdps": DEFAULT_VARIABLES + STEERING_WIND_VARIABLES,
     "eccc-radar": ("precipitation_rate", "precipitation_type"),
     "eccc-lightning": ("lightning_strike",),
     "awc-metar-speci": ("temperature", "dew_point", "visibility", "cloud_layers", "weather_codes", "wind_u_10m", "wind_v_10m"),

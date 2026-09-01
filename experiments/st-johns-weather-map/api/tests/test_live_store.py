@@ -82,6 +82,21 @@ class StubStore(LiveStore):
         """
 
 
+def test_cloud_steering_winds_never_reach_a_reading():
+    """The 850/700/500 hPa winds are ingested for one purpose: informing the
+    display-time cloud-motion derivation. They are not evidence a reader
+    asked for, and the carve-out that allows them says explicitly that they
+    reach no data path. The served-field map is the enforcement, so it is
+    pinned here rather than left to the absence of a mapping."""
+    from weather_api.store import DERIVATION_INPUTS, FIELD_BY_VARIABLE
+
+    for level in (850, 700, 500):
+        for component in ("u", "v"):
+            name = f"wind_{component}_{level}hPa"
+            assert name not in FIELD_BY_VARIABLE
+            assert name not in DERIVATION_INPUTS
+
+
 def test_a_missing_grid_value_surfaces_as_null_rather_than_being_invented():
     store = StubStore([(make_artifact(), make_dataset(temperature=14.5, dew_point=None))])
     samples = store.sample_point(*ST_JOHNS, VALID_TIME)

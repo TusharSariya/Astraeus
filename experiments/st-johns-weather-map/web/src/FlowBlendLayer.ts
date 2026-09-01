@@ -5,9 +5,12 @@
  *
  *  Honesty properties, by construction:
  *  - at t=0 and t=1 the output is exactly the real frame, untouched;
- *  - the backward warp uses the negated forward field; cells where the
- *    derived backward flow disagreed carry low confidence in the texture's
- *    blue channel and fall back per-pixel to a plain linear crossfade;
+ *  - the backward warp uses the negated forward field; the texture's blue
+ *    channel is the server's display weight - how well the two frames warped
+ *    to the midpoint agree, gated by the support behind that flow - so cells
+ *    where cloud grew or decayed in place rather than moved, and cells with
+ *    no trustworthy motion behind them, fall back per-pixel to a plain
+ *    linear crossfade;
  *  - with no flow texture at all the shader IS the plain linear crossfade -
  *    which also replaces the old two-stacked-layers compositing
  *    (1-(1-a)(1-b)) with a true linear blend;
@@ -72,7 +75,8 @@ uniform vec2 u_tangent_scale_uv;
 void main() {
   vec4 flow_sample = texture2D(u_flow, v_uv);
   vec2 flow_uv = (flow_sample.rg * 2.0 - 1.0) * u_flow_scale_uv;
-  float confidence = flow_sample.b * u_has_flow;
+  // Blue is the server's display weight: 1 advects, 0 crossfades.
+  float advect = flow_sample.b * u_has_flow;
   // Displacement from the earlier frame. Linear advection (d0 = t*F) unless
   // the pair's Hermite tangents are held, then the C1 cubic
   // d0 = vs*t + (3F - 2vs - ve)*t^2 + (-2F + vs + ve)*t^3, whose velocity
@@ -94,7 +98,7 @@ void main() {
     u_t
   );
   float plain = mix(texture2D(u_frame0, v_uv).a, texture2D(u_frame1, v_uv).a, u_t);
-  float alpha = mix(plain, warped, confidence) * u_opacity;
+  float alpha = mix(plain, warped, advect) * u_opacity;
   gl_FragColor = vec4(alpha, alpha, alpha, alpha); // premultiplied white
 }
 `

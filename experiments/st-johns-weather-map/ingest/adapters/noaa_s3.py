@@ -90,6 +90,14 @@ GFS_IDX_SELECTORS: frozenset[tuple[str, str]] = frozenset(
         ("VGRD", "200 mb"),
         ("UGRD", "300 mb"),
         ("VGRD", "300 mb"),
+        # Cloud steering levels: 850 hPa steers low cloud, 700 mid, 500 high.
+        # They inform the display-time motion prior only, never a reading.
+        ("UGRD", "850 mb"),
+        ("VGRD", "850 mb"),
+        ("UGRD", "700 mb"),
+        ("VGRD", "700 mb"),
+        ("UGRD", "500 mb"),
+        ("VGRD", "500 mb"),
         ("PWAT", "entire atmosphere (considered as a single layer)"),
     }
 )
@@ -132,8 +140,8 @@ GFS_DECODE_SPECS: tuple[tuple[str, dict[str, object], tuple[tuple[str, str], ...
     ("lcc", {}, (("LCDC", "low cloud layer"),)),
     ("mcc", {}, (("MCDC", "middle cloud layer"),)),
     ("hcc", {}, (("HCDC", "high cloud layer"),)),
-    ("u", {"typeOfLevel": "isobaricInhPa"}, (("UGRD", "200 mb"), ("UGRD", "300 mb"))),
-    ("v", {"typeOfLevel": "isobaricInhPa"}, (("VGRD", "200 mb"), ("VGRD", "300 mb"))),
+    ("u", {"typeOfLevel": "isobaricInhPa"}, (("UGRD", "200 mb"), ("UGRD", "300 mb"), ("UGRD", "850 mb"), ("UGRD", "700 mb"), ("UGRD", "500 mb"))),
+    ("v", {"typeOfLevel": "isobaricInhPa"}, (("VGRD", "200 mb"), ("VGRD", "300 mb"), ("VGRD", "850 mb"), ("VGRD", "700 mb"), ("VGRD", "500 mb"))),
     ("pwat", {}, (("PWAT", "entire atmosphere (considered as a single layer)"),)),
 )
 
@@ -175,6 +183,14 @@ GFS_MANIFEST = RunManifest(
         RequiredField("wind_v_200hPa", "m s-1", level="200 hPa", optional=True),
         RequiredField("wind_u_300hPa", "m s-1", level="300 hPa", optional=True),
         RequiredField("wind_v_300hPa", "m s-1", level="300 hPa", optional=True),
+        # Cloud steering winds: display-derivation input only, so a cycle
+        # that omits a level costs the motion prior, never the artifact.
+        RequiredField("wind_u_850hPa", "m s-1", level="850 hPa", optional=True),
+        RequiredField("wind_v_850hPa", "m s-1", level="850 hPa", optional=True),
+        RequiredField("wind_u_700hPa", "m s-1", level="700 hPa", optional=True),
+        RequiredField("wind_v_700hPa", "m s-1", level="700 hPa", optional=True),
+        RequiredField("wind_u_500hPa", "m s-1", level="500 hPa", optional=True),
+        RequiredField("wind_v_500hPa", "m s-1", level="500 hPa", optional=True),
         RequiredField("precipitable_water", "kg m-2", level="column", optional=True),
     ),
 )

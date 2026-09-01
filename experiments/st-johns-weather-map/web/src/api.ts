@@ -1112,6 +1112,70 @@ export function unionFrameInstants(layers: LayerItem[], selections: Array<{ id: 
   return [...instants].sort((a, b) => a - b)
 }
 
+/** The tick colours for published-frame markers on the timeline. Chosen to
+ *  stay apart on the dock's dark ground and in the light theme, and to avoid
+ *  the orange the selection thumb already owns. */
+export const LAYER_TICK_COLORS = ['#4fc3f7', '#7ed957', '#ff6f91', '#c792ea', '#ffd166', '#4dd0c4', '#ff9f6e', '#9fa8da'] as const
+
+/** A layer's marker colour: its position in the retrieved layer list into
+ *  the palette. Stable under toggling - turning one layer off never
+ *  recolours another - and stable across renders, since the order is the
+ *  API's. An unknown layer takes the first colour rather than none. */
+export function layerTickColor(layerId: string, layers: LayerItem[]): string {
+  const index = layers.findIndex((layer) => layer.id === layerId)
+  return LAYER_TICK_COLORS[(index < 0 ? 0 : index) % LAYER_TICK_COLORS.length]
+}
+
+export interface FrameMarker {
+  /** The published instant, epoch ms. */
+  ms: number
+  time: string
+  /** Every active layer publishing this instant, in retrieved layer order. */
+  layers: Array<{ id: string; title: string; color: string }>
+}
+
+export interface FrameMarkers {
+  markers: FrameMarker[]
+  /** Titles of active layers that published no readable frame axis. Named
+   *  out loud rather than left silently absent from the rail. */
+  axisless: string[]
+}
+
+/** The published frames of the active visible layers inside the window,
+ *  grouped by instant: one marker per instant, carrying every layer that
+ *  published it, so a frame two layers share is one target rather than two
+ *  ticks on top of each other.
+ *
+ *  Purely a view of what `/layers` returned. Nothing here invents an
+ *  instant: a layer with no `times` contributes no ticks and is reported in
+ *  `axisless` instead. */
+export function frameMarkers(
+  layers: LayerItem[],
+  selections: Array<{ id: string; visible: boolean }>,
+  windowStartMs: number,
+  windowEndMs: number,
+): FrameMarkers {
+  const visible = new Set(selections.filter((entry) => entry.visible).map((entry) => entry.id))
+  const byInstant = new Map<number, FrameMarker>()
+  const axisless: string[] = []
+  for (const layer of layers) {
+    if (!visible.has(layer.id)) continue
+    const color = layerTickColor(layer.id, layers)
+    let published = 0
+    for (const time of layer.times ?? []) {
+      const stamp = new Date(time).getTime()
+      if (Number.isNaN(stamp)) continue
+      published += 1
+      if (stamp < windowStartMs || stamp > windowEndMs) continue
+      const existing = byInstant.get(stamp)
+      if (existing) existing.layers.push({ id: layer.id, title: layer.title, color })
+      else byInstant.set(stamp, { ms: stamp, time, layers: [{ id: layer.id, title: layer.title, color }] })
+    }
+    if (published === 0) axisless.push(layer.title)
+  }
+  return { markers: [...byInstant.values()].sort((a, b) => a.ms - b.ms), axisless }
+}
+
 /** The member of `instants` closest to `rawMs`, ties resolving earlier.
  *  Identity when the list is empty, so a caller never invents an instant. */
 export function snapInstant(instants: number[], rawMs: number): number {

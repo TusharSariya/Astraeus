@@ -741,8 +741,12 @@ CLOUD_MOTION_LOGICAL_NAME = "cloud_motion"
 FLOW_SEMANTICS_DOC = (
     "each pixel carries the derived motion vector of the stored cell under it, in output pixels "
     "over the frame interval, quantized to 8 bits over the declared scale; blue channel is the "
-    "forward-backward consistency (255 = both directions agree); this is a display derivation "
-    "computed between two published frames - not provider output, not evidence"
+    "weight the display mixes advection against a plain crossfade on (255 = advect, 0 = "
+    "crossfade), being the lesser of the local trusted-flow support and the photometric "
+    "agreement of the two half-interval warps, and zero for a pair whose warp does not beat "
+    "persistence; artifacts predating that weight carry the raw forward-backward consistency "
+    "there instead; this is a display derivation computed between two published frames - not "
+    "provider output, not evidence"
 )
 
 TANGENT_SEMANTICS_DOC = (
@@ -879,7 +883,17 @@ def render_flow(
             f"no derived motion pair covers {wanted_from.isoformat()} -> {wanted_to.isoformat()}; "
             "motion exists only between adjacent published frames"
         )
-    suffixes = ("vs_u", "vs_v", "ve_u", "ve_v") if texture == "tangents" else ("u01", "v01", "confidence")
+    if texture == "tangents":
+        suffixes = ("vs_u", "vs_v", "ve_u", "ve_v")
+    else:
+        # The blue channel is the weight the client mixes advection against a
+        # crossfade on. Newer artifacts publish the display weight (support
+        # AND development agreement, vetoed per pair on measured skill); older
+        # ones carry only the raw consistency, which is what they mixed on, so
+        # they keep serving that rather than nothing.
+        weight_name = f"{spec.variable}_advect_weight"
+        weight_suffix = "advect_weight" if weight_name in motion_dataset.data_vars else "confidence"
+        suffixes = ("u01", "v01", weight_suffix)
     names = [f"{spec.variable}_{suffix}" for suffix in suffixes]
     if any(name not in motion_dataset.data_vars for name in names):
         raise FlowNotAvailable(
@@ -950,7 +964,7 @@ def render_flow(
         rgba[..., 3] = 255
     else:
         pixel_dx, pixel_dy = pixel_vectors(fields["u01"], fields["v01"])
-        pixel_confidence = numpy.where(inside, fields["confidence"][rows, cols], 0.0)
+        pixel_confidence = numpy.where(inside, fields[suffixes[2]][rows, cols], 0.0)
         scale = float(max(numpy.max(numpy.abs(pixel_dx)), numpy.max(numpy.abs(pixel_dy)), 1e-6))
         rgba = numpy.zeros((height, width, 4), dtype="uint8")
         rgba[..., 0] = quantized(pixel_dx, scale)

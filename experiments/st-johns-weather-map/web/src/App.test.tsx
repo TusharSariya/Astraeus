@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 vi.mock('./MapPanel', () => ({
@@ -1117,6 +1117,10 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
 })
 
 describe('timeline dock: interpolation setting and frame snapping', () => {
+  // The playback tests replace requestAnimationFrame; restore it (and the
+  // fetch stub each test sets for itself) so no stub leaks into the next.
+  afterEach(() => vi.unstubAllGlobals())
+
   /** One toggleable layer with two published frames inside the past window,
    *  minute-aligned but at instants a 5-minute scrub could never land on. */
   const snappableLayers = () => {
@@ -1175,6 +1179,127 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     fireEvent.keyDown(slider, { key: 'ArrowRight' })
     expect(screen.getByText(/\+5 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
     expect(slider).toHaveAttribute('aria-valuetext', expect.not.stringMatching(/snapped/))
+  })
+
+  /** A hand-driven animation clock. The transport integrates the gap between
+   *  successive frames, so the test decides how much wall time passed. */
+  function driveFrames() {
+    let pending: FrameRequestCallback | null = null
+    let next = 0
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { pending = callback; return ++next })
+    vi.stubGlobal('cancelAnimationFrame', () => { pending = null })
+    return async (now: number) => {
+      const callback = pending
+      pending = null
+      if (callback) await act(async () => { callback(now) })
+    }
+  }
+
+  it('plays the timeline forward at the speed on the ladder, and pauses where it stopped', async () => {
+    const frame = driveFrames()
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    const play = await screen.findByRole('button', { name: 'Play' })
+    expect(screen.getByText('1 min/s')).toBeInTheDocument()
+    await userEvent.click(play)
+
+    // The first frame only establishes the clock; the second advances by the
+    // two seconds between them: two weather minutes at the first speed.
+    await frame(1000)
+    await frame(3000)
+    expect(screen.getByText(/\+2 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    await frame(9000)
+    expect(screen.getByText(/\+2 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+  })
+
+  it('doubles and halves the speed within the ladder, clamping at both ends', async () => {
+    const frame = driveFrames()
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    const faster = await screen.findByRole('button', { name: 'Faster' })
+    const slower = screen.getByRole('button', { name: 'Slower' })
+    expect(slower).toBeDisabled()
+
+    await userEvent.click(faster)
+    await userEvent.click(faster)
+    expect(screen.getByText('4 min/s')).toBeInTheDocument()
+    expect(slower).toBeEnabled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    await frame(1000)
+    await frame(2000)
+    expect(screen.getByText(/\+4 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+
+    for (let press = 0; press < 5; press += 1) await userEvent.click(faster)
+    expect(screen.getByText('32 min/s')).toBeInTheDocument()
+    expect(faster).toBeDisabled()
+  })
+
+  it('runs backwards under reverse without losing the chosen speed', async () => {
+    const frame = driveFrames()
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    const reverse = await screen.findByRole('button', { name: 'Reverse' })
+    await userEvent.click(screen.getByRole('button', { name: 'Faster' }))
+    await userEvent.click(reverse)
+    expect(reverse).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('◀ 2 min/s')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    await frame(1000)
+    await frame(4000)
+    expect(screen.getByText(/-6 min \(Past\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+  })
+
+  it('stops playing the moment a hand touches the timeline', async () => {
+    const frame = driveFrames()
+    vi.stubGlobal('fetch', routedFetch({}))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
+    await frame(1000)
+    await frame(2000)
+
+    fireEvent.keyDown(screen.getByLabelText('Valid timeline scrubber'), { key: 'ArrowRight' })
+    expect(screen.getByRole('button', { name: 'Play' })).toHaveAttribute('aria-pressed', 'false')
+    const badge = screen.getByText(/min \(Forecast\)/, { selector: '.story-scrubber-badge strong' }).textContent
+    await frame(9000)
+    expect(screen.getByText(/min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toHaveTextContent(String(badge))
+  })
+
+  it('marks every published frame of the active layers and jumps to the one clicked', async () => {
+    vi.stubGlobal('fetch', routedFetch({ layers: snappableLayers() }))
+    render(<App />)
+    await openStory()
+    await userEvent.click(await screen.findByRole('button', { name: 'eccc-radar radar' }))
+
+    // Two published frames, two ticks — and the key names the layer they
+    // belong to. Nothing marks an instant the layer did not publish.
+    const ticks = await screen.findAllByRole('button', { name: /^Published frame — eccc-radar radar,/ })
+    expect(ticks).toHaveLength(2)
+    expect(document.querySelectorAll('.marker-key-entry')).toHaveLength(1)
+
+    await userEvent.click(ticks[1])
+    expect(screen.getByText(/-3[67] min \(Past\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+  })
+
+  it('says so plainly when the active layers publish no frame axis', async () => {
+    const axisless = {
+      data_mode: 'live',
+      layers: [{
+        id: 'eccc-alerts-alerts', title: 'eccc-alerts alerts', kind: 'point', field: 'alerts', product: 'alerts',
+        units: 'mixed', semantics: 'Alerts as issued.', group: 'alert',
+      }],
+      notices: [],
+    }
+    vi.stubGlobal('fetch', routedFetch({ layers: axisless }))
+    render(<App />)
+    await openStory()
+    await userEvent.click(await screen.findByRole('button', { name: 'eccc-alerts alerts' }))
+
+    expect(screen.queryAllByRole('button', { name: /^Published frame/ })).toHaveLength(0)
+    expect(screen.getByText(/No published frame axis: eccc-alerts alerts/)).toBeInTheDocument()
   })
 
   it('opens the story panel from the dock and returns focus to the toggle on Escape', async () => {

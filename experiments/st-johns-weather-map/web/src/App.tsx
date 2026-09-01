@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, cloudBandOf, filterCloudLayers, loadAstronomy, loadCatalog, loadLayers, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
 import { ModeChip } from './ModeChip'
@@ -277,6 +278,11 @@ export default function App() {
   const [interpolate, setInterpolate] = useState<boolean>(() => {
     try { return localStorage.getItem(INTERPOLATE_STORAGE_KEY) === 'true' } catch { return false }
   })
+  // The transport: a clock over the same selected instant the scrubber
+  // moves. It resolves frames by exactly the rules a scrub does.
+  const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState<PlaybackSpeed>(1)
+  const [direction, setDirection] = useState<PlaybackDirection>(1)
   const [storyOpen, setStoryOpen] = useState(false)
   const storyToggleRef = useRef<HTMLButtonElement | null>(null)
   const [dataSource, setDataSource] = useState<DataSource>('loading')
@@ -331,9 +337,14 @@ export default function App() {
   const snapping = snapInstants.length > 0
   const clampMs = useCallback((ms: number) => Math.max(windowStartMs, Math.min(windowEndMs, ms)), [windowStartMs, windowEndMs])
 
+  /** A hand on the timeline stops the transport: playback and a scrub must
+   *  never fight over the same clock. */
+  const pausePlayback = useCallback(() => setPlaying(false), [])
+
   /** Every scrub-shaped selection routes through here: slider drags, quick
    *  jumps and story cards, so all of them obey the same snap rule. */
   const selectMinutes = useCallback((rawMinutes: number) => {
+    pausePlayback()
     const target = reference.getTime() + rawMinutes * 60_000
     if (snapInstants.length > 0) {
       setSelectedMs(clampMs(snapInstant(snapInstants, target)))
@@ -341,13 +352,14 @@ export default function App() {
     }
     const rounded = Math.round(rawMinutes / SCRUB_STEP_MINUTES) * SCRUB_STEP_MINUTES
     setSelectedMs(clampMs(reference.getTime() + rounded * 60_000))
-  }, [reference, snapInstants, clampMs])
+  }, [reference, snapInstants, clampMs, pausePlayback])
 
   const onScrubKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
-    const step = (direction: 1 | -1, minutes: number) => {
+    const step = (towards: 1 | -1, minutes: number) => {
       event.preventDefault()
-      if (snapInstants.length > 0) setSelectedMs(clampMs(stepInstant(snapInstants, selectedMs, direction)))
-      else setSelectedMs(clampMs(selectedMs + direction * minutes * 60_000))
+      pausePlayback()
+      if (snapInstants.length > 0) setSelectedMs(clampMs(stepInstant(snapInstants, selectedMs, towards)))
+      else setSelectedMs(clampMs(selectedMs + towards * minutes * 60_000))
     }
     switch (event.key) {
       case 'ArrowRight':
@@ -356,13 +368,43 @@ export default function App() {
       case 'ArrowDown': step(-1, SCRUB_STEP_MINUTES); break
       case 'PageUp': step(1, 60); break
       case 'PageDown': step(-1, 60); break
-      case 'Home': event.preventDefault(); setSelectedMs(snapInstants.length > 0 ? snapInstants[0] : windowStartMs); break
-      case 'End': event.preventDefault(); setSelectedMs(snapInstants.length > 0 ? snapInstants[snapInstants.length - 1] : windowEndMs); break
+      case 'Home': event.preventDefault(); pausePlayback(); setSelectedMs(snapInstants.length > 0 ? snapInstants[0] : windowStartMs); break
+      case 'End': event.preventDefault(); pausePlayback(); setSelectedMs(snapInstants.length > 0 ? snapInstants[snapInstants.length - 1] : windowEndMs); break
       default: break
     }
-  }, [snapInstants, selectedMs, clampMs, windowStartMs, windowEndMs])
+  }, [snapInstants, selectedMs, clampMs, windowStartMs, windowEndMs, pausePlayback])
 
   const scrubValueText = `${scrubOffset} — ${stJohnsTime(validTime.toISOString())} NT${snapping ? ', snapped to the nearest published frame' : ''}`
+
+  // The playback clock. Each animation frame advances the selected instant
+  // by the wall-clock time since the previous frame, so a backgrounded tab
+  // (which gets no frames at all) resumes where it left off instead of
+  // jumping by however long it was hidden.
+  useEffect(() => {
+    if (!playing) return
+    let frame = 0
+    let last: number | null = null
+    const tick = (now: number) => {
+      const elapsedSeconds = last === null ? 0 : (now - last) / 1000
+      last = now
+      if (elapsedSeconds > 0) {
+        setSelectedMs((current) => advanceClock({
+          ms: current, elapsedSeconds, speedMinutesPerSecond: speed, direction, windowStartMs, windowEndMs,
+        }))
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [playing, speed, direction, windowStartMs, windowEndMs])
+
+  // Published frames of the active layers: the ticks under the scrubber and
+  // the jump targets. Exactly what /layers returned, never an invented
+  // instant; a layer with no time axis is named rather than left out.
+  const markers = useMemo(
+    () => frameMarkers(layers, selections, windowStartMs, windowEndMs),
+    [layers, selections, windowStartMs, windowEndMs],
+  )
 
   const toggleInterpolate = useCallback(() => {
     setInterpolate((previous) => {
@@ -391,8 +433,9 @@ export default function App() {
   // instant is kept — it IS a published frame time — and only clamped to the
   // window; the row will say so in its own words if that moved it.
   const jumpToTime = useCallback((date: Date) => {
+    pausePlayback()
     setSelectedMs(clampMs(date.getTime()))
-  }, [clampMs])
+  }, [clampMs, pausePlayback])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -761,6 +804,17 @@ export default function App() {
               onScrubMinutes={selectMinutes}
               onScrubKeyDown={onScrubKeyDown}
               onQuickJump={(offsetHours) => selectMinutes(offsetHours * 60)}
+              windowStartMs={windowStartMs}
+              windowEndMs={windowEndMs}
+              markers={markers}
+              onJumpToInstant={(ms) => jumpToTime(new Date(ms))}
+              playing={playing}
+              speed={speed}
+              direction={direction}
+              onTogglePlay={() => setPlaying((on) => !on)}
+              onFaster={() => setSpeed(fasterSpeed)}
+              onSlower={() => setSpeed(slowerSpeed)}
+              onToggleDirection={() => setDirection((towards) => (towards === 1 ? -1 : 1))}
               interpolate={interpolate}
               onToggleInterpolate={toggleInterpolate}
               storyOpen={storyOpen}

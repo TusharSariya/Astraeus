@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALL_CLOUD_BANDS, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, groupLayers, layerGroup, layerRasterUrl, loadLayerRaster, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
+import { ALL_CLOUD_BANDS, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerRasterUrl, loadLayerRaster, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
 
 const rasterLayer: LayerItem = {
@@ -671,5 +671,67 @@ describe('scrubber snapping helpers', () => {
     expect(stepInstant(instants, 250, 1)).toBe(300)
     expect(stepInstant(instants, 250, -1)).toBe(200)
     expect(stepInstant([], 250, 1)).toBe(250)
+  })
+})
+
+describe('published-frame markers', () => {
+  const windowStart = new Date('2026-08-30T01:00:37.421Z').getTime()
+  const windowEnd = new Date('2026-08-31T04:00:37.421Z').getTime()
+  const layerA: LayerItem = {
+    id: 'a', title: 'A', kind: 'raster', field: 'a', product: 'a', units: 'a', semantics: 'a',
+    times: ['2026-08-30T03:00:00Z', '2026-08-30T04:00:00Z'],
+  }
+  const layerB: LayerItem = {
+    id: 'b', title: 'B', kind: 'raster', field: 'b', product: 'b', units: 'b', semantics: 'b',
+    times: ['2026-08-30T03:54:00Z', '2026-08-30T04:00:00Z', '2026-09-05T00:00:00Z'],
+  }
+  const axisless: LayerItem = {
+    id: 'c', title: 'C', kind: 'raster', field: 'c', product: 'c', units: 'c', semantics: 'c',
+  }
+  const all = [layerA, layerB, axisless]
+  const visible = [{ id: 'a', visible: true }, { id: 'b', visible: true }, { id: 'c', visible: true }]
+
+  it('marks each published instant once, carrying every layer that published it', () => {
+    const { markers } = frameMarkers(all, visible, windowStart, windowEnd)
+    expect(markers.map((marker) => marker.time)).toEqual([
+      '2026-08-30T03:00:00Z', '2026-08-30T03:54:00Z', '2026-08-30T04:00:00Z',
+    ])
+    // 04:00 belongs to both layers: one tick, two colours - never two ticks
+    // stacked with one of them unclickable.
+    const shared = markers[2]
+    expect(shared.layers.map((layer) => layer.id)).toEqual(['a', 'b'])
+    expect(new Set(shared.layers.map((layer) => layer.color)).size).toBe(2)
+    // The 2026-09-05 frame is outside the window and carries no tick.
+    expect(markers.every((marker) => marker.ms >= windowStart && marker.ms <= windowEnd)).toBe(true)
+  })
+
+  it('names a layer that published no frame axis instead of dropping it silently', () => {
+    const { markers, axisless: reported } = frameMarkers(all, visible, windowStart, windowEnd)
+    expect(reported).toEqual(['C'])
+    expect(markers.flatMap((marker) => marker.layers.map((layer) => layer.id))).not.toContain('c')
+  })
+
+  it('marks nothing for hidden layers, and nothing at all when none is visible', () => {
+    const { markers } = frameMarkers(all, [{ id: 'a', visible: true }, { id: 'b', visible: false }], windowStart, windowEnd)
+    expect(markers.flatMap((marker) => marker.layers.map((layer) => layer.id))).toEqual(['a', 'a'])
+    expect(frameMarkers(all, [], windowStart, windowEnd)).toEqual({ markers: [], axisless: [] })
+  })
+
+  it('keeps a layer colour stable when another layer is toggled off', () => {
+    const both = frameMarkers(all, visible, windowStart, windowEnd)
+    const alone = frameMarkers(all, [{ id: 'b', visible: true }], windowStart, windowEnd)
+    const colorOfB = (result: ReturnType<typeof frameMarkers>) =>
+      result.markers.flatMap((marker) => marker.layers).find((layer) => layer.id === 'b')?.color
+    expect(colorOfB(alone)).toBe(colorOfB(both))
+    expect(layerTickColor('b', all)).toBe(colorOfB(both))
+    expect(LAYER_TICK_COLORS).toContain(layerTickColor('unknown-layer', all))
+  })
+
+  it('ignores an unreadable timestamp rather than placing a tick at NaN', () => {
+    const broken: LayerItem = { ...layerA, id: 'x', title: 'X', times: ['not a time', '2026-08-30T03:00:00Z'] }
+    const { markers, axisless: reported } = frameMarkers([broken], [{ id: 'x', visible: true }], windowStart, windowEnd)
+    expect(markers).toHaveLength(1)
+    expect(markers[0].time).toBe('2026-08-30T03:00:00Z')
+    expect(reported).toEqual([])
   })
 })

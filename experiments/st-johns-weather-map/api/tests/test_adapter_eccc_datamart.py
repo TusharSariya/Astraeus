@@ -23,9 +23,11 @@ import zarr
 
 from ingest.adapters.eccc_datamart import (
     GDPS_VARS,
+    HRDPS_STEERING_VARS,
     HRDPS_VARS,
     RDPS_VARS,
     ECCCDataMartAdapter,
+    manifest_for,
 )
 from ingest.contract import AdapterUnavailable, FetchWindow
 from ingest.http import PoliteClient, USER_AGENT
@@ -287,7 +289,10 @@ def test_a_rotated_hrdps_grid_survives_the_real_crop(tmp_path: Path, monkeypatch
         store.close()
 
 
-HRDPS_PUBLISHED_FIELDS = frozenset(
+#: The evidence set HRDPS publishes. The steering winds sit apart from it:
+#: they are display-derivation input for cloud motion, declared optional, and
+#: never read on an evidence path.
+HRDPS_EVIDENCE_FIELDS = frozenset(
     {
         "temperature_2m",
         "dew_point_2m",
@@ -298,6 +303,7 @@ HRDPS_PUBLISHED_FIELDS = frozenset(
         "total_cloud",
     }
 )
+HRDPS_PUBLISHED_FIELDS = HRDPS_EVIDENCE_FIELDS | set(HRDPS_STEERING_VARS)
 
 _TCDC_URL_MAP = {
     "20260830/WXO-DD/model_hrdps/continental/2.5km/": make_html_listing(["12/"]),
@@ -343,6 +349,10 @@ def test_total_cloud_is_published_from_the_messages_own_wmo_keys(tmp_path: Path,
     assert "total_cloud" in RDPS_VARS
     assert "total_cloud" not in GDPS_VARS
     assert set(HRDPS_VARS) == HRDPS_PUBLISHED_FIELDS
+    # The steering winds are optional; every evidence field is mandatory.
+    optional = {field.name for field in manifest_for("eccc-hrdps", HRDPS_VARS).fields if field.optional}
+    assert optional == set(HRDPS_STEERING_VARS)
+    assert optional.isdisjoint(HRDPS_EVIDENCE_FIELDS)
 
     client = make_mock_client(_TCDC_URL_MAP)
     adapter = make_adapter(client, var_map={"total_cloud": ("TCDC", "Sfc")})

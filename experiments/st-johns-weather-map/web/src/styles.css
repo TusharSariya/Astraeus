@@ -139,7 +139,7 @@ select { color: var(--ink); background: var(--control); border: 1px solid var(--
 /* Screen-reader alternative to the map canvas: present in the accessibility
    tree, never in the visual layout. Standard sr-only clip pattern, not
    `display:none` (which some assistive tech skips) and not `visibility:hidden`. */
-.map-text-alternative {
+.map-text-alternative, .visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -279,6 +279,26 @@ html[data-theme='dark'] .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: 
 .timeline-slider { width: 100%; height: 6px; appearance: none; background: linear-gradient(90deg, #3498db 0%, #1abc9c 15%, #f39c12 50%, #e74c3c 100%); border-radius: 3px; outline: none; cursor: pointer; }
 .timeline-slider::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--orange); border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 8px rgba(255, 158, 64, 0.8); }
 .timeline-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--orange); border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 8px rgba(255, 158, 64, 0.8); }
+
+/* Published-frame markers: one tick per instant the active layers actually
+   published, on the slider's own scale. The inset matches the slider thumb
+   so a tick sits under the thumb's centre at the same instant. */
+.frame-marker-rail { position: relative; height: 12px; margin-top: 2px; }
+.frame-marker { position: absolute; top: 0; width: 3px; height: 12px; padding: 0; transform: translateX(-50%); border: 0; border-radius: 1px; cursor: pointer; opacity: .85; }
+.frame-marker:hover, .frame-marker:focus-visible { opacity: 1; outline: 1px solid var(--ink); outline-offset: 1px; height: 14px; }
+.frame-marker-key { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; }
+.frame-marker-key .marker-key-entry { display: inline-flex; align-items: center; gap: 5px; }
+.frame-marker-key .marker-key-entry i { width: 8px; height: 8px; border-radius: 1px; }
+.frame-marker-key .marker-key-note { font-style: italic; }
+
+.scrubber-transport-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.timeline-transport { display: flex; align-items: center; gap: 4px; margin-top: 12px; padding: 3px 6px; background: #0c252c; border: 1px solid #23434c; border-radius: 3px; }
+.transport-button { min-width: 28px; padding: 3px 6px; background: transparent; border: 1px solid transparent; border-radius: 2px; color: var(--ink); font: 600 12px 'IBM Plex Mono', monospace; line-height: 1; cursor: pointer; }
+.transport-button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+.transport-button:disabled { opacity: .35; cursor: not-allowed; }
+.transport-button.on { color: var(--orange); border-color: var(--orange); }
+.transport-button.play.on { color: #071a22; background: var(--orange); border-color: var(--orange); }
+.transport-speed { margin-left: 4px; color: var(--muted); font: 600 10px 'IBM Plex Mono', monospace; letter-spacing: .04em; white-space: nowrap; }
 
 .scrubber-quick-jumps { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .scrubber-quick-jumps button { padding: 4px 10px; background: #0c252c; border: 1px solid #23434c; color: var(--ink); cursor: pointer; border-radius: 3px; font: 600 11px 'IBM Plex Mono', monospace; transition: all 0.15s ease; }
@@ -451,6 +471,8 @@ html[data-theme='light'] .dock-toggle.on { color: #fff; }
 .conditions { background: linear-gradient(145deg, var(--panel-raised), var(--panel)); }
 .mode-chip { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .timeline-slider { background: linear-gradient(90deg, var(--muted), var(--cyan) 42%, var(--orange)); }
+.timeline-transport { background: var(--control); border-color: var(--line); }
+.transport-button.play.on { color: var(--panel); }
 
 .reference-map-status { position: absolute; z-index: 5; left: 16px; bottom: 42px; max-width: min(360px, calc(100% - 32px)); margin: 0; padding: 8px 11px; color: var(--ink); background: var(--glass); border: 1px solid var(--alarm); border-left-width: 4px; border-radius: 4px; box-shadow: 0 8px 28px var(--shadow); font: 600 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
 

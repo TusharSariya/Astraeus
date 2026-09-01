@@ -41,6 +41,7 @@ def motion_dataset(
     u: float = 1.0,
     v: float = 0.0,
     confidence: float = 1.0,
+    advect_weight: float | None = None,
     tangents: tuple[float, float] | None = None,
 ) -> xarray.Dataset:
     """One-pair motion dataset; ``tangents=(vs_u, ve_u)`` adds Hermite vars."""
@@ -53,6 +54,8 @@ def motion_dataset(
         "total_cloud_v10": (("pair", "y", "x"), numpy.full(shape, -v, dtype="float32")),
         "total_cloud_confidence": (("pair", "y", "x"), numpy.full(shape, confidence, dtype="float32")),
     }
+    if advect_weight is not None:
+        data_vars["total_cloud_advect_weight"] = (("pair", "y", "x"), numpy.full(shape, advect_weight, dtype="float32"))
     if tangents is not None:
         start_u, end_u = tangents
         data_vars.update({
@@ -149,6 +152,34 @@ def test_flow_is_served_aligned_quantized_and_disclosed(monkeypatch, data_mode):
     outside = ~inside
     if outside.any():
         assert int(rgba[..., 2][outside].max()) == 0
+
+
+def test_the_blue_channel_carries_the_display_weight_when_the_artifact_has_one(monkeypatch, data_mode):
+    # The client mixes advection against a crossfade on this channel. Newer
+    # artifacts publish a display weight that already accounts for
+    # neighbourhood support, in-place development and the held-out skill
+    # veto; it is that, not the raw forward-backward agreement, that must be
+    # served. Here the raw agreement is total and the display weight is a
+    # fifth: the channel must read the fifth.
+    use_store(monkeypatch, data_mode, MotionStore(motion=motion_dataset(confidence=1.0, advect_weight=0.2)))
+    rgba = decode_png(client.get(flow_url()).content)
+    inside = rgba[..., 0] > 0  # a stored cell answered here
+    assert inside.any()
+    assert int(rgba[..., 2][inside].max()) == pytest.approx(51, abs=1)
+    assert "weight the display mixes advection" in client.get(flow_url()).headers["x-weather-render-semantics"]
+
+
+def test_an_artifact_without_a_display_weight_still_serves_its_consistency(monkeypatch, data_mode):
+    # An artifact from the earlier derivation carries no display weight. It
+    # keeps serving the consistency it was built to be mixed on, rather than
+    # 404ing or serving zero, which would silently turn every pair into a
+    # crossfade.
+    use_store(monkeypatch, data_mode, MotionStore(motion=motion_dataset(confidence=0.6)))
+    response = client.get(flow_url())
+    assert response.status_code == 200
+    rgba = decode_png(response.content)
+    inside = rgba[..., 0] > 0
+    assert int(rgba[..., 2][inside].max()) == pytest.approx(153, abs=1)
 
 
 def test_tangents_are_served_side_by_side_with_their_own_scale(monkeypatch, data_mode):

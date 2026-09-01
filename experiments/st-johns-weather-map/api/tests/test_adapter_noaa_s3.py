@@ -67,6 +67,16 @@ SAMPLE_GFS_IDX_LINES = [
     ("VGRD", "250 mb", "3 hour fcst", False),
     ("UGRD", "300 mb", "3 hour fcst", True),
     ("VGRD", "300 mb", "3 hour fcst", True),
+    # Cloud steering winds, again with a neighbouring level as a distractor
+    # and HGT at 500 mb above: the level alone never selects a message.
+    ("UGRD", "850 mb", "3 hour fcst", True),
+    ("VGRD", "850 mb", "3 hour fcst", True),
+    ("UGRD", "800 mb", "3 hour fcst", False),
+    ("VGRD", "800 mb", "3 hour fcst", False),
+    ("UGRD", "700 mb", "3 hour fcst", True),
+    ("VGRD", "700 mb", "3 hour fcst", True),
+    ("UGRD", "500 mb", "3 hour fcst", True),
+    ("VGRD", "500 mb", "3 hour fcst", True),
     ("PWAT", "entire atmosphere (considered as a single layer)", "3 hour fcst", True),
     # A trailing unwanted message so the last selected range is closed, as in
     # the real inventory where hundreds of messages follow PWAT.
@@ -198,8 +208,8 @@ def full_message_set() -> dict[str, xarray.Dataset]:
         "lcc": _message("lcc", 55.0, "%", {"lowCloudLayer": 0.0}),
         "mcc": _message("mcc", 25.0, "%", {"middleCloudLayer": 0.0}),
         "hcc": _message("hcc", 10.0, "%", {"highCloudLayer": 0.0}),
-        "u": _isobaric_message("u", {200: 45.0, 300: 35.0}, "m s**-1"),
-        "v": _isobaric_message("v", {200: -12.0, 300: -8.0}, "m s**-1"),
+        "u": _isobaric_message("u", {200: 45.0, 300: 35.0, 500: 22.0, 700: 14.0, 850: 9.0}, "m s**-1"),
+        "v": _isobaric_message("v", {200: -12.0, 300: -8.0, 500: -5.0, 700: -3.0, 850: -2.0}, "m s**-1"),
         "pwat": _message("pwat", 12.5, "kg m**-2", {"atmosphereSingleLayer": 0.0}),
     }
 

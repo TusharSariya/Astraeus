@@ -92,6 +92,26 @@ _LEAD_DIR = re.compile(r"^\d{3}/?$")
 # exactly that declaration and records its basis in the variable's attrs; a
 # message whose coded keys do not match is still refused, never ranged-guessed.
 
+# Steering levels for cloud motion: 850 hPa for low cloud, 700 for mid, 500
+# for high. A 10 m wind is not a steering wind - it is friction-slowed and
+# veered - so the motion prior needs the isobaric levels, and only these
+# three. Verified present in the Datamart listing for both models
+# (2026-08-31): HRDPS names them `UGRD_ISBL_0850`, RDPS `WindU_IsbL-0850`.
+STEERING_LEVELS_HPA = (850, 700, 500)
+
+
+def _steering_vars(u_prefix: str, v_prefix: str, token: str) -> dict[str, tuple[str, str]]:
+    """`wind_u_850hPa -> (prefix, level token)` for each steering level."""
+    entries: dict[str, tuple[str, str]] = {}
+    for level in STEERING_LEVELS_HPA:
+        entries[f"wind_u_{level}hPa"] = (u_prefix, token.format(level=level))
+        entries[f"wind_v_{level}hPa"] = (v_prefix, token.format(level=level))
+    return entries
+
+
+HRDPS_STEERING_VARS = _steering_vars("UGRD", "VGRD", "ISBL_{level:04d}")
+RDPS_STEERING_VARS = _steering_vars("WindU", "WindV", "IsbL-{level:04d}")
+
 # HRDPS variable map: canonical -> (GRIB file var prefix, level token)
 HRDPS_VARS = {
     "temperature_2m": ("TMP", "AGL-2m"),
@@ -101,6 +121,7 @@ HRDPS_VARS = {
     "wind_v_10m": ("VGRD", "AGL-10m"),
     "mean_sea_level_pressure": ("PRMSL", "MSL"),
     "total_cloud": ("TCDC", "Sfc"),
+    **HRDPS_STEERING_VARS,
 }
 
 # RDPS variable map (CamelCase upstream naming)
@@ -111,6 +132,7 @@ RDPS_VARS = {
     "wind_v_10m": ("WindV", "AGL-10m"),
     "mean_sea_level_pressure": ("Pressure_MSL", "MSL"),
     "total_cloud": ("TotalCloudCover", "Sfc"),
+    **RDPS_STEERING_VARS,
 }
 
 # GDPS variable map (CamelCase upstream naming)
@@ -132,15 +154,29 @@ CANONICAL_FIELD_UNITS = {
     "wind_v_10m": ("m s-1", "10 m"),
     "mean_sea_level_pressure": ("hPa", "mean sea level"),
     "total_cloud": ("percent", "column"),
+    **{f"wind_{component}_{level}hPa": ("m s-1", f"{level} hPa")
+       for level in STEERING_LEVELS_HPA for component in ("u", "v")},
 }
+
+#: Variables the run may publish without, because they only inform a display
+#: derivation (the cloud-motion steering prior). A level absent from one
+#: cycle must never fail the surface artifact the whole map is drawn from.
+OPTIONAL_VARIABLES = frozenset(
+    f"wind_{component}_{level}hPa" for level in STEERING_LEVELS_HPA for component in ("u", "v")
+)
 
 
 def manifest_for(source_id: str, var_map: Mapping[str, tuple[str, str]]) -> RunManifest:
-    """Every mapped variable is mandatory: the map is the adapter's own promise."""
+    """Every mapped variable is mandatory: the map is the adapter's own promise.
+
+    Except the steering winds, which are declared optional: they inform a
+    display derivation only, so a level ECCC did not publish this cycle must
+    cost the map its motion prior, never its evidence.
+    """
     fields = []
     for name in var_map:
         units, level = CANONICAL_FIELD_UNITS[name]
-        fields.append(RequiredField(name, units, level=level))
+        fields.append(RequiredField(name, units, level=level, optional=name in OPTIONAL_VARIABLES))
     return RunManifest(source_id=source_id, fields=tuple(fields))
 
 
