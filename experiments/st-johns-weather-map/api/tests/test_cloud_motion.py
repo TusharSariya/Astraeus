@@ -12,6 +12,7 @@ from __future__ import annotations
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import numpy
 import pytest
@@ -22,9 +23,22 @@ pytest.importorskip("cv2")
 from ingest.derive.methods import (
     BaselineMethod,
     IntermediateFlowMethod,
+    MethodContext,
     PairMotion,
     _score_one,
     method_by_id,
+)
+from ingest.derive.methods.development_residual import (
+    DevelopmentResidualMethod,
+    RESIDUAL_SHAPE_GAIN,
+)
+from ingest.derive.methods.scale_cascade import (
+    CASCADE_OCTAVES,
+    ScaleCascadeMethod,
+    _cascade_bands,
+)
+from ingest.derive.methods.visibility_blend import (
+    VisibilityBlendMethod,
 )
 from ingest.derive.cloud_motion import (
     DEFAULT_METHOD_ID,
@@ -336,6 +350,484 @@ def test_intermediate_flow_beats_the_baseline_when_the_two_directions_disagree()
     assert intermediate_mae < 0.1 * baseline_mae
 
 
+def visibility_pair(v0: float, v1: float, *, size: int = 96, flow: float = 12.0) -> PairMotion:
+    """A pair whose two visibility weights are supplied rather than measured.
+
+    The claim of visibility-blend is about the FUSION, so the reliabilities are
+    handed in: measuring them would decide both, and there would be no way to
+    construct the asymmetry the method exists to exploit.
+    """
+    return PairMotion(
+        flow01=uniform_flow(flow, 0.0, shape=(size, size)),
+        flow10=uniform_flow(-flow, 0.0, shape=(size, size)),
+        confidence=numpy.ones((size, size)),
+        support=numpy.ones((size, size)),
+        advect_weight=numpy.ones((size, size)),
+        extra={"vis0": numpy.full((size, size), v0), "vis1": numpy.full((size, size), v1)},
+    )
+
+
+def test_visibility_blend_is_registered_with_its_own_shader_and_fields():
+    method = method_by_id("visibility-blend")
+    assert method is not None
+    assert method.enabled and not method.generative
+    # A new client construction and two fields nothing else publishes: the
+    # weights are derived here and only fused on the client.
+    assert method.shader == "visibility"
+    assert method.shader not in (BaselineMethod.shader, IntermediateFlowMethod.shader)
+    assert method.extra_suffixes == ("vis0", "vis1")
+
+
+def test_visibility_blend_is_endpoint_exact():
+    # Non-negotiable for every method on the bench, and the reliabilities must
+    # not be able to break it: at a real instant the real frame shows untouched
+    # even where the weight pair says that frame's own warp is worthless.
+    previous, following = wide_blob(30), wide_blob(42)
+    method = VisibilityBlendMethod()
+    for weights in ((1.0, 1.0), (0.01, 1.0), (1.0, 0.01), (0.5, 0.5)):
+        motion = visibility_pair(*weights)
+def shaped_pair(shaping: Any, *, size: int = 96, advect: float = 0.0) -> PairMotion:
+    """A pair carrying a supplied development shaping and a chosen display weight.
+
+    ``advect = 0`` is the regime the residual exists for: advection has failed
+    to explain the change, so the display is the dissolve the shaping re-times.
+    """
+    field = numpy.full((size, size), float(shaping)) if numpy.isscalar(shaping) else numpy.asarray(shaping)
+    return PairMotion(
+        flow01=uniform_flow(0.0, 0.0, shape=(size, size)),
+        flow10=uniform_flow(0.0, 0.0, shape=(size, size)),
+        confidence=numpy.ones((size, size)),
+        support=numpy.ones((size, size)),
+        advect_weight=numpy.full((size, size), advect),
+        extra={"dev_shape": field},
+    )
+
+
+def omega_dataset(
+    frames: int = 3, *, variable: str = "total_cloud", omega: list[float] | None = None
+) -> xarray.Dataset:
+    """A surface dataset carrying total cloud and the 700 hPa omega beside it.
+
+    700 hPa is what ``STEERING_LEVEL_BY_VARIABLE`` assigns total cloud, and
+    the omega field is uniform per frame so the test controls the tendency
+    exactly rather than inferring it.
+    """
+    base = datetime(2026, 8, 31, 12, tzinfo=UTC)
+    stamps = [numpy.datetime64((base + timedelta(hours=step)).replace(tzinfo=None), "ns") for step in range(frames)]
+    cloud = numpy.stack([numpy.roll(blob_field(), 4 * step, axis=1) for step in range(frames)])
+    values = omega if omega is not None else [0.0] * frames
+    column = numpy.stack([numpy.full(cloud.shape[1:], value) for value in values])
+    return xarray.Dataset(
+        {
+            variable: (("valid_time", "y", "x"), cloud, {"units": "percent"}),
+            "omega_700hPa": (("valid_time", "y", "x"), column, {"units": "Pa s-1"}),
+        },
+        coords={"valid_time": stamps},
+    )
+
+
+def test_development_residual_is_registered_with_its_own_shader():
+    method = method_by_id("development-residual")
+    assert method is not None
+    assert method.enabled
+    # Every displayed value remains a mix of two retrieved frames, so this is
+    # emphatically not a generative method and needs no generative slot.
+    assert not method.generative
+    assert method.shader == "development-residual"
+    assert method.shader != BaselineMethod.shader
+    # The shaping has to reach the client as a stored field: the browser has
+    # no omega and must never be handed one.
+    assert method.extra_suffixes == ("dev_shape",)
+
+
+def test_development_residual_is_endpoint_exact_under_any_shaping():
+    # Non-negotiable, and the property the whole carve-out rests on. The
+    # t(1-t) factor is zero at both ends, so this holds for every shaping
+    # value including the saturated ones - it is algebra, not a clamp.
+    previous, following = wide_blob(30), wide_blob(42)
+    method = DevelopmentResidualMethod()
+    for shaping in (-1.0, -0.5, 0.0, 0.5, 1.0):
+        motion = shaped_pair(shaping)
+        assert numpy.array_equal(method.composite(previous, following, motion, 0.0), previous)
+        assert numpy.array_equal(method.composite(previous, following, motion, 1.0), following)
+
+
+def test_visibility_blend_reduces_to_the_baseline_where_both_warps_are_equally_reliable():
+    # The reduction that makes this method a controlled change: equal weights
+    # normalise back to (1-t, t) exactly, whatever their common value, so the
+    # method can only differ where the two warps measurably disagree about
+    # their own reliability.
+    previous, following = wide_blob(30), wide_blob(42)
+    for value in (1.0, 0.4, 0.05):
+        motion = visibility_pair(value, value)
+        for fraction in (0.25, 0.5, 0.75):
+            baseline = BaselineMethod().composite(previous, following, motion, fraction)
+            visibility = VisibilityBlendMethod().composite(previous, following, motion, fraction)
+            assert numpy.allclose(baseline, visibility, atol=1e-12)
+
+
+def test_visibility_blend_with_no_stored_weights_is_the_baseline():
+    # An absent weight pair is an absent measurement, never a zero one: the
+    # fusion falls back to the symmetric weights rather than making one frame
+    # vanish. This is also what the harness's synthetic pairs hand it.
+    previous, following = wide_blob(30), wide_blob(42)
+    motion = held_pair(12.0, -12.0)
+    assert not motion.extra
+    for fraction in (0.25, 0.5, 0.75):
+        baseline = BaselineMethod().composite(previous, following, motion, fraction)
+        visibility = VisibilityBlendMethod().composite(previous, following, motion, fraction)
+        assert numpy.allclose(baseline, visibility, atol=1e-12)
+
+
+def test_visibility_blend_lets_the_reliable_warp_carry_the_pixel():
+    # The whole claim, deliberately constructed. Content really moves 12 cells
+    # east and the flow says so, but frame 1's warp is declared unreliable
+    # (v1 = 0.02) while frame 0's is trusted. The baseline averages the two
+    # warps 50/50 at the midpoint; the visibility fusion gives frame 0 about
+    # 98 percent of the pixel, which is the frame whose warp is right here.
+    previous, truth, following = wide_blob(30), wide_blob(36), wide_blob(42)
+    # A displaced frame 1, so a 50/50 average really is a double image.
+    following_wrong = wide_blob(54)
+    motion = visibility_pair(1.0, 0.02)
+    baseline_mae, baseline_ssim = _score_one(
+        BaselineMethod().composite(previous, following_wrong, motion, 0.5), truth
+    )
+    visibility_mae, visibility_ssim = _score_one(
+        VisibilityBlendMethod().composite(previous, following_wrong, motion, 0.5), truth
+    )
+    assert visibility_mae < baseline_mae
+    assert visibility_ssim > baseline_ssim
+    # And nothing is invented: every value stays inside the range of the two
+    # retrieved frames' own values.
+    drawn = VisibilityBlendMethod().composite(previous, following_wrong, motion, 0.5)
+    assert float(drawn.min()) >= min(float(previous.min()), float(following_wrong.min())) - 1e-9
+    assert float(drawn.max()) <= max(float(previous.max()), float(following_wrong.max())) + 1e-9
+    assert following is not None  # the correct frame is unused here, by design
+
+
+def test_visibility_weights_are_derived_smooth_bounded_and_asymmetric_at_an_occlusion():
+    # The derivation, not the fusion. A blob translating east, with a second
+    # blob that appears only in the later frame: the later frame carries
+    # content the earlier one cannot explain, so the backward warp's residual
+    # is larger there than the forward warp's and the two weights part company.
+    previous = wide_blob(30)
+    following = wide_blob(42) + blob_field(96, 96, centre=(20, 70), sigma=5.0)
+    method = VisibilityBlendMethod()
+    context = MethodContext(
+        variable="total_cloud", frames=[previous, following], indices=(0, 1), interval_seconds=3600.0
+    )
+    motion = method.motion(context)[0]
+    visibility0 = motion.extra["vis0"]
+    visibility1 = motion.extra["vis1"]
+    assert visibility0.shape == previous.shape and visibility1.shape == previous.shape
+    # Strictly positive and at most 1, so the normalised fusion can never
+    # divide by zero and can never exceed a convex combination.
+    for weights in (visibility0, visibility1):
+        assert float(weights.min()) > 0.0
+        assert float(weights.max()) <= 1.0
+    # The weights actually differ somewhere: a pair that never parts company
+    # would make this method the baseline with extra storage.
+    assert float(numpy.max(numpy.abs(visibility0 - visibility1))) > 0.01
+    assert motion.diagnostics["visibility_asymmetry_mean"] > 0.0
+
+
+def test_visibility_blend_matches_the_baseline_on_a_purely_translating_field():
+    # The same held-out harness both methods are ranked by, on a field that
+    # genuinely translates and where both warps are therefore about equally
+    # reliable. The method must not cost anything here: it is the disagreement
+    # case it is for.
+    frames = [wide_blob(20 + 8 * step) for step in range(5)]
+    baseline = _interpolation_skill(frames, method=BaselineMethod(), variable="total_cloud")
+    visibility = _interpolation_skill(frames, method=VisibilityBlendMethod(), variable="total_cloud")
+    assert baseline is not None and visibility is not None
+    assert visibility["midpoint_mae_percent"] <= baseline["midpoint_mae_percent"] + 1e-3
+    assert visibility["midpoint_ssim"] >= baseline["midpoint_ssim"] - 1e-4
+    assert visibility["improvement_over_reversed_flow"] > MIN_HELD_OUT_IMPROVEMENT
+def test_the_residual_re_times_the_change_and_never_leaves_the_two_frames():
+    # THE BOUND, stated as a test. Whatever omega says, the displayed value at
+    # every cell stays between the two retrieved values at that cell: nothing
+    # is added that is in neither frame, nothing removed that is in both.
+    rng = numpy.random.default_rng(20260901)
+    previous = rng.uniform(0.0, 100.0, size=(64, 64))
+    following = rng.uniform(0.0, 100.0, size=(64, 64))
+    lower = numpy.minimum(previous, following)
+    upper = numpy.maximum(previous, following)
+    method = DevelopmentResidualMethod()
+    for shaping in (-1.0, -0.75, 0.25, 1.0):
+        motion = shaped_pair(rng.uniform(-1.0, 1.0, size=(64, 64)) * shaping, size=64)
+        for fraction in (0.05, 0.25, 0.5, 0.75, 0.95):
+            drawn = method.composite(previous, following, motion, fraction)
+            assert numpy.all(drawn >= lower - 1e-9)
+            assert numpy.all(drawn <= upper + 1e-9)
+
+
+def test_the_residual_cannot_invent_or_erase_cloud_the_frames_agree_on():
+    # The sharpest form of the bound. A cell clear in both frames stays clear
+    # and a cell full in both stays full, however hard the model says air is
+    # rising or sinking there. Growth in place is only ever a re-timing of a
+    # change the two RETRIEVED frames already contain.
+    clear = numpy.zeros((32, 32))
+    full = numpy.full((32, 32), 100.0)
+    method = DevelopmentResidualMethod()
+    for shaping in (-1.0, 1.0):
+        motion = shaped_pair(shaping, size=32)
+        for fraction in (0.25, 0.5, 0.75):
+            assert numpy.allclose(method.composite(clear, clear, motion, fraction), 0.0, atol=1e-12)
+            assert numpy.allclose(method.composite(full, full, motion, fraction), 100.0, atol=1e-12)
+
+
+def test_the_shaped_fraction_stays_monotone_so_the_display_never_backs_up():
+    # s(t) = t + gain*phi*t(1-t) is monotone exactly while |gain*phi| <= 1,
+    # and monotone-with-fixed-endpoints is what puts s(t) in [0, 1]. If the
+    # gain ever moved above the limit this test is what would catch it.
+    assert RESIDUAL_SHAPE_GAIN <= 1.0
+    steps = numpy.linspace(0.0, 1.0, 201)
+    for phi in (-1.0, -0.4, 0.0, 0.4, 1.0):
+        fractions = steps + RESIDUAL_SHAPE_GAIN * phi * steps * (1.0 - steps)
+        assert numpy.all(numpy.diff(fractions) >= -1e-12)
+        assert fractions[0] == pytest.approx(0.0) and fractions[-1] == pytest.approx(1.0)
+        assert numpy.all(fractions >= -1e-12) and numpy.all(fractions <= 1.0 + 1e-12)
+
+
+def test_a_zero_shaping_is_the_baseline_exactly():
+    # The residual must cost nothing where the model says nothing. With no
+    # shaping the construction IS the baseline, to the last bit.
+    previous, following = wide_blob(30), wide_blob(42)
+    motion = shaped_pair(0.0, advect=0.6)
+    for fraction in (0.25, 0.5, 0.75):
+        assert numpy.allclose(
+            BaselineMethod().composite(previous, following, motion, fraction),
+            DevelopmentResidualMethod().composite(previous, following, motion, fraction),
+            atol=1e-12,
+        )
+
+
+def test_where_advection_explains_the_change_the_motion_wins():
+    # Constraint: the residual applies only where advection already failed.
+    # With the display weight at 1 the shaping cannot reach the picture at
+    # all, however saturated it is.
+    previous, following = wide_blob(30), wide_blob(42)
+    for shaping in (-1.0, 1.0):
+        advecting = shaped_pair(shaping, advect=1.0)
+        neutral = shaped_pair(0.0, advect=1.0)
+        for fraction in (0.25, 0.5, 0.75):
+            assert numpy.allclose(
+                DevelopmentResidualMethod().composite(previous, following, advecting, fraction),
+                DevelopmentResidualMethod().composite(previous, following, neutral, fraction),
+                atol=1e-12,
+            )
+
+
+def test_ascent_early_makes_cloud_appear_early_and_descent_early_thins_it_early():
+    # The whole point, and the thing advection provably cannot do. A cell that
+    # is clear in frame 0 and cloudy in frame 1 grew in place. Where the model
+    # says the ascent that made it was strongest at the START of the interval,
+    # the cloud must be most of the way there by the midpoint; where the
+    # ascent builds towards the END it must still be mostly absent.
+    clear, cloudy = numpy.zeros((16, 16)), numpy.full((16, 16), 80.0)
+    method = DevelopmentResidualMethod()
+    early = method.composite(clear, cloudy, shaped_pair(0.8, size=16), 0.5)
+    late = method.composite(clear, cloudy, shaped_pair(-0.8, size=16), 0.5)
+    dissolve = method.composite(clear, cloudy, shaped_pair(0.0, size=16), 0.5)
+    assert float(early.mean()) > float(dissolve.mean()) > float(late.mean())
+    # And the mirror case: cloud DECAYING in place, front-loaded, must be
+    # further gone at the midpoint than a constant-rate fade.
+    thinning = method.composite(cloudy, clear, shaped_pair(0.8, size=16), 0.5)
+    assert float(thinning.mean()) < float(dissolve.mean())
+
+
+def test_the_shaping_is_read_from_the_model_omega_with_the_right_sign():
+    # Sign convention, end to end, from the stored field rather than by
+    # inspection. Omega is d(pressure)/dt, so NEGATIVE is ascent. Omega goes
+    # -1.0 -> 0.0 Pa/s across the interval: ascent was stronger at the start,
+    # so a growing cell must be front-loaded, phi > 0.
+    dataset = omega_dataset(3, omega=[-1.0, 0.0, 0.0])
+    frames = [dataset["total_cloud"].isel(valid_time=step).values for step in range(3)]
+    context = MethodContext(
+        variable="total_cloud", frames=frames, indices=(0, 1, 2),
+        interval_seconds=3600.0, dataset=dataset,
+    )
+    motions = DevelopmentResidualMethod().motion(context)
+    growing = frames[1] > frames[0]
+    shaping = motions[0].extra["dev_shape"]
+    assert motions[0].diagnostics["omega_reached"] == 1.0
+    assert float(numpy.median(shaping[growing])) > 0.0
+    # A decaying cell over the same interval is front-loaded by the DESCENT
+    # reading of the same tendency, so its shaping is positive too - one
+    # expression covering formation and dissipation is the claim.
+    decaying = frames[1] < frames[0]
+    assert float(numpy.median(shaping[decaying])) < 0.0
+
+
+def test_absent_vertical_velocity_is_an_absent_residual_never_a_zero_one():
+    # The steering prior's rule, applied to omega: a model that did not
+    # publish the level costs the re-timing and nothing else. The method then
+    # composites exactly as the baseline does.
+    dataset = omega_dataset(3).drop_vars("omega_700hPa")
+    frames = [dataset["total_cloud"].isel(valid_time=step).values for step in range(3)]
+    context = MethodContext(
+        variable="total_cloud", frames=frames, indices=(0, 1, 2),
+        interval_seconds=3600.0, dataset=dataset,
+    )
+    motions = DevelopmentResidualMethod().motion(context)
+    for pair in motions:
+        assert pair.diagnostics["omega_reached"] == 0.0
+        assert numpy.allclose(pair.extra["dev_shape"], 0.0)
+    baseline = BaselineMethod().motion(context)
+    for mine, theirs in zip(motions, baseline):
+        assert numpy.allclose(mine.flow01, theirs.flow01)
+
+
+def test_the_residual_is_earned_per_variable_and_both_numbers_are_published():
+    # `configure` is where an optional ingredient earns its place. Whatever it
+    # decides, provenance must carry the held-out score both with the residual
+    # and without it, so the claim is checkable rather than asserted.
+    dataset = omega_dataset(5, omega=[-1.0, -0.5, 0.0, 0.3, 0.6])
+    frames = [dataset["total_cloud"].isel(valid_time=step).values for step in range(5)]
+    context = MethodContext(
+        variable="total_cloud", frames=frames, indices=(0, 1, 2, 3, 4),
+        interval_seconds=3600.0, dataset=dataset,
+    )
+    active, notes = DevelopmentResidualMethod().configure(context)
+    assert isinstance(active, DevelopmentResidualMethod)
+    assert notes["residual_applied"] is active.use_residual
+    assert notes["residual_level_hpa"] == 700
+    assert notes["held_out_improvement_with_residual"] is not None
+    assert notes["held_out_improvement_without_residual"] is not None
+    # The two numbers must be two REAL measurements of two different
+    # constructions. They came back identical to five decimals once, because
+    # the with-residual case was reusing the steering prior's own no-prior
+    # score, which is computed without the dataset the shaping is read from -
+    # so the residual was being compared against itself and would have been
+    # refused for the wrong reason, silently.
+    assert (
+        notes["held_out_improvement_with_residual"]
+        != notes["held_out_improvement_without_residual"]
+    )
+    # Applied only if it actually predicts the held-out frames better. This is
+    # the direction of the inequality, not a claim about which way it went.
+    if active.use_residual:
+        assert notes["held_out_improvement_with_residual"] > notes["held_out_improvement_without_residual"]
+    else:
+        assert notes["held_out_improvement_with_residual"] <= notes["held_out_improvement_without_residual"]
+def cascade_frames(size: int = 96) -> list[numpy.ndarray]:
+    """A translating blob with fine texture riding on it.
+
+    A smooth blob alone has almost nothing in the fine bands, so it cannot
+    tell a cascade that dissolves fine texture from one that advects it. The
+    ripple is what makes the finest octaves carry anything at all.
+    """
+    row_index, col_index = numpy.mgrid[0:size, 0:size]
+    ripple = 6.0 * numpy.sin(col_index * 1.7) * numpy.cos(row_index * 1.3)
+    return [numpy.clip(wide_blob(24 + 8 * step, size=size) + numpy.roll(ripple, 8 * step, axis=1), 0.0, 100.0)
+            for step in range(5)]
+
+
+def test_scale_cascade_is_registered_disabled_with_its_own_shader_and_fields():
+    method = method_by_id("scale-cascade")
+    assert method is not None
+    # Registered but out of every cycle: it loses to its own scale-blind
+    # control, and the client could not evaluate the pyramid if it won. The
+    # registry keeps the code and the measurement readable either way.
+    assert method.enabled is False
+    assert not method.generative
+    assert method.shader == "cascade"
+    assert method.shader not in (BaselineMethod.shader, IntermediateFlowMethod.shader)
+    # One stored ratio per band, plus the residual the last octave leaves.
+    assert method.extra_suffixes == tuple(f"cascade_w{index}" for index in range(CASCADE_OCTAVES + 1))
+    # Disabled means the derive never pays for it and the artifact never
+    # carries it, which is the point of the flag.
+    assert method not in enabled_methods()
+
+
+def test_cascade_bands_recombine_to_the_retrieved_frame():
+    # The evidence rule, as arithmetic: the bands are a partition of the real
+    # frame, so nothing downstream can weight them into content that was not
+    # retrieved. If this ever fails, every endpoint guarantee below is void.
+    field = blob_field() + 3.0 * numpy.sin(numpy.mgrid[0:96, 0:96][1] * 0.9)
+    bands = _cascade_bands(field)
+    assert len(bands) == CASCADE_OCTAVES + 1
+    assert numpy.allclose(sum(bands), field, atol=1e-12)
+    # And the split is real: the finest band is not an empty field.
+    assert float(numpy.max(numpy.abs(bands[0]))) > 1.0
+
+
+def test_scale_cascade_is_endpoint_exact():
+    # The constraint a decomposition is most likely to break, so it is pinned
+    # bit for bit rather than approximately - and with band ratios present,
+    # because the fallback path is not what ships.
+    frames = cascade_frames()
+    context = MethodContext(
+        variable="total_cloud", frames=[frames[0], frames[1]], indices=(0, 1), interval_seconds=3600.0
+    )
+    motion = ScaleCascadeMethod().motion(context)[0]
+    assert set(motion.extra) == set(ScaleCascadeMethod.extra_suffixes)
+    method = ScaleCascadeMethod()
+    assert numpy.array_equal(method.composite(frames[0], frames[1], motion, 0.0), frames[0])
+    assert numpy.array_equal(method.composite(frames[0], frames[1], motion, 1.0), frames[1])
+
+
+def test_scale_cascade_reduces_to_the_baseline_when_every_band_agrees():
+    # Ratio 1 on every band is exactly the shipped construction, so this
+    # method can only differ where the bands actually disagree about whether
+    # advection explains the change. A pair carrying no ratios at all - an
+    # older artifact, or a hand-built motion - must take the same path.
+    previous, following = wide_blob(30), wide_blob(42)
+    plain_pair = held_pair(12.0, -12.0)
+    ones = {suffix: numpy.ones(previous.shape) for suffix in ScaleCascadeMethod.extra_suffixes}
+    unit_pair = PairMotion(
+        flow01=plain_pair.flow01, flow10=plain_pair.flow10, confidence=plain_pair.confidence,
+        support=plain_pair.support, advect_weight=plain_pair.advect_weight, extra=ones,
+    )
+    for fraction in (0.25, 0.5, 0.75):
+        baseline = BaselineMethod().composite(previous, following, plain_pair, fraction)
+        for pair in (unit_pair, plain_pair):
+            assert numpy.allclose(
+                ScaleCascadeMethod().composite(previous, following, pair, fraction), baseline, atol=1e-9
+            )
+
+
+def test_the_held_out_veto_reaches_every_band_of_the_cascade():
+    # The derive publishes a zero display weight for a variable that fails its
+    # held-out control, and that variable must then crossfade EVERYWHERE. The
+    # per-band field is stored as a ratio ON that weight precisely so a method
+    # carrying its own weights cannot walk past the veto.
+    frames = cascade_frames()
+    context = MethodContext(
+        variable="total_cloud", frames=[frames[0], frames[1]], indices=(0, 1), interval_seconds=3600.0
+    )
+    motion = ScaleCascadeMethod().motion(context)[0]
+    vetoed = PairMotion(
+        flow01=motion.flow01, flow10=motion.flow10, confidence=motion.confidence,
+        support=motion.support, advect_weight=numpy.zeros(frames[0].shape), extra=motion.extra,
+    )
+    # Some band did want to advect, or this test would pass vacuously.
+    assert float(numpy.max(motion.extra["cascade_w0"])) > 0.1
+    crossfade = 0.5 * frames[0] + 0.5 * frames[1]
+    assert numpy.allclose(
+        ScaleCascadeMethod().composite(frames[0], frames[1], vetoed, 0.5), crossfade, atol=1e-9
+    )
+
+
+def test_scale_cascade_actually_advects_rather_than_dissolving():
+    # The failure this method could hide: a cascade whose bands advect but
+    # whose recombination cancels the motion would still score well and show
+    # nothing. On a field that genuinely translates, the midpoint composite
+    # must sit where the content actually is, not halfway between two ghosts.
+    frames = cascade_frames()
+    context = MethodContext(
+        variable="total_cloud", frames=[frames[0], frames[2]], indices=(0, 2), interval_seconds=3600.0
+    )
+    motion = ScaleCascadeMethod().motion(context)[0]
+    composite = ScaleCascadeMethod().composite(frames[0], frames[2], motion, 0.5)
+    crossfade = 0.5 * frames[0] + 0.5 * frames[2]
+    truth = frames[1]
+    assert _score_one(composite, truth)[0] < _score_one(crossfade, truth)[0]
+    # The brightest column moves with the flow instead of standing still.
+    column_of = lambda field: float(numpy.argmax(field.sum(axis=0)))  # noqa: E731
+    assert column_of(frames[0]) < column_of(composite) < column_of(frames[2])
+
+
 def test_leave_one_out_is_absent_not_zero_when_nothing_can_be_held_out():
     assert _interpolation_skill([blob_field(), blob_field()]) is None
 
@@ -439,6 +931,44 @@ def test_derive_publishes_flow_with_full_derivation_provenance(tmp_path: Path):
         ))) < 1.0
         assert stored.sizes["pair"] == 2
         assert stored.attrs["derivation_version"] == VERSION
+    finally:
+        zip_store.close()
+
+
+def test_the_derive_publishes_the_residual_shaping_on_the_method_axis(tmp_path: Path):
+    # End to end: the extra suffix reaches the stored artifact under the
+    # development-residual method, and the methods that do not declare it get
+    # an explicit zero field rather than a ragged artifact - so a client
+    # reading dev_shape for the wrong method gets a no-op, never another
+    # method's numbers under this method's name.
+    artifact, payload = surface_artifact(tmp_path)
+    store = FakeStore({artifact.object_key: payload}, [artifact])
+    workdir = tmp_path / "derive"
+    workdir.mkdir()
+    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
+    assert result is not None
+    derived = result.artifacts[0]
+    per_method = derived.provenance["quality"]["per_variable"]["total_cloud"]["per_method"]
+    assert "development-residual" in per_method
+    options = per_method["development-residual"]["options"]
+    # Both numbers published, whatever the decision - the claim is checkable.
+    assert "residual_applied" in options
+    assert "held_out_improvement_with_residual" in options
+
+    import zarr
+
+    zip_store = zarr.storage.ZipStore(str(derived.payload_path), mode="r")
+    try:
+        stored = xarray.open_zarr(zip_store, consolidated=False)
+        assert "total_cloud_dev_shape" in stored.data_vars
+        published = [str(value) for value in stored["method"].values]
+        baseline = stored["total_cloud_dev_shape"].values[published.index(DEFAULT_METHOD_ID)]
+        assert numpy.allclose(baseline, 0.0)
+        # This fixture carries no omega at all, so the shaping is absent
+        # rather than zeroed by decision - and absent shaping is a stored zero
+        # field, which the shader reads as a constant-rate dissolve.
+        mine = stored["total_cloud_dev_shape"].values[published.index("development-residual")]
+        assert numpy.allclose(mine, 0.0)
     finally:
         zip_store.close()
 

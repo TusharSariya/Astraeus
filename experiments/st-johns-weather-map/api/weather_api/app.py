@@ -56,6 +56,7 @@ from .models import (
     Job,
     JobState,
     InterpolationMethodItem,
+    MethodRequirement,
     Layer,
     LayersResponse,
     MethodScore,
@@ -949,7 +950,7 @@ def get_layer_flow(
     north: float = Query(default=AVALON_CORE_BOUNDS["north"], ge=-90, le=90),
     east: float = Query(default=AVALON_CORE_BOUNDS["east"], ge=-180, le=180),
     crs: str = Query(default="EPSG:4326", description="EPSG:4326 (default) or EPSG:3857; must match the frame rasters it will warp"),
-    texture: str = Query(default="motion", description="'motion' (pairwise flow + consistency), 'tangents' (the pair's Hermite knot velocities, side by side) or 'backward' (the pair's frame1 -> frame0 field)"),
+    texture: str = Query(default="motion", description="'motion' (pairwise flow + consistency), 'tangents' (the pair's Hermite knot velocities), 'backward' (the pair's frame1 -> frame0 field), 'visibility' (the pair's per-frame fusion weights) or 'residual' (the development-residual method's per-cell re-timing)"),
     method: str = Query(default=grids.DEFAULT_FLOW_METHOD, description="which interpolation method's fields to serve; see /methods"),
 ) -> Response:
     """The derived motion field between two adjacent published frames.
@@ -961,7 +962,13 @@ def get_layer_flow(
     pair's cubic Hermite knot velocities so displayed motion is C1 across
     real frames; `texture=backward` adds the pair's frame1 -> frame0 field,
     for a construction that reads both directions rather than assuming the
-    forward one inverts. It is a derivation, disclosed as such; it is never sampled,
+    forward one inverts; `texture=visibility` adds the pair's per-frame fusion
+    weights, for a construction that lets the reliable warp carry a pixel
+    instead of averaging it with an unreliable one; and `texture=residual`
+    adds the development-residual method's per-cell re-timing, which shifts
+    WHEN the change between the two retrieved frames is delivered without
+    changing what that change is.
+    It is a derivation, disclosed as such; it is never sampled,
     never a reading, and its absence is answered 404 - the client then falls
     back one honest rung (linear advection, then crossfade) and says so.
     """
@@ -1012,7 +1019,12 @@ def get_interpolation_methods() -> MethodsResponse:
             notices=["the interpolation method registry could not be read; the map falls back to the default construction"],
         )
     items = {
-        entry["id"]: InterpolationMethodItem(**entry, published=False, scores=[])
+        entry["id"]: InterpolationMethodItem(
+            **{key: value for key, value in entry.items() if key != "requirements"},
+            requirements=[MethodRequirement(**item) for item in entry.get("requirements", [])],
+            published=False,
+            scores=[],
+        )
         for entry in catalogue
     }
     if fixture_mode():

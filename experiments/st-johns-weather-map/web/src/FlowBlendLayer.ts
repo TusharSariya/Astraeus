@@ -14,9 +14,21 @@
  *    where cloud grew or decayed in place rather than moved, and cells with
  *    no trustworthy motion behind them, fall back per-pixel to a plain
  *    linear crossfade;
+ *  - the `development-residual` construction re-times that cross-dissolve
+ *    from a served per-cell shaping (the model run's own vertical velocity,
+ *    computed server-side): the mixing fraction becomes s(t) = t + phi*t*(1-t),
+ *    which is 0 at t=0 and 1 at t=1 for every phi and monotone for |phi| <= 1,
+ *    so the mix stays a convex combination of the two retrieved frames and can
+ *    re-time the change between them but never invent or erase cloud;
  *  - with no flow texture at all the shader IS the plain linear crossfade -
  *    which also replaces the old two-stacked-layers compositing
  *    (1-(1-a)(1-b)) with a true linear blend;
+ *  - the two warped samples are fused by the time fraction, unless the
+ *    selected method's construction is `visibility`, which weighs each by the
+ *    server's measured reliability of that frame's own warp so an unreliable
+ *    warp is not averaged into a double image with a reliable one; the weights
+ *    are normalised and still sum to 1, so every pixel remains a convex
+ *    combination of two samples read from the two retrieved frames;
  *  - only the alpha channel is warped and blended: the frames are the
  *    declared white-with-alpha colormap, so alpha IS the scalar, and the
  *    colour stays exactly the colormap's white.
@@ -27,6 +39,9 @@
 
 import maplibregl from 'maplibre-gl'
 import type { CustomLayerInterface, Map as MapLibreMap } from 'maplibre-gl'
+
+/** The texture slots one layer holds. Two belong to one method each. */
+type TextureSlot = 'frame0' | 'frame1' | 'flow' | 'tangents' | 'backward' | 'visibility' | 'residual'
 
 export interface FlowBlendState {
   /** Object URLs of the two real frame PNGs (earlier, later). */
@@ -44,10 +59,17 @@ export interface FlowBlendState {
    *  null when the server does not serve one. */
   backwardUrl: string | null
   backwardScalePixels: number
+  /** Object URL of the pair's per-frame visibility weights (R = frame 0,
+   *  G = frame 1), or null when the server serves none - the fusion is then
+   *  the symmetric (1-t, t) every other construction uses. */
+  visibilityUrl?: string | null
+  /** Object URL of the pair's development re-timing (R = phi in [-1, 1]), or
+   *  null when the served method publishes none. */
+  residualUrl?: string | null
   /** Which construction to evaluate, as the server's method registry named it.
    *  Selected by a uniform: one compiled program serves every branch, so
    *  switching methods mid-scrub never rebuilds a shader. */
-  construction?: 'hermite' | 'intermediate' | string
+  construction?: 'hermite' | 'intermediate' | 'visibility' | 'development-residual' | string
   /** The shared request extent of frames and flow. */
   bounds: { west: number; south: number; east: number; north: number }
   /** Pixel size of the frame textures (for pixels -> uv conversion). */
@@ -78,11 +100,15 @@ uniform sampler2D u_frame1;
 uniform sampler2D u_flow;
 uniform sampler2D u_tangents; // start knot velocity | end knot velocity
 uniform sampler2D u_backward; // the pair's frame1 -> frame0 field
+uniform sampler2D u_visibility; // R = frame0 reliability, G = frame1 reliability
+uniform sampler2D u_residual; // the pair's development re-timing, R in [-1, 1]
 uniform float u_t;
 uniform float u_opacity;
 uniform float u_has_flow;
 uniform float u_has_tangents;
 uniform float u_intermediate; // 1 = Super SloMo intermediate flow branch
+uniform float u_visibility_blend; // 1 = per-pixel visibility fusion branch
+uniform float u_has_residual; // 1 = development-residual re-timing branch
 uniform vec2 u_flow_scale_uv; // max displacement, in uv units per axis
 uniform vec2 u_tangent_scale_uv;
 uniform vec2 u_backward_scale_uv;
@@ -122,12 +148,62 @@ void main() {
     d0 = (1.0 - u_t) * u_t * flow_uv - u_t * u_t * back_uv;
     d1 = (1.0 - u_t) * (1.0 - u_t) * flow_uv - u_t * (1.0 - u_t) * back_uv;
   }
+  // The two fusion weights. By default they are the time fraction alone, which
+  // is what every construction above draws. The visibility branch (Super SloMo,
+  // Jiang et al. 2018; softmax splatting, Niklaus & Liu 2020), selected by a
+  // uniform so one compiled program still serves every method, scales each by
+  // the server's measured reliability of THAT frame's warp and renormalises:
+  //   w0 = (1-t) v0, w1 = t v1, then w0 /= w0+w1, w1 /= w0+w1
+  // so where one warp is unreliable the other carries the pixel outright
+  // instead of the two being averaged into a double image. At v0 == v1 the
+  // weights are exactly (1-t, t) and this is the baseline; at either endpoint
+  // one weight is zero whatever the reliabilities said, so the branch is
+  // endpoint-exact. A zero pair is an off-grid pixel with no measurement, and
+  // falls back to the time weights rather than dividing zero by zero. Same
+  // arithmetic as VisibilityBlendMethod.composite in ingest/derive/methods.py;
+  // the two must change together or the bench ranks a construction the map
+  // does not draw.
+  float w0 = 1.0 - u_t;
+  float w1 = u_t;
+  if (u_visibility_blend > 0.5) {
+    vec2 visibility = texture2D(u_visibility, v_uv).rg;
+    float a0 = (1.0 - u_t) * visibility.r;
+    float a1 = u_t * visibility.g;
+    float total = a0 + a1;
+    if (total > 1e-6) {
+      w0 = a0 / total;
+      w1 = a1 / total;
+    }
+  }
+  float warped =
+    w0 * texture2D(u_frame0, v_uv - d0).a +
+    w1 * texture2D(u_frame1, v_uv + d1).a;
+  float plain = mix(texture2D(u_frame0, v_uv).a, texture2D(u_frame1, v_uv).a, u_t);
   float warped = mix(
     texture2D(u_frame0, v_uv - d0).a,
     texture2D(u_frame1, v_uv + d1).a,
     u_t
   );
-  float plain = mix(texture2D(u_frame0, v_uv).a, texture2D(u_frame1, v_uv).a, u_t);
+  // The development-residual branch. Where advection failed to explain the
+  // change, the dissolve is re-timed by the model run's own vertical velocity
+  // rather than run at a constant rate:
+  //   s(t) = t + phi * t * (1 - t),   phi in [-1, 1]
+  // t(1-t) is zero at both ends, so s(0) = 0 and s(1) = 1 whatever phi says -
+  // endpoint exactness is algebra here, not a clamp. |phi| <= 1 keeps s
+  // monotone, so s stays in [0, 1] and the mix below stays a CONVEX
+  // combination of the two retrieved frames at this cell: it can re-time the
+  // change but never add cloud that is in neither frame nor remove cloud that
+  // is in both. Only the plain term is shaped; the advected term is untouched, so
+  // where advection does explain the change the motion still wins.
+  // This is the same arithmetic as DevelopmentResidualMethod.composite in
+  // ingest/derive/methods.py; the two must be changed together or the bench
+  // ranks a construction the map does not draw.
+  float shaped_t = u_t;
+  if (u_has_residual > 0.5) {
+    float phi = texture2D(u_residual, v_uv).r * 2.0 - 1.0;
+    shaped_t = u_t + phi * u_t * (1.0 - u_t);
+  }
+  float plain = mix(texture2D(u_frame0, v_uv).a, texture2D(u_frame1, v_uv).a, shaped_t);
   float alpha = mix(plain, warped, advect) * u_opacity;
   gl_FragColor = vec4(alpha, alpha, alpha, alpha); // premultiplied white
 }
@@ -153,7 +229,7 @@ export class FlowBlendLayer implements CustomLayerInterface {
 
   private state: FlowBlendState | null = null
   /** Decoded textures keyed by slot; each remembers the URL it holds. */
-  private textures: { frame0?: LoadedTexture; frame1?: LoadedTexture; flow?: LoadedTexture; tangents?: LoadedTexture; backward?: LoadedTexture } = {}
+  private textures: { frame0?: LoadedTexture; frame1?: LoadedTexture; flow?: LoadedTexture; tangents?: LoadedTexture; backward?: LoadedTexture; residual?: LoadedTexture; visibility?: LoadedTexture } = {}
   private loading = new Map<string, Promise<void>>()
 
   constructor(id: string) {
@@ -188,7 +264,7 @@ export class FlowBlendLayer implements CustomLayerInterface {
       position: gl.getAttribLocation(program, 'a_position'),
       uv: gl.getAttribLocation(program, 'a_uv'),
     }
-    for (const name of ['u_matrix', 'u_frame0', 'u_frame1', 'u_flow', 'u_tangents', 'u_backward', 'u_t', 'u_opacity', 'u_has_flow', 'u_has_tangents', 'u_intermediate', 'u_flow_scale_uv', 'u_tangent_scale_uv', 'u_backward_scale_uv']) {
+    for (const name of ['u_matrix', 'u_frame0', 'u_frame1', 'u_flow', 'u_tangents', 'u_backward', 'u_visibility', 'u_residual', 'u_t', 'u_opacity', 'u_has_flow', 'u_has_tangents', 'u_intermediate', 'u_visibility_blend', 'u_has_residual', 'u_flow_scale_uv', 'u_tangent_scale_uv', 'u_backward_scale_uv']) {
       this.locations[name] = gl.getUniformLocation(program, name)
     }
     this.positionBuffer = gl.createBuffer()
@@ -223,9 +299,11 @@ export class FlowBlendLayer implements CustomLayerInterface {
     if (state.flowUrl) this.ensureTexture('flow', state.flowUrl)
     if (state.tangentsUrl) this.ensureTexture('tangents', state.tangentsUrl)
     if (state.backwardUrl) this.ensureTexture('backward', state.backwardUrl)
+    if (state.visibilityUrl) this.ensureTexture('visibility', state.visibilityUrl)
+    if (state.residualUrl) this.ensureTexture('residual', state.residualUrl)
   }
 
-  private ensureTexture(slot: 'frame0' | 'frame1' | 'flow' | 'tangents' | 'backward', url: string): void {
+  private ensureTexture(slot: TextureSlot, url: string): void {
     const gl = this.gl
     if (!gl) return
     if (this.textures[slot]?.url === url || this.loading.has(`${slot}|${url}`)) return
@@ -256,12 +334,14 @@ export class FlowBlendLayer implements CustomLayerInterface {
     image.src = url
   }
 
-  private wantedUrl(slot: 'frame0' | 'frame1' | 'flow' | 'tangents' | 'backward'): string | null {
+  private wantedUrl(slot: TextureSlot): string | null {
     if (!this.state) return null
     if (slot === 'frame0') return this.state.frame0Url
     if (slot === 'frame1') return this.state.frame1Url
     if (slot === 'tangents') return this.state.tangentsUrl
     if (slot === 'backward') return this.state.backwardUrl
+    if (slot === 'visibility') return this.state.visibilityUrl ?? null
+    if (slot === 'residual') return this.state.residualUrl ?? null
     return this.state.flowUrl
   }
 
@@ -298,6 +378,21 @@ export class FlowBlendLayer implements CustomLayerInterface {
     const backward = state.backwardUrl ? this.textures.backward : undefined
     const backwardReady = flowReady && !!backward && backward.url === state.backwardUrl
     const intermediate = state.construction === 'intermediate' && backwardReady
+    // The visibility construction needs the server's measured weight pair.
+    // Without it there is no reliability to fuse on, so the shader stays on the
+    // symmetric (1-t, t) the baseline already draws - one honest rung down,
+    // never a reliability guessed at from the frames on the client.
+    const visibility = state.visibilityUrl ? this.textures.visibility : undefined
+    const visibilityReady = flowReady && !!visibility && visibility.url === state.visibilityUrl
+    const visibilityBlend = state.construction === 'visibility' && visibilityReady
+    // The residual re-times the dissolve, so unlike the two branches above it
+    // does NOT need the flow texture: with no motion at all the shader is the
+    // crossfade, and re-timing a crossfade is still exactly a crossfade of the
+    // two retrieved frames. Without the residual texture the shader falls back
+    // to the constant-rate dissolve - never to a phi invented client-side.
+    const residual = state.residualUrl ? this.textures.residual : undefined
+    const residualReady =
+      state.construction === 'development-residual' && !!residual && residual.url === state.residualUrl
 
     const corners = [
       maplibregl.MercatorCoordinate.fromLngLat({ lng: state.bounds.west, lat: state.bounds.north }),
@@ -316,6 +411,11 @@ export class FlowBlendLayer implements CustomLayerInterface {
     // never both on: it reads the pair's own two flows, not a knot velocity.
     gl.uniform1f(this.locations.u_has_tangents, tangentsReady && !intermediate ? 1 : 0)
     gl.uniform1f(this.locations.u_intermediate, intermediate ? 1 : 0)
+    // Orthogonal to the trajectory branches: the visibility construction keeps
+    // whichever displacement the flow (and its tangents) produced and changes
+    // only how the two warped samples are weighed against each other.
+    gl.uniform1f(this.locations.u_visibility_blend, visibilityBlend ? 1 : 0)
+    gl.uniform1f(this.locations.u_has_residual, residualReady ? 1 : 0)
     gl.uniform2f(
       this.locations.u_flow_scale_uv,
       state.flowScalePixels / Math.max(1, state.widthPx),
@@ -347,6 +447,12 @@ export class FlowBlendLayer implements CustomLayerInterface {
     gl.activeTexture(gl.TEXTURE4)
     gl.bindTexture(gl.TEXTURE_2D, (backwardReady ? backward : frame0).texture)
     gl.uniform1i(this.locations.u_backward, 4)
+    gl.activeTexture(gl.TEXTURE5)
+    gl.bindTexture(gl.TEXTURE_2D, (visibilityReady ? visibility : frame0).texture)
+    gl.uniform1i(this.locations.u_visibility, 5)
+    gl.activeTexture(gl.TEXTURE6)
+    gl.bindTexture(gl.TEXTURE_2D, (residualReady ? residual : frame0).texture)
+    gl.uniform1i(this.locations.u_residual, 6)
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer)
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW)
@@ -368,6 +474,16 @@ export class FlowBlendLayer implements CustomLayerInterface {
  *  displacement from the earlier frame (d1(t) = F - d0(t)).
  *  d0(0) = 0 and d0(1) = F by construction; at vStart = vEnd = F it is
  *  exactly the linear advection t*F. */
+/** CPU reference of the shader's development-residual re-timing, for tests:
+ *  s(t) = t + phi*t*(1-t), the exact expression the fragment shader evaluates
+ *  and the exact expression `DevelopmentResidualMethod.composite` applies in
+ *  ingest/derive/methods.py. s(0) = 0 and s(1) = 1 for every phi, and for
+ *  |phi| <= 1 it is monotone, so s stays in [0, 1] and the frame mix it drives
+ *  stays a convex combination of the two retrieved frames. */
+export function shapedFraction(phi: number, t: number): number {
+  return t + phi * t * (1 - t)
+}
+
 export function hermiteDisplacement(flow: number, vStart: number, vEnd: number, t: number): number {
   const b = 3 * flow - 2 * vStart - vEnd
   const c = -2 * flow + vStart + vEnd
@@ -396,6 +512,28 @@ export function intermediateDisplacement(
     d0: (1 - t) * t * flow - t * t * backward,
     d1: (1 - t) * (1 - t) * flow - t * (1 - t) * backward,
   }
+}
+
+/** CPU reference of the shader's visibility fusion, for tests: the two blend
+ *  weights the fragment shader applies when the `visibility` construction is
+ *  selected. `v0`/`v1` are the server's measured reliabilities of the frame-0
+ *  and frame-1 warps at this pixel, each in 0..1.
+ *
+ *  Returns `{ w0, w1 }` summing to 1. `w0(1) = 0` and `w1(0) = 0` whatever the
+ *  reliabilities say, so the branch is endpoint-exact; at `v0 === v1` it is
+ *  exactly `(1-t, t)`, the symmetric fusion already shipping. A zero pair is an
+ *  off-grid pixel with no measurement and falls back to the time weights.
+ *  Mirrors VisibilityBlendMethod.composite in ingest/derive/methods.py. */
+export function visibilityWeights(
+  v0: number,
+  v1: number,
+  t: number,
+): { w0: number; w1: number } {
+  const a0 = (1 - t) * v0
+  const a1 = t * v1
+  const total = a0 + a1
+  if (!(total > 1e-6)) return { w0: 1 - t, w1: t }
+  return { w0: a0 / total, w1: a1 / total }
 }
 
 /** CPU reference of the shader's blend, for tests: the exact formula the

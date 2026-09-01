@@ -82,3 +82,28 @@ field SHALL NOT require that carve-out.
 - **WHEN** a method that synthesises pixels is registered
 - **THEN** it is disabled and cannot be selected until the carve-out naming
   it exists
+
+### Requirement: A display method may cross a source boundary only as a displacement, a level or a timing
+Where an owner-approved carve-out permits it, a method MAY be informed by a
+retrieved observation from another source, or by a field of the same model
+run other than the steering wind. What crosses SHALL be a displacement, a
+choice of level, or a re-timing of the mixing fraction - never a value. The
+frames drawn SHALL remain the layer's own two retrieved frames, and no pixel
+of another source SHALL be composited into a layer. Every such input SHALL be
+refused where the layer's own image flow is well supported, weighted by its
+agreement with that flow, and applied only where it improves the held-out
+reconstruction, with both scores published either way. An input that is
+absent, stale, or does not span the interval SHALL leave the method reducing
+to the construction already permitted, disclosed, and SHALL never fail the
+motion artifact.
+
+#### Scenario: An observation informing a model layer's motion
+- **WHEN** a displacement derived from a retrieved satellite sequence fills
+  cells whose own image flow is unsupported
+- **THEN** the drawn pixels are still the model layer's two retrieved frames,
+  and the transfer is refused wherever that layer's own flow is trusted
+
+#### Scenario: The crossing input is missing
+- **WHEN** the other source publishes nothing usable for the interval
+- **THEN** the method draws what the already-permitted construction draws,
+  says so, and the motion artifact is published as normal

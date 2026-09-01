@@ -46,8 +46,13 @@ def motion_dataset(
     confidence: float = 1.0,
     advect_weight: float | None = None,
     tangents: tuple[float, float] | None = None,
+    visibility: tuple[float, float] | None = None,
 ) -> xarray.Dataset:
-    """One-pair motion dataset; ``tangents=(vs_u, ve_u)`` adds Hermite vars."""
+    """One-pair motion dataset; ``tangents=(vs_u, ve_u)`` adds Hermite vars.
+
+    ``visibility=(v0, v1)`` adds the per-frame fusion weights the
+    ``visibility-blend`` method publishes for itself.
+    """
     times = frame_times()
     shape = (1,) + LAT2D.shape
     data_vars = {
@@ -66,6 +71,12 @@ def motion_dataset(
             "total_cloud_vs_v": (("pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
             "total_cloud_ve_u": (("pair", "y", "x"), numpy.full(shape, end_u, dtype="float32")),
             "total_cloud_ve_v": (("pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
+        })
+    if visibility is not None:
+        first, second = visibility
+        data_vars.update({
+            "total_cloud_vis0": (("pair", "y", "x"), numpy.full(shape, first, dtype="float32")),
+            "total_cloud_vis1": (("pair", "y", "x"), numpy.full(shape, second, dtype="float32")),
         })
     return xarray.Dataset(
         data_vars,
@@ -264,6 +275,57 @@ def test_an_artifact_without_a_backward_flow_is_a_404_for_it(monkeypatch, data_m
     assert client.get(flow_url()).status_code == 200
 
 
+def residual_dataset(shaping: float) -> xarray.Dataset:
+    """The one-pair motion dataset plus a uniform development shaping."""
+    dataset = motion_dataset()
+    shape = (1,) + LAT2D.shape
+    dataset["total_cloud_dev_shape"] = (("pair", "y", "x"), numpy.full(shape, shaping, dtype="float32"))
+    return dataset
+
+
+def test_the_development_shaping_is_served_signed_on_a_fixed_scale(monkeypatch, data_mode):
+    # The re-timing is a signed scalar in [-1, 1], not a displacement, so it is
+    # served on a FIXED scale of 1 rather than one fitted to the field: two
+    # cycles must decode the same way, and a weak cycle must not be stretched
+    # to look like a strong one.
+    use_store(monkeypatch, data_mode, MotionStore(motion=residual_dataset(0.5)))
+    response = client.get(flow_url(texture="residual"))
+    assert response.status_code == 200
+    headers = response.headers
+    assert headers["x-weather-image-basis"] == "derived_motion"
+    assert headers["x-weather-flow-texture"] == "residual"
+    assert "vertical velocity" in headers["x-weather-render-semantics"]
+    assert "not evidence" in headers["x-weather-render-semantics"]
+    scale = float(headers["x-weather-flow-scale"])
+    assert scale == 1.0
+    rgba = decode_png(response.content)
+    # Never on the alpha channel, where browser premultiplication would
+    # destroy the precision of a value that is meant to pass through zero.
+    assert int(rgba[..., 3].min()) == 255
+    decoded = (rgba[..., 0].astype("float64") / 255.0 - 0.5) * 2.0 * scale
+    inside = decode_png(client.get(flow_url()).content)[..., 2] == 255
+    assert inside.any()
+    assert float(numpy.abs(decoded[inside] - 0.5).max()) < 0.01
+    # And the sign survives the round trip, which is the whole content of the
+    # field: negative delivers the change later, positive earlier.
+    use_store(monkeypatch, data_mode, MotionStore(motion=residual_dataset(-0.5)))
+    negative = decode_png(client.get(flow_url(texture="residual")).content)
+    decoded_negative = (negative[..., 0].astype("float64") / 255.0 - 0.5) * 2.0
+    assert float(numpy.abs(decoded_negative[inside] + 0.5).max()) < 0.01
+
+
+def test_an_artifact_without_a_development_shaping_is_a_404_for_it(monkeypatch, data_mode):
+    # Only one method publishes this suffix, so every other artifact answers
+    # 404 naming the absence and the client dissolves at a constant rate -
+    # never on a shaping the browser made up, which would be a displayed value
+    # nothing retrieved.
+    use_store(monkeypatch, data_mode, MotionStore(motion=motion_dataset()))
+    response = client.get(flow_url(texture="residual"))
+    assert response.status_code == 404
+    assert "development-residual" in response.json()["detail"]
+    assert client.get(flow_url()).status_code == 200
+
+
 def test_the_served_shader_names_the_construction_the_fields_are_for(monkeypatch, data_mode):
     # The client must not infer its construction from which textures happened
     # to load. The server's own registry answers, in a header.
@@ -273,6 +335,81 @@ def test_the_served_shader_names_the_construction_the_fields_are_for(monkeypatch
     # An unregistered name never invents a branch; it falls back to the
     # construction every method's fields support.
     assert grids.flow_shader_for("no-such-method") == "hermite"
+
+
+def visibility_motion_dataset(first: float, second: float, *, method_id: str = "visibility-blend") -> xarray.Dataset:
+    """The one-pair dataset on a method axis carrying only ``method_id``.
+
+    The visibility weights belong to one method, so they can only be asked for
+    on that method's slice of the axis - which is the point of the refusal
+    pinned below.
+    """
+    base = motion_dataset(visibility=(first, second))
+    expanded = base.expand_dims({"method": [method_id]})
+    expanded.attrs = dict(base.attrs)
+    return expanded
+
+
+def test_the_visibility_weights_are_served_as_two_channels_and_disclosed(monkeypatch, data_mode):
+    # The per-frame fusion weights the visibility-blend construction needs.
+    # R is frame 0's reliability and G is frame 1's; neither may ride the alpha
+    # channel, where browser premultiplication would destroy precision near
+    # zero, and the two must be distinguishable from each other.
+    use_store(monkeypatch, data_mode, MotionStore(motion=visibility_motion_dataset(0.8, 0.2)))
+    response = client.get(flow_url(texture="visibility", method="visibility-blend"))
+    assert response.status_code == 200
+    headers = response.headers
+    assert headers["x-weather-image-basis"] == "derived_motion"
+    assert headers["x-weather-flow-texture"] == "visibility"
+    assert headers["x-weather-interpolation-method"] == "visibility-blend"
+    assert headers["x-weather-flow-shader"] == "visibility"
+    assert "per-pixel visibility weights" in headers["x-weather-render-semantics"]
+    assert "not evidence" in headers["x-weather-render-semantics"]
+    # A weight is unitless, so the declared scale is 1 rather than a
+    # displacement the channels do not carry.
+    assert float(headers["x-weather-flow-scale"]) == pytest.approx(1.0)
+    rgba = decode_png(response.content)
+    assert int(rgba[..., 3].min()) == 255
+    inside = rgba[..., 0] > 0  # a stored cell answered here
+    assert inside.any()
+    assert int(rgba[..., 0][inside].max()) == pytest.approx(204, abs=1)  # 0.8
+    assert int(rgba[..., 1][inside].max()) == pytest.approx(51, abs=1)  # 0.2
+    # Outside the grid both channels are zero: an absent measurement the
+    # client answers with the symmetric time weights, never a reliability of
+    # zero that would make one retrieved frame vanish.
+    outside = ~inside
+    if outside.any():
+        assert int(rgba[..., 1][outside].max()) == 0
+
+
+def test_a_method_that_derives_no_visibility_weights_is_refused_them(monkeypatch, data_mode):
+    # The derive pads a suffix no method declared with an explicit zero field,
+    # so the variable exists on every method's slice. Serving it would draw a
+    # method with fusion weights it never derived; the absence is named.
+    use_store(monkeypatch, data_mode, MotionStore(motion=visibility_motion_dataset(0.8, 0.2, method_id="baseline")))
+    response = client.get(flow_url(texture="visibility"))
+    assert response.status_code == 404
+    assert "derives no visibility weights" in response.json()["detail"]
+    # Every other texture is unaffected for that method.
+    assert client.get(flow_url()).status_code == 200
+
+
+def test_an_artifact_without_visibility_weights_is_a_404_for_them(monkeypatch, data_mode):
+    # One honest rung down, named: the client then fuses symmetrically, which
+    # is the construction already approved, rather than inventing a
+    # reliability of its own from the frames it holds.
+    dataset = visibility_motion_dataset(0.8, 0.2).drop_vars(["total_cloud_vis0", "total_cloud_vis1"])
+    use_store(monkeypatch, data_mode, MotionStore(motion=dataset))
+    response = client.get(flow_url(texture="visibility", method="visibility-blend"))
+    assert response.status_code == 404
+    assert "predates the stored visibility weights" in response.json()["detail"]
+    assert client.get(flow_url(method="visibility-blend")).status_code == 200
+
+
+def test_the_visibility_method_names_its_own_shader(monkeypatch, data_mode):
+    # The client must not infer the fusion from which textures happened to
+    # load. The server's own registry answers.
+    assert grids.flow_shader_for("visibility-blend") == "visibility"
 
 
 def test_an_unknown_texture_is_a_422(monkeypatch, data_mode):

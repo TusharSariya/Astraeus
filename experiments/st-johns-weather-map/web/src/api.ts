@@ -638,6 +638,10 @@ export function layerLegendUrl(layer: LayerItem): string {
  *  a rendered-grid layer. Display-support for the opt-in interpolation
  *  shader; requested over exactly the frame rasters' extent so its pixels
  *  align with theirs. */
+/** The texture variants /flow serves. Two of them belong to one method each
+ *  and are requested only for that method. */
+export type FlowTextureName = 'motion' | 'tangents' | 'backward' | 'visibility' | 'residual'
+
 export interface FlowTexture {
   objectUrl: string
   /** Max displacement in output pixels encoded at channel value 255. */
@@ -651,6 +655,14 @@ export interface FlowTexture {
    *  to read and the shader stays on the advection already approved. */
   backwardUrl: string | null
   backwardScalePixels: number
+  /** The pair's per-frame visibility weights (R = frame 0, G = frame 1), or
+   *  null when the served method derives none - the fusion is then the
+   *  symmetric (1-t, t) every other construction uses. */
+  visibilityUrl: string | null
+  /** The pair's development re-timing (R = phi in [-1, 1]), or null when the
+   *  served method publishes none - the shader then dissolves at a constant
+   *  rate, never on a phi the client made up. */
+  residualUrl: string | null
   frameFrom: string
   frameTo: string
   request: RasterRequest
@@ -674,6 +686,9 @@ export interface InterpolationMethodItem {
   enabled: boolean
   generative: boolean
   published: boolean
+  /** Unmet requirements are why a selected method may draw the same picture
+   *  the baseline does. */
+  requirements: Array<{ name: string; met: boolean; detail: string }>
   scores: Array<{
     layerId: string
     sourceId: string
@@ -704,6 +719,11 @@ export async function loadMethods(signal?: AbortSignal): Promise<{ methods: Inte
       enabled: item.enabled !== false,
       generative: item.generative === true,
       published: item.published === true,
+      requirements: ((item.requirements ?? []) as Array<Record<string, unknown>>).map((req) => ({
+        name: String(req.name),
+        met: req.met === true,
+        detail: String(req.detail ?? ''),
+      })),
       scores: ((item.scores ?? []) as Array<Record<string, unknown>>).map((score) => ({
         layerId: String(score.layer_id),
         sourceId: String(score.source_id),
@@ -730,7 +750,7 @@ export async function loadMethods(signal?: AbortSignal): Promise<{ methods: Inte
 export function layerFlowUrl(
   layer: LayerItem,
   request: RasterRequest & { from: string; to: string },
-  texture: 'motion' | 'tangents' | 'backward' = 'motion',
+  texture: FlowTextureName = 'motion',
   method: string = DEFAULT_INTERPOLATION_METHOD,
 ): string {
   const params = new URLSearchParams({
@@ -758,7 +778,7 @@ export async function loadLayerFlow(
   signal?: AbortSignal,
   method: string = DEFAULT_INTERPOLATION_METHOD,
 ): Promise<{ flow: FlowTexture | null; absent: boolean; error: string | null }> {
-  const fetchTexture = async (texture: 'motion' | 'tangents' | 'backward'): Promise<{ objectUrl: string; scale: number; frameFrom: string | null; frameTo: string | null; method: string | null; shader: string | null } | 'absent' | { error: string }> => {
+  const fetchTexture = async (texture: FlowTextureName): Promise<{ objectUrl: string; scale: number; frameFrom: string | null; frameTo: string | null; method: string | null; shader: string | null } | 'absent' | { error: string }> => {
     const response = await fetch(layerFlowUrl(layer, request, texture, method), { signal, headers: { Accept: 'image/png,image/*' } })
     if (response.status === 404) return 'absent'
     if (!response.ok) return { error: `motion texture request returned ${response.status}` }
@@ -797,6 +817,28 @@ export async function loadLayerFlow(
     if (backwardFetched !== 'absent' && !('error' in backwardFetched)) {
       backward = { objectUrl: backwardFetched.objectUrl, scale: backwardFetched.scale }
     }
+    // These two suffixes exist for exactly one construction each, unlike the
+    // tangents and the backward field which every method's artifact carries.
+    // So they are fetched only when the server says it served the method that
+    // publishes one - asking on every pair of every other method would be a
+    // guaranteed 404 per frame pair. Absent either way means the shader falls
+    // back to symmetric fusion at a constant rate, never to a reliability or
+    // a re-timing the client made up.
+    const served = motion.shader ?? ''
+    let visibility: { objectUrl: string } | null = null
+    if (served === 'visibility') {
+      const visibilityFetched = await fetchTexture('visibility').catch(() => 'absent' as const)
+      if (visibilityFetched !== 'absent' && !('error' in visibilityFetched)) {
+        visibility = { objectUrl: visibilityFetched.objectUrl }
+      }
+    }
+    let residual: { objectUrl: string } | null = null
+    if (served === 'development-residual') {
+      const residualFetched = await fetchTexture('residual').catch(() => 'absent' as const)
+      if (residualFetched !== 'absent' && !('error' in residualFetched)) {
+        residual = { objectUrl: residualFetched.objectUrl }
+      }
+    }
     return {
       flow: {
         objectUrl: motion.objectUrl,
@@ -805,6 +847,8 @@ export async function loadLayerFlow(
         tangentsScalePixels: tangents?.scale ?? 0,
         backwardUrl: backward?.objectUrl ?? null,
         backwardScalePixels: backward?.scale ?? 0,
+        visibilityUrl: visibility?.objectUrl ?? null,
+        residualUrl: residual?.objectUrl ?? null,
         frameFrom: motion.frameFrom ?? request.from,
         frameTo: motion.frameTo ?? request.to,
         request,
@@ -823,7 +867,9 @@ export async function loadLayerFlow(
 
 /** Every object URL a FlowTexture holds, for revocation on eviction. */
 export function flowObjectUrls(flow: FlowTexture): string[] {
-  return [flow.objectUrl, flow.tangentsUrl, flow.backwardUrl].filter((url): url is string => !!url)
+  return [flow.objectUrl, flow.tangentsUrl, flow.backwardUrl, flow.visibilityUrl, flow.residualUrl].filter(
+    (url): url is string => !!url,
+  )
 }
 
 /** What a layer's evidence rests on, in words.

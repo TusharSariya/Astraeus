@@ -9,7 +9,46 @@ vi.mock('maplibre-gl', () => ({
   default: { MercatorCoordinate: { fromLngLat: (point: { lng: number; lat: number }) => ({ x: point.lng, y: point.lat }) } },
 }))
 
-import { FlowBlendLayer, blendReference, hermiteDisplacement, intermediateDisplacement } from './FlowBlendLayer'
+import { FlowBlendLayer, blendReference, hermiteDisplacement, intermediateDisplacement, shapedFraction, visibilityWeights } from './FlowBlendLayer'
+
+describe('shapedFraction (the development-residual re-timing)', () => {
+  it('is endpoint-exact for every shaping, by algebra rather than a clamp', () => {
+    for (const phi of [-1, -0.5, 0, 0.37, 1]) {
+      expect(shapedFraction(phi, 0)).toBeCloseTo(0, 12)
+      expect(shapedFraction(phi, 1)).toBeCloseTo(1, 12)
+    }
+  })
+
+  it('stays monotone and inside [0, 1], so the mix stays a convex combination', () => {
+    // This is the whole licence for the method: s(t) in [0, 1] means the
+    // displayed value is between the two RETRIEVED frames at that cell, so no
+    // cloud is invented and none erased. Monotonicity is what guarantees it.
+    for (const phi of [-1, -0.6, 0.6, 1]) {
+      let last = -Infinity
+      for (let step = 0; step <= 200; step += 1) {
+        const value = shapedFraction(phi, step / 200)
+        expect(value).toBeGreaterThanOrEqual(-1e-12)
+        expect(value).toBeLessThanOrEqual(1 + 1e-12)
+        expect(value).toBeGreaterThanOrEqual(last - 1e-12)
+        last = value
+      }
+    }
+  })
+
+  it('is the identity where the model says nothing, so the residual costs nothing', () => {
+    for (const t of [0.1, 0.25, 0.5, 0.9]) expect(shapedFraction(0, t)).toBeCloseTo(t, 12)
+  })
+
+  it('brings the change forward for a positive shaping and holds it back for a negative one', () => {
+    expect(shapedFraction(0.8, 0.5)).toBeGreaterThan(0.5)
+    expect(shapedFraction(-0.8, 0.5)).toBeLessThan(0.5)
+    // The exact values DevelopmentResidualMethod.composite computes in
+    // ingest/derive/methods.py: s = t + phi*t*(1-t). If these two ever drift,
+    // the bench ranks a construction the map does not draw.
+    expect(shapedFraction(0.8, 0.5)).toBeCloseTo(0.5 + 0.8 * 0.25, 12)
+    expect(shapedFraction(-0.4, 0.25)).toBeCloseTo(0.25 - 0.4 * 0.1875, 12)
+  })
+})
 
 describe('hermiteDisplacement (the fragment shader cubic)', () => {
   it('is endpoint-exact: d0(0) = 0 and d0(1) = F, whatever the tangents claim', () => {
@@ -82,6 +121,59 @@ describe('intermediateDisplacement (the fragment shader intermediate branch)', (
   })
 })
 
+describe('visibilityWeights (the fragment shader visibility branch)', () => {
+  it('is endpoint-exact: one frame carries the whole pixel at its own instant', () => {
+    // Whatever the two reliabilities claim - including a frame declared all
+    // but invisible - the real frame shows untouched at its own end.
+    expect(visibilityWeights(0.01, 1, 0)).toEqual({ w0: 1, w1: 0 })
+    expect(visibilityWeights(1, 0.01, 1)).toEqual({ w0: 0, w1: 1 })
+  })
+
+  it('reduces exactly to the symmetric (1-t, t) where both warps are equally reliable', () => {
+    // The reduction that makes this a controlled change: equal reliabilities
+    // normalise back to the shipped fusion whatever their common value, so any
+    // visible difference is a measured disagreement, never a new blend applied
+    // everywhere.
+    for (const v of [1, 0.4, 0.05]) {
+      for (const t of [0.1, 0.25, 0.5, 0.9]) {
+        const { w0, w1 } = visibilityWeights(v, v, t)
+        expect(w0).toBeCloseTo(1 - t, 10)
+        expect(w1).toBeCloseTo(t, 10)
+      }
+    }
+  })
+
+  it('lets the reliable warp carry the pixel instead of averaging in the unreliable one', () => {
+    // At the midpoint the shipped fusion is 50/50 - which is how two warps
+    // that disagree become a double image. With frame 1's warp measured at a
+    // fiftieth of frame 0's, frame 0 takes ~98 percent of the pixel.
+    const { w0, w1 } = visibilityWeights(1, 0.02, 0.5)
+    expect(w0).toBeCloseTo(1 / 1.02, 10)
+    expect(w1).toBeCloseTo(0.02 / 1.02, 10)
+    expect(w0).toBeGreaterThan(0.97)
+  })
+
+  it('always sums to 1 and stays a convex combination, so nothing is invented', () => {
+    for (const [v0, v1, t] of [[1, 0.02, 0.25], [0.3, 0.9, 0.75], [0.5, 0.5, 0.5], [1, 1, 0.1]]) {
+      const { w0, w1 } = visibilityWeights(v0, v1, t)
+      expect(w0 + w1).toBeCloseTo(1, 10)
+      expect(w0).toBeGreaterThanOrEqual(0)
+      expect(w1).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('reads a zero pair as an absent measurement, not a reliability of zero', () => {
+    // Off-grid pixels of the served texture carry zero in both channels. A
+    // literal reading would make one retrieved frame vanish there; the
+    // fallback is the time weights the baseline already draws.
+    for (const t of [0.25, 0.5, 0.75]) {
+      const { w0, w1 } = visibilityWeights(0, 0, t)
+      expect(w0).toBeCloseTo(1 - t, 10)
+      expect(w1).toBeCloseTo(t, 10)
+    }
+  })
+})
+
 describe('blendReference (the fragment shader formula)', () => {
   it('is endpoint-exact: at t=0 and t=1 the warp offsets vanish and the real frame shows untouched', () => {
     // At t=0 the frame0 warp offset is -t*f = 0, so warpedAlpha0 == alpha0;
@@ -120,7 +212,7 @@ describe('FlowBlendLayer before GL exists', () => {
     layer.update({
       frame0Url: 'blob:a', frame1Url: 'blob:b', flowUrl: null, flowScalePixels: 0,
       tangentsUrl: null, tangentsScalePixels: 0,
-      backwardUrl: null, backwardScalePixels: 0, construction: 'intermediate',
+      backwardUrl: null, backwardScalePixels: 0, visibilityUrl: null, residualUrl: null, construction: 'visibility',
       bounds: { west: -55, south: 46, east: -50, north: 49 }, widthPx: 100, heightPx: 100,
       t: 0.5, opacity: 0.85,
     })

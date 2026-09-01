@@ -28,3 +28,22 @@ default construction and say so.
   publishes
 - **THEN** the client returns to the default rather than requesting fields
   no cycle produces
+
+### Requirement: A method that cannot differ says why
+Every interpolation method offered SHALL declare what it needs in order to
+differ from the default construction, and the client SHALL show any
+requirement that is not met. A method whose ingredient this deployment does
+not have is not an error - it reduces to another construction by design - but
+the reader who selects it and sees the picture not change SHALL be told the
+reason, because a control that appears to do something must do it.
+
+#### Scenario: A method whose data this deployment lacks
+- **WHEN** a method needs an observation or a field that no published
+  artifact carries
+- **THEN** the menu shows that requirement as unmet, naming what is missing
+  and what the method draws instead
+
+#### Scenario: A method with everything it needs
+- **WHEN** every one of a method's requirements is met
+- **THEN** no requirement notice is shown and the method draws its own
+  construction

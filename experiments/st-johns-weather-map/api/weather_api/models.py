@@ -270,6 +270,20 @@ class MethodScore(StrictModel):
     derivation_version: str | None = None
 
 
+class MethodRequirement(StrictModel):
+    """One thing a method needs before it can differ from the baseline.
+
+    A method whose ingredient this deployment lacks is not broken - it
+    reduces to another construction by design. But a reader who selects it
+    and sees no change is owed the reason, because a control that appears to
+    do something must do it.
+    """
+
+    name: str
+    met: bool
+    detail: str = ""
+
+
 class InterpolationMethodItem(StrictModel):
     """One entry in the interpolation bench."""
 
@@ -284,6 +298,9 @@ class InterpolationMethodItem(StrictModel):
     generative: bool = False
     #: Whether any currently published motion artifact carries this method.
     published: bool = False
+    #: Unmet requirements are why a selected method may draw the same picture
+    #: the baseline does. Empty means it works with what it is handed.
+    requirements: list[MethodRequirement] = Field(default_factory=list)
     scores: list[MethodScore] = Field(default_factory=list)
 
 

@@ -77,6 +77,18 @@ SAMPLE_GFS_IDX_LINES = [
     ("VGRD", "700 mb", "3 hour fcst", True),
     ("UGRD", "500 mb", "3 hour fcst", True),
     ("VGRD", "500 mb", "3 hour fcst", True),
+    # Vertical velocity at the same three steering levels, for the
+    # development-residual re-timing. DZDT is the geometric vertical velocity
+    # GFS publishes beside every one of these messages; it is a deliberate
+    # distractor here because the adapter takes omega (VVEL, Pa s-1) only -
+    # mixing the two conventions is how a sign error would get in.
+    ("VVEL", "850 mb", "3 hour fcst", True),
+    ("DZDT", "850 mb", "3 hour fcst", False),
+    ("VVEL", "800 mb", "3 hour fcst", False),
+    ("VVEL", "700 mb", "3 hour fcst", True),
+    ("DZDT", "700 mb", "3 hour fcst", False),
+    ("VVEL", "500 mb", "3 hour fcst", True),
+    ("DZDT", "500 mb", "3 hour fcst", False),
     ("PWAT", "entire atmosphere (considered as a single layer)", "3 hour fcst", True),
     # A trailing unwanted message so the last selected range is closed, as in
     # the real inventory where hundreds of messages follow PWAT.
@@ -210,6 +222,9 @@ def full_message_set() -> dict[str, xarray.Dataset]:
         "hcc": _message("hcc", 10.0, "%", {"highCloudLayer": 0.0}),
         "u": _isobaric_message("u", {200: 45.0, 300: 35.0, 500: 22.0, 700: 14.0, 850: 9.0}, "m s**-1"),
         "v": _isobaric_message("v", {200: -12.0, 300: -8.0, 500: -5.0, 700: -3.0, 850: -2.0}, "m s**-1"),
+        # Omega at the three steering levels, in the units ecCodes spells for
+        # WMO 0/2/8. Negative is ascent, which is why the values are signed.
+        "w": _isobaric_message("w", {500: -0.12, 700: -0.31, 850: 0.18}, "Pa s**-1"),
         "pwat": _message("pwat", 12.5, "kg m**-2", {"atmosphereSingleLayer": 0.0}),
     }
 

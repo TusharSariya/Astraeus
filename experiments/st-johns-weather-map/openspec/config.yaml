@@ -39,7 +39,55 @@ context: |
   whose held-out midpoint reconstruction it measurably improves, with both
   scores published in provenance. A variable whose motion does not beat the
   same construction with its motion reversed is published with a zero
-  display weight and crossfades everywhere. A control that appears to do something must
+  display weight and crossfades everywhere.
+  Three further sources MAY inform the DISPLAY construction, each fenced the
+  same way and each owner-approved (interpolation-method-bench 2026-09-01).
+  In all three the pixels drawn stay the layer's own two retrieved frames:
+  what crosses is a displacement, a level choice or a timing, never a value.
+  (a) That steering wind's LEVEL may be chosen per cell by a retrieved
+  observation of the cloud top over that cell - GOES-19 ABI ACHAF cloud-top
+  height, and nothing else - under all four conditions above unchanged and
+  two more: the observation contributes no motion of its own, only selecting
+  which of the same model run's own retrieved 850/700/500 hPa winds a cell
+  takes, interpolated at the observed height and clamped at the outermost
+  published level, never extrapolated beyond it; and where no valid height
+  was retrieved - clear sky, off the observation's grid, a flagged retrieval,
+  or a forecast pair with no scan within an hour of it - that cell keeps the
+  variable's single steering level exactly, so an absent height is an absent
+  height and the construction reduces to the one already permitted.
+  (b) The motion field may be informed by a DISPLACEMENT FIELD derived from
+  another published retrieved observation - the GOES-19 Enterprise Cloud Mask
+  - and by nothing else, under every one of these together: what crosses the
+  source boundary is a displacement only, never a value, so no satellite
+  pixel is ever composited into a model layer; the transferred motion only
+  fills cells whose own image flow is unsupported and never overrides an
+  observed motion, because the imagery being drawn is the authority on its
+  own motion; its weight is proportional to its agreement with the trusted
+  image flow; it is refused wherever a well-supported image flow reports the
+  field standing still; it is applied only for a variable whose held-out
+  reconstruction it measurably improves, with both scores published; and it
+  is absent unless the observed scans exactly span the model pair's interval
+  with no gap - nothing is extrapolated, stretched across a hole or taken
+  stale, and a pair the scans do not span is disclosed as having no
+  transferred prior and falls back to the layer's own motion.
+  (c) The dissolve between two retrieved frames may be re-timed by the SAME
+  MODEL RUN's own retrieved vertical velocity at the stratum's pressure
+  level, and by nothing else, under every one of these together: the
+  re-timing is a monotone reparameterisation of the mixing fraction that is
+  zero at both real instants by construction rather than by a clamp, so every
+  real frame still shows untouched; it is bounded so the displayed value
+  stays a convex combination of the two retrieved frames at that same cell,
+  adding no cloud that is in neither and removing none that is in both - the
+  vertical velocity decides only WHEN the change between two retrieved values
+  is delivered, never what that change is; it reaches the display only in
+  proportion to how far advection has already failed to explain the change,
+  so wherever the imagery shows motion the motion wins; and it is applied
+  only for a variable whose held-out reconstruction it measurably improves,
+  with both scores published in provenance.
+  Every method offered to the reader SHALL declare what it needs in order to
+  differ from the default, and an unmet requirement SHALL be shown, because a
+  method that silently reduces to another construction is a control that
+  appears to do something. A control that appears to do something must
   do it. An empty result that IS the answer ("radar detected nothing") must be
   distinguishable from "we did not retrieve anything".
 

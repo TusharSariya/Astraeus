@@ -475,6 +475,11 @@ def normalize_units(dataset: Any) -> Any:
             }
         elif units in {"m/s", "m s**-1", "m s-1"}:
             variable.attrs = {**variable.attrs, "units": "m s-1", "original_units": units}
+        elif units in {"Pa s**-1", "Pa/s", "Pa s-1"}:
+            # Omega, d(pressure)/dt: negative is ascent. Spelled three ways by
+            # ecCodes, cfgrib and wgrib2 for the same WMO 0/2/8 quantity, so
+            # the spelling is canonicalised while the value is untouched.
+            variable.attrs = {**variable.attrs, "units": "Pa s-1", "original_units": units}
         elif units in {"kg m**-2", "kg/m^2", "kg m-2"}:
             variable.attrs = {**variable.attrs, "units": "kg m-2", "original_units": units}
     return result

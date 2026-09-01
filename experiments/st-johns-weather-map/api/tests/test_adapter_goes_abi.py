@@ -288,6 +288,56 @@ def test_no_height_flags_uncorrected_but_still_renders(granules):
     assert not stats["achaf_used"]
 
 
+def test_cloud_top_height_is_retained_in_metres_where_achaf_reached(granules):
+    # The height the parallax correction already moved these pixels by is now
+    # kept rather than dropped. The fixture puts a 10 km top over the cloud
+    # box, so the retained field must carry that value and nothing else.
+    acmf, achaf = granules
+    dataset, stats = process_granules(acmf, achaf, bounds=TEST_BOUNDS)
+    height = dataset["cloud_top_height"].isel(valid_time=0).values
+    assert height.dtype == numpy.dtype("float32")
+    observed = numpy.isfinite(height)
+    assert observed.any()
+    assert numpy.allclose(height[observed], 10000.0)
+    assert stats["height_cells"] == int(observed.sum())
+    # A height only ever accompanies cloud. ACHAF is reindexed nearest from its
+    # own grid, so a clear pixel CAN sit nearest a neighbouring cloud's
+    # retrieval; that value is refused rather than published, or the field
+    # would attribute a cloud top to clear sky.
+    classes = dataset["cloud_class"].isel(valid_time=0).values
+    assert not numpy.isfinite(height[numpy.isin(classes, (0, 1))]).any()
+    assert numpy.isin(classes[observed], (2, 3)).all()
+    # And a height is only ever retained where parallax was actually applied,
+    # so the two flags cannot disagree about the same cell.
+    uncorrected = dataset["parallax_uncorrected"].isel(valid_time=0).values
+    assert (uncorrected[observed] == 0).all()
+
+
+def test_absent_achaf_publishes_absent_height_not_a_zero(granules):
+    # The governing rule at its sharpest. With no ACHAF granule there is no
+    # retrieval, so every cell's height is NaN - never 0 m, which would read
+    # as an observed ground-level cloud top and would put the whole domain on
+    # the 850 hPa wind.
+    acmf, _ = granules
+    dataset, stats = process_granules(acmf, None, bounds=TEST_BOUNDS)
+    height = dataset["cloud_top_height"].isel(valid_time=0).values
+    assert numpy.isnan(height).all()
+    assert stats["height_cells"] == 0
+
+
+def test_cloud_top_height_never_reaches_a_reading():
+    """ACHAF height is ingested for one purpose: informing the display-time
+    cloud-motion derivation's per-cell steering level. It is not evidence a
+    reader asked for, and the carve-out that allows it says it reaches no data
+    path. The served-field map is the enforcement, so it is pinned here rather
+    than left to the absence of a mapping - exactly as the 850/700/500 hPa
+    steering winds are pinned in tests/test_live_store.py."""
+    from weather_api.store import DERIVATION_INPUTS, FIELD_BY_VARIABLE
+
+    assert "cloud_top_height" not in FIELD_BY_VARIABLE
+    assert "cloud_top_height" not in DERIVATION_INPUTS
+
+
 def test_missing_projection_attrs_are_refused(tmp_path):
     path = tmp_path / "bare.nc"
     ds = xarray.Dataset(
@@ -358,8 +408,19 @@ def test_fetch_publishes_one_zarr_artifact(granules, tmp_path):
 
     store = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")
     reopened = xarray.open_zarr(store, consolidated=False)
-    assert set(reopened.data_vars) == {"cloud_class", "cloud_probability", "parallax_uncorrected"}
+    # `cloud_top_height` joined this set on 2026-09-01 (interpolation-method-bench
+    # 7.4, owner-approved): the ACHAF height was already being read and already
+    # displacing pixels, and retaining it lets the display-time motion
+    # derivation assign a steering level per cell. A set equality is the right
+    # pin for a published layout, so the addition is stated here deliberately.
+    assert set(reopened.data_vars) == {
+        "cloud_class", "cloud_probability", "parallax_uncorrected", "cloud_top_height",
+    }
     assert "parallax_disclosure" in reopened.attrs
+    assert "cloud_top_height_disclosure" in reopened.attrs
+    height = reopened["cloud_top_height"]
+    assert height.dtype == numpy.dtype("float32")
+    assert height.attrs["units"] == "m"
 
 
 # ---------- live smoke ----------

@@ -767,17 +767,46 @@ BACKWARD_SEMANTICS_DOC = (
     "display derivation - not provider output, not evidence"
 )
 
+VISIBILITY_SEMANTICS_DOC = (
+    "the pair's per-pixel visibility weights, one per source frame: R is how reliable the frame-0 "
+    "warp is at the midpoint and G how reliable the frame-1 warp is, each a unitless weight in "
+    "0..1 quantized over 255, blue unused, alpha opaque - a weight never rides the alpha channel, "
+    "where browser premultiplication would destroy its precision near zero; they are the smoothed "
+    "photometric residual of each frame's own full-interval warp against the other retrieved "
+    "frame, and they decide only WHICH retrieved frame carries a pixel, never what it contains; "
+    "equal weights are exactly the symmetric (1-t, t) fusion the default method already draws; "
+    "display derivation - not provider output, not evidence"
+)
+
+RESIDUAL_SEMANTICS_DOC = (
+    "the pair's development shaping: R is a signed value in [-1, 1], quantized to 8 bits the same "
+    "way a vector component is, green and blue unused, alpha opaque - it never rides the alpha "
+    "channel, where browser premultiplication would destroy its precision near zero. It re-times "
+    "the dissolve between the two retrieved frames from the same model run's own vertical "
+    "velocity: positive delivers the change earlier in the interval, negative later. The shaped "
+    "mixing fraction stays in [0, 1], so the displayed value stays between the two retrieved "
+    "frames at that cell - no cloud is added that is in neither and none removed that is in "
+    "both; display derivation - not provider output, not evidence"
+)
+
 #: The texture variants /flow serves. ``motion`` is the pairwise flow the
 #: first carve-out approved; ``tangents`` is the C1 Hermite extension;
 #: ``backward`` is the frame1 -> frame0 field, derived and stored since the
-#: first cycle and unserved until a method had a use for it.
-FLOW_TEXTURES = ("motion", "tangents", "backward")
+#: first cycle and unserved until a method had a use for it. ``visibility``
+#: is a per-frame fusion weight pair and ``residual`` a per-cell re-timing;
+#: each belongs to the one method that derives it, and is refused for a
+#: method that does not, because the derive pads an undeclared suffix with
+#: explicit zeros and a zero weight is an absent measurement rather than a
+#: reliability of zero.
+FLOW_TEXTURES = ("motion", "tangents", "backward", "visibility", "residual")
 
 #: What each texture's ``X-Weather-Render-Semantics`` says, verbatim.
 FLOW_SEMANTICS_BY_TEXTURE = {
     "motion": FLOW_SEMANTICS_DOC,
     "tangents": TANGENT_SEMANTICS_DOC,
     "backward": BACKWARD_SEMANTICS_DOC,
+    "visibility": VISIBILITY_SEMANTICS_DOC,
+    "residual": RESIDUAL_SEMANTICS_DOC,
 }
 
 #: The interpolation method served when a request names none. Mirrors
@@ -894,6 +923,9 @@ def render_flow(
     ``texture="backward"`` is the pair's frame1 -> frame0 field, R/G on the
     same rule, for a construction that approximates the intermediate flows
     from both directions rather than assuming the forward one inverts.
+    ``texture="visibility"`` is the pair's per-frame fusion weights (R = frame
+    0, G = frame 1, each 0..1 over 255, alpha opaque), served only for a method
+    that actually derives them.
     All are resampled with the same pixel-to-cell rule as the frame raster,
     so their pixels align with frame pixels, vectors converted from grid
     cells to output pixels of exactly this request. A pair with no derived
@@ -970,6 +1002,10 @@ def render_flow(
         # The frame1 -> frame0 field, alone: the blue channel would only
         # repeat the display weight the motion texture already carries.
         suffixes = ("u10", "v10")
+    elif texture == "visibility":
+        suffixes = ("vis0", "vis1")
+    elif texture == "residual":
+        suffixes = ("dev_shape",)
     else:
         # The blue channel is the weight the client mixes advection against a
         # crossfade on. Newer artifacts publish the display weight (support
@@ -979,6 +1015,16 @@ def render_flow(
         weight_name = f"{spec.variable}_advect_weight"
         weight_suffix = "advect_weight" if weight_name in motion_dataset.data_vars else "confidence"
         suffixes = ("u01", "v01", weight_suffix)
+    if texture == "visibility" and flow_shader_for(method) != "visibility":
+        # The derive pads a suffix no method declared with an explicit zero
+        # field, so this variable exists on every method's slice of the axis.
+        # A zero weight is an absent measurement, not a reliability of zero,
+        # and serving it would let a method be drawn with fusion weights it
+        # never derived. The absence is named instead.
+        raise FlowNotAvailable(
+            f"the {method!r} method derives no visibility weights; that texture belongs to a "
+            "method whose construction fuses on them"
+        )
     names = [f"{spec.variable}_{suffix}" for suffix in suffixes]
     if any(name not in motion_dataset.data_vars for name in names):
         raise FlowNotAvailable(
@@ -986,6 +1032,8 @@ def render_flow(
             + {
                 "tangents": " (it predates the Hermite derivation)",
                 "backward": " (it predates the stored backward flow)",
+                "visibility": " (it predates the stored visibility weights)",
+                "residual": " (only the development-residual method publishes one)",
             }.get(texture, "")
         )
 
@@ -1063,6 +1111,31 @@ def render_flow(
         rgba = numpy.zeros((height, width, 4), dtype="uint8")
         rgba[..., 0] = quantized(pixel_dx, scale)
         rgba[..., 1] = quantized(pixel_dy, scale)
+        rgba[..., 3] = 255
+    elif texture == "visibility":
+        # Two scalars in [0, 1], not a displacement: they are sampled through
+        # the same pixel-to-cell rule as every other texture so they align with
+        # the frame raster, but nothing is converted to output pixels and the
+        # declared scale is the unit the channels already carry. Outside the
+        # grid both read zero, which the client reads as an absent pair and
+        # answers with the symmetric time weights - never as a reliability of
+        # zero, which would make one frame vanish where no cell answered.
+        scale = 1.0
+        rgba = numpy.zeros((height, width, 4), dtype="uint8")
+        for channel, suffix in ((0, "vis0"), (1, "vis1")):
+            sampled = numpy.where(inside, fields[suffix][rows, cols], 0.0)
+            rgba[..., channel] = numpy.clip(numpy.rint(sampled * 255.0), 0, 255).astype("uint8")
+        rgba[..., 3] = 255
+    elif texture == "residual":
+        # A scalar in [-1, 1], not a displacement, so it is NOT run through
+        # pixel_vectors: no cell-to-pixel conversion applies to a re-timing.
+        # The scale is fixed at 1 rather than fitted to the field, so the
+        # client's decode never depends on how strong this cycle happened to
+        # be and two cycles are directly comparable on screen.
+        shaping = numpy.where(inside, fields["dev_shape"][rows, cols], 0.0)
+        scale = 1.0
+        rgba = numpy.zeros((height, width, 4), dtype="uint8")
+        rgba[..., 0] = quantized(shaping, scale)
         rgba[..., 3] = 255
     else:
         pixel_dx, pixel_dy = pixel_vectors(fields["u01"], fields["v01"])

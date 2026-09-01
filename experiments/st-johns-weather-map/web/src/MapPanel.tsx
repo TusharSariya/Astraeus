@@ -503,6 +503,10 @@ export function MapPanel({
         const construction = held && held !== 'absent'
           ? (held.shader === 'intermediate' && held.backwardUrl
             ? 'advection-corrected along intermediate motion approximated from both the forward and the backward field derived for this pair, dissolving where the two frames say cloud grew or decayed in place rather than moved'
+            : held.shader === 'visibility' && held.visibilityUrl
+            ? 'advection-corrected along motion derived from the two published frames and fused per pixel by how reliable each frame\u2019s own warp measured, dissolving where the two frames say cloud grew or decayed in place rather than moved'
+            : held.shader === 'development-residual' && held.residualUrl
+            ? 'advection-corrected along motion derived from the two published frames, and where cloud grew or decayed in place rather than moved the dissolve between them is re-timed by the same model run’s own vertical velocity — the displayed value stays between the two retrieved frames at every cell'
             : held.tangentsUrl
             ? 'advection-corrected along motion fitted through neighbouring published frames (C1 trajectories), dissolving where the two frames say cloud grew or decayed in place rather than moved'
             : 'advection-corrected along a motion field derived from the two published frames, dissolving where cloud grew or decayed in place rather than moved')
@@ -921,6 +925,8 @@ export function MapPanel({
       tangentsScalePixels: number
       backwardUrl: string | null
       backwardScalePixels: number
+      visibilityUrl: string | null
+      residualUrl: string | null
       construction: string
       bounds: { west: number; south: number; east: number; north: number }
       widthPx: number
@@ -955,6 +961,8 @@ export function MapPanel({
           tangentsScalePixels: flow && flow !== 'absent' ? flow.tangentsScalePixels : 0,
           backwardUrl: flow && flow !== 'absent' ? flow.backwardUrl : null,
           backwardScalePixels: flow && flow !== 'absent' ? flow.backwardScalePixels : 0,
+          visibilityUrl: flow && flow !== 'absent' ? flow.visibilityUrl : null,
+          residualUrl: flow && flow !== 'absent' ? flow.residualUrl : null,
           // Which construction the shader evaluates is the server's answer,
           // read from the headers of the fields it actually served - never
           // inferred from which textures happened to load.
@@ -983,7 +991,7 @@ export function MapPanel({
     })
     const contentOf = (slot: ImageEntry | FlowEntry) => slot.kind === 'image'
       ? `${slot.url}|${slot.opacity}|${slot.coordinates.flat().join(',')}`
-      : `${slot.frame0Url}|${slot.frame1Url}|${slot.flowUrl}|${slot.flowScalePixels}|${slot.tangentsUrl}|${slot.tangentsScalePixels}|${slot.backwardUrl}|${slot.backwardScalePixels}|${slot.construction}|${slot.t}|${slot.opacity}|${Object.values(slot.bounds).join(',')}`
+      : `${slot.frame0Url}|${slot.frame1Url}|${slot.flowUrl}|${slot.flowScalePixels}|${slot.tangentsUrl}|${slot.tangentsScalePixels}|${slot.backwardUrl}|${slot.backwardScalePixels}|${slot.visibilityUrl}|${slot.residualUrl}|${slot.construction}|${slot.t}|${slot.opacity}|${Object.values(slot.bounds).join(',')}`
 
     const updateFlowLayer = (slot: FlowEntry) => {
       flowLayersRef.current.get(slot.id)?.update({
@@ -995,6 +1003,8 @@ export function MapPanel({
         tangentsScalePixels: slot.tangentsScalePixels,
         backwardUrl: slot.backwardUrl,
         backwardScalePixels: slot.backwardScalePixels,
+        visibilityUrl: slot.visibilityUrl,
+        residualUrl: slot.residualUrl,
         construction: slot.construction,
         bounds: slot.bounds,
         widthPx: slot.widthPx,

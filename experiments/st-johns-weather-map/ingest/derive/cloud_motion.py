@@ -82,7 +82,7 @@ METHOD = (
     "well-supported image flow reports the field standing still, and only for a variable whose "
     "held-out reconstruction the prior measurably improves"
 )
-VERSION = "cloud-motion-bench-v4"
+VERSION = "cloud-motion-bench-v5"
 
 
 def _open_zarr_zip(path: Path) -> Any:
@@ -126,6 +126,19 @@ _FIELD_ATTRS = {
     "advect_weight": {
         "units": "1",
         "role": "display weight: 1 advects, 0 crossfades; zero where the pair's warp does not beat persistence or the variable fails its held-out control",
+    },
+    # A weight is not a displacement, so these never inherit the flow
+    # attributes' "grid cells per frame interval".
+    "vis0": {"units": "1", "role": "per-pixel reliability of the frame-0 warp at the midpoint (visibility-blend)"},
+    "vis1": {"units": "1", "role": "per-pixel reliability of the frame-1 warp at the midpoint (visibility-blend)"},
+    "dev_shape": {
+        "units": "1",
+        "role": (
+            "signed re-timing of the dissolve in [-1, 1] from the model run's own vertical "
+            "velocity: positive delivers the change between the two retrieved frames earlier in "
+            "the interval, negative later. The shaped mixing fraction stays in [0, 1], so the "
+            "displayed value stays between the two retrieved frames at that cell"
+        ),
     },
     "vs_u": {**_FLOW_ATTRS, "role": "cubic Hermite segment tangent (QVI central-difference knot velocity)"},
     "vs_v": {**_FLOW_ATTRS, "role": "cubic Hermite segment tangent (QVI central-difference knot velocity)"},

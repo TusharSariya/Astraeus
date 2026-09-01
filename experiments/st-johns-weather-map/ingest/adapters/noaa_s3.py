@@ -98,6 +98,19 @@ GFS_IDX_SELECTORS: frozenset[tuple[str, str]] = frozenset(
         ("VGRD", "700 mb"),
         ("UGRD", "500 mb"),
         ("VGRD", "500 mb"),
+        # Vertical velocity at the same three levels: omega, d(pressure)/dt,
+        # so negative is ascent. It tells the `development-residual`
+        # interpolation method WHEN inside an interval the model made or
+        # destroyed cloud. Display derivation only, never a reading. Verified
+        # in the real .idx (gfs.20260831/00 f006): `VVEL:850 mb` and the same
+        # at 700 and 500. GFS also publishes `DZDT` (geometric vertical
+        # velocity, m s-1) at every one of these levels; it is deliberately
+        # NOT taken - omega is the quantity whose sign follows directly from
+        # the pressure coordinate, and mixing the two conventions is how a
+        # sign error would get in.
+        ("VVEL", "850 mb"),
+        ("VVEL", "700 mb"),
+        ("VVEL", "500 mb"),
         ("PWAT", "entire atmosphere (considered as a single layer)"),
     }
 )
@@ -142,13 +155,15 @@ GFS_DECODE_SPECS: tuple[tuple[str, dict[str, object], tuple[tuple[str, str], ...
     ("hcc", {}, (("HCDC", "high cloud layer"),)),
     ("u", {"typeOfLevel": "isobaricInhPa"}, (("UGRD", "200 mb"), ("UGRD", "300 mb"), ("UGRD", "850 mb"), ("UGRD", "700 mb"), ("UGRD", "500 mb"))),
     ("v", {"typeOfLevel": "isobaricInhPa"}, (("VGRD", "200 mb"), ("VGRD", "300 mb"), ("VGRD", "850 mb"), ("VGRD", "700 mb"), ("VGRD", "500 mb"))),
+    ("w", {"typeOfLevel": "isobaricInhPa"}, (("VVEL", "850 mb"), ("VVEL", "700 mb"), ("VVEL", "500 mb"))),
     ("pwat", {}, (("PWAT", "entire atmosphere (considered as a single layer)"),)),
 )
 
-# The isobaric wind shortNames and the canonical prefix their split levels
-# publish under; the level suffix comes from the .idx level ("200 mb" ->
-# 200hPa).
-_ISOBARIC_PREFIXES = {"u": "wind_u", "v": "wind_v"}
+# The isobaric shortNames and the canonical prefix their split levels publish
+# under; the level suffix comes from the .idx level ("200 mb" -> 200hPa).
+# `w` is VVEL, vertical velocity on pressure surfaces (ecCodes paramId 135,
+# Pa s-1), not DZDT.
+_ISOBARIC_PREFIXES = {"u": "wind_u", "v": "wind_v", "w": "omega"}
 
 # Variables that belong to the upper_air artifact rather than surface.
 UPPER_AIR_VARIABLES = ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa")
@@ -191,6 +206,12 @@ GFS_MANIFEST = RunManifest(
         RequiredField("wind_v_700hPa", "m s-1", level="700 hPa", optional=True),
         RequiredField("wind_u_500hPa", "m s-1", level="500 hPa", optional=True),
         RequiredField("wind_v_500hPa", "m s-1", level="500 hPa", optional=True),
+        # Vertical velocity at the steering levels: display-derivation input
+        # only (the development residual), so a cycle that omits a level costs
+        # that re-timing, never the artifact.
+        RequiredField("omega_850hPa", "Pa s-1", level="850 hPa", optional=True),
+        RequiredField("omega_700hPa", "Pa s-1", level="700 hPa", optional=True),
+        RequiredField("omega_500hPa", "Pa s-1", level="500 hPa", optional=True),
         RequiredField("precipitable_water", "kg m-2", level="column", optional=True),
     ),
 )

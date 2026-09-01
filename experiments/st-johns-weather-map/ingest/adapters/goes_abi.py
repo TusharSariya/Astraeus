@@ -26,6 +26,16 @@ the great-circle azimuth. Cloudy pixels with no valid cloud-top height keep
 their apparent position and carry an explicit ``parallax_uncorrected`` flag.
 GOES-19 cloud-top height is NOAA "Provisional" maturity; that is disclosed
 in the artifact attrs and surfaced by the API layer.
+
+The ACHAF height itself is also RETAINED, as ``cloud_top_height`` in metres,
+NaN where no valid retrieval reached the cell. It was previously read, used
+to displace pixels, and dropped. Keeping it adds no new trust - the parallax
+correction already moves the picture by this number - but it gives the
+display-time motion derivation an observed per-cell height to assign a
+steering level from, which is the dominant error term in multi-layer
+atmospheric-motion-vector work (Liu et al., GRL 2025). It is
+display-derivation input only, exactly like the 850/700/500 hPa steering
+winds: it is in no served-field map and reaches no data path.
 """
 
 from __future__ import annotations
@@ -98,6 +108,14 @@ ACCURACY_DISCLOSURE = (
     "NOAA's published Enterprise Cloud Mask validation reports roughly 90% "
     "balanced detection accuracy by day and 88% at night, weaker for very "
     "thin cirrus. These are the provider's figures, not locally measured."
+)
+HEIGHT_DISCLOSURE = (
+    "cloud_top_height is the ACHAF retrieval carried through the same "
+    "nearest-neighbour regrid and the same parallax shift as the mask it "
+    "belongs to, in metres. It is NaN wherever ACHAF was absent, unaligned "
+    "or invalid; an absent height is published absent and is never gap-"
+    "filled, smoothed or interpolated across a hole. Display-derivation "
+    "input only - it is not a reading and reaches no data path."
 )
 
 _KEY = re.compile(r"OR_ABI-L2-(ACMF|ACHAF)-M\d+_G19_s(\d{14})_e(\d{14})_c\d{14}\.nc$")
@@ -319,6 +337,13 @@ def process_granules(
     out_class = numpy.full((n_lat, n_lon), INVALID_CLASS, dtype="uint8")
     out_prob = numpy.full((n_lat, n_lon), numpy.nan, dtype="float32")
     out_uncorr = numpy.zeros((n_lat, n_lon), dtype="uint8")
+    # The ACHAF height is retained rather than consumed and dropped. The
+    # parallax correction above already displaces pixels by this value, so
+    # keeping it adds no new trust to the artifact - only a new consumer.
+    # float32 because ACHAF resolves cloud tops to tens of metres and this
+    # field lands on every 10-minute scan; float64 would double its cost for
+    # digits the retrieval does not have.
+    out_height = numpy.full((n_lat, n_lon), numpy.nan, dtype="float32")
     observed = numpy.zeros((n_lat, n_lon), dtype=bool)
 
     src_ok = on_disk & numpy.isfinite(lat_c) & numpy.isfinite(lon_c)
@@ -333,6 +358,12 @@ def process_granules(
     src_prob = prob[in_grid].ravel()
     src_dqf = dqf[in_grid].ravel()
     src_uncorr = uncorrected[in_grid].ravel()
+    # `corrected`, not `has_height`: the retained height is exactly the set of
+    # pixels the parallax correction actually displaced - cloudy AND carrying a
+    # valid retrieval. ACHAF arrives on its own grid and is reindexed nearest
+    # onto this one, so a clear pixel can sit nearest a neighbouring cloud's
+    # retrieval; publishing that would be attributing a cloud top to clear sky.
+    src_height = numpy.where(corrected, cloud_height, numpy.nan)[in_grid].ravel()
 
     if flat_bins.size:
         centre_lat = out_south + (flat_bins // n_lon + 0.5) * target_dlat
@@ -348,12 +379,16 @@ def process_granules(
         chosen_dqf = src_dqf[chosen]
         chosen_prob = src_prob[chosen]
         chosen_uncorr = src_uncorr[chosen]
+        chosen_height = src_height[chosen]
         good = numpy.isfinite(chosen_acm) & numpy.isfinite(chosen_dqf) & (chosen_dqf == 0.0)
         observed[rows, cols] = True
         keep = good
         out_class[rows[keep], cols[keep]] = chosen_acm[keep].astype("uint8")
         out_prob[rows[keep], cols[keep]] = numpy.clip(chosen_prob[keep], 0.0, 1.0).astype("float32")
         out_uncorr[rows[keep], cols[keep]] = chosen_uncorr[keep].astype("uint8")
+        # NaN travels through unchanged: a cell whose winning pixel had no
+        # ACHAF retrieval is published without a height, not with a guess.
+        out_height[rows[keep], cols[keep]] = chosen_height[keep].astype("float32")
         # Quality-flagged pixels stay INVALID_CLASS: never clear, never NaN-dropped.
 
     total_cells = out_class.size
@@ -378,6 +413,11 @@ def process_granules(
             "cloud_class": (("latitude", "longitude"), out_class),
             "cloud_probability": (("latitude", "longitude"), out_prob),
             "parallax_uncorrected": (("latitude", "longitude"), out_uncorr),
+            "cloud_top_height": (
+                ("latitude", "longitude"),
+                out_height,
+                {"units": "m", "role": "ACHAF cloud-top height; display-derivation input only"},
+            ),
         },
         coords={"latitude": lat_axis, "longitude": lon_axis},
         attrs={
@@ -391,6 +431,7 @@ def process_granules(
             "regrid_disclosure": REGRID_DISCLOSURE,
             "parallax_disclosure": PARALLAX_DISCLOSURE,
             "accuracy_disclosure": ACCURACY_DISCLOSURE,
+            "cloud_top_height_disclosure": HEIGHT_DISCLOSURE,
             "cloud_top_height_used": "yes" if achaf_used else "no (all cloudy pixels uncorrected)",
         },
     ).expand_dims(valid_time=[valid_time])
@@ -402,6 +443,7 @@ def process_granules(
         "invalid_fraction": invalid_fraction,
         "cloudy_cells": cloudy_cells,
         "uncorrected_cells": uncorrected_cells,
+        "height_cells": int(numpy.isfinite(out_height).sum()),
         "achaf_used": achaf_used,
         "native_footprint_deg": (native_dlat, native_dlon),
         "target_cell_deg": (target_dlat, target_dlon),
@@ -529,6 +571,8 @@ class GOESCloudMaskAdapter:
             ),
             "cloudy_cells": stats["cloudy_cells"],
             "parallax_uncorrected_cells": stats["uncorrected_cells"],
+            "cloud_top_height_cells": stats["height_cells"],
+            "cloud_top_height_disclosure": HEIGHT_DISCLOSURE,
             "cloud_top_height_maturity": "NOAA Provisional",
             "regrid_disclosure": REGRID_DISCLOSURE,
             "parallax_disclosure": PARALLAX_DISCLOSURE,

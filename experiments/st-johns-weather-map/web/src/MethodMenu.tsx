@@ -78,6 +78,11 @@ export function MethodMenu({
                     </span>
                   </label>
                   {method.summary && <p className="method-option-summary">{method.summary}</p>}
+                  {method.requirements.filter((item) => !item.met).map((item) => (
+                    <p className="method-option-unmet" key={item.name}>
+                      needs {item.name}: {item.detail}
+                    </p>
+                  ))}
                   <p className="method-option-score">
                     {!method.published
                       ? 'not published by the current cycle'

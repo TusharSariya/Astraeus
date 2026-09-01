@@ -23,6 +23,7 @@ import zarr
 
 from ingest.adapters.eccc_datamart import (
     GDPS_VARS,
+    HRDPS_OMEGA_VARS,
     HRDPS_STEERING_VARS,
     HRDPS_VARS,
     RDPS_VARS,
@@ -303,7 +304,7 @@ HRDPS_EVIDENCE_FIELDS = frozenset(
         "total_cloud",
     }
 )
-HRDPS_PUBLISHED_FIELDS = HRDPS_EVIDENCE_FIELDS | set(HRDPS_STEERING_VARS)
+HRDPS_PUBLISHED_FIELDS = HRDPS_EVIDENCE_FIELDS | set(HRDPS_STEERING_VARS) | set(HRDPS_OMEGA_VARS)
 
 _TCDC_URL_MAP = {
     "20260830/WXO-DD/model_hrdps/continental/2.5km/": make_html_listing(["12/"]),
@@ -349,9 +350,12 @@ def test_total_cloud_is_published_from_the_messages_own_wmo_keys(tmp_path: Path,
     assert "total_cloud" in RDPS_VARS
     assert "total_cloud" not in GDPS_VARS
     assert set(HRDPS_VARS) == HRDPS_PUBLISHED_FIELDS
-    # The steering winds are optional; every evidence field is mandatory.
+    # The steering winds and the vertical velocity are optional - they inform
+    # display derivations only; every evidence field is mandatory. That
+    # disjointness is the invariant that matters: a display input may go
+    # missing, a reading may not.
     optional = {field.name for field in manifest_for("eccc-hrdps", HRDPS_VARS).fields if field.optional}
-    assert optional == set(HRDPS_STEERING_VARS)
+    assert optional == set(HRDPS_STEERING_VARS) | set(HRDPS_OMEGA_VARS)
     assert optional.isdisjoint(HRDPS_EVIDENCE_FIELDS)
 
     client = make_mock_client(_TCDC_URL_MAP)
