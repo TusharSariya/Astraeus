@@ -51,6 +51,22 @@ DERIVATION_INPUT_CLASSES: frozenset[str] = frozenset({"retrieved"})
 DISPLAY_ONLY_CLASSES: frozenset[str] = frozenset({"generated_display"})
 
 
+# --- delivery kinds -------------------------------------------------------
+# How a source's values reach this deployment, declared per registry record.
+# A separate axis from the evidence class on purpose: a delivery kind says
+# whose cell a value is, a class says how the value came to exist. An
+# ``intermediary_derived`` value is still retrieved by this deployment, so
+# reusing ``retrieved`` for a delivery kind would make one word mean two
+# things.
+
+DeliveryKind = Literal["published_cell", "reprocessed", "intermediary_derived"]
+
+#: The only kind whose values may be a field's display primary. A value a
+#: third party transformed or computed has no business outranking a producer's
+#: own published cell.
+PRIMARY_ELIGIBLE_DELIVERY_KINDS: frozenset[str] = frozenset({"published_cell"})
+
+
 class DataMode(StrEnum):
     """How a response was produced. ``operational`` stays False regardless.
 
@@ -201,9 +217,18 @@ class Provenance(StrictModel):
     derivation_citation: str | None = None
     #: Every input the method read, each with its own provenance.
     derivation_inputs: list[DerivedInput] = Field(default_factory=list)
-    #: For ``intermediary_derived``: the intermediary that computed the value
-    #: from the producer's retrieved fields, and its own method where the
-    #: intermediary documents one. ``provider`` remains the producer.
+    #: How this source's values reach the deployment, read from its registry
+    #: record. A record that declares no kind leaves this ``None`` rather than
+    #: claiming the producer's own cell on the record's behalf.
+    delivery_kind: DeliveryKind | None = None
+    #: What the source's registry record says about being a display primary.
+    #: It follows from the kind unless the record overrides it, so it is
+    #: carried rather than recomputed: a record may refuse the primary for a
+    #: reason no other field states.
+    source_display_primary: bool | None = None
+    #: For ``reprocessed`` and ``intermediary_derived``: the intermediary that
+    #: stands between the producer and this deployment, and its own method
+    #: where the intermediary documents one. ``provider`` remains the producer.
     intermediary: str | None = None
     intermediary_method: str | None = None
     adapter_version: str
@@ -233,11 +258,20 @@ class Provenance(StrictModel):
     def display_primary_eligible(self) -> bool:
         """Whether this value may be a field's display primary.
 
-        Read from the class so the two can never disagree: a reprocessed,
-        intermediary-derived or uncalibrated value is shown beside the others,
-        labelled, and is never promoted over a producer's own published cell.
+        Three things can refuse it and none can grant it alone: the evidence
+        class (a reprocessed, intermediary-derived or uncalibrated value is
+        shown beside the others, labelled, and never promoted over a
+        producer's own published cell), the delivery kind (a value a third
+        party transformed is not the producer's own cell either), and the
+        source record's own `display_primary`, which a record may set false
+        for a reason no other field states. Computed rather than stored so it
+        can never disagree with what it is computed from.
         """
-        return self.evidence_class in PRIMARY_ELIGIBLE_CLASSES
+        if self.evidence_class not in PRIMARY_ELIGIBLE_CLASSES:
+            return False
+        if self.delivery_kind is not None and self.delivery_kind not in PRIMARY_ELIGIBLE_DELIVERY_KINDS:
+            return False
+        return self.source_display_primary is not False
 
 
 class ArtifactManifest(StrictModel):
@@ -302,6 +336,15 @@ class SourceRecord(StrictModel):
     state: SourceState
     status_reason: str
     role: str
+    #: How this source's values reach the deployment, and who stands between
+    #: the producer and this deployment when anyone does. A catalogue reader
+    #: can then tell a producer's own cell from an aggregator's rendering of
+    #: it without opening a value.
+    delivery_kind: DeliveryKind | None = None
+    intermediary: str | None = None
+    #: Whether this source's values may be a field's display primary, as the
+    #: record declares it. Never inferred from the id or the producer.
+    display_primary: bool = True
     may_enter_consensus: bool
     exact_variables: list[str]
     levels: list[str]

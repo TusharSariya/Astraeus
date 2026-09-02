@@ -302,3 +302,64 @@ def test_a_non_primary_class_is_never_a_derivation_input(evidence_class: str):
 
     assert point(store)["relative_humidity"].value is None
     assert store.skipped and evidence_class in store.skipped[0].reason
+
+
+# --- delivery kind: whose cell a value is ----------------------------------
+# A separate axis from the evidence class. The class says how a value came to
+# exist; the kind says whether it is the producer's own cell, an
+# intermediary's transformation of it, or something the intermediary computed.
+
+def test_a_value_carries_its_records_delivery_kind_and_intermediary():
+    """Copied from the registry record, never inferred from the id."""
+    from ingest.registry import get_config
+
+    config = get_config("open-meteo-weathernext-2")
+    assert config is not None and config.delivery_kind == "intermediary_derived"
+
+    item = artifact(source_id="open-meteo-weathernext-2", classes=["intermediary_derived"])
+    temperature = point(StubStore([(item, dataset())]))["temperature"]
+
+    assert temperature.provenance.delivery_kind == "intermediary_derived"
+    assert temperature.provenance.intermediary == config.intermediary == "Open-Meteo"
+    assert temperature.provenance.display_primary_eligible is False
+
+
+def test_a_producer_direct_record_serves_a_published_cell_and_may_be_primary():
+    temperature = point(StubStore([(artifact(), dataset())]))["temperature"]
+
+    assert temperature.provenance.delivery_kind == "published_cell"
+    assert temperature.provenance.intermediary is None
+    assert temperature.provenance.display_primary_eligible is True
+
+
+def test_a_record_that_refuses_the_display_primary_is_never_a_fields_primary():
+    """`display_primary: false` in the record refuses the primary even where
+    the class and the kind would allow it: a record may know a reason no other
+    field states."""
+    from weather_api.models import Coverage, DataMode, Freshness, Provenance, Quality
+
+    base = dict(
+        data_mode=DataMode.LIVE, evidence_class="retrieved", source_id="madis-mesonet",
+        provider="NOAA MADIS", product="Mesonet", forecast_centre="NOAA", run_time=None,
+        valid_time=VALID_TIME, retrieval_time=VALID_TIME, vertical_level="2 m above ground",
+        original_units="degC", normalized_units="degC", native_resolution="station",
+        native_crs="EPSG:4326", quality=Quality(status="passed"), coverage=Coverage(status="complete"),
+        freshness=Freshness.evaluate(60, 21600), licence="open", attribution="NOAA", adapter_version="v1",
+    )
+
+    assert Provenance(**base, delivery_kind="published_cell").display_primary_eligible is True
+    assert Provenance(**base, delivery_kind="published_cell", source_display_primary=False).display_primary_eligible is False
+    assert Provenance(**base, delivery_kind="reprocessed").display_primary_eligible is False
+
+
+def test_the_catalogue_names_each_records_delivery_kind_and_display_primary():
+    from weather_api.store import registry_source_records
+
+    by_id = {record.id: record for record in registry_source_records()}
+
+    assert by_id["eccc-hrdps"].delivery_kind == "published_cell"
+    assert by_id["eccc-hrdps"].display_primary is True and by_id["eccc-hrdps"].intermediary is None
+    weathernext = by_id["open-meteo-weathernext-2"]
+    assert weathernext.delivery_kind == "intermediary_derived"
+    assert weathernext.intermediary == "Open-Meteo"
+    assert weathernext.display_primary is False

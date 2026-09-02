@@ -1405,8 +1405,13 @@ def _build_live_provenance(
         derivation_version=derivation_version,
         derivation_citation=derivation_citation,
         derivation_inputs=list(derivation_inputs),
-        intermediary=provenance.get("intermediary"),
-        intermediary_method=provenance.get("intermediary_method"),
+        # The producing record's own declaration, so every value says whose
+        # cell it is. The artifact may state an intermediary of its own (a
+        # per-artifact override); where it does not, the record's stands.
+        delivery_kind=provenance.get("delivery_kind", getattr(config, "delivery_kind", None)),
+        source_display_primary=getattr(config, "display_primary", None),
+        intermediary=provenance.get("intermediary", getattr(config, "intermediary", None)),
+        intermediary_method=provenance.get("intermediary_method", getattr(config, "intermediary_method", None)),
         adapter_version=str(provenance.get("adapter_version", "unknown")),
         sampled_latitude=sample.sampled_latitude,
         sampled_longitude=sample.sampled_longitude,
@@ -1854,6 +1859,12 @@ def registry_source_records() -> list[Any]:
                 state=SourceState(_REGISTRY_STATE_CEILING.get(str(record["status"]), "unavailable")),
                 status_reason=str(record["reason"]),
                 role=str(record["poc_role"]),
+                # Copied from the record, never inferred: the registry is the
+                # only place that knows whether a value is the producer's own
+                # cell or an aggregator's rendering of it.
+                delivery_kind=record.get("delivery_kind"),
+                intermediary=(record.get("intermediary") or {}).get("name"),
+                display_primary=bool(record.get("display_primary", True)),
                 may_enter_consensus=bool(record.get("consensus", {}).get("eligible", False)),
                 exact_variables=[str(name) for name in variables.get("names", [])],
                 levels=[str(level) for level in variables.get("levels", [])],

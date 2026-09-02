@@ -249,6 +249,16 @@ class IngestConfig:
     may_enter_consensus: bool
     consensus_family: str | None
     documentation_urls: tuple[str, ...] = ()
+    #: How this source's values reach the deployment, as its record declares
+    #: it, with the intermediary that stands between the producer and this
+    #: deployment where one does. Carried here so a served value can name it
+    #: without the API reopening the registry file for every field.
+    delivery_kind: str | None = None
+    intermediary: str | None = None
+    intermediary_method: str | None = None
+    #: Whether this source's values may be a field's display primary. Follows
+    #: from the kind unless the record overrides it.
+    display_primary: bool = True
 
     @property
     def ingestible(self) -> bool:
@@ -296,6 +306,10 @@ def _config_from_record(record: Mapping[str, Any]) -> IngestConfig:
         may_enter_consensus=bool(consensus.get("eligible", False)),
         consensus_family=consensus.get("family"),
         documentation_urls=tuple(record.get("documentation_urls", ())),
+        delivery_kind=record.get("delivery_kind"),
+        intermediary=(record.get("intermediary") or {}).get("name"),
+        intermediary_method=(record.get("intermediary") or {}).get("method"),
+        display_primary=bool(record.get("display_primary", True)),
     )
 
 
