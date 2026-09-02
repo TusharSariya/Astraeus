@@ -264,7 +264,7 @@ class FakeStore:
 
 
 def surface_artifact(
-    tmp_path: Path, *, frames: int = 3, variable: str = "total_cloud", data: numpy.ndarray | None = None
+    tmp_path: Path, *, frames: int = 3, variable: str = "total_cloud_opacity", data: numpy.ndarray | None = None
 ) -> tuple[CurrentArtifact, Path]:
     base = datetime(2026, 8, 31, 12, tzinfo=UTC)
     if data is None:
@@ -299,7 +299,7 @@ def test_derive_publishes_flow_with_full_derivation_provenance(tmp_path: Path):
     store = FakeStore({artifact.object_key: payload}, [artifact])
     workdir = tmp_path / "derive"
     workdir.mkdir()
-    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
+    result = derive_cloud_motion(store, artifact, ("total_cloud_opacity",), workdir)
     assert result is not None
     assert result.provider_run_id == "2026083112+cloud-motion"
     derived = result.artifacts[0]
@@ -311,7 +311,7 @@ def test_derive_publishes_flow_with_full_derivation_provenance(tmp_path: Path):
     assert derived.provenance["base_revision_id"] == "rev-surface-1"
     assert derived.provenance["derivation_version"] == VERSION
     assert "not evidence" in derived.provenance["derivation"]
-    quality = derived.provenance["quality"]["per_variable"]["total_cloud"]
+    quality = derived.provenance["quality"]["per_variable"]["total_cloud_opacity"]
     assert quality["pairs"] == 2
     # The flow explains the change far better than persistence would.
     assert quality["mae_full_warp_percent"][0] < quality["mae_persistence_percent"][0]
@@ -327,7 +327,7 @@ def test_derive_publishes_flow_with_full_derivation_provenance(tmp_path: Path):
     try:
         stored = xarray.open_zarr(zip_store, consolidated=False)
         for suffix in ("u01", "v01", "u10", "v10", "confidence", "advect_weight", "vs_u", "vs_v", "ve_u", "ve_v"):
-            assert f"total_cloud_{suffix}" in stored.data_vars
+            assert f"total_cloud_opacity_{suffix}" in stored.data_vars
         # Every enabled method is published, on its own axis, and the default
         # is first so a reader that ignores the axis still gets the baseline.
         published = [str(value) for value in stored["method"].values]
@@ -338,7 +338,7 @@ def test_derive_publishes_flow_with_full_derivation_provenance(tmp_path: Path):
         # agree with the segment flow, so playback matches linear advection.
         core = blob_field() > 20.0
         assert float(numpy.median(numpy.abs(
-            baseline["total_cloud_vs_u"].values[0][core] - baseline["total_cloud_u01"].values[0][core]
+            baseline["total_cloud_opacity_vs_u"].values[0][core] - baseline["total_cloud_opacity_u01"].values[0][core]
         ))) < 1.0
         assert stored.sizes["pair"] == 2
         assert stored.attrs["derivation_version"] == VERSION
@@ -359,7 +359,7 @@ def test_motion_that_fails_the_held_out_test_is_vetoed_to_a_crossfade(tmp_path: 
     data = numpy.stack([generator.uniform(0.0, 100.0, (96, 96)) for _ in range(3)])
     stamps = [numpy.datetime64((base + timedelta(hours=step)).replace(tzinfo=None), "ns") for step in range(3)]
     dataset = xarray.Dataset(
-        {"total_cloud": (("valid_time", "y", "x"), data, {"units": "percent"})},
+        {"total_cloud_opacity": (("valid_time", "y", "x"), data, {"units": "percent"})},
         coords={"valid_time": stamps},
     )
     payload = tmp_path / "noise.zarr.zip"
@@ -369,7 +369,7 @@ def test_motion_that_fails_the_held_out_test_is_vetoed_to_a_crossfade(tmp_path: 
     store = FakeStore({noisy.object_key: payload}, [noisy])
     workdir = tmp_path / "derive"
     workdir.mkdir()
-    result = derive_cloud_motion(store, noisy, ("total_cloud",), workdir)
+    result = derive_cloud_motion(store, noisy, ("total_cloud_opacity",), workdir)
     assert result is not None
 
     import zarr
@@ -377,7 +377,7 @@ def test_motion_that_fails_the_held_out_test_is_vetoed_to_a_crossfade(tmp_path: 
     zip_store = zarr.storage.ZipStore(str(result.artifacts[0].payload_path), mode="r")
     try:
         stored = xarray.open_zarr(zip_store, consolidated=False)
-        assert float(stored["total_cloud_advect_weight"].values.max()) == 0.0
+        assert float(stored["total_cloud_opacity_advect_weight"].values.max()) == 0.0
     finally:
         zip_store.close()
 
@@ -387,7 +387,7 @@ def test_a_single_frame_derives_nothing(tmp_path: Path):
     store = FakeStore({artifact.object_key: payload}, [artifact])
     workdir = tmp_path / "derive"
     workdir.mkdir()
-    assert derive_cloud_motion(store, artifact, ("total_cloud",), workdir) is None
+    assert derive_cloud_motion(store, artifact, ("total_cloud_opacity",), workdir) is None
 
 
 def test_a_wrong_digest_refuses_to_derive(tmp_path: Path):
@@ -397,7 +397,7 @@ def test_a_wrong_digest_refuses_to_derive(tmp_path: Path):
     workdir = tmp_path / "derive"
     workdir.mkdir()
     with pytest.raises(RuntimeError, match="digest"):
-        derive_cloud_motion(store, tampered, ("total_cloud",), workdir)
+        derive_cloud_motion(store, tampered, ("total_cloud_opacity",), workdir)
 
 
 def motion_row(artifact, provenance: dict) -> CurrentArtifact:
@@ -474,7 +474,7 @@ def test_a_vetoed_method_has_its_own_fields_zeroed_not_just_the_advection_weight
     generator = numpy.random.default_rng(11)
     frames = [generator.uniform(0.0, 100.0, (32, 32)) for _ in range(4)]
     context = MethodContext(
-        variable="total_cloud", frames=frames, indices=(0, 1, 2, 3), interval_seconds=3600.0
+        variable="total_cloud_opacity", frames=frames, indices=(0, 1, 2, 3), interval_seconds=3600.0
     )
     pairs = [(None, None, frames[index], frames[index + 1]) for index in range(3)]
     fields, _ = _derive_one_method(FencedByTheInverse(), context, pairs)
@@ -538,7 +538,7 @@ def test_a_real_derive_publishes_exactly_the_registered_methods_on_the_axis(tmp_
     store = FakeStore({artifact.object_key: payload}, [artifact])
     workdir = tmp_path / "derive"
     workdir.mkdir()
-    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
+    result = derive_cloud_motion(store, artifact, ("total_cloud_opacity",), workdir)
     assert result is not None
     stored, zip_store = stored_dataset(result.artifacts[0])
     try:
@@ -557,7 +557,7 @@ def test_a_real_derive_publishes_exactly_the_registered_methods_on_the_axis(tmp_
         # client reading `gen_a` under `baseline` gets an explicit zero rather
         # than a ragged artifact or another method's numbers.
         for suffix in ("res_s", "gen_a", "gen_b", "vis0", "vis1"):
-            assert f"total_cloud_{suffix}" in stored.data_vars
+            assert f"total_cloud_opacity_{suffix}" in stored.data_vars
     finally:
         zip_store.close()
 
@@ -573,11 +573,11 @@ def test_the_derive_publishes_a_drawable_envelope_for_residual_advection(tmp_pat
     store = FakeStore({artifact.object_key: payload}, [artifact])
     workdir = tmp_path / "derive"
     workdir.mkdir()
-    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
+    result = derive_cloud_motion(store, artifact, ("total_cloud_opacity",), workdir)
     assert result is not None
     derived = result.artifacts[0]
 
-    per_method = derived.provenance["quality"]["per_variable"]["total_cloud"]["per_method"]
+    per_method = derived.provenance["quality"]["per_variable"]["total_cloud_opacity"]["per_method"]
     options = per_method["residual-advection"]["options"]
     # Whatever the decision, both sides of it are published: the claim is
     # checkable from provenance alone.
@@ -589,18 +589,18 @@ def test_the_derive_publishes_a_drawable_envelope_for_residual_advection(tmp_pat
     stored, zip_store = stored_dataset(derived)
     try:
         published = [str(value) for value in stored["method"].values]
-        mine = stored["total_cloud_gen_a"].values[published.index("residual-advection")]
-        theirs = stored["total_cloud_gen_a"].values[published.index(DEFAULT_METHOD_ID)]
+        mine = stored["total_cloud_opacity_gen_a"].values[published.index("residual-advection")]
+        theirs = stored["total_cloud_opacity_gen_a"].values[published.index(DEFAULT_METHOD_ID)]
         assert float(numpy.abs(mine).max()) > 1.0, (
             "the envelope reached the artifact as zeros: the method is a menu entry that "
             "draws the baseline"
         )
         # gen_b is zero for this non-generative sibling by construction: the
         # envelope is the symmetric 4 g s t(1-t), no timing term.
-        assert numpy.allclose(stored["total_cloud_gen_b"].values[published.index("residual-advection")], 0.0)
+        assert numpy.allclose(stored["total_cloud_opacity_gen_b"].values[published.index("residual-advection")], 0.0)
         # And the algebra of the contract, read off the stored fields rather
         # than asserted about the code: gen_a = 4 * RESIDUAL_GAIN * res_s.
-        residual = stored["total_cloud_res_s"].values[published.index("residual-advection")]
+        residual = stored["total_cloud_opacity_res_s"].values[published.index("residual-advection")]
         assert numpy.allclose(mine, 4.0 * RESIDUAL_GAIN * residual, atol=1e-4)
         # A method that does not declare the field gets an explicit zero.
         assert numpy.allclose(theirs, 0.0)
@@ -621,18 +621,18 @@ def test_a_vetoed_pair_reaches_the_client_with_no_envelope_at_all(tmp_path: Path
     store = FakeStore({artifact.object_key: payload}, [artifact])
     workdir = tmp_path / "derive"
     workdir.mkdir()
-    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
+    result = derive_cloud_motion(store, artifact, ("total_cloud_opacity",), workdir)
     assert result is not None
 
     stored, zip_store = stored_dataset(result.artifacts[0])
     try:
         published = [str(value) for value in stored["method"].values]
         slot = published.index("residual-advection")
-        assert float(stored["total_cloud_advect_weight"].values[slot].max()) == 0.0, (
+        assert float(stored["total_cloud_opacity_advect_weight"].values[slot].max()) == 0.0, (
             "the veto did not fire on three unrelated fields; this test proves nothing"
         )
         for suffix in ("res_s", "gen_a", "gen_b"):
-            assert float(numpy.abs(stored[f"total_cloud_{suffix}"].values[slot]).max()) == 0.0, (
+            assert float(numpy.abs(stored[f"total_cloud_opacity_{suffix}"].values[slot]).max()) == 0.0, (
                 f"{suffix} survived the veto: the client draws a generated term on a pair "
                 "the derive refused to advect"
             )

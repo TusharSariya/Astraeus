@@ -182,6 +182,30 @@ three are different answers a response must keep apart. Nothing outside
 
 ## 5. Gate
 
-- [ ] 5.1 `make test`, `openspec validate field-catalogue-and-families
+- [x] 5.1 `make test`, `openspec validate field-catalogue-and-families
   --strict`, `uv run --project ../../tools/specs python
   ../../tools/specs/specctl.py validate`.
+  Verify result (2026-09-02, merged tree `execution/field-catalogue`): green.
+  API 872 passed, 25 skipped after re-keying the interpolation-method test
+  fixtures (`test_cloud_motion`, `test_method_height_steering`,
+  `test_method_residual_generative`) from `total_cloud` to
+  `total_cloud_opacity`, which the section 2 worktree had skipped for lack of
+  numpy; web 318 passed in 14 files; registry 54 OK; SQL publish tests PASS;
+  specctl 0 errors, 0 warnings; strict validation valid.
+
+## 6. Follow-ups surfaced by the web owner (not in this change's scope)
+
+- [ ] 6.1 Serve family title and note, and per-key definition, on the wire
+  (`/catalog` or a `/fields` endpoint) so `web/src/fieldFamilies.ts`, the
+  generated copy of the catalogue, and its staleness test can be deleted.
+- [ ] 6.2 Declare `family`, `field_key` and `storage` on every `/layers` item
+  and a comparability answer for layer pairs, so the map's refusal to draw
+  non-comparable members comes from the API rather than the client copy.
+- [ ] 6.3 Pin where `key`, `family`, `phase` and `storage` sit on a `/point`
+  field (the value object, not `provenance`) in the response contract; the
+  client currently accepts both.
+- [ ] 6.4 The catalogue has no dew point on pressure levels, so the
+  pressure-level dew point stopped being served rather than be keyed as
+  `dew_point_2m`; extend the catalogue (registry work) or record the field as
+  `not-published`.
+
