@@ -271,6 +271,71 @@ class Scheduler:
         state["schedule_reason"] = plan.reason[:200]
         self._due[config.source_id] = time.monotonic() + plan.delay_seconds(now)
 
+    def _schedule_poll(self, source_id: str, due: datetime, now: datetime) -> None:
+        """Put a polling source back at its next poll, not at its next run."""
+        from ingest.scheduler import POLL_INTERVAL_SECONDS  # noqa: PLC0415
+
+        state = self._progress.setdefault(source_id, {})
+        state["next_due"] = due.isoformat()
+        state["schedule_reason"] = f"polling every {POLL_INTERVAL_SECONDS}s for a run that has not appeared"
+        self._due[source_id] = time.monotonic() + max(0.0, (due - now).total_seconds())
+
+    def _poll(self, config, outcome: SourceOutcome, now: datetime) -> tuple[SourceOutcome, datetime | None]:
+        """Keep, open or close a poll for a forecast run that has not appeared.
+
+        Returns the outcome to report and, where the source stays on the poll,
+        the instant of its next attempt. A ``cancelled`` outcome from a
+        forecast source means the upstream had nothing usable *yet*: that is
+        what polling is for, so it is not reported as a failure and no
+        neighbouring run, fixture or other value is put in the missing run's
+        place. The poll is bounded by the next run time of the same source; at
+        the bound the run is superseded rather than late and the outcome names
+        it and the poll duration. The previous run is untouched throughout, so
+        it stays visible and keeps serving.
+        """
+        from ingest.scheduler import PollState, latest_run_time, poll_decision  # noqa: PLC0415
+
+        run_cadence = getattr(config, "run_cadence_seconds", None)
+        state = self._progress.setdefault(config.source_id, {})
+        open_poll = state.get("polling")
+        if not run_cadence:
+            state.pop("polling", None)
+            return outcome, None
+
+        if outcome.state != "cancelled":
+            if open_poll and outcome.state == "succeeded":
+                # The run appeared. Record when this deployment first saw it;
+                # task 2.3 turns that into the re-measured latency.
+                state["observed_publication"] = now.isoformat()
+                state["observed_publication_run_time"] = open_poll.get("run_time")
+            state.pop("polling", None)
+            return outcome, None
+
+        run_time = latest_run_time(int(run_cadence), now)
+        if open_poll and open_poll.get("run_time"):
+            try:
+                run_time = datetime.fromisoformat(str(open_poll["run_time"]))
+            except ValueError:
+                open_poll = None
+        since = now
+        attempts = 1
+        if open_poll:
+            try:
+                since = datetime.fromisoformat(str(open_poll.get("since")))
+            except (TypeError, ValueError):
+                since = now
+            attempts = int(open_poll.get("attempts", 0)) + 1
+        poll = PollState(run_time=run_time, since=since, attempts=attempts)
+        decision = poll_decision(poll, run_cadence_seconds=int(run_cadence), now=now)
+        if decision.exhausted:
+            state.pop("polling", None)
+            # Nothing is written about latency here: a run that never appeared
+            # is not an observation of one.
+            return SourceOutcome(outcome.source_id, "cancelled", decision.detail), None
+        state["polling"] = poll.as_progress()
+        state["poll_bound"] = decision.bound.isoformat()
+        return SourceOutcome(outcome.source_id, "cancelled", decision.detail), decision.due
+
     @property
     def source_ids(self) -> list[str]:
         return [config.source_id for _, config in self._pairs]
@@ -305,6 +370,10 @@ class Scheduler:
             if heartbeat is not None:
                 heartbeat()
             outcome = run_source(adapter, config, self._store, reference=reference, heartbeat=heartbeat)
+            # A forecast run that is not there yet is polled for rather than
+            # reported: the outcome and the next attempt both come from the
+            # bounded poll, and only its bound reports the absence.
+            outcome, poll_due = self._poll(config, outcome, datetime.now(UTC))
             self._record_progress(outcome)
             # Derived artifacts follow the run that produced their inputs, not
             # the end of the cycle. A cycle is a serial pass over every due
@@ -316,8 +385,13 @@ class Scheduler:
             if after_publish is not None and outcome.state == "succeeded":
                 after_publish()
             # Reschedule on cadence regardless of outcome: a failing source must
-            # not spin, and must not be dropped from the rotation either.
-            self._reschedule(config, datetime.now(UTC))
+            # not spin, and must not be dropped from the rotation either. A
+            # source on an open poll is put back at its next poll instead,
+            # which is bounded, so it cannot spin either.
+            if poll_due is not None:
+                self._schedule_poll(config.source_id, poll_due, datetime.now(UTC))
+            else:
+                self._reschedule(config, datetime.now(UTC))
             outcomes.append(outcome)
             log(f"{outcome.source_id}: {outcome.state} - {outcome.detail}")
             # Success is already recorded in model_runs; only the states that
