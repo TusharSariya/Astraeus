@@ -136,7 +136,30 @@ Wave 2 (2026-09-02): API owner (3.0 re-key of the API tables, 3.1, 3.2) and
 web owner (4.1) in parallel against a response contract fixed up front: per
 field `key`, `family`, `phase`, `storage`; per response `comparability`
 pairs; per catalogue source `fields`; uncatalogued variables refused with
-the `uncatalogued_field` flag.
+the `uncatalogued_field` flag. The merged gate found 14 interpolation-method
+tests still keyed on `total_cloud` (the registry worktree had skipped them
+for lack of numpy); re-keyed to `total_cloud_opacity`. Four follow-ups the
+web owner surfaced are section 6 of the change's tasks.md.
+
+Landed as PR #32 (`execution/field-catalogue`, stacked on #31), 2026-09-02.
+
+## Where to pick up (written 2026-09-02, paused at the owner's request)
+
+- Merge #31 then #32 (or rebase #32 onto main after #31).
+- Next is step 5, `storage-window-and-restart-cache` (18 tasks), branched
+  from `execution/field-catalogue`. It owns `ingest/` scheduling and storage,
+  the SQL, and `api/weather_api/store.py`; run its ingest and API owners
+  sequentially or on disjoint sections.
+- The running Docker stack is built from pre-execution code. Rebuild it
+  (`make build && make up`) before any live check; artifacts it wrote under
+  `total_cloud` will be refused as uncatalogued until re-fetched. The seven
+  older changes with an open Docker gate (see triage) can run their gates in
+  the same rebuild wave.
+- `uv run pytest` in a fresh worktree skips the numpy and xarray tests (36
+  skipped versus 25 in the main checkout); agents should report the skip
+  count and the orchestrator must run `make test` in the main checkout.
+- Agent worktrees under `.claude/worktrees/` hold merged branches and can be
+  removed with `git worktree remove`.
 
 ### Step 4: field-catalogue-and-families, section 3 (API)
 
