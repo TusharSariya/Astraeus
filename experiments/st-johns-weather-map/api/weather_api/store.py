@@ -114,9 +114,15 @@ WIND_COMPONENT_PAIRS = (
 FOG_INPUTS = frozenset({"weather_fog_code", "weather_fog_vicinity_code", "weather_mist_code"})
 FIELD_BY_VARIABLE.update({name: name for name in FOG_INPUTS})
 
+#: What the fog derivation reads, kept as prose for the layer notes. The
+#: served provenance names the registry entry instead - a reader is owed a
+#: name they can look up, not a paragraph - and the entry's citation carries
+#: the coding rules: FG (with FZFG, MIFG, BCFG, PRFG) and VCFG are fog
+#: evidence, BR is mist and is not.
 FOG_DERIVATION = (
-    "ingest.meteorology.fog_state from the METAR/TAF present-weather group: FG (incl. FZFG, MIFG, BCFG, PRFG) "
-    "and VCFG count as fog evidence; BR is mist and does not; no provider fog diagnostic, so 'not_indicated' cannot be produced"
+    "the METAR/TAF present-weather group, read by the registered "
+    "fog_state_from_present_weather method; no provider fog diagnostic exists here, so 'not_indicated' "
+    "cannot be produced"
 )
 FOG_DERIVATION_VERSION = "fog-state-present-weather-v1"
 
@@ -153,44 +159,72 @@ class ProvenanceUnmodelled(ValueError):
 
 
 # --- derivation method registry -------------------------------------------
-# Every ``derived_here`` value names an enabled entry in the derivation method
-# registry (``ingest.derive.registry``, created by this change's section 3).
-# The registry is read lazily and through this one seam, and a registry that
-# cannot be read is not a reason to serve an unregistered construction: the
-# method is treated as not enabled and the value is refused with a notice.
+# Every ``derived_here`` value names an enabled entry in ``ingest.derive
+# .registry``. The registry owns the entry names, the three switch levels
+# (entry ``enabled``, ``WEATHER_DERIVED_HERE``, the reader's own set) and the
+# physical-range rules; this module asks it and reports what it says. There is
+# no second copy of any of that here, and a registry that cannot be imported
+# is not a reason to serve an unregistered construction: every method is then
+# treated as unavailable and every derived value is refused with a notice.
 
-#: Entry names this module's derivations must find in the registry. They are
-#: the contract between the API and the registry: an entry under another name
-#: is an unregistered method here, and the value is refused.
-RELATIVE_HUMIDITY_METHOD = "relative_humidity_from_dew_point"
+
+#: The registry entry names this module's served derivations carry. They are
+#: spelled here so the API can name a method even when the registry cannot be
+#: imported, and ``test_point_evidence`` pins them against the registry's own
+#: constants so the two can never drift apart silently.
+RELATIVE_HUMIDITY_METHOD = "relative_humidity_from_dewpoint_liquid"
 WIND_METHOD = "wind_speed_and_direction_from_components"
 FOG_STATE_METHOD = "fog_state_from_present_weather"
 
 
-def derivation_entry(name: str) -> tuple[Any | None, str]:
-    """The enabled registry entry for ``name``, or ``None`` and the reason.
+@dataclass(frozen=True)
+class RegisteredDerivation:
+    """One registry-gated result: the value, its entry, and the range flags.
 
-    An entry declares, at least: ``name``, ``version``, ``citation``,
-    ``inputs``, ``output``, ``physical_range`` (low, high), ``range_rule``
-    (``clamp`` or ``refuse``) and ``enabled``. The registry module exposes
-    ``get_entry(name)`` returning one or ``None``.
+    ``derivation`` and ``version`` are the entry's own name and version, never
+    a free-text description: a reader who is told a number was constructed is
+    owed the name of the construction that the registry can be searched for.
+    """
+
+    value: Any = None
+    derivation: str | None = None
+    version: str | None = None
+    flags: tuple[str, ...] = ()
+
+
+def derivation_registry() -> Any | None:
+    """The derivation method registry module, or ``None`` when unreadable.
+
+    Imported lazily, as everything from ``ingest`` is on this path, and read
+    through this one accessor so a test can see the fail-closed branch.
     """
     try:
         from ingest.derive import registry  # noqa: PLC0415
-    except Exception as error:  # the registry is absent or unreadable: fail closed
-        return None, f"the derivation method registry could not be read ({type(error).__name__}); {name} is treated as not enabled"
-    getter = getattr(registry, "get_entry", None)
-    if not callable(getter):
-        return None, f"the derivation method registry exposes no get_entry; {name} is treated as not enabled"
+
+        return registry
+    except Exception as error:  # an absent or invalid registry: fail closed
+        LOGGER.warning("the derivation method registry could not be read: %s: %s", type(error).__name__, error)
+        return None
+
+
+def derivation_refusal(method: str, *, reader_disabled: Sequence[str] = ()) -> str:
+    """``""`` when this method may produce a value now, else why it may not.
+
+    The registry's own refusal codes (``unregistered_method``,
+    ``method_disabled``, ``deployment_refused``, ``reader_disabled``) are
+    carried through verbatim, so a notice names the level that refused and a
+    reader is never told a method is missing when it is merely switched off.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return f"the derivation method registry could not be read, so {method} is not an enabled entry"
     try:
-        entry = getter(name)
+        refusal = registry.resolve(method, reader_disabled=list(reader_disabled))
     except Exception as error:
-        return None, f"the derivation method registry raised for {name} ({type(error).__name__}); it is treated as not enabled"
-    if entry is None:
-        return None, f"{name} is not a registered derivation method"
-    if not bool(getattr(entry, "enabled", False)):
-        return None, f"the derivation method {name} is registered but disabled"
-    return entry, ""
+        return f"the derivation method registry raised for {method} ({type(error).__name__}); it is treated as not enabled"
+    if refusal is None:
+        return ""
+    return f"{refusal.code}: {refusal.detail} ({method})"
 
 
 @dataclass(frozen=True)
@@ -1444,33 +1478,67 @@ def _disqualifying_input(inputs: Sequence[tuple[str, Sample]]) -> str:
     return ""
 
 
-def _bounded(value: Any, entry: Any, field_name: str) -> tuple[Any, list[str], str]:
-    """Hold a method's output inside its declared physical range.
+def _registered_relative_humidity(temperature_c: float, dewpoint_c: float) -> RegisteredDerivation:
+    """Relative humidity through its registry entry, or nothing.
 
-    Returns the value to serve, the flags to record, and a refusal reason.
-    ``range_rule`` is the entry's own choice between clamping the value with a
-    ``range_clamped`` flag and refusing it; a method that declares no range is
-    served as computed, because inventing one here would be a physical claim
-    this module has no standing to make.
+    The construction, the three switch levels and the physical-range rule all
+    live in the registry; this only carries the result across. A registry that
+    cannot be read yields no value, and the caller's refusal notice says why.
     """
-    from .models import RANGE_CLAMPED_FLAG  # noqa: PLC0415
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation()
+    derived = registry.derive_relative_humidity(temperature_c, dewpoint_c)
+    if derived.method is None:
+        return RegisteredDerivation()
+    return RegisteredDerivation(value=derived.value, derivation=derived.method.name, version=derived.method.version, flags=tuple(derived.flags))
 
-    # An entry producing more than one output (wind speed and direction from
-    # one pair of components) declares a range per output; a single-output
-    # entry declares one range.
-    by_output = getattr(entry, "physical_range_by_output", None) or {}
-    limits = by_output.get(field_name, getattr(entry, "physical_range", None))
-    if not isinstance(value, (int, float)) or isinstance(value, bool) or limits is None:
-        return value, [], ""
+
+def _registered_wind(u_ms: float, v_ms: float) -> tuple[RegisteredDerivation, RegisteredDerivation]:
+    """Wind speed and direction from one entry, each with its own range flags.
+
+    A speed is clamped and a bearing is folded, so the two results carry
+    different flags even though one construction produced both.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation(), RegisteredDerivation()
+    derived = registry.derive_wind(u_ms, v_ms)
+    if derived.method is None:
+        return RegisteredDerivation(), RegisteredDerivation()
+    name, version = derived.method.name, derived.method.version
+    return (
+        RegisteredDerivation(value=derived.speed, derivation=name, version=version, flags=tuple(derived.speed_flags)),
+        RegisteredDerivation(value=derived.direction, derivation=name, version=version, flags=tuple(derived.direction_flags)),
+    )
+
+
+def _registered_fog_state(*, visibility_m: float | None, fog_code: bool) -> RegisteredDerivation:
+    """The fog state through its registry entry.
+
+    ``provider_diagnostic`` is ``None`` because no provider retrieved here
+    publishes a fog diagnostic, so the only live states are
+    ``evidence_present`` and ``unknown``: an absent FG code is not a finding
+    of no fog, and ``not_indicated`` is never produced.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation()
+    derived = registry.derive_fog_state(provider_diagnostic=None, visibility_m=visibility_m, fog_code=fog_code)
+    if derived.method is None:
+        return RegisteredDerivation()
+    return RegisteredDerivation(value=derived.value, derivation=derived.method.name, version=derived.method.version)
+
+
+def _method_citation(method: str) -> str | None:
+    """The entry's citation to the published construction, from the registry."""
+    registry = derivation_registry()
+    if registry is None:
+        return None
     try:
-        low, high = float(limits[0]), float(limits[1])
+        return str(registry.provenance(method).get("derivation_citation")) or None
     except Exception:
-        return value, [], ""
-    if low <= float(value) <= high:
-        return value, [], ""
-    if str(getattr(entry, "range_rule", "refuse")) == "clamp":
-        return min(max(float(value), low), high), [RANGE_CLAMPED_FLAG], ""
-    return None, [], f"the result {value} falls outside the method's declared physical range {low} to {high} and the entry refuses it"
+        return None
 
 
 def _derived_evidence_field(
@@ -1481,8 +1549,9 @@ def _derived_evidence_field(
     inputs: Sequence[tuple[str, Sample]],
     method: str,
     value: Any,
-    derivation: str,
-    derivation_version: str,
+    derivation: str | None,
+    derivation_version: str | None,
+    flags: Sequence[str] = (),
     reference: datetime,
 ) -> Any:
     """One ``derived_here`` value, or the same field null with a notice.
@@ -1492,16 +1561,22 @@ def _derived_evidence_field(
     registry entry named with its version and citation, the result is bounded
     to the method's declared physical range, and the quality is no better than
     the worst input's.
+
+    The registry applied the range rule before the value arrived here and said
+    which rule it applied; ``range_refused`` means the entry refused the
+    result rather than bounding it, so the field is null like any other failed
+    condition.
     """
     from .models import EvidenceField, Quality  # noqa: PLC0415
 
+    flags = list(flags)
     refusal = _disqualifying_input(inputs)
-    entry = None
     if not refusal:
-        entry, refusal = derivation_entry(method)
-    flags: list[str] = []
-    if not refusal:
-        value, flags, refusal = _bounded(value, entry, field_name)
+        refusal = derivation_refusal(method)
+    if not refusal and "range_refused" in flags:
+        refusal = f"the result left the physical range {method} declares and the entry's range rule refuses it"
+    if not refusal and value is None:
+        refusal = f"{method} produced no value from the inputs it was given"
     if refusal:
         _note(store, source_id=basis.source_id, revision_id=basis.revision_id, reason=f"{field_name} was not derived because {refusal}; nothing was substituted")
         return EvidenceField(
@@ -1525,11 +1600,11 @@ def _derived_evidence_field(
             replace(basis, evidence_class="derived_here"),
             field_name=field_name,
             reference=reference,
-            derivation=derivation,
+            derivation=derivation or method,
             derivation_version=derivation_version,
-            derivation_citation=str(getattr(entry, "citation", "")) or None,
+            derivation_citation=_method_citation(method),
             derivation_inputs=_derived_input_records(inputs),
-            quality=Quality.worst_of(_input_qualities(inputs), flags=flags),
+            quality=Quality.worst_of(_input_qualities(inputs), flags=list(flags)),
         ),
     )
 
@@ -1578,7 +1653,7 @@ def _flag_is_present(sample: Sample | None) -> bool | None:
 def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid_time: datetime) -> tuple[list[Any], Any, list[str]]:
     """Build live evidence fields, the consensus result, and the source ids used."""
     from .models import EvidenceField  # noqa: PLC0415
-    from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS, build_consensus, fog_state, resolve_relative_humidity, resolve_wind  # noqa: PLC0415
+    from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS, build_consensus  # noqa: PLC0415
 
     reference = datetime.now(UTC)
     samples = store.sample_point(latitude, longitude, valid_time)
@@ -1637,8 +1712,8 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
     for source_id, variables in by_source.items():
         temperature, dewpoint = variables.get("temperature_2m"), variables.get("dew_point_2m")
         if "relative_humidity_2m" not in variables and temperature is not None and dewpoint is not None and temperature.value is not None and dewpoint.value is not None:
-            value, derivation, version = resolve_relative_humidity(None, temperature.value, dewpoint.value)
-            basis = replace(temperature, variable="relative_humidity", value=value, units="percent")
+            derived = _registered_relative_humidity(temperature.value, dewpoint.value)
+            basis = replace(temperature, variable="relative_humidity", value=derived.value, units="percent")
             fields.append(
                 _derived_evidence_field(
                     store,
@@ -1646,9 +1721,10 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
                     basis=basis,
                     inputs=[("temperature", temperature), ("dew_point", dewpoint)],
                     method=RELATIVE_HUMIDITY_METHOD,
-                    value=value,
-                    derivation=derivation,
-                    derivation_version=version,
+                    value=derived.value,
+                    derivation=derived.derivation,
+                    derivation_version=derived.version,
+                    flags=derived.flags,
                     reference=reference,
                 )
             )
@@ -1660,11 +1736,9 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
         fog, vicinity = variables.get("weather_fog_code"), variables.get("weather_fog_vicinity_code")
         if fog is not None or vicinity is not None:
             visibility = variables.get("visibility")
-            fog_code = _flag_is_present(fog) is True or _flag_is_present(vicinity) is True
-            state = fog_state(
-                provider_diagnostic=None,
+            derived = _registered_fog_state(
                 visibility_m=visibility.value if visibility is not None and isinstance(visibility.value, float) else None,
-                fog_code=fog_code,
+                fog_code=_flag_is_present(fog) is True or _flag_is_present(vicinity) is True,
             )
             basis = replace(fog if fog is not None else vicinity, variable="fog_state", value=None, units="category")
             inputs = [(name, item) for name, item in (("weather_fog_code", fog), ("weather_fog_vicinity_code", vicinity), ("visibility", visibility)) if item is not None]
@@ -1675,9 +1749,9 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
                     basis=basis,
                     inputs=inputs,
                     method=FOG_STATE_METHOD,
-                    value=state,
-                    derivation=FOG_DERIVATION,
-                    derivation_version=FOG_DERIVATION_VERSION,
+                    value=derived.value,
+                    derivation=derived.derivation,
+                    derivation_version=derived.version,
                     reference=reference,
                 )
             )
@@ -1686,9 +1760,9 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
             u, v = variables.get(u_name), variables.get(v_name)
             if u is None or v is None or u.value is None or v.value is None:
                 continue
-            speed, direction, derivation, version = resolve_wind(u.value, v.value)
-            for name, value, units in ((speed_field, speed, WIND_SPEED_UNITS), (direction_field, direction, WIND_DIRECTION_UNITS)):
-                basis = replace(u, variable=name, value=value, units=units)
+            speed, direction = _registered_wind(u.value, v.value)
+            for name, derived, units in ((speed_field, speed, WIND_SPEED_UNITS), (direction_field, direction, WIND_DIRECTION_UNITS)):
+                basis = replace(u, variable=name, value=derived.value, units=units)
                 fields.append(
                     _derived_evidence_field(
                         store,
@@ -1696,9 +1770,10 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
                         basis=basis,
                         inputs=[(u_name, u), (v_name, v)],
                         method=WIND_METHOD,
-                        value=value,
-                        derivation=derivation,
-                        derivation_version=version,
+                        value=derived.value,
+                        derivation=derived.derivation,
+                        derivation_version=derived.version,
+                        flags=derived.flags,
                         reference=reference,
                     )
                 )

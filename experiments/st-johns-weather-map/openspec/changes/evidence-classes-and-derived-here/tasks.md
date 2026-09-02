@@ -79,30 +79,25 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   family from two sources, a provider reduction with another member set) raise
   `RegistryError` at construction, so importing the module with one refuses to
   load.
-- [ ] 3.2 Register the first entries (relative humidity, wind speed and
+- [x] 3.2 Register the first entries (relative humidity, wind speed and
   direction, fog state from the present-weather group, ensemble statistics,
-  sector sampling, DE442 geometry) and wire the existing relative-humidity
-  derivation to its entry. The API reads the registry through
-  `ingest.derive.registry.get_entry(name)` and names three of them
-  `relative_humidity_from_dew_point`,
-  `wind_speed_and_direction_from_components` and
-  `fog_state_from_present_weather`; see design.md for the entry shape.
-  Reconciliation pending (merge 2026-09-02): the registry landed with `get`
-  and different entry names; the API and registry must be brought to one
-  interface, and the fog-state entry added, before this task is ticked.
+  sector sampling, DE442 geometry) and wire the existing derivations to their
+  entries. One interface: the API gates on `registry.resolve`, constructs
+  through `derive_relative_humidity`, `derive_wind` and `derive_fog_state`,
+  and names entries by the registry's own names; see design.md.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k
   relative_humidity` shows the entry name and `derived_here` in provenance.
-  Verify result: **half done, left unticked.** All five entries are registered
-  (`ENTRIES`, in that order; ensemble statistics and sector sampling
-  `enabled: false`, see design.md) and relative humidity is served through its
-  entry by `resolve_registered_relative_humidity`, verified by `cd api && uv
-  run pytest tests/test_derivation_registry.py -k relative_humidity` (2
-  passed): the entry name, the version and `evidence_class: derived_here`. The
-  named verify command's file `tests/test_point_evidence.py` does not exist yet
-  and `api/weather_api/store.py` belongs to the API owner, so the remaining
-  half is one line at `store.py:1230`, replacing `resolve_relative_humidity`
-  with `ingest.derive.registry.resolve_registered_relative_humidity` (same
-  three-tuple).
+  Verify result: 2 passed - a derived relative humidity carries
+  `evidence_class: derived_here`, `derivation:
+  relative_humidity_from_dewpoint_liquid`, the entry's version and its
+  citation, and a published relative humidity is still never replaced by one.
+  The seam reconciliation that made this true (merge 2026-09-02): the API's
+  `get_entry` seam is gone, the entry names are the registry's, the range
+  rules are the registry's four, `fog_state_from_present_weather` was added to
+  `ENTRIES` because `/point` already served that derivation, and
+  `tests/test_point_evidence.py` pins the API's three method names against the
+  registry's constants so they cannot drift. Also verified: `cd api && uv run
+  pytest tests/test_derivation_registry.py` (18 passed).
 - [x] 3.3 Add the deployment-level refusal environment variable and the
   reader-level switch contract.
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k

@@ -14,6 +14,7 @@ from ingest.derive.registry import (
     DE442_GEOMETRY,
     ENSEMBLE_STATISTICS,
     ENTRIES,
+    FOG_STATE,
     RELATIVE_HUMIDITY,
     SECTOR_SAMPLING,
     WIND_SPEED_AND_DIRECTION,
@@ -57,10 +58,15 @@ def test_every_entry_carries_the_declared_shape() -> None:
                 assert output.minimum is not None and output.maximum is not None
 
 
-def test_the_five_first_entries_are_registered() -> None:
+def test_the_first_entries_are_registered() -> None:
+    """The derivations this deployment already serves or has specified. Fog
+    state joined them once ``/point`` began gating it on the registry: it was
+    already served, and an unregistered served derivation is the gap this
+    registry exists to close."""
     assert [entry.name for entry in ENTRIES] == [
         RELATIVE_HUMIDITY,
         WIND_SPEED_AND_DIRECTION,
+        FOG_STATE,
         ENSEMBLE_STATISTICS,
         SECTOR_SAMPLING,
         DE442_GEOMETRY,

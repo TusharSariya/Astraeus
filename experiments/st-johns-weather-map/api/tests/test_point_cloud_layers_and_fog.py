@@ -18,7 +18,7 @@ import pytest
 import xarray
 
 from tests.test_live_sampling import LATITUDE, LONGITUDE, STAMP, StubStore, artifact, rectilinear
-from weather_api.store import CLOUD_LAYER_VARIABLES, FOG_DERIVATION, FOG_DERIVATION_VERSION, FOG_INPUTS, live_point_fields
+from weather_api.store import CLOUD_LAYER_VARIABLES, FOG_DERIVATION_VERSION, FOG_INPUTS, FOG_STATE_METHOD, live_point_fields
 
 UTC = timezone.utc
 DIMS = ("valid_time", "latitude", "longitude")
@@ -83,23 +83,19 @@ def point_fields(dataset: xarray.Dataset) -> dict[str, Any]:
     return by_name
 
 
-@pytest.fixture(autouse=True)
-def _registered_derivation_methods(derivation_registry):
-    """Every derivation served here is an enabled derivation-registry entry.
-
-    A ``derived_here`` value is refused unless its method is registered and
-    enabled, so the entries are stood up for this module rather than each
-    test being about the registry.
-    """
-
 # --- fog_state is derived, disclosed, and never ``not_indicated`` ------------
 
 def test_an_fg_code_yields_fog_evidence_with_the_derivation_disclosed():
     fields = point_fields(metar_dataset(fog=1.0))
     fog = fields["fog_state"]
     assert fog.value == "evidence_present"
-    assert fog.provenance.derivation == FOG_DERIVATION
+    # The disclosure is the registry entry the value came from, with the
+    # entry's own citation to the present-weather coding rules.
+    # Spec-Refs: "Every derived-here value names an enabled registry entry".
+    assert fog.provenance.derivation == FOG_STATE_METHOD == "fog_state_from_present_weather"
     assert fog.provenance.derivation_version == FOG_DERIVATION_VERSION == "fog-state-present-weather-v1"
+    assert fog.provenance.evidence_class == "derived_here"
+    assert "FG" in fog.provenance.derivation_citation
     assert fog.provenance.normalized_units == "category"
     assert fog.provenance.source_id == "awc-metar-speci"
     assert fog.provenance.data_mode.value == "live"
@@ -121,7 +117,7 @@ def test_vicinity_fog_alone_counts_as_fog_evidence():
     default, disclosed in the derivation string)."""
     fog = point_fields(metar_dataset(fog=0.0, vicinity=1.0))["fog_state"]
     assert fog.value == "evidence_present"
-    assert "VCFG" in fog.provenance.derivation
+    assert "VCFG" in fog.provenance.derivation_citation
 
 
 def test_mist_alone_is_not_fog_evidence():
