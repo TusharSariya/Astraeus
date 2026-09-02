@@ -101,10 +101,13 @@ describe('a derived value carries its inputs and method', () => {
         derivation_inputs: [{ field: 'relative_humidity', source_id: 'open-meteo-weathernext2' }],
       },
     }]))
-    const cloud = snapshot.fieldSources.total_cloud
+    // Never the reading, so it reaches the reader as an alternative; its
+    // attribution is what carries the class and the (absent) method.
+    const cloud = snapshot.fieldAlternatives.total_cloud[0].attribution
     expect(cloud.evidenceClass).toBe('intermediary_derived')
     expect(cloud.derivationMethod).toBeNull()
     expect(cloud.derivationInputs).toEqual([])
+    expect(snapshot.fieldSources.total_cloud).toBeUndefined()
   })
 
   it('shows the inputs and method on demand, and not before', async () => {

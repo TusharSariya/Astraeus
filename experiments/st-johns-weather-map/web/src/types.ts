@@ -49,6 +49,11 @@ export type EvidenceClass =
  *  as unavailable with the reason, never as `retrieved`. */
 export type ResolvedEvidenceClass = EvidenceClass | 'unrecognised'
 
+/** How a source's values reach this deployment, as the registry declares it.
+ *  A separate axis from the evidence class: an `intermediary_derived` value is
+ *  still retrieved by this deployment. */
+export type DeliveryKind = 'published_cell' | 'reprocessed' | 'intermediary_derived'
+
 /** One input a `derived_here` value was computed from, as the response listed
  *  it. Every field is what the API said; nothing is inferred from the input's
  *  name. */
@@ -57,6 +62,9 @@ export interface DerivationInput {
   sourceId: string | null
   product: string | null
   validTime: string | null
+  /** The run the input came from, where the input had one. */
+  runTime: string | null
+  units: string | null
   /** The input's own quality status, verbatim. Null when none was declared. */
   quality: string | null
   evidenceClass: ResolvedEvidenceClass
@@ -97,6 +105,38 @@ export interface FieldAttribution {
    *  every other class; never synthesised from the derivation sentence. */
   derivationMethod: DerivationMethod | null
   derivationInputs: DerivationInput[]
+  /** The registry's delivery kind for the producing record, and the
+   *  intermediary it names. Null kind means the record declared none, which
+   *  renders no label at all. */
+  deliveryKind: DeliveryKind | null
+  intermediary: string | null
+  /** The intermediary's own method, where the intermediary documents one.
+   *  Null is "undocumented", which is said out loud rather than read as
+   *  "no transformation". */
+  intermediaryMethod: string | null
+  /** Whether this value may stand as a field's primary reading. The API
+   *  computes it from the class; the client additionally refuses a source the
+   *  catalogue marks `display_primary: false`. */
+  displayPrimaryEligible: boolean
+  /** `derivation_refused`: a derived value the registry conditions refused.
+   *  `provenance_unmodelled`: an artifact whose provenance could not be
+   *  modelled. Either renders as unavailable with the response's own notice. */
+  derivationRefused: boolean
+  provenanceUnmodelled: boolean
+  /** The response notice that explains this field's refusal, matched at
+   *  normalise time where both the field name and the notices are in hand.
+   *  Null when the value is a reading rather than a refusal. */
+  notice: string | null
+}
+
+/** One value for a field that is NOT its primary reading: a reprocessed,
+ *  intermediary-derived or uncalibrated value, or one from a source the
+ *  catalogue refuses as a primary. Shown beside the reading, never in it. */
+export interface FieldAlternative {
+  field: string
+  /** As rendered, already unit-converted where the metric converts. */
+  text: string
+  attribution: FieldAttribution
 }
 
 export interface StoryStep {
@@ -135,6 +175,13 @@ export interface EvidenceSnapshot {
   fieldModes: Record<string, FieldDataMode>
   /** Per-field attribution for the field actually shown, keyed by API field name. */
   fieldSources: Record<string, FieldAttribution>
+  /** Values the same field carried that may not be its primary reading, keyed
+   *  by API field name. Rendered as alternative readings with their badge and
+   *  delivery label; never promoted into the metric. */
+  fieldAlternatives: Record<string, FieldAlternative[]>
+  /** The response's own `notices`, verbatim. They carry the reason a
+   *  derivation was refused or an artifact's provenance was not modelled. */
+  notices: string[]
   issuedAt: string
   validAt: string | null
   temperatureC: number | null
@@ -359,6 +406,14 @@ export interface CatalogSource {
   geographic_coverage: string
   licence: string
   attribution: string
+  /** How this record's values reach the deployment. Optional until every
+   *  record declares one; absent renders no label rather than a doubt. */
+  delivery_kind?: string
+  /** Named where the kind is `reprocessed` or `intermediary_derived`. */
+  intermediary?: string | null
+  /** False means the registry refuses this source as any field's primary
+   *  reading. Absent is not false: an undeclared record is not yet refused. */
+  display_primary?: boolean
 }
 
 export interface CatalogResult {

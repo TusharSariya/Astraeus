@@ -136,38 +136,81 @@ placeholder for a reading.
 
 ## Web contract
 
-The spec deltas pin the class name and that a derived value exposes its inputs
-and method. They do not pin the JSON, so the client reads the simplest shape
-that carries them, and the API owner should match it:
+The shape below is the API's, as `api/weather_api/models.py` publishes it
+(merged 2026-09-02). Provenance is FLAT: there is no nested method object and
+no nested delivery object. The client reads the flat fields as its contract.
 
-- `provenance.evidence_class`: one of the six strings, required. Absent, empty,
-  non-string or outside the six all resolve to one client state,
-  `unrecognised`, which renders as unavailable with the reason and never as
-  `retrieved`. The two failures are distinguished only in the reason text.
-- `provenance.quality`: `{ status, flags }`, with `derived` appearing in
-  `flags`. Absent means "not named", never a status this client invented.
+- `provenance.evidence_class`: one of the six strings, required, no default.
+  Absent, empty, non-string or outside the six all resolve to one client
+  state, `unrecognised`, which renders as unavailable with the reason and
+  never as `retrieved`. The two failures are distinguished only in the reason
+  text.
+- `provenance.quality`: `{ status, flags }`. `flags` carries `derived` for a
+  derived value, and the two refusal flags below. Absent means "not named",
+  never a status this client invented.
+- **The method, flat**: `derivation` (the registry entry name),
+  `derivation_version`, `derivation_citation`. A nested
+  `derivation_method: { name, version, citation }` is still read first because
+  it costs three lines, but nothing produces it; the flat fields are the
+  contract. Read only when the value's own class is `derived_here`: a
+  reprocessed value's `derivation` is the intermediary's sentence, not a
+  registered method this deployment can cite.
 - `provenance.derivation_inputs`: a list of
-  `{ field, source_id, product, valid_time, quality, evidence_class }`.
-  `quality` is accepted as a bare status string or as the same
-  `{ status, flags }` object. Read only when the value's own class is
-  `derived_here`.
-- The method: `provenance.derivation_method` as `{ name, version, citation }`
-  is preferred; the flat `derivation` / `derivation_version` /
-  `derivation_citation` fields the API publishes today are the fallback, so a
-  response that predates the object form still names its method. Also read
-  only for `derived_here`: a reprocessed value's `derivation` is the
-  intermediary's sentence, not a registered method this deployment can cite.
+  `{ field, source_id, product, valid_time, run_time, units, evidence_class,
+  quality }`, `quality` being the same `{ status, flags }` object (a bare
+  status string is also accepted, for a hand-written response).
+- **Delivery, flat**: `delivery_kind` (`published_cell` | `reprocessed` |
+  `intermediary_derived`), `intermediary`, `intermediary_method`. The label
+  beside the class badge is "producer's own cell", "reprocessed by
+  <intermediary>", "computed by <intermediary>". A kind the client does not
+  know, or none at all, renders NO label — see the decisions below.
+- `provenance.display_primary_eligible`: the API computes it from the class.
+  When it is absent the client reads the class directly and refuses
+  `reprocessed`, `intermediary_derived` and `uncalibrated_observation`, so a
+  missing field can never promote one of the three into a reading.
+- **Refusals**: `quality.flags` carries `derivation_refused` (the registry
+  conditions refused a derived value) or `provenance_unmodelled` (an
+  artifact's provenance could not be modelled). The reason lives only in the
+  response's `notices`, as
+  `artifact from <source> (revision <id>) was skipped: <reason>`. The client
+  matches a notice to the field by the field name, falling back to the source
+  id — an unmodelled artifact's notice names the artifact, not each field.
+- `/catalog` source records carry `delivery_kind`, `intermediary` and
+  `display_primary`. All three are optional on the client until every record
+  declares them.
 - `/layers` items carry `evidence_class` as the same six-value string. The
   class is never inferred from `evidence_basis` or the group: a published
   artifact can hold values of any class, and inferring is what the field
   replaces.
 
-Two client decisions the spec left open, recorded here because they are
-visible behaviour:
+Client decisions the spec left open, recorded here because they are visible
+behaviour:
 
 - **A missing class suppresses the value.** The spec's scenario names an
   unrecognised class; the field is required with no default, so a value
   carrying none has no honest class either and is treated identically.
+- **A missing delivery kind is silent.** The opposite decision, and
+  deliberately so: the kind is a registry attribute, so an undeclared one is a
+  gap in the registry rather than a failure of the evidence, and a "delivery
+  unknown" chip beside a good retrieved value would read as a doubt about the
+  value. An undeclared CLASS is a doubt about the value; an undeclared KIND is
+  not.
+- **An unrecognised class still occupies the reading's slot.** It is refused
+  as a value but not demoted to an alternative: the fault must be visible
+  where the number would have been, not tucked inside a disclosure panel. Only
+  the three declared non-primary classes, and a source the catalogue refuses,
+  become alternatives.
+- **Non-primary values are shown, never hidden.** They are collected under
+  "Retrieved, but never the reading", driven by the whole alternatives record
+  rather than wired metric by metric, so a field with no metric of its own
+  cannot be silently dropped. A field whose ONLY value is non-primary reads as
+  Unknown with that value beside it.
+- **Alternatives are not unit-converted.** The metrics convert; an alternative
+  prints the value in the unit its own response declared, because it exists to
+  be compared with the source it names.
+- **Alerts ignore the primary rule.** An alert is a published hazard text, not
+  a reading to be outranked, so `warnings` reads from every field. Withholding
+  a warning to satisfy a rule about numbers would be the worse error.
 - **An unrecognised class on a LAYER does not withhold the imagery.** The
   drawer shows the unrecognised badge and the reason sentence beside the row.
   Withholding a whole layer's pixels is a fallback-rules decision
