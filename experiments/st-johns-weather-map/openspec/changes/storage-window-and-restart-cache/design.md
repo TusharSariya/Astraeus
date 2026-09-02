@@ -97,6 +97,90 @@ this deployment chose not to fetch it, which no retry clears. An aged-out
 report carries the last valid time the store held, so the reader is told the
 edge of what was ever available, not merely that something is gone.
 
+## Seam: the restart cache, fixed before sections 3 and 4 started
+
+The ingest owner and the storage owner code against this at the same time, so
+it is written down rather than negotiated afterwards. Three methods on the
+store, implemented in `ingest/store.py` over the existing schema and matched by
+the storage owner on the API-side store:
+
+    present_keys(source_id, provider_run_id) -> set[int]
+        The valid times, as integer nanoseconds, already published under that
+        run key. Read from the published revisions' own declared
+        `valid_times`; a revision that declared none contributes nothing, so
+        the worker fetches rather than assuming a frame it cannot see is
+        present. Raises `StoreUnavailable` when the store cannot answer, which
+        the scheduler turns into a failed source: an unknown cache state is not
+        an empty one.
+
+    sweep_abandoned_staging() -> int
+        Discard staged rows older than the abandoned-staging age and their
+        objects, preserving every current pointer. Named alias of the existing
+        `restart()`, so the reconciliation reads as the three steps
+        `ingestion-worker-scheduling` names.
+
+    purge_outside_window(now) -> int
+        Delete every retained revision all of whose declared valid times lie
+        outside `sliding_window(now)`. Rows before objects; an object already
+        gone does not abort the sweep; a revision that declared no valid times
+        is left to `prune()`, which judges by run position, because purging on
+        an instant the store cannot read would be purging on a guess.
+
+The window itself is `WINDOW_BACK`, `WINDOW_FORWARD` and `sliding_window(now)`
+in `api/weather_api/config.py`, read by `ingest` through `ingest/window.py`.
+
+A fourth method exists on the ingest side only, because the conflict is a
+staging decision and never a read: `published_digests(source_id,
+provider_run_id) -> dict[str, str]`, which `assert_run_identity` compares
+against a fetched artifact's digest before the run row is touched, raising
+`RunIdentityConflict`.
+
+## Deviations recorded during implementation (section 4)
+
+- **`ingest/window.py` loads the definition by file path, not as a package
+  import.** `weather_api/__init__.py` imports the FastAPI app, which imports
+  `ingest.contract`, which needs the window: importing `weather_api.config`
+  the ordinary way is a cycle. The one module is loaded by path instead, so
+  there is still exactly one definition and one file. It does mean the worker
+  image must ship `api/weather_api/config.py`; it currently copies only
+  `ingest/`, `registry/source_data.py` and `worker/`, so `worker/Dockerfile`
+  needs that one `COPY` line before a live worker cycle can run. Left to the
+  owner of the image packaging rather than edited here.
+
+- **`FetchWindow.back_hours` / `forward_hours` became floats reading the
+  shared offsets** rather than the literals `3` and `24`. They stay as
+  parameters so a test can deliberately narrow the window; nothing in the
+  adapters passes them.
+
+- **The out-of-window gate moved out of `ingest/manifest.py` into
+  `ingest/validate.py`.** `validate_run` calls `out_of_window_verdict` and
+  raises whatever it returns. `_MAX_REPORTED_OUT_OF_WINDOW` stays in
+  `manifest` as an alias so existing importers resolve.
+
+- **`no_step_in_window` is a distinct flag, not an `out_of_window` one.** The
+  spec requires a run carrying no in-window valid time to be refused; giving
+  it an `out_of_window:` prefix would have made it count against the
+  five-flag cap and read as one more misplaced step rather than as the run
+  answering nothing the window asks about.
+
+- **`null` outranks `aged_out` as a derived artifact's "worst" input state.**
+  The spec says to report the worst input's state without ordering the two.
+  An aged-out input names a last valid time the reader can act on; a null
+  input says nothing was ever held here. Reporting the less informative state
+  is the conservative direction.
+
+- **The 25 GiB literals in `ingest/store.py` became the configured cap.**
+  `LOCAL_STORAGE_CAP_BYTES` is 64 GiB, `QuotaExceeded` formats its message
+  from `config.cap_bytes` rather than a literal so the outcome names whatever
+  is configured, and `OBSERVATION_RETENTION` became 24 hours. Section 1 owns
+  the same constant for the compose configuration and the bootstrap; this is
+  the same value on both sides. Two assertions in `tests/test_ingest_store.py`
+  that pinned 25 GiB were re-pinned to 64 GiB.
+
+- **Three window assertions in `tests/test_ingest_manifest.py` were re-pinned.**
+  They chose instants at `-8 h` and `+48 h` to be outside the old window;
+  those are inside the new one, so they now use `-48 h` and `+15 d`.
+
 ## Open questions carried into implementation
 
 - Whether the purge runs on a timer or at publication. Publication is

@@ -131,7 +131,8 @@ def _store():
 def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callable[[], None] | None = None) -> SourceOutcome:
     """Discover, fetch, stage and publish one source. Never raises."""
     from ingest.contract import AdapterUnavailable, FetchWindow  # noqa: PLC0415
-    from ingest.store import QuotaExceeded, StoreUnavailable  # noqa: PLC0415
+    from ingest.scheduler import plan_fetch  # noqa: PLC0415
+    from ingest.store import QuotaExceeded, RunIdentityConflict, StoreUnavailable  # noqa: PLC0415
 
     window = FetchWindow(now=reference)
     try:
@@ -144,6 +145,17 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
         return SourceOutcome(config.source_id, "cancelled", "discovery returned no candidate run")
 
     candidate = candidates[0]
+    # Ask the store what is present before fetching. A restart whose window is
+    # already satisfied issues no bulk request at all; a store that cannot be
+    # asked fails the source, because refetching everything on an unreadable
+    # store is how a restart becomes an outage on the constraint that binds.
+    if store is not None:
+        try:
+            plan = plan_fetch(store, source_id=config.source_id, candidate=candidate, window=window)
+        except Exception as error:
+            return SourceOutcome(config.source_id, "failed", f"the store could not be asked what is present: {error!r}")
+        if plan.satisfied:
+            return SourceOutcome(config.source_id, "succeeded", plan.reason, 0)
     if heartbeat is not None:
         heartbeat()
     with tempfile.TemporaryDirectory(prefix=f"{config.source_id}-") as workdir:
@@ -166,6 +178,10 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
                 metadata={"bounds": dict(config.bounds), "variables": list(config.variables)},
             )
             published = store.stage_and_publish(result)
+        except RunIdentityConflict as error:
+            # The published artifact stays visible; this is never a silent
+            # replacement of evidence a reader may already have cited.
+            return SourceOutcome(config.source_id, "failed", str(error))
         except QuotaExceeded as error:
             return SourceOutcome(config.source_id, "failed", f"storage cap reached: {error}")
         except StoreUnavailable as error:
@@ -324,11 +340,18 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
     path = heartbeat_path()
     write_heartbeat(path)
     store = _store()
-    if store is not None:
-        try:
-            store.restart()
-        except Exception as error:
-            log(f"could not clear abandoned staging: {error!r}")
+    # Reconcile the retained window before scheduling anything: sweep
+    # abandoned staging, purge what left the window, then let the sources ask
+    # what is missing. The store is never cleared on start.
+    from ingest.scheduler import reconcile_on_start  # noqa: PLC0415
+
+    reconciliation = reconcile_on_start(store)
+    log(f"restart reconciliation: {reconciliation.detail}")
+    if store is not None and not reconciliation.may_fetch:
+        # A worker that cannot see the cache would refetch everything, so it
+        # reports unhealthy and schedules nothing instead.
+        log("the store could not be reconciled; scheduling no fetch and reporting unhealthy")
+        return 1
 
     scheduler = Scheduler(store, source_ids=source_ids)
     if not scheduler.source_ids:

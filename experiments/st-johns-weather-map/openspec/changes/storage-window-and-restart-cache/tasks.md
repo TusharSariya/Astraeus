@@ -77,27 +77,54 @@ non-normative.
 
 ## 4. Idempotent ingestion and restart (ingest owner)
 
-- [ ] 4.1 Key frames by `(source_id, provider_run_id, valid_time)` in
+- [x] 4.1 Key frames by `(source_id, provider_run_id, valid_time)` in
   nanoseconds; ask the store what is present before fetching; refuse a
   byte-different fetch of a published key as `run_identity_conflict`; fail
   the source when the store cannot be asked.
   Verify: `cd api && uv run pytest tests/test_ingest_idempotency.py`
-- [ ] 4.2 Restart reconciliation: sweep abandoned staging, purge outside the
+  Verify result: 10 passed. `ingest/scheduler.py:plan_fetch` asks
+  `store.present_keys` and fetches only the missing nanosecond keys;
+  `ingest/store.py:assert_run_identity` raises `RunIdentityConflict` naming
+  both digests before the run row is touched; a store that raises propagates
+  and `worker/runtime.py:run_source` reports the source `failed` without
+  fetching.
+- [x] 4.2 Restart reconciliation: sweep abandoned staging, purge outside the
   window, then fetch only what is missing. Cover restart mid-publication, a
   full window, a long outage and an unreadable store.
   Verify: `cd api && uv run pytest tests/test_worker_restart.py -k "mid_publication or full_window or long_outage or unreadable"`
-- [ ] 4.3 Recompute derived artifacts from retained inputs instead of
+  Verify result: 4 passed, 7 deselected; the whole file is 11 passed.
+  `ingest/scheduler.py:reconcile_on_start` runs the two steps in order and
+  returns unhealthy without purging or fetching when either raises;
+  `worker/runtime.py:run` exits 1 rather than scheduling on an unreadable
+  store.
+- [x] 4.3 Recompute derived artifacts from retained inputs instead of
   re-fetching; a derived artifact with an aged-out or null input is absent
   and reports its worst input's state.
   Verify: `cd api && uv run pytest tests/test_derived_recompute.py`
-- [ ] 4.4 Move the out-of-window QC bounds to the shared window definition
+  Verify result: 12 passed. `ingest/scheduler.py:derived_plan` recomputes when
+  every input is retained and is otherwise absent naming the worst input; the
+  existing `cloud_motion_cycle` recompute path is asserted to read
+  `current_artifacts` and nothing else. `null` outranks `aged_out`; the
+  reasoning is in design.md under Deviations.
+- [x] 4.4 Move the out-of-window QC bounds to the shared window definition
   and keep the five-flag cap with the `+N_more` remainder; a run with no
   in-window step is refused.
   Verify: `cd api && uv run pytest tests/test_validate_run.py -k "out_of_window"`
-- [ ] 4.5 Outcomes: an idempotent no-op is `succeeded` with zero artifacts
+  Verify result: 11 passed, 1 deselected; the whole file is 12 passed. The
+  gate is `ingest/validate.py:out_of_window_verdict`, reading
+  `weather_api.config` through `ingest/window.py`;
+  `ingest/manifest.py:validate_run` calls it. The refusal flag is
+  `no_step_in_window`, deliberately outside the capped `out_of_window:`
+  family - recorded in design.md.
+- [x] 4.5 Outcomes: an idempotent no-op is `succeeded` with zero artifacts
   and a stated reason; the quota failure names the 64 GiB cap; a run that
   never completes is `failed` every cycle without accumulating staged bytes.
   Verify: `cd api && uv run pytest tests/test_worker_outcomes.py -k "noop or quota or never_completes"`
+  Verify result: 7 passed, 2 deselected; the whole file is 9 passed.
+  `LOCAL_STORAGE_CAP_BYTES` is 64 GiB and `QuotaExceeded` formats the cap and
+  the projected size from the configured value; three failed cycles each
+  discard the previous attempt's staged rows before staging again, and
+  `publish_run` is never called for an incomplete run.
 
 ## 5. Absence state end to end (API and web owners)
 

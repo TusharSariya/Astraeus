@@ -28,6 +28,8 @@ if str(_EXPERIMENT_ROOT) not in sys.path:  # registry/ ships beside ingest/ in b
 
 from registry import fields as catalogue  # noqa: E402
 
+from .validate import MAX_REPORTED_OUT_OF_WINDOW, NO_STEP_IN_WINDOW, out_of_window_verdict  # noqa: E402,F401
+
 UTC = timezone.utc
 
 # Coordinate names an adapter may legitimately produce; anything else means the
@@ -273,8 +275,10 @@ def _field_coverage(variable: Any) -> float:
 
 
 # One flag per offending step, capped: a badly-bounded run can carry hundreds,
-# and the flag list is meant to be read by a person.
-_MAX_REPORTED_OUT_OF_WINDOW = 5
+# and the flag list is meant to be read by a person. Kept as an alias so the
+# adapters and tests that import it from here still resolve; the cap itself now
+# lives beside the window gate in ``ingest.validate``.
+_MAX_REPORTED_OUT_OF_WINDOW = MAX_REPORTED_OUT_OF_WINDOW
 
 
 UNCATALOGUED_UPSTREAM = "uncatalogued_upstream_field"
@@ -431,25 +435,19 @@ def validate_run(
     # that the REQUIRED times are present would let a run carry extra steps
     # outside it: the API samples the nearest step within an hour, so an
     # out-of-window step can surface as if it answered the question asked, and
-    # it consumes the 25 GiB cap for evidence nothing may display. This is a
+    # it consumes the 64 GiB cap for evidence nothing may display. This is a
     # contract violation rather than a gap, so it fails QC, not completeness.
+    #
+    # The bounds and the flag shape live in ``ingest.validate``, which reads
+    # the one window definition in ``weather_api.config``. Restating them here
+    # is what let the ingestion window and the API window drift apart before.
     if time_name is not None and window is not None:
-        start, end = getattr(window, "start", None), getattr(window, "end", None)
-        if start is not None and end is not None:
-            import numpy  # noqa: PLC0415
+        import numpy  # noqa: PLC0415
 
-            low = _as_naive_utc64(start).astype("int64")
-            high = _as_naive_utc64(end).astype("int64")
-            stamps = numpy.asarray(dataset[time_name].values).ravel().astype("datetime64[ns]").astype("int64")
-            outside = sorted({int(value) for value in stamps.tolist() if value < low or value > high})
-            for value in outside[:_MAX_REPORTED_OUT_OF_WINDOW]:
-                # .item() on datetime64[ns] yields an int, not a datetime:
-                # nanoseconds exceed datetime's microsecond resolution.
-                iso = numpy.datetime64(value, "ns").astype("datetime64[s]").item().strftime("%Y-%m-%dT%H:%M:%SZ")
-                result = result.failing(f"out_of_window:{iso}", f"valid time {iso} falls outside the evidence window", qc=True)
-            if len(outside) > _MAX_REPORTED_OUT_OF_WINDOW:
-                remaining = len(outside) - _MAX_REPORTED_OUT_OF_WINDOW
-                result = result.failing(f"out_of_window:+{remaining}_more", f"{remaining} further step(s) fall outside the evidence window", qc=True)
+        stamps = numpy.asarray(dataset[time_name].values).ravel().astype("datetime64[ns]").astype("int64")
+        verdict = out_of_window_verdict(stamps.tolist(), window)
+        for flag, detail in verdict.flags:
+            result = result.failing(flag, detail, qc=True)
 
     if manifest.required_valid_times:
         if time_name is None:

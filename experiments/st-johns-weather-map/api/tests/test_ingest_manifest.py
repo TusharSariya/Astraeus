@@ -251,7 +251,7 @@ def test_manifest_rejects_naive_required_valid_times():
 
 def test_a_step_outside_the_evidence_window_fails_qc() -> None:
     window = FetchWindow(now=T0)
-    beyond = datetime(2026, 8, 31, 12, tzinfo=UTC)  # +48 h, past the +24 h edge
+    beyond = datetime(2026, 9, 13, 12, tzinfo=UTC)  # +15 d, past the +14 d edge
     dataset = make_dataset(times=(T0, beyond))
     manifest = RunManifest(source_id="eccc-hrdps", fields=(RequiredField(name="temperature_2m", units="degC"),))
 
@@ -259,13 +259,13 @@ def test_a_step_outside_the_evidence_window_fails_qc() -> None:
 
     assert result.qc_passed is False, "an out-of-window step is a contract violation, not a gap"
     assert result.complete is False
-    assert "out_of_window:2026-08-31T12:00:00Z" in result.flags
+    assert "out_of_window:2026-09-13T12:00:00Z" in result.flags
     assert result.as_quality()["status"] == "failed"
 
 
 def test_a_step_before_the_window_start_is_caught_too() -> None:
     window = FetchWindow(now=T0)
-    stale = datetime(2026, 8, 29, 4, tzinfo=UTC)  # -8 h, past the -3 h edge
+    stale = datetime(2026, 8, 27, 12, tzinfo=UTC)  # -48 h, past the -24 h edge
     dataset = make_dataset(times=(stale, T0))
 
     result = validate_run(
@@ -275,11 +275,11 @@ def test_a_step_before_the_window_start_is_caught_too() -> None:
     )
 
     assert result.qc_passed is False
-    assert "out_of_window:2026-08-29T04:00:00Z" in result.flags
+    assert "out_of_window:2026-08-27T12:00:00Z" in result.flags
 
 
 def test_steps_inside_the_window_are_not_flagged() -> None:
-    """The boundary is inclusive at both edges, so an exact -3h/+24h step passes."""
+    """The boundary is inclusive at both edges, so an exact -24h/+14d step passes."""
     window = FetchWindow(now=T0)
     dataset = make_dataset(times=(window.start, T0, window.end))
 
@@ -297,7 +297,7 @@ def test_steps_inside_the_window_are_not_flagged() -> None:
 def test_many_out_of_window_steps_are_reported_but_capped() -> None:
     """A badly-bounded run can carry hundreds; the flag list stays readable."""
     window = FetchWindow(now=T0)
-    strays = tuple(datetime(2026, 9, day, 12, tzinfo=UTC) for day in range(1, 10))
+    strays = tuple(datetime(2026, 9, day, 12, tzinfo=UTC) for day in range(14, 23))
     dataset = make_dataset(times=(T0, *strays))
 
     result = validate_run(
