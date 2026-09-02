@@ -199,6 +199,10 @@ so the two changes may run concurrently.
 
 ## 5. Gate
 
-- [ ] 5.1 `make test`, `openspec validate horizon-tiers-cadence-and-staleness
+- [x] 5.1 `make test`, `openspec validate horizon-tiers-cadence-and-staleness
   --strict`, and `uv run --project ../../tools/specs python
   ../../tools/specs/specctl.py validate`.
+  Verify result (2026-09-02, `execution/horizon-tiers` cb97b8a, main
+  checkout): green. API 1123 passed, 25 skipped; web 371 passed in 18 files;
+  registry 88 passed; SQL PASS; specctl 0 errors, 0 warnings; strict
+  validation valid.
