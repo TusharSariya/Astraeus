@@ -4,8 +4,10 @@ import { GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer } fro
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { DEFAULT_INTERPOLATION_METHOD, describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, stJohnsTime } from './api'
+import { DEFAULT_INTERPOLATION_METHOD, describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerEvidenceClass, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, stJohnsTime } from './api'
 import { flowObjectUrls } from './api'
+import { EvidenceClassBadge } from './EvidenceClassBadge'
+import { describeEvidenceClassSentence, unrecognisedClassReason } from './evidenceClass'
 import type { FlowTexture, FrameResolution, RasterImage } from './api'
 import { FlowBlendLayer } from './FlowBlendLayer'
 import { stationCoverage, stations } from './fixtures'
@@ -1287,7 +1289,15 @@ export function MapPanel({
           <span className="stack-swatch" style={{ background: `rgb(${colourFor(layer.kind).join(',')})` }} aria-hidden="true" />
           <strong>{layer.title}</strong>
           <small>{layer.units}</small>
+          {/* On the head, not inside the expanded body: a layer's class is
+              part of what it is, and must be readable before it is switched
+              on. An undeclared class shows the unrecognised badge rather than
+              nothing, so a missing badge never reads as `retrieved`. */}
+          <EvidenceClassBadge evidenceClass={layerEvidenceClass(layer)} declaredClass={layer.evidence_class ?? null} />
         </label>
+        {layerEvidenceClass(layer) === 'unrecognised' && (
+          <p className="stack-state evidence-class-reason">Evidence class unavailable: {unrecognisedClassReason(layer.evidence_class ?? null)}.</p>
+        )}
         {undrawable && <p className="stack-state">This layer {UNDRAWABLE_REASON}.</p>}
         {on && entry && (
           <>
@@ -1445,7 +1455,7 @@ export function MapPanel({
             const note = layerNoteFor(layer, resolution)
             return (
               <li key={layer.id}>
-                <strong>{layer.title}</strong>: {note ? `${note}. ` : ''}{describeState(layer)} {describeRaster(layer)} {describeEvidenceBasis(layer.evidence_basis, layerGroup(layer))}
+                <strong>{layer.title}</strong>: {note ? `${note}. ` : ''}{describeEvidenceClassSentence(layer)} {describeState(layer)} {describeRaster(layer)} {describeEvidenceBasis(layer.evidence_basis, layerGroup(layer))}
               </li>
             )
           })}</ul>}

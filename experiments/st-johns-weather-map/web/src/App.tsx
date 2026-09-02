@@ -4,6 +4,8 @@ import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type Pl
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
 import { ModeChip } from './ModeChip'
+import { DerivedEvidenceDetails, EvidenceClassBadge, EvidenceClassLegend, FieldEvidenceClass } from './EvidenceClassBadge'
+import { EVIDENCE_CLASS_LABELS, unrecognisedClassReason } from './evidenceClass'
 import { StoryFlyout } from './StoryFlyout'
 import { TimelineDock } from './TimelineDock'
 import { useTheme } from './theme'
@@ -76,13 +78,21 @@ function SourceTag({ attribution }: { attribution: FieldAttribution | undefined 
 }
 
 function Metric({ label, value, detail, detailTitle, mode, source, controls }: { label: string; value: string; detail?: string; detailTitle?: string; mode?: FieldDataMode; source?: FieldAttribution; controls?: React.ReactNode }) {
+  // A class this client does not know — including one the response never
+  // declared — is not shown as a number. Rendering it would present a value of
+  // unknown origin under the same styling as a retrieved one, which is the one
+  // thing the class field exists to prevent.
+  const unrecognised = source?.evidenceClass === 'unrecognised'
   return (
-    <article className="metric">
+    <article className={`metric${unrecognised ? ' metric-unavailable' : ''}`}>
       <span>{label}</span>
       {controls}
-      <strong>{value}</strong>
-      {detail && <small title={detailTitle}>{detail}</small>}
-      <span className="metric-tags"><SourceTag attribution={source} /><ModeChip mode={mode} /></span>
+      <strong>{unrecognised ? 'Unavailable' : value}</strong>
+      {unrecognised
+        ? <small className="evidence-class-reason">{unrecognisedClassReason(source?.declaredClass ?? null)}</small>
+        : detail && <small title={detailTitle}>{detail}</small>}
+      <span className="metric-tags"><SourceTag attribution={source} /><FieldEvidenceClass attribution={source} /><ModeChip mode={mode} /></span>
+      <DerivedEvidenceDetails label={label} attribution={source} />
     </article>
   )
 }
@@ -233,10 +243,17 @@ const fogCopy: Record<EvidenceSnapshot['fogRisk'], string> = {
   unknown: 'Fog evidence unknown',
 }
 
-/** The source suffix for a text-alternative row, or nothing for an Unknown. */
+/** The source suffix for a text-alternative row, or nothing for an Unknown.
+ *  The evidence class rides with it: the text alternative is the whole page
+ *  for a reader who cannot see the badges, so it must carry the same claim. */
 function sourced(snapshot: EvidenceSnapshot, field: string): string {
   const source = snapshot.fieldSources[field]
-  return source ? ` (${source.sourceId ?? source.product ?? source.provider})` : ''
+  if (!source) return ''
+  const who = source.sourceId ?? source.product ?? source.provider
+  const label = source.evidenceClass === 'unrecognised'
+    ? unrecognisedClassReason(source.declaredClass)
+    : EVIDENCE_CLASS_LABELS[source.evidenceClass]
+  return ` (${who}, ${label})`
 }
 
 function evidenceRows(snapshot: EvidenceSnapshot, humidityGap: string): MapEvidenceRow[] {
@@ -598,6 +615,10 @@ export default function App() {
     ? `${(snapshot.temperatureC - snapshot.dewPointC).toFixed(1)}° dew-point depression`
     : 'Unknown', [snapshot])
 
+  /** The headline temperature's declared class. An unrecognised one suppresses
+   *  the number rather than printing it under a badge that says nothing. */
+  const heroClass = snapshot.fieldSources.temperature?.evidenceClass ?? 'unrecognised'
+
   // Only sources `/point` will accept as a `product` are offered. The old
   // predicate was `state === 'active'`, which the registry never emits by
   // design, so every model button was permanently dead beside a fully
@@ -925,16 +946,28 @@ export default function App() {
                 </div>
               </div>
               <div className="hero-reading">
+                {/* The headline number is held to the same class rule as every
+                    metric: an unrecognised class shows the reason, not a
+                    temperature the interface cannot account for. */}
                 {snapshot.temperatureC === null
                   ? <strong className="hero-unknown">Unknown</strong>
-                  : <strong>{reading(snapshot.temperatureC)}<sup>°C</sup></strong>}
+                  : heroClass === 'unrecognised'
+                    ? <strong className="hero-unknown">Unavailable</strong>
+                    : <strong>{reading(snapshot.temperatureC)}<sup>°C</sup></strong>}
                 <p>
                   {snapshot.temperatureC === null
                     ? 'No temperature value was returned for this point and hour.'
-                    : offsetMinutes === 0 ? snapshot.precipitation : offsetMinutes < 0 ? `Past observation at ${scrubOffset}` : `Model guidance at ${scrubOffset}`}
-                  {snapshot.temperatureC !== null && <><br /><SourceTag attribution={snapshot.fieldSources.temperature} /></>}
+                    : heroClass === 'unrecognised'
+                      ? unrecognisedClassReason(snapshot.fieldSources.temperature?.declaredClass ?? null)
+                      : offsetMinutes === 0 ? snapshot.precipitation : offsetMinutes < 0 ? `Past observation at ${scrubOffset}` : `Model guidance at ${scrubOffset}`}
+                  {snapshot.temperatureC !== null && <><br /><SourceTag attribution={snapshot.fieldSources.temperature} /><FieldEvidenceClass attribution={snapshot.fieldSources.temperature} /></>}
                 </p>
+                <DerivedEvidenceDetails label="Temperature" attribution={snapshot.fieldSources.temperature} />
               </div>
+              {/* Every badge on the page decodes here, including the
+                  unrecognised state, so no reader has to infer what a class
+                  means from its colour alone. */}
+              <EvidenceClassLegend />
               <div className="metric-grid">
                 <Metric
                   label="Humidity"
@@ -1261,7 +1294,7 @@ export default function App() {
               </details>
               <details><summary>Skew-T / log-pressure</summary><p>Unavailable until a validated numeric profile response is loaded.</p></details>
               <details><summary>Drawn cross-section</summary><p>Drawing and cross-section requests are not wired in this slice.</p></details>
-              <details open><summary>Provenance</summary><table><caption>Provenance returned for the selected point</caption><thead><tr><th scope="col">Provider / product</th><th scope="col">Run</th><th scope="col">Role</th><th scope="col">Freshness</th><th scope="col">Data mode</th><th scope="col">Derivation</th></tr></thead><tbody>{snapshot.provenance.map((row) => <tr key={`${row.provider}-${row.product}`}><th scope="row">{row.provider} / {row.product}</th><td>{row.run}</td><td>{row.role}</td><td>{row.freshness}</td><td>{row.dataMode}</td><td>{row.derivations.length === 0 ? 'Provider values' : row.derivations.join('; ')}</td></tr>)}</tbody></table>{snapshot.provenance.length === 0 && <p>No provenance is available.</p>}</details>
+              <details open><summary>Provenance</summary><table><caption>Provenance returned for the selected point</caption><thead><tr><th scope="col">Provider / product</th><th scope="col">Run</th><th scope="col">Role</th><th scope="col">Freshness</th><th scope="col">Data mode</th><th scope="col">Evidence class</th><th scope="col">Derivation</th></tr></thead><tbody>{snapshot.provenance.map((row) => <tr key={`${row.provider}-${row.product}`}><th scope="row">{row.provider} / {row.product}</th><td>{row.run}</td><td>{row.role}</td><td>{row.freshness}</td><td>{row.dataMode}</td><td>{row.evidenceClasses.map((evidenceClass) => <EvidenceClassBadge key={evidenceClass} evidenceClass={evidenceClass} />)}</td><td>{row.derivations.length === 0 ? 'Provider values' : row.derivations.join('; ')}</td></tr>)}</tbody></table>{snapshot.provenance.length === 0 && <p>No provenance is available.</p>}</details>
             </section>
           </div>
           </>
