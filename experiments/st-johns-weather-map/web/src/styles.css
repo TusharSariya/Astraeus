@@ -741,6 +741,40 @@ html[data-theme='light'] {
 .family-storage, .legend-storage { margin: 3px 0 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
 .family-storage b, .legend-storage b { color: var(--ec-reprocessed); }
 .family-member-uncatalogued { margin: 3px 0 0; color: var(--ec-unrecognised); font-size: 10.5px; line-height: 1.45; }
+
+/* ---- Absent-value badges (change storage-window-and-restart-cache) ----
+   Five states, five readings, and none of them silent. The colours reuse the
+   evidence-class tokens rather than inventing a palette: both themes already
+   define every one of them, so no state borrows a colour from the other theme.
+   Aged out reads as a statement about this deployment's retention, not as a
+   fault - it is the one state that carries a time, and the badge is wide
+   enough to hold it. */
+.absence-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  font: 600 9px 'IBM Plex Mono', monospace;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.absence-null { color: var(--ec-uncalibrated-observation); }
+.absence-blocked { color: var(--ec-generated-display); }
+.absence-retrieval_failed { color: var(--ec-unrecognised); border-style: dashed; }
+.absence-available-not-stored, .absence-not-published { color: var(--ec-reprocessed); }
+.absence-aged_out { color: var(--ec-intermediary-derived); white-space: normal; }
+/* The one that is neither a state nor a value: an aged-out claim we refused
+   to render for want of a last valid time. */
+.absence-unavailable { color: var(--ec-unrecognised); }
+.absence-legend { margin-top: 8px; }
+.absence-legend > summary { cursor: pointer; color: var(--ink); font: 500 10.5px 'IBM Plex Mono', monospace; }
+.absence-legend > p { margin: 6px 0; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+.absence-legend dl { margin: 0; }
+.absence-legend-row { display: grid; grid-template-columns: minmax(96px, max-content) 1fr; gap: 4px 8px; margin-bottom: 5px; align-items: baseline; }
+.absence-legend-row dt { margin: 0; }
+.absence-legend-row dd { margin: 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+@media (max-width: 520px) { .absence-legend-row { grid-template-columns: 1fr; } }
 /* Not comparable is a refusal, and it is coloured like one. */
 .family-not-comparable, .legend-not-comparable, .difference-refused, .difference-standing-refusal {
   margin: 3px 0 0; color: var(--ec-unrecognised); font-size: 10.5px; line-height: 1.45;

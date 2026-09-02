@@ -106,9 +106,20 @@ non-normative.
   `/timeline` and `/layers`, distinct from `null`, `blocked`,
   `retrieval failed` and `available-not-stored`.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k "aged_out"`
-- [ ] 5.2 Web badge and legend naming all five absence states, with the last
+- [x] 5.2 Web badge and legend naming all five absence states, with the last
   valid time shown on the aged-out badge.
   Verify: `cd web && npm test -- --run aged-out`
+  Verify result: passed, 12 tests in `web/src/aged-out.test.tsx`. Full suite
+  `npm test -- --run` 330 passed in 15 files (unit and gl projects), and
+  `npm run build` succeeded. The badge reads `Aged out at <last valid time>`
+  in `America/St_Johns` local time from the zone database, with the ISO
+  instant in the text alternative; the legend names all five states. An
+  `aged_out` flag arriving with no readable last valid time renders as
+  `unavailable`, per the spec's "SHALL NOT be reported without a recorded
+  last valid time". Note for the API owner: the wire contract fixed only how
+  `aged_out` arrives (`quality.flags`), so the client reads `blocked` and
+  `retrieval_failed` from either `quality.flags` or `quality.status`; whichever
+  the API settles on will render.
 
 ## 6. Gate
 

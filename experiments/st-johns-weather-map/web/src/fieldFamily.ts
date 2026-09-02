@@ -58,21 +58,47 @@ export const STORAGE_DESCRIPTIONS: Record<FieldStorage, string> = {
 /** Why a field the interface stores still shows no number.
  *
  *  Kept apart from storage, and apart from each other: `null` is a gap the
- *  producer left, `blocked` is a credential or licence wall, `aged_out` is a
- *  value we held and purged. A reader who cannot tell those apart cannot tell
- *  whether waiting, asking for access, or nothing at all would help. */
-export type AbsenceState = 'null' | 'blocked' | 'aged_out'
+ *  producer left, `blocked` is a credential or licence wall, `retrieval_failed`
+ *  is an attempt that broke and a retry may clear, `aged_out` is a value we
+ *  held and purged. A reader who cannot tell those apart cannot tell whether
+ *  waiting, asking for access, or nothing at all would help. */
+export type AbsenceState = 'null' | 'blocked' | 'retrieval_failed' | 'aged_out'
 
-export const ABSENCE_STATES: readonly AbsenceState[] = ['null', 'blocked', 'aged_out'] as const
+export const ABSENCE_STATES: readonly AbsenceState[] = ['null', 'blocked', 'retrieval_failed', 'aged_out'] as const
 
-export function resolveAbsenceState(declared: unknown): AbsenceState | null {
+/** The absence state a value declares, from its `quality.status` and its
+ *  `quality.flags`.
+ *
+ *  Flags are read first and are the wire's own carrier for `aged_out`: an
+ *  out-of-window field arrives as `value: null`, `data_mode: "unavailable"`
+ *  and the flag, so a reader of `status` alone would see only "unavailable"
+ *  and lose which of the states it was. Order among the flags is fixed rather
+ *  than first-seen, so a field carrying two never renders one state on one
+ *  render and another on the next: the most specific claim wins, and `null` —
+ *  which says only that nothing was ever held — is read last. */
+const ABSENCE_FLAG_PRIORITY: readonly AbsenceState[] = ['aged_out', 'blocked', 'retrieval_failed', 'null'] as const
+
+export function resolveAbsenceState(declared: unknown, flags: readonly string[] = []): AbsenceState | null {
+  for (const state of ABSENCE_FLAG_PRIORITY) {
+    if (flags.includes(state)) return state
+  }
   return typeof declared === 'string' && (ABSENCE_STATES as readonly string[]).includes(declared) ? (declared as AbsenceState) : null
 }
 
 export const ABSENCE_STATE_DESCRIPTIONS: Record<AbsenceState, string> = {
   null: 'The producer published this field here and left this value empty. It is stored, and this instant simply carries no number.',
   blocked: 'Retrieval is blocked by a credential, licence or partnership condition. The field exists and this deployment may not fetch it.',
+  retrieval_failed: 'A retrieval was attempted for this value and it broke. That is a live condition a later cycle may clear, unlike the other four.',
   aged_out: 'This value was retrieved once and has left the retention window. It is not missing upstream; it is no longer held here.',
+}
+
+/** The words on the badge itself. Short, and each one different from the other
+ *  four: the badge is what a reader sees where the number would be. */
+export const ABSENCE_STATE_LABELS: Record<AbsenceState, string> = {
+  null: 'No value',
+  blocked: 'Blocked',
+  retrieval_failed: 'Retrieval failed',
+  aged_out: 'Aged out',
 }
 
 /** What a field shows instead of a value, in one sentence, or null when it has
@@ -83,6 +109,94 @@ export function unavailableSentence(storage: FieldStorage | null, absence: Absen
   if (absence) return ABSENCE_STATE_DESCRIPTIONS[absence]
   return null
 }
+
+/** The last valid time in St. John's, from the zone database.
+ *
+ *  Newfoundland is the half-hour offset the rest of this interface already
+ *  reads from `America/St_Johns` rather than from a constant, and the same
+ *  reason holds here: a fixed offset is wrong on one side of every DST
+ *  transition, and this instant is by definition in the past. Null for an
+ *  absent, unparseable or unformattable instant — never a guess, because the
+ *  aged-out badge is not shown at all without a readable time. */
+export function stJohnsLocalTime(instant: string | null): string | null {
+  if (!instant) return null
+  const at = new Date(instant)
+  if (Number.isNaN(at.getTime())) return null
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/St_Johns',
+      year: 'numeric', month: 'short', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+      timeZoneName: 'short',
+    }).format(at)
+  } catch {
+    return null
+  }
+}
+
+/** One rendered absence: what the badge says, what the sentence beside it
+ *  says, and which state it names.
+ *
+ *  `state` is one of the five the spec names, or `unavailable`. `unavailable`
+ *  is deliberately NOT a sixth absence state: it is what an `aged_out` claim
+ *  with no readable last valid time degrades to, because the spec forbids
+ *  reporting aged out without one and guessing between aged out and never
+ *  retrieved is exactly the confusion this badge exists to remove. */
+export type AbsenceBadgeState = AbsenceState | 'available-not-stored' | 'not-published' | 'unavailable'
+
+export interface AbsenceBadgeCopy {
+  state: AbsenceBadgeState
+  /** The badge text. For `aged_out` it carries the last valid time in St.
+   *  John's local time, which is what a reader on the headland reads. */
+  label: string
+  /** The text alternative. For `aged_out` it carries the ISO instant verbatim,
+   *  which is the unambiguous form and the one a reader can hand back to the
+   *  API. */
+  sentence: string
+}
+
+/** What a value with no number shows, across both axes, in one place.
+ *
+ *  Storage is answered first for the same reason `unavailableSentence` answers
+ *  it first: `available-not-stored` and `not-published` decide whether a value
+ *  could exist here at all, and neither is an absence of a value that was
+ *  once held. */
+export function absenceBadge(
+  storage: FieldStorage | null,
+  absence: AbsenceState | null,
+  lastValidTime: string | null,
+): AbsenceBadgeCopy | null {
+  if (storage === 'available-not-stored') return { state: storage, label: 'Not stored here', sentence: STORAGE_DESCRIPTIONS[storage] }
+  if (storage === 'not-published') return { state: storage, label: 'Not published by this source', sentence: STORAGE_DESCRIPTIONS[storage] }
+  if (!absence) return null
+  if (absence !== 'aged_out') return { state: absence, label: ABSENCE_STATE_LABELS[absence], sentence: ABSENCE_STATE_DESCRIPTIONS[absence] }
+  const local = stJohnsLocalTime(lastValidTime)
+  if (!local || !lastValidTime) {
+    return {
+      state: 'unavailable',
+      label: 'Unavailable',
+      sentence: 'This value was reported as aged out with no readable last valid time. It is shown as unavailable rather than aged out, because an aged-out report without the edge of what was held is not one this interface will make.',
+    }
+  }
+  return {
+    state: 'aged_out',
+    label: `Aged out at ${local}`,
+    sentence: `${ABSENCE_STATE_DESCRIPTIONS.aged_out} The last valid time this deployment held is ${lastValidTime} (${local} in St. John's).`,
+  }
+}
+
+/** The legend rows: all five absence states, named, so the absence of a badge
+ *  never carries meaning. `available-not-stored` sits here beside the four
+ *  quality states even though it lives on the storage axis, because a reader
+ *  looking at an empty slot is asking one question and must find all five
+ *  answers to it in one place. */
+export const ABSENCE_LEGEND: readonly { state: AbsenceBadgeState; label: string; description: string }[] = [
+  { state: 'null', label: ABSENCE_STATE_LABELS.null, description: ABSENCE_STATE_DESCRIPTIONS.null },
+  { state: 'blocked', label: ABSENCE_STATE_LABELS.blocked, description: ABSENCE_STATE_DESCRIPTIONS.blocked },
+  { state: 'retrieval_failed', label: ABSENCE_STATE_LABELS.retrieval_failed, description: ABSENCE_STATE_DESCRIPTIONS.retrieval_failed },
+  { state: 'available-not-stored', label: 'Not stored here', description: STORAGE_DESCRIPTIONS['available-not-stored'] },
+  { state: 'aged_out', label: 'Aged out at <last valid time>', description: ABSENCE_STATE_DESCRIPTIONS.aged_out },
+] as const
 
 /** The family's title in the catalogue's words, or the declared name itself
  *  when the copy does not know it — a family the client cannot name is still
