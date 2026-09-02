@@ -18,3 +18,13 @@ Before changing behavior:
 
 Research under `docs/research/` is non-normative. Only `@TusharSariya` may
 authorize accepted, verified, or superseded specification status.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `TusharSariya/Astraeus`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout (`CONTEXT.md` + `docs/adr/` at repo root, created lazily). See `docs/agents/domain.md`.
