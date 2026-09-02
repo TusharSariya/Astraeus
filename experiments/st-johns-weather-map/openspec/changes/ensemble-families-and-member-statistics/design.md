@@ -119,6 +119,200 @@ source's value, which `point-evidence-sampling` forbids. The catalogue records
 the gap and the field is null with a reason, which is the same answer the
 governing rule gives everywhere else.
 
+## Seam
+
+Pinned by the change lead on 2026-09-02 before any task agent started, so
+that ten agents in four waves build against one contract. Names prefer what
+the spec deltas and the existing code already use. A task that must deviate
+edits this section in the same commit and says so in its report.
+
+### Seam A: the registry declaration (2.1 writes, 2.2 audits, 3.x and 4.2 read)
+
+Every record with `category == "ensemble"` carries one object under the key
+`ensemble`, validated by `registry/schema.json`:
+
+```
+"ensemble": {
+  "family": "REPS" | "AIFS-ENS" | "IFS ENS" | "GEFS" | "GEPS reductions" | "ICON-EPS",
+  "build_order": 1..6,
+  "shape": "members" | "reduction",
+  "subsetting": "server_side" | "none",
+  "storage_scope": "every_published_field" | "family_fields_only",
+  "member_count": <int> | null,
+  "control": null | {"identifier": "<provider's own id>", "rule": "<prose>", "separate_retrieval": <bool>},
+  "reductions": ["mean", "spread", "percentile", "threshold_probability"] | [],
+  "gaps": [{"field": "<catalogue key>", "reason": "<prose>"}],
+  "verification": {"member_count": "verified" | "unverified", "access_path": "verified" | "unverified",
+                   "cadence": "verified" | "unverified", "evidence": "<research path>" | "none"},
+  "schedulable": <bool>,
+  "schedulable_reason": "<prose>"
+}
+```
+
+Source ids and their families: `eccc-reps` REPS (1), `ecmwf-aifs-ens`
+AIFS-ENS (2), `ecmwf-ens` IFS ENS (3), `noaa-gefs` GEFS (4), `eccc-geps` GEPS
+reductions (5), `dwd-icon-eps` ICON-EPS (6, a new record). `subsetting` and
+`storage_scope` reuse the exact values `registry/fields.py` `SOURCE_SCOPE`
+already uses. `member_count` is null iff `shape == "reduction"`; `control` is
+null iff the family publishes no control. Member identifiers are the
+provider's own tokens: REPS `01`..`21`; GEFS `gec00` (control) and
+`gep01`..`gep30`; ECMWF the GRIB `number` as a string, control `0` (the `cf`
+type), perturbed `1`..`50`. `schedulable` is false on all six in this change:
+a family with any `unverified` field is not schedulable by the spec, and the
+non-subsettable families additionally wait on owner gate 6.1.
+
+`registry/source_data.py` exports `ENSEMBLE_BUILD_ORDER: tuple[str, ...]` in
+the owner's order and `ensemble_families() -> list[dict]` returning the six
+records' `ensemble` blocks sorted by `build_order`. `ingest/registry.py`
+parses the block into `IngestConfig.ensemble: EnsembleDeclaration | None`
+(a frozen dataclass with the same field names) and `IngestConfig.ingestible`
+is false for an ensemble record whose `ensemble` is absent or whose
+`schedulable` is false, so registering an adapter never schedules a family.
+
+### Seam B: the member coordinate in artifacts (3.3 provides, 3.1 uses, 3.2 records, 4.2 reads)
+
+- The member axis is a dataset dimension and coordinate named `member`, of
+  string dtype, holding the provider's own identifier. A boolean coordinate
+  `control` runs along `member`. Both are written by
+  `ingest.grib.stack_members(fields_by_member: Mapping[str, DataArray], *,
+  control: str | None) -> DataArray`, which raises `GribError` naming the
+  member values it saw when two would collapse onto one identifier.
+- `ingest.grib.strip_message_scalars` keeps the GRIB `number` scalar as the
+  attribute `grib_number` before dropping the coordinate, so a decoded
+  message never loses its identity.
+- A time-averaged field carries the attributes `cell_methods: "time: mean"`,
+  `averaging_window_hours: <float>` and `averaging_window_basis: "<the
+  producer's own record label, e.g. '18-24 hour ave fcst'>"`, stamped by
+  `ingest.grib.declare_time_average(variable, *, window_label: str)`, which
+  raises `GribError` when the label states no window (the field is then not
+  stored).
+- The artifact provenance dict carries `"members": {"declared": <int>,
+  "present": [ids], "missing": [ids], "control": "<id>" | null,
+  "control_retrieval": "same_file" | "separate_file" | "separate_coverage" |
+  null}` and `"storage_scope": {"applied": "every_published_field" |
+  "family_fields_only", "available_not_stored": [upstream names],
+  "not_retrieved": [catalogue keys]}`. `ingest.manifest.RunManifest` gains
+  `member_count: int | None` and `control: str | None`; `validate_run` fails
+  a run `partial_members:<missing ids>` (complete=False) when fewer members
+  than declared are present, fails `no_members` when none are, and fails QC
+  `averaging_window_unstated:<field>` on a `cell_methods: "time: mean"`
+  field with no `averaging_window_hours`. `ValidationResult.as_members()`
+  returns the `members` block above.
+- The store samples a member-bearing dataset only when the request named a
+  member (`member=<id>` or `member=all`) or a statistic; otherwise the
+  artifact yields no value and a skip notice
+  `member_dimension_unaddressed:<revision>` (spec of step 1).
+
+### Seam C: the derivation registry entries (4.1 writes, 4.2 calls)
+
+Five entries replace the disabled placeholder `ensemble_statistics_within_run`
+(recorded as a deviation below): `ensemble_mean`, `ensemble_spread`,
+`ensemble_quantile`, `ensemble_threshold_probability`,
+`ensemble_member_count`, all version `within-run-v1`, all enabled, all citing
+Wilks (2019) chapter 8. `ENSEMBLE_STATISTICS` becomes the tuple of the five
+names; `ENSEMBLE_ENTRY_BY_STATISTIC: dict[str, str]` maps `"mean"`,
+`"spread"`, `"quantile"`, `"threshold_probability"`, `"member_count"` to
+them. Each entry's single input is
+`Input(field="ensemble_member_field", family="ensemble_member_field",
+kind="member_statistic")`, meaning one catalogue field over the member axis
+of one source. Conventions: mean is arithmetic; spread is the sample standard
+deviation with an n-1 denominator, zero when every member agrees; quantile is
+Hyndman and Fan type 7 (linear interpolation on (n-1)q), the numpy default;
+threshold probability is the fraction of members satisfying the comparison,
+carrying `threshold`, `threshold_units` and `comparison` in `ge | gt | le |
+lt`; member count reports used and declared as two numbers.
+`DerivationMethod` gains `include_control: bool = True` and
+`minimum_members: int | None = None` (none declared, owner gate 6.4).
+
+Registration-time refusals added to `validation_errors`: a
+`member_statistic` entry whose inputs name more than one source; one that
+mixes a key in `TIME_AVERAGED_FIELDS = frozenset({"total_cloud_mean_6h"})`
+with another key of the same family; the existing provider-reduction rule.
+
+Derive-time API in `ingest/derive/registry.py`:
+
+```
+@dataclass(frozen=True) class MemberValue: member: str; control: bool; value: float | None; quality_status: str
+@dataclass(frozen=True) class MemberSet: family: str; source_id: str; run_time: datetime | None; field: str;
+    declared: int; members: tuple[MemberValue, ...]; time_averaged: bool = False
+    # properties: used (members with a value), missing (declared ids absent), partial
+@dataclass(frozen=True) class EnsembleStatistic: statistic: str; value: float | None;
+    method: DerivationMethod | None; member_set: MemberSet | None; flags: tuple[str, ...];
+    refusal: Refusal | None; condition_failed: str | None; members_used: int; members_declared: int;
+    members_missing: tuple[str, ...]; control_included: bool | None; quantile: float | None = None;
+    threshold: float | None = None; threshold_units: str | None = None; comparison: str | None = None
+def derive_ensemble_statistic(statistic: str, member_sets: Sequence[MemberSet], *, quantile=None,
+    threshold=None, threshold_units=None, comparison=None, reader_disabled=()) -> EnsembleStatistic
+```
+
+`condition_failed` codes: `one_family:<A>,<B>`, `one_run:<A>,<B>`,
+`provider_reduction_mixed`, `averaged_with_instantaneous`,
+`below_minimum:<used>/<minimum>`, `no_member_resolved`. A failed condition
+yields `value=None` and never a value over the subset that passes. Quality
+follows the worst member's `quality_status` plus the `derived` flag; a
+partial set adds the flag `partial_member_set`.
+
+### Seam D: the API request and response (4.3 models, 4.2 store and app, 4.4 web)
+
+Request parameters on `/point`: `member: str | None` (a provider identifier
+or `all`), `statistic: str | None` (one of the five statistic names),
+`quantile: float | None`, `threshold: float | None`, `comparison: str | None`.
+Fixture mode answers a `member` or `statistic` request with null fields and
+the notice `fixture deployment carries no ensemble members`, never fabricated
+members.
+
+Response, on `Provenance`: the existing `member: str | None` names the
+member of a per-member value; new `member_control: bool | None`; new
+`ensemble: EnsembleProvenance | None`:
+
+```
+class EnsembleMemberSet(StrictModel):
+    family: str; source_id: str; run_time: datetime | None; members_declared: int; members_used: int
+    members_missing: list[str]; control_included: bool | None; partial: bool
+class EnsembleProvenance(StrictModel):
+    family: str; statistic: str | None; computed_here: bool; member_set: EnsembleMemberSet | None
+    refusal: str | None = None; quantile: float | None = None; threshold: float | None = None
+    threshold_units: str | None = None; comparison: str | None = None
+    averaging_window_hours: float | None = None
+```
+
+A per-member value is its own `EvidenceField` (same `field` and `key`) with
+`provenance.member` and `provenance.member_control` set and
+`provenance.ensemble.statistic` null. A statistic is one `EvidenceField`
+with `evidence_class = "derived_here"`, `derivation` = the entry name,
+`provenance.ensemble.statistic` set, `computed_here = true`, and the members
+it covered served beside it in the same response. A refused statistic is an
+`EvidenceField` with `value = null`, `quality.flags` containing
+`statistic_refused`, and `provenance.ensemble.refusal` naming the condition
+code from Seam C; a null member value stays a plain absence. A provider
+reduction is `retrieved` with `computed_here = false`. Quality flag names:
+`statistic_refused`, `partial_member_set`, `derived` (existing). A value
+whose family cannot be read from its registry record is not served and the
+field is unavailable with `ensemble_family_unknown`.
+
+Web: `loadPoint` gains `member` and `statistic` request options; the member
+selector sends `member`; every ensemble row names family, run, statistic,
+member set and computed-here or provider's-own, in the panel and in the text
+alternative.
+
+## Deviations recorded by the implementation pass (2026-09-02)
+
+- The change's file plan named `api/weather_api/derivations.py`,
+  `web/src/components/`, `tests/test_grib.py` and `tests/test_derivations.py`.
+  None exists. The derivation method registry lives in
+  `ingest/derive/registry.py`, web components sit flat under `web/src/`, and
+  the tests are `tests/test_ingest_grib.py`, `tests/test_manifest.py` and
+  `tests/test_derivation_registry.py`. `tasks.md` names the real files.
+- The disabled placeholder entry `ensemble_statistics_within_run` is
+  replaced by the five entries the spec requires (Seam C). The constant
+  `ENSEMBLE_STATISTICS` survives as the tuple of their names.
+- Statistic and member layers on the map itself need `/layers` to carry a
+  member axis, which no task here owns; task 4.4 renders members and
+  statistics as rows of the evidence panel and the map layer is an open
+  follow-up recorded in `tasks.md`.
+- All six families are declared not schedulable (Seam A). Nothing is
+  scheduled by this change, as the proposal states.
+
 ## Why the reader never sees an unnamed ensemble number
 
 The failure this guards against is the one the removed consensus badge

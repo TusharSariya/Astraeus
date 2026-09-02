@@ -59,8 +59,11 @@ Decision reference: wayfinder ticket
   build order, subsettability, storage scope, expected member count, control
   identification rule, declared gaps. ICON-EPS is declared unverified and not
   schedulable.
-  Owned files: `registry/source_data.py`, `registry/schema.json`.
-  Verify: `python3 registry/audit.py`.
+  Owned files: `registry/source_data.py`, `registry/schema.json`,
+  `registry/catalogue_coverage.json`, `ingest/registry.py` (the `ensemble`
+  block on `IngestConfig` and the `ingestible` gate, Seam A),
+  `api/tests/test_ingest_ensemble_declaration.py`.
+  Verify: `python3 registry/audit.py && cd api && uv run pytest tests/test_ingest_ensemble_declaration.py`.
 
 - [ ] 2.2 Add the audit rules: an ensemble record with no subsettability, no
   control rule where it declares members, or a declared gap that is also
@@ -82,40 +85,49 @@ Decision reference: wayfinder ticket
   file (AIFS-ENS), ECMWF byte ranges with the control in the member file
   (IFS ENS), S3 byte ranges per member file (GEFS).
   Owned files: `ingest/adapters/eccc_geomet_ensemble.py`,
-  `ingest/adapters/ecmwf_opendata.py`, `ingest/adapters/noaa_s3.py`.
+  `ingest/adapters/ecmwf_opendata.py`, `ingest/adapters/noaa_s3.py`,
+  `ingest/adapters/__init__.py`, `api/tests/test_adapter_ensemble.py`.
   Verify: `cd api && uv run pytest tests/ -k "ensemble and adapter"`.
 
 - [ ] 3.2 Apply the per-family storage scope and write the
   `available-not-stored` list into the manifest.
-  Owned file: `ingest/manifest.py`.
+  Owned files: `ingest/manifest.py`, `api/tests/test_manifest.py`.
   Verify: `cd api && uv run pytest tests/test_manifest.py -k "scope or available_not_stored"`.
 
 - [ ] 3.3 Set the control flag on the member axis, including the two-file
   AIFS-ENS case, and store the averaging window on a time-averaged field.
-  Owned files: `ingest/grib.py`, `ingest/manifest.py`.
-  Verify: `cd api && uv run pytest tests/test_grib.py -k "control or averaging_window"`.
+  Owned files: `ingest/grib.py`, `ingest/manifest.py`,
+  `api/tests/test_ingest_grib.py`, `api/tests/test_ingest_manifest.py`.
+  Verify: `cd api && uv run pytest tests/test_ingest_grib.py tests/test_ingest_manifest.py -k "control or averaging_window or member"`.
 
 ## 4. Serving and reading (API owner 4.1 to 4.3, web owner 4.4, implementation pass, NOT in this change)
 
 - [ ] 4.1 Add the five derivation registry entries with inputs, ranges,
   conventions, control treatment and the registration-time refusals.
-  Owned file: `api/weather_api/derivations.py`.
-  Verify: `cd api && uv run pytest tests/test_derivations.py -k ensemble`.
+  Owned files: `ingest/derive/registry.py`, `api/tests/test_derivation_registry.py`
+  (the change's plan named `api/weather_api/derivations.py`, which does not
+  exist; the registry is `ingest/derive/registry.py`).
+  Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k ensemble`.
 
 - [ ] 4.2 Serve statistics beside members with the family, run, statistic and
   member set on every value, and refuse a cross-family, cross-run or
   reduction-mixing request at derive time.
-  Owned files: `api/weather_api/store.py`, `api/weather_api/science.py`.
+  Owned files: `api/weather_api/store.py`, `api/weather_api/science.py`,
+  `api/weather_api/app.py` (passing the Seam D request parameters through),
+  `api/tests/test_point_evidence.py`.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k "ensemble and (refus or member_set)"`.
 
 - [ ] 4.3 Add the member request parameter and the statistic, member set,
   partial and run-stale fields to the response models.
-  Owned file: `api/weather_api/models.py`.
-  Verify: `cd api && uv run pytest tests/test_api.py -k member`.
+  Owned files: `api/weather_api/models.py`, `api/weather_api/fixtures.py`,
+  `api/tests/test_api.py`, `api/tests/test_models.py`.
+  Verify: `cd api && uv run pytest tests/test_api.py tests/test_models.py -k member`.
 
 - [ ] 4.4 Add the member selector, the statistic layers, the labelling rule in
   the text alternative and the averaged-versus-instantaneous fence.
-  Owned files: `web/src/App.tsx`, `web/src/components/`.
+  Owned files: `web/src/App.tsx`, `web/src/api.ts`, `web/src/types.ts`,
+  `web/src/ensemble.test.tsx` and any new `web/src/Ensemble*.tsx` component
+  (`web/src/components/` does not exist; components sit flat under `web/src/`).
   Verify: `cd web && npm test -- --run ensemble`.
 
 ## 5. Gate (specs owner)
