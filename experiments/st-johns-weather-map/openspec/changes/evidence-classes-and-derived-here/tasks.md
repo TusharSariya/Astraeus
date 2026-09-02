@@ -178,12 +178,13 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   refusing the primary while its class and kind would allow it); `python3
   registry/audit.py` (registry valid: 64 sources); `python3 -m unittest
   discover -s registry/tests` (25 tests, OK).
-  **Remaining, in the web owner's files:** `web/src/` - the interface label
+  **Web half, done 2026-09-02 (second wave, see 5.4):** the interface label
   beside the class badge ("producer's own cell", "reprocessed by
-  <intermediary>", "computed by <intermediary>"), read from
-  `provenance.delivery_kind` and `provenance.intermediary`; and a value whose
-  `provenance.display_primary_eligible` is false is never rendered as a
-  field's primary.
+  <intermediary>", "computed by <intermediary>") read from
+  `provenance.delivery_kind` and `provenance.intermediary`, and a value whose
+  `provenance.display_primary_eligible` is false, or whose catalogue record
+  has `display_primary: false`, is never rendered as a field's primary.
+  All three halves are done; ticked at merge.
 - [x] 4.1 Add delivery kind `intermediary_derived` with producer, intermediary
   and method fields and per-field kind declaration to `registry/schema.json`;
   fail the audit for a record naming no intermediary.
@@ -233,6 +234,34 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   and `vite build` clean. The pre-existing App/MapPanel fixtures were stamped
   `evidence_class: retrieved` through one helper, because the required field
   with no default means a value without one no longer renders as a number.
+
+- [x] 5.4 The web half of task 4.0, plus the flat provenance contract: the
+  delivery-kind label beside the class badge and in the source catalogue; a
+  value that may not be a display primary rendered only as an alternative
+  reading; a refused derivation and an unmodelled artifact rendered as
+  unavailable with the response's own notice.
+  Verify: `cd web && npm test -- --run delivery-kind`.
+  Verify result: 20 passed (1 file). The label reads "producer's own cell",
+  "reprocessed by <intermediary>" and "computed by <intermediary>", names an
+  unnamed intermediary rather than reading as the producer's own, and renders
+  NOTHING when the record declared no kind (the kind is a registry attribute;
+  its absence is not an evidence failure). `pickField` now refuses a value
+  that is not display-primary even when the response selected its source and
+  even when it is the field's only value; refusal comes from
+  `provenance.display_primary_eligible` OR the catalogue's
+  `display_primary: false`, and the refused value is rendered under
+  "Retrieved, but never the reading" with its badge, its label and, where the
+  intermediary documents nothing, the statement that the transformation is
+  undocumented rather than absent. `derivation_refused` and
+  `provenance_unmodelled` render "Unavailable" with the matching response
+  notice, and say the response gave no reason when it carried none.
+  Contract: the web reads the API's FLAT provenance (`derivation`,
+  `derivation_version`, `derivation_citation`, `derivation_inputs[]` with
+  `field, source_id, product, valid_time, run_time, units, evidence_class,
+  quality`, plus `intermediary`, `intermediary_method`); `derivation_method`
+  as an object is still accepted first because it costs three lines. design.md
+  "Web contract" describes the real shape.
+  Whole suite after it: 291 passed across 12 files; `npm run build` clean.
 
 ## 6. Gate
 

@@ -71,6 +71,8 @@ export const fixtureSnapshot: EvidenceSnapshot = {
   selectedSourceId: null,
   dataMode: 'fixture',
   fieldSources: {},
+  fieldAlternatives: {},
+  notices: [],
   fieldModes: {
     temperature: 'fixture', dew_point: 'fixture', relative_humidity: 'fixture',
     wind_speed: 'fixture', wind_gust: 'fixture', visibility: 'fixture',
@@ -118,7 +120,7 @@ export const fixtureSnapshot: EvidenceSnapshot = {
 
 export const unavailableSnapshot: EvidenceSnapshot = {
   mode: 'unavailable', selectionBadge: null, selectedProductId: null, selectedSourceId: null,
-  dataMode: 'unavailable', fieldModes: {}, fieldSources: {}, issuedAt: '', validAt: null,
+  dataMode: 'unavailable', fieldModes: {}, fieldSources: {}, fieldAlternatives: {}, notices: [], issuedAt: '', validAt: null,
   temperatureC: null, dewPointC: null, relativeHumidityPct: null,
   windKmh: null, windDirectionDeg: null, gustKmh: null,
   precipitation: 'Unavailable', precipitationProbabilityPct: null,

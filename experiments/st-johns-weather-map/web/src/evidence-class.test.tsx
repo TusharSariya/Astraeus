@@ -63,7 +63,11 @@ describe('the six evidence classes are the client’s whole vocabulary', () => {
     ]))
     expect(snapshot.fieldSources.temperature.evidenceClass).toBe('retrieved')
     expect(snapshot.fieldSources.temperature.declaredClass).toBe('retrieved')
-    expect(snapshot.fieldSources.total_cloud.evidenceClass).toBe('intermediary_derived')
+    // The intermediary-derived value is never the reading, so it is not in
+    // `fieldSources` at all — it is an alternative, and carries its class there.
+    expect(snapshot.fieldSources.total_cloud).toBeUndefined()
+    expect(snapshot.totalCloudPct).toBeNull()
+    expect(snapshot.fieldAlternatives.total_cloud[0].attribution.evidenceClass).toBe('intermediary_derived')
   })
 
   it('records every class a provider/product row reported, deduplicated', () => {
@@ -92,16 +96,21 @@ describe('every value shows its class', () => {
     expect(screen.getAllByText('retrieved').length).toBeGreaterThan(1)
   })
 
-  it('badges a reprocessed value with its own class, not the retrieved one', async () => {
+  it('badges a reprocessed value with its own class, beside the reading rather than in it', async () => {
     vi.stubGlobal('fetch', routedFetch(point([
       { field: 'temperature', value: 12.4, provenance: hrdps({ evidence_class: 'retrieved' }) },
-      { field: 'visibility', value: 9000, provenance: hrdps({ evidence_class: 'reprocessed', normalized_units: 'm' }) },
+      { field: 'visibility', value: 9000, provenance: hrdps({ evidence_class: 'reprocessed', normalized_units: 'm', delivery_kind: 'reprocessed', intermediary: 'Open-Meteo' }) },
     ])))
     render(<App />)
+    // The reprocessed value may not be the reading, so the metric is Unknown...
     const visibility = await waitFor(() => screen.getByText('Visibility').closest('.metric') as HTMLElement)
-    await waitFor(() => expect(within(visibility).getByText('9.0 km')).toBeInTheDocument())
-    expect(within(visibility).getByText('reprocessed')).toHaveAttribute('data-evidence-class', 'reprocessed')
-    expect(within(visibility).queryByText('retrieved')).not.toBeInTheDocument()
+    await waitFor(() => expect(within(visibility).getByText('Unknown')).toBeInTheDocument())
+    expect(within(visibility).queryByText('9.0 km')).not.toBeInTheDocument()
+    // ...and it is shown as an alternative, with its own class and its label.
+    const alternatives = screen.getByLabelText('Alternative readings')
+    expect(within(alternatives).getByText('reprocessed')).toHaveAttribute('data-evidence-class', 'reprocessed')
+    expect(within(alternatives).getByText('reprocessed by Open-Meteo')).toBeInTheDocument()
+    expect(within(alternatives).getByText('9000 m')).toBeInTheDocument()
   })
 })
 

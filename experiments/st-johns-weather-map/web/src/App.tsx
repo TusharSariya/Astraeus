@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
 import { ModeChip } from './ModeChip'
-import { DerivedEvidenceDetails, EvidenceClassBadge, EvidenceClassLegend, FieldEvidenceClass } from './EvidenceClassBadge'
+import { DeliveryKindLabel, DerivedEvidenceDetails, EvidenceClassBadge, EvidenceClassLegend, FieldAlternatives, FieldEvidenceClass } from './EvidenceClassBadge'
 import { EVIDENCE_CLASS_LABELS, unrecognisedClassReason } from './evidenceClass'
+import { deliveryKindLabel, resolveDeliveryKind } from './deliveryKind'
 import { StoryFlyout } from './StoryFlyout'
 import { TimelineDock } from './TimelineDock'
 import { useTheme } from './theme'
 import type {
-  AppMode, CatalogSource, CloudLayerReading, DataSource, EvidenceSnapshot, FallbackMode, FieldAttribution, FieldDataMode,
+  AppMode, CatalogSource, CloudLayerReading, DataSource, EvidenceSnapshot, FallbackMode, FieldAlternative, FieldAttribution, FieldDataMode,
   LayerItem, LayerSelection, LocationPoint, ProfileResponse, SourceStatusItem, StoryStep, TimelineResponse, AstronomyResponse,
   SpaceWeatherReading, SpaceWeatherResponse, SpaceWeatherSeries,
 } from './types'
@@ -70,6 +71,21 @@ function derivedChip(attribution: FieldAttribution | undefined): string | null {
   return /metpy/i.test(attribution.derivation) ? 'derived \u00b7 MetPy' : 'derived'
 }
 
+/** The attribution a metric should render, or nothing.
+ *
+ *  An Unknown has no source to credit, so a value that simply did not come
+ *  back carries no tag. A REFUSAL is different: it has no number either, but
+ *  it has a reason, and the reason is only reachable through the attribution.
+ *  So a refused derivation, an unmodelled artifact and an unreadable class
+ *  keep their attribution even with a null value — otherwise the metric would
+ *  read "Unknown" and never say why. */
+function shownSource(snapshot: EvidenceSnapshot, field: string, hasValue: boolean): FieldAttribution | undefined {
+  const source = snapshot.fieldSources[field]
+  if (!source) return undefined
+  if (hasValue) return source
+  return refusalReason(source) ? source : undefined
+}
+
 /** Who produced a shown number. Rendered only beside a value that exists: an
  *  Unknown has no source to credit, and the tag must not suggest one. */
 function SourceTag({ attribution }: { attribution: FieldAttribution | undefined }) {
@@ -77,23 +93,64 @@ function SourceTag({ attribution }: { attribution: FieldAttribution | undefined 
   return <em className="source-tag" title={`${attribution.provider} \u00b7 ${attribution.product ?? 'product not named'}`}>{attribution.sourceId ?? attribution.product ?? attribution.provider}</em>
 }
 
+/** Why a metric shows no number, or null when it shows one.
+ *
+ *  Three refusals, kept apart because they fail for different reasons and a
+ *  reader deserves to know which: a class the client cannot read, a
+ *  derivation the registry conditions refused, and an artifact whose
+ *  provenance could not be modelled. The last two carry the API's own notice,
+ *  which is the only place the reason exists; when the response carried no
+ *  matching notice that is said, rather than a reason being invented. */
+function refusalReason(source: FieldAttribution | undefined): string | null {
+  if (!source) return null
+  if (source.evidenceClass === 'unrecognised') return unrecognisedClassReason(source.declaredClass)
+  if (source.derivationRefused) {
+    return source.notice ?? 'the derivation was refused and the response gave no reason'
+  }
+  if (source.provenanceUnmodelled) {
+    return source.notice ?? 'this artifact’s provenance could not be modelled and the response gave no reason'
+  }
+  return null
+}
+
 function Metric({ label, value, detail, detailTitle, mode, source, controls }: { label: string; value: string; detail?: string; detailTitle?: string; mode?: FieldDataMode; source?: FieldAttribution; controls?: React.ReactNode }) {
-  // A class this client does not know — including one the response never
-  // declared — is not shown as a number. Rendering it would present a value of
-  // unknown origin under the same styling as a retrieved one, which is the one
-  // thing the class field exists to prevent.
-  const unrecognised = source?.evidenceClass === 'unrecognised'
+  // A value the interface cannot account for is not shown as a number.
+  // Rendering it would present it under the same styling as a retrieved one,
+  // which is the one thing these fields exist to prevent.
+  const refusal = refusalReason(source)
   return (
-    <article className={`metric${unrecognised ? ' metric-unavailable' : ''}`}>
+    <article className={`metric${refusal ? ' metric-unavailable' : ''}`}>
       <span>{label}</span>
       {controls}
-      <strong>{unrecognised ? 'Unavailable' : value}</strong>
-      {unrecognised
-        ? <small className="evidence-class-reason">{unrecognisedClassReason(source?.declaredClass ?? null)}</small>
+      <strong>{refusal ? 'Unavailable' : value}</strong>
+      {refusal
+        ? <small className="evidence-class-reason">{refusal}</small>
         : detail && <small title={detailTitle}>{detail}</small>}
       <span className="metric-tags"><SourceTag attribution={source} /><FieldEvidenceClass attribution={source} /><ModeChip mode={mode} /></span>
       <DerivedEvidenceDetails label={label} attribution={source} />
     </article>
+  )
+}
+
+/** Every value that was retrieved but may not be a reading, in one place.
+ *
+ *  Driven by the whole `fieldAlternatives` record rather than wired metric by
+ *  metric, so a field cannot be forgotten: anything the primary rule kept out
+ *  of the readings is listed here with its badge and delivery label, and
+ *  nothing is silently dropped just because it has no metric of its own. */
+function AlternativeReadings({ alternatives }: { alternatives: Record<string, FieldAlternative[]> }) {
+  const fields = Object.keys(alternatives)
+  if (fields.length === 0) return null
+  return (
+    <section className="alternative-readings evidence-surface" aria-label="Alternative readings">
+      <h3>Retrieved, but never the reading</h3>
+      <p>
+        These values were retrieved and are shown for comparison. None may be a field&apos;s primary reading: each was
+        transformed or computed by someone other than the producer, or comes from a source the registry refuses as a
+        primary. A producer&apos;s own published cell is never outranked by one of them.
+      </p>
+      {fields.map((field) => <FieldAlternatives key={field} label={field} alternatives={alternatives[field]} />)}
+    </section>
   )
 }
 
@@ -253,7 +310,11 @@ function sourced(snapshot: EvidenceSnapshot, field: string): string {
   const label = source.evidenceClass === 'unrecognised'
     ? unrecognisedClassReason(source.declaredClass)
     : EVIDENCE_CLASS_LABELS[source.evidenceClass]
-  return ` (${who}, ${label})`
+  // The delivery kind rides into the text alternative too: a reader without
+  // sight of the label must not be told a reprocessed value is the
+  // producer's own reading.
+  const delivery = deliveryKindLabel(source.deliveryKind, source.intermediary)
+  return ` (${who}, ${label}${delivery ? `, ${delivery}` : ''})`
 }
 
 function evidenceRows(snapshot: EvidenceSnapshot, humidityGap: string): MapEvidenceRow[] {
@@ -320,6 +381,12 @@ export default function App() {
   const [coordinateLon, setCoordinateLon] = useState('-52.7519')
   const [coordinateError, setCoordinateError] = useState('')
   const [catalog, setCatalog] = useState<CatalogSource[]>([])
+  /** Sources the registry refuses as any field's primary reading. Declared
+   *  here, above the fetch effects that depend on it: the catalogue arrives
+   *  after the first point, so this starts empty (the provenance gate still
+   *  applies) and the effects re-run once when the registry is known, dropping
+   *  a value that was a reading to an alternative. */
+  const nonPrimarySources = useMemo(() => nonPrimarySourceIds(catalog), [catalog])
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [layers, setLayers] = useState<LayerItem[]>([])
   const [layerNotices, setLayerNotices] = useState<string[]>([])
@@ -583,7 +650,7 @@ export default function App() {
     setSourceError('')
     setSnapshot(unavailableSnapshot)
 
-    loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal).then((result) => {
+    loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources }).then((result) => {
       setSnapshot(result.snapshot)
       setDataSource(result.source)
       setSourceError(result.error ?? '')
@@ -596,7 +663,7 @@ export default function App() {
     }
 
     return () => controller.abort()
-  }, [location, validTimeIso, mode, selectedProduct])
+  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources])
 
   // The story is assembled from the hours the timeline says are published, one
   // real /point response per card. Hours that return nothing are simply absent;
@@ -605,19 +672,21 @@ export default function App() {
     const controller = new AbortController()
     setStory([])
     if (!timeline) return () => controller.abort()
-    loadStory(location, timeline, selectedProduct ?? undefined, controller.signal)
+    loadStory(location, timeline, selectedProduct ?? undefined, controller.signal, { nonPrimarySources })
       .then((steps) => setStory(steps))
       .catch(() => undefined)
     return () => controller.abort()
-  }, [location, timeline, selectedProduct])
+  }, [location, timeline, selectedProduct, nonPrimarySources])
 
   const humidityGap = useMemo(() => snapshot.temperatureC !== null && snapshot.dewPointC !== null
     ? `${(snapshot.temperatureC - snapshot.dewPointC).toFixed(1)}° dew-point depression`
     : 'Unknown', [snapshot])
 
-  /** The headline temperature's declared class. An unrecognised one suppresses
-   *  the number rather than printing it under a badge that says nothing. */
-  const heroClass = snapshot.fieldSources.temperature?.evidenceClass ?? 'unrecognised'
+  /** Why the headline temperature shows no number, or null. The hero is held
+   *  to the same rule as every metric: an unreadable class, a refused
+   *  derivation or an unmodelled artifact suppresses the number and says why,
+   *  rather than printing it under a badge that cannot account for it. */
+  const heroRefusal = refusalReason(snapshot.fieldSources.temperature)
 
   // Only sources `/point` will accept as a `product` are offered. The old
   // predicate was `state === 'active'`, which the registry never emits by
@@ -800,18 +869,26 @@ export default function App() {
                   // API's answer, shown below, not a prediction made here.
                   const product = pointProductFor(source) as string
                   const coverage = coverageOf(source)
+                  // The catalogue's own delivery declaration, shown on the
+                  // catalogue entry as well as beside each value: a reader
+                  // choosing a model should see whether its values are the
+                  // producer's own cells before choosing it.
+                  const kind = resolveDeliveryKind(source.delivery_kind)
+                  const kindLabel = deliveryKindLabel(kind, source.intermediary ?? null)
                   return (
                     <button
                       key={source.id}
                       type="button"
                       aria-pressed={selectedProduct === product}
-                      title={`${source.role} \u00b7 ${source.cadence} \u00b7 ${source.forecast_horizon} (provider documentation, not verified here)`}
+                      title={`${source.role} \u00b7 ${source.cadence} \u00b7 ${source.forecast_horizon}${kindLabel ? ` \u00b7 ${kindLabel}` : ''}${source.display_primary === false ? ' \u00b7 never a display primary' : ''} (provider documentation, not verified here)`}
                       className={`${selectedProduct === product ? 'active' : ''}${coverage.unavailable ? ' model-unavailable' : ''}`}
                       onClick={() => setSelectedProduct(product)}
                     >
                       <span className="model-badge">{source.producer}</span>
                       <strong>{product}</strong>
                       <small>{coverage.text}</small>
+                      {kindLabel && <DeliveryKindLabel kind={kind} intermediary={source.intermediary ?? null} />}
+                      {source.display_primary === false && <small className="model-non-primary">Never a display primary</small>}
                     </button>
                   )
                 })}
@@ -949,16 +1026,16 @@ export default function App() {
                 {/* The headline number is held to the same class rule as every
                     metric: an unrecognised class shows the reason, not a
                     temperature the interface cannot account for. */}
-                {snapshot.temperatureC === null
-                  ? <strong className="hero-unknown">Unknown</strong>
-                  : heroClass === 'unrecognised'
-                    ? <strong className="hero-unknown">Unavailable</strong>
+                {heroRefusal
+                  ? <strong className="hero-unknown">Unavailable</strong>
+                  : snapshot.temperatureC === null
+                    ? <strong className="hero-unknown">Unknown</strong>
                     : <strong>{reading(snapshot.temperatureC)}<sup>°C</sup></strong>}
                 <p>
-                  {snapshot.temperatureC === null
-                    ? 'No temperature value was returned for this point and hour.'
-                    : heroClass === 'unrecognised'
-                      ? unrecognisedClassReason(snapshot.fieldSources.temperature?.declaredClass ?? null)
+                  {heroRefusal
+                    ? heroRefusal
+                    : snapshot.temperatureC === null
+                      ? 'No temperature value was returned for this point and hour.'
                       : offsetMinutes === 0 ? snapshot.precipitation : offsetMinutes < 0 ? `Past observation at ${scrubOffset}` : `Model guidance at ${scrubOffset}`}
                   {snapshot.temperatureC !== null && <><br /><SourceTag attribution={snapshot.fieldSources.temperature} /><FieldEvidenceClass attribution={snapshot.fieldSources.temperature} /></>}
                 </p>
@@ -968,6 +1045,7 @@ export default function App() {
                   unrecognised state, so no reader has to infer what a class
                   means from its colour alone. */}
               <EvidenceClassLegend />
+              <AlternativeReadings alternatives={snapshot.fieldAlternatives} />
               <div className="metric-grid">
                 <Metric
                   label="Humidity"
@@ -975,7 +1053,7 @@ export default function App() {
                   detail={[humidityGap, derivedChip(snapshot.fieldSources.relative_humidity)].filter(Boolean).join(' \u00b7 ')}
                   detailTitle={snapshot.fieldSources.relative_humidity?.derivation ?? undefined}
                   mode={snapshot.fieldModes.relative_humidity}
-                  source={snapshot.relativeHumidityPct === null ? undefined : snapshot.fieldSources.relative_humidity}
+                  source={shownSource(snapshot, 'relative_humidity', snapshot.relativeHumidityPct !== null)}
                 />
                 <Metric
                   label="Dew point"
@@ -983,7 +1061,7 @@ export default function App() {
                   detail={snapshot.dewPointC === null ? 'No dew point value returned' : derivedChip(snapshot.fieldSources.dew_point) ?? 'Provider field'}
                   detailTitle={snapshot.fieldSources.dew_point?.derivation ?? undefined}
                   mode={snapshot.fieldModes.dew_point}
-                  source={snapshot.dewPointC === null ? undefined : snapshot.fieldSources.dew_point}
+                  source={shownSource(snapshot, 'dew_point', snapshot.dewPointC !== null)}
                 />
                 {/* Direction is a field of its own, so it is shown when it came
                     back and called Unknown when it did not — the old detail
@@ -998,14 +1076,14 @@ export default function App() {
                   ].filter(Boolean).join(' \u00b7 ')}
                   detailTitle={snapshot.fieldSources.wind_speed?.derivation ?? snapshot.fieldSources.wind_direction?.derivation ?? undefined}
                   mode={snapshot.fieldModes.wind_speed}
-                  source={snapshot.windKmh === null && snapshot.gustKmh === null ? undefined : snapshot.fieldSources.wind_speed ?? snapshot.fieldSources.wind_gust}
+                  source={shownSource(snapshot, 'wind_speed', snapshot.windKmh !== null || snapshot.gustKmh !== null) ?? shownSource(snapshot, 'wind_gust', snapshot.gustKmh !== null)}
                 />
                 <Metric
                   label="Visibility"
                   value={snapshot.visibilityKm === null ? 'Unknown' : `${snapshot.visibilityKm.toFixed(1)} km`}
                   detail={snapshot.visibilityKm === null ? 'No visibility value in a recognised unit returned' : 'Converted from the declared unit'}
                   mode={snapshot.fieldModes.visibility}
-                  source={snapshot.visibilityKm === null ? undefined : snapshot.fieldSources.visibility}
+                  source={shownSource(snapshot, 'visibility', snapshot.visibilityKm !== null)}
                 />
                 {/* Fog is its own field with its own lineage: the API derives
                     it from the present-weather group and says so. The value
@@ -1046,23 +1124,23 @@ export default function App() {
                         .map((pct) => (pct === null ? 'Unknown' : `${Math.round(pct)}%`)).join(' · ')}
                   detail={snapshot.cloud.low === null && snapshot.cloud.middle === null && snapshot.cloud.high === null ? 'No cloud strata returned' : 'Separate strata'}
                   mode={snapshot.fieldModes.cloud_low}
-                  source={snapshot.cloud.low === null && snapshot.cloud.middle === null && snapshot.cloud.high === null ? undefined : snapshot.fieldSources.cloud_low ?? snapshot.fieldSources.cloud_middle ?? snapshot.fieldSources.cloud_high}
+                  source={shownSource(snapshot, 'cloud_low', snapshot.cloud.low !== null) ?? shownSource(snapshot, 'cloud_middle', snapshot.cloud.middle !== null) ?? shownSource(snapshot, 'cloud_high', snapshot.cloud.high !== null)}
                 />
                 <Metric
                   label="Total cloud"
                   value={snapshot.totalCloudPct === null ? 'Unknown' : `${Math.round(snapshot.totalCloudPct)}%`}
                   detail={snapshot.totalCloudPct === null ? 'No total cloud value returned' : 'Whole-sky cover, not a stratum'}
                   mode={snapshot.fieldModes.total_cloud}
-                  source={snapshot.totalCloudPct === null ? undefined : snapshot.fieldSources.total_cloud}
+                  source={shownSource(snapshot, 'total_cloud', snapshot.totalCloudPct !== null)}
                 />
                 <Metric
                   label="MSLP"
                   value={snapshot.pressureHpa === null ? 'Unknown' : `${snapshot.pressureHpa.toFixed(1)} hPa`}
                   detail={snapshot.pressureHpa === null ? 'No mean sea level pressure returned' : 'Mean sea level pressure'}
                   mode={snapshot.fieldModes.mean_sea_level_pressure}
-                  source={snapshot.pressureHpa === null ? undefined : snapshot.fieldSources.mean_sea_level_pressure}
+                  source={shownSource(snapshot, 'mean_sea_level_pressure', snapshot.pressureHpa !== null)}
                 />
-                <Metric label="AQHI" value={snapshot.aqhi === null ? 'Unknown' : String(snapshot.aqhi)} detail={snapshot.aqhi === null ? 'Health risk unavailable' : snapshot.aqhi <= 3 ? 'Low health risk' : snapshot.aqhi <= 6 ? 'Moderate health risk' : 'Elevated health risk'} mode={snapshot.fieldModes.aqhi} source={snapshot.aqhi === null ? undefined : snapshot.fieldSources.aqhi} />
+                <Metric label="AQHI" value={snapshot.aqhi === null ? 'Unknown' : String(snapshot.aqhi)} detail={snapshot.aqhi === null ? 'Health risk unavailable' : snapshot.aqhi <= 3 ? 'Low health risk' : snapshot.aqhi <= 6 ? 'Moderate health risk' : 'Elevated health risk'} mode={snapshot.fieldModes.aqhi} source={shownSource(snapshot, 'aqhi', snapshot.aqhi !== null)} />
                 <Metric
                   label="Jet-level wind"
                   value={snapshot.upperAir.jet200Kmh === null && snapshot.upperAir.jet300Kmh === null
@@ -1079,7 +1157,7 @@ export default function App() {
                   value={snapshot.upperAir.precipitableWaterKgM2 === null ? 'Unknown' : `${snapshot.upperAir.precipitableWaterKgM2.toFixed(1)} kg/m²`}
                   detail={snapshot.upperAir.precipitableWaterKgM2 === null ? 'No precipitable water returned' : 'Column moisture — more degrades sky transparency'}
                   mode={snapshot.fieldModes.precipitable_water}
-                  source={snapshot.upperAir.precipitableWaterKgM2 === null ? undefined : snapshot.fieldSources.precipitable_water}
+                  source={shownSource(snapshot, 'precipitable_water', snapshot.upperAir.precipitableWaterKgM2 !== null)}
                 />
               </div>
               <div className="marine-rule">

@@ -682,3 +682,35 @@ html[data-theme='light'] {
 .derived-inputs b { color: var(--ink); }
 .derived-inputs-missing { color: var(--ec-unrecognised); }
 .drawer-row-head .evidence-class { margin-top: 0; }
+
+/* The delivery kind: how the value reached this deployment, a second axis
+   from the class. Quieter than the class badge - no border, lower contrast -
+   because the class is the claim and this qualifies it. A record that
+   declared no kind renders nothing at all. */
+.delivery-kind {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 1px 4px;
+  color: var(--muted);
+  font: 500 9px 'IBM Plex Mono', monospace;
+  font-style: normal;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+/* The two third-party kinds are the ones a reader must not miss. */
+.delivery-kind-reprocessed, .delivery-kind-intermediary_derived { color: var(--ec-reprocessed); }
+
+.model-non-primary { color: var(--ec-reprocessed); font-size: 9px; }
+
+/* Retrieved, but never the reading. Rendered under the metrics rather than
+   inside them: these values must be readable, and must never occupy the slot
+   a producer's own published cell occupies. */
+.alternative-readings { margin: 12px 0 0; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 3px; }
+.alternative-readings h3 { margin: 0 0 5px; font: 600 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.alternative-readings > p { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.field-alternatives { margin-top: 5px; }
+.field-alternatives > summary { cursor: pointer; color: var(--ink); font: 500 11px 'IBM Plex Mono', monospace; }
+.field-alternatives p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.field-alternatives ul { margin: 5px 0 0; padding-left: 16px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.field-alternatives b { color: var(--ink); }
+.alternative-method { display: block; color: var(--muted); font-size: 10px; line-height: 1.45; }
