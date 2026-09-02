@@ -260,7 +260,7 @@ def test_the_three_strata_layers_are_offered_with_only_ingested_times(monkeypatc
         assert layer["upstream_wms_layer"] is None
         assert [datetime.fromisoformat(stamp).isoformat() for stamp in layer["times"]] == stamps
         assert layer["cadence_seconds"] == 3600
-        assert layer["staleness_tolerance_seconds"] == 1800
+        assert layer["staleness_tolerance_seconds"] == 3600  # one native interval
         semantics = layer["semantics"]
         assert "rendered by this experiment from the retrieved Global Forecast System (GFS 0.25 deg) field" in semantics
         assert "provider-declared" in semantics

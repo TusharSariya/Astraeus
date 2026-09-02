@@ -568,13 +568,17 @@ def layer_group(evidence_basis: str, kind: str, group: str | None = None) -> str
 def staleness_tolerance_seconds(cadence_seconds: int | None) -> int:
     """How stale a frame may be before the layer must report unavailable.
 
-    Half a cadence: within that, the requested time is genuinely nearer this
-    frame than the next, which is what "nearest" is allowed to mean. Beyond it
-    the client renders nothing rather than misdating an older frame as current.
+    One native interval of the layer itself: within its own resolution there is
+    a frame that genuinely belongs to the requested instant, so a six-minute
+    radar layer tolerates six minutes and a three-hourly planning layer three
+    hours. Half a cadence answered a different question and refused frames a
+    layer's own resolution says are the right ones. Beyond one interval the
+    frame is still drawable, but only as a disclosed fallback naming its real
+    time, never quietly as the requested instant.
     """
     if cadence_seconds is None or cadence_seconds <= 0:
         return UNKNOWN_CADENCE_TOLERANCE_SECONDS
-    return max(MIN_STALENESS_TOLERANCE_SECONDS, cadence_seconds // 2)
+    return max(MIN_STALENESS_TOLERANCE_SECONDS, cadence_seconds)
 
 
 #: Said of a layer whose imagery is rendered upstream at request time. There is

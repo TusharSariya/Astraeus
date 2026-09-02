@@ -60,7 +60,7 @@ from tests.test_satellite_layer import (
 client = TestClient(app)
 
 #: A real ACMF cadence step, the interval the store actually rolls by.
-TEN_MINUTES = numpy.timedelta64(10, "m")
+TWO_SCANS = numpy.timedelta64(20, "m")
 
 
 def _stamp(moment) -> numpy.datetime64:
@@ -151,20 +151,21 @@ def test_a_frame_rolled_beyond_tolerance_is_refused_naming_the_nearest_scan(
 ):
     """The single-scan race is refused, not silently substituted.
 
-    The client reads the index, holds the instant, and asks for it one cadence
-    later, by which time the only stored scan has been replaced by one ten
-    minutes on - twice the 300 s tolerance away. The server neither draws that
-    newer scan nor invents one: it answers 422 and names the instant it does
-    hold, which is exactly what the web map needs to disclose a neighbouring
-    frame under its own previous-only fallback rules.
+    The client reads the index, holds the instant, and asks for it two cadence
+    steps later, by which time the only stored scan has been replaced by one
+    twenty minutes on - beyond the one native interval (600 s) the layer
+    tolerates. The server neither draws that newer scan nor invents one: it
+    answers 422 and names the instant it does hold, which is exactly what the
+    web map needs to disclose a neighbouring frame under its own previous-only
+    fallback rules.
     """
     use_store(monkeypatch, data_mode, StubStore(dataset(), artifact()))
     advertised = _advertised_times(layer_id)
     assert advertised, f"{layer_id} advertised no frames to test"
     held = advertised[-1]
 
-    # One cadence step: the next scan lands and replaces the only one stored.
-    use_store(monkeypatch, data_mode, StubStore(dataset(TEN_MINUTES), artifact()))
+    # Two cadence steps: later scans land and replace the only one stored.
+    use_store(monkeypatch, data_mode, StubStore(dataset(TWO_SCANS), artifact()))
 
     response = _raster(layer_id, held, bounds)
     assert response.status_code == 422, (
@@ -173,7 +174,7 @@ def test_a_frame_rolled_beyond_tolerance_is_refused_naming_the_nearest_scan(
     )
     # The refusal has to say what DOES exist, or the client cannot disclose a
     # fallback frame without guessing at one.
-    nearest = datetime.fromisoformat(held.replace("Z", "+00:00")) + timedelta(minutes=10)
+    nearest = datetime.fromisoformat(held.replace("Z", "+00:00")) + timedelta(minutes=20)
     detail = response.json()["detail"]
     assert nearest.isoformat() in detail, (
         f"{layer_id} refused {held} without naming the nearest stored frame "
