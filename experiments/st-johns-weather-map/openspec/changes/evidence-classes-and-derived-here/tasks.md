@@ -62,6 +62,14 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
 
 ## 4. Registry (ingest owner)
 
+- [ ] 4.0 Add the delivery-kind field itself (`retrieved` | `reprocessed`) to
+  `registry/schema.json` and to every record in `registry/source_data.py`,
+  the audit rule that refuses a reprocessed record as a display primary, the
+  provenance fields, and the interface label. Deferred here from
+  `ensemble-members-and-source-plurality` task 2b.5, which specified the
+  field without implementing it; 4.1 extends the same field.
+  Verify: `python3 registry/audit.py` and `python3 -m unittest discover -s
+  registry/tests -v`.
 - [ ] 4.1 Add delivery kind `intermediary_derived` with producer, intermediary
   and method fields and per-field kind declaration to `registry/schema.json`;
   fail the audit for a record naming no intermediary.
