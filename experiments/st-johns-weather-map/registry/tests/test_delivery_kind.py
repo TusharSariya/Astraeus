@@ -22,6 +22,64 @@ def _record(data: dict) -> dict:
     return next(item for item in data["sources"] if item["id"] == RECORD_ID)
 
 
+class EveryRecordDeclaresDeliveryTests(unittest.TestCase):
+    """Task 4.0: the field itself, on every record, and the primary rule."""
+
+    def test_every_record_declares_a_delivery_kind(self) -> None:
+        for record in registry()["sources"]:
+            self.assertIn(
+                record["delivery_kind"],
+                {"published_cell", "reprocessed", "intermediary_derived"},
+                record["id"],
+            )
+
+    def test_a_record_without_a_delivery_kind_fails_the_audit(self) -> None:
+        data = registry()
+        data["sources"][0].pop("delivery_kind")
+        _, errors = audit.validate(data)
+        self.assertTrue(any("delivery_kind" in error or "declares no delivery kind" in error for error in errors))
+
+    def test_a_reprocessed_record_names_its_intermediary_and_transformations(self) -> None:
+        reprocessed = [item for item in registry()["sources"] if item["delivery_kind"] == "reprocessed"]
+        self.assertEqual(["noaa-madis", "openaq", "raw-cwop-pws"], sorted(item["id"] for item in reprocessed))
+        for record in reprocessed:
+            self.assertTrue(record["intermediary"]["name"], record["id"])
+            self.assertNotEqual(record["intermediary"]["name"].lower(), record["producer"].lower())
+            self.assertTrue(record["intermediary"]["transformations"], record["id"])
+
+    def test_a_reprocessed_record_naming_no_intermediary_fails(self) -> None:
+        data = registry()
+        next(item for item in data["sources"] if item["id"] == "openaq").pop("intermediary")
+        _, errors = audit.validate(data)
+        self.assertTrue(any("declares reprocessed and names no intermediary" in error for error in errors))
+
+    def test_a_reprocessed_record_documenting_no_transformation_fails(self) -> None:
+        data = registry()
+        next(item for item in data["sources"] if item["id"] == "openaq")["intermediary"]["transformations"] = []
+        _, errors = audit.validate(data)
+        self.assertTrue(any("states no transformation" in error or "too short" in error for error in errors))
+
+    def test_only_a_published_cell_record_may_be_the_display_primary(self) -> None:
+        for record in registry()["sources"]:
+            self.assertEqual(record["delivery_kind"] == "published_cell", record["display_primary"], record["id"])
+
+    def test_the_audit_refuses_a_reprocessed_record_as_a_display_primary(self) -> None:
+        for source_id in ("openaq", RECORD_ID):
+            with self.subTest(source_id):
+                data = registry()
+                next(item for item in data["sources"] if item["id"] == source_id)["display_primary"] = True
+                _, errors = audit.validate(data)
+                self.assertTrue(any("may not be the display primary" in error for error in errors))
+
+    def test_the_summary_names_what_may_not_be_the_display_primary(self) -> None:
+        data, errors = audit.validate()
+        self.assertEqual([], errors)
+        self.assertEqual(
+            ["noaa-madis", "open-meteo-weathernext-2", "openaq", "raw-cwop-pws"],
+            audit.summary(data)["not_display_primary"],
+        )
+
+
 class DeliveryKindTests(unittest.TestCase):
     def test_the_open_meteo_weathernext_record_passes_the_audit(self) -> None:
         data, errors = audit.validate()

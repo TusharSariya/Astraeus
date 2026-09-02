@@ -27,9 +27,20 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def delivery_kind_errors(source: dict[str, Any]) -> list[str]:
-    """Enforce what a declared delivery kind must carry.
+    """Enforce what a record's delivery kind must carry.
 
-    A record may declare ``intermediary_derived`` for values an intermediary
+    Every record declares how its values reach this deployment, because a
+    value whose provenance cannot say whether it is the producer's own cell is
+    not evidence anyone can weigh. ``published_cell`` is the producer's own
+    grid or observation, retrieved from the producer or from a mirror that
+    copies it byte for byte; ``reprocessed`` means an intermediary transformed
+    the producer's field first, and must name that intermediary as distinct
+    from the producer and state every transformation the intermediary
+    documents. Only a ``published_cell`` record may be the display primary, and
+    that is refused here rather than left to the display layer, which is where
+    it was leaking from before.
+
+    A record may also declare ``intermediary_derived`` for values an intermediary
     computed from a producer's retrieved fields by the intermediary's own
     method - values the producer never published. Such a record must name the
     producer, the intermediary as distinct from the producer, and the
@@ -45,10 +56,26 @@ def delivery_kind_errors(source: dict[str, Any]) -> list[str]:
     intermediary = source.get("intermediary")
     per_field = source.get("field_delivery_kinds")
 
+    if kind is None:
+        errors.append(f"{sid}: declares no delivery kind, so nothing downstream can say where its values came from")
     if intermediary is not None and kind not in {"reprocessed", "intermediary_derived"}:
         errors.append(f"{sid}: names an intermediary but its delivery kind is {kind!r}")
     if per_field is not None and kind is None:
         errors.append(f"{sid}: declares per-field delivery kinds without a record-level delivery kind")
+
+    if kind == "reprocessed":
+        name = (intermediary or {}).get("name", "")
+        if not name:
+            errors.append(f"{sid}: declares reprocessed and names no intermediary distinct from the producer")
+        elif name.strip().lower() == source["producer"].strip().lower():
+            errors.append(f"{sid}: intermediary must be distinct from the producer")
+        if not (intermediary or {}).get("transformations"):
+            errors.append(f"{sid}: declares reprocessed and states no transformation the intermediary documents")
+
+    if source.get("display_primary") and kind != "published_cell":
+        errors.append(
+            f"{sid}: delivery kind {kind!r} may not be the display primary; only the producer's own cell may be"
+        )
 
     if kind == "intermediary_derived":
         name = (intermediary or {}).get("name", "")
@@ -152,6 +179,9 @@ def summary(data: dict[str, Any]) -> dict[str, Any]:
         "delivery_kind_counts": dict(sorted(delivery_kinds.items())),
         "intermediary_derived_sources": sorted(
             source["id"] for source in data["sources"] if source.get("delivery_kind") == "intermediary_derived"
+        ),
+        "not_display_primary": sorted(
+            source["id"] for source in data["sources"] if not source.get("display_primary")
         ),
     }
 

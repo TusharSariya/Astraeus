@@ -85,12 +85,28 @@ to the reader of the code:
   family. So each input declares its family and its source, and two members of
   one family from two sources are refused as blending, as is the same field
   from two sources and a provider reduction mixed with another member set.
-- **`delivery_kind` is optional in the registry schema for now.** The
-  obligation on every record to declare one belongs to
-  `ensemble-members-and-source-plurality`, which is not applied yet. This
-  change adds the third kind and the audit rules a record declaring it must
-  satisfy; making the field required is that change's job, and doing it here
-  would fail 63 records that have no owner decision behind them yet.
+- **`delivery_kind` is required on every record, and this change is where it
+  landed.** The obligation belongs to `ensemble-members-and-source-plurality`,
+  which specified the field and did not implement it, so task 4.0 carries it
+  here rather than leaving 4.1 extending a field that does not exist. All 64
+  records declare a kind: 60 `published_cell`, 3 `reprocessed` (MADIS, OpenAQ
+  and the CWOP route through findu.com - the three places where a third party
+  stands between the producer and this deployment and transforms what it
+  passes on), and 1 `intermediary_derived`. `_source` takes it keyword-only
+  with no default, so the next aggregator record cannot inherit
+  `published_cell` in silence.
+- **Display-primary eligibility is a field the audit enforces, not prose.**
+  Every record carries `display_primary`, which follows from its kind unless
+  the record overrides it, and the audit refuses any record that claims the
+  primary while its values are not the producer's own cell. The spec says the
+  audit enforces this "rather than leaving it to the display layer", which
+  needs something in the record for the display layer to read.
+- **The producer-direct kind is `published_cell`, not `retrieved`.** Both spec
+  deltas name it that way, and the two axes are separate on purpose: a
+  delivery kind says whose cell a value is, an evidence class says how the
+  value came to exist. An `intermediary_derived` value is still retrieved by
+  this deployment, so reusing `retrieved` for the delivery kind would make one
+  word mean two things.
 
 ## Open questions carried into implementation
 

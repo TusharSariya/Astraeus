@@ -82,6 +82,37 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
 
 ## 4. Registry (ingest owner)
 
+- [ ] 4.0 Add the delivery-kind field itself (`retrieved` | `reprocessed`) to
+  `registry/schema.json` and to every record in `registry/source_data.py`,
+  the audit rule that refuses a reprocessed record as a display primary, the
+  provenance fields, and the interface label. Deferred here from
+  `ensemble-members-and-source-plurality` task 2b.5, which specified the
+  field without implementing it; 4.1 extends the same field.
+  Verify: `python3 registry/audit.py` and `python3 -m unittest discover -s
+  registry/tests -v`.
+  Verify result: **registry half done, left unticked for the rest.** Audit
+  clean ("registry valid: 64 sources"); 25 tests ran, OK. `delivery_kind` and
+  `display_primary` are required on every record; all 64 declare a kind
+  (60 `published_cell`, 3 `reprocessed`, 1 `intermediary_derived`); the audit
+  refuses a record with no kind, a `reprocessed` record that names no
+  intermediary distinct from its producer or documents no transformation, and
+  any record whose `display_primary` is true while its kind is not
+  `published_cell`.
+  **Naming deviation:** the task text above writes the producer-direct kind as
+  `retrieved`, but both spec deltas name it `published_cell`
+  (`ensemble-members-and-source-plurality/specs/source-registry-catalogue`
+  "Every source declares how its values reach this deployment", and this
+  change's own "A record may declare intermediary-derived delivery", which
+  reads "Beside `published_cell` and `reprocessed`"). `retrieved` is an
+  evidence class, not a delivery kind, and the two axes are deliberately
+  separate: an `intermediary_derived` value is still retrieved by this
+  deployment. The accepted spec text is implemented; renaming the kind would
+  need a spec delta, not a code edit.
+  **Remaining, in other owners' files - the registry part cannot supply
+  these:**
+  - `api/weather_api/models.py` (API owner): add `delivery_kind: Literal["published_cell", "reprocessed", "intermediary_derived"]` and `intermediary: str | None` to `Provenance`, and `delivery_kind`, `intermediary` and `display_primary` to the `/catalog` source model.
+  - `api/weather_api/store.py` (API owner): `_catalog_sources` (around line 1323, beside `role=str(record["poc_role"])`) must copy `record["delivery_kind"]`, `record.get("intermediary", {}).get("name")` and `record["display_primary"]` onto the catalogue entry, and `live_provenance` must carry the producing record's `delivery_kind` and intermediary name onto every value.
+  - `web/src/` (web owner): the interface label beside the class badge - "producer's own cell", "reprocessed by <intermediary>", "computed by <intermediary>" - and a record whose `display_primary` is false is never rendered as the primary value for a field.
 - [x] 4.1 Add delivery kind `intermediary_derived` with producer, intermediary
   and method fields and per-field kind declaration to `registry/schema.json`;
   fail the audit for a record naming no intermediary.

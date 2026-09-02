@@ -28,7 +28,7 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "category", "status", "reason", "producer", "product", "documentation_urls", "access_endpoints", "integration", "variables", "coverage", "cadence", "forecast_horizon", "authentication", "licence", "attribution", "caching", "archival", "redistribution", "schema_version", "freshness_threshold", "poc_role", "consensus", "fixture_status", "live_smoke_test_status"],
+      "required": ["id", "category", "status", "reason", "producer", "product", "documentation_urls", "access_endpoints", "integration", "variables", "coverage", "cadence", "forecast_horizon", "authentication", "licence", "attribution", "caching", "archival", "redistribution", "schema_version", "freshness_threshold", "poc_role", "consensus", "delivery_kind", "display_primary", "fixture_status", "live_smoke_test_status"],
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
         "category": {"$ref": "#/$defs/nonempty"},
@@ -70,6 +70,10 @@
           "properties": {"eligible": {"type": "boolean"}, "family": {"type": ["string", "null"]}, "reason": {"$ref": "#/$defs/nonempty"}}
         },
         "delivery_kind": {"$ref": "#/$defs/delivery_kind"},
+        "display_primary": {
+          "description": "Whether this record's values may be what the map shows first. Only a published_cell record may be; the audit enforces it here rather than leaving it to the display layer.",
+          "type": "boolean"
+        },
         "intermediary": {
           "type": "object", "additionalProperties": false, "required": ["name", "method", "transformations"],
           "properties": {
