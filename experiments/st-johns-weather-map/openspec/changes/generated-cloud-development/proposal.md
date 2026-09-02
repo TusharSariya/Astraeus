@@ -176,6 +176,15 @@ and is named as generated wherever it is drawn.
   hour (~750 per run, ~66 MB cropped) against the 25 GiB cap.
 - Cost, flagged: generative `configure` multiplies harness runs, and the
   `MethodContext.cache` sharing of baseline motion is load-bearing.
+- Archive order, blocking: two MODIFIED deltas here - "A method is scored by
+  the construction it actually draws" (derived-motion-imagery) and "The
+  interpolation method is chosen from the server's own registry"
+  (web-evidence-interface) - target requirements that `interpolation-method-bench`
+  ADDs and that are not yet in `openspec/specs/`. `openspec validate` does not
+  cross-check a MODIFIED header against the base spec, so this passes
+  validation and would still fail to apply. The bench change SHALL be archived
+  before this one. Neither transition is taken here: only @TusharSariya
+  authorizes an accepted, verified or superseded status.
 - Rollback: `WEATHER_GENERATED_DISPLAY=off` removes every generated
   construction from derive, `/methods`, `/layers` and the menu without a
   code change; a stored generative menu choice is never restored.
