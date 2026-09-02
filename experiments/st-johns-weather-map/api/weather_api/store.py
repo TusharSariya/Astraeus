@@ -34,15 +34,29 @@ EXPERIMENT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(EXPERIMENT_ROOT) not in sys.path:  # ingest/ ships beside api/ in both images
     sys.path.insert(0, str(EXPERIMENT_ROOT))
 
+from registry import fields as catalogue  # noqa: E402  (sys.path is set above)
+
 # Canonical artifact variable -> API evidence field. Adapters write the left
 # hand side (ingest.registry.DEFAULT_VARIABLES); the API speaks the right.
+#
+# This table is the served set - which stored variables ``/point`` answers for
+# at all - not a naming authority. What a variable *means* comes from
+# ``catalogue.resolve``: the four cloud keys below are four different
+# quantities, and each is served under its own name because serving them under
+# one is the collision this catalogue exists to stop.
 FIELD_BY_VARIABLE = {
     "temperature_2m": "temperature",
     "dew_point_2m": "dew_point",
     "relative_humidity_2m": "relative_humidity",
     "mean_sea_level_pressure": "mean_sea_level_pressure",
     "visibility": "visibility",
-    "total_cloud": "total_cloud",
+    # Opacity-weighted (ECCC GEM), geometric overlap (GFS, IFS, ICON),
+    # six-hour mean (GEFS) and observed dome cover (METAR/TAF). Named
+    # separately here because they are not interchangeable readings.
+    "total_cloud_opacity": "total_cloud_opacity",
+    "total_cloud_geometric": "total_cloud_geometric",
+    "total_cloud_mean_6h": "total_cloud_mean_6h",
+    "total_cloud_okta": "total_cloud_okta",
     "precipitation_accumulation": "precipitation_accumulation",
     "wind_u_10m": "wind_u",
     "wind_v_10m": "wind_v",
@@ -82,14 +96,30 @@ FIELD_BY_VARIABLE.update({name: name for name in CLOUD_LAYER_VARIABLES})
 FIELD_BY_VARIABLE.update({name: name for name in ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa")})
 
 # Levels stated per variable where the artifact-wide default ("surface") would
-# be untrue. Explicit and short rather than inferred from GRIB attrs.
+# be untrue. The level-expanded upper-air variables are no longer listed: the
+# catalogue resolves ``wind_u_200hPa`` to the one profile key plus "200 hPa",
+# so the level is read from the catalogue rather than restated here, and a new
+# level costs no entry. What stays is the column field, whose level the
+# catalogue states on the field itself rather than on the name.
 VARIABLE_LEVELS = {
-    "wind_u_200hPa": "200 hPa",
-    "wind_v_200hPa": "200 hPa",
-    "wind_u_300hPa": "300 hPa",
-    "wind_v_300hPa": "300 hPa",
-    "precipitable_water": "entire atmosphere (column)",
+    "precipitable_water": catalogue.field("precipitable_water").level,
 }
+
+
+def variable_level(name: str, artifact_level: str) -> str:
+    """The level one sampled variable carries.
+
+    A level-expanded artifact variable answers with the level its name carried;
+    everything else keeps the level the artifact itself declared, because that
+    is a retrieved fact and the catalogue's level convention is not.
+    """
+    try:
+        resolved = catalogue.resolve(name)
+    except catalogue.UnknownFieldKey:
+        return VARIABLE_LEVELS.get(name, artifact_level)
+    if resolved.level:
+        return resolved.level
+    return VARIABLE_LEVELS.get(name, artifact_level)
 
 # Sampled so they can be derived from, never served as readings: a reader asks
 # for a wind speed and a direction, not the components a model stores. The
@@ -485,6 +515,12 @@ class Sample:
     #: grid). Never an interpolation: no value here is computed from more than
     #: one published cell.
     sample_method: str = "rectilinear"
+    #: The saturation phase a humidity value is defined over, translated from
+    #: the ``catalogue.PHASE_ATTRIBUTE`` the producer's own specific humidity
+    #: was measured into. None everywhere else, and None where a humidity value
+    #: carries a convention the catalogue does not recognise - which is a
+    #: refusal to compare, never a guess.
+    phase: str | None = None
 
 
 def _coordinate_name(dataset: Any, candidates: Sequence[str]) -> str | None:
@@ -903,7 +939,7 @@ class LiveStore:
                     value=value,
                     units=str(dataset[name].attrs.get("units", "unknown")),
                     evidence_class=evidence_class,
-                    level=VARIABLE_LEVELS.get(name, str(level)),
+                    level=variable_level(name, str(level)),
                     valid_time=valid_time,
                     run_time=artifact.run_time,
                     retrieved_at=artifact.retrieved_at,
@@ -914,6 +950,10 @@ class LiveStore:
                     sampled_longitude=cell_longitude,
                     sample_distance_km=round(distance * KM_PER_DEGREE, 3),
                     sample_method=sample_method,
+                    # Read off the value, not off the source id: the phase is
+                    # a measured property of the producer's own saturation
+                    # function, and two products of one producer may differ.
+                    phase=catalogue.phase_from_convention(attrs.get(catalogue.PHASE_ATTRIBUTE)),
                 )
             )
         return samples
@@ -1546,6 +1586,58 @@ def _method_citation(method: str) -> str | None:
         return None
 
 
+def storage_for(source_id: str, key: str | None, value: Any) -> str:
+    """What this deployment does about the field a value stands for.
+
+    A value that was actually served is ``stored`` - it is here, in hand. A
+    null is where the three answers matter: the catalogue's per-source mapping
+    knows whether the producer publishes the field and this deployment does not
+    fetch it (``available-not-stored``) or the producer leaves the gap
+    (``not-published``), and neither is the same as a reading that is simply
+    missing from this run.
+    """
+    if value is not None or key is None:
+        return "stored"
+    return catalogue.storage_of(source_id, key) or "stored"
+
+
+def _uncatalogued_field(store: Any, sample: Sample, field_name: str, valid_time: datetime, reference: datetime) -> Any:
+    """A variable the catalogue cannot resolve, refused with its name recorded.
+
+    Not served, not guessed at, and not silently dropped either: the field is
+    present and null so a reader can see the refusal, and the notice names the
+    variable and the artifact it came from so the catalogue can be extended.
+    """
+    from .models import EvidenceField  # noqa: PLC0415
+
+    _note(
+        store,
+        source_id=sample.source_id,
+        revision_id=sample.revision_id,
+        reason=(
+            f"variable {sample.variable!r} is not a catalogue key, so it is not served "
+            f"(uncatalogued_field); {sample.source_id}/{sample.logical_name} must be re-keyed "
+            "or the catalogue extended"
+        ),
+    )
+    return EvidenceField(
+        field=field_name,
+        value=None,
+        key=None,
+        storage="stored",
+        provenance=unavailable_provenance(
+            valid_time,
+            units=sample.units,
+            flags=["uncatalogued_field"],
+            source_id=sample.source_id,
+            product=sample.logical_name,
+            level=sample.level,
+            reference=reference,
+            evidence_class=sample.evidence_class,
+        ),
+    )
+
+
 def _derived_evidence_field(
     store: LiveStore,
     *,
@@ -1557,6 +1649,7 @@ def _derived_evidence_field(
     derivation: str | None,
     derivation_version: str | None,
     flags: Sequence[str] = (),
+    phase: str | None = None,
     reference: datetime,
 ) -> Any:
     """One ``derived_here`` value, or the same field null with a notice.
@@ -1572,8 +1665,9 @@ def _derived_evidence_field(
     result rather than bounding it, so the field is null like any other failed
     condition.
     """
-    from .models import EvidenceField, Quality  # noqa: PLC0415
+    from .models import EvidenceField, Quality, catalogue_key_for  # noqa: PLC0415
 
+    key = catalogue_key_for(field_name)
     flags = list(flags)
     refusal = _disqualifying_input(inputs)
     if not refusal:
@@ -1587,6 +1681,8 @@ def _derived_evidence_field(
         return EvidenceField(
             field=field_name,
             value=None,
+            key=key,
+            storage=storage_for(basis.source_id, key, None),
             provenance=unavailable_provenance(
                 basis.valid_time,
                 units=basis.units,
@@ -1601,6 +1697,9 @@ def _derived_evidence_field(
     return EvidenceField(
         field=field_name,
         value=value,
+        key=key,
+        phase=phase,
+        storage="stored",
         provenance=live_provenance(
             replace(basis, evidence_class="derived_here"),
             field_name=field_name,
@@ -1657,7 +1756,9 @@ def _flag_is_present(sample: Sample | None) -> bool | None:
 
 def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid_time: datetime) -> tuple[list[Any], Any, list[str]]:
     """Build live evidence fields, the consensus result, and the source ids used."""
-    from .models import EvidenceField  # noqa: PLC0415
+    from ingest.grib import RH_PHASE_LIQUID_WATER  # noqa: PLC0415
+
+    from .models import EvidenceField, catalogue_key_for  # noqa: PLC0415
     from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS, build_consensus  # noqa: PLC0415
 
     reference = datetime.now(UTC)
@@ -1689,10 +1790,17 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
         name = FIELD_BY_VARIABLE.get(sample.variable)
         if name is None or sample.variable in DERIVATION_INPUTS or sample.variable in FOG_INPUTS or (name == "temperature" and consensus.available):
             continue
-        key = (name, sample.source_id)
-        if key in seen:
+        seen_key = (name, sample.source_id)
+        if seen_key in seen:
             continue
-        seen.add(key)
+        seen.add(seen_key)
+        # The catalogue decides what a variable is before anything is served
+        # from it. A name it cannot resolve is refused here rather than served
+        # under whatever the API's own table happened to call it.
+        catalogue_key = catalogue_key_for(sample.variable)
+        if catalogue_key is None:
+            fields.append(_uncatalogued_field(store, sample, name, valid_time, reference))
+            continue
         try:
             provenance = live_provenance(sample, field_name=name, reference=reference)
         except ProvenanceUnmodelled as error:
@@ -1701,9 +1809,18 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
             if sample.revision_id not in isolated:
                 isolated.add(sample.revision_id)
                 _note(store, source_id=sample.source_id, revision_id=sample.revision_id, reason=str(error))
-            fields.append(EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=sample.units, flags=["provenance_unmodelled"], source_id=sample.source_id, product=sample.logical_name, level=sample.level, reference=reference)))
+            fields.append(EvidenceField(field=name, value=None, key=catalogue_key, storage=storage_for(sample.source_id, catalogue_key, None), provenance=unavailable_provenance(valid_time, units=sample.units, flags=["provenance_unmodelled"], source_id=sample.source_id, product=sample.logical_name, level=sample.level, reference=reference)))
             continue
-        fields.append(EvidenceField(field=name, value=sample.value, provenance=provenance))
+        fields.append(
+            EvidenceField(
+                field=name,
+                value=sample.value,
+                key=catalogue_key,
+                phase=sample.phase if catalogue.requires_phase(catalogue_key) else None,
+                storage=storage_for(sample.source_id, catalogue_key, sample.value),
+                provenance=provenance,
+            )
+        )
 
     by_source: dict[str, dict[str, Sample]] = {}
     for sample in samples:
@@ -1730,6 +1847,11 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
                     derivation=derived.derivation,
                     derivation_version=derived.version,
                     flags=derived.flags,
+                    # The registered method evaluates Bolton's saturation
+                    # vapour pressure over liquid water explicitly, so the
+                    # phase is the method's own declaration rather than an
+                    # assumption about the inputs.
+                    phase=catalogue.phase_from_convention(RH_PHASE_LIQUID_WATER),
                     reference=reference,
                 )
             )
@@ -1787,7 +1909,7 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
 
 
 def live_profile_levels(store: LiveStore, latitude: float, longitude: float, valid_time: datetime, pressures: Sequence[int]) -> list[Any]:
-    from .models import EvidenceField, ProfileLevel  # noqa: PLC0415
+    from .models import EvidenceField, ProfileLevel, catalogue_key_for  # noqa: PLC0415
 
     reference = datetime.now(UTC)
     levels: list[ProfileLevel] = []
@@ -1796,6 +1918,10 @@ def live_profile_levels(store: LiveStore, latitude: float, longitude: float, val
         fields = []
         for sample in samples:
             name = FIELD_BY_VARIABLE.get(sample.variable, sample.variable)
+            catalogue_key = catalogue_key_for(sample.variable)
+            if catalogue_key is None:
+                fields.append(_uncatalogued_field(store, sample, name, valid_time, reference))
+                continue
             try:
                 provenance = live_provenance(sample, field_name=sample.variable, reference=reference)
             except ProvenanceUnmodelled as error:
@@ -1804,9 +1930,18 @@ def live_profile_levels(store: LiveStore, latitude: float, longitude: float, val
                 if sample.revision_id not in isolated:
                     isolated.add(sample.revision_id)
                     _note(store, source_id=sample.source_id, revision_id=sample.revision_id, reason=str(error))
-                fields.append(EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=sample.units, flags=["provenance_unmodelled"], source_id=sample.source_id, product=sample.logical_name, level=sample.level, reference=reference)))
+                fields.append(EvidenceField(field=name, value=None, key=catalogue_key, storage=storage_for(sample.source_id, catalogue_key, None), provenance=unavailable_provenance(valid_time, units=sample.units, flags=["provenance_unmodelled"], source_id=sample.source_id, product=sample.logical_name, level=sample.level, reference=reference)))
                 continue
-            fields.append(EvidenceField(field=name, value=sample.value, provenance=provenance))
+            fields.append(
+                EvidenceField(
+                    field=name,
+                    value=sample.value,
+                    key=catalogue_key,
+                    phase=sample.phase if catalogue.requires_phase(catalogue_key) else None,
+                    storage=storage_for(sample.source_id, catalogue_key, sample.value),
+                    provenance=provenance,
+                )
+            )
         if fields:
             levels.append(ProfileLevel(pressure_hpa=pressure, fields=fields))
     return levels
@@ -1838,7 +1973,7 @@ def _registry_records() -> list[dict[str, Any]]:
 
 def registry_source_records() -> list[Any]:
     """Every registry record as a catalogue entry, in registry order."""
-    from .models import SourceRecord, SourceState  # noqa: PLC0415
+    from .models import SourceFieldEntry, SourceRecord, SourceState  # noqa: PLC0415
 
     import ingest.adapters  # noqa: F401, PLC0415 - register present families
     from ingest.registry import ingest_configs, registered_adapters  # noqa: PLC0415
@@ -1866,6 +2001,20 @@ def registry_source_records() -> list[Any]:
                 intermediary=(record.get("intermediary") or {}).get("name"),
                 display_primary=bool(record.get("display_primary", True)),
                 may_enter_consensus=bool(record.get("consensus", {}).get("eligible", False)),
+                # Straight from the catalogue's per-source mapping. A field the
+                # producer publishes and this deployment does not fetch is
+                # listed here as `available-not-stored`, so it is visible
+                # rather than indistinguishable from a field nobody publishes.
+                fields=[
+                    SourceFieldEntry(
+                        key=item.key,
+                        family=catalogue.family_of(item.key),
+                        storage=item.storage,
+                        upstream=item.upstream,
+                        note=item.note,
+                    )
+                    for item in catalogue.source_mapping(source_id)
+                ],
                 exact_variables=[str(name) for name in variables.get("names", [])],
                 levels=[str(level) for level in variables.get("levels", [])],
                 geographic_coverage=str(record["coverage"]),
@@ -1954,6 +2103,12 @@ def registry_source_statuses(activity: dict[str, datetime] | None = None, *, ref
 # exist only where a report carried that layer, and an empty response
 # enumerating six null layers would assert a slot structure nothing retrieved.
 
+#: The cloud entry is the opacity-weighted key, not a generic "total cloud":
+#: this list has always described the ECCC-shaped surface response (2 m air,
+#: 10 m wind, the provider strata, the CYYT observation fields), and the four
+#: cloud keys are four quantities. A geometric or six-hour-mean null belongs to
+#: a response those sources would have answered, and enumerating all four here
+#: would assert a set of members nothing was ever asked for.
 UNAVAILABLE_POINT_FIELDS: tuple[tuple[str, str], ...] = (
     ("temperature", "degC"),
     ("relative_humidity", "percent"),
@@ -1965,16 +2120,21 @@ UNAVAILABLE_POINT_FIELDS: tuple[tuple[str, str], ...] = (
     ("cloud_low", "percent"),
     ("cloud_middle", "percent"),
     ("cloud_high", "percent"),
-    ("total_cloud", "percent"),
+    ("total_cloud_opacity", "percent"),
     ("fog_state", "category"),
     ("radar_echo", "category"),
 )
 
-UNAVAILABLE_PROFILE_FIELDS: tuple[tuple[str, str], ...] = (
-    ("temperature", "degC"),
-    ("dew_point", "degC"),
-    ("relative_humidity", "percent"),
-    ("wind_speed", "m s-1"),
+#: Field name, units and the catalogue key each stands for at a pressure level.
+#: Dew point is absent because the catalogue carries no dew point on pressure
+#: levels: it has ``dew_point_2m``, ``_40m``, ``_80m`` and ``_120m`` and one
+#: humidity profile field. Listing a null "dew point" here would either claim
+#: the 2 m key at 850 hPa or serve a field with no key at all, and neither is
+#: allowed. The gap belongs to the catalogue, not to this response.
+UNAVAILABLE_PROFILE_FIELDS: tuple[tuple[str, str, str], ...] = (
+    ("temperature", "degC", "temperature_pressure"),
+    ("relative_humidity", "percent", "relative_humidity_pressure"),
+    ("wind_speed", "m s-1", "wind_speed_pressure"),
 )
 
 
@@ -2034,8 +2194,8 @@ def unavailable_profile_levels(valid_time: datetime, pressures: Sequence[int], *
         ProfileLevel(
             pressure_hpa=pressure,
             fields=[
-                EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=units, flags=flags, level=f"{pressure} hPa", reference=reference))
-                for name, units in UNAVAILABLE_PROFILE_FIELDS
+                EvidenceField(field=name, value=None, key=key, provenance=unavailable_provenance(valid_time, units=units, flags=flags, level=f"{pressure} hPa", reference=reference))
+                for name, units, key in UNAVAILABLE_PROFILE_FIELDS
             ],
         )
         for pressure in pressures

@@ -302,7 +302,7 @@ FORECAST_LAYERS: tuple[ForecastLayerSpec, ...] = (
     ForecastLayerSpec("geomet-live-hrdps-uu", "HRDPS.CONTINENTAL_UU", "wind_u", "HRDPS wind, u component (live proxy)"),
     ForecastLayerSpec("geomet-live-hrdps-pr", "HRDPS.CONTINENTAL_PR", "precipitation_accumulation", "HRDPS precipitation (live proxy)"),
     ForecastLayerSpec("geomet-live-hrdps-pn", "HRDPS.CONTINENTAL_PN", "mean_sea_level_pressure", "HRDPS mean sea level pressure (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-nt", "HRDPS.CONTINENTAL_NT", "total_cloud", "HRDPS total cloud (live proxy)"),
+    ForecastLayerSpec("geomet-live-hrdps-nt", "HRDPS.CONTINENTAL_NT", "total_cloud_opacity", "HRDPS total cloud (live proxy)"),
     ForecastLayerSpec(
         "geomet-live-hrdps-weong-fog-liquid",
         "HRDPS-WEonG_2.5km_LiquidFogVisibility",

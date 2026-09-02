@@ -58,6 +58,53 @@ level-expanded variable name into that one key plus the level it carried. The
 catalogue's shape is the accepted one and no per-level key exists; the adapters
 converge on the layout when a change owns their retrieval.
 
+## Response contract
+
+Fixed before sections 3 and 4 began, so the API and the web could be built
+against it at the same time:
+
+- every served field value gains `key` (its catalogue key, the plain key with
+  `level` separate where the variable was level-expanded), `family` (the family
+  name), `phase` (`"liquid"`, `"mixed"` or `null`; non-null only for humidity
+  fields, from `catalogue.PHASE_ATTRIBUTE` on the value), and `storage`
+  (`"stored"`, `"available-not-stored"`, `"not-published"`; `stored` for
+  anything actually served);
+- the `/point` response gains `comparability`: a list of
+  `{ family, a, b, comparable, reason, detail }` objects, one per unordered
+  pair of served members within a family, `reason` and `detail` null when
+  comparable, from `catalogue.comparability()` with the phases and the served
+  2 m air temperature for humidity pairs;
+- `/catalog` source entries gain `fields`: a list of
+  `{ key, family, storage, upstream, note }` from
+  `catalogue.source_mapping(source_id)`, so the web can show
+  `available-not-stored` and `not-published` per source;
+- a variable whose name `catalogue.resolve()` cannot resolve is not served:
+  `value: null`, `data_mode: "unavailable"`, flag `uncatalogued_field` in
+  `quality.flags`, and a notice naming the variable and the artifact.
+
+Three things the implementation had to settle within that contract, none of
+which changes it:
+
+- **`a` and `b` are catalogue keys, and a pair may name one key twice.** A
+  served member is one served value, so HRDPS and RDPS opacity-weighted cloud
+  are two members of one key; the pair is `("total_cloud_opacity",
+  "total_cloud_opacity")` and answers `comparable: true`, which is what the
+  `field-catalogue` scenario "Two comparable members" requires. Pairs are
+  deduplicated on the unordered key pair, so N sources of one key still cost
+  one entry rather than N(N-1)/2 identical ones.
+- **`field` and `key` stay two strings.** The API has served `temperature` for
+  the 2 m air temperature and `wind_speed` for the 10 m wind since before the
+  catalogue existed, and the level sits on `provenance.vertical_level`;
+  `CATALOGUE_KEY_BY_FIELD` in `api/weather_api/models.py` is the whole list.
+  The four cloud keys are *not* aliased: each is served under its own name,
+  because one name for three quantities is the defect this change removes.
+- **A derived humidity carries the phase its method declares.**
+  `relative_humidity_from_dewpoint_liquid` evaluates Bolton's saturation
+  vapour pressure over liquid water explicitly, so the derived value is
+  stamped `liquid` from the method's own declaration. That is the method
+  speaking, not an assumption about the inputs, and it is the only phase in
+  the response that does not come off an artifact's own attribute.
+
 ## Open questions carried into implementation
 
 - Whether CF `standard_name` coverage is worth attaching for fields with no
@@ -79,3 +126,12 @@ converge on the layout when a change owns their retrieval.
   the adapter deliberately never fetches it, so the "GeoMet advertises a new
   coverage" half of that scenario needs a capabilities enumeration this change
   does not own.
+- Whether a dew point on pressure levels belongs in the catalogue. Found
+  during section 3 and left open: the catalogue carries `dew_point_2m`,
+  `_40m`, `_80m` and `_120m` and one humidity profile field, and no dew point
+  with a pressure-level coordinate. The API's unavailable profile list and the
+  development fixture profile therefore no longer serve a "dew point" at 850
+  hPa - a fixture may not invent a key any more than an artifact may, and the
+  alternative was claiming the 2 m key at a pressure level. The dew point is
+  still what the fixture's relative humidity is derived from. Extending the
+  catalogue is registry work this section does not own.
