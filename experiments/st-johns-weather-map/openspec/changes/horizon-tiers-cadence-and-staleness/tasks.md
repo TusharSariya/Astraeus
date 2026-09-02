@@ -113,9 +113,37 @@ so the two changes may run concurrently.
   Also `cd api && uv run pytest` -> 938 passed, 36 skipped (920 + 18 new; the
   36 skips are unchanged), and `openspec validate
   horizon-tiers-cadence-and-staleness --strict` -> valid.
-- [ ] 2.4 Retain the previous run when the newest run reaches less far, and
+- [x] 2.4 Retain the previous run when the newest run reaches less far, and
   serve the leads it lacks from the retained run with both run times.
   Verify: `cd api && uv run pytest tests/test_worker_scheduling.py -k short_cycle`
+  Verify result: `cd api && uv run pytest tests/test_worker_scheduling.py -k
+  short_cycle` -> 11 passed, 49 deselected. The decision is the pure
+  `short_cycle_plan(previous, newest) -> ShortCyclePlan` in
+  `ingest/scheduler.py`, over `RetainedRun` values whose `serves_to` is the
+  cycle's declared `Reach.span` end narrowed by the frames the run actually
+  published. The newest run serves everything it reaches; the previous run is
+  called on only beyond that, up to its own end, and each range carries its own
+  run time. The join is exclusive on the newest run's last instant (the
+  previous range opens one second later, below any lead step these sources
+  publish), so no instant is claimed by both and nothing is averaged or
+  interpolated across it. Past the last covered instant the source is uncovered
+  with the reason - `no previous run was retained` or `beyond both runs' reach`
+  - and nothing is extrapolated from a final lead. `worker/runtime.py` computes
+  the plan from `ArtifactStore.retained_artifacts` after a successful forecast
+  publish, records it as
+  `progress[source_id]["short_cycle"] = {newest_run_time, newest_serves_to,
+  previous_run_time, previous_serves_from, previous_serves_to}`, and logs one
+  line naming both run times when the retained run is serving far leads. The
+  read is a read: the previous run is never deleted, refetched or shortened
+  here, and a store that offers no `retained_artifacts` (or fails the read)
+  costs the record, never the publish. Retention itself is untouched - the
+  two-run ceiling in `003_retention_window.sql` is what keeps the previous run
+  available. The serving half lives in tasks 3.1 and 3.2: `/layers` and
+  `/timeline` already serve both runs' frames with their own run times through
+  `store.retained_layer_runs`, and nothing here duplicates it. Also `cd api &&
+  uv run pytest` -> 962 passed, 36 skipped (951 + the 11 new; the 36 skips are
+  unchanged), and `openspec validate horizon-tiers-cadence-and-staleness
+  --strict` -> valid.
 
 ## 3. API: tiers, coverage, run staleness (API owner)
 

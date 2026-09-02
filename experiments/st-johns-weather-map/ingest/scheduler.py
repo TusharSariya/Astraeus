@@ -66,9 +66,12 @@ ABSENCE_RANK = {"present": 0, "aged_out": 1, "null": 2}
 
 __all__ = [
     "ABSENCE_RANK",
+    "BEYOND_BOTH",
+    "JOIN_EPSILON",
     "LATENCY_QUANTILE",
     "LATENCY_STEP_DOWN",
     "LATENCY_STEP_UP",
+    "NO_PREVIOUS_RUN",
     "POLL_INTERVAL_SECONDS",
     "SATISFIED_REASON",
     "DerivedPlan",
@@ -78,7 +81,10 @@ __all__ = [
     "PollState",
     "Reconciliation",
     "RestartCache",
+    "RetainedRun",
     "Schedule",
+    "ServedRange",
+    "ShortCyclePlan",
     "candidate_valid_times",
     "derived_plan",
     "first_attempt",
@@ -90,6 +96,8 @@ __all__ = [
     "plan_fetch",
     "poll_decision",
     "reconcile_on_start",
+    "retained_runs",
+    "short_cycle_plan",
     "worst_absence",
 ]
 
@@ -394,6 +402,258 @@ def poll_decision(
         f"polling for run {state.run_time.isoformat()}; attempt {state.attempts} found nothing, "
         f"next poll at {due.isoformat()}, bounded by {bound.isoformat()}",
     )
+
+
+# --- a short cycle: two runs, two labelled ranges -------------------------
+
+@dataclass(frozen=True)
+class RetainedRun:
+    """One run this deployment still holds, and how far it can serve.
+
+    ``reach_end`` is the declared reach of *this run's cycle*
+    (``Reach.span(run_time)[1]``), which is the whole reason a short cycle
+    exists: IFS reaches 360 h from 00z and 12z and 144 h from 06z and 18z, so
+    the newest run of a source can reach less far than the one before it.
+
+    ``published_start``/``published_end`` are the valid times this run
+    *actually* published, where they are known. They only ever narrow the
+    range: a run that promised 360 h and delivered 120 h serves 120 h, and a
+    run that delivered more than it promised is still held to the promise.
+    Passing neither leaves the run on its declared reach alone.
+    """
+
+    source_id: str
+    provider_run_id: str
+    run_time: datetime
+    reach_end: datetime
+    published_start: datetime | None = None
+    published_end: datetime | None = None
+
+    @property
+    def serves_from(self) -> datetime:
+        """The first valid time this run can serve on its own."""
+        return self.published_start if self.published_start is not None else self.run_time
+
+    @property
+    def serves_to(self) -> datetime:
+        """The last valid time this run can serve: reach, narrowed by delivery."""
+        if self.published_end is None:
+            return self.reach_end
+        return min(self.reach_end, self.published_end)
+
+
+#: The join between the two runs is exclusive on the newer run's last instant:
+#: an instant the newer run serves is never also claimed by the older one. The
+#: previous run's range therefore opens one second later. Every source here
+#: publishes leads on whole-hour (or coarser) steps, so a second cannot hide a
+#: frame between the two ranges, and it keeps both ends of the join printable
+#: as distinct instants rather than as one instant with a footnote.
+JOIN_EPSILON = timedelta(seconds=1)
+
+NO_PREVIOUS_RUN = "no previous run was retained"
+BEYOND_BOTH = "beyond both runs' reach"
+
+
+@dataclass(frozen=True)
+class ServedRange:
+    """One run serving one contiguous span of valid times, under its own label.
+
+    ``role`` is ``newest`` or ``previous``. Both carry ``run_time`` because the
+    requirement is that both runs are labelled with their own run time wherever
+    they are served or drawn - a range that lost its run time is exactly the
+    blended series the requirement refuses.
+    """
+
+    role: str
+    provider_run_id: str
+    run_time: datetime
+    start: datetime
+    end: datetime
+    start_exclusive: bool = False
+
+    def covers(self, instant: datetime) -> bool:
+        after_start = self.start < instant if self.start_exclusive else self.start <= instant
+        return after_start and instant <= self.end
+
+
+@dataclass(frozen=True)
+class ShortCyclePlan:
+    """Which run serves which leads, once the newest run reaches less far.
+
+    Two labelled pieces of evidence, never one series: ``newest`` serves up to
+    its own end and ``previous`` serves *only* beyond it, so the two ranges
+    cannot overlap and nothing is averaged, interpolated or extrapolated across
+    the join. Past ``covered_to`` the source is uncovered, with
+    ``uncovered_reason`` saying whether that is because no previous run was
+    retained or because neither run reaches that far.
+
+    Nothing here deletes, refetches or shortens anything: it is a reading of
+    what retention already holds. The two-run ceiling in
+    ``003_retention_window.sql`` is what keeps the previous run available, and
+    this plan only says what to do with it.
+    """
+
+    source_id: str
+    newest: ServedRange
+    previous: ServedRange | None
+    covered_to: datetime
+    uncovered_reason: str
+    retained_previous_run_time: datetime | None = None
+
+    @property
+    def short_cycle(self) -> bool:
+        """True when a retained previous run is serving leads the newest lacks."""
+        return self.previous is not None
+
+    @property
+    def ranges(self) -> list[ServedRange]:
+        """The labelled ranges, newest first. Never fewer than one."""
+        return [self.newest] if self.previous is None else [self.newest, self.previous]
+
+    def serving(self, instant: datetime) -> ServedRange | None:
+        """The one range that serves ``instant``, or ``None`` if it is uncovered."""
+        for served in self.ranges:
+            if served.covers(instant):
+                return served
+        return None
+
+    @property
+    def detail(self) -> str:
+        if self.previous is None:
+            return (
+                f"run {self.newest.run_time.isoformat()} serves to "
+                f"{self.newest.end.isoformat()}; beyond that {self.uncovered_reason}"
+            )
+        return (
+            f"short cycle: run {self.newest.run_time.isoformat()} serves to "
+            f"{self.newest.end.isoformat()}, retained run {self.previous.run_time.isoformat()} "
+            f"serves {self.previous.start.isoformat()} to {self.previous.end.isoformat()}; "
+            f"beyond that {self.uncovered_reason}"
+        )
+
+    def as_progress(self) -> dict[str, Any]:
+        """The heartbeat's ``short_cycle`` block, exactly as the seam names it."""
+        retained = self.retained_previous_run_time
+        return {
+            "newest_run_time": self.newest.run_time.isoformat(),
+            "newest_serves_to": self.newest.end.isoformat(),
+            "previous_run_time": retained.isoformat() if retained is not None else None,
+            "previous_serves_from": self.previous.start.isoformat() if self.previous else None,
+            "previous_serves_to": self.previous.end.isoformat() if self.previous else None,
+        }
+
+
+def short_cycle_plan(previous: RetainedRun | None, newest: RetainedRun) -> ShortCyclePlan:
+    """Which leads each retained run serves when the newest reaches less far.
+
+    The newest run always serves first and serves everything it reaches. The
+    previous run is called on *only* beyond the newest run's end, and only
+    where it actually reaches further - a previous run that reaches no further
+    serves nothing, because there is no lead for it to add. Where the previous
+    run is absent, or where both runs stop, the source is uncovered and says
+    which of the two it is: nothing is extrapolated from a final lead.
+
+    Pure: no store, no clock, no registry lookup. ``worker/runtime.py`` builds
+    the two ``RetainedRun`` values from what the store still holds and records
+    the result; the API serves the ranges (tasks 3.1 and 3.2).
+    """
+    newest_range = ServedRange(
+        "newest", newest.provider_run_id, newest.run_time, newest.serves_from, newest.serves_to,
+    )
+    if previous is None:
+        return ShortCyclePlan(newest.source_id, newest_range, None, newest_range.end, NO_PREVIOUS_RUN)
+
+    if previous.source_id != newest.source_id:
+        raise ValueError(
+            f"two runs of different sources cannot serve one span: "
+            f"{previous.source_id!r} and {newest.source_id!r}"
+        )
+    if previous.run_time >= newest.run_time:
+        raise ValueError(
+            f"{newest.source_id}: the previous run {previous.run_time.isoformat()} is not older "
+            f"than the newest run {newest.run_time.isoformat()}"
+        )
+
+    if previous.serves_to <= newest_range.end:
+        # Not a short cycle: the newest run reaches at least as far, so the
+        # retained run adds no lead. It is still retained - nothing here drops
+        # it - it simply serves nothing.
+        return ShortCyclePlan(
+            newest.source_id, newest_range, None, newest_range.end, BEYOND_BOTH,
+            retained_previous_run_time=previous.run_time,
+        )
+
+    previous_range = ServedRange(
+        "previous", previous.provider_run_id, previous.run_time,
+        newest_range.end + JOIN_EPSILON, previous.serves_to, start_exclusive=True,
+    )
+    return ShortCyclePlan(
+        newest.source_id, newest_range, previous_range, previous_range.end, BEYOND_BOTH,
+        retained_previous_run_time=previous.run_time,
+    )
+
+
+def retained_runs(config: "IngestConfig", artifacts: Iterable[Any]) -> list[RetainedRun]:
+    """Group retained revisions into runs, newest run first.
+
+    ``artifacts`` are ``ingest.store.RetainedArtifact`` values - anything with
+    ``provider_run_id``, ``provenance``, ``valid_time_start`` and
+    ``valid_time_end`` will do, which is what keeps this testable without a
+    live store.
+
+    A run is keyed by its adapter-declared ``provenance["run_time"]``. A run
+    that declared none is skipped: a reach is stated relative to a run time, so
+    there is nothing to measure one against, and the ``model_runs`` retrieval
+    stamp is not a run-time claim (``design.md``, "Where the code lives").
+    """
+    reach = getattr(config, "reach", None)
+    if reach is None:
+        return []
+    source_id = str(getattr(config, "source_id", "") or "")
+    grouped: dict[tuple[str, datetime], dict[str, Any]] = {}
+    for artifact in artifacts:
+        run_time = _instant(getattr(artifact, "provenance", None) or {})
+        if run_time is None:
+            continue
+        key = (str(getattr(artifact, "provider_run_id", "") or ""), run_time)
+        entry = grouped.setdefault(key, {"start": None, "end": None})
+        for name, bound in (("start", getattr(artifact, "valid_time_start", None)),
+                            ("end", getattr(artifact, "valid_time_end", None))):
+            if not isinstance(bound, datetime):
+                continue
+            moment = bound if bound.tzinfo else bound.replace(tzinfo=UTC)
+            current = entry[name]
+            if current is None:
+                entry[name] = moment
+            else:
+                entry[name] = min(current, moment) if name == "start" else max(current, moment)
+    runs = [
+        RetainedRun(
+            source_id=source_id, provider_run_id=run_id, run_time=run_time,
+            reach_end=reach.span(run_time)[1],
+            published_start=entry["start"], published_end=entry["end"],
+        )
+        for (run_id, run_time), entry in grouped.items()
+    ]
+    runs.sort(key=lambda run: run.run_time, reverse=True)
+    return runs
+
+
+def _instant(provenance: Mapping[str, Any]) -> datetime | None:
+    """The adapter-declared run time of a revision, or ``None``."""
+    value = provenance.get("run_time")
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if not value:
+        return None
+    text = str(value)
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 class RestartCache(Protocol):

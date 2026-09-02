@@ -433,6 +433,42 @@ class Scheduler:
         state["last_observed_publication"] = observed_at.isoformat()
         state["latency_measured"] = True
 
+    def _record_short_cycle(self, config) -> None:
+        """Record which run serves which leads after a successful publish.
+
+        Reads only. The previous run is never deleted, refetched or shortened
+        here - the two-run retention ceiling is what keeps it, and this is the
+        worker writing down what that ceiling already makes possible: the
+        newest run serves what it reaches, the retained run serves the leads
+        beyond it under its own run time, and the two are never joined.
+
+        A store that cannot report retained revisions costs the record, never
+        the publish: the source has already succeeded by the time this runs.
+        """
+        from ingest.scheduler import retained_runs, short_cycle_plan  # noqa: PLC0415
+
+        if not getattr(config, "run_cadence_seconds", None) or getattr(config, "reach", None) is None:
+            return  # nothing without a run cycle has a short cycle to describe
+        reader = getattr(self._store, "retained_artifacts", None)
+        if not callable(reader):
+            return  # a store that does not offer the read is tolerated, not failed
+        try:
+            artifacts = reader(source_ids=[config.source_id])
+        except Exception as error:
+            log(f"could not read retained runs for {config.source_id}: {error!r}")
+            return
+        runs = retained_runs(config, artifacts or ())
+        if not runs:
+            return
+        plan = short_cycle_plan(runs[1] if len(runs) > 1 else None, runs[0])
+        self._progress.setdefault(config.source_id, {})["short_cycle"] = plan.as_progress()
+        if plan.short_cycle and plan.previous is not None:
+            log(
+                f"{config.source_id}: short cycle - run {plan.newest.run_time.isoformat()} serves to "
+                f"{plan.newest.end.isoformat()}, retained run {plan.previous.run_time.isoformat()} "
+                f"serves the leads beyond it to {plan.previous.end.isoformat()}"
+            )
+
     @property
     def source_ids(self) -> list[str]:
         return [config.source_id for _, config in self._pairs]
@@ -472,6 +508,12 @@ class Scheduler:
             # bounded poll, and only its bound reports the absence.
             outcome, poll_due = self._poll(config, outcome, datetime.now(UTC))
             self._record_progress(outcome)
+            # A short cycle only changes when a run publishes, so the plan is
+            # recomputed from what retention holds on a successful publish and
+            # left alone otherwise - a cancelled or failed attempt must not
+            # disturb what the previous run is serving.
+            if outcome.state == "succeeded":
+                self._record_short_cycle(config)
             # Derived artifacts follow the run that produced their inputs, not
             # the end of the cycle. A cycle is a serial pass over every due
             # source and outlives any one of them, so waiting for it to finish

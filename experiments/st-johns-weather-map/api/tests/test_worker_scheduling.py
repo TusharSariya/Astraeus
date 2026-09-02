@@ -561,3 +561,261 @@ def test_datamart_fallback_root_fills_only_the_date() -> None:
         "https://dd.weather.gc.ca/20260829/WXO-DD/model_hrdps/continental/2.5km/"
     )
     assert _datamart_adapter({}, datamart_fallback_path="").fallback_root("20260829") is None
+
+
+# --- task 2.4: a short cycle keeps the previous run serving ---------------
+#
+# `ingestion-worker-scheduling` requires the previous run to be retained when
+# the newest run reaches less far, and to keep serving every instant the newer
+# run does not reach, both labelled with their own run time and never blended.
+# The decision is the pure `short_cycle_plan`; retention itself is the two-run
+# ceiling in `003_retention_window.sql` and the serving half is the API's
+# (tasks 3.1 and 3.2). Nothing here needs PostgreSQL, numpy or a network.
+
+IFS_00Z = datetime(2026, 9, 2, 0, tzinfo=UTC)
+IFS_06Z = datetime(2026, 9, 2, 6, tzinfo=UTC)
+
+
+def _ifs_run(run_time: datetime, *, published_end: datetime | None = None):
+    """A retained IFS run on its declared per-cycle reach (360 h / 144 h)."""
+    from ingest.scheduler import RetainedRun
+
+    reach = get_config("ecmwf-ifs").reach
+    assert reach is not None
+    return RetainedRun(
+        source_id="ecmwf-ifs",
+        provider_run_id=run_time.strftime("%Y%m%d%H"),
+        run_time=run_time,
+        reach_end=reach.span(run_time)[1],
+        published_start=run_time,
+        published_end=published_end,
+    )
+
+
+def test_short_cycle_06z_ifs_serves_far_leads_from_the_retained_00z_run() -> None:
+    """The scenario the requirement names: 06z reaches 144 h, the retained 00z
+    run reached 360 h, so the far leads come from 00z under its own run time."""
+    from ingest.scheduler import short_cycle_plan
+
+    newest, previous = _ifs_run(IFS_06Z), _ifs_run(IFS_00Z)
+    assert newest.serves_to == IFS_06Z + timedelta(hours=144)
+    assert previous.serves_to == IFS_00Z + timedelta(hours=360)
+
+    plan = short_cycle_plan(previous, newest)
+    assert plan.short_cycle is True
+    assert plan.newest.run_time == IFS_06Z
+    assert plan.newest.end == IFS_06Z + timedelta(hours=144)
+    assert plan.previous is not None
+    assert plan.previous.run_time == IFS_00Z
+    assert plan.previous.end == IFS_00Z + timedelta(hours=360)
+    assert plan.covered_to == IFS_00Z + timedelta(hours=360)
+
+    # An instant inside the newer run's reach is served by the newer run; one
+    # beyond it by the retained run; neither is served by both.
+    inside = IFS_06Z + timedelta(hours=100)
+    beyond = IFS_06Z + timedelta(hours=200)
+    assert plan.serving(inside) is not None and plan.serving(inside).run_time == IFS_06Z
+    assert plan.serving(beyond) is not None and plan.serving(beyond).run_time == IFS_00Z
+
+
+def test_short_cycle_ranges_are_two_labelled_pieces_that_never_overlap() -> None:
+    """The join is visible: two ranges, each under its own run time, and no
+    instant claimed by both - which is what stops them being one series."""
+    from ingest.scheduler import short_cycle_plan
+
+    plan = short_cycle_plan(_ifs_run(IFS_00Z), _ifs_run(IFS_06Z))
+    ranges = plan.ranges
+    assert [served.role for served in ranges] == ["newest", "previous"]
+    assert len({served.run_time for served in ranges}) == 2
+    # The previous range opens strictly after the newest one closes.
+    assert plan.previous.start > plan.newest.end
+    join = plan.newest.end
+    assert plan.newest.covers(join) is True
+    assert plan.previous.covers(join) is False
+    for instant in (join - timedelta(hours=1), join, join + timedelta(hours=1)):
+        serving = [served for served in ranges if served.covers(instant)]
+        assert len(serving) == 1
+
+
+def test_short_cycle_serves_nothing_past_either_run() -> None:
+    """Past the retained run's own end the source is uncovered, with the
+    reason - nothing is extrapolated from a final lead."""
+    from ingest.scheduler import BEYOND_BOTH, short_cycle_plan
+
+    plan = short_cycle_plan(_ifs_run(IFS_00Z), _ifs_run(IFS_06Z))
+    assert plan.uncovered_reason == BEYOND_BOTH
+    assert plan.serving(plan.covered_to) is not None
+    assert plan.serving(plan.covered_to + timedelta(hours=1)) is None
+
+
+def test_short_cycle_with_no_previous_run_uncovers_the_far_leads() -> None:
+    """A short-cycle run that is the only run retained covers only what it
+    reaches, and says why the rest is uncovered."""
+    from ingest.scheduler import NO_PREVIOUS_RUN, short_cycle_plan
+
+    plan = short_cycle_plan(None, _ifs_run(IFS_06Z))
+    assert plan.short_cycle is False
+    assert plan.previous is None
+    assert plan.covered_to == IFS_06Z + timedelta(hours=144)
+    assert plan.uncovered_reason == NO_PREVIOUS_RUN
+    assert plan.serving(IFS_06Z + timedelta(hours=200)) is None
+    block = plan.as_progress()
+    assert block["previous_run_time"] is None
+    assert block["previous_serves_from"] is None and block["previous_serves_to"] is None
+
+
+def test_short_cycle_previous_run_that_reaches_no_further_serves_nothing() -> None:
+    """00z after 12z is not a short cycle: the newest run reaches at least as
+    far, so the retained run adds no lead - and is still retained."""
+    from ingest.scheduler import short_cycle_plan
+
+    noon = datetime(2026, 9, 2, 12, tzinfo=UTC)
+    plan = short_cycle_plan(_ifs_run(IFS_00Z), _ifs_run(noon))
+    assert plan.short_cycle is False
+    assert plan.previous is None
+    assert plan.covered_to == noon + timedelta(hours=360)
+    # The retained run is still named, so the heartbeat does not read as if
+    # retention had dropped it.
+    assert plan.as_progress()["previous_run_time"] == IFS_00Z.isoformat()
+
+
+def test_short_cycle_reach_is_narrowed_by_what_the_run_published() -> None:
+    """A run is credited for its reach intersected with what it delivered,
+    never for a promise it did not keep."""
+    from ingest.scheduler import short_cycle_plan
+
+    short_00z = _ifs_run(IFS_00Z, published_end=IFS_00Z + timedelta(hours=240))
+    plan = short_cycle_plan(short_00z, _ifs_run(IFS_06Z))
+    assert plan.previous is not None
+    assert plan.previous.end == IFS_00Z + timedelta(hours=240)
+    assert plan.serving(IFS_00Z + timedelta(hours=300)) is None
+
+
+def test_short_cycle_refuses_two_runs_that_are_not_one_source_in_order() -> None:
+    """Two runs are two pieces of evidence about one source, in run order."""
+    other = dataclasses.replace(_ifs_run(IFS_00Z), source_id="ecmwf-ens")
+    from ingest.scheduler import short_cycle_plan
+
+    with pytest.raises(ValueError, match="different sources"):
+        short_cycle_plan(other, _ifs_run(IFS_06Z))
+    with pytest.raises(ValueError, match="not older"):
+        short_cycle_plan(_ifs_run(IFS_06Z), _ifs_run(IFS_00Z))
+
+
+def test_short_cycle_retained_runs_skip_a_run_with_no_declared_run_time() -> None:
+    """A reach is stated relative to a run time; the retrieval stamp is not
+    one, so a run that declared none is not credited with a reach."""
+    from ingest.scheduler import retained_runs
+
+    class _Row:
+        def __init__(self, run_id, provenance, start, end):
+            self.provider_run_id = run_id
+            self.provenance = provenance
+            self.valid_time_start = start
+            self.valid_time_end = end
+
+    rows = [
+        _Row("2026090206", {"run_time": "2026-09-02T06:00:00+00:00"}, IFS_06Z, IFS_06Z + timedelta(hours=144)),
+        _Row("2026090200", {"run_time": "2026-09-02T00:00:00+00:00"}, IFS_00Z, IFS_00Z + timedelta(hours=360)),
+        _Row("undeclared", {}, IFS_00Z, IFS_00Z + timedelta(hours=360)),
+    ]
+    runs = retained_runs(get_config("ecmwf-ifs"), rows)
+    assert [run.provider_run_id for run in runs] == ["2026090206", "2026090200"]
+    assert runs[0].run_time == IFS_06Z and runs[1].run_time == IFS_00Z
+
+
+def test_short_cycle_is_recorded_in_progress_after_a_successful_publish(scheduler_over_adapters) -> None:
+    """The worker records the plan in the heartbeat, and never touches the
+    previous run to do it."""
+    from ingest.contract import RunCandidate, RunResult
+
+    class _Row:
+        def __init__(self, run_id, run_time, end):
+            self.provider_run_id = run_id
+            self.provenance = {"run_time": run_time.isoformat()}
+            self.valid_time_start = run_time
+            self.valid_time_end = end
+
+    class _Store:
+        def __init__(self) -> None:
+            self.read_calls: list[tuple] = []
+
+        def upsert_source(self, **kwargs):
+            return None
+
+        def stage_and_publish(self, result):
+            return ["artifact"]
+
+        def present_keys(self, source_id, provider_run_id):
+            return set()
+
+        def retained_artifacts(self, *, source_ids=None):
+            self.read_calls.append(tuple(source_ids or ()))
+            return [
+                _Row("2026090206", IFS_06Z, IFS_06Z + timedelta(hours=144)),
+                _Row("2026090200", IFS_00Z, IFS_00Z + timedelta(hours=360)),
+            ]
+
+    class _Adapter:
+        source_id = "ecmwf-ifs"
+        adapter_version = "test"
+
+        def discover(self, window):
+            return [RunCandidate(provider_run_id="2026090206", run_time=IFS_06Z)]
+
+        def fetch(self, candidate, window, workdir):
+            return RunResult(
+                source_id="ecmwf-ifs", provider_run_id="2026090206", run_time=IFS_06Z,
+                retrieved_at=IFS_06Z, complete=True, qc_passed=True, artifacts=[],
+            )
+
+    store = _Store()
+    scheduler = scheduler_over_adapters((_Adapter(), get_config("ecmwf-ifs")))
+    scheduler._store = store
+    outcomes = scheduler.cycle(force=True)
+    assert [item.state for item in outcomes] == ["succeeded"]
+
+    block = scheduler.progress["ecmwf-ifs"]["short_cycle"]
+    assert block == {
+        "newest_run_time": IFS_06Z.isoformat(),
+        "newest_serves_to": (IFS_06Z + timedelta(hours=144)).isoformat(),
+        "previous_run_time": IFS_00Z.isoformat(),
+        "previous_serves_from": (IFS_06Z + timedelta(hours=144, seconds=1)).isoformat(),
+        "previous_serves_to": (IFS_00Z + timedelta(hours=360)).isoformat(),
+    }
+    # Read only: the store was asked what it retains and nothing else.
+    assert store.read_calls == [("ecmwf-ifs",)]
+
+
+def test_short_cycle_tolerates_a_store_without_the_retained_read(scheduler_over) -> None:
+    """A store that cannot report retained revisions costs the record, never
+    the publish that already succeeded."""
+    scheduler = scheduler_over("ecmwf-ifs")
+
+    class _Bare:
+        pass
+
+    scheduler._store = _Bare()
+    scheduler._record_short_cycle(get_config("ecmwf-ifs"))
+    assert "short_cycle" not in scheduler.progress["ecmwf-ifs"]
+
+    class _Broken:
+        def retained_artifacts(self, *, source_ids=None):
+            raise RuntimeError("store unavailable")
+
+    scheduler._store = _Broken()
+    scheduler._record_short_cycle(get_config("ecmwf-ifs"))
+    assert "short_cycle" not in scheduler.progress["ecmwf-ifs"]
+
+
+def test_short_cycle_is_not_recorded_for_a_source_with_no_run_cycle(scheduler_over) -> None:
+    """An observation source has no run, so it has no short cycle to describe."""
+    scheduler = scheduler_over("eccc-radar")
+
+    class _Store:
+        def retained_artifacts(self, *, source_ids=None):
+            raise AssertionError("a source with no run cycle must not be asked")
+
+    scheduler._store = _Store()
+    scheduler._record_short_cycle(get_config("eccc-radar"))
+    assert "short_cycle" not in scheduler.progress["eccc-radar"]
