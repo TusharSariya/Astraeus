@@ -7,6 +7,9 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { DEFAULT_INTERPOLATION_METHOD, describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerEvidenceClass, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, stJohnsTime } from './api'
 import { flowObjectUrls } from './api'
 import { EvidenceClassBadge } from './EvidenceClassBadge'
+import { ActiveFamilyLegends, LayerLegendDefinition, LayerStorageLine, describeLayerFamilySentence } from './MapFamilyLegend'
+import { groupLayersByFamily, layerFamily, layerFieldKey } from './api'
+import { familyTitle, fieldDefinition } from './fieldFamily'
 import { describeEvidenceClassSentence, unrecognisedClassReason } from './evidenceClass'
 import type { FlowTexture, FrameResolution, RasterImage } from './api'
 import { FlowBlendLayer } from './FlowBlendLayer'
@@ -1295,6 +1298,16 @@ export function MapPanel({
               nothing, so a missing badge never reads as `retrieved`. */}
           <EvidenceClassBadge evidenceClass={layerEvidenceClass(layer)} declaredClass={layer.evidence_class ?? null} />
         </label>
+        {/* The family and the key travel with the row, so a reader deciding
+            whether to switch two layers on together can see, before the map
+            changes, that they are two definitions of one family's quantity. */}
+        <p className="drawer-row-family" data-family={layerFamily(layer)} data-field-key={layerFieldKey(layer) ?? ''}>
+          <span className="drawer-family-title">{familyTitle(layerFamily(layer))}</span>
+          {' · '}
+          <code>{layerFieldKey(layer) ?? 'no catalogue key'}</code>
+        </p>
+        <p className="drawer-row-definition">{fieldDefinition(layerFieldKey(layer))}</p>
+        <LayerStorageLine layer={layer} />
         {layerEvidenceClass(layer) === 'unrecognised' && (
           <p className="stack-state evidence-class-reason">Evidence class unavailable: {unrecognisedClassReason(layer.evidence_class ?? null)}.</p>
         )}
@@ -1399,9 +1412,14 @@ export function MapPanel({
         </div>
       )}
 
-      {active.some(({ layer }) => layer.raster_available === true) && (
+      {active.length > 0 && (
         <aside className="map-legend-rail" aria-label="Active map legends">
           <strong>Active legends</strong>
+          {/* The definitions the ramps are ramps OF, and the statement that two
+              members of one family are separate scales. Switching the map
+              between members changes this text, which is the disclosure the
+              requirement asks for: the image alone cannot carry it. */}
+          <ActiveFamilyLegends layers={active.map(({ layer }) => layer)} />
           {active.filter(({ layer }) => layer.raster_available === true).map(({ layer }) => {
             const failed = legendFailures[layer.id]
             if (layer.legend_available !== true) return <p key={layer.id}><b>{layer.title}</b> · no provider legend</p>
@@ -1411,6 +1429,7 @@ export function MapPanel({
               <figure key={layer.id}>
                 <img src={layerLegendUrl(layer)} alt={`${rendered ? 'Rendering colormap' : 'Provider legend'} for ${layer.title}`} onError={() => onLegendError(layer)} />
                 <figcaption>{layer.title} · {rendered ? 'exact rendering colormap' : 'provider legend'}</figcaption>
+                <LayerLegendDefinition layer={layer} />
               </figure>
             )
           })}
@@ -1430,6 +1449,34 @@ export function MapPanel({
             <p className="drawer-status" role="status">
               {layersLoading ? 'Loading published layers\u2026' : layersError ? `No layers: ${layersError}` : layers.length === 0 ? 'No layers are published by the API.' : `${layers.length} published layers \u00b7 each drawn at its own frame`}
             </p>
+            {/* Layers by field family, above the evidence-basis groups. The
+                two groupings answer different questions — what a layer IS, and
+                where its evidence came from — and the family one has to be
+                present, because a family is what an activity profile asks for
+                and what a reader must not silently mix members of. */}
+            {layers.length > 0 && (
+              <section className="drawer-families" aria-label="Layers by field family">
+                {/* Labelled by the section, not by a fourth-level heading: the
+                    drawer's h4 run is the evidence-basis grouping, and a second
+                    heading at that level would read as a sixth group. */}
+                <p className="drawer-families-title">Field families</p>
+                {groupLayersByFamily(layers).map((group) => (
+                  <div key={group.family} className="drawer-family" data-family={group.family}>
+                    <h5>{group.title}</h5>
+                    {group.note && <p className="drawer-family-note">{group.note}</p>}
+                    <ul>
+                      {group.members.map((member) => (
+                        <li key={member.id} data-field-key={layerFieldKey(member) ?? ''}>
+                          <b>{member.title}</b> · <code>{layerFieldKey(member) ?? 'no catalogue key'}</code>
+                          <br />
+                          {fieldDefinition(layerFieldKey(member))}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </section>
+            )}
             {grouped.map(({ group, label: heading, rows }) => (
               <section key={group} className="drawer-group" role="group" aria-labelledby={`drawer-group-${group}-${label}`}>
                 <h4 id={`drawer-group-${group}-${label}`}>{heading}</h4>
@@ -1455,7 +1502,7 @@ export function MapPanel({
             const note = layerNoteFor(layer, resolution)
             return (
               <li key={layer.id}>
-                <strong>{layer.title}</strong>: {note ? `${note}. ` : ''}{describeEvidenceClassSentence(layer)} {describeState(layer)} {describeRaster(layer)} {describeEvidenceBasis(layer.evidence_basis, layerGroup(layer))}
+                <strong>{layer.title}</strong>: {note ? `${note}. ` : ''}{describeLayerFamilySentence(layer)} {describeEvidenceClassSentence(layer)} {describeState(layer)} {describeRaster(layer)} {describeEvidenceBasis(layer.evidence_basis, layerGroup(layer))}
               </li>
             )
           })}</ul>}

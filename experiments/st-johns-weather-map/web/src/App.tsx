@@ -7,6 +7,7 @@ import { ModeChip } from './ModeChip'
 import { DeliveryKindLabel, DerivedEvidenceDetails, EvidenceClassBadge, EvidenceClassLegend, FieldAlternatives, FieldEvidenceClass } from './EvidenceClassBadge'
 import { EVIDENCE_CLASS_LABELS, unrecognisedClassReason } from './evidenceClass'
 import { deliveryKindLabel, resolveDeliveryKind } from './deliveryKind'
+import { DifferenceView, FieldFamilyGroups, SourceFieldCatalogue } from './FieldFamilyPanel'
 import { StoryFlyout } from './StoryFlyout'
 import { TimelineDock } from './TimelineDock'
 import { useTheme } from './theme'
@@ -103,6 +104,12 @@ function SourceTag({ attribution }: { attribution: FieldAttribution | undefined 
  *  matching notice that is said, rather than a reason being invented. */
 function refusalReason(source: FieldAttribution | undefined): string | null {
   if (!source) return null
+  // A variable with no catalogue key is refused first: the API served no value
+  // for it at all, and every other reason below presumes a field the catalogue
+  // knows. The response's own notice carries the reason.
+  if (source.uncatalogued) {
+    return source.notice ?? 'this variable has no catalogue key, so no value is served for it'
+  }
   if (source.evidenceClass === 'unrecognised') return unrecognisedClassReason(source.declaredClass)
   if (source.derivationRefused) {
     return source.notice ?? 'the derivation was refused and the response gave no reason'
@@ -1011,6 +1018,10 @@ export default function App() {
               <details className="model-details">
                 <summary>Forecast model · {selectedProduct ?? 'Consensus (BLEND)'}</summary>
                 {modelStrip}
+                {/* What each source publishes, and what of it this deployment
+                    stores. A field with no value on the page is answered here:
+                    published-and-not-fetched is not the same as absent. */}
+                <SourceFieldCatalogue sources={catalog} />
               </details>
               {sourceErrorLine}
               {fallbackBadge}
@@ -1045,6 +1056,11 @@ export default function App() {
                   unrecognised state, so no reader has to infer what a class
                   means from its colour alone. */}
               <EvidenceClassLegend />
+              {/* Families first: what each value IS, grouped the way an
+                  activity profile asks for it, before the metric grid shows
+                  the one member the interface picked as each reading. */}
+              <FieldFamilyGroups snapshot={snapshot} />
+              <DifferenceView snapshot={snapshot} />
               <AlternativeReadings alternatives={snapshot.fieldAlternatives} />
               <div className="metric-grid">
                 <Metric

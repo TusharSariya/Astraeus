@@ -127,9 +127,23 @@ three are different answers a response must keep apart. Nothing outside
 
 ## 4. Web (web owner)
 
-- [ ] 4.1 Group by family, change legends on member switch, refuse
+- [x] 4.1 Group by family, change legends on member switch, refuse
   non-comparable difference views, show `available-not-stored`.
   Verify: `cd web && npm test -- --run family`.
+  Verify result: pass — 27 tests in 2 files
+  (`src/field-family.test.tsx`, `src/field-family-catalogue.test.ts`), and the
+  whole suite stays green at 318 tests in 14 files with `npm run build`
+  succeeding. New `web/src/fieldFamily.ts` (family, storage, absence and
+  comparability logic), `FieldFamilyPanel.tsx` (family groups, difference view,
+  per-source field catalogue), `MapFamilyLegend.tsx` (legend definitions and
+  the not-one-ramp statement), and the generated `web/src/fieldFamilies.ts`
+  written by `web/scripts/generate-field-families.mjs` — 20 families, 135
+  fields, catalogue 1.0.0 — with a staleness test that re-runs the generator
+  against `registry/fields.py` and `registry/fields.schema.json`. Every new
+  response field is optional on the client, so the page renders against the
+  API as it stands today; an absent `family` groups under `ungrouped` and is
+  never inferred from a key's spelling. Recorded in `design.md` under "How the
+  web says what a member measures".
 
 ## 5. Gate
 
