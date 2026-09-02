@@ -25,6 +25,35 @@
       "description": "How this source's values reach the deployment. 'published_cell' is the producer's own grid or observation; 'reprocessed' is an intermediary's transformation of the producer's field; 'intermediary_derived' is a value the intermediary computed from the producer's fields by the intermediary's own method, which the producer never published.",
       "enum": ["published_cell", "reprocessed", "intermediary_derived"]
     },
+    "reach": {
+      "description": "How far a run of this source can cover, as valid time relative to its run time, in hours. Negative earliest_hours means before the run time. per_cycle states latest_hours by UTC run hour where the cycles differ; a record that omits it reaches the same distance on every cycle. An observation covers its own instant: 0 to 0.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["earliest_hours", "latest_hours"],
+      "properties": {
+        "earliest_hours": {"type": "number"},
+        "latest_hours": {"type": "number"},
+        "per_cycle": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"pattern": "^(?:[01][0-9]|2[0-3])$"},
+          "additionalProperties": {"type": "number"}
+        }
+      }
+    },
+    "publication_latency": {
+      "description": "How long after its run time this source has been observed to publish, held apart from the cadence because it is measured rather than promised. estimate_seconds is null when nothing is measured and no seed exists; measured is true only once this deployment has observed a publication; basis names where a non-null estimate came from, and is 'none' when there is nothing to name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimate_seconds", "observation_count", "last_observed", "measured", "basis"],
+      "properties": {
+        "estimate_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "observation_count": {"type": "integer", "minimum": 0},
+        "last_observed": {"type": ["string", "null"], "format": "date-time"},
+        "measured": {"type": "boolean"},
+        "basis": {"$ref": "#/$defs/nonempty"}
+      }
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -85,6 +114,23 @@
         "field_delivery_kinds": {
           "description": "Per-field delivery kind, because one intermediary may deliver reprocessed and intermediary-derived fields for the same producer.",
           "type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/delivery_kind"}
+        },
+        "reach": {"$ref": "#/$defs/reach"},
+        "run_cadence_seconds": {
+          "description": "Producer run cadence in seconds, on a forecast record. Declared, never defaulted: a record whose prose states no resolvable cadence declares none.",
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "native_cadence_seconds": {
+          "description": "Native publication interval in seconds, on an observation or nowcast record. The layer's own resolution, which is also its staleness tolerance.",
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "publication_latency": {"$ref": "#/$defs/publication_latency"},
+        "datamart_fallback_path": {
+          "description": "The dated WXO-DD Datamart layout an ECCC model adapter falls back to when the primary path answers nothing, with {YYYYMMDD}, {HH} and {FFF} placeholders. Declared only where an adapter documents the path.",
+          "type": "string",
+          "pattern": "^https://dd\\.weather\\.gc\\.ca/\\{YYYYMMDD\\}/WXO-DD/"
         },
         "fixture_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
         "live_smoke_test_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]}

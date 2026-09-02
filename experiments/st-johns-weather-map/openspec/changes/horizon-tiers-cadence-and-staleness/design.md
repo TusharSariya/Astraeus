@@ -148,6 +148,38 @@ estimate requires a non-empty `basis`; `measured: true` requires
 `observation_count >= 1` and `last_observed`. `per_cycle` keys are two-digit
 UTC hours and their count matches `86400 / run_cadence_seconds`.
 
+Four things the registry owner had to settle that the seam left open or stated
+too broadly. Field names and shapes are unchanged; these are values.
+
+- **Which records the cadence and latency rules bind.** The requirement is
+  written against a registered-adapter record, and that is how it is enforced:
+  a record with a registered adapter must declare a reach, and then a run
+  cadence with a latency block if its category is a forecast one, or a native
+  cadence if it is not. The seven extra records that declare a horizon without
+  an adapter yet (GEFS, IFS ENS, both AIFS records, GEPS, REPS, WeatherNext 2)
+  are checked for internal consistency but are not forced to complete a shape.
+  This is what lets **WeatherNext 2** declare its documented 15-day reach and
+  an explicitly empty latency while declaring **no run cadence at all**: its
+  record says "official dataset-dependent" and the matrix left it unverified,
+  so a 21600 s cadence read off the 6-hourly step interval would be exactly the
+  invented number the change exists to refuse.
+- **HRDPS and RDPS also carry a null latency.** The seam named GDPS, GEPS, REPS
+  and WeatherNext 2 as the unseeded records, but the matrix measured no ECCC
+  publication instant at all, so the two Datamart models get
+  `estimate_seconds: null`, `measured: false`, `basis: "none"` on the same
+  grounds and start polling at their run time.
+- **GEPS reaches from +3 h, not 0.** Its 12z run advertised
+  `2026-09-01T15Z/2026-09-17T12Z/PT3H`, so the reduction set contains nothing at
+  the run instant and `earliest_hours` is 3. It is the one record whose earliest
+  reach is not its run hour.
+- **OVATION is the one non-forecast record with a forward reach**, 0 to 0.667 h,
+  the upper end of the "~30-40 minutes ahead of its observation instant" its own
+  record states. Radar, lightning, CAP alerts, AQHI, the SWPC K index and the
+  TAF all reach 0 to 0: what is retrieved for each is the current issue, and
+  `aviation` is deliberately outside `FORECAST_CATEGORIES`, so no lead frames
+  exist for a TAF to cover an instant with. An alert's own validity interval
+  travels inside the message and is read from there.
+
 ### `ingest/registry.py`
 
 ```python

@@ -21,16 +21,28 @@ so the two changes may run concurrently.
 
 ## 1. Registry: reach, cadence and measured latency (registry and worker owner)
 
-- [ ] 1.1 Add `reach` (per run cycle where cycles differ), `run_cadence_seconds`
+- [x] 1.1 Add `reach` (per run cycle where cycles differ), `run_cadence_seconds`
   and a `publication_latency` block (estimate, observation count, last observed
   instant, `measured` flag) to every forecast record in
   `registry/source_data.py`, seeding ICON, GFS, GEFS and the four ECMWF records
   from `docs/research/wayfinder/planning-horizon-matrix.md` and leaving GDPS,
   GEPS, REPS and WeatherNext 2 with a null estimate and `measured: false`.
   Verify: `python3 registry/audit.py`
-- [ ] 1.2 Refuse a schedulable record with no declared reach or no resolvable
+  Verify result: `python3 registry/audit.py` -> exit 0, "registry valid: 64
+  sources"; "horizon: 24 records declare a reach (12 run cadence, 11 native
+  cadence) across 17 registered adapters; 7 latencies seeded, 0 measured here".
+  The 24 are the 17 records with a registered adapter plus GEFS, IFS ENS, both
+  AIFS records, GEPS, REPS and WeatherNext 2. Observation and nowcast records
+  carry `native_cadence_seconds` instead of a run cadence and no latency block,
+  since they are not scheduled against a run.
+- [x] 1.2 Refuse a schedulable record with no declared reach or no resolvable
   run cadence, and refuse a defaulted latency.
   Verify: `python3 -m unittest discover -s registry/tests -v -k reach`
+  Verify result: `python3 -m unittest discover -s registry/tests -v -k reach`
+  -> 34 tests, OK (88 OK across the whole registry suite). Also
+  `cd api && uv run pytest tests/test_ingest_registry_reach.py
+  tests/test_ingest_manifest.py -q` -> 28 passed, and the full
+  `cd api && uv run pytest` -> 856 passed, 36 skipped.
 
 ## 2. Worker: scheduling, polling and latency re-measurement (registry and worker owner)
 
