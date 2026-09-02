@@ -84,7 +84,7 @@ services:
       # Scoped writer: object read/write/delete on one bucket, no admin rights.
       WEATHER_MINIO_ACCESS_KEY: ${WEATHER_MINIO_WRITER_KEY:-weather-writer}
       WEATHER_MINIO_SECRET_KEY: ${WEATHER_MINIO_WRITER_SECRET:-weather-writer-local-only}
-      WEATHER_STORAGE_CAP: ${WEATHER_STORAGE_CAP:-25GiB}
+      WEATHER_STORAGE_CAP: ${WEATHER_STORAGE_CAP:-64GiB}
       WEATHER_WORKER_HEARTBEAT: /tmp/weather-worker-heartbeat
       WEATHER_GENERATED_DISPLAY: ${WEATHER_GENERATED_DISPLAY:-on}
       WEATHER_DATAMART_PARALLEL: ${WEATHER_DATAMART_PARALLEL:-6}
@@ -152,7 +152,7 @@ services:
     environment:
       WEATHER_MINIO_ENDPOINT: http://minio:9000
       WEATHER_MINIO_BUCKET: ${WEATHER_MINIO_BUCKET:-weather-artifacts}
-      WEATHER_STORAGE_CAP: ${WEATHER_STORAGE_CAP:-25GiB}
+      WEATHER_STORAGE_CAP: ${WEATHER_STORAGE_CAP:-64GiB}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-weather-local}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-weather-local-only}
       WEATHER_MINIO_WRITER_KEY: ${WEATHER_MINIO_WRITER_KEY:-weather-writer}

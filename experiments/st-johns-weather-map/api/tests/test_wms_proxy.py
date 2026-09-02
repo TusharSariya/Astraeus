@@ -475,12 +475,15 @@ def test_unreadable_capabilities_produce_no_frames_rather_than_an_invented_range
 
 def test_frames_outside_the_experiment_window_are_dropped_and_the_full_extent_stated(monkeypatch, data_mode):
     use_live_store(monkeypatch, data_mode, ArtifactStore([]))
-    stub_capabilities(monkeypatch, forward_hours(count=48))
+    # The window now reaches 14 days forward, so the advertised extent has to
+    # exceed that before any frame is dropped: 400 hourly frames from two hours
+    # ago run past now+14d.
+    stub_capabilities(monkeypatch, forward_hours(count=400))
 
     payload = client.get(f"{PREFIX}/layers").json()
     proxied = [layer for layer in payload["layers"] if layer["evidence_basis"] == "live_proxy"][0]
 
-    assert len(proxied["times"]) < 48
+    assert len(proxied["times"]) < 400
     assert any("advertises" in notice and "window" in notice for notice in payload["notices"])
 
 
@@ -569,7 +572,11 @@ def test_satellite_layers_offer_only_past_frames_inside_the_window(monkeypatch, 
         assert times, "the last three hours of scans have to be offered"
         assert all(stamp <= reference for stamp in times), "an observed frame can never sit in the future"
         assert len(times) < len(scans)
-        assert 12 <= len(times) <= 19  # roughly three hours of ten-minute scans
+        # The window reaches 24 hours back now, not three, so a day of
+        # ten-minute scans is offered rather than three hours of them. The
+        # bound still matters: it is what proves the two-day advertised extent
+        # is intersected with the window rather than passed through.
+        assert 139 <= len(times) <= 151  # roughly a day of ten-minute scans
         assert layer["cadence_seconds"] == 600
         assert layer["staleness_tolerance_seconds"] == 300
         assert layer["raster_available"] is True

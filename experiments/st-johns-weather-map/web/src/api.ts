@@ -215,6 +215,10 @@ function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | 
     declaredClass: declaredEvidenceClass(provenance.evidence_class),
     qualityStatus: quality.status,
     qualityFlags: quality.flags,
+    // Optional on the wire, like every other field of the catalogue and window
+    // contracts: an API that does not serve it yet leaves it null, and a null
+    // last valid time downgrades an aged-out claim rather than filling one in.
+    lastValidTime: text(provenance.last_valid_time),
     // Inputs and method are read only for the one class that is defined by
     // them. A reprocessed value naming a `derivation` is the intermediary's
     // sentence, not a registered method this deployment can cite.

@@ -49,22 +49,31 @@ for migration in "$ROOT"/infra/postgres/init/*.sql; do
   docker exec "$CONTAINER" psql -U weather -d weather -v ON_ERROR_STOP=1 -q -f /tmp/migration.sql
 done
 
-docker cp "$ROOT/infra/postgres/tests/publication_invariants.sql" "$CONTAINER:/tmp/proof.sql" >/dev/null
+# Every proof in the directory, in filename order, each in its own psql run.
+# A proof states its own final assertion; reaching the end of the file is not
+# the same as having asserted anything, so the sentinel is required.
+for proof in "$ROOT"/infra/postgres/tests/*.sql; do
+  name="$(basename "$proof")"
+  echo
+  echo "running $name"
+  docker cp "$proof" "$CONTAINER:/tmp/proof.sql" >/dev/null
 
-# Captured rather than piped: on failure the whole psql transcript is the
-# useful artifact, and a pipeline would discard it.
-output=$(docker exec "$CONTAINER" psql -U weather -d weather -v ON_ERROR_STOP=1 -f /tmp/proof.sql 2>&1) || {
-  echo "$output"
-  echo "SQL INVARIANTS FAILED"
-  exit 1
-}
+  # Captured rather than piped: on failure the whole psql transcript is the
+  # useful artifact, and a pipeline would discard it.
+  output=$(docker exec "$CONTAINER" psql -U weather -d weather -v ON_ERROR_STOP=1 -f /tmp/proof.sql 2>&1) || {
+    echo "$output"
+    echo "SQL INVARIANTS FAILED: $name"
+    exit 1
+  }
 
-echo "$output" | grep -E "PASS|FAIL|ERROR" | sed -E 's/^psql:[^ ]+ (NOTICE:  )?//' || true
+  echo "$output" | grep -E "PASS|FAIL|ERROR" | sed -E 's/^psql:[^ ]+ (NOTICE:  )?//' || true
 
-if ! echo "$output" | grep -q "ALL PUBLICATION INVARIANTS HOLD"; then
-  echo "$output"
-  echo "SQL INVARIANTS FAILED: the script did not reach its final assertion"
-  exit 1
-fi
+  if ! echo "$output" | grep -qE "ALL [A-Z ]+ INVARIANTS HOLD"; then
+    echo "$output"
+    echo "SQL INVARIANTS FAILED: $name did not reach its final assertion"
+    exit 1
+  fi
+done
+
 echo
-echo "all publication invariants hold"
+echo "all storage invariants hold"

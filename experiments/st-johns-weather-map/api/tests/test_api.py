@@ -73,12 +73,12 @@ def test_the_fixture_catalogue_only_names_real_registry_ids():
     assert {source.id for source in SOURCES} <= {record["id"] for record in registry()["sources"]}
 
 
-def test_timeline_has_exact_now_minus_three_to_plus_twenty_four_window_and_local_offsets():
+def test_timeline_has_exact_now_minus_twenty_four_to_plus_fourteen_days_and_local_offsets():
     payload = client.get(f"{PREFIX}/timeline").json()
     start = datetime.fromisoformat(payload["start"])
     end = datetime.fromisoformat(payload["end"])
-    assert (end - start).total_seconds() == 27 * 3600
-    assert len(payload["items"]) == 28
+    assert (end - start).total_seconds() == 360 * 3600
+    assert len(payload["items"]) == 361
     stamps = [datetime.fromisoformat(item["valid_time_utc"]) for item in payload["items"]]
     assert stamps[0] == start and stamps[-1] == end
     assert all(later - earlier == timedelta(hours=1) for earlier, later in zip(stamps, stamps[1:]))
@@ -86,8 +86,8 @@ def test_timeline_has_exact_now_minus_three_to_plus_twenty_four_window_and_local
         local = datetime.fromisoformat(item["valid_time_newfoundland"])
         assert local == stamp.astimezone(NEWFOUNDLAND)
         assert local.utcoffset() in {NDT, NST}
-    assert "CYYT METAR/SPECI" in payload["items"][3]["available_products"]
-    assert all("CYYT METAR/SPECI" not in item["available_products"] for item in payload["items"][4:])
+    assert "CYYT METAR/SPECI" in payload["items"][24]["available_products"]
+    assert all("CYYT METAR/SPECI" not in item["available_products"] for item in payload["items"][25:])
 
 
 def test_newfoundland_offsets_are_zoneinfo_driven_across_dst():
@@ -245,11 +245,11 @@ def test_rolling_window_boundaries_are_inclusive(pick):
     assert datetime.fromisoformat(response.json()["valid_time"]).tzinfo is not None
 
 
-def test_window_is_exactly_three_hours_back_and_twenty_four_forward():
+def test_window_is_exactly_twenty_four_hours_back_and_fourteen_days_forward():
     reference = now()
     assert reference.minute == reference.second == reference.microsecond == 0
-    assert reference - window_start(reference) == timedelta(hours=3)
-    assert window_end(reference) - reference == timedelta(hours=24)
+    assert reference - window_start(reference) == timedelta(hours=24)
+    assert window_end(reference) - reference == timedelta(days=14)
 
 
 def test_profile_and_cross_section_enforce_same_space_time_boundaries():
@@ -551,7 +551,7 @@ def test_the_timeline_lists_only_hours_that_actually_have_a_published_artifact(m
     use_live_store(monkeypatch, data_mode, EmptyStore())
     payload = client.get(f"{PREFIX}/timeline").json()
     assert payload["data_mode"] == "unavailable"
-    assert len(payload["items"]) == 28
+    assert len(payload["items"]) == 361
     assert all(item["available_products"] == [] for item in payload["items"])
     assert payload["notices"]
 
@@ -573,8 +573,8 @@ def test_a_frame_landing_off_the_hour_still_populates_its_hour(monkeypatch, data
 
     The timeline is an hourly index, so it has to say which HOUR holds a
     published frame. Keying it on the exact artifact stamp meant only a frame
-    that happened to land on the hour ever matched, and 25 of 28 hours read as
-    empty while their evidence sat a few minutes away.
+    that happened to land on the hour ever matched, and almost every hour read
+    as empty while its evidence sat a few minutes away.
     """
     hour = now()
 

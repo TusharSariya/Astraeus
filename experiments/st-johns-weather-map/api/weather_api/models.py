@@ -108,6 +108,12 @@ class SourceState(StrEnum):
 DERIVED_FLAG = "derived"
 #: Set where a method's output was pulled back to the declared physical range.
 RANGE_CLAMPED_FLAG = "range_clamped"
+#: Set where this deployment held the frame and purged it because its valid
+#: time left the sliding window. A flag rather than a fifth QC status for the
+#: same reason ``derived`` is: ageing out is a retention fact about the store,
+#: not a verdict on the value, and the QC status a frame carried is not
+#: retroactively changed by its removal.
+AGED_OUT_FLAG = "aged_out"
 
 #: Worst-first ordering of the four statuses. A derived value takes the worst
 #: status among its inputs: it is the only rule that cannot launder a suspect
@@ -254,13 +260,32 @@ class Provenance(StrictModel):
     sample_method: str | None = None
     contributing_evidence: list[str] = Field(default_factory=list)
     contributors: list[ContributorProvenance] = Field(default_factory=list)
+    #: The latest valid time this deployment ever held for the stream, kept
+    #: after the frames themselves are purged. It is what turns "the value is
+    #: absent" into "we held it out to here and it aged out", so the reader is
+    #: told the edge of what was ever available rather than merely that
+    #: something is gone. Null on every value that is not an aged-out absence.
+    last_valid_time: datetime | None = None
 
-    @field_validator("run_time", "valid_time", "retrieval_time")
+    @field_validator("run_time", "valid_time", "retrieval_time", "last_valid_time")
     @classmethod
     def require_aware_time(cls, value: datetime | None) -> datetime | None:
         if value is not None and value.tzinfo is None:
             raise ValueError("timestamps must include an offset")
         return value
+
+    @model_validator(mode="after")
+    def aged_out_states_the_last_valid_time(self) -> Provenance:
+        """``aged_out`` without a last valid time is a claim, not a report.
+
+        A deployment that never held a frame must not say it held one and lost
+        it, so the flag and the time stand or fall together. The absence with
+        no recorded time is ``null``; a store that cannot be read reports
+        ``unavailable`` and neither flag.
+        """
+        if AGED_OUT_FLAG in self.quality.flags and self.last_valid_time is None:
+            raise ValueError("aged_out requires a recorded last_valid_time; without one the absence is null, not aged out")
+        return self
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -546,6 +571,11 @@ class TimelineItem(StrictModel):
     valid_time_utc: datetime
     valid_time_newfoundland: datetime
     available_products: list[str]
+    #: Sources whose frames this deployment held and purged when their valid
+    #: times left the window, each with the last valid time it reached. An
+    #: hour with no products and no aged-out source is an hour nothing ever
+    #: covered; without this the two read identically.
+    aged_out_sources: dict[str, datetime] = Field(default_factory=dict)
 
 
 class TimelineResponse(StrictModel):
@@ -618,6 +648,11 @@ class LayersResponse(StrictModel):
     operational: Literal[False] = False
     layers: list[Layer]
     notices: list[str] = Field(default_factory=list)
+    #: Sources whose frames were held here and purged when they left the
+    #: window, each with the last valid time reached. Present so an empty
+    #: layer index can be read as "the evidence aged out" rather than as
+    #: "nothing was ever drawn here".
+    aged_out_sources: dict[str, datetime] = Field(default_factory=dict)
 
 
 class MethodScore(StrictModel):
@@ -838,6 +873,12 @@ class ReadyResponse(StrictModel):
     operational: Literal[False] = False
     ready: bool
     checks: dict[str, bool]
+    #: Sources whose frames this deployment held and purged, each with the
+    #: last valid time it reached. A store holding only aged-out frames is not
+    #: ready, and saying so as aged out rather than as never retrieved is the
+    #: difference between "ingestion has stopped" and "ingestion never ran".
+    aged_out_sources: dict[str, datetime] = Field(default_factory=dict)
+    notices: list[str] = Field(default_factory=list)
 
 
 class ErrorResponse(StrictModel):

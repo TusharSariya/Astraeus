@@ -7,7 +7,7 @@ import { ModeChip } from './ModeChip'
 import { DeliveryKindLabel, DerivedEvidenceDetails, EvidenceClassBadge, EvidenceClassLegend, FieldAlternatives, FieldEvidenceClass } from './EvidenceClassBadge'
 import { EVIDENCE_CLASS_LABELS, unrecognisedClassReason } from './evidenceClass'
 import { deliveryKindLabel, resolveDeliveryKind } from './deliveryKind'
-import { DifferenceView, FieldFamilyGroups, SourceFieldCatalogue } from './FieldFamilyPanel'
+import { AbsenceStateLegend, DifferenceView, FieldFamilyGroups, SourceFieldCatalogue } from './FieldFamilyPanel'
 import { StoryFlyout } from './StoryFlyout'
 import { TimelineDock } from './TimelineDock'
 import { useTheme } from './theme'
@@ -1056,6 +1056,10 @@ export default function App() {
                   unrecognised state, so no reader has to infer what a class
                   means from its colour alone. */}
               <EvidenceClassLegend />
+              {/* And every way a value can be absent, for the same reason: an
+                  empty slot is a claim, and the reader must be able to decode
+                  which of the five claims it is without leaving the page. */}
+              <AbsenceStateLegend />
               {/* Families first: what each value IS, grouped the way an
                   activity profile asks for it, before the metric grid shows
                   the one member the interface picked as each reading. */}

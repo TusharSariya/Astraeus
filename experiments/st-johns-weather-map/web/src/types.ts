@@ -151,6 +151,12 @@ export interface FieldAttribution {
    *  a fifth status, so the four-status contract holds. */
   qualityStatus: string | null
   qualityFlags: string[]
+  /** `provenance.last_valid_time`: the newest valid time this deployment held
+   *  for the stream before its frames left the retention window, as an ISO
+   *  instant. Null when the response declared none — and an `aged_out` flag
+   *  with a null last valid time is never rendered as aged out, because the
+   *  edge of what was held is the whole content of that report. */
+  lastValidTime: string | null
   /** The method and inputs a `derived_here` value names. Empty and null for
    *  every other class; never synthesised from the derivation sentence. */
   derivationMethod: DerivationMethod | null

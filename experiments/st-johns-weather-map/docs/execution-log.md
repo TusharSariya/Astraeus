@@ -143,6 +143,41 @@ web owner surfaced are section 6 of the change's tasks.md.
 
 Landed as PR #32 (`execution/field-catalogue`, stacked on #31), 2026-09-02.
 
+### Step 5: storage-window-and-restart-cache, sections 1, 2, 3 and 5.1
+
+Branch `worktree-agent-a5612731761b1e1e1`, stacked on `execution/field-catalogue`
+and merged with the ingest owner's `execution/storage-window` (45038d6).
+
+The seam was fixed before the two owners started: `api/weather_api/config.py`
+with `WINDOW_BACK`, `WINDOW_FORWARD` and `sliding_window(now)`, plus the
+absence shape on the wire. Both are in the change's design.md under "Seam".
+
+Facts worth knowing after this step:
+
+- Retention is SQL, not Python. `infra/postgres/init/003_retention_window.sql`
+  holds the window, the two-run ceiling, the last-valid-time record and the
+  purge; `publish_run` was replaced so publication and purge commit together.
+  `ArtifactStore.purge_outside_window` delegates to it, so there is one purge.
+- A trigger stamps each revision's valid-time span from its own provenance at
+  insert, so retention became true without an adapter change.
+- The window went from 28 hourly steps to 361. Anything that assumed a short
+  window changed with it: the proxied GeoMet layers now offer far more frames,
+  and the satellite drawer offers about a day of ten-minute scans rather than
+  three hours.
+- `aged_out` rides `quality.flags` and is refused by the model without a
+  `provenance.last_valid_time` beside it. `quality.status` keeps its four
+  values. `/timeline`, `/ready` and `/layers` gained `aged_out_sources`.
+- `make test-sql` now runs every proof under `infra/postgres/tests/`, not just
+  `publication_invariants.sql`.
+- The worker image must ship `api/weather_api/config.py`; the ingest owner
+  recorded that and the Dockerfile owner has it.
+
+Gates: `cd api && uv run pytest` 848 passed, 36 skipped (a fresh worktree skips
+the numpy and xarray tests). `make test-sql` green: 17 publication and 21
+retention invariants. `openspec validate storage-window-and-restart-cache
+--strict` valid. Task 6.1 (`make test` in the main checkout, `specctl.py
+validate`) is still open for the orchestrator.
+
 ## Where to pick up (written 2026-09-02, paused at the owner's request)
 
 - Merge #31 then #32 (or rebase #32 onto main after #31).
@@ -197,3 +232,31 @@ Facts worth knowing after this step:
 - A derived relative humidity is stamped `liquid` from its registered method's
   own declaration. It is the only phase in a response that does not come off
   an artifact attribute.
+
+### Step 5: storage-window-and-restart-cache
+
+Branch `execution/storage-window`, stacked on step 4. Three owners in
+parallel against a pinned seam (`api/weather_api/config.py`:
+`WINDOW_BACK`, `WINDOW_FORWARD`, `sliding_window`; absence flags all in
+`quality.flags`; `provenance.last_valid_time` always ISO when `aged_out`).
+Storage and API owner: 64 GiB quota, single window, purge and last valid
+time moved into SQL so publication and purge are one transaction,
+`aged_out_sources` on `/timeline`, `/ready` and `/layers`. Ingest owner:
+frames keyed by nanosecond valid time, `run_identity_conflict`, restart
+reconciliation, derived recompute, out-of-window QC on the shared window;
+the scheduler lives in `worker/runtime.py` with decisions as pure functions
+in `ingest/scheduler.py`. Web owner: aged-out badge with St. John's local
+time and a legend of the five absence states. Two packaging fixes landed
+alongside: the api and worker images now ship the `registry` package and
+`worker` ships `config.py`, which `ingest/window.py` loads by path to avoid
+a circular import. `make up` is healthy again.
+
+Landed as PR #33, 2026-09-02.
+
+## Method change from step 6 (owner decision 2026-09-02)
+
+One Fable subagent per change acts as change lead: it divides the change by
+file ownership, pins seams, runs at most three Opus or Sonnet task agents at
+once in their own worktrees, merges them, keeps the openspec files truthful,
+and hands the main session one branch. The main session runs the gate in the
+main checkout, pushes and opens the pull request.

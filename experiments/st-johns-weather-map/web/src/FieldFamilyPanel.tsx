@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
+  ABSENCE_LEGEND,
   UNGROUPED_FAMILY,
+  absenceBadge,
   buildComparabilityIndex,
   comparabilityOf,
   comparabilityReason,
@@ -8,7 +10,7 @@ import {
   fieldDefinition,
   groupByFamily,
   resolveAbsenceState,
-  unavailableSentence,
+  type AbsenceBadgeCopy,
   type ComparabilityIndex,
 } from './fieldFamily'
 import { STORAGE_DESCRIPTIONS, STORAGE_LABELS } from './fieldFamily'
@@ -32,26 +34,31 @@ function StorageLine({ member }: { member: ServedFieldValue }) {
 
 /** What a member shows where a number would go.
  *
- *  Five different answers, kept apart on purpose: a value; `available-not-stored`
- *  and `not-published`, which are upstream facts; and `null`, `blocked` or
- *  `aged_out`, which are absences of a value in a field this deployment does
- *  hold. Collapsing any of them into "no data" would tell a reader nothing
- *  about whether waiting, asking for access, or nothing at all would help. */
-function memberValueText(member: ServedFieldValue): string {
-  if (member.hasValue) return member.text
-  const storage = member.attribution.storage
-  if (storage === 'available-not-stored') return 'Not stored here'
-  if (storage === 'not-published') return 'Not published by this source'
-  const absence = resolveAbsenceState(member.attribution.qualityStatus)
-  if (absence === 'blocked') return 'Blocked'
-  if (absence === 'aged_out') return 'Aged out of the retention window'
-  return 'No value'
+ *  Six different answers, kept apart on purpose: a value; `available-not-stored`
+ *  and `not-published`, which are upstream facts; and `null`, `blocked`,
+ *  `retrieval_failed` or `aged_out`, which are absences of a value in a field
+ *  this deployment does hold. Collapsing any of them into "no data" would tell
+ *  a reader nothing about whether waiting, asking for access, or nothing at
+ *  all would help — and only one of them, `retrieval_failed`, is a condition a
+ *  retry may clear. */
+function memberAbsence(member: ServedFieldValue): AbsenceBadgeCopy | null {
+  if (member.hasValue) return null
+  return absenceBadge(
+    member.attribution.storage,
+    resolveAbsenceState(member.attribution.qualityStatus, member.attribution.qualityFlags),
+    member.attribution.lastValidTime,
+  )
 }
 
 function MemberRow({ member, index }: { member: ServedFieldValue; index: ComparabilityIndex }) {
   const key = member.attribution.fieldKey
-  const absence = member.hasValue ? null : resolveAbsenceState(member.attribution.qualityStatus)
-  const sentence = member.hasValue ? null : unavailableSentence(member.attribution.storage, absence)
+  const badge = memberAbsence(member)
+  // The storage line already carries the two upstream facts, so the absence
+  // sentence renders only for a state on the quality axis. Aged out renders it
+  // whatever the storage answer is: a purged frame belongs to a field this
+  // deployment DOES store, so suppressing it wherever storage is declared
+  // would hide the one state that carries a time.
+  const sentence = badge && badge.state !== 'available-not-stored' && badge.state !== 'not-published' ? badge.sentence : null
   // Which siblings this member may NOT be drawn with, named on the member
   // itself so the statement travels with the value rather than living only in
   // a family heading a reader may have scrolled past.
@@ -60,14 +67,20 @@ function MemberRow({ member, index }: { member: ServedFieldValue; index: Compara
     <li className="family-member" data-field-key={key ?? ''} data-family={member.attribution.family}>
       <p className="family-member-head">
         <code className="family-member-key">{key ?? 'no catalogue key'}</code>
-        <strong className="family-member-value">{memberValueText(member)}</strong>
+        {badge
+          ? (
+            <strong className={`family-member-value absence-badge absence-${badge.state}`} data-absence-state={badge.state} title={badge.sentence}>
+              {badge.label}
+            </strong>
+          )
+          : <strong className="family-member-value">{member.text}</strong>}
         {member.attribution.phase && <span className="family-member-phase" data-phase={member.attribution.phase}>phase: {member.attribution.phase}</span>}
         <EvidenceClassBadge evidenceClass={member.attribution.evidenceClass} declaredClass={member.attribution.declaredClass} />
         <em className="family-member-source">{member.attribution.sourceId ?? member.attribution.product ?? member.attribution.provider}</em>
       </p>
       <p className="family-member-definition">{fieldDefinition(key)}</p>
       <StorageLine member={member} />
-      {sentence && !member.attribution.storage && <p className="family-member-absence">{sentence}</p>}
+      {sentence && <p className="family-member-absence" data-absence-state={badge!.state}>{sentence}</p>}
       {member.attribution.uncatalogued && (
         <p className="family-member-uncatalogued">
           This variable has no catalogue key, so no value is served for it and it belongs to no family.
@@ -81,6 +94,38 @@ function MemberRow({ member, index }: { member: ServedFieldValue; index: Compara
         </p>
       ))}
     </li>
+  )
+}
+
+/** All five ways a value can be absent, named, in one place.
+ *
+ *  It renders whether or not anything on the page is currently absent, and it
+ *  renders every state rather than only the states in view: the spec's rule is
+ *  that the absence of a badge never carries meaning, and a legend that
+ *  appeared only when something was missing would itself be a badge. The five
+ *  span two axes on purpose — `available-not-stored` is a storage answer and
+ *  the other four are quality states — because a reader looking at an empty
+ *  slot asks one question and must find all five answers to it here. */
+export function AbsenceStateLegend() {
+  return (
+    <details className="absence-legend">
+      <summary>Absent value legend</summary>
+      <p>
+        Why a value is not shown. Five different answers, never folded into one &ldquo;no data&rdquo;: only retrieval failed is a
+        condition a later cycle may clear, and only aged out means this deployment once held the value. An aged-out badge
+        carries the last valid time in St. John&apos;s local time, with the ISO instant in its description.
+      </p>
+      <dl>
+        {ABSENCE_LEGEND.map(({ state, label, description }) => (
+          <div key={state} className="absence-legend-row">
+            <dt>
+              <em className={`absence-badge absence-${state}`} data-absence-state={state} title={description}>{label}</em>
+            </dt>
+            <dd>{description}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   )
 }
 

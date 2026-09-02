@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from .config import WINDOW_BACK, WINDOW_FORWARD, WINDOW_STEPS, sliding_window
 from .models import (
     Coverage,
     DataMode,
@@ -39,25 +40,28 @@ from .science import (
 UTC = timezone.utc
 NEWFOUNDLAND = ZoneInfo("America/St_Johns")
 AVALON_CORE_BOUNDS = {"south": 46.5, "west": -55.0, "north": 48.5, "east": -51.0}
-BACK_HOURS = 3
-FORWARD_HOURS = 24
+# Read from the one window definition rather than restated. Two literals is
+# how the API came to serve 3 h back while the planning tier reached 14 days.
+BACK_HOURS = int(WINDOW_BACK.total_seconds() // 3600)
+FORWARD_HOURS = int(WINDOW_FORWARD.total_seconds() // 3600)
 
 
 def now() -> datetime:
     """The rolling reference time, truncated to the hour.
 
-    Truncation keeps the evidence window exactly 28 hourly steps whenever it is
-    asked for, which is the contract the timeline and the UI depend on.
+    Truncation keeps the evidence window exactly ``WINDOW_STEPS`` hourly steps
+    whenever it is asked for, which is the contract the timeline and the UI
+    depend on.
     """
     return datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
 
 
 def window_start(reference: datetime | None = None) -> datetime:
-    return (reference or now()) - timedelta(hours=BACK_HOURS)
+    return sliding_window(reference or now())[0]
 
 
 def window_end(reference: datetime | None = None) -> datetime:
-    return (reference or now()) + timedelta(hours=FORWARD_HOURS)
+    return sliding_window(reference or now())[1]
 
 
 SOURCES = [
@@ -307,7 +311,7 @@ def timeline(reference: datetime | None = None) -> list[TimelineItem]:
     moment = reference or now()
     start = window_start(moment)
     result: list[TimelineItem] = []
-    for index in range(BACK_HOURS + FORWARD_HOURS + 1):
+    for index in range(WINDOW_STEPS):
         valid_time = start + timedelta(hours=index)
         products = ["HRDPS", "GFS", "REPS"]
         if valid_time <= moment:

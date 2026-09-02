@@ -22,6 +22,9 @@ COPY ingest ./ingest
 # ``registry.fields``, and the schema travels with the catalogue.
 COPY registry/__init__.py registry/fields.py registry/source_data.py \
      registry/fields.schema.json registry/schema.json ./registry/
+# The single sliding-window definition lives in the API package;
+# ``ingest.window`` loads this one file by path.
+COPY api/weather_api/config.py ./api/weather_api/config.py
 COPY worker/runtime.py worker/entrypoint.sh ./worker/
 RUN chmod 0555 /app/worker/entrypoint.sh
 

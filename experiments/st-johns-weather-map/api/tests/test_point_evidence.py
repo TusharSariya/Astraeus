@@ -640,3 +640,191 @@ def test_an_hrdps_keyed_artifact_reaches_point_with_its_cloud():
     assert cloud.provenance.data_mode == "live" and cloud.provenance.source_id == "eccc-hrdps"
     assert catalogue.storage_of("eccc-hrdps", "total_cloud_opacity") == "stored"
     assert "total_cloud" not in FIELD_BY_VARIABLE, "the collided key is gone from the API's table"
+
+
+# --- aged out: the third absence state, end to end ------------------------
+#
+# Five absence states reach a reader, and they are five different facts about
+# this deployment. ``aged_out`` is the one that says evidence WAS here: it
+# carries the last valid time the store held, so the reader is told the edge of
+# what was available rather than merely that something is gone. These assert
+# the wire shape the web renders from - the flag on ``quality.flags``, the
+# instant on ``provenance.last_valid_time`` - and that no other absence
+# borrows it.
+#
+# Spec-Refs: openspec/changes/storage-window-and-restart-cache/specs/evidence-window-timeline/spec.md
+
+import sys as _sys  # noqa: E402
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from weather_api.app import PREFIX, app as _app  # noqa: E402
+from weather_api.models import AGED_OUT_FLAG, Provenance  # noqa: E402
+from weather_api.store import ABSENCE_STATES, StoreUnavailable, absence_state, unavailable_point_fields  # noqa: E402
+
+_api_module = _sys.modules["weather_api.app"]
+_client = TestClient(_app)
+HELD_UNTIL = datetime(2026, 9, 1, 6, tzinfo=UTC)
+
+
+class _EmptyStore:
+    skipped: list[Any] = []
+    unmodelled: list[Any] = []
+
+    def published_products(self) -> dict[str, set[datetime]]:
+        return {}
+
+    def source_activity(self) -> dict[str, datetime]:
+        return {}
+
+    def current(self) -> list[Any]:
+        return []
+
+    def sample_point(self, *_args: Any, **_kwargs: Any) -> list[Any]:
+        return []
+
+
+@pytest.fixture
+def empty_live_store(monkeypatch, data_mode):
+    """A reachable live store that holds nothing, with no history recorded."""
+    data_mode("live")
+    monkeypatch.setattr(_api_module, "live_store", lambda: _EmptyStore())
+    monkeypatch.setattr(_api_module, "last_valid_times", lambda store: {})
+    return monkeypatch
+
+
+def test_the_five_absence_states_are_named_once_and_stay_distinct():
+    assert ABSENCE_STATES == ("null", "blocked", "aged_out", "retrieval_failed", "available-not-stored")
+    assert len(set(ABSENCE_STATES)) == 5
+
+
+def test_aged_out_is_reported_with_the_last_valid_time_the_store_held(empty_live_store):
+    empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-hrdps": HELD_UNTIL})
+
+    payload = _client.get(f"{PREFIX}/point").json()
+
+    assert payload["data_mode"] == "unavailable"
+    assert HELD_UNTIL.isoformat() in payload["selection"]["reason"]
+    for field in payload["fields"]:
+        assert field["value"] is None
+        assert AGED_OUT_FLAG in field["provenance"]["quality"]["flags"]
+        assert "aged_out:eccc-hrdps" in field["provenance"]["quality"]["flags"]
+        assert datetime.fromisoformat(field["provenance"]["last_valid_time"]) == HELD_UNTIL
+        # The QC status keeps its four values; ageing out is a flag, never a
+        # fifth status, because a value's verdict is not changed by its removal.
+        assert field["provenance"]["quality"]["status"] in {"passed", "suspect", "failed", "unknown"}
+
+
+def test_a_source_that_never_published_here_reports_null_not_aged_out(empty_live_store):
+    payload = _client.get(f"{PREFIX}/point").json()
+
+    assert payload["data_mode"] == "unavailable"
+    for field in payload["fields"]:
+        assert field["value"] is None
+        assert AGED_OUT_FLAG not in field["provenance"]["quality"]["flags"]
+        assert field["provenance"]["last_valid_time"] is None
+        # ``no_retrieval`` is the null absence: nothing was ever held.
+        assert "no_retrieval" in field["provenance"]["quality"]["flags"]
+
+
+def test_aged_out_is_not_no_retrieval(empty_live_store):
+    """They are different claims: one says we had it, the other says we never did."""
+    empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-hrdps": HELD_UNTIL})
+    payload = _client.get(f"{PREFIX}/point").json()
+    flags = payload["fields"][0]["provenance"]["quality"]["flags"]
+    assert AGED_OUT_FLAG in flags and "no_retrieval" not in flags
+
+
+def test_a_selected_product_that_aged_out_names_itself(empty_live_store):
+    empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-reps": HELD_UNTIL})
+
+    payload = _client.get(f"{PREFIX}/point", params={"product": "REPS"}).json()
+
+    assert "REPS" in payload["selection"]["reason"]
+    assert HELD_UNTIL.isoformat() in payload["selection"]["reason"]
+    for field in payload["fields"]:
+        assert field["provenance"]["source_id"] == "eccc-reps"
+        assert "aged_out:eccc-reps" in field["provenance"]["quality"]["flags"]
+        assert datetime.fromisoformat(field["provenance"]["last_valid_time"]) == HELD_UNTIL
+
+
+def test_a_selected_product_that_was_never_held_is_still_null(empty_live_store):
+    empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-hrdps": HELD_UNTIL})
+
+    payload = _client.get(f"{PREFIX}/point", params={"product": "REPS"}).json()
+
+    for field in payload["fields"]:
+        assert AGED_OUT_FLAG not in field["provenance"]["quality"]["flags"], "another source's history is not this one's"
+        assert field["provenance"]["last_valid_time"] is None
+
+
+def test_an_unreadable_last_valid_time_record_reports_unavailable_not_an_absence(empty_live_store):
+    """Guessing between aged out and null is itself a fabrication."""
+
+    def raising(store):
+        raise StoreUnavailable("the last valid time table is unreachable")
+
+    empty_live_store.setattr(_api_module, "last_valid_times", raising)
+    payload = _client.get(f"{PREFIX}/point").json()
+
+    assert payload["data_mode"] == "unavailable"
+    assert all(AGED_OUT_FLAG not in field["provenance"]["quality"]["flags"] for field in payload["fields"])
+    assert any("aged out" in notice for notice in payload["notices"])
+
+
+def test_the_profile_reports_aged_out_the_same_way(empty_live_store):
+    empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-hrdps": HELD_UNTIL})
+    empty_live_store.setattr(_api_module, "live_profile_levels", lambda *args, **kwargs: [])
+
+    payload = _client.get(f"{PREFIX}/profile").json()
+
+    assert payload["data_mode"] == "unavailable"
+    for level in payload["levels"]:
+        for field in level["fields"]:
+            assert field["value"] is None
+            assert AGED_OUT_FLAG in field["provenance"]["quality"]["flags"]
+            assert datetime.fromisoformat(field["provenance"]["last_valid_time"]) == HELD_UNTIL
+
+
+def test_the_layer_index_names_its_aged_out_sources(empty_live_store):
+    empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-hrdps": HELD_UNTIL})
+    empty_live_store.setattr(_api_module, "_proxied_forecast_layers", lambda: ([], []))
+
+    payload = _client.get(f"{PREFIX}/layers").json()
+
+    assert payload["data_mode"] == "unavailable"
+    assert payload["layers"] == []
+    assert datetime.fromisoformat(payload["aged_out_sources"]["eccc-hrdps"]) == HELD_UNTIL
+
+
+def test_the_timeline_reports_aged_out_beside_its_empty_hours(empty_live_store):
+    empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-hrdps": HELD_UNTIL})
+
+    payload = _client.get(f"{PREFIX}/timeline").json()
+
+    assert len(payload["items"]) == 361
+    named = payload["items"][0]["aged_out_sources"]
+    assert datetime.fromisoformat(named["eccc-hrdps"]) == HELD_UNTIL
+
+
+# --- the model refuses the half-stated claim -----------------------------
+
+def test_aged_out_without_a_last_valid_time_is_refused_by_the_model():
+    """A deployment that never held a frame must not claim it held one."""
+    with pytest.raises(ValueError, match="last_valid_time"):
+        unavailable_point_fields(VALID_TIME, flags=[AGED_OUT_FLAG])
+
+
+def test_a_last_valid_time_must_carry_an_offset():
+    fields = unavailable_point_fields(VALID_TIME, flags=[AGED_OUT_FLAG], last_valid_time=HELD_UNTIL)
+    provenance = fields[0].provenance
+    assert isinstance(provenance, Provenance)
+    assert provenance.last_valid_time == HELD_UNTIL
+
+    with pytest.raises(ValueError, match="offset"):
+        unavailable_point_fields(VALID_TIME, flags=[AGED_OUT_FLAG], last_valid_time=HELD_UNTIL.replace(tzinfo=None))
+
+
+def test_absence_state_answers_aged_out_only_where_a_record_exists():
+    assert absence_state(None, "eccc-hrdps", held={"eccc-hrdps": HELD_UNTIL}) == ("aged_out", HELD_UNTIL)
+    assert absence_state(None, "eccc-hrdps", held={}) == ("null", None)
