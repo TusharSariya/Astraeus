@@ -86,9 +86,33 @@ so the two changes may run concurrently.
   `provenance["datamart_path"]`, and names both paths when neither answers
   (the primary alone where no fallback is declared). Also `cd api && uv run
   pytest` -> 905 passed, 36 skipped (887 + 18 new; the 36 skips are unchanged).
-- [ ] 2.3 Record the observed publication instant and the re-measured latency in
+- [x] 2.3 Record the observed publication instant and the re-measured latency in
   the heartbeat document, writing nothing when the run never appeared.
   Verify: `cd api && uv run pytest tests/test_worker_heartbeat.py -k latency`
+  Verify result: `cd api && uv run pytest tests/test_worker_heartbeat.py -k
+  latency` -> 18 passed, 6 deselected. The estimator is the pure
+  `observe_latency(previous, run_time=..., observed_at=...)` in
+  `ingest/scheduler.py`: asymmetric exponential smoothing converging on the
+  0.8 quantile (step 0.4 up, 0.1 down), recorded with its reasons in
+  `design.md` under "Open questions carried into implementation". Each
+  observation moves the estimate toward the instant the run was actually seen,
+  raises `observation_count` by one, sets `last_observed` and `measured`, and
+  writes a `basis` naming this deployment's observations rather than the seed.
+  `worker/runtime.py`'s `Scheduler` holds the live block per source (seeded
+  from the registry record, which is never written back to), passes it to
+  `next_due` so the next run's first attempt uses the re-measured estimate, and
+  on a successful forecast attempt writes
+  `sources[id]["publication_latency"] = {estimate_seconds, observation_count,
+  last_observed, latency_measured, basis}` and
+  `sources[id]["last_observed_publication"]` exactly as the seam names them. A
+  bounded-out poll and every non-forecast source leave the block untouched -
+  the seed block is still published from start-up, so the reader sees
+  `latency_measured: false` and the seed's own basis rather than an absence. On
+  start the worker reads the previous heartbeat before overwriting it and
+  restores measured blocks only, so a restart does not forget what it measured.
+  Also `cd api && uv run pytest` -> 938 passed, 36 skipped (920 + 18 new; the
+  36 skips are unchanged), and `openspec validate
+  horizon-tiers-cadence-and-staleness --strict` -> valid.
 - [ ] 2.4 Retain the previous run when the newest run reaches less far, and
   serve the leads it lacks from the retained run with both run times.
   Verify: `cd api && uv run pytest tests/test_worker_scheduling.py -k short_cycle`

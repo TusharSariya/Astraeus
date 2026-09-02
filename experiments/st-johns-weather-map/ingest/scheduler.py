@@ -38,6 +38,19 @@ UTC = timezone.utc
 #: one number.
 POLL_INTERVAL_SECONDS = 600
 
+#: The quantile the latency estimator converges on, and the two step sizes that
+#: produce it. ``design.md`` left the statistic open between a rolling median
+#: and a high quantile; this is the high-quantile answer, written as asymmetric
+#: exponential smoothing so the whole estimator's state is the estimate and its
+#: count - which is exactly what ``PublicationLatency`` carries and what the
+#: heartbeat can hold across a restart. A step up four times the step down
+#: converges on the 0.8 quantile: a run that publishes late raises the estimate
+#: quickly, and a run that publishes early lowers it slowly, so the schedule
+#: gives up a little horizon rather than fetching an absent run half the time.
+LATENCY_STEP_UP = 0.4
+LATENCY_STEP_DOWN = 0.1
+LATENCY_QUANTILE = LATENCY_STEP_UP / (LATENCY_STEP_UP + LATENCY_STEP_DOWN)
+
 #: The reason an idempotent no-op states. `ingestion-worker-scheduling`
 #: requires the outcome to be `succeeded` with zero artifacts and a reason
 #: naming the satisfied window, so an idempotent no-op is never mistaken for an
@@ -53,6 +66,9 @@ ABSENCE_RANK = {"present": 0, "aged_out": 1, "null": 2}
 
 __all__ = [
     "ABSENCE_RANK",
+    "LATENCY_QUANTILE",
+    "LATENCY_STEP_DOWN",
+    "LATENCY_STEP_UP",
     "POLL_INTERVAL_SECONDS",
     "SATISFIED_REASON",
     "DerivedPlan",
@@ -67,8 +83,10 @@ __all__ = [
     "derived_plan",
     "first_attempt",
     "latest_run_time",
+    "latency_heartbeat_block",
     "next_due",
     "next_run_time",
+    "observe_latency",
     "plan_fetch",
     "poll_decision",
     "reconcile_on_start",
@@ -120,6 +138,82 @@ def first_attempt(run_time: datetime, latency: "PublicationLatency | None") -> d
     return moment + timedelta(seconds=int(estimate))
 
 
+def observe_latency(
+    previous: "PublicationLatency | None",
+    *,
+    run_time: datetime,
+    observed_at: datetime,
+) -> "PublicationLatency":
+    """Fold one *observed* publication into a source's latency estimate.
+
+    ``observed_at`` is the instant this deployment actually saw the run of
+    ``run_time`` present - the successful attempt, not the estimate that
+    predicted it and not a producer's promise. The result always carries
+    ``measured: True``, an observation count one higher than before, and a
+    ``basis`` naming this deployment's own observations, so nothing downstream
+    can read a seed as a measurement or a measurement as a seed.
+
+    The estimator is asymmetric exponential smoothing, which converges on the
+    ``LATENCY_QUANTILE`` quantile of the observed latencies while keeping only
+    the estimate and the count as state (see the constants above for why a high
+    quantile rather than a median). The first observation of an unseeded source
+    *is* the estimate: there is nothing yet to move away from, and inventing a
+    smoothed value there would publish a number no run ever produced.
+
+    Only ever called from an observed publication: a bounded-out poll writes
+    nothing, which is what leaves the previous estimate and its count intact.
+    """
+    run_moment = run_time if run_time.tzinfo else run_time.replace(tzinfo=UTC)
+    seen_moment = observed_at if observed_at.tzinfo else observed_at.replace(tzinfo=UTC)
+    # A run seen at or before its own nominal time is a zero-second latency, not
+    # a negative one: the schedule cannot ask for a run before it exists.
+    observed_seconds = max(0.0, (seen_moment - run_moment).total_seconds())
+
+    prior = getattr(previous, "estimate_seconds", None) if previous is not None else None
+    count = int(getattr(previous, "observation_count", 0) or 0) if previous is not None else 0
+    if prior is None:
+        estimate = observed_seconds
+    else:
+        step = LATENCY_STEP_UP if observed_seconds > float(prior) else LATENCY_STEP_DOWN
+        estimate = float(prior) + step * (observed_seconds - float(prior))
+    count += 1
+
+    fields = {
+        "estimate_seconds": int(round(estimate)),
+        "observation_count": count,
+        "last_observed": seen_moment,
+        "measured": True,
+        "basis": (
+            f"measured here: {count} observed publication(s) by this deployment, "
+            f"asymmetric quantile p={LATENCY_QUANTILE:.2f}"
+        ),
+    }
+    if previous is not None:
+        from dataclasses import replace  # noqa: PLC0415 - local, keeps the module registry-free
+
+        return replace(previous, **fields)
+    from .registry import PublicationLatency  # noqa: PLC0415 - only when there is no previous block
+
+    return PublicationLatency(**fields)
+
+
+def latency_heartbeat_block(latency: "PublicationLatency | None") -> dict[str, Any]:
+    """The heartbeat's ``publication_latency`` block, exactly as the seam names it.
+
+    ``latency_measured`` rather than ``measured``: the heartbeat's reader is the
+    healthcheck and the operator, and the question they are asking of a number
+    on a liveness document is whether *the latency* was measured.
+    """
+    last_observed = getattr(latency, "last_observed", None) if latency is not None else None
+    return {
+        "estimate_seconds": getattr(latency, "estimate_seconds", None) if latency is not None else None,
+        "observation_count": int(getattr(latency, "observation_count", 0) or 0) if latency is not None else 0,
+        "last_observed": last_observed.isoformat() if isinstance(last_observed, datetime) else None,
+        "latency_measured": bool(getattr(latency, "measured", False)) if latency is not None else False,
+        "basis": str(getattr(latency, "basis", "none")) if latency is not None else "none",
+    }
+
+
 @dataclass(frozen=True)
 class Schedule:
     """When one source is next attempted, and on what grounds.
@@ -149,7 +243,13 @@ class Schedule:
         return max(0.0, (self.due - now).total_seconds())
 
 
-def next_due(config: "IngestConfig", *, now: datetime, after: datetime | None = None) -> Schedule:
+def next_due(
+    config: "IngestConfig",
+    *,
+    now: datetime,
+    after: datetime | None = None,
+    latency: "PublicationLatency | None" = None,
+) -> Schedule:
     """Decide when ``config``'s source is attempted next.
 
     A forecast source is attempted at its run's first-attempt instant: the
@@ -161,10 +261,17 @@ def next_due(config: "IngestConfig", *, now: datetime, after: datetime | None = 
 
     ``after`` is the instant a scheduled attempt has just been made at; the
     result is then the *next* attempt strictly after it.
+
+    ``latency`` overrides the record's block with the *live* one the worker
+    holds: once this deployment has observed a publication, the next first
+    attempt is placed on the re-measured estimate rather than back on the seed.
+    Passing nothing keeps the record's own block, which is what a caller with
+    no live state (and every pure test of the record) wants.
     """
     source_id = str(getattr(config, "source_id", "") or "")
     moment = now if now.tzinfo else now.replace(tzinfo=UTC)
-    latency = getattr(config, "publication_latency", None)
+    if latency is None:
+        latency = getattr(config, "publication_latency", None)
     measured = bool(getattr(latency, "measured", False)) if latency is not None else False
 
     if getattr(config, "reach", None) is None:
