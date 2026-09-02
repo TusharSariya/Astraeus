@@ -54,6 +54,40 @@ export type ResolvedEvidenceClass = EvidenceClass | 'unrecognised'
  *  still retrieved by this deployment. */
 export type DeliveryKind = 'published_cell' | 'reprocessed' | 'intermediary_derived'
 
+/** The declared phase of a humidity value. An attribute of the value, not part
+ *  of its key: liquid and mixed differ only below freezing, and two keys would
+ *  double every humidity field for a difference that vanishes above zero. */
+export type FieldPhase = 'liquid' | 'mixed'
+
+/** Where a field's data sits, as the catalogue's storage rule declares it.
+ *  `available-not-stored` and `not-published` are two different upstream facts
+ *  and neither is an absent VALUE; both stay distinct from `null`, `blocked`
+ *  and `aged_out`. */
+export type FieldStorage = 'stored' | 'available-not-stored' | 'not-published'
+
+/** One unordered pair of served members of one family, as `/point` answers it.
+ *  `reason` and `detail` are null when the pair is comparable. The client never
+ *  computes one of these: the phase rule needs the air temperature and the
+ *  catalogue's definitions, which live on the API side. */
+export interface ComparabilityPair {
+  family: string
+  a: string
+  b: string
+  comparable: boolean
+  reason: string | null
+  detail: string | null
+}
+
+/** One field of a `/catalog` source entry: what the source publishes, under
+ *  which catalogue key, and whether this deployment stores it. */
+export interface CatalogFieldEntry {
+  key: string
+  family: string
+  storage: FieldStorage | null
+  upstream: string | null
+  note: string | null
+}
+
 /** One input a `derived_here` value was computed from, as the response listed
  *  it. Every field is what the API said; nothing is inferred from the input's
  *  name. */
@@ -88,6 +122,22 @@ export interface FieldAttribution {
   sourceId: string | null
   product: string | null
   provider: string
+  /** The catalogue key this value was served under, verbatim. Null when the
+   *  response declared none, which is said rather than guessed from the API
+   *  field name: a name and a catalogue key are not the same claim. */
+  fieldKey: string | null
+  /** The family the response put this value in. `ungrouped` when it declared
+   *  none — never inferred from how the key is spelled. */
+  family: string
+  /** The declared phase of a humidity value, or null for every other field and
+   *  for a humidity value that declared none. */
+  phase: FieldPhase | null
+  /** Whether this deployment stores the field. Null means the response
+   *  declared nothing, which is a gap in the response, not a fourth state. */
+  storage: FieldStorage | null
+  /** `uncatalogued_field`: the variable has no catalogue key, so the API
+   *  refused to serve a value for it and said so in a notice. */
+  uncatalogued: boolean
   /** The API's own description of a derived value (e.g. MetPy RH from dew
    *  point). Null means the field was read from the provider as published. */
   derivation: string | null
@@ -139,6 +189,34 @@ export interface FieldAlternative {
   attribution: FieldAttribution
 }
 
+/** One value the response served, whatever became of it afterwards.
+ *
+ *  The metric grid renders a fixed list of field names; the family view must
+ *  render everything that was actually served, or a member the response
+ *  carried would vanish from the family it belongs to and the reader would see
+ *  a family with fewer members than the evidence has. So this is the response's
+ *  own list, in response order, primaries and alternatives alike. */
+export interface ServedFieldValue {
+  /** The API field name, exactly as served. */
+  field: string
+  /** The value as served, in the unit the response declared. Never converted:
+   *  a member is shown to be compared with its siblings, and rewriting its
+   *  unit is how a number stops matching the key beside it. */
+  text: string
+  /** Whether a number or string came back at all. False is not an error — a
+   *  field that is `available-not-stored` has no value by definition. */
+  hasValue: boolean
+  /** The numeric value as served, unconverted, or null for a non-numeric or
+   *  absent one. A difference is only ever taken between two of these. */
+  value: number | null
+  /** The unit the response declared for it, verbatim. Two members with
+   *  different declared units are never differenced. */
+  units: string | null
+  /** Whether this value is the one the interface shows as the field's reading. */
+  primary: boolean
+  attribution: FieldAttribution
+}
+
 export interface StoryStep {
   time: string
   offset: number
@@ -179,9 +257,15 @@ export interface EvidenceSnapshot {
    *  by API field name. Rendered as alternative readings with their badge and
    *  delivery label; never promoted into the metric. */
   fieldAlternatives: Record<string, FieldAlternative[]>
+  /** Every value the response served, in response order, for the family view. */
+  servedFields: ServedFieldValue[]
   /** The response's own `notices`, verbatim. They carry the reason a
    *  derivation was refused or an artifact's provenance was not modelled. */
   notices: string[]
+  /** One entry per unordered pair of served members within a family, exactly as
+   *  `/point` computed it. Empty against an API that does not serve it yet,
+   *  which the interface reads as "no pair is stated", never as "comparable". */
+  comparability: ComparabilityPair[]
   issuedAt: string
   validAt: string | null
   temperatureC: number | null
@@ -380,6 +464,17 @@ export interface LayerItem {
    *  unknown is `unrecognised`, said out loud in the drawer rather than read
    *  as `retrieved`. */
   evidence_class?: string
+  /** The field family this layer's quantity belongs to, as `/layers` declares
+   *  it. Optional: an older API omits it and the layer groups under
+   *  `ungrouped` rather than under a family guessed from `field`. */
+  family?: string
+  /** The catalogue key the layer draws, where the API names one separately
+   *  from its display `field`. */
+  field_key?: string
+  /** Whether this deployment stores the field behind the layer. */
+  storage?: string
+  /** The declared phase, for a humidity layer. */
+  phase?: string | null
 }
 
 export interface LayersResult {
@@ -414,6 +509,10 @@ export interface CatalogSource {
   /** False means the registry refuses this source as any field's primary
    *  reading. Absent is not false: an undeclared record is not yet refused. */
   display_primary?: boolean
+  /** What this source publishes, key by key, and whether this deployment
+   *  stores it. Optional until the API serves it; absent renders no field list
+   *  rather than an empty one, because "publishes nothing" is its own claim. */
+  fields?: CatalogFieldEntry[]
 }
 
 export interface CatalogResult {

@@ -12,7 +12,12 @@ ENV PATH="/app/api/.venv/bin:${PATH}" \
 COPY api/pyproject.toml api/uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY ingest /app/ingest
-COPY registry/source_data.py /app/registry/source_data.py
+# The catalogue modules only, not the tests or fixtures: ``weather_api.models``
+# and ``ingest.manifest`` import ``registry.fields``, ``store`` imports
+# ``registry.source_data``, and ``fields.schema.json`` travels with the
+# catalogue it describes.
+COPY registry/__init__.py registry/fields.py registry/source_data.py \
+     registry/fields.schema.json registry/schema.json /app/registry/
 COPY api/weather_api ./weather_api
 RUN uv sync --frozen --no-dev
 

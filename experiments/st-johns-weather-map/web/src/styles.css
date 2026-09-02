@@ -714,3 +714,56 @@ html[data-theme='light'] {
 .field-alternatives ul { margin: 5px 0 0; padding-left: 16px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .field-alternatives b { color: var(--ink); }
 .alternative-method { display: block; color: var(--muted); font-size: 10px; line-height: 1.45; }
+
+
+/* Field families. A family groups fields that measure related but
+   non-identical quantities, so the grouping itself is evidence: the heading
+   says which quantity a reader is looking at, the key says which member of it,
+   and the definition says what that member measures. Nothing here is styled to
+   suggest one member outranks another - the decision layer chooses members,
+   the evidence layer never picks for it. */
+.field-families { margin: 12px 0 0; padding: 9px 11px; border: 1px solid var(--line); border-radius: 3px; }
+.field-families h3 { margin: 0 0 5px; font: 600 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.field-families > p { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.field-family { margin-top: 10px; }
+.field-family h4 { margin: 0 0 3px; font: 600 11px 'IBM Plex Mono', monospace; color: var(--ink); letter-spacing: .04em; }
+.family-note { margin: 0 0 6px; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+.family-members { margin: 0; padding: 0; list-style: none; }
+.family-member { margin: 0 0 8px; padding-left: 8px; border-left: 2px solid var(--line); }
+.family-member-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin: 0; }
+.family-member-key { font: 500 10px 'IBM Plex Mono', monospace; color: var(--muted); }
+.family-member-value { font-size: 12px; color: var(--ink); }
+.family-member-phase { font: 500 9px 'IBM Plex Mono', monospace; color: var(--muted); letter-spacing: .04em; }
+.family-member-source { font: 400 9px 'IBM Plex Mono', monospace; color: var(--muted); font-style: normal; }
+.family-member-definition, .family-member-absence { margin: 3px 0 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+/* The two storage answers that are not "stored" always read as statements
+   about the producer and this deployment, never as a fault in the value. */
+.family-storage, .legend-storage { margin: 3px 0 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+.family-storage b, .legend-storage b { color: var(--ec-reprocessed); }
+.family-member-uncatalogued { margin: 3px 0 0; color: var(--ec-unrecognised); font-size: 10.5px; line-height: 1.45; }
+/* Not comparable is a refusal, and it is coloured like one. */
+.family-not-comparable, .legend-not-comparable, .difference-refused, .difference-standing-refusal {
+  margin: 3px 0 0; color: var(--ec-unrecognised); font-size: 10.5px; line-height: 1.45;
+}
+
+.difference-view { margin: 12px 0 0; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 3px; }
+.difference-view h3 { margin: 0 0 5px; font: 600 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.difference-view > p { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.difference-view label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10.5px; }
+.difference-view select { display: block; width: 100%; margin-top: 3px; }
+.difference-value { margin: 6px 0 0; color: var(--ink); font-size: 11px; }
+
+.source-field-catalogue { margin-top: 10px; }
+.source-field-catalogue h4 { margin: 0 0 5px; font: 600 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.source-fields > summary { cursor: pointer; color: var(--ink); font: 500 10.5px 'IBM Plex Mono', monospace; }
+.source-family h5, .drawer-family h5, .legend-family h5 { margin: 6px 0 2px; font: 600 10px 'IBM Plex Mono', monospace; color: var(--ink); }
+.source-family ul, .drawer-family ul { margin: 0; padding-left: 16px; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+
+.drawer-families { margin-bottom: 10px; }
+.drawer-families h4 { margin: 0 0 4px; font: 600 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.drawer-family-note { margin: 0 0 4px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.drawer-row-family { margin: 3px 0 0; font: 500 10px 'IBM Plex Mono', monospace; color: var(--muted); }
+.drawer-family-title { color: var(--ink); }
+.drawer-row-definition { margin: 2px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.legend-definition { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.legend-family { margin-bottom: 6px; }

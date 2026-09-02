@@ -48,7 +48,7 @@ DWD_VARS = {
     "wind_u_10m": "u_10m",
     "wind_v_10m": "v_10m",
     "mean_sea_level_pressure": "pmsl",
-    "total_cloud": "clct",
+    "total_cloud_geometric": "clct",
     "precipitation_accumulation": "tot_prec",
 }
 
@@ -58,7 +58,7 @@ DWD_GRIB_RENAME = {
     "u10": "wind_u_10m",
     "v10": "wind_v_10m",
     "prmsl": "mean_sea_level_pressure",
-    "clct": "total_cloud",
+    "clct": "total_cloud_geometric",
     "tp": "precipitation_accumulation",
     "tot_prec": "precipitation_accumulation",
 }

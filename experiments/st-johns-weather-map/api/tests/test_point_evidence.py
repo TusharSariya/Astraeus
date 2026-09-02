@@ -363,3 +363,280 @@ def test_the_catalogue_names_each_records_delivery_kind_and_display_primary():
     assert weathernext.delivery_kind == "intermediary_derived"
     assert weathernext.intermediary == "Open-Meteo"
     assert weathernext.display_primary is False
+
+
+# --- the field catalogue on a response -------------------------------------
+# One quantity per key, families on top, phase as an attribute. Every served
+# value says which catalogue field it is, which family the field belongs to,
+# whether this deployment stores it at all, and - for humidity - which
+# saturation phase it was measured against. The response then says, pair by
+# pair, which served members of a family may be drawn as one thing.
+#
+# Spec-Refs: openspec/changes/field-catalogue-and-families/specs/point-evidence-sampling/spec.md
+# Spec-Refs: openspec/changes/field-catalogue-and-families/specs/field-catalogue/spec.md
+
+from registry import fields as catalogue  # noqa: E402
+from weather_api.models import PointResponse, Selection, field_comparability  # noqa: E402
+from weather_api.store import FIELD_BY_VARIABLE, storage_for  # noqa: E402
+
+PERCENT = {"units": "percent"}
+
+
+def grid(value: float | None) -> numpy.ndarray:
+    return numpy.full((1, 2, 2), numpy.nan if value is None else value, dtype="float64")
+
+
+def surface(**variables: tuple[float | None, dict[str, Any]]) -> xarray.Dataset:
+    """A surface artifact carrying exactly the variables a test names."""
+    return xarray.Dataset(
+        {name: (DIMS, grid(value), attrs) for name, (value, attrs) in variables.items()},
+        coords={
+            "valid_time": numpy.array([numpy.datetime64(VALID_TIME.replace(tzinfo=None), "ns")]),
+            "latitude": numpy.array([47.5, 47.6]),
+            "longitude": numpy.array([-52.8, -52.7]),
+        },
+    )
+
+
+def served(store: StubStore) -> list[Any]:
+    fields, _consensus, _sources = live_point_fields(store, *ST_JOHNS, VALID_TIME)
+    return fields
+
+
+def response_of(store: StubStore) -> dict[str, Any]:
+    """The served fields through ``PointResponse``, as a client receives them."""
+    return PointResponse(
+        latitude=ST_JOHNS[0], longitude=ST_JOHNS[1], valid_time=VALID_TIME,
+        selection=Selection(mode="evidence_only", selected_source_id=None, selected_product_id=None, badge="test", reason="test"),
+        fields=served(store),
+    ).model_dump()
+
+
+def test_every_served_field_carries_its_catalogue_key_and_family():
+    """The API's own name for a field and the catalogue's key are two
+    different strings for most fields; the key is the one that identifies the
+    quantity, and the family follows from it and from nothing else."""
+    store = StubStore([(artifact(), surface(
+        temperature_2m=(14.5, {"units": "degC"}),
+        total_cloud_opacity=(72.0, PERCENT),
+    ))])
+
+    fields = served(store)
+    by_field = {item.field: item for item in fields}
+
+    assert by_field["temperature"].key == "temperature_2m"
+    assert by_field["temperature"].family == "temperature"
+    assert by_field["total_cloud_opacity"].key == "total_cloud_opacity"
+    assert by_field["total_cloud_opacity"].family == "cloud_cover"
+    assert all(item.key is not None and item.family is not None for item in fields)
+
+
+def test_a_family_with_mixed_members_reports_each_pair_and_why():
+    """The defect this change exists to remove: opacity-weighted, geometric
+    and observed dome cover are three quantities, and the response says so
+    pair by pair rather than leaving a client to assume one ramp fits all."""
+    store = StubStore([
+        (artifact(source_id="eccc-hrdps", revision_id="r-hrdps"), surface(total_cloud_opacity=(72.0, PERCENT))),
+        (artifact(source_id="noaa-gfs", revision_id="r-gfs"), surface(total_cloud_geometric=(88.0, PERCENT))),
+        (artifact(source_id="awc-metar-speci", revision_id="r-metar"), surface(total_cloud_okta=(100.0, PERCENT))),
+    ])
+
+    pairs = {(item.a, item.b): item for item in field_comparability(served(store))}
+
+    assert len(pairs) == 3, "three members make three unordered pairs"
+    assert all(item.family == "cloud_cover" for item in pairs.values())
+    assert all(item.comparable is False and item.reason == "definition" for item in pairs.values())
+    detail = pairs[("total_cloud_geometric", "total_cloud_opacity")].detail
+    assert "opacity" in detail and "geometric" in detail
+
+
+def test_two_members_of_one_definition_are_comparable():
+    """HRDPS and RDPS publish the same opacity-weighted quantity, so the pair
+    is comparable and carries no reason."""
+    store = StubStore([
+        (artifact(source_id="eccc-hrdps", revision_id="r-hrdps"), surface(total_cloud_opacity=(72.0, PERCENT))),
+        (artifact(source_id="eccc-rdps", revision_id="r-rdps"), surface(total_cloud_opacity=(68.0, PERCENT))),
+    ])
+
+    pairs = field_comparability(served(store))
+
+    assert [(item.a, item.b, item.comparable) for item in pairs] == [
+        ("total_cloud_opacity", "total_cloud_opacity", True)
+    ]
+    assert pairs[0].reason is None and pairs[0].detail is None
+
+
+def test_two_families_are_never_paired_with_each_other():
+    """Comparability lives inside a family; two families are not a pair at
+    all, so nothing invites a client to difference them."""
+    store = StubStore([(artifact(), surface(
+        total_cloud_opacity=(72.0, PERCENT),
+        mean_sea_level_pressure=(1004.0, {"units": "hPa"}),
+    ))])
+
+    assert field_comparability(served(store)) == []
+
+
+def test_humidity_phase_is_read_off_the_value_and_only_humidity_carries_one():
+    store = StubStore([(artifact(), surface(
+        relative_humidity_2m=(82.0, {"units": "percent", catalogue.PHASE_ATTRIBUTE: "liquid_water"}),
+        total_cloud_opacity=(72.0, PERCENT),
+    ))])
+
+    by_field = {item.field: item for item in served(store)}
+
+    assert by_field["relative_humidity"].phase == "liquid"
+    assert by_field["total_cloud_opacity"].phase is None
+    assert catalogue.requires_phase("relative_humidity_2m") is True
+
+
+def test_a_liquid_and_a_mixed_humidity_are_not_comparable_below_freezing():
+    """Measured, not assumed: below 273.16 K the two saturation bases differ
+    by up to about 24 percent for identical air."""
+    store = StubStore([
+        (artifact(source_id="eccc-hrdps", revision_id="r-hrdps"), surface(
+            temperature_2m=(-5.0, {"units": "degC"}),
+            relative_humidity_2m=(82.0, {"units": "percent", catalogue.PHASE_ATTRIBUTE: "liquid_water"}),
+        )),
+        (artifact(source_id="noaa-gfs", revision_id="r-gfs"), surface(
+            relative_humidity_2m=(94.0, {"units": "percent", catalogue.PHASE_ATTRIBUTE: "mixed_linear_253K_273K"}),
+        )),
+    ])
+
+    humidity = [item for item in field_comparability(served(store)) if item.family == "humidity"]
+
+    assert [(item.a, item.b, item.comparable, item.reason) for item in humidity] == [
+        ("relative_humidity_2m", "relative_humidity_2m", False, "phase")
+    ]
+    assert "273.16" in humidity[0].detail
+
+
+def test_the_same_liquid_and_mixed_pair_is_comparable_above_freezing():
+    store = StubStore([
+        (artifact(source_id="eccc-hrdps", revision_id="r-hrdps"), surface(
+            temperature_2m=(6.5, {"units": "degC"}),
+            relative_humidity_2m=(82.0, {"units": "percent", catalogue.PHASE_ATTRIBUTE: "liquid_water"}),
+        )),
+        (artifact(source_id="noaa-gfs", revision_id="r-gfs"), surface(
+            relative_humidity_2m=(94.0, {"units": "percent", catalogue.PHASE_ATTRIBUTE: "mixed_linear_253K_273K"}),
+        )),
+    ])
+
+    humidity = [item for item in field_comparability(served(store)) if item.family == "humidity"]
+
+    assert [(item.comparable, item.reason) for item in humidity] == [(True, None)]
+
+
+def test_a_humidity_with_no_phase_refuses_the_comparison_rather_than_guessing():
+    store = StubStore([
+        (artifact(source_id="eccc-hrdps", revision_id="r-hrdps"), surface(
+            temperature_2m=(-5.0, {"units": "degC"}),
+            relative_humidity_2m=(82.0, {"units": "percent"}),
+        )),
+        (artifact(source_id="noaa-gfs", revision_id="r-gfs"), surface(
+            relative_humidity_2m=(94.0, {"units": "percent", catalogue.PHASE_ATTRIBUTE: "mixed_linear_253K_273K"}),
+        )),
+    ])
+
+    humidity = [item for item in field_comparability(served(store)) if item.family == "humidity"]
+
+    assert [(item.comparable, item.reason) for item in humidity] == [(False, "phase_missing")]
+
+
+def test_a_derived_humidity_carries_the_phase_its_registered_method_declares():
+    """``relative_humidity_from_dewpoint_liquid`` evaluates Bolton's
+    saturation vapour pressure over liquid water explicitly, so the phase is
+    the method's declaration and not an assumption about the inputs."""
+    humidity = {item.field: item for item in served(StubStore([(artifact(), dataset())]))}["relative_humidity"]
+
+    assert humidity.provenance.evidence_class == "derived_here"
+    assert humidity.phase == "liquid"
+
+
+def test_a_served_value_says_stored_and_a_gap_says_what_the_catalogue_knows():
+    """Three different answers a null must keep apart. GFS publishes
+    ``APCP`` and this deployment does not fetch it, so the null is
+    ``available-not-stored``, not a reading that went missing."""
+    store = StubStore([(artifact(source_id="noaa-gfs"), surface(
+        total_cloud_geometric=(88.0, PERCENT),
+        precipitation_accumulation=(None, {"units": "mm"}),
+    ))])
+
+    by_field = {item.field: item for item in served(store)}
+
+    assert by_field["total_cloud_geometric"].storage == "stored"
+    assert by_field["precipitation_accumulation"].value is None
+    assert by_field["precipitation_accumulation"].storage == "available-not-stored"
+    assert storage_for("eccc-reps", "wind_direction_10m", None) == "not-published"
+
+
+def test_the_point_response_carries_the_comparability_beside_the_fields():
+    store = StubStore([
+        (artifact(source_id="eccc-hrdps", revision_id="r-hrdps"), surface(total_cloud_opacity=(72.0, PERCENT))),
+        (artifact(source_id="noaa-gfs", revision_id="r-gfs"), surface(total_cloud_geometric=(88.0, PERCENT))),
+    ])
+
+    payload = response_of(store)
+
+    assert [(item["family"], item["a"], item["b"], item["comparable"]) for item in payload["comparability"]] == [
+        ("cloud_cover", "total_cloud_geometric", "total_cloud_opacity", False)
+    ]
+    assert {item["key"] for item in payload["fields"]} == {"total_cloud_opacity", "total_cloud_geometric"}
+    assert all(item["storage"] == "stored" for item in payload["fields"])
+
+
+# --- a variable the catalogue does not carry -------------------------------
+
+def test_an_uncatalogued_variable_is_not_served_and_a_notice_names_it(monkeypatch):
+    """The API's served set is a table; the catalogue is the authority. A
+    table entry the catalogue cannot resolve serves nothing, rather than
+    serving a value under whatever the table happened to call it."""
+    monkeypatch.setitem(FIELD_BY_VARIABLE, "sky_vibes", "sky_vibes")
+    store = StubStore([(artifact(), surface(
+        temperature_2m=(14.5, {"units": "degC"}),
+        sky_vibes=(7.0, PERCENT),
+    ))])
+
+    by_field = {item.field: item for item in served(store)}
+    vibes = by_field["sky_vibes"]
+
+    assert vibes.value is None
+    assert vibes.key is None and vibes.family is None
+    assert vibes.provenance.data_mode == "unavailable"
+    assert "uncatalogued_field" in vibes.provenance.quality.flags
+    assert by_field["temperature"].value == 14.5, "one uncatalogued variable costs no other field"
+    assert store.skipped and "sky_vibes" in store.skipped[0].reason
+    assert "eccc-hrdps/surface" in store.skipped[0].reason
+
+
+def test_an_uncatalogued_variable_is_left_out_of_every_comparability_pair(monkeypatch):
+    monkeypatch.setitem(FIELD_BY_VARIABLE, "sky_vibes", "sky_vibes")
+    store = StubStore([(artifact(), surface(
+        total_cloud_opacity=(72.0, PERCENT),
+        sky_vibes=(7.0, PERCENT),
+    ))])
+
+    assert field_comparability(served(store)) == []
+
+
+# --- task 3.0: the API's own variable tables were re-keyed -----------------
+
+def test_an_hrdps_keyed_artifact_reaches_point_with_its_cloud():
+    """The live-artifact check for task 3.0, run through the store rather than
+    against the running stack: the stack in the main checkout is built from
+    code that predates the re-key, so asking it would measure the old tables.
+    This builds the artifact the re-keyed adapters now publish - HRDPS cloud
+    under ``total_cloud_opacity`` - and asserts it reaches ``/point`` under its
+    catalogue key with its family."""
+    store = StubStore([(artifact(source_id="eccc-hrdps"), surface(
+        temperature_2m=(14.5, {"units": "degC"}),
+        total_cloud_opacity=(72.0, PERCENT),
+    ))])
+
+    cloud = {item.field: item for item in served(store)}["total_cloud_opacity"]
+
+    assert cloud.value == 72.0
+    assert cloud.key == "total_cloud_opacity" and cloud.family == "cloud_cover"
+    assert cloud.provenance.data_mode == "live" and cloud.provenance.source_id == "eccc-hrdps"
+    assert catalogue.storage_of("eccc-hrdps", "total_cloud_opacity") == "stored"
+    assert "total_cloud" not in FIELD_BY_VARIABLE, "the collided key is gone from the API's table"

@@ -25,8 +25,16 @@ DEFAULT_CYCLE_SECONDS = 21600
 DEFAULT_FRESHNESS_SECONDS = 2 * DEFAULT_CYCLE_SECONDS
 FORWARD_HOURS = 24
 
-# Core evidence vocabulary for this experiment. Adapters may narrow it, never
-# widen it: unrequested variables are what blow the storage cap.
+# Core evidence vocabulary for this experiment, in catalogue keys
+# (``registry.fields``). Adapters may narrow it, never widen it: unrequested
+# variables are what blow the storage cap.
+#
+# The cloud member is ``total_cloud_opacity`` because this default describes the
+# ECCC GEM family, which is what every source that falls through to it is.
+# A producer whose cloud is a different quantity states its own key in
+# ``VARIABLE_OVERRIDES`` below rather than inheriting a name that would misstate
+# it: that inheritance is exactly how three adapters came to share one
+# ``total_cloud``.
 DEFAULT_VARIABLES = (
     "temperature_2m",
     "dew_point_2m",
@@ -35,8 +43,15 @@ DEFAULT_VARIABLES = (
     "wind_v_10m",
     "mean_sea_level_pressure",
     "precipitation_accumulation",
-    "total_cloud",
+    "total_cloud_opacity",
     "visibility",
+)
+
+#: The default surface set with the geometric maximum-random overlap cloud the
+#: global GRIB feeds publish, for the sources that would otherwise inherit
+#: ECCC's opacity-weighted key.
+GEOMETRIC_CLOUD_DEFAULTS = tuple(
+    "total_cloud_geometric" if name == "total_cloud_opacity" else name for name in DEFAULT_VARIABLES
 )
 
 #: The cloud steering levels the motion derivation reads (display only).
@@ -117,7 +132,7 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "noaa-gfs": (
         "temperature_2m", "dew_point_2m", "relative_humidity_2m",
         "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure", "visibility",
-        "total_cloud", "cloud_low", "cloud_middle", "cloud_high",
+        "total_cloud_geometric", "cloud_low", "cloud_middle", "cloud_high",
         "wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa",
         "wind_u_850hPa", "wind_v_850hPa", "wind_u_700hPa", "wind_v_700hPa",
         "wind_u_500hPa", "wind_v_500hPa",
@@ -125,6 +140,21 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "relative_humidity_850hPa", "relative_humidity_700hPa", "relative_humidity_500hPa",
         "temperature_850hPa", "temperature_700hPa", "temperature_500hPa",
         "precipitable_water",
+    ),
+    # Global GRIB feeds: geometric overlap cloud, not ECCC's opacity-weighted
+    # quantity. Stated per source so nothing inherits a cloud key that means
+    # something else.
+    "dwd-icon-global": GEOMETRIC_CLOUD_DEFAULTS,
+    "ecmwf-ifs": GEOMETRIC_CLOUD_DEFAULTS,
+    "ecmwf-ens": GEOMETRIC_CLOUD_DEFAULTS,
+    "ecmwf-aifs-single": GEOMETRIC_CLOUD_DEFAULTS,
+    "ecmwf-aifs-ens": GEOMETRIC_CLOUD_DEFAULTS,
+    # GEFS publishes no instantaneous column cloud at any lead in any product
+    # set: its TCDC:entire atmosphere is a 3 h or 6 h mean, confirmed at the
+    # GRIB2 level. It therefore stores the mean under its own key rather than
+    # under a name a reader would take for an instant.
+    "noaa-gefs": tuple(
+        "total_cloud_mean_6h" if name == "total_cloud_opacity" else name for name in DEFAULT_VARIABLES
     ),
     "noaa-swpc-kp": ("kp_index", "a_running", "kp_status"),
     "noaa-swpc-rtsw": ("bz_gsm", "bt"),

@@ -183,7 +183,7 @@ def test_awc_metar_fetch_creates_valid_zarr_artifact(tmp_path: Path):
     assert "temperature_2m" in ds.data_vars
     assert "dew_point_2m" in ds.data_vars
     assert "visibility" in ds.data_vars
-    assert "total_cloud" in ds.data_vars
+    assert "total_cloud_okta" in ds.data_vars
     assert "wind_u_10m" in ds.data_vars
     assert "mean_sea_level_pressure" in ds.data_vars
 
@@ -247,7 +247,7 @@ def test_awc_taf_discover_and_fetch(tmp_path: Path):
 
     assert "visibility" in ds.data_vars
     assert "wind_u_10m" in ds.data_vars
-    assert "total_cloud" in ds.data_vars
+    assert "total_cloud_okta" in ds.data_vars
     assert float(ds["visibility"].values[0, 0, 0]) == pytest.approx(6 * 1609.344)
 
 
@@ -363,8 +363,8 @@ def test_metar_publishes_each_cloud_layer_as_reported_and_the_fog_flags(tmp_path
     for suffix in ("cover_code", "cover", "base"):
         assert numpy.isnan(ds[f"cloud_layer_2_{suffix}"].values).all()
     # The collapsed total is untouched by the per-layer publication.
-    assert float(ds["total_cloud"].values[1, 0, 0]) == 100.0
-    assert float(ds["total_cloud"].values[0, 0, 0]) == 75.0
+    assert float(ds["total_cloud_okta"].values[1, 0, 0]) == 100.0
+    assert float(ds["total_cloud_okta"].values[0, 0, 0]) == 75.0
     # The provenance names the provider's unit for the base.
     assert artifact.provenance["original_units"]["cloud_layer_1_base"] == "ft"
 

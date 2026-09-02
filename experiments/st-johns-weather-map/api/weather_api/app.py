@@ -123,7 +123,7 @@ PRODUCT_SOURCE_IDS = {
     "DWD": "dwd-icon-global",
 }
 CONSENSUS_PRODUCTS = {"consensus", "multi-centre"}
-OBSERVATION_FIELDS = {"fog_state", "radar_echo", "visibility", "cloud_low", "cloud_middle", "cloud_high", "total_cloud", "wind_speed", "wind_gust"}
+OBSERVATION_FIELDS = {"fog_state", "radar_echo", "visibility", "cloud_low", "cloud_middle", "cloud_high", "total_cloud_opacity", "wind_speed", "wind_gust"}
 # Registry categories whose fields stay in a live ``/point`` response when a
 # product is selected. A selected model never borrows another *model's* values,
 # but an observation is not a competing model: a METAR visibility under an

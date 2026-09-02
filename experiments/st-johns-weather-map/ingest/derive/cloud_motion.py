@@ -70,9 +70,9 @@ UTC = timezone.utc
 #: different field from the provider's and borrowing the other's flow would be
 #: a displacement fitted to the wrong picture.
 CLOUD_MOTION_SOURCES: dict[tuple[str, str], tuple[str, ...]] = {
-    ("noaa-gfs", "surface"): ("cloud_low", "cloud_middle", "cloud_high", "total_cloud"),
-    ("eccc-hrdps", "surface"): ("total_cloud",),
-    ("eccc-rdps", "surface"): ("total_cloud",),
+    ("noaa-gfs", "surface"): ("cloud_low", "cloud_middle", "cloud_high", "total_cloud_geometric"),
+    ("eccc-hrdps", "surface"): ("total_cloud_opacity",),
+    ("eccc-rdps", "surface"): ("total_cloud_opacity",),
     ("eccc-hrdps", "low_cloud_weong"): ("total_cloud_weong",),
     ("eccc-rdps", "low_cloud_weong"): ("total_cloud_weong",),
 }

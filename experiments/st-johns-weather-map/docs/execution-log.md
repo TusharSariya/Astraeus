@@ -110,3 +110,90 @@ Facts worth knowing after this step:
 - Ensemble statistics and sector sampling are registered disabled until
   steps 7 and 9 implement them. No Open-Meteo adapter exists yet, so the
   WeatherNext 2 record has no artifact.
+
+Landed as PR #31 (`execution/evidence-classes`), 2026-09-02.
+
+### Step 4: field-catalogue-and-families
+
+Branch `execution/field-catalogue`, stacked on step 3.
+
+Wave 1 (2026-09-02): registry and ingest owner alone, because the catalogue
+is the seam the other two code against. Result: `registry/fields.py` with
+135 fields in 20 families; 43 adapter keys resolved; 44 fields
+`available-not-stored` and 15 `not-published` across 28 sources;
+`total_cloud` split into `total_cloud_opacity` (ECCC GEM),
+`total_cloud_geometric` (GFS, ECMWF, ICON), `total_cloud_mean_6h` (GEFS) and
+`total_cloud_okta` (METAR, TAF); the GeoMet pressure profile is
+`relative_humidity_pressure`; the phase attribute is required on every
+humidity field. Deviations recorded in the change's design.md: transparency
+has three encodings, not four (column water vapour stays
+`precipitable_water`); GRIB profile variables stay one 2-D variable per level
+on disk and `catalogue.resolve()` maps them to the one key plus level;
+`uncatalogued_upstream_field` covers requested coverages only; per-field
+class enforcement moved to `validate_run`.
+
+Wave 2 (2026-09-02): API owner (3.0 re-key of the API tables, 3.1, 3.2) and
+web owner (4.1) in parallel against a response contract fixed up front: per
+field `key`, `family`, `phase`, `storage`; per response `comparability`
+pairs; per catalogue source `fields`; uncatalogued variables refused with
+the `uncatalogued_field` flag. The merged gate found 14 interpolation-method
+tests still keyed on `total_cloud` (the registry worktree had skipped them
+for lack of numpy); re-keyed to `total_cloud_opacity`. Four follow-ups the
+web owner surfaced are section 6 of the change's tasks.md.
+
+Landed as PR #32 (`execution/field-catalogue`, stacked on #31), 2026-09-02.
+
+## Where to pick up (written 2026-09-02, paused at the owner's request)
+
+- Merge #31 then #32 (or rebase #32 onto main after #31).
+- Next is step 5, `storage-window-and-restart-cache` (18 tasks), branched
+  from `execution/field-catalogue`. It owns `ingest/` scheduling and storage,
+  the SQL, and `api/weather_api/store.py`; run its ingest and API owners
+  sequentially or on disjoint sections.
+- The running Docker stack is built from pre-execution code. Rebuild it
+  (`make build && make up`) before any live check; artifacts it wrote under
+  `total_cloud` will be refused as uncatalogued until re-fetched. The seven
+  older changes with an open Docker gate (see triage) can run their gates in
+  the same rebuild wave.
+- `uv run pytest` in a fresh worktree skips the numpy and xarray tests (36
+  skipped versus 25 in the main checkout); agents should report the skip
+  count and the orchestrator must run `make test` in the main checkout.
+- Agent worktrees under `.claude/worktrees/` hold merged branches and can be
+  removed with `git worktree remove`.
+
+### Step 4: field-catalogue-and-families, section 3 (API)
+
+The response contract was fixed before sections 3 and 4 started so the API and
+the web could be built against it at once; it is in `design.md` under
+"Response contract". Section 3 landed it on `api/weather_api/`:
+
+- Task 3.0 re-keyed the API's own tables, which sections 1 and 2 had left
+  alone on purpose. Until this landed the API looked for a `total_cloud` no
+  adapter writes any more, so live cloud reached neither `/point` nor the
+  raster layers. The live half of the check was run as a pytest that builds an
+  HRDPS-keyed artifact through the store, not against the running stack: that
+  stack is built from code predating the re-key and would have measured the
+  old tables.
+- `VARIABLE_LEVELS` lost its four upper-air entries to `catalogue.resolve()`,
+  which answers a level-expanded variable with the one profile key plus its
+  level. The rest of the table stayed: an artifact's own declared
+  `vertical_level` is a retrieved fact and the catalogue's level convention is
+  not, so only the level-expanded names take their level from the catalogue.
+- `comparability` is a computed property of `PointResponse` rather than a
+  stored list, so it cannot describe a set of members the response does not
+  carry. Pairs are deduplicated on the unordered key pair, and a key served by
+  two sources appears once as a pair naming that key twice - which is the
+  `comparable: true` case the spec's "two comparable members" scenario asks
+  for.
+
+Facts worth knowing after this step:
+
+- The four cloud keys are four API field names now. Nothing in a response says
+  `total_cloud` any more; a client reading that name reads nothing.
+- The catalogue carries no dew point on pressure levels. The unavailable
+  profile list and the fixture profile therefore stopped serving one, rather
+  than claiming `dew_point_2m` at 850 hPa. Recorded as an open question in
+  `design.md`; extending the catalogue is registry work.
+- A derived relative humidity is stamped `liquid` from its registered method's
+  own declaration. It is the only phase in a response that does not come off
+  an artifact attribute.

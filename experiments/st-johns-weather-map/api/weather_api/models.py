@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import sys
+from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+
+EXPERIMENT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(EXPERIMENT_ROOT) not in sys.path:  # registry/ ships beside api/ in both images
+    sys.path.insert(0, str(EXPERIMENT_ROOT))
+
+from registry import fields as catalogue  # noqa: E402
 
 
 class StrictModel(BaseModel):
@@ -318,10 +327,163 @@ class ArtifactManifest(StrictModel):
 FieldValue = float | int | str | bool | list[float] | list[str] | None
 
 
+# --- the field catalogue on a response ------------------------------------
+# ``registry/fields.py`` is the single source of truth for keys, families,
+# phase and comparability. Nothing here reaches into its tables; every answer
+# comes back through its query surface, so a key this module cannot resolve is
+# a key nothing may serve.
+
+Phase = Literal["liquid", "mixed"]
+Storage = Literal["stored", "available-not-stored", "not-published"]
+
+#: API field names that are not themselves catalogue keys, and the key each
+#: one is. The API speaks a shorter name than the catalogue for the fields it
+#: has served since before the catalogue existed - ``temperature`` for the 2 m
+#: air temperature, ``wind_speed`` for the 10 m wind - and the level is carried
+#: separately in ``provenance.vertical_level``. Every other field name is a
+#: catalogue key and resolves without an entry here.
+CATALOGUE_KEY_BY_FIELD: dict[str, str] = {
+    "temperature": "temperature_2m",
+    "dew_point": "dew_point_2m",
+    "relative_humidity": "relative_humidity_2m",
+    "specific_humidity": "specific_humidity_2m",
+    "wind_u": "wind_u_10m",
+    "wind_v": "wind_v_10m",
+    "wind_speed": "wind_speed_10m",
+    "wind_direction": "wind_direction_10m",
+    "wind_gust": "wind_gust_10m",
+}
+
+
+def catalogue_key_for(field_name: str) -> str | None:
+    """The catalogue key an API field name stands for, or None where it has none.
+
+    None is a refusal, not a default: a field the catalogue does not carry is
+    not served (``uncatalogued_field``). The lookup goes through
+    ``catalogue.resolve`` so a level-expanded artifact variable
+    (``relative_humidity_850hPa``) answers with the one profile key, its level
+    staying on the provenance rather than in the key.
+    """
+    candidate = CATALOGUE_KEY_BY_FIELD.get(field_name, field_name)
+    try:
+        return catalogue.resolve(candidate).key
+    except catalogue.UnknownFieldKey:
+        return None
+
+
 class EvidenceField(StrictModel):
+    """One served value, and where the catalogue files it.
+
+    ``key`` is the catalogue key; ``field`` stays the API's own name for the
+    quantity, which for most fields is the same string. ``family`` follows from
+    the key and is never set independently - two names for one grouping is how
+    ``total_cloud`` came to mean three quantities. ``phase`` is non-null only
+    where the catalogue requires a phase (the humidity fields) and is read from
+    ``catalogue.PHASE_ATTRIBUTE`` on the value, never assumed. ``storage`` says
+    whether this deployment holds the field at all, so
+    ``available-not-stored`` and ``not-published`` stay distinguishable from a
+    reading that is simply absent.
+    """
+
     field: str
     value: FieldValue
     provenance: Provenance
+    #: None only where the field has no catalogue key, which is also the only
+    #: case in which the value must be null with ``uncatalogued_field`` set.
+    key: str | None = None
+    family: str | None = None
+    phase: Phase | None = None
+    storage: Storage = "stored"
+
+    @model_validator(mode="after")
+    def resolve_against_the_catalogue(self) -> EvidenceField:
+        if self.key is None:
+            self.key = catalogue_key_for(self.field)
+        if self.key is None:
+            if self.phase is not None or self.family is not None:
+                raise ValueError(f"uncatalogued_field: {self.field} has no catalogue key and cannot carry a family or a phase")
+            return self
+        try:
+            entry = catalogue.field(self.key)
+        except catalogue.UnknownFieldKey:
+            raise ValueError(f"uncatalogued_field: {self.key} is not a catalogue key") from None
+        # Derived, never carried: a family stated beside a key is a second
+        # place for the grouping to be wrong.
+        self.family = entry.family
+        if self.phase is not None and not entry.phase_attribute:
+            raise ValueError(f"{self.key} is not a phase-bearing field and must not carry phase={self.phase!r}")
+        return self
+
+
+class FieldComparability(StrictModel):
+    """Whether two served members of one family may be drawn as one thing.
+
+    One entry per unordered pair of served members within a family, from
+    ``catalogue.comparability``. ``a`` and ``b`` are catalogue keys; where two
+    sources serve the same key the pair names that key twice, which is the
+    case the catalogue answers ``true`` for. ``reason`` and ``detail`` are null
+    exactly when ``comparable`` is true.
+    """
+
+    family: str
+    a: str
+    b: str
+    comparable: bool
+    reason: str | None = None
+    detail: str | None = None
+
+
+def field_comparability(fields: Sequence[EvidenceField]) -> list[FieldComparability]:
+    """Pairwise comparability over the served members, family by family.
+
+    The humidity rule needs an air temperature to say which side of 273.16 K a
+    pair sits on, so the served 2 m air temperature is passed to every pair.
+    Where none was served the catalogue answers ``phase`` with the reason that
+    no temperature was supplied, rather than assuming the pair is comparable.
+    """
+    served = [item for item in fields if item.key is not None and item.family is not None]
+    temperature_k: float | None = None
+    for item in served:
+        if item.key == "temperature_2m" and isinstance(item.value, (int, float)) and not isinstance(item.value, bool):
+            temperature_k = float(item.value) + 273.15
+            break
+
+    by_family: dict[str, list[EvidenceField]] = {}
+    for item in served:
+        by_family.setdefault(str(item.family), []).append(item)
+
+    pairs: list[FieldComparability] = []
+    for family_name in sorted(by_family):
+        members = by_family[family_name]
+        seen: set[tuple[str, str]] = set()
+        for index, left in enumerate(members):
+            for right in members[index + 1:]:
+                first, second = (left, right) if str(left.key) <= str(right.key) else (right, left)
+                pair = (str(first.key), str(second.key))
+                if pair in seen:
+                    continue
+                seen.add(pair)
+                result = catalogue.comparability(
+                    pair[0], pair[1],
+                    phase_a=first.phase, phase_b=second.phase, temperature_k=temperature_k,
+                )
+                pairs.append(FieldComparability(family=family_name, a=pair[0], b=pair[1], **result.as_dict()))
+    return pairs
+
+
+class SourceFieldEntry(StrictModel):
+    """What one source does about one catalogue field, from the catalogue.
+
+    ``storage`` is the answer the interface needs to tell three different
+    things apart: the deployment holds it, the producer publishes it and the
+    deployment does not fetch it, and the producer does not publish it at all.
+    """
+
+    key: str
+    family: str
+    storage: Storage
+    upstream: str | None = None
+    note: str = ""
 
 
 class SourceRecord(StrictModel):
@@ -346,6 +508,11 @@ class SourceRecord(StrictModel):
     #: record declares it. Never inferred from the id or the producer.
     display_primary: bool = True
     may_enter_consensus: bool
+    #: Every catalogue field this source is mapped onto, with what the
+    #: deployment does about each. Read from ``catalogue.source_mapping``, so a
+    #: field the producer publishes and this deployment does not fetch is
+    #: visible here rather than absent.
+    fields: list[SourceFieldEntry] = Field(default_factory=list)
     exact_variables: list[str]
     levels: list[str]
     geographic_coverage: str
@@ -568,6 +735,17 @@ class PointResponse(StrictModel):
     selection: Selection
     fields: list[EvidenceField]
     notices: list[str] = Field(default_factory=list)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def comparability(self) -> list[FieldComparability]:
+        """Which served members of a family may be drawn as one thing.
+
+        Computed from the fields actually served rather than stored beside
+        them, so it can never describe a set of members the response does not
+        carry.
+        """
+        return field_comparability(self.fields)
 
 
 class ProfileLevel(StrictModel):

@@ -95,8 +95,14 @@ _FILE_RUN_STAMP = re.compile(r"(?P<date>\d{8})T(?P<hour>\d{2})Z")
 _CYCLE_DIR = re.compile(r"^\d{2}/?$")
 _LEAD_DIR = re.compile(r"^\d{3}/?$")
 
-# ``total_cloud`` is published from the message's own WMO keys, not from
-# ecCodes' concept files.
+# ``total_cloud_opacity`` is published from the message's own WMO keys, not
+# from ecCodes' concept files.
+#
+# The key says opacity because the quantity is opacity-weighted: ECCC GEM's
+# total cloud weights each layer by how much light it actually stops, so thin
+# cirrus reads near zero. GFS publishes a geometric maximum-random overlap
+# fraction under the same English words, which is why they are two catalogue
+# keys and not one (registry.fields, family cloud_cover).
 #
 # MSC publishes it (HRDPS ``TCDC_Sfc``, RDPS ``TotalCloudCover_Sfc``) and the
 # files download fine, but the message decodes with ``paramId=0`` and
@@ -246,7 +252,7 @@ def _profile_vars(rh_prefix: str, temp_prefix: str, height_prefix: str, token: s
       ``gpm``
 
     None decodes as ``unknown``, so no WMO-key declaration is needed here (see
-    the ``total_cloud`` comment above for the one field that does); only the
+    the ``total_cloud_opacity`` comment above for the one field that does); only the
     unit normalisation the adapter already applies, plus the measured
     saturation-phase stamp on every RH level.
 
@@ -303,7 +309,7 @@ HRDPS_VARS = {
     "wind_u_10m": ("UGRD", "AGL-10m"),
     "wind_v_10m": ("VGRD", "AGL-10m"),
     "mean_sea_level_pressure": ("PRMSL", "MSL"),
-    "total_cloud": ("TCDC", "Sfc"),
+    "total_cloud_opacity": ("TCDC", "Sfc"),
     **HRDPS_STEERING_VARS,
     **HRDPS_OMEGA_VARS,
     **HRDPS_THERMO_VARS,
@@ -317,7 +323,7 @@ RDPS_VARS = {
     "wind_u_10m": ("WindU", "AGL-10m"),
     "wind_v_10m": ("WindV", "AGL-10m"),
     "mean_sea_level_pressure": ("Pressure_MSL", "MSL"),
-    "total_cloud": ("TotalCloudCover", "Sfc"),
+    "total_cloud_opacity": ("TotalCloudCover", "Sfc"),
     **RDPS_STEERING_VARS,
     **RDPS_OMEGA_VARS,
     **RDPS_THERMO_VARS,
@@ -342,7 +348,7 @@ CANONICAL_FIELD_UNITS = {
     "wind_u_10m": ("m s-1", "10 m"),
     "wind_v_10m": ("m s-1", "10 m"),
     "mean_sea_level_pressure": ("hPa", "mean sea level"),
-    "total_cloud": ("percent", "column"),
+    "total_cloud_opacity": ("percent", "column"),
     **{f"wind_{component}_{level}hPa": ("m s-1", f"{level} hPa")
        for level in STEERING_LEVELS_HPA for component in ("u", "v")},
     **{f"omega_{level}hPa": ("Pa s-1", f"{level} hPa") for level in STEERING_LEVELS_HPA},
@@ -625,17 +631,17 @@ class ECCCDataMartAdapter:
                 if canonical_name not in fetched:
                     continue
                 try:
-                    # total_cloud's identity must be read from the message's own
+                    # The cloud field's identity must be read from the message's own
                     # WMO keys (see the map comment above), so those keys are
                     # requested for it and the declaration is applied - or the
                     # field is refused, never published with unknown units.
                     opened = (
                         open_grib(local_grib, read_keys=WMO_IDENTITY_READ_KEYS)
-                        if canonical_name == "total_cloud"
+                        if canonical_name == "total_cloud_opacity"
                         else open_grib(local_grib)
                     )
                     decoded = crop_to_bbox(opened, self.bounds)
-                    if canonical_name == "total_cloud" and not _cloud_units_declared(decoded):
+                    if canonical_name == "total_cloud_opacity" and not _cloud_units_declared(decoded):
                         decode_errors.append(f"undeclared_units:{match_file}")
                         continue
                     decoded = normalize_units(decoded)

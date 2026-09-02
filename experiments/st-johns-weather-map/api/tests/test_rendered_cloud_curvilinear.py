@@ -62,7 +62,7 @@ def cloud_dataset() -> xarray.Dataset:
     stamps = [numpy.datetime64(stamp.replace(tzinfo=None), "ns") for stamp in frame_times()]
     data = numpy.stack([FRAME0, FRAME1])
     return xarray.Dataset(
-        {"total_cloud": (("valid_time", "y", "x"), data, {"units": "percent"})},
+        {"total_cloud_opacity": (("valid_time", "y", "x"), data, {"units": "percent"})},
         coords={
             "valid_time": stamps,
             "latitude": (("y", "x"), LAT2D),
@@ -162,7 +162,7 @@ def test_the_hrdps_total_cloud_layer_is_offered_from_the_stored_grid(monkeypatch
     by_id = {layer["id"]: layer for layer in payload["layers"]}
     layer = by_id["eccc-hrdps-surface-total-cloud"]
     assert layer["group"] == "rendered_grid"
-    assert layer["field"] == "total_cloud"
+    assert layer["field"] == "total_cloud_opacity"
     assert layer["product"] == "ECCC-HRDPS"
     assert layer["units"] == "percent"
     assert layer["evidence_basis"] == "published_artifact"
@@ -216,7 +216,7 @@ def test_the_raster_disclosed_the_curvilinear_method_and_its_provenance(monkeypa
 
 
 def test_a_missing_variable_is_a_notice_and_no_layer(monkeypatch, data_mode):
-    dataset = cloud_dataset().drop_vars("total_cloud")
+    dataset = cloud_dataset().drop_vars("total_cloud_opacity")
     use_store(monkeypatch, data_mode, CloudStore(dataset))
     payload = client.get(f"{PREFIX}/layers").json()
     ids = {layer["id"] for layer in payload["layers"]}
