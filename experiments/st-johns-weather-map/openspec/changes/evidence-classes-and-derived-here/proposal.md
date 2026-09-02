@@ -100,9 +100,12 @@ the specification. It changes no adapter and promotes no source.
 - `api/weather_api/store.py`: `LiveStore.sample_point` and `_sample_dataset`
   isolate provenance failures per artifact; derived artifacts are admitted
   by class, never by name match.
+- `ingest/manifest.py`: `RequiredField.evidence_class` and
+  `RunManifest.evidence_classes`, and the manifest block each artifact records
+  in its own provenance for the store to admit it by.
 - `ingest/derive/`: a `registry.py` for derivation methods mirroring the
-  interpolation method registry; existing methods (relative humidity, the
-  WEonG repair, cloud motion) are registered or re-classed.
+  interpolation method registry; existing methods (relative humidity, wind,
+  fog state, the WEonG repair, cloud motion) are registered or re-classed.
 - `registry/schema.json`, `registry/source_data.py`: delivery kind
   `intermediary_derived`; the Open-Meteo WeatherNext 2 cloud record.
 - `web/src/`: class badge and legend; the data-mode banner is unchanged.

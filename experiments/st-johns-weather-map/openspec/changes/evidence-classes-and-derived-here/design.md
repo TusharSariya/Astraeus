@@ -64,6 +64,32 @@ name and reasserts that it never reaches a data path. The three-level kill
 switch (registry `enabled`, `WEATHER_GENERATED_DISPLAY=off`, reader menu) is
 the model for the derivation method registry's own enabling levels.
 
+## The seam between the API and the derivation method registry
+
+`weather_api.store` reads the registry through one function,
+`ingest.derive.registry.get_entry(name)`, which returns the entry or `None`.
+An entry carries `name`, `version`, `citation`, `inputs`, `output`,
+`physical_range` (a low/high pair or `None`), `range_rule` (`clamp` or
+`refuse`) and `enabled`; an entry with more than one output declares
+`physical_range_by_output` keyed by served field name, because wind speed and
+wind direction come from one entry and share no range. The API names three
+entries: `relative_humidity_from_dew_point`,
+`wind_speed_and_direction_from_components` and
+`fog_state_from_present_weather`. A registry that cannot be imported, exposes
+no `get_entry`, or knows the name but has it disabled all resolve the same
+way: the method is not enabled, the value is `null` with a notice, and no
+unregistered construction is substituted.
+
+## What class an absent value carries
+
+`evidence_class` is required on every provenance, including the placeholder a
+response uses for a value that does not exist. The placeholder states the
+class the absent value would have carried - `retrieved` for a field nothing
+retrieved, `derived_here` for a derivation that was refused. What says the
+value is absent is the null value beside it, the `unavailable` data mode and
+the `no_retrieval` flag, never the class, so no reader can mistake a
+placeholder for a reading.
+
 ## Open questions carried into implementation
 
 - Whether existing derived artifacts (cloud motion, the WEonG repair) are
