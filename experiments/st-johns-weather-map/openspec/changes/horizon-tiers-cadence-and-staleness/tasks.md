@@ -46,11 +46,23 @@ so the two changes may run concurrently.
 
 ## 2. Worker: scheduling, polling and latency re-measurement (registry and worker owner)
 
-- [ ] 2.1 Schedule forecast sources at run time plus measured latency, and at
+- [x] 2.1 Schedule forecast sources at run time plus measured latency, and at
   run time exactly where no latency is measured; schedule observation and
   nowcast sources at native cadence (radar 6 min, lightning 10, GOES 10, METAR
   and SWOB hourly, SWPC 1 min).
   Verify: `cd api && uv run pytest tests/test_worker_scheduling.py -k "latency or native_cadence"`
+  Verify result: `cd api && uv run pytest tests/test_worker_scheduling.py -k
+  "latency or native_cadence"` -> 31 passed, nothing deselected. The decisions
+  are `latest_run_time`, `next_run_time`, `first_attempt` and `next_due` in
+  `ingest/scheduler.py`; `worker/runtime.py`'s `Scheduler` reschedules through
+  them and records `latency_measured` and the declared cadence per source.
+  GFS 00z is first attempted at 05:18Z; GDPS, GEPS, REPS, HRDPS and RDPS at
+  their run time exactly. Native cadences are the declared 360/600/600/3600/
+  3600/60 s and are no longer clamped by the 300-1800 s derived poll window.
+  The progress `cadence_seconds` the stall check counts is now the declared
+  cadence rather than the poll interval, so a six-hourly model is not called
+  stalled forty-five minutes after a run. Also `cd api && uv run pytest` ->
+  887 passed, 36 skipped (856 + the 31 new; the 36 skips are unchanged).
 - [ ] 2.2 Poll every ten minutes until the run appears, bounded by the next
   scheduled run time, then report `cancelled` naming the run and poll duration
   with the previous run left visible; try the declared dated WXO-DD Datamart

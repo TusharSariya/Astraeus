@@ -22,13 +22,21 @@ under "Seam" so the storage owner can match it:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Iterable, Mapping, Protocol, Sequence
+from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Protocol, Sequence
 
 from .validate import to_nanoseconds
 from .window import sliding_window
 
+if TYPE_CHECKING:  # pragma: no cover - typing only, and keeps this module registry-free
+    from .registry import IngestConfig, PublicationLatency
+
 UTC = timezone.utc
+
+#: How often a forecast run is polled for once its first attempt has passed.
+#: Owned by task 2.2; named here because ``next_due`` is where the bound will
+#: be read from and the two must agree on one number.
+POLL_INTERVAL_SECONDS = 600
 
 #: The reason an idempotent no-op states. `ingestion-worker-scheduling`
 #: requires the outcome to be `succeeded` with zero artifacts and a reason
@@ -45,18 +53,153 @@ ABSENCE_RANK = {"present": 0, "aged_out": 1, "null": 2}
 
 __all__ = [
     "ABSENCE_RANK",
+    "POLL_INTERVAL_SECONDS",
     "SATISFIED_REASON",
     "DerivedPlan",
     "FetchPlan",
     "InputState",
     "Reconciliation",
     "RestartCache",
+    "Schedule",
     "candidate_valid_times",
     "derived_plan",
+    "first_attempt",
+    "latest_run_time",
+    "next_due",
+    "next_run_time",
     "plan_fetch",
     "reconcile_on_start",
     "worst_absence",
 ]
+
+
+# --- when a source is next attempted -------------------------------------
+
+def latest_run_time(run_cadence_seconds: int, now: datetime) -> datetime:
+    """The most recent nominal run instant at or before ``now``.
+
+    Cycles are anchored on the UTC epoch, which is a midnight, so a 6 h cadence
+    lands on 00/06/12/18Z and an hourly one on the hour. Nothing here consults
+    what a provider has actually published: this is the *nominal* run time, and
+    the gap between it and the publication is exactly what ``first_attempt``
+    exists to carry.
+    """
+    if run_cadence_seconds <= 0:
+        raise ValueError("run cadence must be a positive number of seconds")
+    moment = now if now.tzinfo else now.replace(tzinfo=UTC)
+    epoch_seconds = moment.timestamp()
+    floored = (epoch_seconds // run_cadence_seconds) * run_cadence_seconds
+    return datetime.fromtimestamp(floored, UTC)
+
+
+def next_run_time(run_cadence_seconds: int, now: datetime) -> datetime:
+    """The next nominal run instant strictly after ``now``.
+
+    This is the bound task 2.2's poll stops at: past it the missing run is
+    superseded rather than late.
+    """
+    return latest_run_time(run_cadence_seconds, now) + timedelta(seconds=run_cadence_seconds)
+
+
+def first_attempt(run_time: datetime, latency: "PublicationLatency | None") -> datetime:
+    """When a forecast run is first asked for.
+
+    ``run_time + estimate_seconds`` where an estimate exists, and the run time
+    *exactly* where none does. The second half matters as much as the first: a
+    record with no measured latency and no seed (REPS, GDPS, WeatherNext 2)
+    must not borrow another source's offset, because a guessed offset is
+    indistinguishable downstream from a measured one.
+    """
+    moment = run_time if run_time.tzinfo else run_time.replace(tzinfo=UTC)
+    estimate = getattr(latency, "estimate_seconds", None) if latency is not None else None
+    if estimate is None:
+        return moment
+    return moment + timedelta(seconds=int(estimate))
+
+
+@dataclass(frozen=True)
+class Schedule:
+    """When one source is next attempted, and on what grounds.
+
+    ``kind`` is ``forecast`` (scheduled against a producer run), ``native``
+    (scheduled against a publication interval) or ``unscheduled``. An
+    unscheduled decision carries ``due=None`` and a ``reason`` naming the field
+    that is missing, so a source is never silently dropped from the rotation.
+    """
+
+    source_id: str
+    kind: str
+    due: datetime | None = None
+    run_time: datetime | None = None
+    cadence_seconds: int | None = None
+    latency_measured: bool = False
+    reason: str = ""
+
+    @property
+    def scheduled(self) -> bool:
+        return self.due is not None
+
+    def delay_seconds(self, now: datetime) -> float:
+        """Seconds from ``now`` until the attempt, never negative."""
+        if self.due is None:
+            raise ValueError(f"{self.source_id} is not scheduled: {self.reason}")
+        return max(0.0, (self.due - now).total_seconds())
+
+
+def next_due(config: "IngestConfig", *, now: datetime, after: datetime | None = None) -> Schedule:
+    """Decide when ``config``'s source is attempted next.
+
+    A forecast source is attempted at its run's first-attempt instant: the
+    latest nominal run plus the measured latency, or the run time itself where
+    nothing is measured. An observation or nowcast source is attempted every
+    ``native_cadence_seconds`` - its own publication interval, never rounded up
+    onto a shared poll floor, which is what folded six-minute radar onto a
+    five-minute rotation and hourly METAR onto the same one.
+
+    ``after`` is the instant a scheduled attempt has just been made at; the
+    result is then the *next* attempt strictly after it.
+    """
+    source_id = str(getattr(config, "source_id", "") or "")
+    moment = now if now.tzinfo else now.replace(tzinfo=UTC)
+    latency = getattr(config, "publication_latency", None)
+    measured = bool(getattr(latency, "measured", False)) if latency is not None else False
+
+    if getattr(config, "reach", None) is None:
+        return Schedule(
+            source_id, "unscheduled", latency_measured=measured,
+            reason="the record declares no reach; an unbounded source cannot be said to cover any instant",
+        )
+
+    run_cadence = getattr(config, "run_cadence_seconds", None)
+    native_cadence = getattr(config, "native_cadence_seconds", None)
+
+    if run_cadence:
+        run = latest_run_time(int(run_cadence), moment)
+        due = first_attempt(run, latency)
+        # Walk forward a whole run at a time rather than adding a poll: the
+        # next attempt for a forecast source belongs to the next *run*.
+        while after is not None and due <= after:
+            run = run + timedelta(seconds=int(run_cadence))
+            due = first_attempt(run, latency)
+        offset = int(getattr(latency, "estimate_seconds", None) or 0)
+        reason = (
+            f"run {run.isoformat()} plus a measured latency of {offset}s" if offset
+            else f"run {run.isoformat()} exactly; no latency is measured for this source"
+        )
+        return Schedule(source_id, "forecast", due=due, run_time=run, cadence_seconds=int(run_cadence),
+                        latency_measured=measured, reason=reason)
+
+    if native_cadence:
+        base = after if after is not None else moment
+        due = base + timedelta(seconds=int(native_cadence)) if after is not None else base
+        return Schedule(source_id, "native", due=due, cadence_seconds=int(native_cadence),
+                        latency_measured=measured,
+                        reason=f"native cadence of {int(native_cadence)}s")
+
+    return Schedule(
+        source_id, "unscheduled", latency_measured=measured,
+        reason="the record declares neither run_cadence_seconds nor native_cadence_seconds; nothing to schedule against",
+    )
 
 
 class RestartCache(Protocol):
