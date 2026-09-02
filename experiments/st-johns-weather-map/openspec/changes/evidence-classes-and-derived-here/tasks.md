@@ -265,7 +265,13 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
 
 ## 6. Gate
 
-- [ ] 6.1 Run the full suite and the spec validators.
+- [x] 6.1 Run the full suite and the spec validators.
   Verify: `make test`, `openspec validate evidence-classes-and-derived-here
   --strict`, and `uv run --project ../../tools/specs python
   ../../tools/specs/specctl.py validate`.
+
+  Verify result (2026-09-02, merged tree `execution/evidence-classes`):
+  `make test` green - API 839 passed, 25 skipped; web 291 passed in 12
+  files; registry 25 passed; SQL publish tests all PASS; specctl 0 errors,
+  0 warnings. `openspec validate evidence-classes-and-derived-here --strict`
+  valid.
