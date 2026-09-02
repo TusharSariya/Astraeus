@@ -218,10 +218,58 @@ class Scheduler:
         self._due: dict[str, float] = {config.source_id: 0.0 for _, config in self._pairs}
         # Seeded with cadence but no last_success: a source that has never
         # worked is reported, not counted as a stall. See ``stalled_sources``.
-        self._progress: dict[str, dict[str, Any]] = {
-            config.source_id: {"cadence_seconds": config.cadence_seconds, "last_success": None, "last_state": "pending", "last_detail": ""}
-            for _, config in self._pairs
-        }
+        #
+        # ``cadence_seconds`` here is the *declared* cadence the source is now
+        # scheduled on - the producer's run cadence, or the native publication
+        # interval - not how often this deployment happens to look. The stall
+        # check counts three of these, and counting three poll intervals would
+        # report a six-hourly model stalled forty-five minutes after a run.
+        self._progress: dict[str, dict[str, Any]] = {}
+        for _, config in self._pairs:
+            plan = self._plan(config, datetime.now(UTC))
+            self._progress[config.source_id] = {
+                "cadence_seconds": plan.cadence_seconds or config.cadence_seconds,
+                "schedule_kind": plan.kind,
+                "latency_measured": plan.latency_measured,
+                "last_success": None,
+                "last_state": "pending",
+                "last_detail": "",
+            }
+            if not plan.scheduled:
+                # Never silently dropped: the source stays in the rotation's
+                # bookkeeping with the missing field named.
+                self._progress[config.source_id]["last_state"] = "unscheduled"
+                self._progress[config.source_id]["last_detail"] = plan.reason[:200]
+
+    @staticmethod
+    def _plan(config, now: datetime, *, after: datetime | None = None):
+        from ingest.scheduler import next_due  # noqa: PLC0415
+
+        return next_due(config, now=now, after=after)
+
+    def _reschedule(self, config, now: datetime) -> None:
+        """Put a source back in the rotation on its own declared cadence.
+
+        A forecast source lands on its next run's first-attempt instant; an
+        observation or nowcast source one native interval on. A source that
+        declares neither is not rescheduled at all - it is pushed out of reach
+        rather than run on a number nobody declared.
+        """
+        plan = self._plan(config, now, after=now)
+        state = self._progress.setdefault(config.source_id, {})
+        state["schedule_kind"] = plan.kind
+        state["latency_measured"] = plan.latency_measured
+        if plan.cadence_seconds:
+            state["cadence_seconds"] = plan.cadence_seconds
+        if not plan.scheduled:
+            state["next_due"] = None
+            state["schedule_reason"] = plan.reason[:200]
+            self._due[config.source_id] = float("inf")
+            log(f"{config.source_id}: not scheduled - {plan.reason}")
+            return
+        state["next_due"] = plan.due.isoformat()
+        state["schedule_reason"] = plan.reason[:200]
+        self._due[config.source_id] = time.monotonic() + plan.delay_seconds(now)
 
     @property
     def source_ids(self) -> list[str]:
@@ -269,7 +317,7 @@ class Scheduler:
                 after_publish()
             # Reschedule on cadence regardless of outcome: a failing source must
             # not spin, and must not be dropped from the rotation either.
-            self._due[config.source_id] = time.monotonic() + config.cadence_seconds
+            self._reschedule(config, datetime.now(UTC))
             outcomes.append(outcome)
             log(f"{outcome.source_id}: {outcome.state} - {outcome.detail}")
             # Success is already recorded in model_runs; only the states that
