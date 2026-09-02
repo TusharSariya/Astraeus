@@ -169,6 +169,10 @@ under `ingest/` was touched by the storage owner.
 
 ## 6. Gate
 
-- [ ] 6.1 `make test`, `openspec validate storage-window-and-restart-cache
+- [x] 6.1 `make test`, `openspec validate storage-window-and-restart-cache
   --strict`, and `uv run --project ../../tools/specs python
   ../../tools/specs/specctl.py validate`.
+  Verify result (2026-09-02, merged tree `execution/storage-window`, main
+  checkout): green. API 1003 passed, 25 skipped; web 330 passed in 15 files;
+  registry 54 passed; SQL publication and retention invariants PASS; specctl
+  0 errors, 0 warnings; strict validation valid.

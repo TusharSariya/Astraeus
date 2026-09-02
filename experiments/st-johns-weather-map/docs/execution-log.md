@@ -232,3 +232,31 @@ Facts worth knowing after this step:
 - A derived relative humidity is stamped `liquid` from its registered method's
   own declaration. It is the only phase in a response that does not come off
   an artifact attribute.
+
+### Step 5: storage-window-and-restart-cache
+
+Branch `execution/storage-window`, stacked on step 4. Three owners in
+parallel against a pinned seam (`api/weather_api/config.py`:
+`WINDOW_BACK`, `WINDOW_FORWARD`, `sliding_window`; absence flags all in
+`quality.flags`; `provenance.last_valid_time` always ISO when `aged_out`).
+Storage and API owner: 64 GiB quota, single window, purge and last valid
+time moved into SQL so publication and purge are one transaction,
+`aged_out_sources` on `/timeline`, `/ready` and `/layers`. Ingest owner:
+frames keyed by nanosecond valid time, `run_identity_conflict`, restart
+reconciliation, derived recompute, out-of-window QC on the shared window;
+the scheduler lives in `worker/runtime.py` with decisions as pure functions
+in `ingest/scheduler.py`. Web owner: aged-out badge with St. John's local
+time and a legend of the five absence states. Two packaging fixes landed
+alongside: the api and worker images now ship the `registry` package and
+`worker` ships `config.py`, which `ingest/window.py` loads by path to avoid
+a circular import. `make up` is healthy again.
+
+Landed as PR #33, 2026-09-02.
+
+## Method change from step 6 (owner decision 2026-09-02)
+
+One Fable subagent per change acts as change lead: it divides the change by
+file ownership, pins seams, runs at most three Opus or Sonnet task agents at
+once in their own worktrees, merges them, keeps the openspec files truthful,
+and hands the main session one branch. The main session runs the gate in the
+main checkout, pushes and opens the pull request.
