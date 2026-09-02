@@ -16,8 +16,22 @@ vi.mock('./MapPanel', () => ({
 
 // dataMode uses `null` (never a default-triggering `undefined`) to mean
 // "omit data_mode from the response entirely" — the fail-closed case.
+/** `evidence_class` is required on every served value with no default
+ *  (change evidence-classes-and-derived-here), and a value without one renders
+ *  as unavailable rather than as a number. These fixtures predate the field,
+ *  so the helper stamps `retrieved` on any provenance that does not state its
+ *  own class - the responses they stand in for do. A field that means to test
+ *  another class, or the missing one, sets `evidence_class` itself. */
+const classed = (fields: unknown[]): unknown[] => fields.map((field) => {
+  if (!field || typeof field !== 'object') return field
+  const record = field as Record<string, unknown>
+  const provenance = (record.provenance ?? {}) as Record<string, unknown>
+  if ('evidence_class' in provenance) return field
+  return { ...record, provenance: { ...provenance, evidence_class: 'retrieved' } }
+})
+
 const apiPoint = (fields: unknown[] = [], selection = { mode: 'fallback', badge: 'HRDPS primary - consensus unavailable', reason: 'test' }, dataMode: string | null = 'live') => {
-  const body: Record<string, unknown> = { latitude: 47.6186, longitude: -52.7519, valid_time: '2026-08-29T15:00:00Z', selection, fields }
+  const body: Record<string, unknown> = { latitude: 47.6186, longitude: -52.7519, valid_time: '2026-08-29T15:00:00Z', selection, fields: classed(fields) }
   if (dataMode !== null) body.data_mode = dataMode
   return body
 }
@@ -515,13 +529,23 @@ const blendedPoint = () => ({
   ],
 })
 
-const gfsStrataPoint = () => {
+/** The blended fixture's own fields, class-stamped the way `classed` stamps
+ *  everything routed through `apiPoint`. The two `derivation` fields stay
+ *  `retrieved` here deliberately: this fixture is about which SOURCE's field
+ *  is shown, and a derived-here value would drag its inputs contract in with
+ *  it. The derived-here case has its own suite (`derived-inputs.test.tsx`). */
+const blendedPointClassed = () => {
   const base = blendedPoint()
+  return { ...base, fields: classed(base.fields) as typeof base.fields }
+}
+
+const gfsStrataPoint = () => {
+  const base = blendedPointClassed()
   const gfs = (field: string, value: number) => ({
     field, value,
     provenance: { source_id: 'noaa-gfs', product: 'GFS', provider: 'NOAA/NCEP', normalized_units: 'percent', data_mode: 'live' },
   })
-  return { ...base, fields: [...base.fields, gfs('cloud_low', 0), gfs('cloud_middle', 33.70000076293945), gfs('cloud_high', 45.20000076293945)] }
+  return { ...base, fields: classed([...base.fields, gfs('cloud_low', 0), gfs('cloud_middle', 33.70000076293945), gfs('cloud_high', 45.20000076293945)]) as typeof base.fields }
 }
 
 describe('provider cloud strata render as whole percentages', () => {
@@ -538,7 +562,7 @@ describe('provider cloud strata render as whole percentages', () => {
 
 describe('point readings are attributed to the source that produced them', () => {
   it('shows the selected source\u2019s temperature on the blended response, tagged, with the API\u2019s own badge in the header', async () => {
-    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
     render(<App />)
     // The hero is the HRDPS sample the selection names, not the METAR listed first.
     expect(await screen.findByText('18.1')).toBeInTheDocument()
@@ -548,14 +572,14 @@ describe('point readings are attributed to the source that produced them', () =>
   })
 
   it('converts visibility from the declared metres, and never prints the raw number under km', async () => {
-    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
     render(<App />)
     expect(await screen.findByText('24.1 km')).toBeInTheDocument()
     expect(screen.queryByText(/24140/)).not.toBeInTheDocument()
   })
 
   it('gives total cloud its own metric and never fills the low stratum with it', async () => {
-    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
     render(<App />)
     await screen.findByText('18.1')
     const total = screen.getByText('Total cloud').closest('.metric') as HTMLElement
@@ -566,7 +590,7 @@ describe('point readings are attributed to the source that produced them', () =>
   })
 
   it('shows wind speed and the from-direction, disclosing the MetPy derivation', async () => {
-    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
     render(<App />)
     const wind = (await screen.findByText('Wind / gust')).closest('.metric') as HTMLElement
     expect(within(wind).getByText('36 / Unknown')).toBeInTheDocument()
@@ -576,7 +600,7 @@ describe('point readings are attributed to the source that produced them', () =>
   })
 
   it('shows the derived-humidity chip and a pressure metric converted from the declared unit', async () => {
-    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
     render(<App />)
     const humidity = (await screen.findByText('Humidity')).closest('.metric') as HTMLElement
     expect(within(humidity).getByText(/derived · MetPy/)).toBeInTheDocument()
@@ -587,7 +611,7 @@ describe('point readings are attributed to the source that produced them', () =>
   })
 
   it('lists each derivation in the provenance table', async () => {
-    vi.stubGlobal('fetch', routedFetch({ point: blendedPoint() }))
+    vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
     render(<App />)
     await screen.findByText('18.1')
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
@@ -1010,8 +1034,9 @@ describe('observations stay visible under a selected model', () => {
         { field: 'visibility', value: 24140.16, provenance: { source_id: 'awc-metar-speci', product: 'METAR/SPECI', provider: 'NOAA/NWS Aviation Weather Center', normalized_units: 'm', data_mode: 'live' } },
         { field: 'fog_state', value: 'not_indicated', provenance: { source_id: 'awc-metar-speci', product: 'METAR/SPECI', provider: 'NOAA/NWS Aviation Weather Center', normalized_units: 'category', data_mode: 'live' } },
         ...(fewBknPoint().fields as unknown[]),
-      ],
+      ] as unknown[],
     }
+    hrdpsWithMetar.fields = classed(hrdpsWithMetar.fields)
     const fetchMock = routedFetch({ catalog: catalogWithModels, point: hrdpsWithMetar })
     vi.stubGlobal('fetch', fetchMock)
     render(<App />)

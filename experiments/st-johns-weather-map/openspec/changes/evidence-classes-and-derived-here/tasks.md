@@ -75,11 +75,27 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
 
 ## 5. Web (web owner)
 
-- [ ] 5.1 Render the class badge on every value and layer, add the legend,
+- [x] 5.1 Render the class badge on every value and layer, add the legend,
   and render an unknown class as unavailable with the reason.
   Verify: `cd web && npm test -- --run evidence-class`.
-- [ ] 5.2 Show a derived value's inputs and method on demand.
+  Verify result: 12 passed (1 file). Badge on every attributed value, on the
+  hero reading, on every drawer layer row and in the provenance table; legend
+  names all six plus the unrecognised state; an unrecognised OR absent class
+  shows "Unavailable" with the reason and no number. Layer-drawer badge
+  rendering is additionally asserted in `MapPanel.test.tsx` (3 new cases),
+  which owns the MapLibre fake.
+- [x] 5.2 Show a derived value's inputs and method on demand.
   Verify: `cd web && npm test -- --run derived-inputs`.
+  Verify result: 6 passed (1 file). A `derived_here` value discloses its
+  method name, version and citation, its quality with the `derived` flag, and
+  each input with source, valid time, quality and its own class badge; the
+  panel is closed until asked; no such panel exists for any other class.
+- [x] 5.3 Gate the web slice: whole suite and production build.
+  Verify: `cd web && npm test -- --run` and `cd web && npm run build`.
+  Verify result: 258 passed across 10 files (unit + gl projects); `tsc -b`
+  and `vite build` clean. The pre-existing App/MapPanel fixtures were stamped
+  `evidence_class: retrieved` through one helper, because the required field
+  with no default means a value without one no longer renders as a number.
 
 ## 6. Gate
 

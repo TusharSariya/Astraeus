@@ -1,5 +1,6 @@
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
-import type { CatalogResult, CatalogSource, CloudLayerReading, EvidenceSnapshot, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
+import { declaredEvidenceClass, resolveEvidenceClass } from './evidenceClass'
+import type { CatalogResult, CatalogSource, CloudLayerReading, DerivationInput, DerivationMethod, EvidenceSnapshot, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedEvidenceClass, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
 } from './types'
 
 const prefix = '/api/experiments/weather/v0'
@@ -54,15 +55,82 @@ function pickField(fields: ApiEvidenceField[], name: string, preferredSourceId: 
   return matches[0]
 }
 
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+/** `quality` as `{ status, flags }`. A response that carries neither reports
+ *  null and an empty flag list rather than a status this client made up. */
+function qualityOf(provenance: Record<string, unknown>): { status: string | null; flags: string[] } {
+  const quality = provenance.quality
+  if (!quality || typeof quality !== 'object') return { status: null, flags: [] }
+  const record = quality as Record<string, unknown>
+  const flags = Array.isArray(record.flags) ? record.flags.filter((flag): flag is string => typeof flag === 'string') : []
+  return { status: text(record.status), flags }
+}
+
+/** The inputs a `derived_here` value names, as `provenance.derivation_inputs`.
+ *  Each entry keeps its own declared class, so an input that is not
+ *  `retrieved` is visible to the reader rather than folded into the result. */
+function derivationInputsOf(provenance: Record<string, unknown>): DerivationInput[] {
+  const raw = provenance.derivation_inputs
+  if (!Array.isArray(raw)) return []
+  return raw.filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object').map((entry) => {
+    // Quality arrives either as a bare status string or as the same
+    // `{ status, flags }` object the value's own provenance carries.
+    const quality = entry.quality
+    const status = typeof quality === 'string' ? quality
+      : quality && typeof quality === 'object' ? text((quality as Record<string, unknown>).status)
+        : null
+    return {
+      field: String(entry.field ?? 'unnamed input'),
+      sourceId: text(entry.source_id),
+      product: text(entry.product),
+      validTime: text(entry.valid_time),
+      quality: status,
+      evidenceClass: resolveEvidenceClass(entry.evidence_class),
+      declaredClass: declaredEvidenceClass(entry.evidence_class),
+    }
+  })
+}
+
+/** The registered method a derived value names. The object form
+ *  (`derivation_method: { name, version, citation }`) is preferred; the flat
+ *  `derivation` / `derivation_version` / `derivation_citation` fields the API
+ *  already publishes are the fallback, so an older response still names its
+ *  method rather than showing none. */
+function derivationMethodOf(provenance: Record<string, unknown>): DerivationMethod | null {
+  const method = provenance.derivation_method
+  if (method && typeof method === 'object') {
+    const record = method as Record<string, unknown>
+    const name = text(record.name)
+    if (name) return { name, version: text(record.version), citation: text(record.citation) }
+  }
+  const name = text(provenance.derivation)
+  if (!name) return null
+  return { name, version: text(provenance.derivation_version), citation: text(provenance.derivation_citation) }
+}
+
 function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | null {
   if (!field) return null
   const provenance = field.provenance ?? {}
+  const quality = qualityOf(provenance)
+  const evidenceClass = resolveEvidenceClass(provenance.evidence_class)
   return {
     sourceId: typeof provenance.source_id === 'string' ? provenance.source_id : null,
     product: typeof provenance.product === 'string' ? provenance.product : null,
     provider: String(provenance.provider ?? 'Unknown provider'),
     derivation: typeof provenance.derivation === 'string' && provenance.derivation.trim() ? provenance.derivation : null,
     derivationVersion: typeof provenance.derivation_version === 'string' ? provenance.derivation_version : null,
+    evidenceClass,
+    declaredClass: declaredEvidenceClass(provenance.evidence_class),
+    qualityStatus: quality.status,
+    qualityFlags: quality.flags,
+    // Inputs and method are read only for the one class that is defined by
+    // them. A reprocessed value naming a `derivation` is the intermediary's
+    // sentence, not a registered method this deployment can cite.
+    derivationMethod: evidenceClass === 'derived_here' ? derivationMethodOf(provenance) : null,
+    derivationInputs: evidenceClass === 'derived_here' ? derivationInputsOf(provenance) : [],
   }
 }
 
@@ -199,7 +267,14 @@ export function normalizePoint(point: ApiPointResponse): EvidenceSnapshot {
     const key = `${provider}/${product}`
     const derivation = attributionOf(field)?.derivation ?? null
     const existing = uniqueProvenance.get(key)
+    // Every class this provider/product reported, deduplicated. A row that
+    // mixes classes says so rather than showing the first one it saw.
+    const evidenceClass = resolveEvidenceClass(provenance.evidence_class)
+    const evidenceClasses = existing?.evidenceClasses.includes(evidenceClass)
+      ? existing.evidenceClasses
+      : [...(existing?.evidenceClasses ?? []), evidenceClass]
     uniqueProvenance.set(key, {
+      evidenceClasses,
       provider,
       product,
       run: String(provenance.run_time ?? 'Unknown run'),
@@ -453,6 +528,15 @@ export function layerGroup(layer: LayerItem): LayerGroup {
   if (layer.evidence_basis === 'live_proxy') return 'forecast_proxy'
   if (layer.evidence_basis === 'published_artifact') return layer.kind === 'raster' ? 'published_model' : 'observation'
   return 'unknown'
+}
+
+/** A layer's declared evidence class. `/layers` declares it per layer the way
+ *  `/point` declares it per value; an absent or unknown declaration resolves
+ *  to `unrecognised`, which the drawer says out loud. It is never inferred
+ *  from `evidence_basis` or the group: a published artifact can hold values of
+ *  any class, and guessing here is exactly what the class field replaces. */
+export function layerEvidenceClass(layer: LayerItem): ResolvedEvidenceClass {
+  return resolveEvidenceClass(layer.evidence_class)
 }
 
 /** Layers bucketed by group in the shared order, empty groups omitted, and the

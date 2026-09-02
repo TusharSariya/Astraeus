@@ -64,6 +64,46 @@ name and reasserts that it never reaches a data path. The three-level kill
 switch (registry `enabled`, `WEATHER_GENERATED_DISPLAY=off`, reader menu) is
 the model for the derivation method registry's own enabling levels.
 
+## Web contract
+
+The spec deltas pin the class name and that a derived value exposes its inputs
+and method. They do not pin the JSON, so the client reads the simplest shape
+that carries them, and the API owner should match it:
+
+- `provenance.evidence_class`: one of the six strings, required. Absent, empty,
+  non-string or outside the six all resolve to one client state,
+  `unrecognised`, which renders as unavailable with the reason and never as
+  `retrieved`. The two failures are distinguished only in the reason text.
+- `provenance.quality`: `{ status, flags }`, with `derived` appearing in
+  `flags`. Absent means "not named", never a status this client invented.
+- `provenance.derivation_inputs`: a list of
+  `{ field, source_id, product, valid_time, quality, evidence_class }`.
+  `quality` is accepted as a bare status string or as the same
+  `{ status, flags }` object. Read only when the value's own class is
+  `derived_here`.
+- The method: `provenance.derivation_method` as `{ name, version, citation }`
+  is preferred; the flat `derivation` / `derivation_version` /
+  `derivation_citation` fields the API publishes today are the fallback, so a
+  response that predates the object form still names its method. Also read
+  only for `derived_here`: a reprocessed value's `derivation` is the
+  intermediary's sentence, not a registered method this deployment can cite.
+- `/layers` items carry `evidence_class` as the same six-value string. The
+  class is never inferred from `evidence_basis` or the group: a published
+  artifact can hold values of any class, and inferring is what the field
+  replaces.
+
+Two client decisions the spec left open, recorded here because they are
+visible behaviour:
+
+- **A missing class suppresses the value.** The spec's scenario names an
+  unrecognised class; the field is required with no default, so a value
+  carrying none has no honest class either and is treated identically.
+- **An unrecognised class on a LAYER does not withhold the imagery.** The
+  drawer shows the unrecognised badge and the reason sentence beside the row.
+  Withholding a whole layer's pixels is a fallback-rules decision
+  (`frame-fallback-and-viewport-layout`), not this change's, and is left to
+  the owner.
+
 ## Open questions carried into implementation
 
 - Whether existing derived artifacts (cloud motion, the WEonG repair) are
