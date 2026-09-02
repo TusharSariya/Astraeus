@@ -117,7 +117,7 @@ context: |
   `import.meta.env.DEV && VITE_WEATHER_FIXTURES === 'true'` (web), and are
   watermarked on screen and stamped per field.
 
-  Registry (`registry/source_data.py`) is the canonical catalogue: 59 sources.
+  Registry (`registry/source_data.py`) is the canonical catalogue: 63 sources.
   No source is ever `active` - the registry status is a CEILING that a live
   retrieval cannot promote. Promotion requires owner approval plus fixture test,
   live smoke, artifact validation, API readback and provenance checks.

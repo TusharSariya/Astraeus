@@ -1302,9 +1302,11 @@ def registry_source_records() -> list[Any]:
     """Every registry record as a catalogue entry, in registry order."""
     from .models import SourceRecord, SourceState  # noqa: PLC0415
 
-    from ingest.registry import ingest_configs  # noqa: PLC0415
+    import ingest.adapters  # noqa: F401, PLC0415 - register present families
+    from ingest.registry import ingest_configs, registered_adapters  # noqa: PLC0415
 
     configs = ingest_configs()
+    adapter_ids = set(registered_adapters())
     records: list[SourceRecord] = []
     for record in _registry_records():
         source_id = str(record["id"])
@@ -1336,7 +1338,7 @@ def registry_source_records() -> list[Any]:
                 documentation_url=str((record.get("documentation_urls") or ["unavailable"])[0]),
                 access_endpoint=str((record.get("access_endpoints") or ["unavailable"])[0]),
                 integration=f"{record['integration']['kind']}: {record['integration']['client']}",
-                schedulable=bool(config.ingestible) if config else False,
+                schedulable=bool(config.ingestible and source_id in adapter_ids) if config else False,
                 fixture_status=str(record["fixture_status"]),
                 live_smoke_status=str(record["live_smoke_test_status"]),
             )
@@ -1345,10 +1347,19 @@ def registry_source_records() -> list[Any]:
 
 
 def schedulable_source_ids() -> set[str]:
-    """Registry ids a refresh may legitimately name."""
-    from ingest.registry import ingest_configs  # noqa: PLC0415
+    """Wired registry ids a refresh may legitimately name.
 
-    return {source_id for source_id, config in ingest_configs().items() if config.ingestible}
+    Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
+    """
+    import ingest.adapters  # noqa: F401, PLC0415 - register present families
+    from ingest.registry import ingest_configs, registered_adapters  # noqa: PLC0415
+
+    adapter_ids = set(registered_adapters())
+    return {
+        source_id
+        for source_id, config in ingest_configs().items()
+        if config.ingestible and source_id in adapter_ids
+    }
 
 
 def known_source_ids() -> set[str]:

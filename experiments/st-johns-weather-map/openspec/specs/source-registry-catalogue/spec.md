@@ -8,7 +8,7 @@ The API SHALL derive `/catalog`, `/sources/status`, refresh validation, product 
 
 #### Scenario: The catalogue is the whole registry
 - **WHEN** `/catalog` is requested in any data mode
-- **THEN** it returns one record per registry source (59 records), each carrying producer, product, state, status reason, role, consensus eligibility, exact variables, levels, coverage, cadence, horizon, authentication, licence, attribution, caching, archival, redistribution, schema version, documentation URL, access endpoint, integration, schedulability, fixture status and live-smoke status
+- **THEN** it returns one record per registry source (63 records), each carrying producer, product, state, status reason, role, consensus eligibility, exact variables, levels, coverage, cadence, horizon, authentication, licence, attribution, caching, archival, redistribution, schema version, documentation URL, access endpoint, integration, schedulability, fixture status and live-smoke status
 
 #### Scenario: A source id the registry does not know
 - **WHEN** `POST /refresh` names a source id absent from the registry
@@ -29,8 +29,12 @@ The API SHALL map each registry status through a ceiling table and SHALL NOT emi
 - **WHEN** the registry carries a status the ceiling table does not know
 - **THEN** the emitted state is `unavailable`, not a guess and not `active`
 
-### Requirement: Only catalogued, credential-free sources are schedulable
-A source SHALL be schedulable only when its registry status is `implementing` and a freshness threshold can be resolved from its registry prose. A refresh naming a `credential_required`, `licence_review`, `retired`, `unavailable` or otherwise non-schedulable id SHALL be refused, because accepting it would promise work that cannot happen.
+### Requirement: Only wired, catalogued, credential-free sources are schedulable
+A source SHALL be schedulable only when its registry status is `implementing`, a freshness threshold can be resolved from its registry prose, and a successfully registered adapter claims its source id. A refresh naming an unwired source or a `credential_required`, `licence_review`, `retired`, `unavailable` or otherwise non-schedulable id SHALL be refused, because accepting it would promise work that cannot happen.
+
+#### Scenario: A catalogued source has no adapter
+- **WHEN** `POST /refresh` names an `implementing` source without a registered adapter
+- **THEN** it is refused with 422 as not schedulable, and no job is created
 
 #### Scenario: A credential-gated source is requested
 - **WHEN** `POST /refresh` names a source such as `nl-511` or `purpleair`

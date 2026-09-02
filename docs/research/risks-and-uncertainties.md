@@ -4,6 +4,12 @@ Last reviewed: 2026-08-10
 
 ## Executive conclusion
 
+The Newfoundland-specific source, travel, marine, aviation, and camera-CV risks
+are consolidated in the
+[operational-data coverage audit](newfoundland-operational-data-improvements.md).
+A catalogue entry is not evidence of an adapter or successful retrieval, and a
+camera inference must never be presented as an instrument reading.
+
 Astraeus can be engineered with the sources and tooling identified in this
 research dossier. The largest risk is not implementation feasibility. It is
 building a sophisticated optimizer that returns precise-looking rankings

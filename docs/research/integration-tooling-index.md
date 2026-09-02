@@ -96,7 +96,7 @@ the upstream schema/product version used by the adapter.
 | --- | --- | --- | --- |
 | SmartAtlantic | [Portal](https://www.smartatlantic.ca) | [ERDDAP server](https://www.smartatlantic.ca/erddap/index.html) | Official MUN Marine Institute ERDDAP REST API |
 | ECCC CIOPS-East | [Documentation](https://eccc-msc.github.io/open-data/msc-data/nwp_ciops/readme_ciops-east_en/) | [GeoMet / Datamart](https://dd.weather.gc.ca/model_ciops/east/2km/) | Official 2 km coupled hydrodynamic ocean model (SST, currents) |
-| NL 511 | [Developer Portal](https://511nl.ca) | [511 NL API](https://511nl.ca/api/v2/get/) | Official NL Dept of Transportation RWIS & Camera API |
+| NL 511 | [Developer documentation](https://511nl.ca/developers/doc) | [Winter roads endpoint](https://511nl.ca/help/endpoint/winterroads) | Official road, camera, ferry, event, alert and wind-warning API; no documented raw RWIS feed |
 | Atlantic DataStream | [Documentation](https://atlanticdatastream.ca) | [Hosted Portal](https://atlanticdatastream.ca) | Open water quality and provincial climate data portal |
 | CWOP / APRS-WX | [Protocol Docs](http://www.findu.com/citizenweather.html) | [APRS-IS Servers](http://www.aprs-is.net/) | High-density crowdsourced PWS network across Avalon |
 | PurpleAir | [API Documentation](https://api.purpleair.com/) | [Hosted REST API](https://api.purpleair.com/) | Real-time optical laser particle aerosol counts |

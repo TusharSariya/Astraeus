@@ -1,6 +1,6 @@
 # Astraeus research dossier
 
-Last reviewed: 2026-08-10
+Last reviewed: 2026-09-01
 
 This directory preserves the product, scientific, data-source, competitor, and
 implementation research for the Astraeus MVP: an aurora observation optimizer
@@ -14,6 +14,9 @@ The central product question is:
 
 ## Documents
 
+- [Newfoundland operational-data coverage audit](newfoundland-operational-data-improvements.md):
+  verified NL 511 contract, local/marine/aviation gaps, camera-CV boundaries,
+  and prioritized source-adapter backlog.
 - [Repositories, documentation, APIs, and SDK index](integration-tooling-index.md):
   navigation across official documentation, canonical repositories, APIs,
   producer-maintained clients, community tooling, and raw access protocols.

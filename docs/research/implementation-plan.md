@@ -4,6 +4,11 @@ Last reviewed: 2026-08-10
 
 ## Outcome
 
+Use the [Newfoundland operational-data coverage audit](newfoundland-operational-data-improvements.md)
+as the local-source backlog. First reconcile the registry with registered
+adapters and successful complete artifacts; then prioritize NL 511,
+CYYT/IWXXM/SWOB, NAPS, SmartAtlantic, CHS/CCG, profiles and ensembles.
+
 Build a locally runnable application for Atlantic Canada that accepts:
 
 - latitude and longitude;

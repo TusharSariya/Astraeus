@@ -164,12 +164,17 @@ def test_refresh_job_is_fixture_only_and_validates_sources():
     assert client.get(f"{PREFIX}/jobs/not-real").status_code == 404
 
 
-@pytest.mark.parametrize("source_id", ["google-weathernext-2", "raw-cwop-pws", "nl-511"])
+@pytest.mark.parametrize(
+    "source_id",
+    ["google-weathernext-2", "raw-cwop-pws", "nl-511", "eccc-radiosonde"],
+)
 def test_refresh_rejects_a_source_the_scheduler_could_never_run(source_id):
-    """A credential-required, retired or licence-review id is not a job.
+    """A blocked or unwired registry id is not a job.
 
-    Accepting one would promise ingestion work that cannot happen; the registry
-    already answers the question through ``IngestConfig.ingestible``.
+    Registry eligibility is necessary but insufficient: ``eccc-radiosonde``
+    is implementing with known freshness but has no registered adapter.
+
+    Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
     """
     response = client.post(f"{PREFIX}/refresh", json={"source_ids": [source_id]})
     assert response.status_code == 422

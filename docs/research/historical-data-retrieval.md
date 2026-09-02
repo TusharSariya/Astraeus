@@ -58,9 +58,9 @@ interchangeable.
 | OpenAQ | [API docs](https://docs.openaq.org/) | Official [openaq-api](https://github.com/openaq/openaq-api) server repository; consumers normally call the REST API. | Community clients can lag API versions; record source owner and sensor provenance, not only OpenAQ IDs. |
 | NREL NSRDB | [NSRDB docs](https://nsrdb.nrel.gov/), [API docs](https://developer.nrel.gov/docs/solar/nsrdb/), [AWS Open Data](https://registry.opendata.aws/nrel-pds-nsrdb/) | Developer REST API (CSV) and AWS S3 HDF5 (.h5) archives; no official dedicated SDK. | Use `h5py`/`xarray` for S3 access or `requests`/`pandas` for API extracts. Historical/calibration only—not for operational event-day forecasts. |
 | SmartAtlantic ERDDAP | [SmartAtlantic Portal](https://www.smartatlantic.ca), [ERDDAP server](https://www.smartatlantic.ca/erddap/index.html) | ERDDAP REST API (CSV, JSON, NetCDF); official client is direct HTTP or `erddapy`. | Real-time and historical coastal buoy feeds (St. John's, Holyrood, Placentia Bay); CC-BY 4.0. |
-| Grand Banks Platforms (VOS) | [MSC Datamart Marine](https://dd.weather.gc.ca/observations/xml/SWOB-ML/), [NDBC](https://www.ndbc.noaa.gov/) | ECCC MSC Datamart SWOB-ML XML / WMO synoptic feeds. | Upstream hourly surface marine observations from Hibernia (`VEP717`), Terra Nova (`VCXF`), Hebron, SeaRose. |
+| Grand Banks installations / VOS candidates | [MSC Datamart SWOB partners](https://dd.weather.gc.ca/today/observations/swob-ml/partners/), [C-NLOPB offshore information](https://www.cnlopb.ca/offshore/) | Search documented WMO/SWOB identities; partnership or licensed access may be required. | No dependable public per-installation live feed is confirmed for Hibernia, Terra Nova, Hebron, or SeaRose; do not assume identifiers, cadence, or variables. |
 | ECCC CIOPS-East / WW3 | [MSC Open Data](https://eccc-msc.github.io/open-data/msc-data/nwp_ciops/readme_ciops-east_en/) | GeoMet OGC API / NetCDF / GRIB2 on Datamart. | 2 km coupled hydrodynamic ocean model (SST, currents) and 1 km coastal wave grid. |
-| NL 511 API | [511 NL Portal](https://511nl.ca) | REST JSON API (requires developer registration key). | Real-time RWIS road weather conditions, optical visibility, and highway traffic camera imagery. |
+| NL 511 API | [Developer documentation](https://511nl.ca/developers/doc) | REST JSON API using a developer-key query parameter. | Winter roads, cameras, ferry terminals, events, alerts, and wind warnings; no documented raw RWIS feed. |
 | Space Weather Canada / STJ | [Space Weather Canada](https://www.spaceweather.gc.ca), [NRCan Geomagnetism](https://geomag.nrcan.gc.ca) | Space Weather REST API / HTTP data services. | Real-time 1-sec/1-min magnetometer fluxgate data from St. John's Magnetic Observatory (`STJ`). |
 | CWOP / PWS Networks | [CWOP Info](http://www.findu.com/citizenweather.html), [Weather Underground API](https://www.wunderground.com/weather/api) | APRS-IS TCP stream / REST JSON. | High-density 5-min personal weather station feeds across Avalon; requires IQR outlier rejection. |
 | PurpleAir | [PurpleAir API](https://api.purpleair.com/) | REST JSON API. | Real-time optical laser particle counter PM2.5 measurements in St. John's metro. |
@@ -853,34 +853,35 @@ df = pd.read_csv(query_url, skiprows=[1], parse_dates=["time"])
 df["marine_fog_risk"] = df["dew_point"] >= df["sea_surface_temperature"]
 ```
 
-### Newfoundland & Labrador 511 RWIS and road weather camera API
+### Newfoundland & Labrador 511 road and camera API
 
-The NL Department of Transportation and Infrastructure exposes real-time RWIS
-conditions and camera images for major Avalon highway routes:
+The NL Department of Transportation and Infrastructure exposes road-information
+products and camera metadata/images for major Avalon highway routes:
 
-- **API endpoint**: `https://511nl.ca/api/v2/get/`
-- **Data available**: `roadconditions`, `cameras`, `weatherstations`, `ferries`, `alerts`.
-- **Authentication**: `api_key` header (obtained via free developer registration at 511nl.ca).
+- **Winter roads**: `https://511nl.ca/api/v3/get/winterroads`.
+- **Other products**: v2 `cameras`, `ferryterminals`, `event`, `alerts`, and `windwarnings`.
+- **Authentication**: documented developer-key query parameter, resolved only at runtime.
 - **Throttling**: Maximum 10 requests per 60 seconds.
+- **Limitation**: the public documentation does not expose raw RWIS or `weatherstations`.
 
-#### Python RWIS & camera query example
+#### Secret-safe request-shape example
 
 ```python
+import os
 import requests
 
-api_key = "YOUR_511NL_API_KEY"
-headers = {"X-API-KEY": api_key, "Accept": "application/json"}
-
-# Fetch active road conditions and optical visibility
-r_cond = requests.get("https://511nl.ca/api/v2/get/roadconditions", headers=headers, timeout=10)
-conditions = r_cond.json()
-
-# Fetch traffic & weather camera image feeds on the Avalon Peninsula
-r_cam = requests.get("https://511nl.ca/api/v2/get/cameras", headers=headers, timeout=10)
-cameras = r_cam.json()
-# Filter for Route 1 / Pitts Memorial Drive cameras:
-avalon_cams = [c for c in cameras if "Avalon" in c.get("region", "") or "St. John's" in c.get("name", "")]
+api_key = os.environ["NL511_API_KEY"]
+response = requests.get(
+    "https://511nl.ca/api/v2/get/cameras",
+    params={"key": api_key},  # Confirm the current parameter name in provider docs.
+    timeout=10,
+)
+response.raise_for_status()
+cameras = response.json()
 ```
+
+Keep the authentication parameter name configuration-driven. Do not log the
+prepared URL because query authentication puts the credential in that URL.
 
 ### NRCan St. John's Geomagnetic Observatory (`STJ`) space weather retrieval
 

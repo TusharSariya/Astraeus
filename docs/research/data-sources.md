@@ -444,24 +444,25 @@ in JSON, CSV, and NetCDF formats under Creative Commons Attribution 4.0 (CC-BY 4
 - **Microclimate bay contrast**: Compares exposed open Atlantic conditions (St. John's buoy)
   against sheltered inland marine conditions (Holyrood / Conception Bay).
 
-### 2. Newfoundland & Labrador 511 RWIS and highway cameras
+### 2. Newfoundland & Labrador 511 road information and highway cameras
 
-The NL Department of Transportation and Infrastructure operates Road Weather
-Information System (RWIS) stations and traffic cameras along major Avalon corridors:
+The NL Department of Transportation and Infrastructure publishes road information
+and traffic-camera products for major Avalon corridors:
 - Route 1 (Trans-Canada Highway) across the Avalon Isthmus;
 - Route 2 (Pitts Memorial Drive);
 - Route 100 (Cape Shore / Argentia);
 - Route 80 (Trinity Bay).
 
-**Key parameters**: Road surface temperature, air temperature, relative humidity,
-dew point, precipitation type/rate, optical visibility distance (meters), and
-multi-directional highway camera snapshots updated every 10–20 minutes.
+The documented developer interface exposes winter-road conditions, cameras,
+ferry terminals, events, alerts, and wind warnings. It does not document raw
+RWIS or weather-station measurements, so those variables must not be promised.
 
-**Access protocol**: REST API via [511nl.ca](https://511nl.ca) (requires free
-developer registration key; rate-limited to 10 calls/minute).
+**Access protocol**: the [NL 511 developer API](https://511nl.ca/developers/doc)
+uses a developer-key query parameter and allows 10 calls per 60 seconds.
 
 **Operational value for Astraeus**:
-- Ground-truth optical visibility along travel corridors to detect localized valley/coastal fog.
+- Camera and road-condition context along travel corridors; any CV visibility
+  estimate remains derived and requires calibration against instruments.
 - Real-time road passability and safety validation during weather events.
 
 ### 3. ECCC Holyrood S-band dual-polarization Doppler radar (`CASHR`)
@@ -511,22 +512,19 @@ research established key coastal fog dynamics for the Avalon:
   can lift low marine stratus into broken stratocumulus inland while coastlines remain
   socked in.
 
-### 8. Offshore Grand Banks fixed platforms (upstream marine sentinel)
+### 8. Offshore Grand Banks installations (candidate partnership sources)
 
 Fixed oil platforms and FPSOs on the Grand Banks (~300 km east/southeast of St. John's)
-transmit hourly WMO Voluntary Observing Ship (VOS) surface synoptic observations:
+may contribute observations through WMO/VOS or commercial channels. No dependable
+public, redistributable, per-installation live meteorological feed was confirmed:
 - **Hibernia Platform** (Call Sign: `VEP717`, 46.750° N, 48.783° W)
 - **Terra Nova FPSO** (Call Sign: `VCXF`, 46.400° N, 48.400° W)
 - **Hebron Platform** (46.544° N, 48.498° W)
 - **SeaRose FPSO** (46.800° N, 48.000° W)
 
-**Parameters**: Hourly air temperature, dew point, barometric pressure, wind speed and
-direction at helicopter deck level (50–80 m ASL), sea-surface temperature, and wave state.
-
-**Operational value**: Upstream physical sentinel. Because Atlantic marine air masses
-and dense fog banks advect from south/east over the Grand Banks toward the Avalon
-Peninsula, platform observations provide 3 to 6 hours of advance physical warning
-before coastal landfall.
+Treat coordinates and call signs as unverified until checked against a current
+official record. Mark these feeds `partnership-only`; do not infer parameters,
+cadence, or warning time from an installation's existence.
 
 ### 9. ECCC coupled coastal & ocean models (CIOPS-East & WW3-HRW)
 
