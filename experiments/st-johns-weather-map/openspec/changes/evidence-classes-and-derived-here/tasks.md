@@ -45,24 +45,44 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
 
 ## 3. Derivation method registry (ingest owner)
 
-- [ ] 3.1 Create `ingest/derive/registry.py` with entries carrying name,
+- [x] 3.1 Create `ingest/derive/registry.py` with entries carrying name,
   version, citation, inputs, output, physical range and range rule, `enabled`,
   and an approval record; refuse blending entries and unapproved entries at
   load.
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py`.
+  Verify result: 18 passed. An entry with no approval record and each of the
+  three blending shapes (same field from two sources, two members of one field
+  family from two sources, a provider reduction with another member set) raise
+  `RegistryError` at construction, so importing the module with one refuses to
+  load.
 - [ ] 3.2 Register the five first entries (relative humidity, wind speed and
   direction, ensemble statistics, sector sampling, DE442 geometry) and wire
   the existing relative-humidity derivation to its entry.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k
   relative_humidity` shows the entry name and `derived_here` in provenance.
-- [ ] 3.3 Add the deployment-level refusal environment variable and the
+  Verify result: **half done, left unticked.** All five entries are registered
+  (`ENTRIES`, in that order; ensemble statistics and sector sampling
+  `enabled: false`, see design.md) and relative humidity is served through its
+  entry by `resolve_registered_relative_humidity`, verified by `cd api && uv
+  run pytest tests/test_derivation_registry.py -k relative_humidity` (2
+  passed): the entry name, the version and `evidence_class: derived_here`. The
+  named verify command's file `tests/test_point_evidence.py` does not exist yet
+  and `api/weather_api/store.py` belongs to the API owner, so the remaining
+  half is one line at `store.py:1230`, replacing `resolve_relative_humidity`
+  with `ingest.derive.registry.resolve_registered_relative_humidity` (same
+  three-tuple).
+- [x] 3.3 Add the deployment-level refusal environment variable and the
   reader-level switch contract.
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k
   disabled`.
+  Verify result: 4 passed. `WEATHER_DERIVED_HERE=off` (also `0`, `false`, `no`,
+  any case) refuses every derived value with a notice naming the variable and
+  leaves retrieved values untouched; `catalogue(reader_disabled=[...])` is the
+  reader-level contract and refuses per reader only.
 
 ## 4. Registry (ingest owner)
 
-- [ ] 4.0 Add the delivery-kind field itself (`retrieved` | `reprocessed`) to
+- [ ] 4.0 Add the delivery-kind field itself (`published_cell` | `reprocessed`) to
   `registry/schema.json` and to every record in `registry/source_data.py`,
   the audit rule that refuses a reprocessed record as a display primary, the
   provenance fields, and the interface label. Deferred here from
@@ -70,16 +90,54 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   field without implementing it; 4.1 extends the same field.
   Verify: `python3 registry/audit.py` and `python3 -m unittest discover -s
   registry/tests -v`.
-- [ ] 4.1 Add delivery kind `intermediary_derived` with producer, intermediary
+  Verify result: **registry half done, left unticked for the rest.** Audit
+  clean ("registry valid: 64 sources"); 25 tests ran, OK. `delivery_kind` and
+  `display_primary` are required on every record; all 64 declare a kind
+  (60 `published_cell`, 3 `reprocessed`, 1 `intermediary_derived`); the audit
+  refuses a record with no kind, a `reprocessed` record that names no
+  intermediary distinct from its producer or documents no transformation, and
+  any record whose `display_primary` is true while its kind is not
+  `published_cell`.
+  **Naming deviation:** the task text above writes the producer-direct kind as
+  `retrieved`, but both spec deltas name it `published_cell`
+  (`ensemble-members-and-source-plurality/specs/source-registry-catalogue`
+  "Every source declares how its values reach this deployment", and this
+  change's own "A record may declare intermediary-derived delivery", which
+  reads "Beside `published_cell` and `reprocessed`"). `retrieved` is an
+  evidence class, not a delivery kind, and the two axes are deliberately
+  separate: an `intermediary_derived` value is still retrieved by this
+  deployment. The accepted spec text is implemented; renaming the kind would
+  need a spec delta, not a code edit.
+  **Remaining, in other owners' files - the registry part cannot supply
+  these:**
+  - `api/weather_api/models.py` (API owner): add `delivery_kind: Literal["published_cell", "reprocessed", "intermediary_derived"]` and `intermediary: str | None` to `Provenance`, and `delivery_kind`, `intermediary` and `display_primary` to the `/catalog` source model.
+  - `api/weather_api/store.py` (API owner): `_catalog_sources` (around line 1323, beside `role=str(record["poc_role"])`) must copy `record["delivery_kind"]`, `record.get("intermediary", {}).get("name")` and `record["display_primary"]` onto the catalogue entry, and `live_provenance` must carry the producing record's `delivery_kind` and intermediary name onto every value.
+  - `web/src/` (web owner): the interface label beside the class badge - "producer's own cell", "reprocessed by <intermediary>", "computed by <intermediary>" - and a record whose `display_primary` is false is never rendered as the primary value for a field.
+- [x] 4.1 Add delivery kind `intermediary_derived` with producer, intermediary
   and method fields and per-field kind declaration to `registry/schema.json`;
   fail the audit for a record naming no intermediary.
   Verify: `python3 registry/audit.py` and `python3 -m unittest discover -s
   registry/tests -v`.
-- [ ] 4.2 Add the Open-Meteo WeatherNext 2 record with cloud fields
+  Verify result: audit clean ("registry valid: 64 sources"); 17 tests ran, OK
+  (6 existing, 11 new in `registry/tests/test_delivery_kind.py`). A record that
+  declares the kind and drops its intermediary, names the producer as the
+  intermediary, names no field carrying the kind, or names a field it does not
+  publish, each fails the audit naming the record. `delivery_kind` is optional
+  at record level until `ensemble-members-and-source-plurality` makes it
+  required (design.md).
+- [x] 4.2 Add the Open-Meteo WeatherNext 2 record with cloud fields
   `intermediary_derived` and the rest `reprocessed`, status
   `credential_required`.
   Verify: `python3 registry/audit.py --summary-json` lists the record with
   no audit failure.
+  Verify result: exit 0, `"intermediary_derived_sources":
+  ["open-meteo-weathernext-2"]` and `"delivery_kind_counts":
+  {"intermediary_derived": 1, "undeclared": 63}`. Total, low, middle and high
+  cloud carry `intermediary_derived`; the other nine fields `reprocessed`;
+  producer Google DeepMind, intermediary Open-Meteo with its documented
+  humidity-profile method and all six of its transformations; status
+  `credential_required`, fixture and live smoke `blocked`. No status is
+  promoted.
 
 ## 5. Web (web owner)
 
