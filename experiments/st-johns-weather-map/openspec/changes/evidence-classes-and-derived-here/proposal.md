@@ -96,13 +96,18 @@ the specification. It changes no adapter and promotes no source.
 
 - `api/weather_api/models.py`: `Provenance.evidence_class` (required, no
   default), `Quality.flags` gains `derived`, artifact manifests gain
-  `evidence_classes`.
+  `evidence_classes`, and every value carries the producing record's
+  `delivery_kind` and intermediary beside a computed
+  `display_primary_eligible`.
 - `api/weather_api/store.py`: `LiveStore.sample_point` and `_sample_dataset`
   isolate provenance failures per artifact; derived artifacts are admitted
-  by class, never by name match.
+  by class, never by name match; every served derivation is gated on the
+  derivation method registry and refused with the registry's own reason.
 - `ingest/manifest.py`: `RequiredField.evidence_class` and
   `RunManifest.evidence_classes`, and the manifest block each artifact records
-  in its own provenance for the store to admit it by.
+  in its own provenance for the store to admit it by. Every adapter and both
+  display constructions write it, and `ingest/store.py` refuses to stage an
+  artifact that does not.
 - `ingest/derive/`: a `registry.py` for derivation methods mirroring the
   interpolation method registry; existing methods (relative humidity, wind,
   fog state, the WEonG repair, cloud motion) are registered or re-classed.
