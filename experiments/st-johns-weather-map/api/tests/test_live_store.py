@@ -32,7 +32,7 @@ def make_artifact(*, source_id: str = "eccc-hrdps", provenance: dict[str, Any] |
         object_key=f"artifacts/{source_id}/surface",
         media_type="application/zarr+zip",
         byte_size=1024,
-        provenance=provenance if provenance is not None else {"native_resolution": "2.5 km", "adapter_version": "hrdps-v1"},
+        provenance=provenance if provenance is not None else {"native_resolution": "2.5 km", "adapter_version": "hrdps-v1", "evidence_classes": ["retrieved"]},
         published_at=datetime(2026, 8, 29, 13, tzinfo=UTC),
         run_time=datetime(2026, 8, 29, 12, tzinfo=UTC),
         retrieved_at=datetime(2026, 8, 29, 12, 40, tzinfo=UTC),
@@ -81,6 +81,15 @@ class StubStore(LiveStore):
         every sampling test.
         """
 
+
+@pytest.fixture(autouse=True)
+def _registered_derivation_methods(derivation_registry):
+    """Every derivation served here is an enabled derivation-registry entry.
+
+    A ``derived_here`` value is refused unless its method is registered and
+    enabled, so the entries are stood up for this module rather than each
+    test being about the registry.
+    """
 
 def test_cloud_steering_winds_never_reach_a_reading():
     """The 850/700/500 hPa winds are ingested for one purpose: informing the
@@ -188,7 +197,7 @@ def test_a_time_outside_the_published_steps_returns_no_evidence():
 def test_an_unmeasured_retrieval_age_stays_unknown_rather_than_fresh():
     sample = Sample(
         source_id="eccc-hrdps", logical_name="surface", variable="temperature_2m", value=None,
-        units="degC", level="2 m above ground", valid_time=VALID_TIME, run_time=None,
+        units="degC", evidence_class="retrieved", level="2 m above ground", valid_time=VALID_TIME, run_time=None,
         retrieved_at=None, native_crs="EPSG:4326", provenance={},
     )
     provenance = live_provenance(sample, field_name="temperature", reference=datetime(2026, 8, 29, 16, tzinfo=UTC))
@@ -204,7 +213,7 @@ def test_an_unmeasured_retrieval_age_stays_unknown_rather_than_fresh():
 def test_a_measured_retrieval_age_is_compared_against_the_registry_threshold():
     sample = Sample(
         source_id="eccc-hrdps", logical_name="surface", variable="temperature_2m", value=14.5,
-        units="degC", level="2 m above ground", valid_time=VALID_TIME,
+        units="degC", evidence_class="retrieved", level="2 m above ground", valid_time=VALID_TIME,
         run_time=datetime(2026, 8, 29, 12, tzinfo=UTC), retrieved_at=datetime(2026, 8, 29, 12, 40, tzinfo=UTC),
         native_crs="EPSG:4326", provenance={"quality": {"status": "passed", "flags": []}, "coverage": {"status": "complete", "fraction": 1.0}},
     )
@@ -237,18 +246,22 @@ def test_a_broken_artifact_does_not_remove_evidence_from_the_others():
 def test_a_generated_derivation_is_never_sampled_onto_a_data_path():
     """The WEonG low-cloud repair holds cloud values no provider published.
 
-    Rule (d) lets a generated value be drawn and forbids it on a data path.
+    A ``generated_display`` value may be drawn and never reaches a data path.
     It reached /point once because the skip was matched by logical name, and
     the response then failed whole: the derivation records its own QC status,
     which is not one of the four the evidence contract allows.
+
+    Spec-Refs: "Generated-display values never reach a data path" and
+    "Sampling admits or excludes an artifact by its classes"
+    (openspec/changes/evidence-classes-and-derived-here).
     """
     retrieved = make_artifact()
     generated = make_artifact(
         source_id="eccc-hrdps",
-        provenance={"derived": True, "generated": True, "quality": {"status": "passed", "flags": ["generated"]}},
+        provenance={"evidence_classes": ["generated_display"], "quality": {"status": "passed", "flags": ["generated"]}},
     )
     generated = CurrentArtifact(**{**generated.__dict__, "logical_name": "low_cloud_weong", "revision_id": "revision-2"})
-    motion = make_artifact(source_id="eccc-hrdps", provenance={"derived": True})
+    motion = make_artifact(source_id="eccc-hrdps", provenance={"evidence_classes": ["generated_display"]})
     motion = CurrentArtifact(**{**motion.__dict__, "logical_name": "cloud_motion_low_cloud_weong", "revision_id": "revision-3"})
     store = StubStore([(retrieved, make_dataset()), (generated, make_dataset()), (motion, make_dataset())])
 
@@ -258,6 +271,24 @@ def test_a_generated_derivation_is_never_sampled_onto_a_data_path():
     assert store.skipped == [], "a derivation that was never evidence is not a lost artifact"
     fields, _, sources = live_point_fields(store, *ST_JOHNS, VALID_TIME)
     assert fields and sources == ["eccc-hrdps"]
+
+
+def test_a_renamed_generated_artifact_is_still_excluded_by_its_class():
+    """Exclusion reads the class, so a rename cannot restore a generated value
+    to a data path - which is exactly how one reached ``/point`` on
+    2026-09-01, when the name it was matched against grew a layer suffix.
+
+    Spec-Refs: "A renamed generated artifact" scenario, evidence-truth-boundary.
+    """
+    retrieved = make_artifact()
+    renamed = make_artifact(provenance={"evidence_classes": ["generated_display"]})
+    renamed = CurrentArtifact(**{**renamed.__dict__, "logical_name": "a_name_the_sampler_has_never_seen", "revision_id": "revision-9"})
+    store = StubStore([(retrieved, make_dataset()), (renamed, make_dataset())])
+
+    samples = store.sample_point(*ST_JOHNS, VALID_TIME)
+
+    assert {sample.logical_name for sample in samples} == {"surface"}
+    assert store.skipped == []
 
 
 def test_an_empty_store_produces_no_fields_and_no_consensus():
@@ -418,7 +449,7 @@ def make_upper_air(*, u200: float | None = 40.0, v200: float | None = -10.0, u30
         object_key="artifacts/noaa-gfs/upper_air",
         media_type="application/zarr+zip",
         byte_size=1024,
-        provenance={"native_resolution": "0.25 deg", "adapter_version": "noaa-gfs-v2", "vertical_levels": "200/300 hPa isobaric"},
+        provenance={"native_resolution": "0.25 deg", "adapter_version": "noaa-gfs-v2", "vertical_levels": "200/300 hPa isobaric", "evidence_classes": ["retrieved"]},
         published_at=datetime(2026, 8, 29, 13, tzinfo=UTC),
         run_time=datetime(2026, 8, 29, 12, tzinfo=UTC),
         retrieved_at=datetime(2026, 8, 29, 12, 40, tzinfo=UTC),

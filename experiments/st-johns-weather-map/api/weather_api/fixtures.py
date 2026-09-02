@@ -155,6 +155,11 @@ def provenance(
     contributor_records = [item for item in SOURCES if item.id in (contributors or [])]
     return Provenance(
         data_mode=DataMode.FIXTURE,  # unmistakable: this number was computed, not retrieved
+        # The class a fixture stands in for. What marks it as a fixture is
+        # ``data_mode``, which every response carries and every client reads;
+        # the class describes the value being stood in for, and a derived
+        # fixture says so through its ``derivation``.
+        evidence_class="derived_here" if derivation else "retrieved",
         source_id=source_id,
         provider=source, product=product, forecast_centre=centre,
         run_time=None if unavailable or product in {"CYYT METAR/SPECI", "Weather radar"} else now() - timedelta(hours=3),

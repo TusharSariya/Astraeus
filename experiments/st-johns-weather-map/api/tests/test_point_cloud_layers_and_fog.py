@@ -83,6 +83,15 @@ def point_fields(dataset: xarray.Dataset) -> dict[str, Any]:
     return by_name
 
 
+@pytest.fixture(autouse=True)
+def _registered_derivation_methods(derivation_registry):
+    """Every derivation served here is an enabled derivation-registry entry.
+
+    A ``derived_here`` value is refused unless its method is registered and
+    enabled, so the entries are stood up for this module rather than each
+    test being about the registry.
+    """
+
 # --- fog_state is derived, disclosed, and never ``not_indicated`` ------------
 
 def test_an_fg_code_yields_fog_evidence_with_the_derivation_disclosed():

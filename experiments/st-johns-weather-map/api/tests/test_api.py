@@ -316,6 +316,16 @@ def use_live_store(monkeypatch, data_mode, store) -> None:
     monkeypatch.setattr(api_module, "live_store", lambda: store)
 
 
+@pytest.fixture(autouse=True)
+def _registered_derivation_methods(derivation_registry):
+    """Every derivation these endpoints serve is an enabled registry entry.
+
+    A ``derived_here`` value is refused unless its method is registered and
+    enabled, so the entries are stood up for this module rather than each
+    endpoint test being about the registry.
+    """
+
+
 def assert_no_evidence_was_invented(payload: dict) -> None:
     assert payload["data_mode"] == "unavailable"
     assert payload["operational"] is False
@@ -396,7 +406,7 @@ def test_product_selection_never_claims_a_source_that_published_nothing(monkeypa
             return [
                 Sample(
                     source_id="eccc-hrdps", logical_name="surface", variable="temperature_2m", value=9.25,
-                    units="degC", level="2 m above ground", valid_time=valid_time, run_time=None,
+                    units="degC", evidence_class="retrieved", level="2 m above ground", valid_time=valid_time, run_time=None,
                     retrieved_at=None, native_crs="EPSG:4326", provenance={},
                 ),
                 _sample("eccc-rdps", "temperature_2m", 11.5, "degC", valid_time),
@@ -486,7 +496,7 @@ def test_a_taf_never_rides_along_as_an_observation(monkeypatch, data_mode):
 
 def _sample(source_id: str, variable: str, value: float | None, units: str, valid_time: datetime) -> Sample:
     return Sample(
-        source_id=source_id, logical_name="surface", variable=variable, value=value, units=units,
+        source_id=source_id, logical_name="surface", variable=variable, value=value, units=units, evidence_class="retrieved",
         level="surface", valid_time=valid_time, run_time=None, retrieved_at=None, native_crs="EPSG:4326", provenance={},
     )
 
