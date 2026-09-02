@@ -126,8 +126,9 @@ so the two changes may run concurrently.
   its layer group, since a point-sampled model layer is filed as an
   observation and does have runs. A store that cannot report retained
   revisions costs the verdict, never the frames.
-- [ ] 3.3 Set `staleness_tolerance_seconds` to one native interval per layer.
+- [x] 3.3 Set `staleness_tolerance_seconds` to one native interval per layer.
   Verify: `cd api && uv run pytest tests/test_layers.py -k tolerance`
+  Verify result: `cd api && uv run pytest tests/test_layers.py -k tolerance` -> 6 passed, 13 deselected.
 
 ## 4. Web: boundary, coverage list, run labels (web owner)
 

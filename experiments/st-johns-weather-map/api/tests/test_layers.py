@@ -27,11 +27,14 @@ from fastapi.testclient import TestClient
 from weather_api.app import (
     FIXTURE_RUN_REASON,
     LIVE_PROXY_RUN_REASON,
+    MIN_STALENESS_TOLERANCE_SECONDS,
     NO_RUN_CONCEPT_REASON,
     NO_RUN_TIME_REASON,
     PREFIX,
     RUNS_UNREADABLE_REASON,
+    UNKNOWN_CADENCE_TOLERANCE_SECONDS,
     app,
+    staleness_tolerance_seconds,
 )
 from weather_api.models import Layer
 from weather_api.store import LayerCoverage, StoreUnavailable, run_stale_verdict
@@ -431,3 +434,98 @@ def test_run_stale_frames_are_one_per_published_time_in_the_same_order(monkeypat
     layers, _payload = layers_from(monkeypatch, data_mode, store)
     for layer in layers.values():
         assert [entry["valid_time"] for entry in layer["frames"]] == layer["times"]
+
+
+# --- staleness tolerance: one native interval -----------------------------
+
+def test_tolerance_is_one_native_interval_for_a_six_minute_radar_layer(monkeypatch, data_mode):
+    """Six minutes, not the three a half-cadence rule gave it.
+
+    Radar's own resolution is six minutes; inside that there is a sweep that
+    genuinely belongs to the requested instant, and refusing it quietly was the
+    half-cadence rule answering a question about run currency with a number
+    about frame proximity.
+    """
+    store = FakeStore([run_of(REFERENCE - timedelta(hours=6), source_id="eccc-radar", logical_name="radar")], cadence_seconds=360)
+
+    layers, _payload = layers_from(monkeypatch, data_mode, store)
+
+    assert layers["eccc-radar-radar"]["cadence_seconds"] == 360
+    assert layers["eccc-radar-radar"]["staleness_tolerance_seconds"] == 360
+
+
+def test_tolerance_is_one_native_interval_for_an_hourly_model_layer(monkeypatch, data_mode):
+    """An hourly model frame tolerates an hour."""
+    store = FakeStore([run_of(REFERENCE - timedelta(hours=6), step_hours=1, last_lead=6)], cadence_seconds=3600)
+
+    layers, _payload = layers_from(monkeypatch, data_mode, store)
+
+    assert layers[LAYER_ID]["cadence_seconds"] == 3600
+    assert layers[LAYER_ID]["staleness_tolerance_seconds"] == 3600
+
+
+def test_tolerance_of_a_three_hourly_planning_layer_resolves_a_hundred_minute_frame_quietly(monkeypatch, data_mode):
+    """Three hours, so a frame 100 minutes away is drawn without a fallback note.
+
+    Under half a cadence the same frame sat outside a ninety-minute tolerance
+    and had to be disclosed as a fallback, which misreported a planning step
+    doing exactly what its own resolution says it does.
+    """
+    run_time = REFERENCE - timedelta(hours=6)
+    store = FakeStore([run_of(run_time, step_hours=3, last_lead=24)], cadence_seconds=10800)
+
+    layers, _payload = layers_from(monkeypatch, data_mode, store)
+    layer = layers[LAYER_ID]
+
+    assert layer["cadence_seconds"] == 10800
+    tolerance = layer["staleness_tolerance_seconds"]
+    assert tolerance == 10800
+
+    published = [datetime.fromisoformat(stamp.replace("Z", "+00:00")) for stamp in layer["times"]]
+    asked = published[2] + timedelta(minutes=100)
+    nearest = min(published, key=lambda stamp: abs((stamp - asked).total_seconds()))
+    distance = abs((nearest - asked).total_seconds())
+    assert distance <= tolerance, "a 100-minute offset resolves quietly inside a three-hour interval"
+
+
+def test_tolerance_falls_back_to_the_bounded_unknown_cadence_value(monkeypatch, data_mode):
+    """An underivable cadence still gets a bound, so one frame cannot answer for the window."""
+    store = FakeStore([run_of(REFERENCE - timedelta(hours=6))], cadence_seconds=None)
+
+    layers, _payload = layers_from(monkeypatch, data_mode, store)
+    layer = layers[LAYER_ID]
+
+    assert layer["cadence_seconds"] is None
+    assert layer["staleness_tolerance_seconds"] == UNKNOWN_CADENCE_TOLERANCE_SECONDS == 900
+
+
+def test_tolerance_of_a_live_proxied_layer_follows_the_same_one_interval_rule(monkeypatch, data_mode):
+    """A layer rendered upstream is bounded by its own interval like any other."""
+    proxied = Layer(
+        id="geomet-proxy-cloud",
+        title="proxied cloud",
+        kind="raster",
+        field="cloud",
+        product="GDPS",
+        units="percent",
+        semantics="live-proxied",
+        times=[REFERENCE, REFERENCE + timedelta(hours=1)],
+        cadence_seconds=3600,
+        staleness_tolerance_seconds=staleness_tolerance_seconds(3600),
+        evidence_basis="live_proxy",
+        group="forecast_proxy",
+    )
+    monkeypatch.setattr(api_module, "_proxied_forecast_layers", lambda: ([proxied], []))
+    store = FakeStore([run_of(REFERENCE - timedelta(hours=6))])
+
+    layers, _payload = layers_from(monkeypatch, data_mode, store)
+
+    assert layers["geomet-proxy-cloud"]["staleness_tolerance_seconds"] == 3600
+    # Nothing about run attribution changed with the number.
+    assert layers["geomet-proxy-cloud"]["run_stale_reason"] == LIVE_PROXY_RUN_REASON
+
+
+def test_tolerance_floor_keeps_a_very_fast_layer_resolvable():
+    """A sub-minute cadence still gets the 60 s floor, not its own tiny interval."""
+    assert staleness_tolerance_seconds(30) == MIN_STALENESS_TOLERANCE_SECONDS == 60
+    assert staleness_tolerance_seconds(0) == UNKNOWN_CADENCE_TOLERANCE_SECONDS
