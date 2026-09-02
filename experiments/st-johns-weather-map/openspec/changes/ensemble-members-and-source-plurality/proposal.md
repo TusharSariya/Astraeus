@@ -111,7 +111,9 @@ None.
 - `source-registry-catalogue`: consensus eligibility is removed and restated
   as display ordering; an ensemble record declares whether the provider
   publishes members or only its own reduction; every record declares whether
-  its values arrive as published cells or reprocessed by an intermediary.
+  its values arrive as published cells or reprocessed by an intermediary; and
+  the catalogue requirement is restated so its per-record field list drops
+  consensus eligibility and gains the delivery kind.
 - `artifact-ingestion`: an ensemble artifact carries its members and reports
   member completeness; a provider's own ensemble statistic is stored as
   retrieved.
@@ -121,7 +123,7 @@ None.
   reprocessed value names its producer and its intermediary wherever it is
   shown.
 
-Three requirements are removed and restated rather than modified in place.
+Four requirements are removed and restated rather than modified in place.
 `openspec validate` refuses a MODIFIED block that drops a scenario the
 accepted spec still carries, and in both cases the dropped scenario is exactly
 the consensus behaviour being retired. Each REMOVED block records the reason

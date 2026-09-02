@@ -140,7 +140,16 @@ under `ingest/`, `api/` or `web/`, and any registry status promotion.
   Verify result: present, so the label carries information rather than
   becoming decoration.
 
-- [ ] 2b.4 Implementation, NOT in this change: add the delivery-kind field to
+- [x] 2b.4 Restate the catalogue requirement so its per-record field list
+  drops consensus eligibility and gains the delivery kind. Found only after
+  the owner's own commit `a475796` touched the same spec: leaving it would have
+  kept a requirement asserting that every record carries a field this change
+  retires.
+  Verify: heading cross-check reports 0 unresolvable for this change.
+  Verify result: 0. Both original scenarios carried over unchanged; one added
+  for a reprocessed record.
+
+- [ ] 2b.5 Implementation, NOT in this change: add the delivery-kind field to
   `registry/schema.json` and every record in `registry/source_data.py`, the
   audit rule that refuses a reprocessed record as display primary, the
   provenance fields, and the interface label.

@@ -14,7 +14,35 @@ is how the contradiction that removed consensus arose in the first place.
 record. The category keeps deciding what a record may be offered as, and gains
 the ordering role, under the requirement below.
 
+### Requirement: The registry is the only catalogue
+**Reason**: its catalogue scenario asserts that every record carries consensus
+eligibility, which this change retires, and says nothing about the delivery
+kind this change introduces. A MODIFIED block cannot drop the scenario that
+names the retired field, so the requirement is restated with the field list
+corrected.
+
+**Migration**: replaced by "The registry is the only catalogue, and it says how
+each source arrives" below. The requirement text, the registry-order rule, the
+no-fixture-catalogue rule and both other scenarios are carried over unchanged;
+only the per-record field list changes.
+
 ## ADDED Requirements
+
+### Requirement: The registry is the only catalogue, and it says how each source arrives
+The API SHALL derive `/catalog`, `/sources/status`, refresh validation, product controls and scheduler eligibility from `registry/source_data.py`, in registry order, in every data mode. It SHALL NOT serve a separate fixture catalogue of sources. Publishing the registry is honest in every mode because the registry is a declaration of what may be retrieved, not a claim that anything has been. Every record SHALL carry its delivery kind and, where that kind is `reprocessed`, its intermediary, so that a reader of the catalogue alone can tell a producer's own feed from a third party's rendering of it. No record SHALL carry a consensus eligibility field, which no longer has a meaning.
+
+#### Scenario: The catalogue is the whole registry
+- **WHEN** `/catalog` is requested in any data mode
+- **THEN** it returns one record per registry source, each carrying producer, product, state, status reason, role, delivery kind, intermediary where the delivery kind is `reprocessed`, exact variables, levels, coverage, cadence, horizon, authentication, licence, attribution, caching, archival, redistribution, schema version, documentation URL, access endpoint, integration, schedulability, fixture status and live-smoke status, and no consensus eligibility
+
+#### Scenario: A source id the registry does not know
+- **WHEN** `POST /refresh` names a source id absent from the registry
+- **THEN** it is refused with 422 naming the unknown ids
+
+#### Scenario: A reprocessed record in the catalogue
+- **WHEN** a record whose delivery kind is `reprocessed` is listed
+- **THEN** the producer and the intermediary are both named and distinguishable, so the catalogue alone shows that the values are not the producer's own cells
+
 
 ### Requirement: Display ordering comes from the declared category
 Display ordering and forecast lead SHALL be read from each record's declared
