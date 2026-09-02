@@ -129,6 +129,96 @@ the storage owner on the API-side store:
 The window itself is `WINDOW_BACK`, `WINDOW_FORWARD` and `sliding_window(now)`
 in `api/weather_api/config.py`, read by `ingest` through `ingest/window.py`.
 
+    WINDOW_BACK    = timedelta(hours=24)
+    WINDOW_FORWARD = timedelta(days=14)
+    sliding_window(now: datetime) -> tuple[datetime, datetime]
+        UTC-aware `(now - WINDOW_BACK, now + WINDOW_FORWARD)`, both boundaries
+        inclusive. A naive `now` is refused rather than assumed to be UTC.
+
+`config.py` also carries what is sized from the window and must not drift from
+it: `WINDOW_STEPS` (361), `STORAGE_CAP` / `STORAGE_CAP_BYTES` (64 GiB),
+`KEEP_COMPLETE_RUNS` (2), `OBSERVATION_RETENTION` (= `WINDOW_BACK`),
+`COLD_TIER` (`None`) and `AGED_OUT_FLAG`. It imports nothing but the standard
+library, which is what lets `ingest/window.py` load it by path.
+
+### The retention seam, storage side
+
+The rules live in `infra/postgres/init/003_retention_window.sql`, because
+publication and purge have to commit together and because the object keys a
+purge frees must be queued by the same transaction that deleted their rows.
+There is one purge: `ArtifactStore.purge_outside_window(now)` delegates to it
+rather than deciding anything itself.
+
+    weather_experiment.evidence_window(at)         -> (window_start, window_end)
+    weather_experiment.purge_outside_window(at)    -> integer revisions purged
+    weather_experiment.record_last_valid_time(source, stream, until)
+    weather_experiment.claim_purged_objects(batch) -> setof object_key
+    weather_experiment.reclaimable_bytes(at)       -> bigint
+    weather_experiment.stream_last_valid_time      (table, never lowered)
+    weather_experiment.purged_objects              (queue, rows before objects)
+    weather_experiment.publish_run(run)            -> publishes AND purges
+
+`publish_run` is replaced, not wrapped, so a caller cannot publish without
+purging: a third complete run displaces the oldest in the same transaction that
+makes the newest visible. A trigger stamps `artifact_revisions.valid_time_start`
+/ `valid_time_end` from the artifact's own declared `valid_times` at insert, so
+no adapter and no ingest code had to change for retention to become true.
+
+Python callers, in `api/weather_api/store.py`, each taking either the
+`LiveStore` reader or the `ArtifactStore` itself:
+
+    published_frame_times(store, *, source_ids=None)
+        -> dict[(source_id, provider_run_id), set[int]]   # nanoseconds
+    stream_last_valid_times(store) -> dict[(source_id, logical_name), datetime]
+    last_valid_times(store)        -> dict[source_id, datetime]
+    record_last_valid_time(store, *, source_id, logical_name, valid_time)
+    purge_outside_window(store, *, now=None, sweep=True) -> PurgeResult
+    drain_purged_objects(store, *, batch=1000) -> (deleted, missing)
+    reclaimable_bytes(store, *, now=None) -> int
+    assert_room_for(store, additional_bytes, *, replacing_bytes=0, now=None)
+    absence_state(store, source_id, *, held=...) -> (state, last_valid_time)
+
+All of them raise `StoreUnavailable` rather than answering when the store
+cannot be asked: an unknown cache state is not an empty one, and guessing
+between `aged_out` and `null` is itself a fabrication.
+
+### The absence state on the wire
+
+Pinned here because the client was reading two carriers for the same fact.
+One carrier: **`quality.flags`**. `quality.status` keeps exactly its four
+values (`passed`, `suspect`, `failed`, `unknown`) and is never used to signal
+an absence; ageing out is a retention fact about the store, not a verdict on
+the value.
+
+A field that is outside the window's retained set answers:
+
+    value:                       null
+    data_mode:                   "unavailable"
+    quality.status:              unchanged, one of the four
+    quality.flags:               ["aged_out", "aged_out:<source_id>", ...]
+    provenance.last_valid_time:  an ISO instant with an offset
+
+`aged_out`, `blocked` and `retrieval_failed` all ride `quality.flags`.
+`available-not-stored` stays on `EvidenceField.storage`, which is where
+`field-catalogue-and-families` put it. `last_valid_time` is null on every
+value that is not an aged-out absence, and `Provenance` refuses `aged_out`
+without one - a deployment that never held a frame must not claim it did, so
+the flag and the instant stand or fall together and the client never has to
+render an `aged_out` it cannot date.
+
+The five states stay distinct and are named once, in
+`weather_api.store.ABSENCE_STATES`:
+`("null", "blocked", "aged_out", "retrieval_failed", "available-not-stored")`.
+
+`/timeline` carries the same fact per hour, for the web to pick up later:
+
+    items[].aged_out_sources: {"<source_id>": "<ISO instant>", ...}
+
+It is empty for any hour that lists a product, and empty for every hour when
+the store could not be read (a notice says so instead) - so an hour that holds
+nothing and names nothing is an hour nothing ever covered. `/ready` and
+`/layers` carry the same mapping at the response level as `aged_out_sources`.
+
 A fourth method exists on the ingest side only, because the conflict is a
 staging decision and never a read: `published_digests(source_id,
 provider_run_id) -> dict[str, str]`, which `assert_run_identity` compares
@@ -180,6 +270,60 @@ against a fetched artifact's digest before the run row is touched, raising
 - **Three window assertions in `tests/test_ingest_manifest.py` were re-pinned.**
   They chose instants at `-8 h` and `+48 h` to be outside the old window;
   those are inside the new one, so they now use `-48 h` and `+15 d`.
+
+## Deviations recorded during implementation (sections 1, 2, 3 and 5.1)
+
+- **Retention moved into SQL rather than staying in Python.** The proposal's
+  Impact list put the purge sweep in `api/weather_api/store.py`. It could not
+  live only there: publication and purge have to be one transaction, the last
+  valid time has to be recorded before the frames it describes are deleted, and
+  the `current_artifacts` pointer has to go in the same statement as the
+  revision or the foreign key refuses the delete. So the rules are
+  `infra/postgres/init/003_retention_window.sql` and the Python on both sides
+  asks that one function. `ingest/store.py::purge_outside_window`, which the
+  ingest owner had implemented over the existing schema, now delegates to it -
+  one purge, not two. Its three unit tests in `tests/test_worker_restart.py`
+  were rewritten to assert the delegation; which frames leave the window is
+  proved against a real PostgreSQL in
+  `infra/postgres/tests/retention_invariants.sql`.
+
+- **The valid-time span is stamped by a trigger, not by the caller.** Every
+  adapter writes its own provenance shape and none of them agree, so reading
+  the span out of `provenance->'valid_times'` at insert is the one place that
+  holds for all of them. A revision that declares no frame times falls back to
+  its run time rather than becoming unpurgeable.
+
+- **The purge queues object keys instead of deleting them inline.** Rows before
+  objects is a requirement, and the row deletion is inside a transaction that
+  cannot also be doing S3 calls. `weather_experiment.purged_objects` holds the
+  freed keys and `claim_purged_objects` hands each out once, so a sweep that
+  dies mid-way resumes rather than leaking.
+
+- **`scripts/sql-test.sh` runs every proof in `infra/postgres/tests/`**, each
+  in its own psql session, requiring an `ALL … INVARIANTS HOLD` sentinel from
+  each. It previously named `publication_invariants.sql` alone, so a second
+  proof file would have been silently unrun.
+
+- **`TimelineItem.aged_out_sources`, `ReadyResponse.aged_out_sources` and
+  `LayersResponse.aged_out_sources` are new response fields.** The spec
+  requires an emptied hour to state which of its sources aged out and
+  readiness to say aged out rather than never retrieved; neither response had
+  anywhere to put it. `ReadyResponse` also gained `notices`, so an unreadable
+  last-valid-time record can name the failure instead of being reported as an
+  absence.
+
+- **The bootstrap resets the quota by setting it unconditionally and reports
+  when the bucket was carrying something else**, rather than reading the value
+  and branching. `mc quota set` was already idempotent; what was missing was
+  the deployment saying that it had overridden an out-of-band value.
+
+- **Two existing window assertions in `tests/test_wms_proxy.py` were
+  re-pinned.** The proxied-layer extent test advertised 48 hourly frames to be
+  partly outside the window; 48 hours is now well inside it, so it advertises
+  400. The satellite scan test asserted 12 to 19 ten-minute scans (about three
+  hours); the window reaches 24 hours back now, so it asserts about a day. Both
+  still prove the advertised extent is intersected with the window rather than
+  passed through.
 
 ## Open questions carried into implementation
 

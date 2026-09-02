@@ -36,6 +36,14 @@ if str(EXPERIMENT_ROOT) not in sys.path:  # ingest/ ships beside api/ in both im
 
 from registry import fields as catalogue  # noqa: E402  (sys.path is set above)
 
+from .config import (  # noqa: E402
+    AGED_OUT_FLAG,
+    KEEP_COMPLETE_RUNS,
+    STORAGE_CAP,
+    STORAGE_CAP_BYTES,
+    sliding_window,
+)
+
 # Canonical artifact variable -> API evidence field. Adapters write the left
 # hand side (ingest.registry.DEFAULT_VARIABLES); the API speaks the right.
 #
@@ -1321,6 +1329,260 @@ def reset_live_store() -> None:
     reset_data_mode()
 
 
+# --- retention: the window, the purge, and what was held ------------------
+# Retention is the sliding valid-time window used as a restart cache. The
+# rules themselves live in SQL (infra/postgres/init/003_retention_window.sql)
+# because publication and purge have to commit together and because the object
+# keys freed by a purge must be queued by the same transaction that deleted
+# their rows. What lives here is the query surface: what the store holds, how
+# far each stream ever reached, and the sweep that drains freed objects out of
+# MinIO after their rows are already gone.
+#
+# Every function takes the artifact store rather than reaching for a global,
+# so the worker and the API can call the same code against the same store.
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+
+#: Distinguishes "the caller passed nothing" from "the caller passed an empty
+#: mapping", which for an absence report are different claims: the first means
+#: ask the store, the second means the store was asked and holds no record.
+_MISSING: Any = object()
+
+
+def valid_time_nanoseconds(moment: datetime) -> int:
+    """One instant as integer nanoseconds since the epoch.
+
+    The idempotency key compares frame times as integers, never as floats and
+    never as formatted strings: a microsecond of float error, or one adapter
+    writing ``+00:00`` where another writes ``Z``, would read as a missing
+    frame and refetch a run that is already on disk.
+    """
+    if moment.tzinfo is None:
+        raise ValueError("an offsetless instant has no place on the timeline")
+    delta = moment.astimezone(UTC) - _EPOCH
+    return ((delta.days * 86400 + delta.seconds) * 1_000_000 + delta.microseconds) * 1000
+
+
+@dataclass(frozen=True)
+class PurgeResult:
+    """What one purge did. Rows first; objects are a separate, resumable sweep."""
+
+    revisions: int
+    objects_deleted: int
+    objects_missing: int
+
+
+def artifact_store(store: Any) -> Any:
+    """The metadata store behind whatever the caller was holding.
+
+    The API passes its :class:`LiveStore` reader and the worker passes the
+    ``ingest.store.ArtifactStore`` itself. Retention is one set of rules over
+    one store, so it unwraps here rather than being written twice.
+    """
+    return getattr(store, "_store", store)
+
+
+def _cursor(store: Any):
+    """A cursor on the artifact store's own connection, or ``StoreUnavailable``.
+
+    A store that cannot be asked is never treated as an empty one. That
+    distinction is the whole point of the restart cache: refetching everything
+    because the metadata store blinked is how a restart becomes an outage on
+    the constraint that actually binds.
+    """
+    target = artifact_store(store)
+    try:
+        return target.connection()
+    except Exception as error:  # noqa: BLE001 - any driver failure is the same answer
+        raise StoreUnavailable(f"the artifact store could not be asked what it holds: {error}") from error
+
+
+def published_frame_times(store: Any, *, source_ids: Sequence[str] | None = None) -> dict[tuple[str, str], set[int]]:
+    """Frame times already published, keyed by ``(source_id, provider_run_id)``.
+
+    Times are integer nanoseconds. This is the question a restarting worker
+    asks before fetching anything: only the frames absent from this answer are
+    fetched. Raises :class:`StoreUnavailable` rather than returning an empty
+    mapping, because an unknown cache state is not an empty one.
+    """
+    clause, params = "", []
+    if source_ids is not None:
+        clause = "AND r.source_id = ANY(%s)"
+        params = [list(source_ids)]
+    present: dict[tuple[str, str], set[int]] = {}
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                SELECT r.source_id, r.provider_run_id, a.provenance -> 'valid_times',
+                       a.valid_time_start, a.valid_time_end
+                  FROM weather_experiment.artifact_revisions a
+                  JOIN weather_experiment.model_runs r ON r.run_id = a.run_id
+                 WHERE a.state IN ('published', 'superseded')
+                   {clause}
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"published frame times could not be read: {error}") from error
+
+    for source_id, provider_run_id, declared, span_start, span_end in rows:
+        key = (str(source_id), str(provider_run_id))
+        held = present.setdefault(key, set())
+        stamps = [moment for moment in (_parse_iso(value) for value in (declared or ())) if moment is not None]
+        if not stamps:
+            # No declared frame list. The span is the only thing that can be
+            # answered for, and answering with its edges is narrower than
+            # claiming every hour between them: a frame wrongly reported
+            # present is a frame that never gets fetched.
+            stamps = [moment for moment in (span_start, span_end) if moment is not None]
+        held.update(valid_time_nanoseconds(moment) for moment in stamps)
+    return present
+
+
+def stream_last_valid_times(store: Any) -> dict[tuple[str, str], datetime]:
+    """The last valid time held per ``(source_id, logical_name)``.
+
+    A stream absent from this mapping was never held here, so its absence is
+    ``null`` and must never be reported as aged out.
+    """
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT source_id, logical_name, last_valid_time "
+                "FROM weather_experiment.stream_last_valid_time"
+            )
+            rows = cursor.fetchall()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"the last valid time record could not be read: {error}") from error
+    return {(str(source_id), str(name)): moment for source_id, name, moment in rows}
+
+
+def last_valid_times(store: Any) -> dict[str, datetime]:
+    """The last valid time held per source, folded over its logical streams."""
+    folded: dict[str, datetime] = {}
+    for (source_id, _name), moment in stream_last_valid_times(store).items():
+        held = folded.get(source_id)
+        if held is None or moment > held:
+            folded[source_id] = moment
+    return folded
+
+
+def record_last_valid_time(store: Any, *, source_id: str, logical_name: str, valid_time: datetime) -> None:
+    """Record how far one stream reached, so a later absence can say so.
+
+    Publication records this itself inside ``publish_run``; this is the seam
+    for a caller that holds frames the publication path did not stamp. The
+    record is never lowered.
+    """
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT weather_experiment.record_last_valid_time(%s, %s, %s)",
+                (source_id, logical_name, valid_time),
+            )
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"the last valid time could not be recorded for {source_id}/{logical_name}: {error}") from error
+
+
+def purge_outside_window(store: Any, *, now: datetime | None = None, sweep: bool = True) -> PurgeResult:
+    """Purge every frame whose valid time has left the window, then sweep.
+
+    The row deletion and the last-valid-time record commit together in the
+    database; the object deletion is a separate, resumable sweep, because the
+    metadata row is the record of truth and an object that outlives its row is
+    a leak while a row that outlives its object is a pointer at nothing.
+    """
+    moment = (now or datetime.now(UTC)).astimezone(UTC)
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.purge_outside_window(%s)", (moment,))
+            row = cursor.fetchone()
+            revisions = int(row[0]) if row else 0
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"the retention purge could not run: {error}") from error
+    deleted, missing = drain_purged_objects(store) if sweep else (0, 0)
+    return PurgeResult(revisions=revisions, objects_deleted=deleted, objects_missing=missing)
+
+
+def drain_purged_objects(store: Any, *, batch: int = 1000) -> tuple[int, int]:
+    """Delete the objects whose rows a purge already removed.
+
+    An object already gone does not abort the sweep: the row is the record of
+    truth, and the queue entry is claimed either way so a permanently missing
+    object cannot make the sweep loop forever.
+    """
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.claim_purged_objects(%s)", (batch,))
+            keys = [row[0] for row in cursor.fetchall()]
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"the purge queue could not be claimed: {error}") from error
+
+    target = artifact_store(store)
+    deleted = missing = 0
+    for key in keys:
+        try:
+            target.s3.delete_object(Bucket=target.config.bucket, Key=key)
+            deleted += 1
+        except Exception:  # noqa: BLE001 - already gone, or gone by the next sweep
+            LOGGER.warning("purged object %s could not be deleted; the row is already gone", key)
+            missing += 1
+    return deleted, missing
+
+
+def reclaimable_bytes(store: Any, *, now: datetime | None = None) -> int:
+    """Bytes a projection may count on being freed: those already out of window.
+
+    Never includes an in-window frame. Trading evidence a request could name
+    for room to fetch more is an eviction of visible data under another name,
+    which the storage-integrity requirement forbids.
+    """
+    moment = (now or datetime.now(UTC)).astimezone(UTC)
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.reclaimable_bytes(%s)", (moment,))
+            row = cursor.fetchone()
+            return int(row[0]) if row else 0
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"reclaimable bytes could not be read: {error}") from error
+
+
+def assert_room_for(store: Any, additional_bytes: int, *, replacing_bytes: int = 0, now: datetime | None = None) -> None:
+    """Refuse a download that would exceed the cap, before any bytes are fetched.
+
+    Room is projected against the configured hot quota, counting the two-run
+    staging overlap that is already on disk. Only bytes already outside the
+    window are credited as reclaimable, so the projection can never be
+    satisfied by planning to purge an in-window frame, and it is never
+    satisfied by evicting a currently visible revision: reaching the cap fails
+    closed, and there is nowhere to spill to.
+    """
+    from ingest.store import QuotaExceeded  # noqa: PLC0415  (the worker owns the error type)
+
+    target = artifact_store(store)
+    cap = getattr(getattr(target, "config", None), "cap_bytes", None) or STORAGE_CAP_BYTES
+    projected = target.used_bytes() - replacing_bytes + additional_bytes - reclaimable_bytes(target, now=now)
+    if projected > cap:
+        raise QuotaExceeded(
+            f"the {STORAGE_CAP} hot storage cap would be exceeded: projected {projected} bytes against a cap of {cap}. "
+            "No visible revision is evicted and there is no cold tier to spill to."
+        )
+
+
 # --- evidence assembly ---------------------------------------------------
 # Samples become API evidence here so that every live value carries the same
 # provenance shape as a fixture value, including when it is missing.
@@ -2138,7 +2400,7 @@ UNAVAILABLE_PROFILE_FIELDS: tuple[tuple[str, str, str], ...] = (
 )
 
 
-def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable", level: str = "unavailable", reference: datetime | None = None, evidence_class: str = "retrieved") -> Any:
+def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable", level: str = "unavailable", reference: datetime | None = None, evidence_class: str = "retrieved", last_valid_time: datetime | None = None) -> Any:
     """The provenance of a value that does not exist.
 
     ``evidence_class`` is required on every provenance, so this placeholder
@@ -2146,6 +2408,11 @@ def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[
     field nothing retrieved, ``derived_here`` for a derivation that was
     refused. What says the value is absent is the null value beside it, the
     ``unavailable`` data mode and the ``no_retrieval`` flag, never the class.
+
+    ``last_valid_time`` is set only for an aged-out absence, and the
+    ``aged_out`` flag is only ever set beside it: the model refuses one
+    without the other, because a deployment that never held a frame must not
+    claim it held one and lost it.
     """
     from .models import Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
 
@@ -2167,26 +2434,70 @@ def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[
         normalized_units=units,
         native_resolution="unavailable",
         native_crs="unavailable",
-        quality=Quality(status="unknown", flags=["no_retrieval", *flags]),
+        # ``no_retrieval`` is not stated for an aged-out absence: this
+        # deployment did retrieve the frame and then purged it, and saying
+        # nothing was retrieved would fold the third absence state back into
+        # the first one on the wire.
+        quality=Quality(status="unknown", flags=list(dict.fromkeys(flags if last_valid_time is not None else ["no_retrieval", *flags]))),
         coverage=Coverage(status="unknown", fraction=None),
         freshness=Freshness.evaluate(None, None),
         licence="unavailable",
         attribution="unavailable",
         adapter_version="unavailable",
+        last_valid_time=last_valid_time,
     )
 
 
-def unavailable_point_fields(valid_time: datetime, *, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable") -> list[Any]:
+def unavailable_point_fields(valid_time: datetime, *, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable", last_valid_time: datetime | None = None) -> list[Any]:
     from .models import EvidenceField  # noqa: PLC0415
 
     reference = datetime.now(UTC)
     return [
-        EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=units, flags=flags, source_id=source_id, product=product, reference=reference))
+        EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=units, flags=flags, source_id=source_id, product=product, reference=reference, last_valid_time=last_valid_time))
         for name, units in UNAVAILABLE_POINT_FIELDS
     ]
 
 
-def unavailable_profile_levels(valid_time: datetime, pressures: Sequence[int], *, flags: Sequence[str]) -> list[Any]:
+#: The five absence states a reader is ever shown, by name. Kept in one place
+#: so the API, the legend and the tests cannot come to disagree about how many
+#: there are - the absence of a badge must never carry meaning.
+ABSENCE_STATES: tuple[str, ...] = (
+    "null",                     # never retrieved; nothing was ever held
+    "blocked",                  # a licence, credential or partnership prevents retrieval
+    "aged_out",                 # held here and purged when its valid time left the window
+    "retrieval_failed",         # an attempt was made and broke; a retry may clear it
+    "available-not-stored",     # the producer publishes it and this deployment does not fetch it
+)
+
+
+def absence_state(store: Any, source_id: str, *, held: Any = _MISSING) -> tuple[str, datetime | None]:
+    """Which absence a source's silence is, and the last valid time if any.
+
+    Three answers, and the third is not an absence at all:
+
+    - ``("aged_out", <last valid time>)`` when the store recorded holding
+      frames for this source and holds none now.
+    - ``("null", None)`` when there is no such record, because a deployment
+      that never held a frame must not claim it did.
+    - :class:`StoreUnavailable` propagates when the record cannot be read,
+      so the caller reports ``unavailable`` rather than guessing which of the
+      two applies. Guessing between them is itself a fabrication.
+
+    ``held`` is the already-resolved mapping from :func:`last_valid_times`,
+    for a caller answering for many sources in one response; omit it and one
+    query is made.
+    """
+    known = last_valid_times(store) if held is _MISSING else held
+    moment = known.get(source_id)
+    return ("aged_out", moment) if moment is not None else ("null", None)
+
+
+def aged_out_flags(source_id: str, *, extra: Sequence[str] = ()) -> list[str]:
+    """The QC flags an aged-out absence carries, naming the source."""
+    return [AGED_OUT_FLAG, f"{AGED_OUT_FLAG}:{source_id}", *extra]
+
+
+def unavailable_profile_levels(valid_time: datetime, pressures: Sequence[int], *, flags: Sequence[str], last_valid_time: datetime | None = None) -> list[Any]:
     from .models import EvidenceField, ProfileLevel  # noqa: PLC0415
 
     reference = datetime.now(UTC)
@@ -2194,7 +2505,7 @@ def unavailable_profile_levels(valid_time: datetime, pressures: Sequence[int], *
         ProfileLevel(
             pressure_hpa=pressure,
             fields=[
-                EvidenceField(field=name, value=None, key=key, provenance=unavailable_provenance(valid_time, units=units, flags=flags, level=f"{pressure} hPa", reference=reference))
+                EvidenceField(field=name, value=None, key=key, provenance=unavailable_provenance(valid_time, units=units, flags=flags, level=f"{pressure} hPa", reference=reference, last_valid_time=last_valid_time))
                 for name, units, key in UNAVAILABLE_PROFILE_FIELDS
             ],
         )

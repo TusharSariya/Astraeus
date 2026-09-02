@@ -143,6 +143,41 @@ web owner surfaced are section 6 of the change's tasks.md.
 
 Landed as PR #32 (`execution/field-catalogue`, stacked on #31), 2026-09-02.
 
+### Step 5: storage-window-and-restart-cache, sections 1, 2, 3 and 5.1
+
+Branch `worktree-agent-a5612731761b1e1e1`, stacked on `execution/field-catalogue`
+and merged with the ingest owner's `execution/storage-window` (45038d6).
+
+The seam was fixed before the two owners started: `api/weather_api/config.py`
+with `WINDOW_BACK`, `WINDOW_FORWARD` and `sliding_window(now)`, plus the
+absence shape on the wire. Both are in the change's design.md under "Seam".
+
+Facts worth knowing after this step:
+
+- Retention is SQL, not Python. `infra/postgres/init/003_retention_window.sql`
+  holds the window, the two-run ceiling, the last-valid-time record and the
+  purge; `publish_run` was replaced so publication and purge commit together.
+  `ArtifactStore.purge_outside_window` delegates to it, so there is one purge.
+- A trigger stamps each revision's valid-time span from its own provenance at
+  insert, so retention became true without an adapter change.
+- The window went from 28 hourly steps to 361. Anything that assumed a short
+  window changed with it: the proxied GeoMet layers now offer far more frames,
+  and the satellite drawer offers about a day of ten-minute scans rather than
+  three hours.
+- `aged_out` rides `quality.flags` and is refused by the model without a
+  `provenance.last_valid_time` beside it. `quality.status` keeps its four
+  values. `/timeline`, `/ready` and `/layers` gained `aged_out_sources`.
+- `make test-sql` now runs every proof under `infra/postgres/tests/`, not just
+  `publication_invariants.sql`.
+- The worker image must ship `api/weather_api/config.py`; the ingest owner
+  recorded that and the Dockerfile owner has it.
+
+Gates: `cd api && uv run pytest` 848 passed, 36 skipped (a fresh worktree skips
+the numpy and xarray tests). `make test-sql` green: 17 publication and 21
+retention invariants. `openspec validate storage-window-and-restart-cache
+--strict` valid. Task 6.1 (`make test` in the main checkout, `specctl.py
+validate`) is still open for the orchestrator.
+
 ## Where to pick up (written 2026-09-02, paused at the owner's request)
 
 - Merge #31 then #32 (or rebase #32 onto main after #31).

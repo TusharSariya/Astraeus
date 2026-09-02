@@ -469,52 +469,37 @@ class ArtifactStore:
     def purge_outside_window(self, now: datetime | None = None) -> int:
         """Purge every retained frame whose valid time left the window.
 
-        Retention is the window, so this deletes on the frame's own declared
-        valid times rather than on run age. A revision whose declared times
-        have all fallen outside `now-24h .. now+14d` is removed; a revision
-        that declared none is left to :meth:`prune`, which judges it by run
-        position, because deleting a frame whose instant the store cannot read
-        would be purging on a guess.
+        The rules live in ``weather_experiment.purge_outside_window`` rather
+        than here. There is one purge, not two: the database's version is the
+        one publication commits with, it records each stream's last valid time
+        before removing anything (which is what makes an aged-out report
+        possible at all), and it deletes the ``current_artifacts`` pointer in
+        the same transaction, which a row delete from here could not do
+        without tripping the foreign key.
 
-        Rows go before objects and an object already gone does not abort the
-        sweep, exactly as :meth:`prune` and :meth:`restart` already do.
+        Rows go before objects. The freed keys are queued by that transaction
+        and drained here, so an object already gone does not abort the sweep
+        and a sweep that dies mid-way resumes on the next call.
         """
         moment = now or datetime.now(UTC)
-        start, end = sliding_window(moment)
-        low, high = to_nanoseconds(start), to_nanoseconds(end)
         with self.connection() as connection, connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT a.revision_id, a.object_key, a.provenance
-                  FROM weather_experiment.artifact_revisions a
-                 WHERE a.state IN ('published', 'superseded')
-                """
-            )
-            rows = cursor.fetchall()
-            doomed: list[tuple[Any, str]] = []
-            for revision_id, object_key, provenance in rows:
-                stamps = _declared_valid_time_nanoseconds(provenance)
-                if not stamps:
-                    continue
-                if any(low <= value <= high for value in stamps):
-                    continue
-                doomed.append((revision_id, object_key))
-            if not doomed:
-                return 0
-            cursor.execute(
-                "DELETE FROM weather_experiment.artifact_revisions WHERE revision_id = ANY(%s) RETURNING object_key",
-                ([revision_id for revision_id, _ in doomed],),
-            )
-            keys = [row[0] for row in cursor.fetchall()] or [key for _, key in doomed]
+            cursor.execute("SELECT weather_experiment.purge_outside_window(%s)", (moment,))
+            row = cursor.fetchone()
+            purged = int(row[0]) if row else 0
+            cursor.execute("SELECT weather_experiment.claim_purged_objects(%s)", (1000,))
+            keys = [item[0] for item in cursor.fetchall()]
         self._delete_objects(keys)
-        return len(keys)
+        return purged
 
     # --- retention -------------------------------------------------------
     def prune(self, *, now: datetime | None = None) -> int:
         """Keep the latest and previous complete run per logical stream.
 
-        High-cadence observations additionally keep three hours, matching the
-        registry's caching policy and infra/STORAGE.md.
+        The run-position fallback for revisions that declared no frame times,
+        which :meth:`purge_outside_window` deliberately leaves alone rather
+        than purging on a guess. Observations keep the full 24 hours the
+        window reaches back; the old three-hour high-cadence floor is gone
+        (infra/STORAGE.md).
         """
         moment = now or datetime.now(UTC)
         floor = moment - OBSERVATION_RETENTION

@@ -21,6 +21,7 @@ There is deliberately no path from a live failure to a fixture value.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -84,12 +85,15 @@ from .models import (
 )
 from .science import select_fallback
 from . import astronomy, aurora, grids, satellite as goes_satellite, wms
+from .config import WINDOW_STEPS, sliding_window
 from .store import (
     FIXTURE_MODE,
     LIVE_MODE,
     SeriesData,
     StoreUnavailable,
+    absence_state,
     configured_mode,
+    last_valid_times,
     known_source_ids,
     LayerCoverage,
     layer_id_for,
@@ -103,6 +107,7 @@ from .store import (
     unavailable_point_fields,
     unavailable_profile_levels,
 )
+from .models import AGED_OUT_FLAG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -203,17 +208,58 @@ def _floor_to_hour(moment: datetime) -> datetime:
     return moment.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
 
 
-def _window_items(reference: datetime, products_at: dict[datetime, list[str]] | None = None) -> list[TimelineItem]:
-    """The 28 hourly steps, carrying only the products given for each hour."""
+def _aged_out_sources(store: object) -> tuple[dict[str, datetime], list[str]]:
+    """Sources this deployment held and purged, with the last valid time each reached.
+
+    An empty mapping with no notice means the store answered and holds no such
+    record: every absence is then ``null``. An empty mapping WITH a notice
+    means the record could not be read, and the caller must not present either
+    absence state as if it knew which applied.
+
+    A store that has no last-valid-time record at all - an older deployment,
+    or one whose retention migration has not run - is treated as "nothing was
+    ever held", which is the fail-closed answer: it under-claims rather than
+    inventing evidence this deployment cannot show was here.
+    """
+    try:
+        return last_valid_times(store), []
+    except StoreUnavailable as error:
+        LOGGER.warning("the last valid time record could not be read: %s", error)
+        return {}, [f"the last valid time record could not be read, so no absence is reported as aged out: {error}"]
+    except Exception as error:  # noqa: BLE001 - a missing table must not take the timeline down
+        LOGGER.exception("the last valid time record could not be read")
+        return {}, [f"the last valid time record could not be read, so no absence is reported as aged out: {type(error).__name__}: {error}"]
+
+
+def _window_items(
+    reference: datetime,
+    products_at: dict[datetime, list[str]] | None = None,
+    *,
+    aged_out: dict[str, datetime] | None = None,
+) -> list[TimelineItem]:
+    """The hourly steps of the sliding window, with only what each hour holds.
+
+    ``aged_out`` names the sources whose frames this deployment held and
+    purged, with the last valid time each reached. An hour that lists no
+    product and names no aged-out source is an hour nothing ever covered; the
+    two must stay distinguishable, or an emptied hour at the back edge reads
+    as one that was never populated.
+    """
     start = window_start(reference)
+    stated = dict(sorted((aged_out or {}).items()))
     items: list[TimelineItem] = []
-    for index in range(BACK_HOURS + FORWARD_HOURS + 1):
+    for index in range(WINDOW_STEPS):
         valid_time = start + timedelta(hours=index)
+        products = sorted((products_at or {}).get(valid_time, []))
         items.append(
             TimelineItem(
                 valid_time_utc=valid_time,
                 valid_time_newfoundland=valid_time.astimezone(NEWFOUNDLAND),
-                available_products=sorted((products_at or {}).get(valid_time, [])),
+                available_products=products,
+                # Stated per hour rather than once per response: an hour that
+                # holds a product is not aged out, and one that holds nothing
+                # needs the reason beside it, not in a footnote.
+                aged_out_sources={} if products else stated,
             )
         )
     return items
@@ -233,11 +279,19 @@ def get_timeline() -> TimelineResponse:
         coverage = store.published_products()
     except Exception:
         LOGGER.exception("published product coverage could not be read")
+        # No hour is said to hold a product AND no hour is said to have aged
+        # out: with the store unreadable, either claim would be a guess.
         return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), notices=["the live artifact store raised while resolving published coverage"])
 
     notices = skip_notices(store)
+    aged_out, aged_out_notices = _aged_out_sources(store)
+    notices.extend(aged_out_notices)
     if not coverage:
-        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), notices=[*notices, "no artifacts are currently published for this window"])
+        return TimelineResponse(
+            data_mode=DataMode.UNAVAILABLE, start=start, end=end,
+            items=_window_items(reference, aged_out=aged_out),
+            notices=[*notices, "no artifacts are currently published for this window"],
+        )
     products_at: dict[datetime, list[str]] = {}
     for source_id, stamps in coverage.items():
         for stamp in stamps:
@@ -252,7 +306,14 @@ def get_timeline() -> TimelineResponse:
             bucket = products_at.setdefault(hour, [])
             if source_id not in bucket:
                 bucket.append(source_id)
-    return TimelineResponse(data_mode=DataMode.LIVE, start=start, end=end, items=_window_items(reference, products_at), notices=notices)
+    # A source with coverage is not aged out, whatever the record says it once
+    # held: the record is the high-water mark, not a claim about now.
+    still_held = {source_id for source_id, stamps in coverage.items() if stamps}
+    return TimelineResponse(
+        data_mode=DataMode.LIVE, start=start, end=end,
+        items=_window_items(reference, products_at, aged_out={k: v for k, v in aged_out.items() if k not in still_held}),
+        notices=notices,
+    )
 
 
 #: Media types this API knows how to represent at all. A type absent here has
@@ -266,7 +327,7 @@ Z_INDEX_BY_KIND = {"raster": 0, "mask": 10, "line": 20, "alert": 30, "point": 40
 
 #: What a layer may claim when its cadence cannot be derived - a single frame,
 #: or an irregular one. It still needs a bound; without one a lone frame would
-#: answer for the whole 28-hour window.
+#: answer for the whole evidence window.
 UNKNOWN_CADENCE_TOLERANCE_SECONDS = 900
 
 #: A floor so a very fast layer does not become unresolvable between frames.
@@ -390,8 +451,8 @@ def _proxied_forecast_layers() -> tuple[list[Layer], list[str]]:
     for coverage in coverages:
         if coverage.notice:
             notices.append(coverage.notice)
-        # The advertised extent runs further forward than this experiment's
-        # 28-hour window. Offering frames the rest of the API refuses would
+        # The advertised extent can run further than this experiment's
+        # sliding window. Offering frames the rest of the API refuses would
         # scrub the client into 422s, so the layer carries the intersection and
         # the full extent is stated rather than quietly dropped.
         frames = [stamp for stamp in coverage.times if start <= stamp <= end]
@@ -457,10 +518,14 @@ def get_layers() -> LayersResponse:
         # live-proxied imagery. It is offered here only because every one of
         # those layers announces itself as unpublished, unstored and un-QC'd.
         proxied, proxy_notices = _proxied_forecast_layers()
-        notices = ["no artifacts are currently published", *proxy_notices]
+        aged_out, aged_notices = _aged_out_sources(store)
+        notices = ["no artifacts are currently published", *proxy_notices, *aged_notices]
+        # The aged-out names travel on both branches: a proxied layer is not
+        # this deployment's stored evidence, so its presence says nothing about
+        # whether the stored evidence aged out.
         if not proxied:
-            return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=notices)
-        return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(proxied, key=lambda item: (item.z_index, item.id)), notices=notices)
+            return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=notices, aged_out_sources=aged_out)
+        return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(proxied, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
         coverage = store.published_layer_times()
@@ -583,21 +648,45 @@ def get_layers() -> LayersResponse:
     layers.extend(proxied)
 
     if not layers:
-        return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=[*notices, "no published artifact has a known map representation"])
+        aged_out, aged_notices = _aged_out_sources(store)
+        return LayersResponse(
+            data_mode=DataMode.UNAVAILABLE, layers=[],
+            notices=[*notices, *aged_notices, "no published artifact has a known map representation"],
+            aged_out_sources=aged_out,
+        )
     layers.sort(key=lambda item: (item.z_index, item.id))
     return LayersResponse(data_mode=DataMode.LIVE, layers=layers, notices=notices)
 
 
-def _unavailable_point(latitude: float, longitude: float, time: datetime, *, reason: str, flags: list[str], notices: list[str], source_id: str = "unavailable", product: str = "unavailable") -> PointResponse:
+def _unavailable_point(latitude: float, longitude: float, time: datetime, *, reason: str, flags: list[str], notices: list[str], source_id: str = "unavailable", product: str = "unavailable", last_valid_time: datetime | None = None) -> PointResponse:
     return PointResponse(
         data_mode=DataMode.UNAVAILABLE,
         latitude=latitude,
         longitude=longitude,
         valid_time=time,
         selection=unavailable_selection(reason),
-        fields=unavailable_point_fields(time, flags=flags, source_id=source_id, product=product),
+        fields=unavailable_point_fields(time, flags=flags, source_id=source_id, product=product, last_valid_time=last_valid_time),
         notices=notices,
     )
+
+
+def _aged_out_absence(store: object, source_ids: Sequence[str]) -> tuple[datetime | None, list[str], list[str]]:
+    """Whether an absence over these sources is aged out, and how to say it.
+
+    Returns the last valid time to carry (``None`` where nothing was ever
+    held, which is the ``null`` absence), the QC flags, and notices. A store
+    that cannot answer yields no flag at all: the response then reports plain
+    ``unavailable``, because choosing between aged out and null on a guess
+    would state a fact about this deployment's history that nobody knows.
+    """
+    held, notices = _aged_out_sources(store)
+    recorded = {source_id: held[source_id] for source_id in source_ids if source_id in held}
+    if not recorded:
+        return None, [], notices
+    latest = max(recorded.values())
+    flags = [AGED_OUT_FLAG, *(f"{AGED_OUT_FLAG}:{source_id}" for source_id in sorted(recorded))]
+    stated = ", ".join(f"{source_id} to {moment.isoformat()}" for source_id, moment in sorted(recorded.items()))
+    return latest, flags, [*notices, f"held here and purged when it left the evidence window: {stated}"]
 
 
 def _live_point(latitude: float, longitude: float, time: datetime, product: str | None) -> PointResponse:
@@ -622,12 +711,22 @@ def _live_point(latitude: float, longitude: float, time: datetime, product: str 
         # where no source at all has an artifact.
         product_fields = [item for item in fields if item.provenance.source_id == source_id]
         if not product_fields:
+            # Which absence this is depends on whether the store ever held
+            # frames for this source. "No published artifact" was one message
+            # for two different facts; a reader could not tell a source that
+            # aged out from one that was never retrieved.
+            aged_at, aged_flags, aged_notices = _aged_out_absence(store, [source_id])
+            reason = (
+                f"{selected} aged out at {aged_at.isoformat()}: the frames this deployment held left the evidence window"
+                if aged_at is not None
+                else f"{selected} has no published artifact covering this coordinate and time"
+            )
             return _unavailable_point(
                 latitude, longitude, time,
-                reason=f"{selected} has no published artifact covering this coordinate and time",
-                flags=[f"no_published_artifact:{source_id}"],
-                notices=[*notices, f"{selected} ({source_id}) has no published artifact covering this coordinate and time"],
-                source_id=source_id, product=selected,
+                reason=reason,
+                flags=[f"no_published_artifact:{source_id}", *aged_flags],
+                notices=[*notices, *aged_notices, f"{selected} ({source_id}) has no published artifact covering this coordinate and time"],
+                source_id=source_id, product=selected, last_valid_time=aged_at,
             )
         # Observations are kept beside the selected model. They are not another
         # model's values: each field still carries its own source id, so a
@@ -649,7 +748,18 @@ def _live_point(latitude: float, longitude: float, time: datetime, product: str 
         )
 
     if not fields:
-        return _unavailable_point(latitude, longitude, time, reason="no published artifact covers this coordinate and time", flags=["no_published_artifact"], notices=[*notices, "no published artifact covers this coordinate and time"])
+        aged_at, aged_flags, aged_notices = _aged_out_absence(store, sorted(known_source_ids()))
+        reason = (
+            f"aged out at {aged_at.isoformat()}: every frame this deployment held has left the evidence window"
+            if aged_at is not None
+            else "no published artifact covers this coordinate and time"
+        )
+        return _unavailable_point(
+            latitude, longitude, time, reason=reason,
+            flags=["no_published_artifact", *aged_flags],
+            notices=[*notices, *aged_notices, "no published artifact covers this coordinate and time"],
+            last_valid_time=aged_at,
+        )
 
     live_hrdps = "eccc-hrdps" in sources
     live_rdps = "eccc-rdps" in sources
@@ -1547,10 +1657,11 @@ def get_profile(
     if fixture_mode():
         return ProfileResponse(data_mode=DataMode.FIXTURE, latitude=latitude, longitude=longitude, valid_time=time, levels=profile_levels(time))
 
-    def unavailable(reason: str, flag: str, notices: list[str]) -> ProfileResponse:
+    def unavailable(reason: str, flag: str, notices: list[str], *, flags: Sequence[str] = (), last_valid_time: datetime | None = None) -> ProfileResponse:
         return ProfileResponse(
             data_mode=DataMode.UNAVAILABLE, latitude=latitude, longitude=longitude, valid_time=time,
-            levels=unavailable_profile_levels(time, PROFILE_PRESSURES, flags=[flag]), notices=[*notices, reason],
+            levels=unavailable_profile_levels(time, PROFILE_PRESSURES, flags=[flag, *flags], last_valid_time=last_valid_time),
+            notices=[*notices, reason],
         )
 
     store = live_store()
@@ -1564,7 +1675,13 @@ def get_profile(
         return unavailable("the live artifact store raised while sampling published artifacts", "live_store_error", [])
     notices = skip_notices(store)
     if not levels:
-        return unavailable("no published artifact carries a pressure-level profile here", "no_published_artifact", notices)
+        aged_at, aged_flags, aged_notices = _aged_out_absence(store, sorted(known_source_ids()))
+        reason = (
+            f"aged out at {aged_at.isoformat()}: the profile frames this deployment held have left the evidence window"
+            if aged_at is not None
+            else "no published artifact carries a pressure-level profile here"
+        )
+        return unavailable(reason, "no_published_artifact", [*notices, *aged_notices], flags=aged_flags, last_valid_time=aged_at)
     return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time, levels=levels, notices=notices)
 
 
@@ -1668,13 +1785,18 @@ def health() -> HealthResponse:
 
 
 def _evidence_boundary(store: object, reference: datetime) -> bool:
-    """True when published artifacts actually cover the requested window."""
+    """True when retained frames actually fall inside the sliding window.
+
+    Judged against ``sliding_window`` rather than against a second pair of
+    literals: readiness that answered on a different window from the one
+    ``/point`` accepts would report ready for instants nothing can serve.
+    """
     try:
         coverage = store.published_products()
     except Exception:
         LOGGER.exception("evidence boundary could not be resolved for readiness")
         return False
-    start, end = window_start(reference), window_end(reference)
+    start, end = sliding_window(reference)
     return any(start <= stamp <= end for stamps in coverage.values() for stamp in stamps)
 
 
@@ -1688,9 +1810,17 @@ def ready() -> ReadyResponse:
         store = live_store()
         boundary = store is not None and _evidence_boundary(store, now())
         # Live readiness means evidence can actually be served: a reachable
-        # store with published artifacts covering the window. Anything less is
-        # not ready, however healthy the process is.
+        # store with retained frames inside the sliding window. Anything less
+        # is not ready, however healthy the process is.
         checks = {"data_mode_configured": True, "registry_catalog": bool(registry_source_records()), "job_store": True, "live_store": store is not None, "evidence_boundary": boundary}
         ready_now = all(checks.values())
-        return ReadyResponse(data_mode=DataMode.LIVE if ready_now else DataMode.UNAVAILABLE, ready=ready_now, checks=checks)
+        # A store holding only aged-out frames reports not ready AND says why.
+        # Reported only when the boundary is false: a ready deployment naming
+        # aged-out sources would read as a warning about evidence it is
+        # currently serving.
+        aged_out, notices = ({}, []) if boundary or store is None else _aged_out_sources(store)
+        return ReadyResponse(
+            data_mode=DataMode.LIVE if ready_now else DataMode.UNAVAILABLE,
+            ready=ready_now, checks=checks, aged_out_sources=aged_out, notices=notices,
+        )
     return ReadyResponse(data_mode=DataMode.UNAVAILABLE, ready=False, checks={"data_mode_configured": False, "registry_catalog": bool(registry_source_records()), "job_store": True, "live_store": False, "evidence_boundary": False})

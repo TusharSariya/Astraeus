@@ -153,12 +153,24 @@ def test_no_store_at_all_is_unhealthy_rather_than_an_empty_window() -> None:
     assert "no artifact store" in reconciliation.detail
 
 
-# --- purge_outside_window judges on the frame's own valid times -----------
+# --- purge_outside_window delegates to the one purge ----------------------
+#
+# Which frames leave the window is decided by
+# ``weather_experiment.purge_outside_window`` and proved against a real
+# PostgreSQL in infra/postgres/tests/retention_invariants.sql. It has to be
+# decided there and not here: only that transaction can record each stream's
+# last valid time before removing anything, and only it can drop the
+# ``current_artifacts`` pointer alongside the revision without tripping the
+# foreign key. What these tests assert is the part that is this method's own -
+# that it calls the one purge, drains the freed keys, and survives an object
+# that is already gone.
 
 class _Cursor:
-    def __init__(self, rows: list[tuple[Any, ...]], events: list[tuple[str, Any]]) -> None:
-        self._rows, self._events = rows, events
-        self._select = True
+    """Answers the two statements the delegated purge sends, in order."""
+
+    def __init__(self, purged: int, queued: list[str], events: list[tuple[str, Any]]) -> None:
+        self._purged, self._queued, self._events = purged, queued, events
+        self._last = ""
 
     def __enter__(self) -> _Cursor:
         return self
@@ -167,23 +179,23 @@ class _Cursor:
         return None
 
     def execute(self, sql: str, params: Any = None) -> None:
-        self._select = sql.strip().lower().startswith("select")
-        self._events.append(("select" if self._select else "delete", params))
+        text = " ".join(sql.split()).lower()
+        self._last = "claim" if "claim_purged_objects" in text else "purge" if "purge_outside_window" in text else text
+        self._events.append((self._last, params))
+
+    def fetchone(self) -> tuple[Any, ...]:
+        return (self._purged,)
 
     def fetchall(self) -> list[tuple[Any, ...]]:
-        if self._select:
-            return list(self._rows)
-        # DELETE ... RETURNING object_key: the keys of the rows just removed.
-        doomed = set((self._events[-1][1] or [[]])[0])
-        return [(object_key,) for revision_id, object_key, _ in self._rows if revision_id in doomed]
+        return [(key,) for key in self._queued] if self._last == "claim" else []
 
 
 class _Connection:
-    def __init__(self, rows: list[tuple[Any, ...]], events: list[tuple[str, Any]]) -> None:
-        self._rows, self._events = rows, events
+    def __init__(self, purged: int, queued: list[str], events: list[tuple[str, Any]]) -> None:
+        self._purged, self._queued, self._events = purged, queued, events
 
     def cursor(self) -> _Cursor:
-        return _Cursor(self._rows, self._events)
+        return _Cursor(self._purged, self._queued, self._events)
 
     def __enter__(self) -> _Connection:
         return self
@@ -204,7 +216,7 @@ class _S3:
 
 @pytest.fixture
 def store_over(monkeypatch: pytest.MonkeyPatch):
-    def build(rows: list[tuple[Any, ...]]) -> tuple[ArtifactStore, list[tuple[str, Any]], _S3]:
+    def build(purged: int, queued: list[str]) -> tuple[ArtifactStore, list[tuple[str, Any]], _S3]:
         events: list[tuple[str, Any]] = []
         instance = ArtifactStore(StoreConfig(database_url="postgresql://unused", endpoint="http://unused", bucket="b", access_key="k", secret_key="s"))
         client = _S3()
@@ -212,7 +224,7 @@ def store_over(monkeypatch: pytest.MonkeyPatch):
 
         @contextmanager
         def connection() -> Iterator[Any]:
-            yield _Connection(rows, events)
+            yield _Connection(purged, queued, events)
 
         monkeypatch.setattr(instance, "connection", connection)
         return instance, events, client
@@ -224,38 +236,27 @@ def _iso(moment: datetime) -> str:
     return moment.isoformat()
 
 
-def test_purge_removes_only_frames_whose_valid_times_all_left_the_window(store_over) -> None:
-    rows = [
-        ("rev-inside", "key-inside", {"valid_times": [_iso(T0 + timedelta(hours=6))]}),
-        ("rev-aged", "key-aged", {"valid_times": [_iso(T0 - timedelta(days=3))]}),
-        ("rev-straddling", "key-straddling", {"valid_times": [_iso(T0 - timedelta(days=3)), _iso(T0)]}),
-        ("rev-undeclared", "key-undeclared", {}),
-    ]
-    store, events, _client = store_over(rows)
+def test_the_purge_is_the_databases_and_runs_before_any_object_is_touched(store_over) -> None:
+    store, events, client = store_over(3, ["key-aged", "key-older"])
 
-    removed = store.purge_outside_window(T0)
-
-    deleted_ids = [params[0] for kind, params in events if kind == "delete"][0]
-    assert deleted_ids == ["rev-aged"]
-    assert removed == 1
-    assert "rev-inside" not in deleted_ids, "a frame inside the window is never purged"
-    assert "rev-straddling" not in deleted_ids, "one retained instant keeps the revision"
-    assert "rev-undeclared" not in deleted_ids, "a revision whose instants cannot be read is not purged on a guess"
+    assert store.purge_outside_window(T0) == 3
+    # Rows before objects: the purge transaction has already committed by the
+    # time the first delete_object goes out, and it is what named these keys.
+    assert [kind for kind, _ in events] == ["purge", "claim"]
+    assert events[0][1] == (T0,), "the purge is asked about the instant the caller gave, not about now()"
+    assert client.deleted == ["key-aged", "key-older"]
 
 
-def test_nothing_outside_the_window_means_no_delete_statement_at_all(store_over) -> None:
-    store, events, _client = store_over([("rev", "key", {"valid_times": [_iso(T0)]})])
+def test_nothing_outside_the_window_frees_nothing_to_delete(store_over) -> None:
+    store, events, client = store_over(0, [])
 
     assert store.purge_outside_window(T0) == 0
-    assert [kind for kind, _ in events] == ["select"]
+    assert client.deleted == []
+    assert [kind for kind, _ in events] == ["purge", "claim"]
 
 
 def test_an_object_already_gone_does_not_abort_the_sweep(store_over) -> None:
-    rows = [
-        ("rev-a", "already-gone", {"valid_times": [_iso(T0 - timedelta(days=3))]}),
-        ("rev-b", "key-b", {"valid_times": [_iso(T0 - timedelta(days=4))]}),
-    ]
-    store, _events, client = store_over(rows)
+    store, _events, client = store_over(2, ["already-gone", "key-b"])
 
     assert store.purge_outside_window(T0) == 2
     assert client.deleted == ["key-b"], "the row is the record of truth; a missing object is skipped"
