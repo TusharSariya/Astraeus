@@ -106,10 +106,26 @@ so the two changes may run concurrently.
   declared no run time is credited only where it demonstrably published
   frames, because a reach is stated relative to a run time and the
   `model_runs` retrieval stamp is not one.
-- [ ] 3.2 Carry `run_time` and `run_stale` (older than twice the declared run
+- [x] 3.2 Carry `run_time` and `run_stale` (older than twice the declared run
   cadence) on every frame, null with a reason where the run time or cadence is
   unknown, and never withhold a frame for being run-stale.
   Verify: `cd api && uv run pytest tests/test_layers.py -k run_stale`
+  Verify result: `cd api && uv run pytest tests/test_layers.py -k run_stale` ->
+  13 passed, nothing deselected. Also `cd api && uv run pytest` -> 915 passed,
+  36 skipped (902 before, plus the 13 new; no existing test needed changing).
+  The rule lives once, in `store.run_stale_verdict`, which `_coverage_entry`
+  now calls too, so `/timeline` coverage and `/layers` cannot drift apart.
+  `store.retained_layer_runs` reads the same retained revisions coverage reads
+  and returns them per layer, newest run first, so the short cycle puts two
+  runs in one index: `times` is the union, each frame names the run that
+  produced it, the newer run is credited where both reach, and nothing is
+  blended or extrapolated. Run attribution is applied in one pass over the
+  assembled index, so the satellite, aurora and rendered-grid layers carry it
+  without their constructors changing. An observation source stops at
+  "observation layer: no run concept" from its registry category rather than
+  its layer group, since a point-sampled model layer is filed as an
+  observation and does have runs. A store that cannot report retained
+  revisions costs the verdict, never the frames.
 - [ ] 3.3 Set `staleness_tolerance_seconds` to one native interval per layer.
   Verify: `cd api && uv run pytest tests/test_layers.py -k tolerance`
 

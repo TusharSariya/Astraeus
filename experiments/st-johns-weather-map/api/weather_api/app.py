@@ -59,6 +59,8 @@ from .models import (
     InterpolationMethodItem,
     MethodRequirement,
     Layer,
+    LayerFrame,
+    LayerRunSummary,
     LayersResponse,
     MethodScore,
     MethodsResponse,
@@ -99,16 +101,22 @@ from .store import (
     known_source_ids,
     LayerCoverage,
     layer_id_for,
+    NO_RUN_CONCEPT_REASON,
+    NO_RUN_TIME_REASON,
     live_point_fields,
     live_profile_levels,
     live_store,
     registry_source_records,
     registry_source_statuses,
+    retained_layer_runs,
     retained_runs,
+    run_stale_verdict,
     schedulable_source_ids,
     source_category,
     source_reach,
+    source_has_run_concept,
     source_run_cadence_seconds,
+    source_run_staleness,
     unavailable_point_fields,
     unavailable_profile_levels,
 )
@@ -297,13 +305,7 @@ def _coverage_entry(run: Any, reference: datetime) -> CoverageEntry:
     would report an unmeasurable run as current.
     """
     cadence = source_run_cadence_seconds(run.source_id)
-    age = int((reference - run.run_time).total_seconds()) if run.run_time is not None else None
-    if run.run_time is None:
-        stale, reason = None, "the adapter declared no run time, so the age of this run cannot be computed"
-    elif cadence is None:
-        stale, reason = None, "the source declares no run cadence, so there is no staleness threshold to compare against"
-    else:
-        stale, reason = age > 2 * cadence, None
+    age, stale, reason = run_stale_verdict(run.run_time, cadence, reference)
     return CoverageEntry(
         source_id=run.source_id,
         provider_run_id=run.provider_run_id,
@@ -575,6 +577,170 @@ def staleness_tolerance_seconds(cadence_seconds: int | None) -> int:
     return max(MIN_STALENESS_TOLERANCE_SECONDS, cadence_seconds // 2)
 
 
+#: Said of a layer whose imagery is rendered upstream at request time. There is
+#: a run behind it at the provider, but nothing is retained here to read a run
+#: time from, so the verdict is unknown rather than false.
+LIVE_PROXY_RUN_REASON = (
+    "live-proxied layer: its frames are rendered upstream at request time and no run is retained here to date"
+)
+
+#: Said of every layer when the retained-run read itself failed. Unknown
+#: retention is not an empty one, and every frame is still served.
+RUNS_UNREADABLE_REASON = "retained runs could not be read, so no run staleness can be reported for this layer"
+
+#: Said of a fixture layer. Fixtures name products; no run stands behind one,
+#: and none is invented for it.
+FIXTURE_RUN_REASON = "fixture layer: no run is retained behind it"
+
+
+def _unattributed_layer(layer: Layer, reason: str) -> Layer:
+    """Every frame served, none attributed to a run, with the reason said once.
+
+    The frames list is still one entry per entry of ``times``, in the same
+    order, so a client reads run attribution the same way for every layer and
+    never has to infer an absent list means anything.
+    """
+    return layer.model_copy(
+        update={
+            "run_time": None,
+            "run_stale": None,
+            "run_stale_reason": reason,
+            "run_cadence_seconds": None,
+            "frames": [LayerFrame(valid_time=stamp) for stamp in layer.times],
+            "runs": [],
+        }
+    )
+
+
+def _attributed_layer(layer: Layer, source_id: str, runs: Sequence[Any], reference: datetime) -> Layer:
+    """One layer's frames, each carrying the run that produced it.
+
+    ``runs`` arrives newest first, so a frame both runs published is credited to
+    the newer one and the previous run keeps exactly the leads the newer run
+    does not reach. That is the short-cycle rule: the two runs are shown as two,
+    the layer's ``times`` is their union, and no value is blended across the
+    join or extrapolated past either run.
+
+    A run-stale frame is served like any other. The flag travels with it so a
+    reader can see the evidence is from a superseded run; withholding it would
+    leave the instant answered by nothing at all.
+    """
+    verdicts: dict[str, tuple[bool | None, str | None, int | None]] = {}
+    claimed: dict[datetime, Any] = {}
+    for run in runs:
+        _age, stale, reason, cadence = source_run_staleness(source_id, run.run_time, reference)
+        verdicts[run.provider_run_id] = (stale, reason, cadence)
+        for stamp in run.times:
+            claimed.setdefault(stamp, run)
+
+    times = sorted(set(layer.times) | set(claimed))
+    frames: list[LayerFrame] = []
+    counts: dict[str, int] = {}
+    for stamp in times:
+        run = claimed.get(stamp)
+        if run is None:
+            frames.append(LayerFrame(valid_time=stamp))
+            continue
+        stale, _reason, _cadence = verdicts[run.provider_run_id]
+        frames.append(
+            LayerFrame(valid_time=stamp, run_time=run.run_time, provider_run_id=run.provider_run_id, run_stale=stale)
+        )
+        counts[run.provider_run_id] = counts.get(run.provider_run_id, 0) + 1
+
+    summaries = [
+        LayerRunSummary(
+            provider_run_id=run.provider_run_id,
+            run_time=run.run_time,
+            run_stale=verdicts[run.provider_run_id][0],
+            frame_count=counts[run.provider_run_id],
+        )
+        for run in runs
+        if counts.get(run.provider_run_id)
+    ]
+    if not summaries:
+        # Nothing retained answers for this layer's frames. The layer is still
+        # offered with every frame it published; only the attribution is absent.
+        return _unattributed_layer(layer, NO_RUN_TIME_REASON)
+
+    newest = summaries[0]
+    stale, reason, cadence = verdicts[newest.provider_run_id]
+    return layer.model_copy(
+        update={
+            "times": times,
+            "run_time": newest.run_time,
+            "run_stale": stale,
+            "run_stale_reason": reason,
+            "run_cadence_seconds": cadence,
+            "frames": frames,
+            "runs": summaries,
+        }
+    )
+
+
+def _layer_artifact_key(layer: Layer, artifacts: Sequence[Any]) -> tuple[str, str] | None:
+    """The ``(source_id, logical_name)`` of the artifact a layer is drawn from.
+
+    A rendered grid, the cloud mask and the aurora oval carry ids of their own -
+    one artifact can stand behind several rendered layers - so the mapping is
+    read from the module that offered the layer rather than parsed back out of
+    the id. Anything else is a generic published layer, whose id was formed by
+    :func:`layer_id_for` and can be matched against the artifacts directly.
+    """
+    spec = grids.rendered_grid_spec(layer.id)
+    if spec is not None:
+        return spec.source_id, spec.logical_name
+    if layer.id == goes_satellite.LAYER_ID:
+        return goes_satellite.SOURCE_ID, goes_satellite.LOGICAL_NAME
+    if layer.id == aurora.LAYER_ID:
+        return aurora.SOURCE_ID, aurora.LOGICAL_NAME
+    for artifact in artifacts:
+        if layer_id_for(artifact.source_id, artifact.logical_name) == layer.id:
+            return artifact.source_id, artifact.logical_name
+    return None
+
+
+def _with_run_attribution(
+    layers: Sequence[Layer], artifacts: Sequence[Any], layer_runs: dict[str, list[Any]] | None, reason: str | None, reference: datetime
+) -> list[Layer]:
+    """Every layer, with its frames attributed to the runs that produced them.
+
+    Applied in one pass over the assembled index so a layer offered by the
+    satellite, aurora or rendered-grid modules carries run attribution on the
+    same terms as a generic one, and no constructor has to remember to.
+    """
+    attributed: list[Layer] = []
+    for layer in layers:
+        if layer.evidence_basis == wms.LIVE_PROXY:
+            attributed.append(_unattributed_layer(layer, LIVE_PROXY_RUN_REASON))
+            continue
+        if reason is not None:
+            attributed.append(_unattributed_layer(layer, reason))
+            continue
+        key = _layer_artifact_key(layer, artifacts)
+        if key is None:
+            attributed.append(_unattributed_layer(layer, NO_RUN_TIME_REASON))
+            continue
+        source_id, logical_name = key
+        if not source_has_run_concept(source_id):
+            attributed.append(_unattributed_layer(layer, NO_RUN_CONCEPT_REASON))
+            continue
+        runs = (layer_runs or {}).get(layer_id_for(source_id, logical_name), [])
+        attributed.append(_attributed_layer(layer, source_id, runs, reference))
+    return attributed
+
+
+def _layer_runs_or_reason(store: object) -> tuple[dict[str, list[Any]], str | None, list[str]]:
+    """The retained runs per layer, or the reason there are none to report."""
+    try:
+        return retained_layer_runs(store), None, []
+    except StoreUnavailable as error:
+        LOGGER.warning("retained runs could not be read for the layer index: %s", error)
+        return {}, RUNS_UNREADABLE_REASON, [f"{RUNS_UNREADABLE_REASON}: {error}"]
+    except Exception as error:  # noqa: BLE001 - run attribution must not take the index down
+        LOGGER.exception("retained runs could not be read for the layer index")
+        return {}, RUNS_UNREADABLE_REASON, [f"{RUNS_UNREADABLE_REASON}: {type(error).__name__}: {error}"]
+
+
 #: The one upstream this API proxies imagery from.
 GEOMET_ENDPOINT = "https://geo.weather.gc.ca/geomet/"
 
@@ -669,7 +835,10 @@ def _proxied_forecast_layers() -> tuple[list[Layer], list[str]]:
 @app.get(f"{PREFIX}/layers", response_model=LayersResponse)
 def get_layers() -> LayersResponse:
     if fixture_mode():
-        return LayersResponse(data_mode=DataMode.FIXTURE, layers=LAYERS)
+        return LayersResponse(
+            data_mode=DataMode.FIXTURE,
+            layers=[_unattributed_layer(layer, FIXTURE_RUN_REASON) for layer in LAYERS],
+        )
 
     store = live_store()
     if store is None:
@@ -691,6 +860,7 @@ def get_layers() -> LayersResponse:
         # whether the stored evidence aged out.
         if not proxied:
             return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=notices, aged_out_sources=aged_out)
+        proxied = _with_run_attribution(proxied, [], {}, None, now())
         return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(proxied, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
@@ -820,6 +990,15 @@ def get_layers() -> LayersResponse:
             notices=[*notices, *aged_notices, "no published artifact has a known map representation"],
             aged_out_sources=aged_out,
         )
+
+    # Which run produced each frame, read from the same retained revisions the
+    # timeline's coverage reads. A store that cannot answer costs the
+    # attribution, never the frames: every layer is still offered, with the
+    # reason its run staleness is unknown.
+    layer_runs, runs_reason, run_notices = _layer_runs_or_reason(store)
+    notices.extend(run_notices)
+    layers = _with_run_attribution(layers, artifacts, layer_runs, runs_reason, now())
+
     layers.sort(key=lambda item: (item.z_index, item.id))
     return LayersResponse(data_mode=DataMode.LIVE, layers=layers, notices=notices)
 

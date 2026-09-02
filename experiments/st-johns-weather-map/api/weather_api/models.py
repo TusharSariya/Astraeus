@@ -266,6 +266,13 @@ class Provenance(StrictModel):
     #: told the edge of what was ever available rather than merely that
     #: something is gone. Null on every value that is not an aged-out absence.
     last_valid_time: datetime | None = None
+    #: Whether the run behind this value is older than twice its producer's
+    #: declared run cadence. A separate fact from ``freshness``, which measures
+    #: how long ago the artifact was retrieved: a value retrieved minutes ago can
+    #: come from a run superseded twice since. ``null`` with a reason wherever
+    #: the run time or the cadence is unknown, and on a source with no run.
+    run_stale: bool | None = None
+    run_stale_reason: str | None = None
 
     @field_validator("run_time", "valid_time", "retrieval_time", "last_valid_time")
     @classmethod
@@ -634,6 +641,37 @@ class TimelineResponse(StrictModel):
     tiers: list[HorizonTier] = Field(default_factory=list)
 
 
+class LayerFrame(StrictModel):
+    """One published frame, with the run that produced it.
+
+    Frame staleness and run staleness are two separate facts, and this is the
+    second one: a frame can sit well inside its layer's tolerance and still come
+    from a run that has been superseded twice. ``run_stale`` never withholds the
+    frame - a stale run that is the only evidence is still the only evidence -
+    and it is ``null``, never ``false``, wherever the run time or the producer
+    cadence is unknown.
+    """
+
+    valid_time: datetime
+    run_time: datetime | None = None
+    provider_run_id: str | None = None
+    run_stale: bool | None = None
+
+
+class LayerRunSummary(StrictModel):
+    """One run standing behind a layer's frames.
+
+    A short cycle leaves two runs in one index - the newest run serving the
+    leads it reaches, the previous one the leads it does not - and this is where
+    the index shows them as two rather than as one merged time axis.
+    """
+
+    provider_run_id: str
+    run_time: datetime | None = None
+    run_stale: bool | None = None
+    frame_count: int
+
+
 class Layer(StrictModel):
     id: str
     title: str
@@ -688,6 +726,26 @@ class Layer(StrictModel):
     #: declaration; never guessed.
     upstream_wms_layer: str | None = None
     upstream_endpoint: str | None = None
+    #: The run time of the newest run standing behind this layer's frames, or
+    #: ``null`` where none is known. Only ever the adapter's own declaration.
+    run_time: datetime | None = None
+    #: Whether that run is older than twice its producer's declared run cadence.
+    #: ``null`` with a reason wherever the run time or the cadence cannot be
+    #: resolved, and on an observation layer, which has no run concept at all.
+    #: Never a reason to withhold the layer or any of its frames.
+    run_stale: bool | None = None
+    #: Why ``run_stale`` is ``null``. Set whenever it is, so an unknown verdict
+    #: always says which half of the comparison was missing.
+    run_stale_reason: str | None = None
+    #: The producer's declared run cadence, read from the registry record.
+    run_cadence_seconds: int | None = None
+    #: One entry per entry of ``times``, in the same order, naming the run that
+    #: produced each frame. Where two runs stand behind one layer, this is what
+    #: keeps them apart; a client must not draw a value across a run change.
+    frames: list[LayerFrame] = Field(default_factory=list)
+    #: The runs behind those frames, newest first, each with how many frames of
+    #: this layer it answers for.
+    runs: list[LayerRunSummary] = Field(default_factory=list)
 
 
 class LayersResponse(StrictModel):
