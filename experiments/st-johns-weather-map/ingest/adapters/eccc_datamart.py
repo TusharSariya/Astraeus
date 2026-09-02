@@ -710,6 +710,8 @@ class ECCCDataMartAdapter:
             "provider_run_stamp": candidate.detail.get("run_stamp", ""),
             "quality": validation.as_quality(),
             "coverage": validation.as_coverage(),
+            # Model fields decoded from the producer's own GRIB, unmodified.
+            **manifest.as_manifest_block(),
         }
 
         artifact = Artifact(

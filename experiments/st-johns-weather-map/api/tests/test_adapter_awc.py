@@ -173,6 +173,7 @@ def test_awc_metar_fetch_creates_valid_zarr_artifact(tmp_path: Path):
     artifact = result.artifacts[0]
     assert artifact.logical_name == "surface"
     assert artifact.media_type == "application/zarr+zip"
+    assert artifact.provenance["evidence_classes"] == ["retrieved"], "a retrieved artifact declares how its values came to exist"
     assert artifact.payload_path.exists()
 
     # Open and verify Zarr content

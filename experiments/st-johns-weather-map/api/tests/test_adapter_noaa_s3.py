@@ -335,6 +335,7 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
     artifact = result.artifacts[0]
     assert artifact.logical_name == "surface"
     assert artifact.payload_path.exists()
+    assert artifact.provenance["evidence_classes"] == ["retrieved"], "a retrieved artifact declares how its values came to exist"
 
     # Open and verify Zarr content
     store = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")

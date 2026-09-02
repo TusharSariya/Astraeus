@@ -64,7 +64,7 @@ from ingest.contract import (
 )
 from ingest.grib import normalize_precipitation, normalize_units, write_zarr
 from ingest.http import PoliteClient
-from ingest.manifest import RequiredField, RunManifest, validate_run
+from ingest.manifest import RequiredField, RunManifest, declared_classes, validate_run
 from ingest.registry import register
 
 UTC = timezone.utc
@@ -1211,6 +1211,11 @@ def _base_provenance(source_id: str, adapter_version: str, product: str, resolut
         "adapter_version": adapter_version,
         "licence": LICENCE,
         "attribution": ATTRIBUTION,
+        # Every artifact built on this provenance holds values MSC published,
+        # sampled by GetFeatureInfo and stored unmodified. One declaration
+        # here rather than one per artifact, because they are all the same
+        # kind of thing and a per-site copy is a place for one to drift.
+        **declared_classes(["retrieved"]),
     }
 
 

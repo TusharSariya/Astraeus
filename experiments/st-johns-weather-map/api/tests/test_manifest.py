@@ -115,11 +115,9 @@ def test_evidence_classes_outside_the_six_are_refused_at_declaration():
 def test_the_manifest_block_records_evidence_classes_per_variable():
     """This block is what the API reads to admit an artifact and to give each
     sampled value its class, so its shape is pinned here."""
-    block = manifest(declared=("retrieved", "derived_here")).as_manifest_block("surface")
+    block = manifest(declared=("retrieved", "derived_here")).as_manifest_block()
 
     assert block == {
-        "source_id": "eccc-hrdps",
-        "logical_name": "surface",
         "evidence_classes": ["derived_here", "retrieved"],
         "evidence_class_by_variable": {"temperature_2m": "retrieved", "fog_closure": "derived_here"},
     }

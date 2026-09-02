@@ -90,6 +90,7 @@ from ingest.derive.weong_low_cloud import (
     weong_low_cloud_from_profile,
 )
 from ingest.grib import write_zarr
+from ingest.manifest import declared_classes
 from ingest.registry import LOW_PROFILE_LEVELS_HPA
 from ingest.store import sha256_of
 
@@ -412,6 +413,10 @@ def derive_weong_low_cloud(store: Any, surface: Any, workdir: Path) -> RunResult
             "max_added_cloud_percent": float(numpy.max(added[finite])) if finite.any() else 0.0,
             "below_ground_level_fraction": float(numpy.mean(below_ground_fraction)),
         },
+        # The repair holds low-cloud values no provider published: a
+        # generated display construction, allowed on the map under its
+        # carve-out and refused on every data path by this declaration.
+        **declared_classes(["generated_display"]),
     }
     return RunResult(
         source_id=surface.source_id,

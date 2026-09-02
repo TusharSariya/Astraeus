@@ -82,15 +82,6 @@ class StubStore(LiveStore):
         """
 
 
-@pytest.fixture(autouse=True)
-def _registered_derivation_methods(derivation_registry):
-    """Every derivation served here is an enabled derivation-registry entry.
-
-    A ``derived_here`` value is refused unless its method is registered and
-    enabled, so the entries are stood up for this module rather than each
-    test being about the registry.
-    """
-
 def test_cloud_steering_winds_never_reach_a_reading():
     """The 850/700/500 hPa winds are ingested for one purpose: informing the
     display-time cloud-motion derivation. They are not evidence a reader
@@ -169,7 +160,13 @@ def test_wind_speed_and_direction_are_derived_from_stored_components_and_labelle
     assert speed.provenance.normalized_units == "m s-1" and speed.provenance.original_units == "m s-1"
     assert direction.provenance.normalized_units == "degree" and direction.provenance.original_units == "degree"
     for item in (speed, direction):
-        assert item.provenance.derivation is not None and "MetPy" in item.provenance.derivation
+        # The provenance names the registry entry, not a free-text description:
+        # a reader told a number was constructed is owed a name they can look
+        # up. Spec-Refs: "Every derived-here value names an enabled registry
+        # entry" (evidence-classes-and-derived-here).
+        assert item.provenance.derivation == "wind_speed_and_direction_from_components"
+        assert item.provenance.evidence_class == "derived_here"
+        assert "MetPy" in item.provenance.derivation_citation
         assert item.provenance.derivation_version == "metpy-1.7.1-wind-v1"
         assert item.provenance.source_id == "eccc-hrdps"
     # The reader asked for wind, not vector components; the components are
@@ -469,7 +466,13 @@ def test_upper_air_winds_are_served_only_as_level_suffixed_derivations():
     assert by_field["wind_direction_200hPa"].value in (0.0, 360.0)
     for name in ("wind_speed_200hPa", "wind_direction_200hPa"):
         item = by_field[name]
-        assert item.provenance.derivation is not None and "MetPy" in item.provenance.derivation
+        # The provenance names the registry entry, not a free-text description:
+        # a reader told a number was constructed is owed a name they can look
+        # up. Spec-Refs: "Every derived-here value names an enabled registry
+        # entry" (evidence-classes-and-derived-here).
+        assert item.provenance.derivation == "wind_speed_and_direction_from_components"
+        assert item.provenance.evidence_class == "derived_here"
+        assert "MetPy" in item.provenance.derivation_citation
         assert item.provenance.vertical_level == "200 hPa"
     assert by_field["wind_speed_300hPa"].provenance.vertical_level == "300 hPa"
     # The stored components are derivation inputs, never readings.

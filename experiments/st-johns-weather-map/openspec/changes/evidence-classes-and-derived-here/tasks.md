@@ -79,30 +79,25 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   family from two sources, a provider reduction with another member set) raise
   `RegistryError` at construction, so importing the module with one refuses to
   load.
-- [ ] 3.2 Register the first entries (relative humidity, wind speed and
+- [x] 3.2 Register the first entries (relative humidity, wind speed and
   direction, fog state from the present-weather group, ensemble statistics,
-  sector sampling, DE442 geometry) and wire the existing relative-humidity
-  derivation to its entry. The API reads the registry through
-  `ingest.derive.registry.get_entry(name)` and names three of them
-  `relative_humidity_from_dew_point`,
-  `wind_speed_and_direction_from_components` and
-  `fog_state_from_present_weather`; see design.md for the entry shape.
-  Reconciliation pending (merge 2026-09-02): the registry landed with `get`
-  and different entry names; the API and registry must be brought to one
-  interface, and the fog-state entry added, before this task is ticked.
+  sector sampling, DE442 geometry) and wire the existing derivations to their
+  entries. One interface: the API gates on `registry.resolve`, constructs
+  through `derive_relative_humidity`, `derive_wind` and `derive_fog_state`,
+  and names entries by the registry's own names; see design.md.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k
   relative_humidity` shows the entry name and `derived_here` in provenance.
-  Verify result: **half done, left unticked.** All five entries are registered
-  (`ENTRIES`, in that order; ensemble statistics and sector sampling
-  `enabled: false`, see design.md) and relative humidity is served through its
-  entry by `resolve_registered_relative_humidity`, verified by `cd api && uv
-  run pytest tests/test_derivation_registry.py -k relative_humidity` (2
-  passed): the entry name, the version and `evidence_class: derived_here`. The
-  named verify command's file `tests/test_point_evidence.py` does not exist yet
-  and `api/weather_api/store.py` belongs to the API owner, so the remaining
-  half is one line at `store.py:1230`, replacing `resolve_relative_humidity`
-  with `ingest.derive.registry.resolve_registered_relative_humidity` (same
-  three-tuple).
+  Verify result: 2 passed - a derived relative humidity carries
+  `evidence_class: derived_here`, `derivation:
+  relative_humidity_from_dewpoint_liquid`, the entry's version and its
+  citation, and a published relative humidity is still never replaced by one.
+  The seam reconciliation that made this true (merge 2026-09-02): the API's
+  `get_entry` seam is gone, the entry names are the registry's, the range
+  rules are the registry's four, `fog_state_from_present_weather` was added to
+  `ENTRIES` because `/point` already served that derivation, and
+  `tests/test_point_evidence.py` pins the API's three method names against the
+  registry's constants so they cannot drift. Also verified: `cd api && uv run
+  pytest tests/test_derivation_registry.py` (18 passed).
 - [x] 3.3 Add the deployment-level refusal environment variable and the
   reader-level switch contract.
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k
@@ -111,7 +106,7 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   any case) refuses every derived value with a notice naming the variable and
   leaves retrieved values untouched; `catalogue(reader_disabled=[...])` is the
   reader-level contract and refuses per reader only.
-- [ ] 3.4 Publish the class declaration on every artifact: each staged
+- [x] 3.4 Publish the class declaration on every artifact: each staged
   artifact's provenance carries `evidence_classes`, and
   `evidence_class_by_variable` wherever an artifact holds more than one class,
   written from `RunManifest.as_manifest_block`. Until an artifact declares
@@ -121,10 +116,26 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   it.)
   Verify: `cd api && uv run pytest tests/test_ingest_store.py
   tests/test_manifest.py`.
+  Verify result: 28 passed. Every artifact-producing path declares: the four
+  manifest-backed adapters (AWC METAR and TAF, ECCC SWOB, ECCC Datamart, NOAA
+  GFS - both its surface and upper_air artifacts) splat
+  `RunManifest.as_manifest_block()`; GeoMet declares once in
+  `_base_provenance`, which every one of its eight artifacts is built on;
+  SWPC's three and GOES-19's one declare `retrieved` through
+  `ingest.manifest.declared_classes`; cloud motion and the WEonG low-cloud
+  repair declare `generated_display`. `ArtifactStore.stage` now refuses an
+  artifact that declares nothing, declares a class outside the six, or whose
+  per-variable classes are not in its declared set
+  (`UndeclaredEvidenceClasses`), with nothing uploaded or recorded - staging
+  is the one gate every artifact passes, and a declaration missed there would
+  publish and be isolated at read time instead. The adapter tests assert the
+  declaration on the artifacts they build. No Open-Meteo adapter exists yet,
+  so its `intermediary_derived` cloud fields have no artifact to declare;
+  registry record and API provenance carry the kind (4.0/4.1).
 
 ## 4. Registry (ingest owner)
 
-- [ ] 4.0 Add the delivery-kind field itself (`published_cell` | `reprocessed`) to
+- [x] 4.0 Add the delivery-kind field itself (`published_cell` | `reprocessed`) to
   `registry/schema.json` and to every record in `registry/source_data.py`,
   the audit rule that refuses a reprocessed record as a display primary, the
   provenance fields, and the interface label. Deferred here from
@@ -150,11 +161,29 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   separate: an `intermediary_derived` value is still retrieved by this
   deployment. The accepted spec text is implemented; renaming the kind would
   need a spec delta, not a code edit.
-  **Remaining, in other owners' files - the registry part cannot supply
-  these:**
-  - `api/weather_api/models.py` (API owner): add `delivery_kind: Literal["published_cell", "reprocessed", "intermediary_derived"]` and `intermediary: str | None` to `Provenance`, and `delivery_kind`, `intermediary` and `display_primary` to the `/catalog` source model.
-  - `api/weather_api/store.py` (API owner): `_catalog_sources` (around line 1323, beside `role=str(record["poc_role"])`) must copy `record["delivery_kind"]`, `record.get("intermediary", {}).get("name")` and `record["display_primary"]` onto the catalogue entry, and `live_provenance` must carry the producing record's `delivery_kind` and intermediary name onto every value.
-  - `web/src/` (web owner): the interface label beside the class badge - "producer's own cell", "reprocessed by <intermediary>", "computed by <intermediary>" - and a record whose `display_primary` is false is never rendered as the primary value for a field.
+  **API half, done 2026-09-02 (second wave):** `Provenance` carries
+  `delivery_kind`, `intermediary`, `intermediary_method` and
+  `source_display_primary`; `display_primary_eligible` is computed from all
+  three refusals - the evidence class, the delivery kind, and the record's own
+  `display_primary` - so it can never disagree with what it is computed from.
+  `SourceRecord` (the `/catalog` model) gains `delivery_kind`, `intermediary`
+  and `display_primary`, copied from the record in `registry_source_records`.
+  `IngestConfig` carries the four registry fields so `live_provenance` can
+  name them on every value without reopening the registry per field; an
+  artifact may override the intermediary for itself, and where it does not the
+  record's stands. Verified: `cd api && uv run pytest tests/test_point_evidence.py`
+  (23 passed, including the WeatherNext 2 record serving
+  `delivery_kind: intermediary_derived`, intermediary Open-Meteo and
+  `display_primary_eligible: false`, and a `display_primary: false` record
+  refusing the primary while its class and kind would allow it); `python3
+  registry/audit.py` (registry valid: 64 sources); `python3 -m unittest
+  discover -s registry/tests` (25 tests, OK).
+  **Remaining, in the web owner's files:** `web/src/` - the interface label
+  beside the class badge ("producer's own cell", "reprocessed by
+  <intermediary>", "computed by <intermediary>"), read from
+  `provenance.delivery_kind` and `provenance.intermediary`; and a value whose
+  `provenance.display_primary_eligible` is false is never rendered as a
+  field's primary.
 - [x] 4.1 Add delivery kind `intermediary_derived` with producer, intermediary
   and method fields and per-field kind declaration to `registry/schema.json`;
   fail the audit for a record naming no intermediary.

@@ -110,19 +110,45 @@ to the reader of the code:
 
 ## The seam between the API and the derivation method registry
 
-`weather_api.store` reads the registry through one function,
-`ingest.derive.registry.get_entry(name)`, which returns the entry or `None`.
-An entry carries `name`, `version`, `citation`, `inputs`, `output`,
-`physical_range` (a low/high pair or `None`), `range_rule` (`clamp` or
-`refuse`) and `enabled`; an entry with more than one output declares
-`physical_range_by_output` keyed by served field name, because wind speed and
-wind direction come from one entry and share no range. The API names three
-entries: `relative_humidity_from_dew_point`,
+There is one interface and the registry owns it. `weather_api.store` holds no
+copy of an entry's shape, of the three switch levels or of a range rule; it
+asks `ingest.derive.registry` and reports what it says.
+
+- **Gating.** `resolve(name, reader_disabled=())` returns `None` when the
+  method may produce a value now, else a `Refusal` whose `code` is one of
+  `unregistered_method`, `method_disabled`, `deployment_refused` or
+  `reader_disabled`. The store carries that code and detail into the notice
+  verbatim, so a reader is never told a method is missing when it is switched
+  off.
+- **Constructing.** `derive_relative_humidity(t, td)`, `derive_wind(u, v)` and
+  `derive_fog_state(...)` each apply the gate, the construction from
+  `ingest.meteorology` and the entry's range rule, and hand back the value
+  with the entry and the flags the rule raised. The `resolve_registered_*`
+  tuples remain for callers that want only the numbers. Wind returns the
+  flags per field because one entry produces two values under two rules: a
+  speed is clamped, a bearing is folded.
+- **Naming.** `provenance(name)` yields the entry's name, version and
+  citation. A served `derived_here` provenance carries the entry name in
+  `derivation`, never a free-text sentence: a reader told a number was
+  constructed is owed a name they can look up in the registry.
+- **Failing closed.** A registry that cannot be imported at all - an invalid
+  entry set raises at import - means no method is an enabled entry, every
+  derived value is `null` with a notice, and no unregistered construction is
+  substituted. Retrieved values are untouched.
+
+The API names three of the registry's entries:
+`relative_humidity_from_dewpoint_liquid`,
 `wind_speed_and_direction_from_components` and
-`fog_state_from_present_weather`. A registry that cannot be imported, exposes
-no `get_entry`, or knows the name but has it disabled all resolve the same
-way: the method is not enabled, the value is `null` with a notice, and no
-unregistered construction is substituted.
+`fog_state_from_present_weather`. The names are spelled in `store.py` so the
+API can name a method even when the registry will not import, and pinned
+against the registry's own constants by a test, so the two cannot drift.
+
+`fog_state_from_present_weather` was added to the registry during
+implementation. `/point` already served the fog state as a derivation, and the
+first-entries list did not name it; a served derivation with no entry is
+exactly the gap the registry exists to close, so it was registered rather than
+exempted. Its output is categorical, so it declares `inherit_input_range` and
+its admissible values in the note: a category has no numeric range to bound.
 
 ## What class an absent value carries
 
@@ -151,10 +177,11 @@ that carries them, and the API owner should match it:
   `quality` is accepted as a bare status string or as the same
   `{ status, flags }` object. Read only when the value's own class is
   `derived_here`.
-- The method: `provenance.derivation_method` as `{ name, version, citation }`
-  is preferred; the flat `derivation` / `derivation_version` /
-  `derivation_citation` fields the API publishes today are the fallback, so a
-  response that predates the object form still names its method. Also read
+- The method: the API publishes the flat `derivation` (the registry entry's
+  name) / `derivation_version` / `derivation_citation` fields, and the client
+  reads those. It also accepts a `provenance.derivation_method` object of
+  `{ name, version, citation }`, which nothing emits today; the flat form is
+  what this change ships and what a client must render. Also read
   only for `derived_here`: a reprocessed value's `derivation` is the
   intermediary's sentence, not a registered method this deployment can cite.
 - `/layers` items carry `evidence_class` as the same six-value string. The
@@ -176,9 +203,31 @@ visible behaviour:
 
 ## Open questions carried into implementation
 
-- Whether existing derived artifacts (cloud motion, the WEonG repair) are
+- ~~Whether existing derived artifacts (cloud motion, the WEonG repair) are
   re-classed in place or republished; the manifest gains `evidence_classes`
-  either way.
+  either way.~~ **Answered: republished, and nothing is re-classed in place.**
+  The declaration is written where the artifact is built, so it appears on
+  the next run of each producer; `ArtifactStore.stage` refuses an artifact
+  that carries none, so nothing new publishes without one. An artifact
+  already published without a declaration keeps answering as a layer and is
+  isolated on the data paths - null with a notice naming it - until its
+  producer's next run replaces it. That is the fail-closed direction: the
+  alternative, reading the old `derived`/`generated` flags as a class, is the
+  inference this change exists to remove.
+
+Two class assignments that had to be decided while wiring the declarations,
+and are recorded here because neither spec delta names the artifact:
+
+- **The GOES-19 cloud mask is `retrieved`.** Its values are NOAA's own cloud
+  probability and cloud-top height, moved onto this deployment's grid
+  nearest-neighbour and parallax-corrected in place. Nothing is computed here
+  and no intermediary stands between NOAA and this deployment, so neither
+  `derived_here` nor `reprocessed` fits; the regrid and parallax disclosures
+  the accepted `goes19-cloud-mask-overlay` spec already requires are what tell
+  a reader the cells were moved.
+- **GeoMet's `GetFeatureInfo` artifacts are `retrieved`.** MSC published the
+  value; this deployment asked for one pixel of it and stored the answer
+  unmodified.
 - ~~The exact validation tolerance for a method's physical range clamp and how
   a clamped value is flagged.~~ **Answered.** There is no tolerance, because a
   tolerance is a second bound nobody declared. Each output declares one of four

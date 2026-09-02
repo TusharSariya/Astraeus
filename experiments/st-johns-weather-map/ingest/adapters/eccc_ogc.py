@@ -293,6 +293,8 @@ class ECCCOGCSWOBAdapter:
             "adapter_version": self.adapter_version,
             "quality": {**validation.as_quality(), "provider_flags": sorted(qc_flags)[:50]},
             "coverage": validation.as_coverage(),
+            # Station observations exactly as the network reported them.
+            **manifest.as_manifest_block(),
         }
 
         artifact = Artifact(

@@ -7,6 +7,8 @@ arithmetic, neither of which needs a live service to be wrong.
 
 from __future__ import annotations
 
+import dataclasses
+
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,12 +17,14 @@ from typing import Any, Iterator, Sequence
 import pytest
 
 from ingest.contract import Artifact, RunResult
+from ingest.manifest import declared_classes
 from ingest.store import (
     LOCAL_STORAGE_CAP_BYTES,
     ArtifactStore,
     QuotaExceeded,
     StoreConfig,
     StoreUnavailable,
+    UndeclaredEvidenceClasses,
     _parse_cap,
     sha256_of,
 )
@@ -127,7 +131,14 @@ class _Connection:
 def make_artifact(tmp_path: Path, *, name: str = "hrdps-surface", payload: bytes = b"zarr-bytes") -> Artifact:
     path = tmp_path / f"{name}.zarr.zip"
     path.write_bytes(payload)
-    return Artifact(logical_name=name, media_type="application/zarr+zip", payload_path=path, provenance={"native_resolution": "2.5 km"})
+    return Artifact(
+        logical_name=name,
+        media_type="application/zarr+zip",
+        payload_path=path,
+        # Staging refuses an artifact that does not say how its values came to
+        # exist, so the declaration is part of what a staged artifact is.
+        provenance={"native_resolution": "2.5 km", **declared_classes(["retrieved"])},
+    )
 
 
 def make_result(artifacts: list[Artifact], *, complete: bool = True, qc_passed: bool = True) -> RunResult:
@@ -204,6 +215,49 @@ def test_stage_uploads_the_object_before_recording_the_row_that_points_at_it(sto
     assert staged.byte_size == artifact.byte_size == len(b"a normalized zarr payload")
     assert staged.sha256 == sha256_of(artifact.payload_path)
     assert instance._client.objects[staged.object_key] == b"a normalized zarr payload"
+
+
+def test_an_artifact_that_declares_no_evidence_classes_is_never_staged(store, monkeypatch, tmp_path):
+    """Staging is the one gate every artifact passes.
+
+    An artifact that does not say how its values came to exist would publish
+    and then be isolated at read time, which loses the evidence silently and
+    long after the mistake was made. Refuse it where it is written instead.
+
+    Spec-Refs: "Every value declares exactly one evidence class"
+    (openspec/changes/evidence-classes-and-derived-here).
+    """
+    instance, events = store
+    monkeypatch.setattr(instance, "used_bytes", lambda: 0)
+    artifact = make_artifact(tmp_path)
+    undeclared = dataclasses.replace(artifact, provenance={"native_resolution": "2.5 km"})
+
+    with pytest.raises(UndeclaredEvidenceClasses, match="evidence_classes"):
+        instance.stage(make_result([undeclared]), undeclared)
+    assert [name for name, _ in events] == [], "nothing is uploaded or recorded for a refused artifact"
+
+
+def test_an_artifact_whose_values_carry_an_undeclared_class_is_never_staged(store, monkeypatch, tmp_path):
+    instance, events = store
+    monkeypatch.setattr(instance, "used_bytes", lambda: 0)
+    artifact = make_artifact(tmp_path)
+    mismatched = dataclasses.replace(
+        artifact,
+        provenance={"evidence_classes": ["retrieved"], "evidence_class_by_variable": {"low_cloud": "generated_display"}},
+    )
+
+    with pytest.raises(UndeclaredEvidenceClasses, match="evidence_class_mismatch"):
+        instance.stage(make_result([mismatched]), mismatched)
+
+
+def test_an_evidence_class_outside_the_six_is_never_staged(store, monkeypatch, tmp_path):
+    instance, events = store
+    monkeypatch.setattr(instance, "used_bytes", lambda: 0)
+    artifact = make_artifact(tmp_path)
+    unknown = dataclasses.replace(artifact, provenance={"evidence_classes": ["consensus"]})
+
+    with pytest.raises(UndeclaredEvidenceClasses, match="six evidence classes"):
+        instance.stage(make_result([unknown]), unknown)
 
 
 def test_publication_happens_only_after_every_artifact_is_staged(store, monkeypatch, tmp_path):

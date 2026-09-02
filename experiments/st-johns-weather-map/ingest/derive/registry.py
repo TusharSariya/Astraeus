@@ -39,7 +39,7 @@ import os
 from dataclasses import dataclass, field as dataclass_field
 from typing import Any, Iterable, Literal
 
-from ingest.meteorology import relative_humidity_from_dewpoint, resolve_wind
+from ingest.meteorology import fog_state, relative_humidity_from_dewpoint, resolve_wind
 
 EVIDENCE_CLASS = "derived_here"
 
@@ -413,12 +413,13 @@ _OWNER_APPROVAL = Approval(
 
 RELATIVE_HUMIDITY = "relative_humidity_from_dewpoint_liquid"
 WIND_SPEED_AND_DIRECTION = "wind_speed_and_direction_from_components"
+FOG_STATE = "fog_state_from_present_weather"
 ENSEMBLE_STATISTICS = "ensemble_statistics_within_run"
 SECTOR_SAMPLING = "sector_sampling_along_bearing"
 DE442_GEOMETRY = "de442_sun_moon_geometry"
 
-#: The first five entries: the derivations this deployment already serves or
-#: has already specified. Order is menu order.
+#: The first entries: the derivations this deployment already serves or has
+#: already specified. Order is menu order.
 ENTRIES: tuple[DerivationMethod, ...] = (
     DerivationMethod(
         name=RELATIVE_HUMIDITY,
@@ -460,6 +461,36 @@ ENTRIES: tuple[DerivationMethod, ...] = (
         ),
         approval=_OWNER_APPROVAL,
         summary="Wind speed and the from-direction bearing from one source's own u and v components.",
+    ),
+    DerivationMethod(
+        name=FOG_STATE,
+        version="fog-state-present-weather-v1",
+        citation=(
+            "The present-weather group of a METAR or TAF as defined in ICAO Annex 3 / WMO No. 49 and coded "
+            "per FM 15/FM 51: FG (with FZFG, MIFG, BCFG, PRFG) and VCFG are fog evidence; BR is mist and is "
+            "not. Read beside the report's own visibility."
+        ),
+        inputs=(
+            Input(field="present_weather_fog_code", family="present_weather"),
+            Input(field="present_weather_fog_vicinity_code", family="present_weather"),
+            Input(field="visibility", family="visibility"),
+        ),
+        outputs=(
+            Output(
+                field="fog_state", units="category", minimum=None, maximum=None,
+                range_rule="inherit_input_range",
+                note=(
+                    "A categorical state carries no numeric range; its admissible values are "
+                    "evidence_present, not_indicated and unknown, and not_indicated is unreachable where no "
+                    "provider publishes a fog diagnostic."
+                ),
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        summary=(
+            "Fog evidence read from one report's present-weather group, already served on /point. An absent "
+            "FG code is not a finding of no fog, so the state is unknown rather than not_indicated."
+        ),
     ),
     DerivationMethod(
         name=ENSEMBLE_STATISTICS,
@@ -622,6 +653,47 @@ def resolve_registered_relative_humidity(
     return derived.value, derived.method.name, derived.method.version
 
 
+@dataclass(frozen=True, slots=True)
+class DerivedWind:
+    """One wind derivation: two values from one construction, or a refusal.
+
+    Speed and direction come from one entry and are bounded by different rules
+    (a speed is clamped, a bearing is folded), so the flags are kept per field
+    rather than merged: a provenance must record which of its two numbers the
+    range rule touched.
+    """
+
+    speed: float | None
+    direction: float | None
+    method: DerivationMethod | None = None
+    speed_flags: tuple[str, ...] = ()
+    direction_flags: tuple[str, ...] = ()
+    refusal: Refusal | None = None
+
+    @property
+    def available(self) -> bool:
+        return self.refusal is None
+
+
+def derive_wind(u_ms: float | None, v_ms: float | None, *, reader_disabled: Iterable[str] = ()) -> DerivedWind:
+    """Wind speed and direction through their registry entry, with the flags.
+
+    The bounding flags are what a served provenance records, so this is the
+    form a data path uses; :func:`resolve_registered_wind` is the three-switch
+    tuple for callers that only want the numbers.
+    """
+    refusal = resolve(WIND_SPEED_AND_DIRECTION, reader_disabled=reader_disabled)
+    if refusal is not None:
+        return DerivedWind(speed=None, direction=None, method=get(WIND_SPEED_AND_DIRECTION), refusal=refusal)
+    entry = require(WIND_SPEED_AND_DIRECTION)
+    speed, direction, _, _ = resolve_wind(u_ms, v_ms)
+    if speed is None or direction is None:
+        return DerivedWind(speed=None, direction=None, method=entry)
+    speed, speed_flags = bound(WIND_SPEED_AND_DIRECTION, "wind_speed", speed)
+    direction, direction_flags = bound(WIND_SPEED_AND_DIRECTION, "wind_direction", direction)
+    return DerivedWind(speed=speed, direction=direction, method=entry, speed_flags=speed_flags, direction_flags=direction_flags)
+
+
 def resolve_registered_wind(
     u_ms: float | None,
     v_ms: float | None,
@@ -629,13 +701,62 @@ def resolve_registered_wind(
     reader_disabled: Iterable[str] = (),
 ) -> tuple[float | None, float | None, str | None, str | None]:
     """``ingest.meteorology.resolve_wind`` through the registry entry."""
-    refusal = resolve(WIND_SPEED_AND_DIRECTION, reader_disabled=reader_disabled)
+    derived = derive_wind(u_ms, v_ms, reader_disabled=reader_disabled)
+    if derived.speed is None or derived.direction is None or derived.method is None:
+        return None, None, None, None
+    return derived.speed, derived.direction, derived.method.name, derived.method.version
+
+
+@dataclass(frozen=True, slots=True)
+class DerivedState:
+    """A categorical derived value - a fog state - or a refusal."""
+
+    value: str | None
+    method: DerivationMethod | None = None
+    refusal: Refusal | None = None
+
+    @property
+    def available(self) -> bool:
+        return self.refusal is None
+
+
+def derive_fog_state(
+    *,
+    provider_diagnostic: bool | None,
+    visibility_m: float | None,
+    fog_code: bool | None,
+    reader_disabled: Iterable[str] = (),
+) -> DerivedState:
+    """The fog state through its registry entry.
+
+    Categorical, so there is no range to bound: the entry's admissible values
+    are the construction's own three, and ``not_indicated`` stays unreachable
+    while no provider here publishes a fog diagnostic.
+    """
+    refusal = resolve(FOG_STATE, reader_disabled=reader_disabled)
     if refusal is not None:
-        return None, None, None, None
-    entry = require(WIND_SPEED_AND_DIRECTION)
-    speed, direction, _, _ = resolve_wind(u_ms, v_ms)
-    if speed is None or direction is None:
-        return None, None, None, None
-    speed, _ = bound(WIND_SPEED_AND_DIRECTION, "wind_speed", speed)
-    direction, _ = bound(WIND_SPEED_AND_DIRECTION, "wind_direction", direction)
-    return speed, direction, entry.name, entry.version
+        return DerivedState(value=None, method=get(FOG_STATE), refusal=refusal)
+    entry = require(FOG_STATE)
+    return DerivedState(
+        value=fog_state(provider_diagnostic=provider_diagnostic, visibility_m=visibility_m, fog_code=fog_code),
+        method=entry,
+    )
+
+
+def resolve_registered_fog_state(
+    *,
+    provider_diagnostic: bool | None,
+    visibility_m: float | None,
+    fog_code: bool | None,
+    reader_disabled: Iterable[str] = (),
+) -> tuple[str | None, str | None, str | None]:
+    """``(state, entry name, entry version)``, or three ``None`` on refusal."""
+    derived = derive_fog_state(
+        provider_diagnostic=provider_diagnostic,
+        visibility_m=visibility_m,
+        fog_code=fog_code,
+        reader_disabled=reader_disabled,
+    )
+    if derived.value is None or derived.method is None:
+        return None, None, None
+    return derived.value, derived.method.name, derived.method.version

@@ -40,6 +40,7 @@ from ingest.contract import (
 )
 from ingest.grib import write_zarr
 from ingest.http import PoliteClient
+from ingest.manifest import declared_classes
 from ingest.registry import register
 
 UTC = timezone.utc
@@ -186,6 +187,8 @@ class SWPCKpAdapter:
                 "adapter_version": self.adapter_version,
                 "quality": quality,
                 "coverage": coverage,
+                # The planetary indices as SWPC issued them.
+                **declared_classes(["retrieved"]),
             }
 
         observed_rows = sorted(
@@ -319,6 +322,7 @@ class SWPCSolarWindAdapter:
             "adapter_version": self.adapter_version,
             "quality": quality,
             "coverage": coverage,
+            **declared_classes(["retrieved"]),
             "feed_declared_spacecraft": ", ".join(sources) or "undeclared",
         }
         return RunResult(
@@ -447,6 +451,7 @@ class SWPCOvationAdapter:
             "adapter_version": self.adapter_version,
             "quality": quality,
             "coverage": coverage,
+            **declared_classes(["retrieved"]),
             "observation_time": observation.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "model_disclosure": "OVATION model output; a nowcast, not an observation",
         }

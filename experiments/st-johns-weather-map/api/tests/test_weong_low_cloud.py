@@ -421,6 +421,7 @@ def test_the_derived_cloud_is_never_below_the_retrieved_cloud(tmp_path: Path):
     provenance = result.artifacts[0].provenance
     assert result.artifacts[0].logical_name == LOGICAL_NAME
     assert provenance["derived"] is True and provenance["generated"] is True
+    assert provenance["evidence_classes"] == ["generated_display"]
     assert "WEonG" in provenance["derivation"] and "section 7.9" in provenance["derivation"]
     assert provenance["derivation_version"] == DERIVATION_VERSION
     assert provenance["base_revision_id"] == "rev-eccc-hrdps-1"

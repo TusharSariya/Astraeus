@@ -316,14 +316,6 @@ def use_live_store(monkeypatch, data_mode, store) -> None:
     monkeypatch.setattr(api_module, "live_store", lambda: store)
 
 
-@pytest.fixture(autouse=True)
-def _registered_derivation_methods(derivation_registry):
-    """Every derivation these endpoints serve is an enabled registry entry.
-
-    A ``derived_here`` value is refused unless its method is registered and
-    enabled, so the entries are stood up for this module rather than each
-    endpoint test being about the registry.
-    """
 
 
 def assert_no_evidence_was_invented(payload: dict) -> None:
@@ -522,7 +514,9 @@ def test_wind_is_served_as_speed_and_direction_with_its_derivation_disclosed(mon
     assert direction["value"] == 90.0 and direction["provenance"]["normalized_units"] == "degree"
     for item in (speed, direction):
         assert item["provenance"]["source_id"] == "eccc-hrdps"
-        assert "MetPy" in item["provenance"]["derivation"]
+        assert item["provenance"]["derivation"] == "wind_speed_and_direction_from_components"
+        assert item["provenance"]["evidence_class"] == "derived_here"
+        assert "MetPy" in item["provenance"]["derivation_citation"]
         assert item["provenance"]["derivation_version"] == "metpy-1.7.1-wind-v1"
 
 
