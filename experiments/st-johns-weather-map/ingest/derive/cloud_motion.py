@@ -54,6 +54,7 @@ from ingest.derive.methods import (  # noqa: F401 - re-exported for tests
     method_catalogue,
 )
 from ingest.grib import write_zarr
+from ingest.manifest import declared_classes
 from ingest.store import sha256_of
 
 UTC = timezone.utc
@@ -414,6 +415,11 @@ def derive_cloud_motion(store: Any, surface: Any, variables: Iterable[str], work
         "base_object_key": surface.object_key,
         "interpolation_methods": method_catalogue(),
         "quality": {"status": "passed", "flags": ["derived", "display_only"], "per_variable": quality},
+        # An interpolation between retrieved frames, drawn and never served:
+        # generated_display is the class, and it is what keeps this artifact
+        # off /point and /profile now that admission reads the declaration
+        # instead of matching a logical name.
+        **declared_classes(["generated_display"]),
     }
     return RunResult(
         source_id=surface.source_id,

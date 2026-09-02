@@ -106,7 +106,7 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   any case) refuses every derived value with a notice naming the variable and
   leaves retrieved values untouched; `catalogue(reader_disabled=[...])` is the
   reader-level contract and refuses per reader only.
-- [ ] 3.4 Publish the class declaration on every artifact: each staged
+- [x] 3.4 Publish the class declaration on every artifact: each staged
   artifact's provenance carries `evidence_classes`, and
   `evidence_class_by_variable` wherever an artifact holds more than one class,
   written from `RunManifest.as_manifest_block`. Until an artifact declares
@@ -116,6 +116,22 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
   it.)
   Verify: `cd api && uv run pytest tests/test_ingest_store.py
   tests/test_manifest.py`.
+  Verify result: 28 passed. Every artifact-producing path declares: the four
+  manifest-backed adapters (AWC METAR and TAF, ECCC SWOB, ECCC Datamart, NOAA
+  GFS - both its surface and upper_air artifacts) splat
+  `RunManifest.as_manifest_block()`; GeoMet declares once in
+  `_base_provenance`, which every one of its eight artifacts is built on;
+  SWPC's three and GOES-19's one declare `retrieved` through
+  `ingest.manifest.declared_classes`; cloud motion and the WEonG low-cloud
+  repair declare `generated_display`. `ArtifactStore.stage` now refuses an
+  artifact that declares nothing, declares a class outside the six, or whose
+  per-variable classes are not in its declared set
+  (`UndeclaredEvidenceClasses`), with nothing uploaded or recorded - staging
+  is the one gate every artifact passes, and a declaration missed there would
+  publish and be isolated at read time instead. The adapter tests assert the
+  declaration on the artifacts they build. No Open-Meteo adapter exists yet,
+  so its `intermediary_derived` cloud fields have no artifact to declare;
+  registry record and API provenance carry the kind (4.0/4.1).
 
 ## 4. Registry (ingest owner)
 

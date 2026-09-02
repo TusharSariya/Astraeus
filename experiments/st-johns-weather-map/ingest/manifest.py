@@ -120,19 +120,36 @@ class RunManifest:
         """Each declared field's own class, for the artifact's manifest block."""
         return {field.name: field.evidence_class for field in self.fields}
 
-    def as_manifest_block(self, logical_name: str) -> dict[str, Any]:
+    def as_manifest_block(self) -> dict[str, Any]:
         """The class declaration an artifact records in its own provenance.
 
         This is the block ``weather_api.store`` reads to admit or exclude an
         artifact and to give each sampled value its class, so it is produced
-        here rather than assembled by hand in each adapter.
+        here rather than assembled by hand in each adapter. Splat it into the
+        provenance dict an adapter builds.
         """
-        return {
-            "source_id": self.source_id,
-            "logical_name": logical_name,
-            "evidence_classes": list(self.declared_classes),
-            "evidence_class_by_variable": dict(self.class_by_field),
-        }
+        return declared_classes(self.declared_classes, by_variable=self.class_by_field)
+
+
+def declared_classes(classes: Sequence[str], *, by_variable: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The class declaration for an artifact that has no run manifest.
+
+    A derived or display construction stages its own artifact without an
+    adapter's manifest, and it still has to say what its values are. The
+    classes are checked here rather than at read time, because an artifact
+    that declares a class the contract does not know is isolated by the API
+    and answers null - a defect worth catching where it is written.
+    """
+    declared = tuple(dict.fromkeys(classes))
+    if not declared:
+        raise ManifestError("an artifact declares at least one evidence class")
+    for name in (*declared, *(by_variable or {}).values()):
+        if name not in EVIDENCE_CLASSES:
+            raise ManifestError(f"{name!r} is not one of the six evidence classes")
+    undeclared = sorted({name for name in (by_variable or {}).values() if name not in declared})
+    if undeclared:
+        raise ManifestError(f"evidence_class_mismatch: values carry {', '.join(undeclared)}, which the artifact does not declare")
+    return {"evidence_classes": sorted(declared), "evidence_class_by_variable": dict(by_variable or {})}
 
 
 @dataclass(frozen=True)

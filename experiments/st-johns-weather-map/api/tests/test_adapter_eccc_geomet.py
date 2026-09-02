@@ -715,6 +715,7 @@ def test_undetected_radar_is_no_echo_and_never_zero_precipitation(tmp_path: Path
 
     provenance = result.artifacts[0].provenance
     assert provenance["undetected_scans"] == len(RADAR_TIMES)
+    assert provenance["evidence_classes"] == ["retrieved"]
     assert set(provenance["echo_semantics"].values()) == {"no_detected_precipitating_echo"}
     assert "no detected precipitating echo" in dataset["precipitation_rate"].attrs["semantics"]
     assert dataset["radar_echo"].attrs["flag_meanings"].startswith("no_detected_precipitating_echo")

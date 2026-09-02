@@ -305,6 +305,9 @@ def test_derive_publishes_flow_with_full_derivation_provenance(tmp_path: Path):
     derived = result.artifacts[0]
     assert derived.logical_name == LOGICAL_NAME
     assert derived.provenance["derived"] is True
+    # A display construction says so in the declaration a data path reads,
+    # which is what keeps it off /point now that admission is by class.
+    assert derived.provenance["evidence_classes"] == ["generated_display"]
     assert derived.provenance["base_revision_id"] == "rev-surface-1"
     assert derived.provenance["derivation_version"] == VERSION
     assert "not evidence" in derived.provenance["derivation"]

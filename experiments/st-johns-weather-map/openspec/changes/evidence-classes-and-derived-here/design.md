@@ -203,9 +203,31 @@ visible behaviour:
 
 ## Open questions carried into implementation
 
-- Whether existing derived artifacts (cloud motion, the WEonG repair) are
+- ~~Whether existing derived artifacts (cloud motion, the WEonG repair) are
   re-classed in place or republished; the manifest gains `evidence_classes`
-  either way.
+  either way.~~ **Answered: republished, and nothing is re-classed in place.**
+  The declaration is written where the artifact is built, so it appears on
+  the next run of each producer; `ArtifactStore.stage` refuses an artifact
+  that carries none, so nothing new publishes without one. An artifact
+  already published without a declaration keeps answering as a layer and is
+  isolated on the data paths - null with a notice naming it - until its
+  producer's next run replaces it. That is the fail-closed direction: the
+  alternative, reading the old `derived`/`generated` flags as a class, is the
+  inference this change exists to remove.
+
+Two class assignments that had to be decided while wiring the declarations,
+and are recorded here because neither spec delta names the artifact:
+
+- **The GOES-19 cloud mask is `retrieved`.** Its values are NOAA's own cloud
+  probability and cloud-top height, moved onto this deployment's grid
+  nearest-neighbour and parallax-corrected in place. Nothing is computed here
+  and no intermediary stands between NOAA and this deployment, so neither
+  `derived_here` nor `reprocessed` fits; the regrid and parallax disclosures
+  the accepted `goes19-cloud-mask-overlay` spec already requires are what tell
+  a reader the cells were moved.
+- **GeoMet's `GetFeatureInfo` artifacts are `retrieved`.** MSC published the
+  value; this deployment asked for one pixel of it and stored the answer
+  unmodified.
 - ~~The exact validation tolerance for a method's physical range clamp and how
   a clamped value is flagged.~~ **Answered.** There is no tolerance, because a
   tolerance is a second bound nobody declared. Each output declares one of four
