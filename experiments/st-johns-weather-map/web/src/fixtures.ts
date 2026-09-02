@@ -72,6 +72,10 @@ export const fixtureSnapshot: EvidenceSnapshot = {
   dataMode: 'fixture',
   fieldSources: {},
   fieldAlternatives: {},
+  servedFields: [],
+  // No fixture pair is stated: an invented comparability verdict would be a
+  // physical claim about invented numbers.
+  comparability: [],
   notices: [],
   fieldModes: {
     temperature: 'fixture', dew_point: 'fixture', relative_humidity: 'fixture',
@@ -120,7 +124,7 @@ export const fixtureSnapshot: EvidenceSnapshot = {
 
 export const unavailableSnapshot: EvidenceSnapshot = {
   mode: 'unavailable', selectionBadge: null, selectedProductId: null, selectedSourceId: null,
-  dataMode: 'unavailable', fieldModes: {}, fieldSources: {}, fieldAlternatives: {}, notices: [], issuedAt: '', validAt: null,
+  dataMode: 'unavailable', fieldModes: {}, fieldSources: {}, fieldAlternatives: {}, servedFields: [], comparability: [], notices: [], issuedAt: '', validAt: null,
   temperatureC: null, dewPointC: null, relativeHumidityPct: null,
   windKmh: null, windDirectionDeg: null, gustKmh: null,
   precipitation: 'Unavailable', precipitationProbabilityPct: null,

@@ -58,6 +58,44 @@ level-expanded variable name into that one key plus the level it carried. The
 catalogue's shape is the accepted one and no per-level key exists; the adapters
 converge on the layout when a change owns their retrieval.
 
+## How the web says what a member measures (section 4, as implemented)
+
+`/point` and `/catalog` carry a value's `family` and `key`, not the family's
+title and note or the member's definition — and those words are exactly what a
+reader needs to see beside a key. Writing them in the client would be the
+catalogue's authority moved into presentation code, which is the failure this
+change exists to remove. So `web/src/fieldFamilies.ts` is a **generated copy**
+of the catalogue's display metadata only (family title, note and comparability
+groups; per-key quantity, unit, level, comparability group and description),
+written by `web/scripts/generate-field-families.mjs` from
+`python3 -c "from registry import fields; import json; print(json.dumps(fields.catalogue()))"`
+and `registry/fields.schema.json`. The script's `--check` mode rebuilds and
+compares; `src/field-family-catalogue.test.ts` runs it, so the suite fails when
+the copy drifts from either input, or when the catalogue cannot be read at all.
+The copy is never consulted to decide which family a served value belongs to.
+
+Four rules the implementation settled, none of them widening the requirement:
+
+- **A family comes from the response and nowhere else.** An absent `family` is
+  `ungrouped`, shown under a heading that says the response declared none. A
+  family is never read off how a key is spelled: `total_cloud` looking like
+  cloud cover across three producers is the original defect.
+- **`/layers` serves no comparability list**, so two active layers of one
+  family are judged by the catalogue copy's `comparability_group` for their
+  keys — a lookup by exact key, not a reading of the name. A pair whose group
+  the copy cannot name is treated as a differing pair, never a matching one.
+- **An unstated pair is refused a difference**, exactly as a non-comparable one
+  is. Silence is not a statement that two members may be subtracted.
+- **The family panel is not drawn at all** when no served value declares a key
+  or a family. Against the API before section 3 lands, an "Ungrouped" list
+  repeating every metric would assert a grouping the response never made.
+
+The difference view sits on the point readings rather than on the map: that is
+where two members of one family carry numbers, and a refusal is only meaningful
+where the arithmetic was otherwise possible. The map's disclosure is the
+legend, which names each member's definition and states that two members of one
+family are separate scales rather than one ramp.
+
 ## Open questions carried into implementation
 
 - Whether CF `standard_name` coverage is worth attaching for fields with no

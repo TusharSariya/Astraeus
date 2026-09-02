@@ -1,7 +1,8 @@
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
 import { declaredEvidenceClass, resolveEvidenceClass } from './evidenceClass'
 import { resolveDeliveryKind } from './deliveryKind'
-import type { CatalogResult, CatalogSource, CloudLayerReading, DerivationInput, DerivationMethod, EvidenceSnapshot, FieldAlternative, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedEvidenceClass, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
+import { groupByFamily, resolveFamily, resolveFieldKey, resolvePhase, resolveStorage, type FamilyGroup } from './fieldFamily'
+import type { CatalogResult, CatalogSource, CloudLayerReading, ComparabilityPair, DerivationInput, DerivationMethod, EvidenceSnapshot, FieldAlternative, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedEvidenceClass, ResolvedFrame, ServedFieldValue, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
 } from './types'
 
 const prefix = '/api/experiments/weather/v0'
@@ -11,6 +12,15 @@ export type PointDataSource = Exclude<import('./types').DataSource, 'loading'>
 export interface ApiEvidenceField {
   field: string
   value: unknown
+  /** The catalogue key, family, declared phase and storage state the response
+   *  carries for this value. Every one is optional here so the page renders
+   *  against an API that does not serve them yet; each absence is shown as an
+   *  absence rather than filled in. They are read from the value object and,
+   *  failing that, from `provenance`, because both placements are in use. */
+  key?: unknown
+  family?: unknown
+  phase?: unknown
+  storage?: unknown
   provenance?: Record<string, unknown>
 }
 
@@ -25,6 +35,10 @@ export interface ApiPointResponse {
     selected_product_id?: string | null
   }
   fields: ApiEvidenceField[]
+  /** One entry per unordered pair of served members within a family. Optional:
+   *  an API that does not serve it yet leaves every pair unstated, and an
+   *  unstated pair is refused a difference exactly as a non-comparable one is. */
+  comparability?: unknown
   /** The response's own notices. They carry the reason a derivation was
    *  refused or an artifact's provenance could not be modelled, which is the
    *  only place that reason exists. */
@@ -152,6 +166,9 @@ function derivationMethodOf(provenance: Record<string, unknown>): DerivationMeth
 /** Flags the API sets when a value exists as a refusal rather than a reading. */
 const DERIVATION_REFUSED = 'derivation_refused'
 const PROVENANCE_UNMODELLED = 'provenance_unmodelled'
+/** Set on a variable that has no catalogue key. The API serves `value: null`
+ *  and `data_mode: "unavailable"` for it and explains it in a notice. */
+const UNCATALOGUED_FIELD = 'uncatalogued_field'
 
 /** The three classes that are served but never a field's primary reading
  *  (`point-evidence-sampling`: "Values of class `reprocessed`,
@@ -184,6 +201,14 @@ function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | 
     sourceId: typeof provenance.source_id === 'string' ? provenance.source_id : null,
     product: typeof provenance.product === 'string' ? provenance.product : null,
     provider: String(provenance.provider ?? 'Unknown provider'),
+    // The catalogue axis. Read from the value first, then from provenance;
+    // never from `field.field`, which is an API field name and not a promise
+    // that a catalogue key of the same spelling exists.
+    fieldKey: resolveFieldKey(field.key ?? provenance.key),
+    family: resolveFamily(field.family ?? provenance.family),
+    phase: resolvePhase(field.phase ?? provenance.phase),
+    storage: resolveStorage(field.storage ?? provenance.storage),
+    uncatalogued: quality.flags.includes(UNCATALOGUED_FIELD),
     derivation: typeof provenance.derivation === 'string' && provenance.derivation.trim() ? provenance.derivation : null,
     derivationVersion: typeof provenance.derivation_version === 'string' ? provenance.derivation_version : null,
     evidenceClass,
@@ -217,7 +242,10 @@ function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | 
  *  would have carried. Null when nothing in the response explains it, which
  *  the interface says out loud rather than inventing a reason. */
 export function noticeForField(fieldName: string, attribution: FieldAttribution, notices: string[]): string | null {
-  if (!attribution.derivationRefused && !attribution.provenanceUnmodelled) return null
+  // `uncatalogued` joins the two refusals: the API serves no value for a
+  // variable with no catalogue key and puts the reason in a notice, which is
+  // the only place that reason exists.
+  if (!attribution.derivationRefused && !attribution.provenanceUnmodelled && !attribution.uncatalogued) return null
   const named = notices.find((notice) => notice.includes(fieldName))
   if (named) return named
   const sourceId = attribution.sourceId
@@ -352,6 +380,26 @@ export interface NormalizeOptions {
   nonPrimarySources?: ReadonlySet<string>
 }
 
+/** The comparability list as the response served it.
+ *
+ *  Only entries naming a family and both members are kept, and `comparable`
+ *  must be a real boolean: an entry that half-states a pair states nothing, and
+ *  reading a missing `comparable` as `true` would be the one failure this list
+ *  exists to prevent. A comparable pair's `reason` and `detail` are null. */
+export function parseComparability(raw: unknown): ComparabilityPair[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object')
+    .map((entry) => {
+      const family = text(entry.family)
+      const a = text(entry.a)
+      const b = text(entry.b)
+      if (!family || !a || !b || typeof entry.comparable !== 'boolean') return null
+      return { family, a, b, comparable: entry.comparable, reason: text(entry.reason), detail: text(entry.detail) }
+    })
+    .filter((entry): entry is ComparabilityPair => entry !== null)
+}
+
 /** The source ids a catalogue refuses as any field's primary reading. */
 export function nonPrimarySourceIds(sources: CatalogSource[]): ReadonlySet<string> {
   // `display_primary` absent is NOT false: a record that has not declared one
@@ -438,9 +486,32 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
       .filter((entry): entry is FieldAlternative => entry !== null)
     if (alternatives.length > 0) fieldAlternatives[name] = alternatives
   })
+  // Every served value, in response order, whether or not a metric renders it
+  // and whether or not it may be a reading. The family view is built from
+  // this: a member the response carried must appear under its family even when
+  // no metric on the page has a slot for it.
+  const servedFields = allFields
+    .map((entry) => {
+      const attribution = attributionOf(entry)
+      if (!attribution) return null
+      const hasValue = (typeof entry.value === 'number' && Number.isFinite(entry.value))
+        || (typeof entry.value === 'string' && entry.value.trim().length > 0)
+      return {
+        field: entry.field,
+        text: describeValue(entry),
+        hasValue,
+        value: finiteValue(entry),
+        units: text(entry.provenance?.normalized_units ?? entry.provenance?.original_units),
+        primary: fields.includes(entry),
+        attribution: { ...attribution, notice: noticeForField(entry.field, attribution, notices) },
+      }
+    })
+    .filter((entry): entry is ServedFieldValue => entry !== null)
   return {
     fieldAlternatives,
+    servedFields,
     notices,
+    comparability: parseComparability(point.comparability),
     mode: selectionMode,
     selectionBadge: typeof point.selection.badge === 'string' && point.selection.badge.trim() ? point.selection.badge : null,
     selectedProductId,
@@ -692,6 +763,26 @@ export function groupLayers(layers: LayerItem[]): Array<{ group: LayerGroup; lab
   return LAYER_GROUP_ORDER
     .map((group) => ({ group, label: LAYER_GROUP_LABELS[group], rows: layers.filter((layer) => layerGroup(layer) === group) }))
     .filter(({ rows }) => rows.length > 0)
+}
+
+/** A layer's field family, as `/layers` declares it and only as it declares it.
+ *  An older API declares none and the layer groups under `ungrouped`: reading a
+ *  family off `field` would put HRDPS opacity-weighted cloud and GFS geometric
+ *  cloud in one group on the strength of a shared spelling, which is the
+ *  collision the catalogue exists to remove. */
+export function layerFamily(layer: LayerItem): string {
+  return resolveFamily(layer.family)
+}
+
+/** The catalogue key a layer draws. `field_key` where the API names one, else
+ *  its `field`, which is the name it publishes the layer's quantity under. */
+export function layerFieldKey(layer: LayerItem): string | null {
+  return resolveFieldKey(layer.field_key) ?? resolveFieldKey(layer.field)
+}
+
+/** Layers bucketed by field family, in catalogue order, ungrouped last. */
+export function groupLayersByFamily(layers: LayerItem[]): Array<FamilyGroup<LayerItem>> {
+  return groupByFamily(layers, layerFamily)
 }
 
 /** The three cloud bands of the aviation convention (FAA AC 00-6B / NAV CANADA):
