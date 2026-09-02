@@ -578,7 +578,7 @@ def test_satellite_layers_offer_only_past_frames_inside_the_window(monkeypatch, 
         # is intersected with the window rather than passed through.
         assert 139 <= len(times) <= 151  # roughly a day of ten-minute scans
         assert layer["cadence_seconds"] == 600
-        assert layer["staleness_tolerance_seconds"] == 300
+        assert layer["staleness_tolerance_seconds"] == 600  # one native interval
         assert layer["raster_available"] is True
         # ``[1 km]`` is a resolution, not a unit, so the unit is unknown.
         assert layer["units"] == "unknown"

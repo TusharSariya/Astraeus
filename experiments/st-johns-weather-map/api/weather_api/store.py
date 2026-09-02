@@ -675,6 +675,17 @@ class LiveStore:
     def current(self) -> list[Any]:
         return self._store.current_artifacts()
 
+    def retained_artifacts(self) -> list[Any]:
+        """Retained revisions, current and superseded, for coverage.
+
+        Separate from :meth:`current` because coverage has to see the previous
+        complete run: when a short cycle reaches less far than its
+        predecessor, the leads only the older run published are still
+        retained evidence, and asking only what is current would report them
+        as covered by nothing.
+        """
+        return self._store.retained_artifacts()
+
     def assert_object_store_reachable(self) -> None:
         """Fail closed when the object store is unreachable.
 
@@ -1443,6 +1454,251 @@ def published_frame_times(store: Any, *, source_ids: Sequence[str] | None = None
     return present
 
 
+@dataclass(frozen=True)
+class RetainedRun:
+    """One retained run of one source, as coverage needs to see it.
+
+    ``run_time`` is the adapter's own declaration and nothing else. The
+    ``model_runs`` column of the same name is stamped with the retrieval time
+    when an adapter declared none, so folding the two together would let a
+    retrieval instant be served as a run time - and a run age, and a
+    ``run_stale`` verdict - computed from a number no producer ever stated.
+    Where the adapter declared nothing this is ``None``, and the caller says
+    so rather than substituting.
+
+    ``frame_start``/``frame_end`` bound the frames the run actually published,
+    read the way :func:`published_frame_times` reads them: the declared valid
+    times when the revision listed any, else the revision's own valid-time
+    span. A declared reach is a promise; this is the delivery.
+    """
+
+    source_id: str
+    provider_run_id: str
+    run_time: datetime | None
+    frame_start: datetime | None
+    frame_end: datetime | None
+
+    def published_span_covers(self, instant: datetime) -> bool:
+        if self.frame_start is None or self.frame_end is None:
+            return False
+        return self.frame_start <= instant <= self.frame_end
+
+
+def _revision_frame_stamps(artifact: Any) -> list[datetime]:
+    """The frames one retained revision can be said to have published.
+
+    The same rule :func:`published_frame_times` applies: the declared valid
+    times where the revision listed them, else the two edges of its recorded
+    span. Nothing between the edges is claimed, because a frame wrongly
+    reported present is a frame nobody fetches.
+    """
+    declared = (getattr(artifact, "provenance", None) or {}).get("valid_times") or ()
+    stamps = [moment for moment in (_parse_iso(value) for value in declared) if moment is not None]
+    if stamps:
+        return stamps
+    edges = (getattr(artifact, "valid_time_start", None), getattr(artifact, "valid_time_end", None))
+    return [moment for moment in (_parse_iso(value) for value in edges) if moment is not None]
+
+
+def retained_runs(store: Any) -> list[RetainedRun]:
+    """The runs this deployment still holds, folded from retained revisions.
+
+    Raises :class:`StoreUnavailable` when the store cannot answer, because an
+    unknown retention state is not an empty one: reporting "nothing covers
+    this instant" for a store that simply could not be read would be a claim
+    about the evidence rather than about the request.
+    """
+    reader = getattr(store, "retained_artifacts", None)
+    if reader is None:
+        raise StoreUnavailable("this artifact store cannot report retained revisions")
+    try:
+        artifacts = reader()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001 - any driver failure is the same answer
+        raise StoreUnavailable(f"retained revisions could not be read: {error}") from error
+
+    folded: dict[tuple[str, str], list[datetime]] = {}
+    declared_run_times: dict[tuple[str, str], datetime | None] = {}
+    for artifact in artifacts:
+        key = (str(artifact.source_id), str(artifact.provider_run_id))
+        folded.setdefault(key, []).extend(_revision_frame_stamps(artifact))
+        if declared_run_times.get(key) is None:
+            declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
+    runs: list[RetainedRun] = []
+    for (source_id, provider_run_id), stamps in folded.items():
+        runs.append(
+            RetainedRun(
+                source_id=source_id,
+                provider_run_id=provider_run_id,
+                run_time=declared_run_times.get((source_id, provider_run_id)),
+                frame_start=min(stamps) if stamps else None,
+                frame_end=max(stamps) if stamps else None,
+            )
+        )
+    return sorted(runs, key=lambda run: (run.source_id, run.provider_run_id))
+
+
+@dataclass(frozen=True)
+class LayerRun:
+    """One retained run of one source, as one layer's frame index needs it.
+
+    :class:`RetainedRun` folds a run to its two edges, which is all a
+    containment test needs. A layer index needs the stamps themselves, because
+    each frame is attributed to the run that produced it and a short cycle puts
+    two runs in one index.
+
+    ``run_time`` is the adapter's own declaration and nothing else, for the
+    reason :class:`RetainedRun` gives: the ``model_runs`` column of the same
+    name is a retrieval stamp where the adapter declared nothing, and a run age
+    computed from a retrieval instant is a staleness verdict nobody stated.
+    """
+
+    layer_id: str
+    source_id: str
+    provider_run_id: str
+    run_time: datetime | None
+    times: list[datetime]
+
+
+def retained_layer_runs(store: Any) -> dict[str, list[LayerRun]]:
+    """Every retained run, per layer, with the frames it published.
+
+    Read from the same ``retained_artifacts`` revisions coverage reads, so the
+    previous run kept under the two-run ceiling is visible here too: that is
+    what lets ``/layers`` serve the leads a short newest run does not reach
+    without inventing them.
+
+    Runs come back newest first, a run with no declared run time last. That
+    order is what decides attribution where two runs published the same frame:
+    the newer evidence answers for the instant, and the older run keeps only
+    the leads the newer one lacks.
+
+    Raises :class:`StoreUnavailable` when the store cannot answer. An unknown
+    retention state is not an empty one, and the caller says so rather than
+    reporting every frame as run-less.
+    """
+    reader = getattr(store, "retained_artifacts", None)
+    if reader is None:
+        raise StoreUnavailable("this artifact store cannot report retained revisions")
+    try:
+        artifacts = reader()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001 - any driver failure is the same answer
+        raise StoreUnavailable(f"retained revisions could not be read: {error}") from error
+
+    folded: dict[tuple[str, str, str], set[datetime]] = {}
+    declared_run_times: dict[tuple[str, str, str], datetime | None] = {}
+    for artifact in artifacts:
+        key = (
+            layer_id_for(str(artifact.source_id), str(getattr(artifact, "logical_name", ""))),
+            str(artifact.source_id),
+            str(artifact.provider_run_id),
+        )
+        folded.setdefault(key, set()).update(_revision_frame_stamps(artifact))
+        if declared_run_times.get(key) is None:
+            declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
+
+    by_layer: dict[str, list[LayerRun]] = {}
+    for (layer_id, source_id, provider_run_id), stamps in folded.items():
+        by_layer.setdefault(layer_id, []).append(
+            LayerRun(
+                layer_id=layer_id,
+                source_id=source_id,
+                provider_run_id=provider_run_id,
+                run_time=declared_run_times.get((layer_id, source_id, provider_run_id)),
+                times=sorted(stamps),
+            )
+        )
+    for runs in by_layer.values():
+        runs.sort(key=lambda run: (run.run_time is None, -(run.run_time.timestamp() if run.run_time else 0.0), run.provider_run_id))
+    return by_layer
+
+
+#: Said where the run that produced a frame declared no reference time of its
+#: own. The retrieval instant recorded beside the run is not a substitute, so
+#: the age - and the verdict - stay unknown.
+NO_RUN_TIME_REASON = "the adapter declared no run time, so the age of this run cannot be computed"
+
+#: Said where the producer states no run cadence, so there is no threshold to
+#: compare an age against.
+NO_RUN_CADENCE_REASON = "the source declares no run cadence, so there is no staleness threshold to compare against"
+
+
+#: Said for a source that publishes observations rather than runs. Not a
+#: staleness claim in either direction: there is no run to be stale.
+NO_RUN_CONCEPT_REASON = "observation layer: no run concept"
+
+
+def source_has_run_concept(source_id: str) -> bool:
+    """Whether this source publishes runs at all, per its registry category.
+
+    Read from the record, never from the shape of an id or the presence of a
+    cadence field: an observation source with no run is a different fact from a
+    forecast source whose cadence could not be resolved, and the two get
+    different reasons.
+    """
+    category = source_category(source_id)
+    if category is None:
+        return False
+    try:
+        from ingest.registry import FORECAST_CATEGORIES  # noqa: PLC0415
+    except Exception:  # noqa: BLE001 - no registry is not a claim about runs
+        return True
+    return category in FORECAST_CATEGORIES
+
+
+def run_stale_verdict(
+    run_time: datetime | None, cadence_seconds: int | None, reference: datetime
+) -> tuple[int | None, bool | None, str | None]:
+    """``(run_age_seconds, run_stale, run_stale_reason)`` for one run.
+
+    The one place the rule lives: a run is stale when its age exceeds twice the
+    producer's declared run cadence - one missed run is a delay, two is a source
+    that has stopped publishing. The verdict is only ever reached where both
+    halves of the comparison are known; either missing gives ``None`` with the
+    reason, because ``False`` would report an unmeasurable run as current.
+    """
+    if run_time is None:
+        return None, None, NO_RUN_TIME_REASON
+    age = int((reference - run_time).total_seconds())
+    if cadence_seconds is None or cadence_seconds <= 0:
+        return age, None, NO_RUN_CADENCE_REASON
+    return age, age > 2 * cadence_seconds, None
+
+
+def source_run_staleness(
+    source_id: str, run_time: datetime | None, reference: datetime
+) -> tuple[int | None, bool | None, str | None, int | None]:
+    """``(age, run_stale, reason, run_cadence_seconds)`` for one source's run.
+
+    :func:`run_stale_verdict` with the two registry reads in front of it, so
+    ``/layers`` and ``/point`` reach the same verdict from the same record. An
+    observation source stops here with its own reason rather than falling
+    through to "no cadence declared", which would read as a missing declaration
+    on a record that correctly has none.
+    """
+    if not source_has_run_concept(source_id):
+        return None, None, NO_RUN_CONCEPT_REASON, None
+    cadence = source_run_cadence_seconds(source_id)
+    age, stale, reason = run_stale_verdict(run_time, cadence, reference)
+    return age, stale, reason, cadence
+
+
+def source_reach(source_id: str) -> Any | None:
+    """The declared reach of a source, or ``None`` when it declares none."""
+    config = _registry_config(source_id)
+    return getattr(config, "reach", None) if config is not None else None
+
+
+def source_run_cadence_seconds(source_id: str) -> int | None:
+    """The declared producer run cadence of a source, in seconds."""
+    config = _registry_config(source_id)
+    cadence = getattr(config, "run_cadence_seconds", None) if config is not None else None
+    return int(cadence) if cadence else None
+
+
 def stream_last_valid_times(store: Any) -> dict[tuple[str, str], datetime]:
     """The last valid time held per ``(source_id, logical_name)``.
 
@@ -1682,6 +1938,13 @@ def _build_live_provenance(
     # everything else reports the QC the artifact recorded.
     resolved_quality = quality if quality is not None else Quality(status=stored.get("status", "unknown"), flags=list(stored.get("flags", [])))
     coverage = provenance.get("coverage") or {}
+    # The run staleness of the value's own run, and only from the adapter's own
+    # declaration: ``sample.run_time`` carries the ``model_runs`` stamp, which is
+    # the retrieval instant where nothing was declared, and a run age computed
+    # from that would be a verdict no producer ever stated.
+    _age, run_stale, run_stale_reason, _cadence = source_run_staleness(
+        sample.source_id, _parse_iso(provenance.get("run_time")), reference
+    )
     return Provenance(
         data_mode=DataMode.LIVE,
         evidence_class=sample.evidence_class,
@@ -1721,6 +1984,8 @@ def _build_live_provenance(
         sample_method=sample.sample_method,
         contributing_evidence=list(contributors),
         contributors=contributor_records,
+        run_stale=run_stale,
+        run_stale_reason=run_stale_reason,
     )
 
 

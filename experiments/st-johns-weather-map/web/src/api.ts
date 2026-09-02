@@ -1521,16 +1521,37 @@ function isObservedGroup(layer: LayerItem): boolean {
   return group === 'satellite' || group === 'observation' || group === 'alert' || group === 'unknown'
 }
 
+/** The `layer.frames[]` entry declaring `time`'s run, or undefined when the
+ *  layer carries no `frames[]` at all (an older API). */
+function frameEntry(layer: LayerItem, time: string): import('./types').LayerFrame | undefined {
+  return layer.frames?.find((frame) => frame.valid_time === time)
+}
+
+/** Whether a previous/next pair may be interpolated for display (task 4.3):
+ *  refused only when BOTH frames declare a non-null `run_time` and the two
+ *  differ — a short cycle's join, which is evidence from two runs and never
+ *  drawn as one continuous series. Either side unknown (`null`, or no
+ *  `frames[]` published at all) does not refuse: there is nothing to compare
+ *  and every existing frame-fallback scenario stays exactly as it was. */
+function sameRunOrUnknown(layer: LayerItem, previousTime: string, nextTime: string): boolean {
+  const previousRun = frameEntry(layer, previousTime)?.run_time ?? null
+  const nextRun = frameEntry(layer, nextTime)?.run_time ?? null
+  if (previousRun === null || nextRun === null) return true
+  return previousRun === nextRun
+}
+
 export function resolveLayerFrame(layer: LayerItem, at: Date, opts: { interpolate: boolean; reference: Date }): FrameResolution {
   if ((layer.times?.length ?? 0) === 0) return { kind: 'none', reason: 'this layer published no frames', nearest: null }
   const observed = isObservedGroup(layer)
   // A forecast layer under the display-interpolation setting composites its
   // two neighbouring frames whenever the instant sits strictly between them —
-  // including inside the tolerance, where the fraction is simply near an end.
+  // including inside the tolerance, where the fraction is simply near an end
+  // — but never across a run change: two frames from different runs are two
+  // pieces of evidence, and the disclosed nearest frame is drawn instead.
   if (opts.interpolate && !observed) {
     const previous = previousFrame(layer, at)
     const next = nextFrame(layer, at)
-    if (previous && next && previous.time !== next.time) {
+    if (previous && next && previous.time !== next.time && sameRunOrUnknown(layer, previous.time, next.time)) {
       const prevMs = new Date(previous.time).getTime()
       const nextMs = new Date(next.time).getTime()
       return { kind: 'blend', previous, next, fraction: (at.getTime() - prevMs) / (nextMs - prevMs) }
@@ -1630,8 +1651,13 @@ export interface FrameMarker {
   /** The published instant, epoch ms. */
   ms: number
   time: string
-  /** Every active layer publishing this instant, in retrieved layer order. */
-  layers: Array<{ id: string; title: string; color: string }>
+  /** Every active layer publishing this instant, in retrieved layer order.
+   *  `runTime` is `layer.frames[]`'s declared run time for this instant, when
+   *  the layer published one — `undefined` when the layer carries no
+   *  `frames[]` at all (an older API), `null` when it declared the frame's
+   *  run time as unknown. Read by the rail for the run label and the
+   *  run-change marker (task 4.3). */
+  layers: Array<{ id: string; title: string; color: string; runTime?: string | null }>
 }
 
 export interface FrameMarkers {
@@ -1667,9 +1693,14 @@ export function frameMarkers(
       if (Number.isNaN(stamp)) continue
       published += 1
       if (stamp < windowStartMs || stamp > windowEndMs) continue
+      // `undefined` when the layer publishes no `frames[]` at all (an older
+      // API); `null` when it declared this frame's run as unknown. The two
+      // are kept apart so a run-change marker is never drawn from a layer
+      // that never said anything about runs.
+      const runTime = layer.frames ? (frameEntry(layer, time)?.run_time ?? null) : undefined
       const existing = byInstant.get(stamp)
-      if (existing) existing.layers.push({ id: layer.id, title: layer.title, color })
-      else byInstant.set(stamp, { ms: stamp, time, layers: [{ id: layer.id, title: layer.title, color }] })
+      if (existing) existing.layers.push({ id: layer.id, title: layer.title, color, runTime })
+      else byInstant.set(stamp, { ms: stamp, time, layers: [{ id: layer.id, title: layer.title, color, runTime }] })
     }
     if (published === 0) axisless.push(layer.title)
   }

@@ -10,16 +10,13 @@ import { deliveryKindLabel, resolveDeliveryKind } from './deliveryKind'
 import { AbsenceStateLegend, DifferenceView, FieldFamilyGroups, SourceFieldCatalogue } from './FieldFamilyPanel'
 import { StoryFlyout } from './StoryFlyout'
 import { TimelineDock } from './TimelineDock'
+import { windowFromTimeline } from './tierBoundary'
 import { useTheme } from './theme'
 import type {
   AppMode, CatalogSource, CloudLayerReading, DataSource, EvidenceSnapshot, FallbackMode, FieldAlternative, FieldAttribution, FieldDataMode,
   LayerItem, LayerSelection, LocationPoint, ProfileResponse, SourceStatusItem, StoryStep, TimelineResponse, AstronomyResponse,
   SpaceWeatherReading, SpaceWeatherResponse, SpaceWeatherSeries,
 } from './types'
-
-/** The evidence window, in minutes from the session reference instant. */
-const BACK_MINUTES = 3 * 60
-const FORWARD_MINUTES = 24 * 60
 
 /** Scrub resolution. Five minutes is finer than the fastest layer published
  *  (radar, every six), so no layer's frames are unreachable between steps. */
@@ -419,8 +416,15 @@ export default function App() {
   const validTime = useMemo(() => new Date(selectedMs), [selectedMs])
   const offsetMinutes = useMemo(() => Math.round((selectedMs - reference.getTime()) / 60_000), [selectedMs, reference])
   const scrubOffset = useMemo(() => describeScrubOffset(offsetMinutes), [offsetMinutes])
-  const windowStartMs = useMemo(() => reference.getTime() - BACK_MINUTES * 60_000, [reference])
-  const windowEndMs = useMemo(() => reference.getTime() + FORWARD_MINUTES * 60_000, [reference])
+  // The scrubber's window: `/timeline` `start..end` (24 h back, 14 d ahead)
+  // when the timeline is available and its bounds parse, else the same fixed
+  // fallback span — never the old fixed 3 h/24 h window (task 4.1).
+  const { backMinutes: BACK_MINUTES, forwardMinutes: FORWARD_MINUTES } = useMemo(
+    () => windowFromTimeline(timeline, reference),
+    [timeline, reference],
+  )
+  const windowStartMs = useMemo(() => reference.getTime() - BACK_MINUTES * 60_000, [reference, BACK_MINUTES])
+  const windowEndMs = useMemo(() => reference.getTime() + FORWARD_MINUTES * 60_000, [reference, FORWARD_MINUTES])
 
   const validTimeIso = useMemo(() => {
     if (selectedMs === reference.getTime()) return undefined
@@ -995,6 +999,9 @@ export default function App() {
               windowEndMs={windowEndMs}
               markers={markers}
               onJumpToInstant={(ms) => jumpToTime(new Date(ms))}
+              timeline={timeline}
+              timelineError={timelineNotice}
+              selectedMs={selectedMs}
               playing={playing}
               speed={speed}
               direction={direction}

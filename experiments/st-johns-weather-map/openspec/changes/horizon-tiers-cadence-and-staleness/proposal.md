@@ -66,7 +66,10 @@ those ranges sit in is that change's to define.
   as the ECCC fallback. The observed publication instant is recorded and the
   latency estimate is re-measured in the worker heartbeat.
 - **Observations and nowcasts refresh at native cadence**: radar 6 min,
-  lightning 10 min, GOES 10 min, METAR and SWOB hourly, SWPC 1 min.
+  lightning 10 min, GOES 10 min, METAR and SWOB hourly, and SWPC per feed
+  rather than as one number - the solar wind magnetometer is 1 min, but the
+  planetary K index is 3 h and the OVATION nowcast 10 min, each as its own
+  record's prose states.
 - **Frame staleness tolerance becomes one native interval per layer**, replacing
   the half-cadence rule: 6 min for radar, 1 h for hourly model frames, 3 h or
   6 h for planning steps. Beyond it the existing disclosure rule applies

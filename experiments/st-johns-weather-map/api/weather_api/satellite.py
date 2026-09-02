@@ -20,8 +20,8 @@ Rules, mirroring ``weather_api.grids``:
   grid renders as a distinct dim non-white state — including the cells a
   parallax-corrected cloud vacated, which the satellite could not see.
 * **Frames are observed scans only.** The offered times are exactly the
-  ingested scan times; beyond half a cadence the answer is 422; beyond the
-  staleness tolerance the layer reports itself unavailable. A feed gap is
+  ingested scan times; beyond one native scan interval the answer is 422;
+  beyond that same staleness tolerance the layer reports itself unavailable. A feed gap is
   never rendered, and in particular never rendered as clear sky.
 """
 
@@ -47,9 +47,12 @@ TITLE = "GOES-19 observed clouds (cloud mask)"
 #: fewer than two frames are stored; with two or more the modal gap wins.
 NOMINAL_CADENCE_SECONDS = 600
 
-#: Beyond this the layer declares itself unavailable rather than showing an
-#: old scan as current: three missed scans.
-STALENESS_TOLERANCE_SECONDS = 1800
+#: The unknown-cadence fallback only. The tolerance actually published is one
+#: native interval derived from the stored scans through the shared rule
+#: (``grids.frame_tolerance_seconds``); this constant answers only when fewer
+#: than two scans are stored and no modal gap can be measured, in which case it
+#: is the nominal GOES Full Disk scan interval - one missed scan, not three.
+STALENESS_TOLERANCE_SECONDS = NOMINAL_CADENCE_SECONDS
 
 INVALID_CLASS = 255
 
@@ -355,10 +358,11 @@ def satellite_layers(store: Any, layer_model: Any, *, z_index: int, now: datetim
     times = [stamp for stamp in times if stamp <= moment]  # observed scans only, never a forward frame
     if not times:
         return [], [f"{LAYER_ID}: the published artifact carries no past scan; the layer is not offered"]
+    tolerance = grids.frame_tolerance_seconds(cadence)
     age = (moment - max(times)).total_seconds()
-    if age > STALENESS_TOLERANCE_SECONDS:
+    if age > tolerance:
         return [], [
-            f"{LAYER_ID}: the newest stored scan is {int(age)} s old, beyond the {STALENESS_TOLERANCE_SECONDS} s "
+            f"{LAYER_ID}: the newest stored scan is {int(age)} s old, beyond the {tolerance} s "
             "staleness tolerance; the layer is unavailable rather than showing an old scan as current. "
             "A feed gap is never rendered as clear sky."
         ]
@@ -373,7 +377,7 @@ def satellite_layers(store: Any, layer_model: Any, *, z_index: int, now: datetim
         semantics=semantics(),
         times=times,
         cadence_seconds=cadence,
-        staleness_tolerance_seconds=STALENESS_TOLERANCE_SECONDS,
+        staleness_tolerance_seconds=tolerance,
         z_index=z_index,
         evidence_basis="published_artifact",
         group="satellite",

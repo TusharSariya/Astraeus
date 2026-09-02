@@ -463,6 +463,7 @@ class ECCCDataMartAdapter:
         client: PoliteClient | None = None,
         base_url: str = ECCC_DATAMART_BASE,
         fallback_days: int = 1,
+        datamart_fallback_path: str | None = None,
     ) -> None:
         self.source_id = source_id
         self.model_subpath = model_subpath
@@ -474,6 +475,7 @@ class ECCCDataMartAdapter:
         self._client = client
         self._base_url = base_url.rstrip("/")
         self._fallback_days = max(0, fallback_days)
+        self._declared_fallback = datamart_fallback_path
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
@@ -481,9 +483,43 @@ class ECCCDataMartAdapter:
     def model_root(self, date_str: str) -> str:
         return f"{self._base_url}/{date_str}/{DATED_PATH_SEGMENT}/{self.model_subpath}/"
 
+    # --- the declared dated WXO-DD fallback ------------------------------
+    def declared_fallback_path(self) -> str | None:
+        """The dated WXO-DD path this source's registry record declares.
+
+        Read from the record, not inferred: a path nobody declared is never
+        tried, because guessing a directory on a producer's tree is how a
+        fetch ends up naming a run it did not actually retrieve.
+        """
+        if self._declared_fallback is not None:
+            return self._declared_fallback or None
+        try:
+            from ingest.registry import get_config  # noqa: PLC0415
+
+            return get_config(self.source_id).datamart_fallback_path
+        except Exception:  # a record that cannot be read declares nothing
+            return None
+
+    def fallback_root(self, date_str: str, template: str | None = None) -> str | None:
+        """``template`` with ``{YYYYMMDD}`` filled in, cut back to its root.
+
+        The declared path is a full ``{YYYYMMDD}/WXO-DD/<model>/{HH}/{FFF}/``
+        template - the same shape the adapter already walks - so discovery
+        fills the date and stops where the cycle and lead placeholders begin;
+        ``fetch`` walks on from there exactly as it does under the primary.
+        """
+        declared = template if template is not None else self.declared_fallback_path()
+        if not declared:
+            return None
+        filled = declared.replace("{YYYYMMDD}", date_str)
+        root = filled.split("{", 1)[0]
+        return root if root.endswith("/") else f"{root}/"
+
     # --- discovery -------------------------------------------------------
     def _candidates_for_date(self, client: PoliteClient, date_str: str) -> list[RunCandidate]:
-        root_url = self.model_root(date_str)
+        return self._candidates_under_root(client, self.model_root(date_str), date_str)
+
+    def _candidates_under_root(self, client: PoliteClient, root_url: str, date_str: str) -> list[RunCandidate]:
         try:
             entries = client.list_directory(root_url)
         except Exception as error:
@@ -527,22 +563,55 @@ class ECCCDataMartAdapter:
                         "cycle_url": cycle_url,
                         "available_hours": hours,
                         "run_stamp": run_dt.strftime("%Y%m%dT%HZ"),
+                        # Which of the record's paths actually answered. It
+                        # travels onto the artifact so a served value can say
+                        # where it came from rather than where it usually does.
+                        "datamart_path": root_url,
                     },
                 )
             )
         return candidates
 
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
+        """The primary path, then the record's declared dated fallback.
+
+        The fallback is tried only where the record declares one; a source
+        that declares none reports its primary path alone and no alternative
+        is inferred from it. Whichever path answered is recorded on the
+        candidate and travels to ``RunResult.notes`` and every artifact's
+        provenance, so "which path answered" is a retrieved fact rather than
+        an assumption about the usual layout.
+        """
         client = self._get_client()
-        tried: list[str] = []
-        for day_offset in range(self._fallback_days + 1):
-            date_str = (window.now - timedelta(days=day_offset)).strftime("%Y%m%d")
-            tried.append(date_str)
-            candidates = self._candidates_for_date(client, date_str)
+        dates = [
+            (window.now - timedelta(days=day_offset)).strftime("%Y%m%d")
+            for day_offset in range(self._fallback_days + 1)
+        ]
+        primary = f"{self._base_url}/{{{','.join(dates)}}}/{DATED_PATH_SEGMENT}/{self.model_subpath}/"
+        for date_str in dates:
+            candidates = self._candidates_under_root(client, self.model_root(date_str), date_str)
             if candidates:
                 return candidates
+
+        declared = self.declared_fallback_path()
+        if not declared:
+            raise AdapterUnavailable(
+                f"{self.source_id}: no populated run cycle under {primary}; "
+                "the record declares no fallback path, and none is inferred"
+            )
+        for date_str in dates:
+            root_url = self.fallback_root(date_str, declared)
+            if not root_url or root_url == self.model_root(date_str):
+                # The declared fallback resolves to the path just tried; asking
+                # the same directory twice would not make it answer.
+                continue
+            candidates = self._candidates_under_root(client, root_url, date_str)
+            if candidates:
+                _log.info("%s: the declared fallback path answered: %s", self.source_id, root_url)
+                return candidates
         raise AdapterUnavailable(
-            f"{self.source_id}: no populated run cycle under {self._base_url}/{{{','.join(tried)}}}/{DATED_PATH_SEGMENT}/{self.model_subpath}/"
+            f"{self.source_id}: no populated run cycle under the primary path {primary} "
+            f"or the declared fallback path {declared}"
         )
 
     # --- retrieval -------------------------------------------------------
@@ -714,6 +783,9 @@ class ECCCDataMartAdapter:
             "native_crs": "EPSG:4326",
             "adapter_version": self.adapter_version,
             "provider_run_stamp": candidate.detail.get("run_stamp", ""),
+            # Which declared path answered for this run: the primary, or the
+            # record's dated WXO-DD fallback.
+            "datamart_path": str(candidate.detail.get("datamart_path", "")),
             "quality": validation.as_quality(),
             "coverage": validation.as_coverage(),
             # Model fields decoded from the producer's own GRIB, unmodified.
@@ -736,7 +808,10 @@ class ECCCDataMartAdapter:
             qc_passed=validation.qc_passed,
             artifacts=[artifact],
             native_crs="EPSG:4326",
-            notes=f"Ingested {len(hourly_datasets)} forecast lead steps for {self.source_id}; {validation.detail}",
+            notes=(
+                f"Ingested {len(hourly_datasets)} forecast lead steps for {self.source_id} "
+                f"from {provenance['datamart_path'] or 'an unrecorded Datamart path'}; {validation.detail}"
+            ),
         )
 
 

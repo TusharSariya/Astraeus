@@ -12,6 +12,7 @@ import importlib
 import re
 import sys
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 
@@ -257,6 +258,91 @@ def _poll_seconds(cycle_seconds: int) -> int:
 
 
 @dataclass(frozen=True)
+class Reach:
+    """How far a run of this source reaches, as the record declares it.
+
+    Reach is a declared registry fact, never inferred from what a fetch
+    happened to return: a run that publishes fewer leads than it promised
+    leaves those instants uncovered by that run, and does not quietly rewrite
+    the promise. ``per_cycle`` exists because a source's reach is not
+    necessarily a constant of the source - IFS reaches 360 h at 00z and 12z
+    and 144 h at 06z and 18z, so the run's own cycle decides.
+    """
+
+    earliest_hours: float
+    latest_hours: float
+    per_cycle: Mapping[str, float] = field(default_factory=dict)
+
+    def latest_hours_for(self, run_time: datetime) -> float:
+        """The reach of the cycle this run belongs to, else the record's own."""
+        return self.per_cycle.get(run_time.astimezone(timezone.utc).strftime("%H"), self.latest_hours)
+
+    def span(self, run_time: datetime) -> tuple[datetime, datetime]:
+        """The valid-time interval this run can cover, inclusive of both ends."""
+        return (
+            run_time + timedelta(hours=self.earliest_hours),
+            run_time + timedelta(hours=self.latest_hours_for(run_time)),
+        )
+
+    def covers(self, run_time: datetime, instant: datetime) -> bool:
+        start, end = self.span(run_time)
+        return start <= instant <= end
+
+
+@dataclass(frozen=True)
+class PublicationLatency:
+    """How long after its run time a source has been observed to publish.
+
+    ``measured`` is the whole point of the type: an estimate that came from
+    research rather than from this deployment watching a run appear is served
+    with ``measured`` false and an observation count of zero, so nothing
+    downstream can present a seed as this deployment's own measurement.
+    """
+
+    estimate_seconds: int | None
+    observation_count: int
+    last_observed: datetime | None
+    measured: bool
+    basis: str
+
+
+def _parse_instant(value: Any) -> datetime | None:
+    if not value:
+        return None
+    text = str(value)
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _reach_from_record(block: Mapping[str, Any] | None) -> Reach | None:
+    if not block:
+        return None
+    return Reach(
+        earliest_hours=float(block["earliest_hours"]),
+        latest_hours=float(block["latest_hours"]),
+        per_cycle={str(hour): float(value) for hour, value in (block.get("per_cycle") or {}).items()},
+    )
+
+
+def _latency_from_record(block: Mapping[str, Any] | None) -> PublicationLatency | None:
+    if not block:
+        return None
+    estimate = block.get("estimate_seconds")
+    return PublicationLatency(
+        estimate_seconds=None if estimate is None else int(estimate),
+        observation_count=int(block.get("observation_count", 0)),
+        last_observed=_parse_instant(block.get("last_observed")),
+        measured=bool(block.get("measured", False)),
+        basis=str(block.get("basis", "none")),
+    )
+
+
+@dataclass(frozen=True)
 class IngestConfig:
     """Everything the scheduler and an adapter need, derived from the registry."""
 
@@ -289,11 +375,42 @@ class IngestConfig:
     #: Whether this source's values may be a field's display primary. Follows
     #: from the kind unless the record overrides it.
     display_primary: bool = True
+    #: How far a run of this source reaches, as the record declares it. None
+    #: where the record declares nothing, which makes the source unschedulable
+    #: rather than giving it a reach nobody stated.
+    reach: Reach | None = None
+    #: The producer's own run cadence on a forecast record, and the native
+    #: publication interval on an observation or nowcast record. Exactly one of
+    #: the two is set; both are None where the record declares neither.
+    #:
+    #: Neither replaces ``cadence_seconds`` (how often this deployment looks)
+    #: or ``cycle_seconds`` (the cadence parsed out of the record's prose).
+    #: Those stay as they are; the worker owner rebuilds the schedule on top of
+    #: these declared numbers next.
+    run_cadence_seconds: int | None = None
+    native_cadence_seconds: int | None = None
+    #: The measured publication latency held beside the cadence, or None where
+    #: the record carries no block at all.
+    publication_latency: PublicationLatency | None = None
+    #: The dated WXO-DD path an ECCC model adapter falls back to, where the
+    #: adapter documents one.
+    datamart_fallback_path: str | None = None
 
     @property
     def ingestible(self) -> bool:
-        """Only catalogued, non-credential sources may be scheduled here."""
-        return self.registry_status == "implementing" and self.freshness_threshold_seconds is not None
+        """Only catalogued, non-credential sources with a declared horizon.
+
+        A source that will not say how far it reaches cannot be shown to answer
+        any instant, and one with neither a run cadence nor a native cadence
+        cannot be scheduled against anything, so both are refused here rather
+        than defaulted into existence further down.
+        """
+        return (
+            self.registry_status == "implementing"
+            and self.freshness_threshold_seconds is not None
+            and self.reach is not None
+            and (self.run_cadence_seconds is not None or self.native_cadence_seconds is not None)
+        )
 
 
 def _load_registry() -> dict[str, Any]:
@@ -340,6 +457,11 @@ def _config_from_record(record: Mapping[str, Any]) -> IngestConfig:
         intermediary=(record.get("intermediary") or {}).get("name"),
         intermediary_method=(record.get("intermediary") or {}).get("method"),
         display_primary=bool(record.get("display_primary", True)),
+        reach=_reach_from_record(record.get("reach")),
+        run_cadence_seconds=record.get("run_cadence_seconds"),
+        native_cadence_seconds=record.get("native_cadence_seconds"),
+        publication_latency=_latency_from_record(record.get("publication_latency")),
+        datamart_fallback_path=record.get("datamart_fallback_path"),
     )
 
 

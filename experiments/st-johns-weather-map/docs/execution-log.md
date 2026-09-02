@@ -260,3 +260,22 @@ file ownership, pins seams, runs at most three Opus or Sonnet task agents at
 once in their own worktrees, merges them, keeps the openspec files truthful,
 and hands the main session one branch. The main session runs the gate in the
 main checkout, pushes and opens the pull request.
+
+### Step 6: horizon-tiers-cadence-and-staleness
+
+Branch `execution/horizon-tiers`, stacked on step 5. First change run by a
+Fable change lead; after the owner's correction mid-change, one fresh Opus
+agent per task, up to three at once on disjoint files, none resumed. All
+merges conflict-free. Registry records gain `reach`, `run_cadence_seconds`,
+`native_cadence_seconds`, `publication_latency` and `datamart_fallback_path`
+(24 records declare reach across 17 adapters, 7 latencies seeded from the
+research matrix, none measured yet); `/timeline` carries tiers and per-item
+coverage; layers carry `run_time`, `run_stale` and the run list; the
+latency estimator is an asymmetric exponential smoother restored from the
+heartbeat. Deviations in the change's design.md: HRDPS and RDPS latency
+null (no ECCC instant measured), WeatherNext 2 has reach but no cadence,
+the proposal's "SWPC 1 min" corrected to the feeds' real intervals,
+satellite and aurora availability gates tightened to one native interval.
+The web scrubber now spans 24 h back to 14 d ahead.
+
+Landed as PR #34, 2026-09-02.

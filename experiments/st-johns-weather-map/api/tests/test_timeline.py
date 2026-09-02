@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -40,6 +41,59 @@ class EmptyStore:
 
     def current(self) -> list[Any]:
         return []
+
+
+@dataclass(frozen=True)
+class Retained:
+    """A retained revision, shaped exactly as ``ingest.store.RetainedArtifact``.
+
+    ``run_time`` is the ``model_runs`` column - the retrieval-time fallback -
+    and is deliberately different from the adapter's declared run time in
+    ``provenance``, so a test that confused the two would fail.
+    """
+
+    source_id: str
+    provider_run_id: str
+    provenance: dict[str, Any]
+    valid_time_start: datetime | None = None
+    valid_time_end: datetime | None = None
+    logical_name: str = "surface"
+    revision_id: str = "rev"
+    state: str = "published"
+    published_at: datetime | None = None
+    retrieval_run_time: datetime | None = None
+
+
+def run_of(source_id, run_time, *, first_lead_hours=0, last_lead_hours=24, provider_run_id=None, declare_run_time=True):
+    """One retained run publishing an hourly span of frames from its run time."""
+    provenance: dict[str, Any] = {
+        "valid_times": [
+            (run_time + timedelta(hours=lead)).isoformat()
+            for lead in range(first_lead_hours, last_lead_hours + 1)
+        ]
+    }
+    if declare_run_time:
+        provenance["run_time"] = run_time.isoformat()
+    return Retained(
+        source_id=source_id,
+        provider_run_id=provider_run_id or f"{source_id}:{run_time.isoformat()}",
+        provenance=provenance,
+        retrieval_run_time=run_time + timedelta(hours=5),
+    )
+
+
+class RetainingStore(EmptyStore):
+    """A reachable store holding the runs it is given."""
+
+    def __init__(self, runs, *, published=None):
+        self._runs = list(runs)
+        self._published = published or {}
+
+    def retained_artifacts(self):
+        return list(self._runs)
+
+    def published_products(self):
+        return dict(self._published)
 
 
 def use_live_store(monkeypatch, data_mode, store) -> None:
@@ -199,3 +253,240 @@ def test_an_unreadable_last_valid_time_record_reports_no_absence_state(monkeypat
     payload = client.get(f"{PREFIX}/timeline").json()
     assert all(item["aged_out_sources"] == {} for item in payload["items"])
     assert any("aged out" in notice for notice in payload["notices"])
+
+
+# --- the two tiers, as ranges --------------------------------------------
+
+def test_the_timeline_serves_both_tier_ranges_and_the_boundary_between_them():
+    """Two ranges, meeting at the boundary and covering the window exactly."""
+    payload = client.get(f"{PREFIX}/timeline").json()
+    reference = now()
+
+    core, planning = payload["tiers"]
+    assert core["id"] == "core" and planning["id"] == "planning"
+    assert datetime.fromisoformat(core["start"]) == reference - timedelta(hours=24)
+    assert datetime.fromisoformat(core["end"]) == reference + timedelta(hours=24)
+    assert datetime.fromisoformat(planning["start"]) == reference + timedelta(hours=24)
+    assert datetime.fromisoformat(planning["end"]) == reference + timedelta(days=14)
+    # The boundary is the join, and the two ranges are the whole window.
+    assert datetime.fromisoformat(payload["boundary"]) == datetime.fromisoformat(core["end"])
+    assert core["start"] == payload["start"] and planning["end"] == payload["end"]
+
+
+def test_no_tier_names_a_source():
+    """A tier is a valid-time range; a source list in one would be the defect."""
+    payload = client.get(f"{PREFIX}/timeline").json()
+    assert all(set(tier) == {"id", "start", "end"} for tier in payload["tiers"])
+
+
+def test_every_item_carries_the_tier_its_own_instant_falls_in():
+    payload = client.get(f"{PREFIX}/timeline").json()
+    boundary = datetime.fromisoformat(payload["boundary"])
+    for item in payload["items"]:
+        valid_time = datetime.fromisoformat(item["valid_time_utc"])
+        assert item["tier"] == ("core" if valid_time <= boundary else "planning")
+    assert {item["tier"] for item in payload["items"]} == {"core", "planning"}
+
+
+def test_an_instant_in_neither_tier_is_refused_naming_both_tier_ranges():
+    reference = now()
+    start, end = sliding_window(reference)
+    for outside in (start - timedelta(minutes=1), end + timedelta(minutes=1)):
+        response = client.get(f"{PREFIX}/point", params={"valid_time": outside.isoformat()})
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "core tier" in detail and "planning tier" in detail
+        # Both ranges are named in full, so the refusal says where the two are.
+        for stamp in (start, reference + timedelta(hours=24), end):
+            assert stamp.isoformat() in detail
+
+
+def test_the_boundary_instant_itself_is_in_the_core_tier_and_is_served():
+    reference = now()
+    boundary = reference + timedelta(hours=24)
+    assert client.get(f"{PREFIX}/point", params={"valid_time": boundary.isoformat()}).status_code == 200
+    payload = client.get(f"{PREFIX}/timeline").json()
+    at_hour = {datetime.fromisoformat(item["valid_time_utc"]): item for item in payload["items"]}
+    assert at_hour[boundary]["tier"] == "core"
+
+
+# --- coverage from declared reach against runs actually retrieved --------
+
+def test_coverage_lists_every_retained_run_reaching_the_instant(monkeypatch, data_mode):
+    """Three runs cover one instant; all three are listed, none is primary."""
+    reference = now()
+    hour = reference + timedelta(hours=12)
+    runs = [
+        run_of("eccc-hrdps", reference - timedelta(hours=2), last_lead_hours=48),
+        run_of("noaa-gfs", reference - timedelta(hours=5), last_lead_hours=120),
+        run_of("ecmwf-ifs", reference - timedelta(hours=7), last_lead_hours=240),
+    ]
+    use_live_store(monkeypatch, data_mode, RetainingStore(runs, published={"eccc-hrdps": {hour}}))
+
+    payload = client.get(f"{PREFIX}/timeline").json()
+    at_hour = {datetime.fromisoformat(item["valid_time_utc"]): item for item in payload["items"]}
+    covering = at_hour[hour]["coverage"]
+
+    assert [entry["source_id"] for entry in covering] == ["eccc-hrdps", "ecmwf-ifs", "noaa-gfs"]
+    assert at_hour[hour]["coverage_notice"] is None
+    for entry, run in zip(covering, sorted(runs, key=lambda item: item.source_id)):
+        assert datetime.fromisoformat(entry["run_time"]) == datetime.fromisoformat(run.provenance["run_time"])
+        assert entry["provider_run_id"] == run.provider_run_id
+
+
+def test_coverage_omits_a_declared_reach_with_no_retrieved_run(monkeypatch, data_mode):
+    """HRDPS declares a 48 h reach; with nothing retrieved it covers nothing."""
+    reference = now()
+    hour = reference + timedelta(hours=6)
+    use_live_store(
+        monkeypatch, data_mode,
+        RetainingStore([run_of("noaa-gfs", reference - timedelta(hours=5), last_lead_hours=120)], published={"noaa-gfs": {hour}}),
+    )
+
+    payload = client.get(f"{PREFIX}/timeline").json()
+    at_hour = {datetime.fromisoformat(item["valid_time_utc"]): item for item in payload["items"]}
+    assert [entry["source_id"] for entry in at_hour[hour]["coverage"]] == ["noaa-gfs"]
+
+
+def test_coverage_stops_where_the_run_stopped_publishing_frames(monkeypatch, data_mode):
+    """GFS reaches 384 h; a run that published to +11 h covers only to +11 h."""
+    reference = now()
+    run_time = reference - timedelta(hours=5)
+    use_live_store(
+        monkeypatch, data_mode,
+        RetainingStore([run_of("noaa-gfs", run_time, last_lead_hours=11)], published={"noaa-gfs": {reference}}),
+    )
+
+    payload = client.get(f"{PREFIX}/timeline").json()
+    covered = {
+        datetime.fromisoformat(item["valid_time_utc"])
+        for item in payload["items"] if item["coverage"]
+    }
+    assert max(covered) == run_time + timedelta(hours=11)
+    assert reference + timedelta(hours=12) not in covered
+
+
+def test_coverage_is_empty_with_a_notice_when_nothing_covers_the_instant(monkeypatch, data_mode):
+    reference = now()
+    run_time = reference - timedelta(hours=5)
+    use_live_store(
+        monkeypatch, data_mode,
+        RetainingStore([run_of("noaa-gfs", run_time, last_lead_hours=11)], published={"noaa-gfs": {reference}}),
+    )
+
+    payload = client.get(f"{PREFIX}/timeline").json()
+    at_hour = {datetime.fromisoformat(item["valid_time_utc"]): item for item in payload["items"]}
+    far = at_hour[reference + timedelta(days=10)]
+
+    assert far["coverage"] == []
+    assert far["coverage_notice"] == "nothing covers this instant"
+    # The neighbouring covered hour's list is not borrowed.
+    assert at_hour[reference]["coverage"] and at_hour[reference]["coverage_notice"] is None
+
+
+def test_no_coverage_is_claimed_when_the_store_cannot_report_retained_runs(monkeypatch, data_mode):
+    """Unresolvable coverage is neither covered nor uncovered - it is unknown."""
+
+    class Raising(EmptyStore):
+        def published_products(self):
+            return {"eccc-hrdps": {now()}}
+
+        def retained_artifacts(self):
+            raise StoreUnavailable("postgres is gone")
+
+    use_live_store(monkeypatch, data_mode, Raising())
+    payload = client.get(f"{PREFIX}/timeline").json()
+
+    assert all(item["coverage"] == [] for item in payload["items"])
+    assert all(item["coverage_notice"] is None for item in payload["items"])
+    assert any("coverage could not be resolved" in notice for notice in payload["notices"])
+
+
+def test_coverage_flags_a_run_older_than_twice_its_cadence_as_run_stale(monkeypatch, data_mode):
+    """HRDPS is six-hourly, so a thirteen-hour-old run is two cycles behind."""
+    reference = now()
+    run_time = reference - timedelta(hours=13)
+    use_live_store(
+        monkeypatch, data_mode,
+        RetainingStore([run_of("eccc-hrdps", run_time, last_lead_hours=48)], published={"eccc-hrdps": {reference}}),
+    )
+
+    payload = client.get(f"{PREFIX}/timeline").json()
+    at_hour = {datetime.fromisoformat(item["valid_time_utc"]): item for item in payload["items"]}
+    entry = at_hour[reference]["coverage"][0]
+
+    assert entry["run_cadence_seconds"] == 21600
+    assert entry["run_age_seconds"] == 13 * 3600
+    assert entry["run_stale"] is True and entry["run_stale_reason"] is None
+    # Flagged, never withheld: the hour it feeds still lists it.
+    assert at_hour[reference]["coverage_notice"] is None
+
+
+def test_coverage_reports_a_fresh_run_as_not_stale(monkeypatch, data_mode):
+    reference = now()
+    use_live_store(
+        monkeypatch, data_mode,
+        RetainingStore([run_of("eccc-hrdps", reference - timedelta(hours=2), last_lead_hours=48)], published={"eccc-hrdps": {reference}}),
+    )
+    payload = client.get(f"{PREFIX}/timeline").json()
+    at_hour = {datetime.fromisoformat(item["valid_time_utc"]): item for item in payload["items"]}
+    assert at_hour[reference]["coverage"][0]["run_stale"] is False
+
+
+def test_coverage_never_reads_a_retrieval_time_as_a_run_time(monkeypatch, data_mode):
+    """An undeclared run time is null, with run_stale null and the reason."""
+    reference = now()
+    run_time = reference - timedelta(hours=3)
+    use_live_store(
+        monkeypatch, data_mode,
+        RetainingStore(
+            [run_of("eccc-hrdps", run_time, last_lead_hours=48, declare_run_time=False)],
+            published={"eccc-hrdps": {reference}},
+        ),
+    )
+
+    payload = client.get(f"{PREFIX}/timeline").json()
+    at_hour = {datetime.fromisoformat(item["valid_time_utc"]): item for item in payload["items"]}
+    entry = at_hour[reference]["coverage"][0]
+
+    assert entry["run_time"] is None
+    assert entry["run_age_seconds"] is None
+    assert entry["run_stale"] is None
+    assert "no run time" in entry["run_stale_reason"]
+
+
+def test_coverage_crosses_the_tier_boundary_without_being_filtered(monkeypatch, data_mode):
+    """One GFS run covering hour 3 and day 10 is listed in both tiers."""
+    reference = now()
+    run_time = reference - timedelta(hours=5)
+    use_live_store(
+        monkeypatch, data_mode,
+        RetainingStore([run_of("noaa-gfs", run_time, last_lead_hours=360)], published={"noaa-gfs": {reference}}),
+    )
+
+    payload = client.get(f"{PREFIX}/timeline").json()
+    at_hour = {datetime.fromisoformat(item["valid_time_utc"]): item for item in payload["items"]}
+    near, far = at_hour[reference + timedelta(hours=3)], at_hour[reference + timedelta(days=10)]
+
+    assert near["tier"] == "core" and far["tier"] == "planning"
+    assert [entry["source_id"] for entry in near["coverage"]] == ["noaa-gfs"]
+    assert [entry["source_id"] for entry in far["coverage"]] == ["noaa-gfs"]
+
+
+def test_coverage_honours_the_per_cycle_reach_of_a_short_cycle(monkeypatch, data_mode):
+    """IFS at 06z reaches 144 h, so nothing past that is credited to it."""
+    reference = now()
+    run_time = reference.replace(hour=6) - timedelta(days=1)
+    # The run published far more frames than its cycle reaches; the declared
+    # reach is the promise and caps what the delivery may be credited with.
+    use_live_store(
+        monkeypatch, data_mode,
+        RetainingStore([run_of("ecmwf-ifs", run_time, last_lead_hours=360)], published={"ecmwf-ifs": {reference}}),
+    )
+
+    payload = client.get(f"{PREFIX}/timeline").json()
+    covered = {
+        datetime.fromisoformat(item["valid_time_utc"])
+        for item in payload["items"] if item["coverage"]
+    }
+    assert max(covered) <= run_time + timedelta(hours=144)

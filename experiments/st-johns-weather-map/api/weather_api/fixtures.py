@@ -133,11 +133,11 @@ SOURCES = [
 
 
 LAYERS = [
-    Layer(id="consensus-temperature", title="Experimental temperature consensus", kind="raster", field="temperature", product="consensus", units="degC", semantics="approximately 10 km independent-centre mean", cadence_seconds=3600, staleness_tolerance_seconds=1800, z_index=0),
-    Layer(id="hrdps-relative-humidity", title="HRDPS 2 m relative humidity", kind="raster", field="relative_humidity", product="HRDPS", units="percent", semantics="provider RH preserved; derived only if absent", cadence_seconds=3600, staleness_tolerance_seconds=1800, z_index=1),
-    Layer(id="radar-echo", title="ECCC radar", kind="raster", field="radar_echo", product="Weather radar", units="category", semantics="no echo means no detected precipitating echo, not clear sky", cadence_seconds=360, staleness_tolerance_seconds=600, z_index=2),
-    Layer(id="fog-evidence", title="Fog evidence", kind="mask", field="fog_state", product="multi-evidence", units="category", semantics="categorical evidence; high RH alone never proves fog", cadence_seconds=3600, staleness_tolerance_seconds=1800, z_index=3),
-    Layer(id="cyyt-observation", title="CYYT METAR", kind="point", field="station_weather", product="CYYT METAR/SPECI", units="mixed", semantics="observation, never blended", cadence_seconds=3600, staleness_tolerance_seconds=5400, z_index=10),
+    Layer(id="consensus-temperature", title="Experimental temperature consensus", kind="raster", field="temperature", product="consensus", units="degC", semantics="approximately 10 km independent-centre mean", cadence_seconds=3600, staleness_tolerance_seconds=3600, z_index=0),
+    Layer(id="hrdps-relative-humidity", title="HRDPS 2 m relative humidity", kind="raster", field="relative_humidity", product="HRDPS", units="percent", semantics="provider RH preserved; derived only if absent", cadence_seconds=3600, staleness_tolerance_seconds=3600, z_index=1),
+    Layer(id="radar-echo", title="ECCC radar", kind="raster", field="radar_echo", product="Weather radar", units="category", semantics="no echo means no detected precipitating echo, not clear sky", cadence_seconds=360, staleness_tolerance_seconds=360, z_index=2),
+    Layer(id="fog-evidence", title="Fog evidence", kind="mask", field="fog_state", product="multi-evidence", units="category", semantics="categorical evidence; high RH alone never proves fog", cadence_seconds=3600, staleness_tolerance_seconds=3600, z_index=3),
+    Layer(id="cyyt-observation", title="CYYT METAR", kind="point", field="station_weather", product="CYYT METAR/SPECI", units="mixed", semantics="observation, never blended", cadence_seconds=3600, staleness_tolerance_seconds=3600, z_index=10),
 ]
 
 

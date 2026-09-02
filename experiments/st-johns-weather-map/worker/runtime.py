@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 import traceback
+from collections.abc import Mapping as _MappingABC
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -101,6 +102,44 @@ def check_heartbeat(path: Path) -> int:
         print(f"ingestion stalled for: {', '.join(stalled)}", flush=True)
         return 1
     return 0
+
+
+def _restored_latencies(document: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Measured latency blocks carried over from a previous heartbeat.
+
+    A restart that forgot its measurements would fall back to the seed and
+    re-learn from scratch, so a source whose publication has been watched for
+    weeks would go back to being scheduled on research. Only *measured* blocks
+    are restored: an unmeasured one says nothing the registry seed does not
+    already say, and restoring it would let a stale basis outlive its record.
+    An unreadable or malformed block is skipped, never repaired - a restart
+    reading a guess as a measurement is the one failure this whole change
+    exists to prevent.
+    """
+    from ingest.registry import PublicationLatency  # noqa: PLC0415
+
+    restored: dict[str, Any] = {}
+    for source_id, state in ((document or {}).get("sources") or {}).items():
+        block = (state or {}).get("publication_latency")
+        if not isinstance(block, _MappingABC) or not block.get("latency_measured"):
+            continue
+        estimate = block.get("estimate_seconds")
+        count = block.get("observation_count")
+        try:
+            observed = datetime.fromisoformat(str(block.get("last_observed")))
+            latency = PublicationLatency(
+                estimate_seconds=None if estimate is None else int(estimate),
+                observation_count=int(count),
+                last_observed=observed if observed.tzinfo else observed.replace(tzinfo=UTC),
+                measured=True,
+                basis=str(block.get("basis") or "none"),
+            )
+        except (TypeError, ValueError):
+            continue
+        if latency.estimate_seconds is None or latency.observation_count < 1:
+            continue
+        restored[str(source_id)] = latency
+    return restored
 
 
 def log(message: str) -> None:
@@ -209,19 +248,226 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
 class Scheduler:
     """Tracks per-source due times and runs one cycle at a time."""
 
-    def __init__(self, store, *, source_ids: tuple[str, ...] | None = None) -> None:
+    def __init__(
+        self,
+        store,
+        *,
+        source_ids: tuple[str, ...] | None = None,
+        restore: Mapping[str, Any] | None = None,
+    ) -> None:
         from ingest.registry import load_adapters, scheduled  # noqa: PLC0415
+        from ingest.scheduler import latency_heartbeat_block  # noqa: PLC0415
 
         load_adapters()
         self._store = store
         self._pairs = [(adapter, config) for adapter, config in scheduled() if source_ids is None or config.source_id in source_ids]
         self._due: dict[str, float] = {config.source_id: 0.0 for _, config in self._pairs}
+        # The live publication latency per source: seeded from the registry
+        # record, restored from a previous heartbeat where that heartbeat
+        # carries a measurement, and re-measured from every observed
+        # publication. The registry record is never written back to.
+        self._latency: dict[str, Any] = {}
+        restored = _restored_latencies(restore)
+        for _, config in self._pairs:
+            seed = getattr(config, "publication_latency", None)
+            if seed is None:
+                continue
+            # A restart must not forget what this deployment measured: a
+            # restored measurement outranks the seed, and a seed never
+            # overwrites a measurement.
+            self._latency[config.source_id] = restored.get(config.source_id) or seed
         # Seeded with cadence but no last_success: a source that has never
         # worked is reported, not counted as a stall. See ``stalled_sources``.
-        self._progress: dict[str, dict[str, Any]] = {
-            config.source_id: {"cadence_seconds": config.cadence_seconds, "last_success": None, "last_state": "pending", "last_detail": ""}
-            for _, config in self._pairs
-        }
+        #
+        # ``cadence_seconds`` here is the *declared* cadence the source is now
+        # scheduled on - the producer's run cadence, or the native publication
+        # interval - not how often this deployment happens to look. The stall
+        # check counts three of these, and counting three poll intervals would
+        # report a six-hourly model stalled forty-five minutes after a run.
+        self._progress: dict[str, dict[str, Any]] = {}
+        for _, config in self._pairs:
+            plan = self._plan(config, datetime.now(UTC))
+            self._progress[config.source_id] = {
+                "cadence_seconds": plan.cadence_seconds or config.cadence_seconds,
+                "schedule_kind": plan.kind,
+                "latency_measured": plan.latency_measured,
+                "last_success": None,
+                "last_state": "pending",
+                "last_detail": "",
+            }
+            # The seed block is published from the start, so a reader can see
+            # `latency_measured: false` and the seed's own basis rather than an
+            # absence they have to interpret. It is only ever replaced by an
+            # observed publication.
+            live = self._latency.get(config.source_id)
+            if live is not None:
+                self._progress[config.source_id]["publication_latency"] = latency_heartbeat_block(live)
+                last_observed = getattr(live, "last_observed", None)
+                self._progress[config.source_id]["last_observed_publication"] = (
+                    last_observed.isoformat() if isinstance(last_observed, datetime) else None
+                )
+            if not plan.scheduled:
+                # Never silently dropped: the source stays in the rotation's
+                # bookkeeping with the missing field named.
+                self._progress[config.source_id]["last_state"] = "unscheduled"
+                self._progress[config.source_id]["last_detail"] = plan.reason[:200]
+
+    def _plan(self, config, now: datetime, *, after: datetime | None = None):
+        from ingest.scheduler import next_due  # noqa: PLC0415
+
+        # The live latency, not the record's: after an observed publication the
+        # next run's first attempt belongs on the re-measured estimate.
+        return next_due(config, now=now, after=after, latency=self._latency.get(config.source_id))
+
+    def _reschedule(self, config, now: datetime) -> None:
+        """Put a source back in the rotation on its own declared cadence.
+
+        A forecast source lands on its next run's first-attempt instant; an
+        observation or nowcast source one native interval on. A source that
+        declares neither is not rescheduled at all - it is pushed out of reach
+        rather than run on a number nobody declared.
+        """
+        plan = self._plan(config, now, after=now)
+        state = self._progress.setdefault(config.source_id, {})
+        state["schedule_kind"] = plan.kind
+        state["latency_measured"] = plan.latency_measured
+        if plan.cadence_seconds:
+            state["cadence_seconds"] = plan.cadence_seconds
+        if not plan.scheduled:
+            state["next_due"] = None
+            state["schedule_reason"] = plan.reason[:200]
+            self._due[config.source_id] = float("inf")
+            log(f"{config.source_id}: not scheduled - {plan.reason}")
+            return
+        state["next_due"] = plan.due.isoformat()
+        state["schedule_reason"] = plan.reason[:200]
+        self._due[config.source_id] = time.monotonic() + plan.delay_seconds(now)
+
+    def _schedule_poll(self, source_id: str, due: datetime, now: datetime) -> None:
+        """Put a polling source back at its next poll, not at its next run."""
+        from ingest.scheduler import POLL_INTERVAL_SECONDS  # noqa: PLC0415
+
+        state = self._progress.setdefault(source_id, {})
+        state["next_due"] = due.isoformat()
+        state["schedule_reason"] = f"polling every {POLL_INTERVAL_SECONDS}s for a run that has not appeared"
+        self._due[source_id] = time.monotonic() + max(0.0, (due - now).total_seconds())
+
+    def _poll(self, config, outcome: SourceOutcome, now: datetime) -> tuple[SourceOutcome, datetime | None]:
+        """Keep, open or close a poll for a forecast run that has not appeared.
+
+        Returns the outcome to report and, where the source stays on the poll,
+        the instant of its next attempt. A ``cancelled`` outcome from a
+        forecast source means the upstream had nothing usable *yet*: that is
+        what polling is for, so it is not reported as a failure and no
+        neighbouring run, fixture or other value is put in the missing run's
+        place. The poll is bounded by the next run time of the same source; at
+        the bound the run is superseded rather than late and the outcome names
+        it and the poll duration. The previous run is untouched throughout, so
+        it stays visible and keeps serving.
+        """
+        from ingest.scheduler import PollState, latest_run_time, poll_decision  # noqa: PLC0415
+
+        run_cadence = getattr(config, "run_cadence_seconds", None)
+        state = self._progress.setdefault(config.source_id, {})
+        open_poll = state.get("polling")
+        if not run_cadence:
+            state.pop("polling", None)
+            return outcome, None
+
+        if outcome.state != "cancelled":
+            if outcome.state == "succeeded":
+                # The run appeared. Record when this deployment first saw it,
+                # and re-measure the latency from that instant - the observed
+                # publication, never the estimate that predicted it.
+                observed_run_time = latest_run_time(int(run_cadence), now)
+                if open_poll and open_poll.get("run_time"):
+                    try:
+                        observed_run_time = datetime.fromisoformat(str(open_poll["run_time"]))
+                    except ValueError:
+                        pass
+                state["observed_publication"] = now.isoformat()
+                state["observed_publication_run_time"] = observed_run_time.isoformat()
+                self._record_latency(config.source_id, run_time=observed_run_time, observed_at=now)
+            state.pop("polling", None)
+            return outcome, None
+
+        run_time = latest_run_time(int(run_cadence), now)
+        if open_poll and open_poll.get("run_time"):
+            try:
+                run_time = datetime.fromisoformat(str(open_poll["run_time"]))
+            except ValueError:
+                open_poll = None
+        since = now
+        attempts = 1
+        if open_poll:
+            try:
+                since = datetime.fromisoformat(str(open_poll.get("since")))
+            except (TypeError, ValueError):
+                since = now
+            attempts = int(open_poll.get("attempts", 0)) + 1
+        poll = PollState(run_time=run_time, since=since, attempts=attempts)
+        decision = poll_decision(poll, run_cadence_seconds=int(run_cadence), now=now)
+        if decision.exhausted:
+            state.pop("polling", None)
+            # Nothing is written about latency here: a run that never appeared
+            # is not an observation of one.
+            return SourceOutcome(outcome.source_id, "cancelled", decision.detail), None
+        state["polling"] = poll.as_progress()
+        state["poll_bound"] = decision.bound.isoformat()
+        return SourceOutcome(outcome.source_id, "cancelled", decision.detail), decision.due
+
+    def _record_latency(self, source_id: str, *, run_time: datetime, observed_at: datetime) -> None:
+        """Re-measure one source's latency from a publication actually observed.
+
+        Called from nowhere else: a bounded-out poll and every non-forecast
+        source leave the block exactly as it was, which is what makes the
+        observation count a count of observations rather than of attempts.
+        """
+        from ingest.scheduler import latency_heartbeat_block, observe_latency  # noqa: PLC0415
+
+        previous = self._latency.get(source_id)
+        updated = observe_latency(previous, run_time=run_time, observed_at=observed_at)
+        self._latency[source_id] = updated
+        state = self._progress.setdefault(source_id, {})
+        state["publication_latency"] = latency_heartbeat_block(updated)
+        state["last_observed_publication"] = observed_at.isoformat()
+        state["latency_measured"] = True
+
+    def _record_short_cycle(self, config) -> None:
+        """Record which run serves which leads after a successful publish.
+
+        Reads only. The previous run is never deleted, refetched or shortened
+        here - the two-run retention ceiling is what keeps it, and this is the
+        worker writing down what that ceiling already makes possible: the
+        newest run serves what it reaches, the retained run serves the leads
+        beyond it under its own run time, and the two are never joined.
+
+        A store that cannot report retained revisions costs the record, never
+        the publish: the source has already succeeded by the time this runs.
+        """
+        from ingest.scheduler import retained_runs, short_cycle_plan  # noqa: PLC0415
+
+        if not getattr(config, "run_cadence_seconds", None) or getattr(config, "reach", None) is None:
+            return  # nothing without a run cycle has a short cycle to describe
+        reader = getattr(self._store, "retained_artifacts", None)
+        if not callable(reader):
+            return  # a store that does not offer the read is tolerated, not failed
+        try:
+            artifacts = reader(source_ids=[config.source_id])
+        except Exception as error:
+            log(f"could not read retained runs for {config.source_id}: {error!r}")
+            return
+        runs = retained_runs(config, artifacts or ())
+        if not runs:
+            return
+        plan = short_cycle_plan(runs[1] if len(runs) > 1 else None, runs[0])
+        self._progress.setdefault(config.source_id, {})["short_cycle"] = plan.as_progress()
+        if plan.short_cycle and plan.previous is not None:
+            log(
+                f"{config.source_id}: short cycle - run {plan.newest.run_time.isoformat()} serves to "
+                f"{plan.newest.end.isoformat()}, retained run {plan.previous.run_time.isoformat()} "
+                f"serves the leads beyond it to {plan.previous.end.isoformat()}"
+            )
 
     @property
     def source_ids(self) -> list[str]:
@@ -257,7 +503,17 @@ class Scheduler:
             if heartbeat is not None:
                 heartbeat()
             outcome = run_source(adapter, config, self._store, reference=reference, heartbeat=heartbeat)
+            # A forecast run that is not there yet is polled for rather than
+            # reported: the outcome and the next attempt both come from the
+            # bounded poll, and only its bound reports the absence.
+            outcome, poll_due = self._poll(config, outcome, datetime.now(UTC))
             self._record_progress(outcome)
+            # A short cycle only changes when a run publishes, so the plan is
+            # recomputed from what retention holds on a successful publish and
+            # left alone otherwise - a cancelled or failed attempt must not
+            # disturb what the previous run is serving.
+            if outcome.state == "succeeded":
+                self._record_short_cycle(config)
             # Derived artifacts follow the run that produced their inputs, not
             # the end of the cycle. A cycle is a serial pass over every due
             # source and outlives any one of them, so waiting for it to finish
@@ -268,8 +524,13 @@ class Scheduler:
             if after_publish is not None and outcome.state == "succeeded":
                 after_publish()
             # Reschedule on cadence regardless of outcome: a failing source must
-            # not spin, and must not be dropped from the rotation either.
-            self._due[config.source_id] = time.monotonic() + config.cadence_seconds
+            # not spin, and must not be dropped from the rotation either. A
+            # source on an open poll is put back at its next poll instead,
+            # which is bounded, so it cannot spin either.
+            if poll_due is not None:
+                self._schedule_poll(config.source_id, poll_due, datetime.now(UTC))
+            else:
+                self._reschedule(config, datetime.now(UTC))
             outcomes.append(outcome)
             log(f"{outcome.source_id}: {outcome.state} - {outcome.detail}")
             # Success is already recorded in model_runs; only the states that
@@ -338,6 +599,9 @@ class Scheduler:
 
 def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int:
     path = heartbeat_path()
+    # Read before the first beat overwrites it: the previous document is where
+    # this deployment's measured latencies live across a restart.
+    previous_document = read_heartbeat(path)
     write_heartbeat(path)
     store = _store()
     # Reconcile the retained window before scheduling anything: sweep
@@ -353,7 +617,7 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
         log("the store could not be reconciled; scheduling no fetch and reporting unhealthy")
         return 1
 
-    scheduler = Scheduler(store, source_ids=source_ids)
+    scheduler = Scheduler(store, source_ids=source_ids, restore=previous_document)
     if not scheduler.source_ids:
         log("no registered adapter is schedulable; the worker will idle and stay healthy")
     else:

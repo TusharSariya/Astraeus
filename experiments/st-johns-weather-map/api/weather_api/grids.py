@@ -522,10 +522,10 @@ UNKNOWN_CADENCE_TOLERANCE_SECONDS = 900
 
 
 def frame_tolerance_seconds(cadence_seconds: int | None) -> int:
-    """Half a cadence, exactly the rule the layer index publishes."""
+    """One native interval, exactly the rule the layer index publishes."""
     if cadence_seconds is None or cadence_seconds <= 0:
         return UNKNOWN_CADENCE_TOLERANCE_SECONDS
-    return max(MIN_TOLERANCE_SECONDS, cadence_seconds // 2)
+    return max(MIN_TOLERANCE_SECONDS, cadence_seconds)
 
 
 def _modal_cadence(stamps: Sequence[datetime]) -> int | None:

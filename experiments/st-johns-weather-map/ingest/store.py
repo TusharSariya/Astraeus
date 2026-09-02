@@ -164,6 +164,35 @@ class CurrentArtifact:
     native_crs: str | None
 
 
+@dataclass(frozen=True)
+class RetainedArtifact:
+    """A revision this deployment still holds, current or superseded.
+
+    ``current_artifacts`` answers "what is published now", which is the wrong
+    question for coverage: a short cycle keeps the previous complete run
+    serving the leads the newest run does not reach, and that run's revisions
+    are ``superseded``, not current. This read answers "what is retained",
+    under the same two-run ceiling ``prune`` enforces.
+
+    ``run_time`` is the ``model_runs`` column, which is stamped with the
+    retrieval time when the adapter declared no run time. It is therefore a
+    retrieval fact and never a run-time claim; the adapter-declared run time,
+    where there is one, is ``provenance["run_time"]``. Both are carried so the
+    reader can tell them apart rather than having them folded into one field.
+    """
+
+    source_id: str
+    logical_name: str
+    revision_id: str
+    provider_run_id: str
+    state: str
+    provenance: dict[str, Any]
+    published_at: datetime | None
+    valid_time_start: datetime | None
+    valid_time_end: datetime | None
+    retrieval_run_time: datetime | None
+
+
 def sha256_of(path: Path, *, chunk_size: int = 1 << 20) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -556,6 +585,49 @@ class ArtifactStore:
             rows = cursor.fetchall()
         return [
             CurrentArtifact(row[0], row[1], str(row[2]), row[3], row[4], int(row[5]), row[6] or {}, row[7], row[8], row[9], row[10], row[11])
+            for row in rows
+        ]
+
+    def retained_artifacts(self, *, source_ids: Sequence[str] | None = None) -> list[RetainedArtifact]:
+        """Every revision still retained, current and superseded alike.
+
+        The ranking is the one :meth:`prune` enforces - the newest
+        ``KEEP_COMPLETE_RUNS`` revisions per ``(source_id, logical_name)`` -
+        so this read never reports a revision that retention has already
+        decided to drop. ``current_artifacts`` is untouched: it answers a
+        different question and its callers ask it deliberately.
+        """
+        clause, params = "", []
+        if source_ids is not None:
+            clause = "AND r.source_id = ANY(%s)"
+            params = [list(source_ids)]
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                WITH ranked AS (
+                    SELECT r.source_id, a.logical_name, a.revision_id, r.provider_run_id, a.state,
+                           a.provenance, a.published_at, a.valid_time_start, a.valid_time_end,
+                           r.run_time,
+                           row_number() OVER (
+                               PARTITION BY r.source_id, a.logical_name
+                               ORDER BY a.created_at DESC
+                           ) AS position
+                      FROM weather_experiment.artifact_revisions a
+                      JOIN weather_experiment.model_runs r ON r.run_id = a.run_id
+                     WHERE a.state IN ('published', 'superseded')
+                       {clause}
+                )
+                SELECT source_id, logical_name, revision_id, provider_run_id, state,
+                       provenance, published_at, valid_time_start, valid_time_end, run_time
+                  FROM ranked
+                 WHERE position <= %s
+                 ORDER BY source_id, logical_name, position
+                """,
+                [*params, KEEP_COMPLETE_RUNS],
+            )
+            rows = cursor.fetchall()
+        return [
+            RetainedArtifact(row[0], row[1], str(row[2]), str(row[3]), row[4], row[5] or {}, row[6], row[7], row[8], row[9])
             for row in rows
         ]
 

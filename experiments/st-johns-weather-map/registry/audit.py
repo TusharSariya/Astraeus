@@ -66,6 +66,180 @@ def declared_field_keys(root: Path = INGEST_ROOT) -> dict[str, list[str]]:
     return found
 
 
+#: Categories whose every member carries forecast lead times, mirrored from
+#: ``ingest.registry.FORECAST_CATEGORIES``. Copied rather than imported for the
+#: same reason adapter manifests are parsed rather than imported: the audit must
+#: run in CI without numpy, xarray or a network stack, and ``ingest.registry``
+#: pulls in the adapter contract. ``test_reach.py`` asserts the two agree
+#: whenever ``ingest`` is importable, so the copy cannot drift silently.
+FORECAST_CATEGORIES = frozenset({
+    "deterministic_forecast",
+    "ensemble",
+    "postprocessed_forecast",
+    "nowcasting",
+    "land_surface_forecast",
+    "ocean",
+    "wave",
+    "surge",
+    "marine",
+})
+
+_RUN_HOURS = {f"{hour:02d}" for hour in range(24)}
+
+
+def adapter_source_ids(root: Path = INGEST_ROOT) -> set[str]:
+    """Every source id an adapter module names as a string literal.
+
+    Parsed statically out of ``ingest/adapters/*.py``, exactly as
+    ``declared_field_keys`` parses field keys and for the same reason: an
+    adapter that cannot be imported here must still have its registry record
+    checked. Both the class attribute (``source_id = "eccc-radar"``) and the
+    constructor keyword (``source_id="eccc-hrdps"``) are read. The empty string
+    is ignored: two base classes in ``eccc_geomet.py`` declare ``source_id =
+    ""`` for a subclass to fill in, and an empty id is not a record.
+    """
+    found: set[str] = set()
+    adapters = root / "adapters"
+    if not adapters.is_dir():
+        return found
+    for path in sorted(adapters.glob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        for node in ast.walk(tree):
+            values: list[ast.expr] = []
+            if isinstance(node, ast.Assign):
+                if any(getattr(target, "id", None) == "source_id" for target in node.targets):
+                    values.append(node.value)
+            elif isinstance(node, ast.AnnAssign):
+                if getattr(node.target, "id", None) == "source_id" and node.value is not None:
+                    values.append(node.value)
+            elif isinstance(node, ast.Call):
+                values.extend(
+                    keyword.value for keyword in node.keywords if keyword.arg == "source_id"
+                )
+            for value in values:
+                if isinstance(value, ast.Constant) and isinstance(value.value, str) and value.value:
+                    found.add(value.value)
+    return found
+
+
+def _latency_errors(sid: str, latency: dict[str, Any]) -> list[str]:
+    """A publication latency must say what it is and what stands behind it.
+
+    The point of the block is that latency is measured, not promised. So a
+    record may not claim an observation it does not have, and may not carry an
+    estimate whose provenance it cannot name: a number with an empty basis, or
+    a basis of ``"none"``, is a default that has been dressed as a
+    measurement, which is the exact failure this change exists to stop.
+    """
+    errors: list[str] = []
+    estimate = latency.get("estimate_seconds")
+    count = latency.get("observation_count")
+    last_observed = latency.get("last_observed")
+    measured = latency.get("measured")
+    basis = (latency.get("basis") or "").strip()
+
+    if measured is False:
+        if count != 0:
+            errors.append(f"{sid}: publication_latency is not measured but claims {count} observations")
+        if last_observed is not None:
+            errors.append(f"{sid}: publication_latency is not measured but names a last observed instant")
+    if measured is True:
+        if not isinstance(count, int) or count < 1:
+            errors.append(f"{sid}: publication_latency is measured but carries no observation")
+        if not last_observed:
+            errors.append(f"{sid}: publication_latency is measured but names no last observed instant")
+    if estimate is None and measured is not False:
+        errors.append(f"{sid}: publication_latency has no estimate but does not report measured false")
+    if estimate is not None and (not basis or basis == "none"):
+        errors.append(
+            f"{sid}: publication_latency estimates {estimate} s with no basis; "
+            "a defaulted latency is refused, state where the number came from"
+        )
+    return errors
+
+
+def horizon_errors(data: dict[str, Any], adapter_ids: set[str] | None = None) -> list[str]:
+    """Reach, cadence and latency, checked where a source can actually be run.
+
+    A source that will not say how far it reaches cannot be shown to answer any
+    instant, so every record with a registered adapter must declare a reach.
+    Beyond that the shape follows the record's own kind: a forecast record is
+    scheduled against a run and needs a run cadence and a latency block, an
+    observation or nowcast record is scheduled against its own publication
+    interval and needs a native cadence. The two are mutually exclusive, so a
+    reader never has to guess which one a scheduler used.
+    """
+    errors: list[str] = []
+    adapter_ids = adapter_source_ids() if adapter_ids is None else adapter_ids
+    known = {source["id"] for source in data["sources"]}
+    for source_id in sorted(adapter_ids - known):
+        errors.append(f"{source_id}: an adapter registers this id but the registry has no such record")
+
+    for source in data["sources"]:
+        sid = source["id"]
+        reach = source.get("reach")
+        run_cadence = source.get("run_cadence_seconds")
+        native_cadence = source.get("native_cadence_seconds")
+        latency = source.get("publication_latency")
+        forecast = source["category"] in FORECAST_CATEGORIES
+        registered = sid in adapter_ids
+
+        if registered and reach is None:
+            errors.append(
+                f"{sid}: has a registered adapter and declares no reach, so it is not schedulable "
+                "and can be shown to cover no instant"
+            )
+        if registered and forecast:
+            if not isinstance(run_cadence, int) or run_cadence <= 0:
+                errors.append(f"{sid}: forecast record with a registered adapter declares no run cadence")
+            if latency is None:
+                errors.append(f"{sid}: forecast record with a registered adapter declares no publication_latency")
+        if registered and not forecast:
+            if not isinstance(native_cadence, int) or native_cadence <= 0:
+                errors.append(f"{sid}: observation or nowcast record with a registered adapter declares no native cadence")
+
+        if run_cadence is not None and native_cadence is not None:
+            errors.append(f"{sid}: declares both a run cadence and a native cadence; a scheduler cannot use both")
+        if forecast and native_cadence is not None:
+            errors.append(f"{sid}: forecast record declares native_cadence_seconds, which belongs to observations")
+        if not forecast and run_cadence is not None and sid in adapter_ids:
+            errors.append(f"{sid}: non-forecast record declares run_cadence_seconds, which belongs to forecasts")
+
+        if reach is not None:
+            if reach["earliest_hours"] > reach["latest_hours"]:
+                errors.append(f"{sid}: reach earliest_hours is after latest_hours")
+            per_cycle = reach.get("per_cycle") or {}
+            for hour, latest in sorted(per_cycle.items()):
+                if hour not in _RUN_HOURS:
+                    errors.append(f"{sid}: reach per_cycle key {hour!r} is not a two-digit UTC hour")
+                if latest < reach["earliest_hours"]:
+                    errors.append(f"{sid}: reach per_cycle {hour!r} ends before the record's earliest hour")
+            if per_cycle:
+                if not isinstance(run_cadence, int) or run_cadence <= 0:
+                    errors.append(f"{sid}: reach states per_cycle but the record declares no run cadence to key it by")
+                elif 86400 % run_cadence or len(per_cycle) != 86400 // run_cadence:
+                    errors.append(
+                        f"{sid}: reach states {len(per_cycle)} cycles but a {run_cadence} s run cadence "
+                        f"means {86400 // run_cadence if not 86400 % run_cadence else '?'} runs a day"
+                    )
+        if latency is not None:
+            errors.extend(_latency_errors(sid, latency))
+
+        fallback = source.get("datamart_fallback_path")
+        if fallback is not None:
+            missing = [token for token in ("{YYYYMMDD}", "{HH}", "{FFF}") if token not in fallback]
+            if missing:
+                errors.append(
+                    f"{sid}: datamart_fallback_path is missing {', '.join(missing)}; the working Datamart "
+                    "layout is dated, /{YYYYMMDD}/WXO-DD/{model}/{HH}/{FFF}/, and a path without the "
+                    "placeholders cannot address a run"
+                )
+    return errors
+
+
 def catalogue_errors() -> list[str]:
     """Schema and semantic errors in the field catalogue, adapter keys included.
 
@@ -208,6 +382,7 @@ def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]
         for marker in ("api_key=", "apikey=", "password=", "bearer ey"):
             if marker in serialized:
                 errors.append(f"{sid}: possible credential material in registry")
+    errors.extend(horizon_errors(data))
     return errors
 
 
@@ -248,6 +423,27 @@ def summary(data: dict[str, Any]) -> dict[str, Any]:
         "not_display_primary": sorted(
             source["id"] for source in data["sources"] if not source.get("display_primary")
         ),
+        # How many records can be shown to cover an instant at all, and how
+        # many of the latencies behind the schedule are this deployment's own
+        # measurement rather than a research seed. Today the measured count is
+        # zero by construction, and it should be visible that it is.
+        "reach_declared": sum(1 for source in data["sources"] if source.get("reach") is not None),
+        "run_cadence_declared": sum(
+            1 for source in data["sources"] if source.get("run_cadence_seconds") is not None
+        ),
+        "native_cadence_declared": sum(
+            1 for source in data["sources"] if source.get("native_cadence_seconds") is not None
+        ),
+        "latency_measured": sorted(
+            source["id"] for source in data["sources"]
+            if (source.get("publication_latency") or {}).get("measured")
+        ),
+        "latency_seeded_unmeasured": sorted(
+            source["id"] for source in data["sources"]
+            if (source.get("publication_latency") or {}).get("estimate_seconds") is not None
+            and not (source.get("publication_latency") or {}).get("measured")
+        ),
+        "adapter_source_ids": sorted(adapter_source_ids()),
         "catalogue": catalogue_summary(),
     }
 
@@ -302,6 +498,13 @@ def main(argv: list[str] | None = None) -> int:
         report = summary(data)
         print(f"registry valid: {report['source_count']} sources, version {report['registry_version']}, as of {report['as_of']}")
         print("statuses: " + ", ".join(f"{key}={value}" for key, value in report["status_counts"].items()))
+        print(
+            f"horizon: {report['reach_declared']} records declare a reach "
+            f"({report['run_cadence_declared']} run cadence, {report['native_cadence_declared']} native cadence) "
+            f"across {len(report['adapter_source_ids'])} registered adapters; "
+            f"{len(report['latency_seeded_unmeasured'])} latencies seeded, "
+            f"{len(report['latency_measured'])} measured here"
+        )
         catalogue = report["catalogue"]
         print(
             f"catalogue valid: {catalogue['field_count']} fields in {len(catalogue['families'])} "
