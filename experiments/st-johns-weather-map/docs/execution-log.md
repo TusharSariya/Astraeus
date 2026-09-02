@@ -89,4 +89,24 @@ two should be reconciled when `frame-fallback-and-viewport-layout` is archived.
 
 Wave 1 (2026-09-02): three subagents, API owner (sections 1 and 2), ingest
 and registry owner (sections 3 and 4), web owner (section 5 plus the step 2
-browser pass). Gate 6.1 runs on the merged tree.
+browser pass). Merged on `execution/evidence-classes`.
+
+Wave 2 (2026-09-02): the API and registry agents had built two different
+seams (`get_entry` versus `get`, different entry names and range rules); the
+registry's names won and the store was adapted. Added during implementation:
+task 3.4 (every staged artifact declares its evidence classes, the store
+refuses an undeclared one) and the fog-state registry entry, because `/point`
+already derived fog state and the spec's first-entry list omitted it. Task 4.0
+landed the delivery kind as `published_cell` | `reprocessed` |
+`intermediary_derived` on all 64 records (60, 3, 1). The step 2 browser pass
+found and fixed a scrubber axis label overlap at rails under about 1150 px.
+
+Facts worth knowing after this step:
+
+- Until an adapter declares classes on its artifacts, the store isolates them
+  and serves `null` with a notice. Every existing adapter now declares.
+- The web treats a missing class exactly like an unrecognised one; a layer
+  with an unrecognised class keeps its imagery and shows the reason.
+- Ensemble statistics and sector sampling are registered disabled until
+  steps 7 and 9 implement them. No Open-Meteo adapter exists yet, so the
+  WeatherNext 2 record has no artifact.
