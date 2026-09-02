@@ -57,8 +57,18 @@ def _source(
     consensus: tuple[bool, str | None, str],
     fixture: str = "planned",
     live: str = "planned",
+    delivery_kind: str | None = None,
+    intermediary: dict[str, Any] | None = None,
+    field_delivery_kinds: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    return {
+    """``delivery_kind`` and its two companions are emitted only when declared.
+
+    They are optional here because the record-wide obligation to declare a
+    delivery kind belongs to `ensemble-members-and-source-plurality`; this
+    change adds the third kind, `intermediary_derived`, and the audit rules a
+    record that declares it must satisfy.
+    """
+    record: dict[str, Any] = {
         "id": id,
         "category": category,
         "status": status,
@@ -89,6 +99,13 @@ def _source(
         "fixture_status": fixture,
         "live_smoke_test_status": live,
     }
+    if delivery_kind is not None:
+        record["delivery_kind"] = delivery_kind
+    if intermediary is not None:
+        record["intermediary"] = intermediary
+    if field_delivery_kinds is not None:
+        record["field_delivery_kinds"] = field_delivery_kinds
+    return record
 
 
 def _eccc_model(id: str, category: str, product: str, doc_slug: str, names: list[str], levels: list[str], cadence: str, horizon: str, role: str, eligible: bool, family: str = "ECCC", endpoints: list[str] | None = None, reason: str | None = None) -> dict[str, Any]:
@@ -164,6 +181,73 @@ def registry() -> dict[str, Any]:
         _source("dwd-icon-global", "deterministic_forecast", "implementing", "DWD publishes an official ICON open-data subset; exact inventory and licence notices must be captured per artifact.", "Deutscher Wetterdienst", "ICON Global", ["https://www.dwd.de/EN/ourservices/opendata/opendata.html", "https://isabel.dwd.de/SharedDocs/downloads/DE/modelldokumentationen/nwv/icon/icon_dbbeschr_aktuell.pdf"], ["https://opendata.dwd.de/weather/nwp/icon/grib/"], ("raw_protocol", "official HTTPS GRIB2 via httpx, ecCodes, cfgrib and xarray"), ["temperature", "relative_humidity", "specific_humidity", "wind", "pressure", "precipitation", "cloud", "visibility", "CAPE", "soil_fields"], ["surface", "2 m", "10 m", "model levels", "isobaric", "column", "soil"], "Global", "operational cycles documented by DWD", "global forecast; POC uses +24 h", (False, "Anonymous HTTPS", None), {"licence": {"name": "DWD Open Data terms", "url": "https://www.dwd.de/EN/service/copyright/copyright_artikel.html", "review_state": "verified"}, "attribution": "Credit Deutscher Wetterdienst (DWD) and ICON; preserve product metadata.", "caching": "Cache only bounded domain/run subsets.", "archival": "Latest and previous complete run locally; no permanent-archive claim.", "redistribution": "Subject to DWD open-data copyright and attribution terms."}, "current ICON database/open-data GRIB2 schema", "newest run no older than two nominal cycles", "Independent DWD deterministic comparison", (True, "DWD", "One DWD representative may vote for comparable fields.")),
         _source("google-weathernext-2", "research_comparison", "credential_required", "Terms read 2026-09-02 and the licence is now split rather than pending; access still requires a reviewed Google data request, so the status stays credential_required. Bands verified from the Earth Engine catalogue: 2 m temperature, 10 m and 100 m winds, MSLP, SST, 6-hourly total precipitation, and geopotential, specific humidity, temperature, u, v and vertical velocity on 50-1000 hPa. 0.25 degrees, 6-hourly, 64 members, 15 days. There is no cloud variable, which is decisive for a map whose subject is cloud.", "Google DeepMind", "WeatherNext 2 forecasts", ["https://developers.google.com/weathernext/guides/access-forecast"], ["https://console.cloud.google.com/marketplace/product/bigquery-public-data/weathernext"], ("typed_adapter", "xarray/Zarr or BigQuery adapter only after approved access and pinned official starter guide"), ["temperature", "wind", "precipitation", "humidity", "geopotential", "vertical_velocity", "pressure"], ["major surface fields", "published atmospheric levels"], "Global", "official dataset-dependent", "global medium range", (True, "Google-approved dataset access", "https://developers.google.com/weathernext/guides/access-forecast"), {"licence": {"name": "Split by VALID TIME, read 2026-09-02. Historic Experimental Data, \"any data that relates to a time that is more than 48 hours ago\", is CC BY 4.0. Real-Time Experimental Data, \"any data that relates to a time that is no more than 48 hours in the past\", is under the separate, revocable GDM Real-Time Weather Forecasting Experimental Data Terms of Use, which restrict redistribution and proxying. A forecast for a future instant relates to a time that is not in the past at all, so EVERY forward-looking value is in the restricted tier and only history is CC BY.", "url": "https://developers.google.com/earth-engine/datasets/catalog/projects_gcp-public-data-weathernext_assets_weathernext_2_0_0", "review_state": "restricted"}, "attribution": "Historic tier requires verbatim: \"(c) 2025 DeepMind Technologies Limited's machine learning models used to create the experimental data made available at [dataset URL] under CC BY 4.0 licence terms. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.\" Real-time tier carries its own citation requirement in its terms document.", "caching": "Historic tier may be cached under CC BY with the required citation. No caching of the real-time tier until the owner accepts its terms.", "archival": "Historic tier only; the real-time terms are revocable, so nothing from that tier is archived locally.", "redistribution": "Historic tier permitted under CC BY 4.0 with the required citation. Real-time tier restricts redistribution and raw-data proxying and is prohibited here until the owner accepts the terms. Note the model publishes NO cloud variable of any kind, so any cloud field attributed to it downstream is that reseller's own humidity closure, not model output."}, "WeatherNext 2 dataset version to pin after access", "to be established by live latency audit", "Research comparison only", (False, "Google", "Excluded until operational latency, semantic fields and licence are validated."), "blocked", "blocked"),
     ])
+
+    # The one intermediary-derived record. Google WeatherNext 2 publishes no
+    # cloud variable of any kind (verified from the Earth Engine band list,
+    # 2026-09-02, and recorded on `google-weathernext-2` above), yet Open-Meteo
+    # serves total, low, mid and high cloud for it, per member, for 64 members.
+    # Open-Meteo documents exactly how: the cloud layers are computed from
+    # relative humidity on pressure levels, and that relative humidity is
+    # itself Open-Meteo's conversion of the producer's specific humidity. So
+    # the cloud is not `reprocessed` - there is no producer cloud field that
+    # anyone transformed - and it is not `derived_here` - this deployment did
+    # not compute it and cannot list its inputs as retrieved values. The owner
+    # admitted it on 2026-09-02 as `intermediary_derived`: producer,
+    # intermediary and the intermediary's documented method named, carrying the
+    # reprocessed limits (never the display primary, never a derivation input).
+    # The status is `credential_required` and stays there: every forward-looking
+    # WeatherNext value sits in the revocable GDM Real-Time Experimental Data
+    # tier, and an intermediary proxying it does not move it into CC BY.
+    open_meteo_transformations = [
+        "Regridding off the producer's native grid onto Open-Meteo's own grid.",
+        "Statistical elevation downscaling against a 90 m digital elevation model, on by default.",
+        "Grid-cell selection by Open-Meteo's own policy (cell_selection=land|sea|nearest).",
+        "Temporal interpolation to the finest step Open-Meteo offers, finer than the producer's 6-hourly output.",
+        "Derivation of fields the producer never published, including every cloud field and relative humidity.",
+        "Accumulation redistribution of 6-hourly totals across finer steps.",
+    ]
+    s.append(_source(
+        "open-meteo-weathernext-2", "research_comparison", "credential_required",
+        "Open-Meteo serves Google WeatherNext 2 (google_weathernext2_ensemble, 64 members) with total, low, mid and high cloud cover that the producer does not publish; Open-Meteo's own documentation states the cloud layers are an estimate from the vertical humidity profile and 'not a native cloud fraction forecast from WeatherNext', and the humidity is itself its conversion of the producer's specific humidity. Admitted 2026-09-02 as intermediary_derived rather than refused, under the reprocessed limits. Status stays credential_required because every forward-looking WeatherNext value is in the revocable GDM Real-Time Experimental Data tier and must be accepted with Google before retrieval, whatever route it arrives by.",
+        "Google DeepMind", "WeatherNext 2 ensemble delivered by Open-Meteo",
+        ["https://open-meteo.com/en/docs/weathernext-api", "https://developers.google.com/weathernext/guides/access-forecast"],
+        ["https://api.open-meteo.com/v1/forecast"],
+        ("typed_adapter", "httpx + Pydantic adapter reading data/<domain>/static/meta.json beside every call; no adapter is written until the real-time terms are accepted"),
+        ["total_cloud", "low_cloud", "middle_cloud", "high_cloud", "relative_humidity", "air_temperature", "dew_point", "wind_speed", "wind_direction", "mean_sea_level_pressure", "precipitation"],
+        ["surface", "2 m", "10 m", "pressure levels 50-1000 hPa", "ensemble member 01-64"],
+        "Global; queried per point over the evidence box",
+        "6-hourly producer steps interpolated by the intermediary; no run fields exposed in meta.json",
+        "15 days",
+        (True, "Anonymous to Open-Meteo, but Google's Real-Time Experimental Data Terms of Use must be accepted for any forward-looking value", "https://developers.google.com/weathernext/guides/access-forecast"),
+        {"licence": {"name": "Google DeepMind Real-Time Weather Forecasting Experimental Data Terms of Use for every forward-looking value; CC BY 4.0 only for data more than 48 hours in the past. Open-Meteo's own terms (CC BY 4.0, non-commercial call budget) apply to the delivery, not to the underlying data.", "url": "https://developers.google.com/earth-engine/datasets/catalog/projects_gcp-public-data-weathernext_assets_weathernext_2_0_0", "review_state": "restricted"},
+         "attribution": "Name Google DeepMind as producer and Open-Meteo as intermediary on every value, and carry the tier's required citation; a cloud value additionally names Open-Meteo's humidity closure as the method that produced it.",
+         "caching": "No caching until the owner accepts the real-time terms; the historic tier may be cached with its required citation.",
+         "archival": "Nothing from the real-time tier is archived locally, because those terms are revocable.",
+         "redistribution": "Prohibited for the real-time tier, which the intermediary route does not change."},
+        "Open-Meteo JSON schema as served, with the producer's dataset version unexposed", "no run fields are published, so freshness cannot be asserted",
+        "Intermediary-derived cloud for a producer that publishes none; never the display primary and never a derivation input",
+        (False, None, "There is nothing to be eligible for, and an intermediary's own diagnostic could not vote in any case."),
+        "blocked", "blocked",
+        delivery_kind="intermediary_derived",
+        intermediary={
+            "name": "Open-Meteo",
+            "method": "Low cloud cover derived from relative humidity at 1000, 925 and 850 hPa; mid from 700, 600, 500 and 400 hPa; high from 300, 250, 200, 150, 100 and 50 hPa; total by combining the derived low, mid and high layers. The relative humidity is Open-Meteo's own conversion of the producer's specific humidity. Documented by Open-Meteo, read 2026-09-02.",
+            "transformations": open_meteo_transformations,
+        },
+        field_delivery_kinds={
+            "total_cloud": "intermediary_derived",
+            "low_cloud": "intermediary_derived",
+            "middle_cloud": "intermediary_derived",
+            "high_cloud": "intermediary_derived",
+            "relative_humidity": "reprocessed",
+            "air_temperature": "reprocessed",
+            "dew_point": "reprocessed",
+            "wind_speed": "reprocessed",
+            "wind_direction": "reprocessed",
+            "mean_sea_level_pressure": "reprocessed",
+            "precipitation": "reprocessed",
+        },
+    ))
 
     # Satellite and atmospheric composition.
     s.extend([

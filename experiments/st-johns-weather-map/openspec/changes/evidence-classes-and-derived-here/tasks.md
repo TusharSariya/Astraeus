@@ -45,33 +45,68 @@ registry; web. Do not edit `models.py` and `store.py` from two owners at once.
 
 ## 3. Derivation method registry (ingest owner)
 
-- [ ] 3.1 Create `ingest/derive/registry.py` with entries carrying name,
+- [x] 3.1 Create `ingest/derive/registry.py` with entries carrying name,
   version, citation, inputs, output, physical range and range rule, `enabled`,
   and an approval record; refuse blending entries and unapproved entries at
   load.
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py`.
+  Verify result: 18 passed. An entry with no approval record and each of the
+  three blending shapes (same field from two sources, two members of one field
+  family from two sources, a provider reduction with another member set) raise
+  `RegistryError` at construction, so importing the module with one refuses to
+  load.
 - [ ] 3.2 Register the five first entries (relative humidity, wind speed and
   direction, ensemble statistics, sector sampling, DE442 geometry) and wire
   the existing relative-humidity derivation to its entry.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k
   relative_humidity` shows the entry name and `derived_here` in provenance.
-- [ ] 3.3 Add the deployment-level refusal environment variable and the
+  Verify result: **half done, left unticked.** All five entries are registered
+  (`ENTRIES`, in that order; ensemble statistics and sector sampling
+  `enabled: false`, see design.md) and relative humidity is served through its
+  entry by `resolve_registered_relative_humidity`, verified by `cd api && uv
+  run pytest tests/test_derivation_registry.py -k relative_humidity` (2
+  passed): the entry name, the version and `evidence_class: derived_here`. The
+  named verify command's file `tests/test_point_evidence.py` does not exist yet
+  and `api/weather_api/store.py` belongs to the API owner, so the remaining
+  half is one line at `store.py:1230`, replacing `resolve_relative_humidity`
+  with `ingest.derive.registry.resolve_registered_relative_humidity` (same
+  three-tuple).
+- [x] 3.3 Add the deployment-level refusal environment variable and the
   reader-level switch contract.
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k
   disabled`.
+  Verify result: 4 passed. `WEATHER_DERIVED_HERE=off` (also `0`, `false`, `no`,
+  any case) refuses every derived value with a notice naming the variable and
+  leaves retrieved values untouched; `catalogue(reader_disabled=[...])` is the
+  reader-level contract and refuses per reader only.
 
 ## 4. Registry (ingest owner)
 
-- [ ] 4.1 Add delivery kind `intermediary_derived` with producer, intermediary
+- [x] 4.1 Add delivery kind `intermediary_derived` with producer, intermediary
   and method fields and per-field kind declaration to `registry/schema.json`;
   fail the audit for a record naming no intermediary.
   Verify: `python3 registry/audit.py` and `python3 -m unittest discover -s
   registry/tests -v`.
-- [ ] 4.2 Add the Open-Meteo WeatherNext 2 record with cloud fields
+  Verify result: audit clean ("registry valid: 64 sources"); 17 tests ran, OK
+  (6 existing, 11 new in `registry/tests/test_delivery_kind.py`). A record that
+  declares the kind and drops its intermediary, names the producer as the
+  intermediary, names no field carrying the kind, or names a field it does not
+  publish, each fails the audit naming the record. `delivery_kind` is optional
+  at record level until `ensemble-members-and-source-plurality` makes it
+  required (design.md).
+- [x] 4.2 Add the Open-Meteo WeatherNext 2 record with cloud fields
   `intermediary_derived` and the rest `reprocessed`, status
   `credential_required`.
   Verify: `python3 registry/audit.py --summary-json` lists the record with
   no audit failure.
+  Verify result: exit 0, `"intermediary_derived_sources":
+  ["open-meteo-weathernext-2"]` and `"delivery_kind_counts":
+  {"intermediary_derived": 1, "undeclared": 63}`. Total, low, middle and high
+  cloud carry `intermediary_derived`; the other nine fields `reprocessed`;
+  producer Google DeepMind, intermediary Open-Meteo with its documented
+  humidity-profile method and all six of its transformations; status
+  `credential_required`, fixture and live smoke `blocked`. No status is
+  promoted.
 
 ## 5. Web (web owner)
 

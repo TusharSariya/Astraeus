@@ -64,10 +64,44 @@ name and reasserts that it never reaches a data path. The three-level kill
 switch (registry `enabled`, `WEATHER_GENERATED_DISPLAY=off`, reader menu) is
 the model for the derivation method registry's own enabling levels.
 
+## What the registry entries look like, and why two start disabled
+
+Decided while implementing tasks 3 and 4, and recorded here rather than left
+to the reader of the code:
+
+- **An entry may produce more than one field.** The spec names "wind speed and
+  direction" and "the Sun and Moon geometry fields" as single constructions, so
+  an entry carries `outputs`, each with its own field, units, physical range
+  and range rule. A one-output entry is the common case, not the only one.
+- **Ensemble statistics and sector sampling are registered `enabled: false`.**
+  Both are required entries and neither has an implementation yet: member
+  retrieval arrives with `ensemble-members-and-source-plurality` and the sector
+  sampler with the point work. Registering them enabled would declare a
+  construction this deployment cannot perform. They are entries, approved, and
+  switched off at the first of the three levels until their code exists.
+- **The no-blend rule reads the field family, not the field name.** The spec's
+  own blending scenario combines `total_cloud_opacity_weighted` from HRDPS with
+  `total_cloud_geometric` from GFS - two different catalogue names for one
+  family. So each input declares its family and its source, and two members of
+  one family from two sources are refused as blending, as is the same field
+  from two sources and a provider reduction mixed with another member set.
+- **`delivery_kind` is optional in the registry schema for now.** The
+  obligation on every record to declare one belongs to
+  `ensemble-members-and-source-plurality`, which is not applied yet. This
+  change adds the third kind and the audit rules a record declaring it must
+  satisfy; making the field required is that change's job, and doing it here
+  would fail 63 records that have no owner decision behind them yet.
+
 ## Open questions carried into implementation
 
 - Whether existing derived artifacts (cloud motion, the WEonG repair) are
   re-classed in place or republished; the manifest gains `evidence_classes`
   either way.
-- The exact validation tolerance for a method's physical range clamp and how
-  a clamped value is flagged.
+- ~~The exact validation tolerance for a method's physical range clamp and how
+  a clamped value is flagged.~~ **Answered.** There is no tolerance, because a
+  tolerance is a second bound nobody declared. Each output declares one of four
+  range rules: `clamp` bounds the value and flags it `range_clamped`; `wrap`
+  folds a circular quantity such as a bearing into its interval and flags it
+  `range_wrapped`; `null` refuses the value and flags it `range_refused`; and
+  `inherit_input_range` says the bound is the input field's own published
+  range, which is the honest answer for a statistic over an arbitrary field.

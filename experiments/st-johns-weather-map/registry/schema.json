@@ -21,6 +21,10 @@
     "status": {
       "enum": ["active", "implementing", "credential_required", "licence_review", "unavailable", "duplicate_evidence", "unsupported_field", "retired", "rejected"]
     },
+    "delivery_kind": {
+      "description": "How this source's values reach the deployment. 'published_cell' is the producer's own grid or observation; 'reprocessed' is an intermediary's transformation of the producer's field; 'intermediary_derived' is a value the intermediary computed from the producer's fields by the intermediary's own method, which the producer never published.",
+      "enum": ["published_cell", "reprocessed", "intermediary_derived"]
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -64,6 +68,19 @@
         "consensus": {
           "type": "object", "additionalProperties": false, "required": ["eligible", "family", "reason"],
           "properties": {"eligible": {"type": "boolean"}, "family": {"type": ["string", "null"]}, "reason": {"$ref": "#/$defs/nonempty"}}
+        },
+        "delivery_kind": {"$ref": "#/$defs/delivery_kind"},
+        "intermediary": {
+          "type": "object", "additionalProperties": false, "required": ["name", "method", "transformations"],
+          "properties": {
+            "name": {"$ref": "#/$defs/nonempty"},
+            "method": {"type": ["string", "null"], "minLength": 1},
+            "transformations": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/nonempty"}}
+          }
+        },
+        "field_delivery_kinds": {
+          "description": "Per-field delivery kind, because one intermediary may deliver reprocessed and intermediary-derived fields for the same producer.",
+          "type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/delivery_kind"}
         },
         "fixture_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
         "live_smoke_test_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]}
