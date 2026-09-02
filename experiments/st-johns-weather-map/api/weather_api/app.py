@@ -68,6 +68,8 @@ from .models import (
     RefreshRequest,
     Selection,
     SourceStatusResponse,
+    CoverageEntry,
+    HorizonTier,
     TimelineItem,
     TimelineResponse,
     AstronomyCoreWindow,
@@ -85,7 +87,7 @@ from .models import (
 )
 from .science import select_fallback
 from . import astronomy, aurora, grids, satellite as goes_satellite, wms
-from .config import WINDOW_STEPS, sliding_window
+from .config import WINDOW_BACK, WINDOW_STEPS, sliding_window
 from .store import (
     FIXTURE_MODE,
     LIVE_MODE,
@@ -102,8 +104,11 @@ from .store import (
     live_store,
     registry_source_records,
     registry_source_statuses,
+    retained_runs,
     schedulable_source_ids,
     source_category,
+    source_reach,
+    source_run_cadence_seconds,
     unavailable_point_fields,
     unavailable_profile_levels,
 )
@@ -177,6 +182,53 @@ def skip_notices(store: object) -> list[str]:
     return [f"artifact from {item.source_id} (revision {item.revision_id}) was skipped: {item.reason}" for item in getattr(store, "skipped", [])]
 
 
+def tier_boundary(reference: datetime) -> datetime:
+    """Where the core tier ends and the planning tier begins.
+
+    The core tier reaches exactly as far ahead as the evidence window reaches
+    back, so this is ``WINDOW_BACK`` read forwards rather than a second
+    24-hour constant written down here. The bound has one definition
+    (``config.py``) and this is a use of it, not a restatement.
+    """
+    return reference + WINDOW_BACK
+
+
+def horizon_tiers(reference: datetime) -> list[HorizonTier]:
+    """The two tiers as valid-time ranges, core first.
+
+    A tier names no source. Together they cover the window exactly, which is
+    why an instant in neither tier is also an instant outside the window: one
+    refusal, stated in both vocabularies.
+    """
+    boundary = tier_boundary(reference)
+    return [
+        HorizonTier(id="core", start=window_start(reference), end=boundary),
+        HorizonTier(id="planning", start=boundary, end=window_end(reference)),
+    ]
+
+
+def tier_of(moment: datetime, reference: datetime) -> str | None:
+    """Which tier an instant falls in, or ``None`` when it falls in neither.
+
+    The boundary instant itself belongs to the core tier: it is served, and
+    serving it twice would put the same hour in two ranges.
+    """
+    for tier in horizon_tiers(reference):
+        if tier.start <= moment <= tier.end:
+            return tier.id
+    return None
+
+
+def _outside_both_tiers_detail(reference: datetime) -> str:
+    core, planning = horizon_tiers(reference)
+    return (
+        f"valid_time is outside the available window {core.start.isoformat()} through {planning.end.isoformat()}: "
+        f"it falls in neither the core tier ({core.start.isoformat()} through {core.end.isoformat()}) "
+        f"nor the planning tier ({planning.start.isoformat()} through {planning.end.isoformat()}), "
+        "and nothing from the nearest covered instant is substituted for it"
+    )
+
+
 def requested_time(value: datetime | None) -> datetime:
     reference = now()
     if value is None:
@@ -184,9 +236,8 @@ def requested_time(value: datetime | None) -> datetime:
     if value.tzinfo is None:
         raise HTTPException(status_code=422, detail="valid_time must include a UTC offset")
     utc_value = value.astimezone(timezone.utc)
-    start, end = window_start(reference), window_end(reference)
-    if not start <= utc_value <= end:
-        raise HTTPException(status_code=422, detail=f"valid_time is outside the available window {start.isoformat()} through {end.isoformat()}")
+    if tier_of(utc_value, reference) is None:
+        raise HTTPException(status_code=422, detail=_outside_both_tiers_detail(reference))
     return utc_value
 
 
@@ -231,11 +282,87 @@ def _aged_out_sources(store: object) -> tuple[dict[str, datetime], list[str]]:
         return {}, [f"the last valid time record could not be read, so no absence is reported as aged out: {type(error).__name__}: {error}"]
 
 
+#: What is said about an instant no retained run covers, when the store did
+#: answer. Never used for a store that could not be read: "nothing covers it"
+#: is a statement about the evidence, not about the query.
+NOTHING_COVERS = "nothing covers this instant"
+
+
+def _coverage_entry(run: Any, reference: datetime) -> CoverageEntry:
+    """One covering run, with its run age and staleness verdict.
+
+    ``run_stale`` is only ever a verdict where both halves of the comparison
+    are known: the adapter's own run time and the producer's declared run
+    cadence. Either missing gives ``null`` with the reason, because ``false``
+    would report an unmeasurable run as current.
+    """
+    cadence = source_run_cadence_seconds(run.source_id)
+    age = int((reference - run.run_time).total_seconds()) if run.run_time is not None else None
+    if run.run_time is None:
+        stale, reason = None, "the adapter declared no run time, so the age of this run cannot be computed"
+    elif cadence is None:
+        stale, reason = None, "the source declares no run cadence, so there is no staleness threshold to compare against"
+    else:
+        stale, reason = age > 2 * cadence, None
+    return CoverageEntry(
+        source_id=run.source_id,
+        provider_run_id=run.provider_run_id,
+        run_time=run.run_time,
+        run_cadence_seconds=cadence,
+        run_age_seconds=age,
+        run_stale=stale,
+        run_stale_reason=reason,
+    )
+
+
+def _coverage_index(runs: Sequence[Any], reference: datetime) -> dict[datetime, list[CoverageEntry]]:
+    """Which retained runs cover each hour of the window.
+
+    Two conditions, both required. The declared reach says how far the run was
+    meant to carry, and the frames it actually published say how far it did.
+    A reach with nothing retrieved behind it contributes nothing, and a run
+    that published beyond its declared reach is not credited past the promise
+    either.
+
+    A run whose adapter declared no run time cannot be tested against a reach
+    at all - the reach is stated relative to the run time - so such a run is
+    credited only where it demonstrably published frames. That is narrower
+    than the reach test, never wider, and it keeps the retrieval instant
+    stamped on the run out of the containment test.
+    """
+    start = window_start(reference)
+    index: dict[datetime, list[CoverageEntry]] = {}
+    for run in runs:
+        reach = source_reach(run.source_id)
+        if reach is None:
+            # No declared reach means not schedulable and served to nobody.
+            continue
+        if run.frame_start is None or run.frame_end is None:
+            continue
+        low, high = run.frame_start, run.frame_end
+        if run.run_time is not None:
+            reach_start, reach_end = reach.span(run.run_time)
+            low, high = max(low, reach_start), min(high, reach_end)
+        if low > high:
+            continue
+        entry = _coverage_entry(run, reference)
+        for step in range(WINDOW_STEPS):
+            hour = start + timedelta(hours=step)
+            if low <= hour <= high:
+                index.setdefault(hour, []).append(entry)
+    return {
+        hour: sorted(entries, key=lambda item: (item.source_id, item.run_time or datetime.min.replace(tzinfo=timezone.utc), item.provider_run_id))
+        for hour, entries in index.items()
+    }
+
+
 def _window_items(
     reference: datetime,
     products_at: dict[datetime, list[str]] | None = None,
     *,
     aged_out: dict[str, datetime] | None = None,
+    coverage_at: dict[datetime, list[CoverageEntry]] | None = None,
+    coverage_resolved: bool = False,
 ) -> list[TimelineItem]:
     """The hourly steps of the sliding window, with only what each hour holds.
 
@@ -251,6 +378,7 @@ def _window_items(
     for index in range(WINDOW_STEPS):
         valid_time = start + timedelta(hours=index)
         products = sorted((products_at or {}).get(valid_time, []))
+        covering = (coverage_at or {}).get(valid_time, [])
         items.append(
             TimelineItem(
                 valid_time_utc=valid_time,
@@ -260,36 +388,69 @@ def _window_items(
                 # holds a product is not aged out, and one that holds nothing
                 # needs the reason beside it, not in a footnote.
                 aged_out_sources={} if products else stated,
+                tier=tier_of(valid_time, reference),
+                coverage=covering,
+                # Only a store that answered can say nothing covers an hour.
+                # With coverage unresolved the list is empty and silent, and
+                # the response notices carry the failure instead.
+                coverage_notice=NOTHING_COVERS if coverage_resolved and not covering else None,
             )
         )
     return items
+
+
+def _resolved_coverage(store: object, reference: datetime) -> tuple[dict[datetime, list[CoverageEntry]], bool, list[str]]:
+    """Per-hour coverage from declared reach against runs actually retrieved.
+
+    Returns the index, whether the store answered at all, and any notice. An
+    unreachable store gives an empty index with ``False``: no instant is then
+    said to be covered, and none is said to be uncovered either.
+    """
+    try:
+        runs = retained_runs(store)
+    except StoreUnavailable as error:
+        LOGGER.warning("retained runs could not be read: %s", error)
+        return {}, False, [f"coverage could not be resolved, so no instant is reported as covered or uncovered: {error}"]
+    except Exception as error:  # noqa: BLE001 - any failure is the same answer
+        LOGGER.exception("retained runs could not be read")
+        return {}, False, [f"coverage could not be resolved, so no instant is reported as covered or uncovered: {type(error).__name__}: {error}"]
+    return _coverage_index(runs, reference), True, []
 
 
 @app.get(f"{PREFIX}/timeline", response_model=TimelineResponse)
 def get_timeline() -> TimelineResponse:
     reference = now()
     start, end = window_start(reference), window_end(reference)
+    tiers = horizon_tiers(reference)
+    boundary = tier_boundary(reference)
     if fixture_mode():
-        return TimelineResponse(data_mode=DataMode.FIXTURE, start=start, end=end, items=timeline(reference))
+        # The tier is a property of the instant, so a fixture hour carries it
+        # too. Its coverage stays empty: fixtures name products, and a fixture
+        # has no retrieved run to be covered by.
+        fixture_items = [item.model_copy(update={"tier": tier_of(item.valid_time_utc, reference)}) for item in timeline(reference)]
+        return TimelineResponse(data_mode=DataMode.FIXTURE, start=start, end=end, items=fixture_items, boundary=boundary, tiers=tiers)
 
     store = live_store()
     if store is None:
-        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), notices=["no live artifact store is reachable; no hour can be said to have a published product"])
+        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["no live artifact store is reachable; no hour can be said to have a published product"])
     try:
         coverage = store.published_products()
     except Exception:
         LOGGER.exception("published product coverage could not be read")
         # No hour is said to hold a product AND no hour is said to have aged
         # out: with the store unreadable, either claim would be a guess.
-        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), notices=["the live artifact store raised while resolving published coverage"])
+        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["the live artifact store raised while resolving published coverage"])
 
     notices = skip_notices(store)
     aged_out, aged_out_notices = _aged_out_sources(store)
     notices.extend(aged_out_notices)
+    coverage_at, coverage_resolved, coverage_notices = _resolved_coverage(store, reference)
+    notices.extend(coverage_notices)
     if not coverage:
         return TimelineResponse(
             data_mode=DataMode.UNAVAILABLE, start=start, end=end,
-            items=_window_items(reference, aged_out=aged_out),
+            items=_window_items(reference, aged_out=aged_out, coverage_at=coverage_at, coverage_resolved=coverage_resolved),
+            boundary=boundary, tiers=tiers,
             notices=[*notices, "no artifacts are currently published for this window"],
         )
     products_at: dict[datetime, list[str]] = {}
@@ -311,7 +472,12 @@ def get_timeline() -> TimelineResponse:
     still_held = {source_id for source_id, stamps in coverage.items() if stamps}
     return TimelineResponse(
         data_mode=DataMode.LIVE, start=start, end=end,
-        items=_window_items(reference, products_at, aged_out={k: v for k, v in aged_out.items() if k not in still_held}),
+        items=_window_items(
+            reference, products_at,
+            aged_out={k: v for k, v in aged_out.items() if k not in still_held},
+            coverage_at=coverage_at, coverage_resolved=coverage_resolved,
+        ),
+        boundary=boundary, tiers=tiers,
         notices=notices,
     )
 

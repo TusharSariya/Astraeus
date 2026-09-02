@@ -273,6 +273,20 @@ outside both tiers names both ranges. `staleness_tolerance_seconds` =
 `Provenance` gains `run_stale: bool | None = None` and
 `run_stale_reason: str | None = None`, set on live `/point` fields.
 
+Two things the timeline owner had to settle that the seam left open. Wire
+shapes are unchanged; these are the reads behind them.
+
+- **The retrieval stamp is carried under its own name.** `RetainedArtifact`
+  exposes the `model_runs` column as `retrieval_run_time`, not `run_time`.
+  The seam says that column is never a run-time claim, and the surest way to
+  keep it from becoming one is to refuse it the name: `run_time` on the wire
+  is only ever `provenance["run_time"]`.
+- **A run with no declared run time is credited by delivery alone.** A reach
+  is stated relative to a run time, so with none declared there is nothing to
+  test `Reach.covers` against. Such a run is credited only for the frames it
+  demonstrably published - strictly narrower than the reach test, never wider
+  - and it reports `run_time: null` and `run_stale: null` with the reason.
+
 `ingest/store.py` gains a read `retained_artifacts(source_ids=None)`
 returning the current revision and, where the previous complete run is still
 retained under the two-run ceiling, that run's superseded revisions, each

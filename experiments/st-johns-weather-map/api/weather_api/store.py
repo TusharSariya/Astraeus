@@ -675,6 +675,17 @@ class LiveStore:
     def current(self) -> list[Any]:
         return self._store.current_artifacts()
 
+    def retained_artifacts(self) -> list[Any]:
+        """Retained revisions, current and superseded, for coverage.
+
+        Separate from :meth:`current` because coverage has to see the previous
+        complete run: when a short cycle reaches less far than its
+        predecessor, the leads only the older run published are still
+        retained evidence, and asking only what is current would report them
+        as covered by nothing.
+        """
+        return self._store.retained_artifacts()
+
     def assert_object_store_reachable(self) -> None:
         """Fail closed when the object store is unreachable.
 
@@ -1441,6 +1452,104 @@ def published_frame_times(store: Any, *, source_ids: Sequence[str] | None = None
             stamps = [moment for moment in (span_start, span_end) if moment is not None]
         held.update(valid_time_nanoseconds(moment) for moment in stamps)
     return present
+
+
+@dataclass(frozen=True)
+class RetainedRun:
+    """One retained run of one source, as coverage needs to see it.
+
+    ``run_time`` is the adapter's own declaration and nothing else. The
+    ``model_runs`` column of the same name is stamped with the retrieval time
+    when an adapter declared none, so folding the two together would let a
+    retrieval instant be served as a run time - and a run age, and a
+    ``run_stale`` verdict - computed from a number no producer ever stated.
+    Where the adapter declared nothing this is ``None``, and the caller says
+    so rather than substituting.
+
+    ``frame_start``/``frame_end`` bound the frames the run actually published,
+    read the way :func:`published_frame_times` reads them: the declared valid
+    times when the revision listed any, else the revision's own valid-time
+    span. A declared reach is a promise; this is the delivery.
+    """
+
+    source_id: str
+    provider_run_id: str
+    run_time: datetime | None
+    frame_start: datetime | None
+    frame_end: datetime | None
+
+    def published_span_covers(self, instant: datetime) -> bool:
+        if self.frame_start is None or self.frame_end is None:
+            return False
+        return self.frame_start <= instant <= self.frame_end
+
+
+def _revision_frame_stamps(artifact: Any) -> list[datetime]:
+    """The frames one retained revision can be said to have published.
+
+    The same rule :func:`published_frame_times` applies: the declared valid
+    times where the revision listed them, else the two edges of its recorded
+    span. Nothing between the edges is claimed, because a frame wrongly
+    reported present is a frame nobody fetches.
+    """
+    declared = (getattr(artifact, "provenance", None) or {}).get("valid_times") or ()
+    stamps = [moment for moment in (_parse_iso(value) for value in declared) if moment is not None]
+    if stamps:
+        return stamps
+    edges = (getattr(artifact, "valid_time_start", None), getattr(artifact, "valid_time_end", None))
+    return [moment for moment in (_parse_iso(value) for value in edges) if moment is not None]
+
+
+def retained_runs(store: Any) -> list[RetainedRun]:
+    """The runs this deployment still holds, folded from retained revisions.
+
+    Raises :class:`StoreUnavailable` when the store cannot answer, because an
+    unknown retention state is not an empty one: reporting "nothing covers
+    this instant" for a store that simply could not be read would be a claim
+    about the evidence rather than about the request.
+    """
+    reader = getattr(store, "retained_artifacts", None)
+    if reader is None:
+        raise StoreUnavailable("this artifact store cannot report retained revisions")
+    try:
+        artifacts = reader()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001 - any driver failure is the same answer
+        raise StoreUnavailable(f"retained revisions could not be read: {error}") from error
+
+    folded: dict[tuple[str, str], list[datetime]] = {}
+    declared_run_times: dict[tuple[str, str], datetime | None] = {}
+    for artifact in artifacts:
+        key = (str(artifact.source_id), str(artifact.provider_run_id))
+        folded.setdefault(key, []).extend(_revision_frame_stamps(artifact))
+        if declared_run_times.get(key) is None:
+            declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
+    runs: list[RetainedRun] = []
+    for (source_id, provider_run_id), stamps in folded.items():
+        runs.append(
+            RetainedRun(
+                source_id=source_id,
+                provider_run_id=provider_run_id,
+                run_time=declared_run_times.get((source_id, provider_run_id)),
+                frame_start=min(stamps) if stamps else None,
+                frame_end=max(stamps) if stamps else None,
+            )
+        )
+    return sorted(runs, key=lambda run: (run.source_id, run.provider_run_id))
+
+
+def source_reach(source_id: str) -> Any | None:
+    """The declared reach of a source, or ``None`` when it declares none."""
+    config = _registry_config(source_id)
+    return getattr(config, "reach", None) if config is not None else None
+
+
+def source_run_cadence_seconds(source_id: str) -> int | None:
+    """The declared producer run cadence of a source, in seconds."""
+    config = _registry_config(source_id)
+    cadence = getattr(config, "run_cadence_seconds", None) if config is not None else None
+    return int(cadence) if cadence else None
 
 
 def stream_last_valid_times(store: Any) -> dict[tuple[str, str], datetime]:
