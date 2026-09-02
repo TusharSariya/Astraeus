@@ -57,37 +57,33 @@ Owner gates 6.1 to 6.4 recorded against tickets 17, 22, 24, 25 and 28.
 
 Open: task 4.2, the 700 px and 900 px browser passes. Running in wave 1.
 
-### Blocked: `test_layer_frame_contract.py` asserts a server-side frame fallback no accepted requirement grants (2026-09-02)
+### Resolved: `test_layer_frame_contract.py` asserted a server-side frame fallback no accepted requirement grants (2026-09-02)
 
-`test_a_frame_advertised_before_the_artifact_rolled_still_draws[goes19-cloud-mask]`
-and `[swpc-aurora-oval]` fail on every branch, and this is not time-window
-flakiness: both parametrisations use fixed instants
-(`test_satellite_layer.scan_times()[-1]`, `test_aurora_layer.FORECAST_INSTANT`)
-and the file has exactly one commit in its history, `1062de8`, which introduced
-it already failing. Nothing later moved the clock or the render path. The test
-rolls a single-scan artifact forward by ten minutes and then demands that
-`/layers/{id}/raster` answer the now-absent instant with `200` plus a
-substituted `X-Weather-Valid-Time`. `grids.render_grid_image` (and the same
-check in `aurora.py`) instead raises `FrameNotStored` at 600 s against a 300 s
-tolerance, which is exactly what map-layers **"A layer declares a staleness
-tolerance and renders nothing beyond it"** requires — "the client SHALL render
-nothing and say why" — and what the pending `goes19-cloud-mask-overlay`
-requirement **"Frames are observed scans only and staleness fails closed"**
-spells out as "beyond that the answer is 422 naming the nearest stored frame".
-The code is conforming; the test asserts the opposite of the accepted rule.
-Nor does the pending `frame-fallback-and-viewport-layout` change rescue it: its
-proposal states "No API or server change" and leaves "`/features` exact-frame
-and server-side 422 rules unchanged", it places fallback in `web/src/` behind a
-mandatory on-map disclosure, and it constrains observed groups (`satellite`,
-`observation`, and any undeclared group — which covers both layers here) to
-fall back **previous-only**, never to a later frame and never for an instant
-after the session reference. The substitute this test demands is the *newer*
-scan, which that change forbids even on the client. Resolving this needs an
-owner decision, not a code edit: either the test is withdrawn or rewritten
-against the client-side, previous-only, disclosed fallback, or a new accepted
-requirement authorises a server-side snap on the raster path and says how the
-response discloses it. No code was changed. Full suite on
-`fix/layer-frame-contract`: 672 passed, 30 skipped, 2 failed — the two above.
+`test_a_frame_advertised_before_the_artifact_rolled_still_draws` failed on
+every branch, and it was not time-window flakiness: the file has one commit in
+its history, `1062de8`, which introduced it already failing, and both
+parametrisations use fixed instants. It demanded that a rolled-away instant
+answer `200` with a substituted `X-Weather-Valid-Time`, where map-layers **"A
+layer declares a staleness tolerance and renders nothing beyond it"** and the
+pending `goes19-cloud-mask-overlay` requirement **"Frames are observed scans
+only and staleness fails closed"** both require a 422 naming the nearest stored
+frame — which is what `grids.render_grid_image` and `aurora.py` do. Nor did
+`frame-fallback-and-viewport-layout` grant it: that change states "No API or
+server change", keeps fallback in `web/src/` behind a visible disclosure, and
+constrains observed groups to fall back previous-only, while the test demanded
+the *newer* scan. Decision: the code conforms and the test was wrong. It is
+rewritten as
+`test_a_frame_rolled_beyond_tolerance_is_refused_naming_the_nearest_scan`,
+asserting the 422 and that the body names the nearest stored frame's valid
+time, on the same fixed instants. The owner may reverse this by writing a
+requirement that authorises a server-side snap on the raster path and says how
+the response discloses the substituted instant; the test would then be
+rewritten against that requirement.
+
+Caveat carried forward: the accepted heading in `openspec/specs/map-layers/`
+still reads "renders nothing beyond it", while `openspec/config.yaml` already
+carries the amended fallback-with-disclosure wording as a governing rule. The
+two should be reconciled when `frame-fallback-and-viewport-layout` is archived.
 
 ### Step 3: evidence-classes-and-derived-here
 

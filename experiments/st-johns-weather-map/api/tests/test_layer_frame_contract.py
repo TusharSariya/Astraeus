@@ -1,28 +1,33 @@
 """The frame contract every drawable layer owes its client, layer by layer.
 
-One rule, asserted the same way for every layer that publishes a frame axis:
+Two rules, asserted the same way for every layer that publishes a frame axis:
 
-    **A frame the layer index advertised must render.**
+    **A frame the layer index advertises right now must render.**
+    **An instant beyond the layer's tolerance is refused, naming what exists.**
 
 A client learns which instants exist from ``/layers`` and then asks for one of
-them by name. Between those two requests the store may roll forward. A layer
-that keeps its history still holds the old instant, so the rule costs it
-nothing. A layer whose artifact holds a SINGLE scan loses the instant the
-client is holding the moment the next scan lands, and the render path then
-refuses it - so the layer blanks, having advertised it moments earlier.
+them by name. While the two agree, the frame draws. Between those two requests
+the store may roll forward; a layer whose artifact holds a SINGLE scan then
+loses the instant the client is holding the moment the next scan lands.
 
-That is a contract break rather than a staleness policy. Fail-closed means
-refusing to draw what was not retrieved; the newest scan of an observed layer
-IS retrieved evidence, and it is the nearest thing that exists to what was
-asked for. Refusing it draws nothing while the truthful answer - this scan, at
-this instant, named in ``X-Weather-Valid-Time`` - was in hand. The client
-already discloses a snapped frame; it cannot disclose a 422.
+The server does not substitute a neighbour for it. Beyond the declared
+staleness tolerance the answer is a 422 naming the nearest stored frame, per
+the accepted map-layers requirement "A layer declares a staleness tolerance and
+renders nothing beyond it" and the `goes19-cloud-mask-overlay` requirement
+"Frames are observed scans only and staleness fails closed". Fallback is the
+web map's job, not this API's: `frame-fallback-and-viewport-layout` puts it in
+``web/src/`` behind a visible on-map disclosure, previous-only for observed
+groups, and states that the server-side 422 rules are unchanged. So the 422
+here is the contract holding, and its body is what lets the client disclose a
+neighbour instead of guessing one.
 
 Stub-driven, so this runs in ``make test`` with no stack. The sweep over the
 real catalogue on a running stack is ``test_layer_contract_live.py``.
 """
 
 from __future__ import annotations
+
+from datetime import datetime, timedelta
 
 import numpy
 import pytest
@@ -141,16 +146,17 @@ def test_every_advertised_frame_renders(monkeypatch, data_mode, layer_id, datase
 
 
 @pytest.mark.parametrize(("layer_id", "dataset", "artifact", "bounds"), ARTIFACT_LAYERS)
-def test_a_frame_advertised_before_the_artifact_rolled_still_draws(
+def test_a_frame_rolled_beyond_tolerance_is_refused_naming_the_nearest_scan(
     monkeypatch, data_mode, layer_id, dataset, artifact, bounds
 ):
-    """The single-scan race, which is what blanks GOES-19 on a live map.
+    """The single-scan race is refused, not silently substituted.
 
     The client reads the index, holds the instant, and asks for it one cadence
-    later. Nothing about that sequence is unusual - it is every client that
-    does not re-read ``/layers`` between frames, which is all of them between
-    catalogue polls. The layer must answer with the scan it does hold, naming
-    that scan's own instant, rather than refusing and drawing nothing.
+    later, by which time the only stored scan has been replaced by one ten
+    minutes on - twice the 300 s tolerance away. The server neither draws that
+    newer scan nor invents one: it answers 422 and names the instant it does
+    hold, which is exactly what the web map needs to disclose a neighbouring
+    frame under its own previous-only fallback rules.
     """
     use_store(monkeypatch, data_mode, StubStore(dataset(), artifact()))
     advertised = _advertised_times(layer_id)
@@ -161,10 +167,15 @@ def test_a_frame_advertised_before_the_artifact_rolled_still_draws(
     use_store(monkeypatch, data_mode, StubStore(dataset(TEN_MINUTES), artifact()))
 
     response = _raster(layer_id, held, bounds)
-    assert response.status_code == 200, (
-        f"{layer_id} advertised {held}; one scan later it renders {response.status_code}, "
-        f"so a client holding the previous index draws nothing: {response.text}"
+    assert response.status_code == 422, (
+        f"{layer_id} no longer stores {held}, which is beyond its tolerance, so it must be "
+        f"refused rather than answered with a neighbouring scan: {response.status_code} {response.text}"
     )
-    # Whatever it drew, it must date it honestly: the scan it holds, not the
-    # instant that was asked for.
-    assert response.headers["X-Weather-Valid-Time"] != held
+    # The refusal has to say what DOES exist, or the client cannot disclose a
+    # fallback frame without guessing at one.
+    nearest = datetime.fromisoformat(held.replace("Z", "+00:00")) + timedelta(minutes=10)
+    detail = response.json()["detail"]
+    assert nearest.isoformat() in detail, (
+        f"{layer_id} refused {held} without naming the nearest stored frame "
+        f"{nearest.isoformat()}: {detail}"
+    )
