@@ -55,7 +55,7 @@ Not touched: `api/`, `ingest/`, `registry/`, `compose.yaml`, `docs/specv1`.
       and focus return); expert mode unchanged; responsive fallback below
       900 px.
       Verify: `cd web && npm test -- --run && npm run build`
-- [ ] 4.2 Browser pass in both themes at 700/900/1050+ widths, in loading,
+- [x] 4.2 Browser pass in both themes at 700/900/1050+ widths, in loading,
       unavailable and live states; expert-mode regression check.
       Verify: `make up` then manual checklist in the change proposal
       Status 2026-08-31: verified live at desktop width in both themes and in
@@ -119,6 +119,65 @@ Not touched: `api/`, `ingest/`, `registry/`, `compose.yaml`, `docs/specv1`.
       Not exercised: the display-compositing blend note, which needs a
       forecast layer straddling two frames with interpolation on; the
       2026-08-31 desktop pass covered it and this pass did not repeat it.
+
+      Status 2026-09-02 (re-run, PASSED). The label overlap above was fixed
+      (task 4.3) and the whole pass repeated against a build of this branch:
+      `npm run build`, then a Vite dev server from the worktree on port 5200
+      proxying the live API on 8000, driven through the same same-origin
+      700/900 px iframe. (`vite preview` was tried first and rejected: its SPA
+      fallback answers `/api/...` with `index.html` and a 200, so the app would
+      have been read against a dead API that looked alive.)
+      Verify result: PASSED at 700 px and 900 px, in both themes.
+      - Scale labels: no overlapping pair at any width, theme or state, every
+        label inside the rail. At 700 px (rail 646 px) the axis reads
+        `-3h · Now (0h) · +6h · +12h · +18h · +24h (Forecast)` with a smallest
+        gap of 29.6 px: `-1h` is thinned out and the past boundary sheds its
+        "(Past)". At 900 px (rail 846 px) `-3h (Past)` is back in full and the
+        smallest gap is 9.7 px. The eight quick jumps and all 16 frame markers
+        are unchanged with the layers on.
+      - Layout: no horizontal overflow anywhere; map pane 700x570 / 900x570
+        with the dock directly beneath (700: 662-880; 900: 648-866), both
+        inside a 950 px viewport.
+      - Story flyout opens, takes focus, closes on Escape and returns focus, at
+        700 px and 900 px in both themes.
+      - Loading (delayed `/point`): "CHECKING API · NO EVIDENCE SHOWN YET",
+        hero "Unknown". Unavailable (rejected `/point`): "NO LIVE EVIDENCE
+        RETRIEVED", hero "Unknown", no digit in the hero block. Dock still at
+        889 px, inside the viewport, in both.
+      - Fallback disclosure: with GOES-East day visible / night IR on,
+        interpolation on and the scrub at +12h, the on-map note reads "not
+        shown - observed imagery has no frames for future instants", inside the
+        viewport, with the same sentence in the drawer row (plus its jump
+        button, naming the 03:00 p.m. frame 12.5 h earlier) and in the text
+        alternative. With interpolation OFF the quick jump snaps back onto a
+        published frame and resolves exactly, which is the snap rule working,
+        not a missing note.
+      - Expert mode at 700 px and 900 px, both themes: scrolling layout intact,
+        no dock or scrubber, provenance table present, no overflow.
+      - Console: no errors.
+      - Noted, not a layout fault: this branch also carries
+        `evidence-classes-and-derived-here`, and the live API does not yet send
+        `provenance.evidence_class`. Every reading therefore renders as
+        "Unavailable · unrecognised evidence class - the response declared
+        none", and every layer badge as unrecognised. That is the required
+        behaviour of a required field with no default, against an API whose own
+        tasks (1.1-2.4) have not landed; it changes no geometry, and the
+        loading and unavailable states are unaffected by it.
+
+- [x] 4.3 Thin the scrubber's scale labels against the measured rail so none
+      is ever drawn over another, keeping the past boundary, `Now` and the
+      future boundary; frame markers and quick jumps untouched.
+      Verify: `cd web && npm test -- --run scrubberAxis`
+      Verify result: 14 passed. `placeScaleMarks` in `web/src/scrubberAxis.ts`
+      places marks in priority order (`Now`, future boundary, past boundary,
+      then the rest in axis order) and keeps one only when its measured box
+      clears every box already placed by 8 px; a boundary tries its long form,
+      then its short form, before it would be dropped. Asserted non-overlapping
+      at 700, 860, 900 and 1200 px rails and at every integer width from 600 to
+      2000 px, with the three orienting marks present throughout. The component
+      measures the rail with a `ResizeObserver` and the text with a canvas in
+      the rail's own font; an unmeasured rail (first paint, or a runtime with no
+      layout) renders every long label, which is the pre-existing behaviour.
 
 ## 5. Conventions and validation
 

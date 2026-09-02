@@ -51,7 +51,12 @@ six-minute radar cadence. Toggling a layer SHALL NOT move the selected
 instant; only a scrub action snaps. The session reference instant SHALL be
 fixed once, so resolved frames do not slide under the reader between renders.
 Quick jumps SHALL be offered for the standard offsets and SHALL snap by the
-same rule.
+same rule. The scale labels along the rail SHALL never be drawn over one
+another at any rail width: the client SHALL measure the rail and drop or
+shorten labels until each is clear of its neighbours, always keeping the past
+boundary, the present and the future boundary legible. Thinning SHALL apply to
+the scale labels alone: every published frame marker and every quick jump
+SHALL remain exactly as they are.
 
 #### Scenario: Scrubbing to a radar frame
 - **WHEN** interpolation is off, radar is the only active layer, and the reader drags the scrubber between two radar frames
@@ -72,6 +77,10 @@ same rule.
 #### Scenario: The reference does not drift
 - **WHEN** the component re-renders
 - **THEN** the window and every resolved frame are computed from the same session reference instant, not from a fresh clock read
+
+#### Scenario: A narrow rail thins the scale labels
+- **WHEN** the rail is too narrow for every scale label, as at a 700 px viewport where `-3h`, `-1h` and `Now` fall within 4% of the axis of each other
+- **THEN** no label is drawn over another: the crowded intermediate labels are dropped and a boundary label sheds its parenthetical before it is dropped, while the past boundary, `Now` and the future boundary stay on screen and the frame markers and quick jumps are unchanged
 
 ## ADDED Requirements
 
