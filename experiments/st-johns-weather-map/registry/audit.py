@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Validate, audit, and export the experimental source registry."""
+"""Validate, audit, and export the experimental source registry and field catalogue."""
 
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ import jsonschema
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import fields as field_catalogue  # noqa: E402
 from source_data import registry  # noqa: E402
 
 ALLOWED_STATUSES = {
@@ -20,10 +22,72 @@ ALLOWED_STATUSES = {
     "unavailable", "duplicate_evidence", "unsupported_field", "retired", "rejected",
 }
 
+#: Where adapter manifests live. Read statically rather than imported: the audit
+#: must run in CI without numpy, xarray or a network stack, and an adapter that
+#: cannot be imported must still have its declared keys checked.
+INGEST_ROOT = HERE.parent / "ingest"
+
 
 def load_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def declared_field_keys(root: Path = INGEST_ROOT) -> dict[str, list[str]]:
+    """Every literal field key an adapter manifest declares, by file.
+
+    Parsed out of the source rather than imported, so this stays a cheap CI
+    check. A key built at run time from a binding table is caught instead by the
+    manifest validation in ``ingest.manifest``, which resolves against the same
+    catalogue; what is checked here is every key an author wrote down.
+    """
+    found: dict[str, list[str]] = {}
+    if not root.is_dir():
+        return found
+    for path in sorted(root.rglob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        keys: list[str] = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if getattr(node.func, "id", None) != "RequiredField":
+                continue
+            name: ast.expr | None = node.args[0] if node.args else None
+            for keyword in node.keywords:
+                if keyword.arg == "name":
+                    name = keyword.value
+            if isinstance(name, ast.Constant) and isinstance(name.value, str):
+                keys.append(name.value)
+        if keys:
+            found[str(path.relative_to(root.parent))] = sorted(set(keys))
+    return found
+
+
+def catalogue_errors() -> list[str]:
+    """Schema and semantic errors in the field catalogue, adapter keys included.
+
+    The catalogue is the only source of field keys, so a key an adapter declares
+    that the catalogue lacks is an error here and not only at publication time:
+    an adapter whose manifest cannot validate is not schedulable, and CI is
+    where that should be found.
+    """
+    data = field_catalogue.catalogue()
+    schema = load_json(HERE / "fields.schema.json")
+    validator = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
+    errors = [
+        f"catalogue schema {'.'.join(str(part) for part in error.absolute_path) or '<root>'}: {error.message}"
+        for error in sorted(validator.iter_errors(data), key=lambda item: list(item.absolute_path))
+    ]
+    declared = declared_field_keys()
+    errors.extend(
+        field_catalogue.validate_catalogue(
+            adapter_keys=[key for keys in declared.values() for key in keys]
+        )
+    )
+    return errors
 
 
 def delivery_kind_errors(source: dict[str, Any]) -> list[str]:
@@ -154,6 +218,7 @@ def validate(data: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[s
     validator = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
     errors = [f"schema {'.'.join(str(p) for p in error.absolute_path) or '<root>'}: {error.message}" for error in sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path))]
     errors.extend(semantic_errors(data, coverage))
+    errors.extend(catalogue_errors())
     return data, errors
 
 
@@ -183,6 +248,27 @@ def summary(data: dict[str, Any]) -> dict[str, Any]:
         "not_display_primary": sorted(
             source["id"] for source in data["sources"] if not source.get("display_primary")
         ),
+        "catalogue": catalogue_summary(),
+    }
+
+
+def catalogue_summary() -> dict[str, Any]:
+    """What the field catalogue holds, in the shape a reader can check at a glance."""
+    data = field_catalogue.catalogue()
+    declared = declared_field_keys()
+    adapter_keys = sorted({key for keys in declared.values() for key in keys})
+    return {
+        "catalogue_version": data["catalogue_version"],
+        "as_of": data["as_of"],
+        "field_count": len(data["fields"]),
+        "families": {name: len(field_catalogue.members(name)) for name in sorted(
+            family["name"] for family in data["families"]
+        )},
+        "adapter_keys_declared": len(adapter_keys),
+        "adapter_keys_resolved": sum(1 for key in adapter_keys if field_catalogue.has_field(key)),
+        "available_not_stored": len(field_catalogue.available_not_stored()),
+        "not_published": len(field_catalogue.not_published()),
+        "sources_mapped": len(field_catalogue.mapped_sources()),
     }
 
 
@@ -190,7 +276,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--export", action="store_true", help="write the fully materialized registry JSON to stdout")
     parser.add_argument("--summary-json", action="store_true", help="write audit summary JSON to stdout")
+    parser.add_argument("--export-catalogue", action="store_true", help="write the field catalogue JSON to stdout")
     args = parser.parse_args(argv)
+    if args.export_catalogue:
+        errors = catalogue_errors()
+        if errors:
+            for error in errors:
+                print(f"ERROR: {error}", file=sys.stderr)
+            return 1
+        json.dump(field_catalogue.catalogue(), sys.stdout, indent=2, sort_keys=True)
+        print()
+        return 0
     data, errors = validate()
     if errors:
         for error in errors:
@@ -206,6 +302,16 @@ def main(argv: list[str] | None = None) -> int:
         report = summary(data)
         print(f"registry valid: {report['source_count']} sources, version {report['registry_version']}, as of {report['as_of']}")
         print("statuses: " + ", ".join(f"{key}={value}" for key, value in report["status_counts"].items()))
+        catalogue = report["catalogue"]
+        print(
+            f"catalogue valid: {catalogue['field_count']} fields in {len(catalogue['families'])} "
+            f"families, version {catalogue['catalogue_version']}, as of {catalogue['as_of']}"
+        )
+        print(
+            f"adapter keys: {catalogue['adapter_keys_resolved']}/{catalogue['adapter_keys_declared']} resolved; "
+            f"{catalogue['available_not_stored']} available-not-stored, "
+            f"{catalogue['not_published']} not-published across {catalogue['sources_mapped']} sources"
+        )
     return 0
 
 

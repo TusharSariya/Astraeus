@@ -121,3 +121,156 @@ def test_the_manifest_block_records_evidence_classes_per_variable():
         "evidence_classes": ["derived_here", "retrieved"],
         "evidence_class_by_variable": {"temperature_2m": "retrieved", "fog_closure": "derived_here"},
     }
+
+
+# --- catalogue key and unit validation ------------------------------------
+#
+# Spec-Refs: openspec/changes/field-catalogue-and-families/specs/field-catalogue/spec.md
+#            openspec/changes/field-catalogue-and-families/specs/artifact-ingestion/spec.md
+
+
+def humidity_dataset(*, convention: str | None = "liquid_water", units: str = "percent") -> xarray.Dataset:
+    """A one-variable run carrying a screen humidity, with or without its phase."""
+    stamps = numpy.array([numpy.datetime64(T0.replace(tzinfo=None), "ns")])
+    attrs: dict[str, str] = {"units": units}
+    if convention is not None:
+        attrs["rh_phase_convention"] = convention
+    return xarray.Dataset(
+        {
+            "relative_humidity_2m": (
+                ("valid_time", "latitude", "longitude"),
+                numpy.full((1, 2, 2), 80.0),
+                attrs,
+            )
+        },
+        coords={
+            "valid_time": stamps,
+            "latitude": numpy.array([47.0, 48.0]),
+            "longitude": numpy.array([-53.0, -52.0]),
+        },
+    )
+
+
+def humidity_manifest() -> RunManifest:
+    return RunManifest(
+        source_id="eccc-hrdps",
+        fields=(RequiredField(name="relative_humidity_2m", units="percent"),),
+    )
+
+
+def test_a_manifest_naming_a_key_the_catalogue_lacks_is_refused_at_declaration():
+    """``total_cloud`` is the collision this catalogue exists to stop: three
+    adapters declared it and two of them meant different quantities. It is not a
+    key any more, and a manifest that names it cannot be built at all, so the
+    adapter is never schedulable."""
+    with pytest.raises(ManifestError, match="uncatalogued_field:total_cloud"):
+        RequiredField(name="total_cloud", units="percent")
+
+
+def test_a_catalogue_key_with_the_wrong_unit_is_refused_at_declaration():
+    with pytest.raises(ManifestError, match="bad_units:temperature_2m"):
+        RequiredField(name="temperature_2m", units="K")
+
+
+def test_the_split_cloud_keys_all_resolve_against_the_catalogue():
+    for name in ("total_cloud_opacity", "total_cloud_geometric", "total_cloud_mean_6h", "total_cloud_okta"):
+        field = RequiredField(name=name, units="percent")
+        assert field.catalogue_field.family == "cloud_cover"
+
+
+def test_a_level_expanded_variable_resolves_to_its_profile_key():
+    """The GRIB adapters write one variable per pressure level; the catalogue
+    keeps one key with a level coordinate, and the two meet here."""
+    field = RequiredField(name="relative_humidity_850hPa", units="percent")
+    assert field.catalogue_field.key == "relative_humidity_pressure"
+    assert field.catalogue_field.level_coordinate == "pressure"
+
+
+def test_a_humidity_without_its_phase_fails_qc():
+    """A threshold calibrated on one saturation phase is not transferable to the
+    other, so a humidity that cannot say which it is is not evidence."""
+    result = validate_run(humidity_manifest(), humidity_dataset(convention=None), window=WINDOW)
+
+    assert result.publishable is False
+    assert result.qc_passed is False
+    assert any(flag.startswith("missing_phase:relative_humidity_2m") for flag in result.flags), result.flags
+
+
+def test_a_humidity_with_an_unrecognised_phase_convention_fails_qc():
+    result = validate_run(
+        humidity_manifest(), humidity_dataset(convention="whatever_felt_right"), window=WINDOW
+    )
+
+    assert result.publishable is False
+    assert any(flag.startswith("missing_phase:") for flag in result.flags), result.flags
+
+
+def test_a_humidity_carrying_a_measured_phase_publishes():
+    result = validate_run(humidity_manifest(), humidity_dataset(), window=WINDOW)
+
+    assert result.publishable is True
+    assert result.flags == ()
+
+
+def test_a_catalogue_unit_the_data_contradicts_fails_qc_as_bad_units():
+    result = validate_run(humidity_manifest(), humidity_dataset(units="1"), window=WINDOW)
+
+    assert result.qc_passed is False
+    assert any(flag.startswith("bad_units:relative_humidity_2m") for flag in result.flags), result.flags
+
+
+def test_an_uncatalogued_upstream_coverage_is_reported_and_does_not_block_the_run():
+    """A GeoMet source is subset server side, so its scope is every published
+    field. A coverage the catalogue does not know must be named, and must not
+    stop the fields it does know from publishing."""
+    result = validate_run(
+        humidity_manifest(),
+        humidity_dataset(),
+        window=WINDOW,
+        upstream_fields=("HRDPS.CONTINENTAL_HR", "HRDPS.CONTINENTAL_SOMETHING_NEW"),
+    )
+
+    assert result.publishable is True, result.flags
+    assert result.notices == ("uncatalogued_upstream_field:HRDPS.CONTINENTAL_SOMETHING_NEW",)
+    assert result.as_quality()["notices"] == ["uncatalogued_upstream_field:HRDPS.CONTINENTAL_SOMETHING_NEW"]
+
+
+def test_a_run_with_nothing_uncatalogued_carries_no_notices_block():
+    """The provenance quality block keeps its existing shape when there is
+    nothing to report; a notices key that is always present would be noise."""
+    result = validate_run(
+        humidity_manifest(), humidity_dataset(), window=WINDOW, upstream_fields=("HRDPS.CONTINENTAL_HR",)
+    )
+
+    assert result.notices == ()
+    assert "notices" not in result.as_quality()
+
+
+def test_a_class_the_catalogue_forbids_on_a_field_fails_qc():
+    """Sun altitude is computed here from a pinned ephemeris; no producer issues
+    it, so a manifest calling it retrieved is refused."""
+    manifest_entry = RunManifest(
+        source_id="nasa-jpl-de442",
+        fields=(RequiredField(name="sun_altitude", units="degree", evidence_class="retrieved"),),
+    )
+    stamps = numpy.array([numpy.datetime64(T0.replace(tzinfo=None), "ns")])
+    data = xarray.Dataset(
+        {
+            "sun_altitude": (
+                ("valid_time", "latitude", "longitude"),
+                numpy.full((1, 2, 2), 12.0),
+                {"units": "degree"},
+            )
+        },
+        coords={
+            "valid_time": stamps,
+            "latitude": numpy.array([47.0, 48.0]),
+            "longitude": numpy.array([-53.0, -52.0]),
+        },
+    )
+    result = validate_run(manifest_entry, data, window=WINDOW)
+
+    assert result.qc_passed is False
+    assert any(
+        flag.startswith("evidence_class_not_permitted:sun_altitude:retrieved") for flag in result.flags
+    ), result.flags

@@ -227,7 +227,7 @@ GFS_MANIFEST = RunManifest(
         RequiredField("mean_sea_level_pressure", "hPa", level="mean sea level"),
         RequiredField("relative_humidity_2m", "percent", level="2 m", optional=True),
         RequiredField("visibility", "m", optional=True),
-        RequiredField("total_cloud", "percent", level="column", optional=True),
+        RequiredField("total_cloud_geometric", "percent", level="column", optional=True),
         RequiredField("cloud_low", "percent", level="low cloud layer", optional=True),
         RequiredField("cloud_middle", "percent", level="middle cloud layer", optional=True),
         RequiredField("cloud_high", "percent", level="high cloud layer", optional=True),
@@ -283,7 +283,7 @@ GFS_VAR_MAP = {
     "v10": "wind_v_10m",
     "prmsl": "mean_sea_level_pressure",
     "vis": "visibility",
-    "tcc": "total_cloud",
+    "tcc": "total_cloud_geometric",
     "lcc": "cloud_low",
     "mcc": "cloud_middle",
     "hcc": "cloud_high",
@@ -513,7 +513,18 @@ class NOAAS3Adapter:
                         if canonical is None:
                             continue
                         # ``load`` materialises before the finally-unlink below.
-                        step_fields[canonical] = strip_message_scalars(normalized[var_name].load())
+                        surface_field = strip_message_scalars(normalized[var_name].load())
+                        # The screen humidity needs the same measured phase
+                        # stamp as the isobaric levels above: it is the same
+                        # mixed-phase saturation, and the catalogue refuses a
+                        # humidity that cannot say which one it is.
+                        if canonical.startswith("relative_humidity_"):
+                            surface_field = declare_rh_phase(
+                                surface_field,
+                                convention=RH_PHASE_MIXED_LINEAR_253K_273K,
+                                basis=GFS_RH_PHASE_BASIS,
+                            )
+                        step_fields[canonical] = surface_field
                 except Exception as error:
                     decode_errors.append(f"decode:{base_filename}:{short_name}")
                     _log.warning("Failed decoding GFS %s message %s: %s", base_filename, short_name, error)

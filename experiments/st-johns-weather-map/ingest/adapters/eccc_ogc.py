@@ -27,10 +27,25 @@ from ingest.contract import (
     RunCandidate,
     RunResult,
 )
-from ingest.grib import write_zarr
+from ingest.grib import RH_PHASE_LIQUID_WATER, write_zarr
 from ingest.http import PoliteClient
 from ingest.manifest import RequiredField, RunManifest, validate_run
 from ingest.registry import register
+
+#: The catalogue requires a phase on every humidity value, and this one is
+#: declared rather than measured. A model's RH definition can be reconstructed
+#: from the model's own specific humidity; a station's cannot, because the SWOB
+#: report publishes no specific humidity to reconstruct it from. What can be
+#: stated is the convention the instrument is operated under, and that it was
+#: not verified here - which is what this basis string says, so a reader can
+#: weigh it as a weaker claim than the measured model bases in ingest.grib.
+SWOB_RH_PHASE_BASIS = (
+    "declared, not measured: WMO-CIMO surface humidity is reported with respect to "
+    "saturation over liquid water at all temperatures, and ECCC SWOB rel_hum is published "
+    "under that convention. Unlike the ECCC and GFS model bases, this was NOT reconstructed "
+    "from the producer's own specific humidity, because a SWOB report publishes none. Treat "
+    "it as the operating convention rather than a measurement of this feed."
+)
 
 UTC = timezone.utc
 _log = logging.getLogger(__name__)
@@ -260,7 +275,16 @@ class ECCCOGCSWOBAdapter:
             {
                 "temperature_2m": (("valid_time", "latitude", "longitude"), temp_arr, {"units": "degC", "original_units": "degC"}),
                 "dew_point_2m": (("valid_time", "latitude", "longitude"), dewp_arr, {"units": "degC", "original_units": "degC"}),
-                "relative_humidity_2m": (("valid_time", "latitude", "longitude"), rh_arr, {"units": "percent", "original_units": "percent"}),
+                "relative_humidity_2m": (
+                    ("valid_time", "latitude", "longitude"),
+                    rh_arr,
+                    {
+                        "units": "percent",
+                        "original_units": "percent",
+                        "rh_phase_convention": RH_PHASE_LIQUID_WATER,
+                        "rh_phase_basis": SWOB_RH_PHASE_BASIS,
+                    },
+                ),
                 "mean_sea_level_pressure": (("valid_time", "latitude", "longitude"), pres_arr, {"units": "hPa", "original_units": "hPa"}),
                 "wind_u_10m": (("valid_time", "latitude", "longitude"), wind_u_arr, {"units": "m s-1", "original_units": "m s-1"}),
                 "wind_v_10m": (("valid_time", "latitude", "longitude"), wind_v_arr, {"units": "m s-1", "original_units": "m s-1"}),
