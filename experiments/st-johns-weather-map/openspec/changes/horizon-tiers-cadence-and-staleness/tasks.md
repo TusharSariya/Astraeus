@@ -65,9 +65,17 @@ so the two changes may run concurrently.
 
 ## 3. API: tiers, coverage, run staleness (API owner)
 
-- [ ] 3.1 Serve the two tier ranges, compute per-instant coverage from declared
+- [x] 3.1 Serve the two tier ranges, compute per-instant coverage from declared
   reach against runs actually retrieved, and refuse an instant in neither tier.
   Verify: `cd api && uv run pytest tests/test_timeline.py -k "tier or coverage"`
+  Verify result: `cd api && uv run pytest tests/test_timeline.py -k "tier or
+  coverage"` -> 15 passed, 10 deselected. Also `cd api && uv run pytest` ->
+  871 passed, 36 skipped (856 before, plus the 15 new). The coverage read is
+  `ArtifactStore.retained_artifacts`, ranked by the same two-run ceiling
+  `prune` enforces; `current_artifacts` is unchanged. A run whose adapter
+  declared no run time is credited only where it demonstrably published
+  frames, because a reach is stated relative to a run time and the
+  `model_runs` retrieval stamp is not one.
 - [ ] 3.2 Carry `run_time` and `run_stale` (older than twice the declared run
   cadence) on every frame, null with a reason where the run time or cadence is
   unknown, and never withhold a frame for being run-stale.
