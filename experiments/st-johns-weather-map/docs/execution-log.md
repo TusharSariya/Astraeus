@@ -110,3 +110,30 @@ Facts worth knowing after this step:
 - Ensemble statistics and sector sampling are registered disabled until
   steps 7 and 9 implement them. No Open-Meteo adapter exists yet, so the
   WeatherNext 2 record has no artifact.
+
+Landed as PR #31 (`execution/evidence-classes`), 2026-09-02.
+
+### Step 4: field-catalogue-and-families
+
+Branch `execution/field-catalogue`, stacked on step 3.
+
+Wave 1 (2026-09-02): registry and ingest owner alone, because the catalogue
+is the seam the other two code against. Result: `registry/fields.py` with
+135 fields in 20 families; 43 adapter keys resolved; 44 fields
+`available-not-stored` and 15 `not-published` across 28 sources;
+`total_cloud` split into `total_cloud_opacity` (ECCC GEM),
+`total_cloud_geometric` (GFS, ECMWF, ICON), `total_cloud_mean_6h` (GEFS) and
+`total_cloud_okta` (METAR, TAF); the GeoMet pressure profile is
+`relative_humidity_pressure`; the phase attribute is required on every
+humidity field. Deviations recorded in the change's design.md: transparency
+has three encodings, not four (column water vapour stays
+`precipitable_water`); GRIB profile variables stay one 2-D variable per level
+on disk and `catalogue.resolve()` maps them to the one key plus level;
+`uncatalogued_upstream_field` covers requested coverages only; per-field
+class enforcement moved to `validate_run`.
+
+Wave 2 (2026-09-02): API owner (3.0 re-key of the API tables, 3.1, 3.2) and
+web owner (4.1) in parallel against a response contract fixed up front: per
+field `key`, `family`, `phase`, `storage`; per response `comparability`
+pairs; per catalogue source `fields`; uncatalogued variables refused with
+the `uncatalogued_field` flag.
