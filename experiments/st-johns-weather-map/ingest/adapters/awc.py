@@ -515,6 +515,10 @@ class AWCMetarAdapter:
             "coverage": validation.as_coverage(),
             "station_id": "CYYT",
             "original_units": _original_units(dataset),
+            # A report is retrieved exactly as the station coded it; the
+            # manifest is what says so, so the declaration comes from there
+            # rather than being written out again here.
+            **METAR_MANIFEST.as_manifest_block(),
         }
 
         artifact = Artifact(
@@ -682,6 +686,10 @@ class AWCTafAdapter:
             "coverage": validation.as_coverage(),
             "station_id": "CYYT",
             "original_units": _original_units(dataset),
+            # A report is retrieved exactly as the station coded it; the
+            # manifest is what says so, so the declaration comes from there
+            # rather than being written out again here.
+            **TAF_MANIFEST.as_manifest_block(),
         }
 
         artifact = Artifact(

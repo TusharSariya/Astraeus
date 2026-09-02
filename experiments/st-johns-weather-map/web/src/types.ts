@@ -29,6 +29,54 @@ export interface ProvenanceRow {
   /** Every `provenance.derivation` string this provider/product reported, one
    *  per derived field. Empty means every field of it was a provider value. */
   derivations: string[]
+  /** Every evidence class this provider/product reported, deduplicated in
+   *  first-seen order. A row carrying more than one says so. */
+  evidenceClasses: ResolvedEvidenceClass[]
+}
+
+/** How a value came to exist, as `provenance.evidence_class` declares it.
+ *  Required on every served value, with no default (ADR 0001). */
+export type EvidenceClass =
+  | 'retrieved'
+  | 'reprocessed'
+  | 'derived_here'
+  | 'intermediary_derived'
+  | 'generated_display'
+  | 'uncalibrated_observation'
+
+/** What the client resolved a declared class to. `unrecognised` covers both a
+ *  name outside the six and a provenance that declared none; both are shown
+ *  as unavailable with the reason, never as `retrieved`. */
+export type ResolvedEvidenceClass = EvidenceClass | 'unrecognised'
+
+/** How a source's values reach this deployment, as the registry declares it.
+ *  A separate axis from the evidence class: an `intermediary_derived` value is
+ *  still retrieved by this deployment. */
+export type DeliveryKind = 'published_cell' | 'reprocessed' | 'intermediary_derived'
+
+/** One input a `derived_here` value was computed from, as the response listed
+ *  it. Every field is what the API said; nothing is inferred from the input's
+ *  name. */
+export interface DerivationInput {
+  field: string
+  sourceId: string | null
+  product: string | null
+  validTime: string | null
+  /** The run the input came from, where the input had one. */
+  runTime: string | null
+  units: string | null
+  /** The input's own quality status, verbatim. Null when none was declared. */
+  quality: string | null
+  evidenceClass: ResolvedEvidenceClass
+  /** Exactly the class string the response carried for this input, or null. */
+  declaredClass: string | null
+}
+
+/** The registered derivation method a `derived_here` value names. */
+export interface DerivationMethod {
+  name: string
+  version: string | null
+  citation: string | null
 }
 
 /** Who produced the number a metric shows. Carried beside every displayed
@@ -44,6 +92,51 @@ export interface FieldAttribution {
    *  point). Null means the field was read from the provider as published. */
   derivation: string | null
   derivationVersion: string | null
+  /** The declared class, resolved. `unrecognised` when the response carried a
+   *  class this client does not know, or none at all. */
+  evidenceClass: ResolvedEvidenceClass
+  /** The class string exactly as the response wrote it, for the reason line. */
+  declaredClass: string | null
+  /** `quality.status` and `quality.flags` as served; `derived` is a flag, not
+   *  a fifth status, so the four-status contract holds. */
+  qualityStatus: string | null
+  qualityFlags: string[]
+  /** The method and inputs a `derived_here` value names. Empty and null for
+   *  every other class; never synthesised from the derivation sentence. */
+  derivationMethod: DerivationMethod | null
+  derivationInputs: DerivationInput[]
+  /** The registry's delivery kind for the producing record, and the
+   *  intermediary it names. Null kind means the record declared none, which
+   *  renders no label at all. */
+  deliveryKind: DeliveryKind | null
+  intermediary: string | null
+  /** The intermediary's own method, where the intermediary documents one.
+   *  Null is "undocumented", which is said out loud rather than read as
+   *  "no transformation". */
+  intermediaryMethod: string | null
+  /** Whether this value may stand as a field's primary reading. The API
+   *  computes it from the class; the client additionally refuses a source the
+   *  catalogue marks `display_primary: false`. */
+  displayPrimaryEligible: boolean
+  /** `derivation_refused`: a derived value the registry conditions refused.
+   *  `provenance_unmodelled`: an artifact whose provenance could not be
+   *  modelled. Either renders as unavailable with the response's own notice. */
+  derivationRefused: boolean
+  provenanceUnmodelled: boolean
+  /** The response notice that explains this field's refusal, matched at
+   *  normalise time where both the field name and the notices are in hand.
+   *  Null when the value is a reading rather than a refusal. */
+  notice: string | null
+}
+
+/** One value for a field that is NOT its primary reading: a reprocessed,
+ *  intermediary-derived or uncalibrated value, or one from a source the
+ *  catalogue refuses as a primary. Shown beside the reading, never in it. */
+export interface FieldAlternative {
+  field: string
+  /** As rendered, already unit-converted where the metric converts. */
+  text: string
+  attribution: FieldAttribution
 }
 
 export interface StoryStep {
@@ -82,6 +175,13 @@ export interface EvidenceSnapshot {
   fieldModes: Record<string, FieldDataMode>
   /** Per-field attribution for the field actually shown, keyed by API field name. */
   fieldSources: Record<string, FieldAttribution>
+  /** Values the same field carried that may not be its primary reading, keyed
+   *  by API field name. Rendered as alternative readings with their badge and
+   *  delivery label; never promoted into the metric. */
+  fieldAlternatives: Record<string, FieldAlternative[]>
+  /** The response's own `notices`, verbatim. They carry the reason a
+   *  derivation was refused or an artifact's provenance was not modelled. */
+  notices: string[]
   issuedAt: string
   validAt: string | null
   temperatureC: number | null
@@ -276,6 +376,10 @@ export interface LayerItem {
    *  the drawer derives a group from `evidence_basis` and `kind` instead —
    *  never from the id. */
   group?: string | null
+  /** How the layer's values came to exist, as `/layers` declares it. Absent or
+   *  unknown is `unrecognised`, said out loud in the drawer rather than read
+   *  as `retrieved`. */
+  evidence_class?: string
 }
 
 export interface LayersResult {
@@ -302,6 +406,14 @@ export interface CatalogSource {
   geographic_coverage: string
   licence: string
   attribution: string
+  /** How this record's values reach the deployment. Optional until every
+   *  record declares one; absent renders no label rather than a doubt. */
+  delivery_kind?: string
+  /** Named where the kind is `reprocessed` or `intermediary_derived`. */
+  intermediary?: string | null
+  /** False means the registry refuses this source as any field's primary
+   *  reading. Absent is not false: an undeclared record is not yet refused. */
+  display_primary?: boolean
 }
 
 export interface CatalogResult {

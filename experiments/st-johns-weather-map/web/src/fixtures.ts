@@ -71,6 +71,8 @@ export const fixtureSnapshot: EvidenceSnapshot = {
   selectedSourceId: null,
   dataMode: 'fixture',
   fieldSources: {},
+  fieldAlternatives: {},
+  notices: [],
   fieldModes: {
     temperature: 'fixture', dew_point: 'fixture', relative_humidity: 'fixture',
     wind_speed: 'fixture', wind_gust: 'fixture', visibility: 'fixture',
@@ -107,15 +109,18 @@ export const fixtureSnapshot: EvidenceSnapshot = {
     { time: '+18h', offset: 18, label: 'Patchy fog', dataMode: 'fixture', temperatureC: 11, dewPointC: 11, precipPct: 20, windKmh: 12 },
     { time: '+24h', offset: 24, label: 'Fog risk elevated', dataMode: 'fixture', temperatureC: 13, dewPointC: 12, precipPct: 30, windKmh: 17 },
   ],
+  // `unrecognised`, not `retrieved`: these rows are invented, no producer
+  // issued them, and a fixture that claimed the strongest class would be the
+  // exact confusion the class field exists to prevent.
   provenance: [
-    { provider: 'ECCC', product: 'HRDPS', run: '2026-08-29 06Z', role: 'Regional guidance', freshness: 'Fresh · 38 min', member: null, level: '2 m above ground', dataMode: 'fixture', derivations: [] },
-    { provider: 'ECCC', product: 'REPS', run: '2026-08-29 06Z', role: 'Ensemble family', freshness: 'Fresh · 1 h', member: 'control', level: '2 m above ground', dataMode: 'fixture', derivations: [] },
+    { provider: 'ECCC', product: 'HRDPS', run: '2026-08-29 06Z', role: 'Regional guidance', freshness: 'Fresh · 38 min', member: null, level: '2 m above ground', dataMode: 'fixture', derivations: [], evidenceClasses: ['unrecognised'] },
+    { provider: 'ECCC', product: 'REPS', run: '2026-08-29 06Z', role: 'Ensemble family', freshness: 'Fresh · 1 h', member: 'control', level: '2 m above ground', dataMode: 'fixture', derivations: [], evidenceClasses: ['unrecognised'] },
   ],
 }
 
 export const unavailableSnapshot: EvidenceSnapshot = {
   mode: 'unavailable', selectionBadge: null, selectedProductId: null, selectedSourceId: null,
-  dataMode: 'unavailable', fieldModes: {}, fieldSources: {}, issuedAt: '', validAt: null,
+  dataMode: 'unavailable', fieldModes: {}, fieldSources: {}, fieldAlternatives: {}, notices: [], issuedAt: '', validAt: null,
   temperatureC: null, dewPointC: null, relativeHumidityPct: null,
   windKmh: null, windDirectionDeg: null, gustKmh: null,
   precipitation: 'Unavailable', precipitationProbabilityPct: null,

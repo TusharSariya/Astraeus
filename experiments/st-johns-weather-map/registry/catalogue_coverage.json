@@ -41,7 +41,8 @@
       "dwd-icon-global"
     ],
     "WeatherNext 2": [
-      "google-weathernext-2"
+      "google-weathernext-2",
+      "open-meteo-weathernext-2"
     ],
     "CYYT and nearby ECCC SWOB stations": [
       "eccc-swob"

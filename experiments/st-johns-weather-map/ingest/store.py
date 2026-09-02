@@ -38,6 +38,41 @@ class QuotaExceeded(RuntimeError):
     """The 25 GiB local cap would be exceeded. Fail the job, never evict a visible revision."""
 
 
+class UndeclaredEvidenceClasses(ValueError):
+    """An artifact reached staging without saying how its values came to exist.
+
+    Every value carries exactly one evidence class and every artifact records
+    the set it contains, so a data path can admit or exclude it by class
+    rather than by matching its name. Staging is the one gate every artifact
+    passes, so an undeclared artifact is refused here: the alternative is an
+    artifact that publishes and is then isolated at read time, which loses the
+    evidence silently and long after the mistake was made.
+    """
+
+
+def assert_classes_declared(artifact: Artifact) -> None:
+    """Refuse an artifact whose provenance declares no evidence classes."""
+    from .manifest import EVIDENCE_CLASSES  # noqa: PLC0415
+
+    provenance = artifact.provenance or {}
+    declared = provenance.get("evidence_classes")
+    if not declared:
+        raise UndeclaredEvidenceClasses(
+            f"{artifact.logical_name}: provenance declares no evidence_classes; "
+            "build it from RunManifest.as_manifest_block or ingest.manifest.declared_classes"
+        )
+    unknown = sorted({str(name) for name in declared if str(name) not in EVIDENCE_CLASSES})
+    if unknown:
+        raise UndeclaredEvidenceClasses(f"{artifact.logical_name}: {', '.join(unknown)} is not one of the six evidence classes")
+    stated = {str(name) for name in (provenance.get("evidence_class_by_variable") or {}).values()}
+    undeclared = sorted(stated - {str(name) for name in declared})
+    if undeclared:
+        raise UndeclaredEvidenceClasses(
+            f"{artifact.logical_name}: evidence_class_mismatch - values carry {', '.join(undeclared)}, "
+            "which the artifact does not declare"
+        )
+
+
 def _parse_cap(value: str | None) -> int:
     if not value:
         return LOCAL_STORAGE_CAP_BYTES
@@ -208,6 +243,7 @@ class ArtifactStore:
         """
         import json  # noqa: PLC0415
 
+        assert_classes_declared(artifact)
         run = run_id or self.record_run(result)
         byte_size = artifact.byte_size
         self.check_projection(byte_size)

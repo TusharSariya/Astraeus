@@ -95,6 +95,7 @@ def test_kp_publishes_observed_and_forecast_separately(tmp_path: Path):
 
     result = adapter.fetch(candidate, WINDOW, tmp_path)
     names = [a.logical_name for a in result.artifacts]
+    assert all(a.provenance["evidence_classes"] == ["retrieved"] for a in result.artifacts)
     assert names == ["kp_observed", "kp_forecast"]
     assert result.complete is True
 

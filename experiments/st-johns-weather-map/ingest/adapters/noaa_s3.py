@@ -550,6 +550,9 @@ class NOAAS3Adapter:
             "adapter_version": self.adapter_version,
             "quality": validation.as_quality(),
             "coverage": validation.as_coverage(),
+            # Both artifacts below are GFS's own published cells, so the one
+            # declaration covers the surface set and the jet-level winds.
+            **manifest.as_manifest_block(),
         }
 
         # The run is validated as one dataset, then written as two artifacts:

@@ -61,6 +61,7 @@ from ingest.contract import (
 )
 from ingest.grib import write_zarr
 from ingest.http import PoliteClient
+from ingest.manifest import declared_classes
 from ingest.registry import register
 
 UTC = timezone.utc
@@ -577,6 +578,13 @@ class GOESCloudMaskAdapter:
             "regrid_disclosure": REGRID_DISCLOSURE,
             "parallax_disclosure": PARALLAX_DISCLOSURE,
             "accuracy_disclosure": ACCURACY_DISCLOSURE,
+            # NOAA's own cloud mask and cloud-top height values, moved onto
+            # this deployment's grid nearest-neighbour and parallax-corrected
+            # in place. No value is computed here and no intermediary stands
+            # between the producer and this deployment, so the class is
+            # retrieved; the regrid and parallax disclosures above are what
+            # tell a reader the cells were moved.
+            **declared_classes(["retrieved"]),
         }
 
         artifact = Artifact(

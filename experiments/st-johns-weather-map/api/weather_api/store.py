@@ -114,9 +114,15 @@ WIND_COMPONENT_PAIRS = (
 FOG_INPUTS = frozenset({"weather_fog_code", "weather_fog_vicinity_code", "weather_mist_code"})
 FIELD_BY_VARIABLE.update({name: name for name in FOG_INPUTS})
 
+#: What the fog derivation reads, kept as prose for the layer notes. The
+#: served provenance names the registry entry instead - a reader is owed a
+#: name they can look up, not a paragraph - and the entry's citation carries
+#: the coding rules: FG (with FZFG, MIFG, BCFG, PRFG) and VCFG are fog
+#: evidence, BR is mist and is not.
 FOG_DERIVATION = (
-    "ingest.meteorology.fog_state from the METAR/TAF present-weather group: FG (incl. FZFG, MIFG, BCFG, PRFG) "
-    "and VCFG count as fog evidence; BR is mist and does not; no provider fog diagnostic, so 'not_indicated' cannot be produced"
+    "the METAR/TAF present-weather group, read by the registered "
+    "fog_state_from_present_weather method; no provider fog diagnostic exists here, so 'not_indicated' "
+    "cannot be produced"
 )
 FOG_DERIVATION_VERSION = "fog-state-present-weather-v1"
 
@@ -141,6 +147,86 @@ class ArtifactIntegrityError(RuntimeError):
     """Downloaded bytes do not match the size and digest recorded at publication."""
 
 
+class ProvenanceUnmodelled(ValueError):
+    """One artifact's provenance cannot be modelled, so that artifact answers null.
+
+    An unknown evidence class, a status outside the four the contract allows,
+    a missing required field. ``open`` already skips a corrupt artifact and
+    keeps answering from the rest; this is the same isolation applied to
+    provenance, because one unmodelled field used to take down every source in
+    a response.
+    """
+
+
+# --- derivation method registry -------------------------------------------
+# Every ``derived_here`` value names an enabled entry in ``ingest.derive
+# .registry``. The registry owns the entry names, the three switch levels
+# (entry ``enabled``, ``WEATHER_DERIVED_HERE``, the reader's own set) and the
+# physical-range rules; this module asks it and reports what it says. There is
+# no second copy of any of that here, and a registry that cannot be imported
+# is not a reason to serve an unregistered construction: every method is then
+# treated as unavailable and every derived value is refused with a notice.
+
+
+#: The registry entry names this module's served derivations carry. They are
+#: spelled here so the API can name a method even when the registry cannot be
+#: imported, and ``test_point_evidence`` pins them against the registry's own
+#: constants so the two can never drift apart silently.
+RELATIVE_HUMIDITY_METHOD = "relative_humidity_from_dewpoint_liquid"
+WIND_METHOD = "wind_speed_and_direction_from_components"
+FOG_STATE_METHOD = "fog_state_from_present_weather"
+
+
+@dataclass(frozen=True)
+class RegisteredDerivation:
+    """One registry-gated result: the value, its entry, and the range flags.
+
+    ``derivation`` and ``version`` are the entry's own name and version, never
+    a free-text description: a reader who is told a number was constructed is
+    owed the name of the construction that the registry can be searched for.
+    """
+
+    value: Any = None
+    derivation: str | None = None
+    version: str | None = None
+    flags: tuple[str, ...] = ()
+
+
+def derivation_registry() -> Any | None:
+    """The derivation method registry module, or ``None`` when unreadable.
+
+    Imported lazily, as everything from ``ingest`` is on this path, and read
+    through this one accessor so a test can see the fail-closed branch.
+    """
+    try:
+        from ingest.derive import registry  # noqa: PLC0415
+
+        return registry
+    except Exception as error:  # an absent or invalid registry: fail closed
+        LOGGER.warning("the derivation method registry could not be read: %s: %s", type(error).__name__, error)
+        return None
+
+
+def derivation_refusal(method: str, *, reader_disabled: Sequence[str] = ()) -> str:
+    """``""`` when this method may produce a value now, else why it may not.
+
+    The registry's own refusal codes (``unregistered_method``,
+    ``method_disabled``, ``deployment_refused``, ``reader_disabled``) are
+    carried through verbatim, so a notice names the level that refused and a
+    reader is never told a method is missing when it is merely switched off.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return f"the derivation method registry could not be read, so {method} is not an enabled entry"
+    try:
+        refusal = registry.resolve(method, reader_disabled=list(reader_disabled))
+    except Exception as error:
+        return f"the derivation method registry raised for {method} ({type(error).__name__}); it is treated as not enabled"
+    if refusal is None:
+        return ""
+    return f"{refusal.code}: {refusal.detail} ({method})"
+
+
 @dataclass(frozen=True)
 class SkippedArtifact:
     """One artifact that could not be read, kept so the skip is reported.
@@ -154,25 +240,83 @@ class SkippedArtifact:
     reason: str
 
 
+@dataclass(frozen=True)
+class UnmodelledArtifact:
+    """One artifact whose provenance the model refuses, and the fields it lost.
+
+    Its fields are reported as null with a notice naming the artifact and the
+    reason; every other artifact in the same response answers normally, and
+    the response's ``data_mode`` reflects those, never this one.
+    """
+
+    source_id: str
+    revision_id: str
+    reason: str
+    fields: tuple[str, ...] = ()
+
+
 def _is_geojson(media_type: str) -> bool:
     return media_type.split(";")[0].strip() == "application/geo+json"
 
 
-def _is_display_only(artifact: Any) -> bool:
-    """True for a derived artifact that exists only to be drawn.
+def artifact_manifest(artifact: Any) -> Any:
+    """The evidence-class declaration one artifact carries, modelled.
 
-    Two derivations are published beside the retrieved fields: the
-    interpolation motion that the shader reads, and the WEonG low-cloud
-    repair, which is GENERATED - it holds cloud values that no provider
-    published. The governing rule allows a generated value on a display path
-    and forbids it on a data path, so neither may be sampled for /point,
-    /profile or /cross-section. The flag is read from provenance rather than
-    matched by name because the motion artifact's logical name now varies with
-    the layer it supports (``cloud_motion_low_cloud_weong``), and a name list
-    silently stops covering a new derivation the moment one is added.
+    Raises :class:`ProvenanceUnmodelled` when the artifact declares no classes
+    or declares one the contract does not know. Nothing is inferred here from
+    a derivation name, an ``evidence_basis``, a generated flag or a logical
+    name: each of those was a signal added for one feature, and reading them
+    is how a generated repair reached ``/point`` on 2026-09-01. An artifact
+    that says nothing about its classes cannot be modelled, and an artifact
+    that cannot be modelled answers null for its own fields only.
     """
+    from .models import ArtifactManifest  # noqa: PLC0415
+
     provenance = getattr(artifact, "provenance", None) or {}
-    return bool(provenance.get("derived") or provenance.get("generated"))
+    declared = provenance.get("evidence_classes")
+    if not declared:
+        raise ProvenanceUnmodelled(
+            f"{getattr(artifact, 'source_id', 'unknown')}/{getattr(artifact, 'logical_name', 'unknown')} "
+            "declares no evidence_classes; a value's class is required and is never inferred"
+        )
+    try:
+        return ArtifactManifest(
+            source_id=str(getattr(artifact, "source_id", "unknown")),
+            logical_name=str(getattr(artifact, "logical_name", "unknown")),
+            evidence_classes=list(declared),
+            evidence_class_by_variable=dict(provenance.get("evidence_class_by_variable") or {}),
+        )
+    except Exception as error:
+        raise ProvenanceUnmodelled(str(error)) from error
+
+
+def _is_display_only(manifest: Any) -> bool:
+    """True for an artifact whose declared classes include ``generated_display``.
+
+    The interpolation motion the shader reads and the generated WEonG
+    low-cloud repair hold values no provider published. The governing rule
+    allows a generated value on a display path and forbids it on a data path,
+    so neither may be sampled for ``/point``, ``/profile`` or
+    ``/cross-section``. Exclusion reads the class, so a rename cannot restore
+    the value to a data path.
+    """
+    from .models import DISPLAY_ONLY_CLASSES  # noqa: PLC0415
+
+    return bool(set(manifest.evidence_classes) & DISPLAY_ONLY_CLASSES)
+
+
+def _served_fields(dataset: Any) -> tuple[str, ...]:
+    """The API field names an artifact would have answered for.
+
+    Used to report exactly what an isolated artifact lost, so a null carries
+    the name of the field it stands in for rather than a bare notice.
+    """
+    names = []
+    for variable in getattr(dataset, "data_vars", ()):
+        name = FIELD_BY_VARIABLE.get(str(variable))
+        if name is not None and name not in names:
+            names.append(name)
+    return tuple(names)
 
 
 def _parse_iso(raw: Any) -> datetime | None:
@@ -314,12 +458,19 @@ class Sample:
     #: meaning string of the stored flag (``"OVC"``), never the bare integer.
     value: float | str | None
     units: str
+    #: How this value came to exist, read from the artifact's own declaration.
+    #: Never inferred, and never defaulted: an artifact that declares nothing
+    #: is isolated before a sample is ever built from it.
+    evidence_class: str
     level: str
     valid_time: datetime
     run_time: datetime | None
     retrieved_at: datetime | None
     native_crs: str
     provenance: dict[str, Any] = field(default_factory=dict)
+    #: The revision this value was read from, so a notice can name the exact
+    #: artifact rather than the source that published several.
+    revision_id: str = "unknown"
     #: The coordinate of the grid cell the value was actually read from - not
     #: the coordinate that was asked for. At HRDPS's 2.5 km spacing the two
     #: differ by a real distance, and reporting the request back would claim a
@@ -471,6 +622,10 @@ class LiveStore:
         # in a long-running API process, because every new run mints new ids.
         self._datasets: OrderedDict[str, Any] = OrderedDict()
         self.skipped: list[SkippedArtifact] = []
+        #: Artifacts whose provenance could not be modelled on this call. Kept
+        #: apart from ``skipped`` so the caller can report their fields as null
+        #: with a notice while every other artifact answers normally.
+        self.unmodelled: list[UnmodelledArtifact] = []
 
     # --- resolution ------------------------------------------------------
     def current(self) -> list[Any]:
@@ -589,9 +744,25 @@ class LiveStore:
             )
         )
 
+    def _record_unmodelled(self, artifact: Any, error: BaseException, fields: Sequence[str] = ()) -> None:
+        """Isolate one artifact whose provenance the model refuses.
+
+        The failure is recorded with the artifact's source id, revision id and
+        reason, and reported as a skip so the caller's notices name it. It
+        never propagates: the other artifacts answer.
+        """
+        source_id = str(getattr(artifact, "source_id", "unknown"))
+        revision_id = str(getattr(artifact, "revision_id", "unknown"))
+        reason = f"provenance could not be modelled: {error}"
+        LOGGER.warning("artifact %s from %s: %s", revision_id, source_id, reason)
+        entry = UnmodelledArtifact(source_id=source_id, revision_id=revision_id, reason=reason, fields=tuple(fields))
+        self.unmodelled.append(entry)
+        self.skipped.append(SkippedArtifact(source_id=source_id, revision_id=revision_id, reason=reason))
+
     def sample_point(self, latitude: float, longitude: float, valid_time: datetime) -> list[Sample]:
         """Nearest published grid value per source and variable."""
         self.skipped = []
+        self.unmodelled = []
         self.assert_object_store_reachable()
         artifacts = self.current()
         self._forget_stale_datasets({str(item.revision_id) for item in artifacts})
@@ -604,20 +775,33 @@ class LiveStore:
                 # artifact told every caller that evidence had been lost when
                 # none had. Alerts are served by /layers/{id}/features.
                 continue
-            if _is_display_only(artifact):
-                # Derived display-only imagery (interpolation motion, the
+            try:
+                manifest = artifact_manifest(artifact)
+            except ProvenanceUnmodelled as error:
+                # Name the fields this artifact would have answered for, so
+                # its nulls carry field names rather than a bare notice. A
+                # dataset that will not open loses only the names.
+                try:
+                    lost = _served_fields(self.open(artifact))
+                except Exception:
+                    lost = ()
+                self._record_unmodelled(artifact, error, lost)
+                continue
+            if _is_display_only(manifest):
+                # Display-only construction (interpolation motion, the
                 # generated WEonG low-cloud repair); it carries no retrieved
-                # reading and must never reach a data path.
+                # reading and must never reach a data path. Excluded by its
+                # declared class, with no name matching involved.
                 continue
             try:
                 dataset = self.open(artifact)
             except Exception as error:
                 self._record_skip(artifact, error)
                 continue
-            samples.extend(self._sample_dataset(dataset, artifact, latitude, longitude, valid_time))
+            samples.extend(self._sample_dataset(dataset, artifact, latitude, longitude, valid_time, manifest=manifest))
         return samples
 
-    def _sample_dataset(self, dataset: Any, artifact: Any, latitude: float, longitude: float, valid_time: datetime, *, pressure: int | None = None) -> list[Sample]:
+    def _sample_dataset(self, dataset: Any, artifact: Any, latitude: float, longitude: float, valid_time: datetime, *, pressure: int | None = None, manifest: Any | None = None) -> list[Sample]:
         lat_name = _coordinate_name(dataset, LATITUDE_COORDINATES)
         lon_name = _coordinate_name(dataset, LONGITUDE_COORDINATES)
         if lat_name is None or lon_name is None:
@@ -678,11 +862,25 @@ class LiveStore:
 
         provenance = dict(artifact.provenance or {})
         level = provenance.get("vertical_level", "surface" if pressure is None else f"{pressure} hPa")
+        if manifest is None:
+            try:
+                manifest = artifact_manifest(artifact)
+            except ProvenanceUnmodelled as error:
+                self._record_unmodelled(artifact, error, _served_fields(dataset))
+                return []
         samples: list[Sample] = []
         for variable in dataset.data_vars:
             name = str(variable)
             if name not in FIELD_BY_VARIABLE and pressure is None:
                 continue
+            try:
+                evidence_class = manifest.class_for(name)
+            except Exception as error:
+                # A value whose class the artifact never stated. Isolate the
+                # artifact rather than guessing: an unknown class is served as
+                # unavailable with a reason, never as retrieved.
+                self._record_unmodelled(artifact, error, _served_fields(dataset))
+                return []
             raw = located[name].values
             value: float | str | None
             try:
@@ -704,12 +902,14 @@ class LiveStore:
                     variable=name,
                     value=value,
                     units=str(dataset[name].attrs.get("units", "unknown")),
+                    evidence_class=evidence_class,
                     level=VARIABLE_LEVELS.get(name, str(level)),
                     valid_time=valid_time,
                     run_time=artifact.run_time,
                     retrieved_at=artifact.retrieved_at,
                     native_crs=artifact.native_crs or provenance.get("native_crs", "unknown"),
                     provenance=provenance,
+                    revision_id=str(getattr(artifact, "revision_id", "unknown")),
                     sampled_latitude=cell_latitude,
                     sampled_longitude=cell_longitude,
                     sample_distance_km=round(distance * KM_PER_DEGREE, 3),
@@ -720,6 +920,7 @@ class LiveStore:
 
     def sample_profile(self, latitude: float, longitude: float, valid_time: datetime, pressures: Sequence[int]) -> dict[int, list[Sample]]:
         self.skipped = []
+        self.unmodelled = []
         self.assert_object_store_reachable()
         artifacts = self.current()
         self._forget_stale_datasets({str(item.revision_id) for item in artifacts})
@@ -727,15 +928,20 @@ class LiveStore:
         for artifact in artifacts:
             if _is_geojson(artifact.media_type):
                 continue  # see sample_point: no gridded values to sample
-            if _is_display_only(artifact):
-                continue  # see sample_point: a derived display artifact is not evidence
+            try:
+                manifest = artifact_manifest(artifact)
+            except ProvenanceUnmodelled as error:
+                self._record_unmodelled(artifact, error)
+                continue
+            if _is_display_only(manifest):
+                continue  # see sample_point: a display construction is not evidence
             try:
                 dataset = self.open(artifact)
             except Exception as error:
                 self._record_skip(artifact, error)
                 continue
             for pressure in pressures:
-                found = self._sample_dataset(dataset, artifact, latitude, longitude, valid_time, pressure=pressure)
+                found = self._sample_dataset(dataset, artifact, latitude, longitude, valid_time, pressure=pressure, manifest=manifest)
                 if found:
                     result.setdefault(pressure, []).extend(found)
         return result
@@ -1106,23 +1312,77 @@ def live_provenance(
     reference: datetime,
     derivation: str | None = None,
     derivation_version: str | None = None,
+    derivation_citation: str | None = None,
+    derivation_inputs: Sequence[Any] = (),
+    quality: Any | None = None,
     contributors: Sequence[str] = (),
 ) -> Any:
-    from .models import ContributorProvenance, Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
+    """Provenance for one sampled value.
+
+    ``evidence_class`` comes from the sample, which read it from the
+    artifact's own declaration; a value whose class could not be resolved
+    never reaches here, because its artifact was isolated first. A
+    ``ProvenanceUnmodelled`` is raised where the model refuses what the
+    artifact recorded, so the caller can isolate that artifact instead of
+    failing the whole response.
+    """
+    from .models import ContributorProvenance  # noqa: PLC0415
 
     config = _registry_config(sample.source_id)
     provenance = sample.provenance
     threshold = (config.freshness_threshold_seconds if config and config.freshness_threshold_seconds else 21600)
     age = int((reference - sample.retrieved_at).total_seconds()) if sample.retrieved_at else None
-    quality = provenance.get("quality") or {}
-    coverage = provenance.get("coverage") or {}
     contributor_records = []
     for source_id in contributors:
         other = _registry_config(source_id)
         if other is not None:
             contributor_records.append(ContributorProvenance(source_id=source_id, provider=other.producer, product=other.product, licence=other.licence, attribution=other.attribution))
+    try:
+        return _build_live_provenance(
+            sample,
+            config=config,
+            provenance=provenance,
+            quality=quality,
+            threshold=threshold,
+            age=age,
+            contributors=contributors,
+            contributor_records=contributor_records,
+            derivation=derivation,
+            derivation_version=derivation_version,
+            derivation_citation=derivation_citation,
+            derivation_inputs=derivation_inputs,
+            reference=reference,
+        )
+    except Exception as error:  # an unknown class, a status outside the four
+        raise ProvenanceUnmodelled(f"{sample.source_id}/{sample.logical_name} {sample.variable}: {error}") from error
+
+
+def _build_live_provenance(
+    sample: Sample,
+    *,
+    config: Any,
+    provenance: dict[str, Any],
+    quality: Any | None,
+    threshold: int,
+    age: int | None,
+    contributors: Sequence[str],
+    contributor_records: list[Any],
+    derivation: str | None,
+    derivation_version: str | None,
+    derivation_citation: str | None,
+    derivation_inputs: Sequence[Any],
+    reference: datetime,
+) -> Any:
+    from .models import Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
+
+    stored = provenance.get("quality") or {}
+    # A derived value's quality is handed in already computed from its inputs;
+    # everything else reports the QC the artifact recorded.
+    resolved_quality = quality if quality is not None else Quality(status=stored.get("status", "unknown"), flags=list(stored.get("flags", [])))
+    coverage = provenance.get("coverage") or {}
     return Provenance(
         data_mode=DataMode.LIVE,
+        evidence_class=sample.evidence_class,
         source_id=sample.source_id,
         provider=config.producer if config else sample.source_id,
         product=config.product if config else sample.logical_name,
@@ -1136,13 +1396,22 @@ def live_provenance(
         normalized_units=sample.units,
         native_resolution=str(provenance.get("native_resolution", "unknown")),
         native_crs=sample.native_crs,
-        quality=Quality(status=quality.get("status", "unknown"), flags=list(quality.get("flags", []))),
+        quality=resolved_quality,
         coverage=Coverage(status=coverage.get("status", "unknown"), fraction=coverage.get("fraction")),
         freshness=Freshness.evaluate(age, threshold),
         licence=config.licence if config else "see contributing provider",
         attribution=config.attribution if config else "see contributing provider",
         derivation=derivation,
         derivation_version=derivation_version,
+        derivation_citation=derivation_citation,
+        derivation_inputs=list(derivation_inputs),
+        # The producing record's own declaration, so every value says whose
+        # cell it is. The artifact may state an intermediary of its own (a
+        # per-artifact override); where it does not, the record's stands.
+        delivery_kind=provenance.get("delivery_kind", getattr(config, "delivery_kind", None)),
+        source_display_primary=getattr(config, "display_primary", None),
+        intermediary=provenance.get("intermediary", getattr(config, "intermediary", None)),
+        intermediary_method=provenance.get("intermediary_method", getattr(config, "intermediary_method", None)),
         adapter_version=str(provenance.get("adapter_version", "unknown")),
         sampled_latitude=sample.sampled_latitude,
         sampled_longitude=sample.sampled_longitude,
@@ -1153,12 +1422,208 @@ def live_provenance(
     )
 
 
+def _note(store: Any, *, source_id: str, revision_id: str, reason: str) -> None:
+    """Record a notice against the store, whatever kind of store it is.
+
+    The point path is handed a store by the caller, and a caller's double need
+    not be a :class:`LiveStore`. A notice that cannot be recorded must not cost
+    the response the evidence it does have.
+    """
+    skipped = getattr(store, "skipped", None)
+    if isinstance(skipped, list):
+        skipped.append(SkippedArtifact(source_id=source_id, revision_id=revision_id, reason=reason))
+
+
+def _derived_input_records(inputs: Sequence[tuple[str, Sample]]) -> list[Any]:
+    """Each input a derivation read, with its own lineage, for provenance."""
+    from .models import DerivedInput, Quality  # noqa: PLC0415
+
+    records = []
+    for name, sample in inputs:
+        config = _registry_config(sample.source_id)
+        stored = sample.provenance.get("quality") or {}
+        records.append(
+            DerivedInput(
+                field=name,
+                source_id=sample.source_id,
+                product=config.product if config else sample.logical_name,
+                valid_time=sample.valid_time,
+                units=sample.units,
+                evidence_class=sample.evidence_class,
+                quality=Quality(status=stored.get("status", "unknown"), flags=list(stored.get("flags", []))),
+                run_time=sample.run_time,
+            )
+        )
+    return records
+
+
+def _input_qualities(inputs: Sequence[tuple[str, Sample]]) -> list[Any]:
+    from .models import Quality  # noqa: PLC0415
+
+    qualities = []
+    for _name, sample in inputs:
+        stored = sample.provenance.get("quality") or {}
+        qualities.append(Quality(status=stored.get("status", "unknown"), flags=list(stored.get("flags", []))))
+    return qualities
+
+
+def _disqualifying_input(inputs: Sequence[tuple[str, Sample]]) -> str:
+    """The reason an input disqualifies a derivation, or ``""``.
+
+    Only a retrieved value may be read by a derivation: deriving over a
+    reprocessed or intermediary-derived value would compound one
+    intermediary's transformation with this stack's own, and an uncalibrated
+    instrument has no place under a physical construction.
+    """
+    from .models import DERIVATION_INPUT_CLASSES  # noqa: PLC0415
+
+    for name, sample in inputs:
+        if sample.evidence_class not in DERIVATION_INPUT_CLASSES:
+            return f"its input {name} from {sample.source_id} is {sample.evidence_class}, and only a retrieved value may be a derivation input"
+    return ""
+
+
+def _registered_relative_humidity(temperature_c: float, dewpoint_c: float) -> RegisteredDerivation:
+    """Relative humidity through its registry entry, or nothing.
+
+    The construction, the three switch levels and the physical-range rule all
+    live in the registry; this only carries the result across. A registry that
+    cannot be read yields no value, and the caller's refusal notice says why.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation()
+    derived = registry.derive_relative_humidity(temperature_c, dewpoint_c)
+    if derived.method is None:
+        return RegisteredDerivation()
+    return RegisteredDerivation(value=derived.value, derivation=derived.method.name, version=derived.method.version, flags=tuple(derived.flags))
+
+
+def _registered_wind(u_ms: float, v_ms: float) -> tuple[RegisteredDerivation, RegisteredDerivation]:
+    """Wind speed and direction from one entry, each with its own range flags.
+
+    A speed is clamped and a bearing is folded, so the two results carry
+    different flags even though one construction produced both.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation(), RegisteredDerivation()
+    derived = registry.derive_wind(u_ms, v_ms)
+    if derived.method is None:
+        return RegisteredDerivation(), RegisteredDerivation()
+    name, version = derived.method.name, derived.method.version
+    return (
+        RegisteredDerivation(value=derived.speed, derivation=name, version=version, flags=tuple(derived.speed_flags)),
+        RegisteredDerivation(value=derived.direction, derivation=name, version=version, flags=tuple(derived.direction_flags)),
+    )
+
+
+def _registered_fog_state(*, visibility_m: float | None, fog_code: bool) -> RegisteredDerivation:
+    """The fog state through its registry entry.
+
+    ``provider_diagnostic`` is ``None`` because no provider retrieved here
+    publishes a fog diagnostic, so the only live states are
+    ``evidence_present`` and ``unknown``: an absent FG code is not a finding
+    of no fog, and ``not_indicated`` is never produced.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation()
+    derived = registry.derive_fog_state(provider_diagnostic=None, visibility_m=visibility_m, fog_code=fog_code)
+    if derived.method is None:
+        return RegisteredDerivation()
+    return RegisteredDerivation(value=derived.value, derivation=derived.method.name, version=derived.method.version)
+
+
+def _method_citation(method: str) -> str | None:
+    """The entry's citation to the published construction, from the registry."""
+    registry = derivation_registry()
+    if registry is None:
+        return None
+    try:
+        return str(registry.provenance(method).get("derivation_citation")) or None
+    except Exception:
+        return None
+
+
+def _derived_evidence_field(
+    store: LiveStore,
+    *,
+    field_name: str,
+    basis: Sample,
+    inputs: Sequence[tuple[str, Sample]],
+    method: str,
+    value: Any,
+    derivation: str | None,
+    derivation_version: str | None,
+    flags: Sequence[str] = (),
+    reference: datetime,
+) -> Any:
+    """One ``derived_here`` value, or the same field null with a notice.
+
+    All four conditions hold together or nothing is served: every input is a
+    retrieved value listed with its own provenance, the method is an enabled
+    registry entry named with its version and citation, the result is bounded
+    to the method's declared physical range, and the quality is no better than
+    the worst input's.
+
+    The registry applied the range rule before the value arrived here and said
+    which rule it applied; ``range_refused`` means the entry refused the
+    result rather than bounding it, so the field is null like any other failed
+    condition.
+    """
+    from .models import EvidenceField, Quality  # noqa: PLC0415
+
+    flags = list(flags)
+    refusal = _disqualifying_input(inputs)
+    if not refusal:
+        refusal = derivation_refusal(method)
+    if not refusal and "range_refused" in flags:
+        refusal = f"the result left the physical range {method} declares and the entry's range rule refuses it"
+    if not refusal and value is None:
+        refusal = f"{method} produced no value from the inputs it was given"
+    if refusal:
+        _note(store, source_id=basis.source_id, revision_id=basis.revision_id, reason=f"{field_name} was not derived because {refusal}; nothing was substituted")
+        return EvidenceField(
+            field=field_name,
+            value=None,
+            provenance=unavailable_provenance(
+                basis.valid_time,
+                units=basis.units,
+                flags=["derivation_refused"],
+                source_id=basis.source_id,
+                product=basis.logical_name,
+                level=basis.level,
+                reference=reference,
+                evidence_class="derived_here",
+            ),
+        )
+    return EvidenceField(
+        field=field_name,
+        value=value,
+        provenance=live_provenance(
+            replace(basis, evidence_class="derived_here"),
+            field_name=field_name,
+            reference=reference,
+            derivation=derivation or method,
+            derivation_version=derivation_version,
+            derivation_citation=_method_citation(method),
+            derivation_inputs=_derived_input_records(inputs),
+            quality=Quality.worst_of(_input_qualities(inputs), flags=list(flags)),
+        ),
+    )
+
+
 def _consensus_candidates(samples: Sequence[Sample]) -> list[Any]:
     from .science import ConsensusCandidate  # noqa: PLC0415
 
     candidates = []
     for sample in samples:
         if sample.variable != "temperature_2m" or sample.value is None:
+            continue
+        if sample.evidence_class != "retrieved":
+            # A reprocessed, intermediary-derived or uncalibrated value is
+            # never the display primary and never feeds a construction.
             continue
         config = _registry_config(sample.source_id)
         if config is None or not config.may_enter_consensus:
@@ -1193,7 +1658,7 @@ def _flag_is_present(sample: Sample | None) -> bool | None:
 def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid_time: datetime) -> tuple[list[Any], Any, list[str]]:
     """Build live evidence fields, the consensus result, and the source ids used."""
     from .models import EvidenceField  # noqa: PLC0415
-    from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS, build_consensus, fog_state, resolve_relative_humidity, resolve_wind  # noqa: PLC0415
+    from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS, build_consensus  # noqa: PLC0415
 
     reference = datetime.now(UTC)
     samples = store.sample_point(latitude, longitude, valid_time)
@@ -1202,6 +1667,19 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
 
     consensus = build_consensus(_consensus_candidates(samples))
     fields: list[EvidenceField] = []
+    # An artifact whose provenance the model refuses answers null for its own
+    # fields and takes nothing else down with it.
+    unmodelled = list(getattr(store, "unmodelled", []) or [])
+    isolated: set[str] = {item.revision_id for item in unmodelled}
+    for item in unmodelled:
+        fields.extend(
+            EvidenceField(
+                field=name,
+                value=None,
+                provenance=unavailable_provenance(valid_time, units="unknown", flags=["provenance_unmodelled"], source_id=item.source_id, product=item.revision_id, reference=reference),
+            )
+            for name in item.fields
+        )
     if consensus.available:
         representative = next(sample for sample in samples if sample.source_id in consensus.contributors and sample.variable == "temperature_2m")
         fields.append(EvidenceField(field="temperature", value=consensus.value, provenance=live_provenance(representative, field_name="temperature", reference=reference, contributors=list(consensus.contributors))))
@@ -1215,10 +1693,22 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
         if key in seen:
             continue
         seen.add(key)
-        fields.append(EvidenceField(field=name, value=sample.value, provenance=live_provenance(sample, field_name=name, reference=reference)))
+        try:
+            provenance = live_provenance(sample, field_name=name, reference=reference)
+        except ProvenanceUnmodelled as error:
+            # Per-artifact isolation: this artifact's fields go null with a
+            # notice naming it, and every other source still answers.
+            if sample.revision_id not in isolated:
+                isolated.add(sample.revision_id)
+                _note(store, source_id=sample.source_id, revision_id=sample.revision_id, reason=str(error))
+            fields.append(EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=sample.units, flags=["provenance_unmodelled"], source_id=sample.source_id, product=sample.logical_name, level=sample.level, reference=reference)))
+            continue
+        fields.append(EvidenceField(field=name, value=sample.value, provenance=provenance))
 
     by_source: dict[str, dict[str, Sample]] = {}
     for sample in samples:
+        if sample.revision_id in isolated:
+            continue
         by_source.setdefault(sample.source_id, {})[sample.variable] = sample
     # A derived field borrows the lineage of its inputs (source, run, cell,
     # freshness) but not their units: the provenance must state the units of
@@ -1227,9 +1717,22 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
     for source_id, variables in by_source.items():
         temperature, dewpoint = variables.get("temperature_2m"), variables.get("dew_point_2m")
         if "relative_humidity_2m" not in variables and temperature is not None and dewpoint is not None and temperature.value is not None and dewpoint.value is not None:
-            value, derivation, version = resolve_relative_humidity(None, temperature.value, dewpoint.value)
-            basis = replace(temperature, variable="relative_humidity", value=value, units="percent")
-            fields.append(EvidenceField(field="relative_humidity", value=value, provenance=live_provenance(basis, field_name="relative_humidity", reference=reference, derivation=derivation, derivation_version=version)))
+            derived = _registered_relative_humidity(temperature.value, dewpoint.value)
+            basis = replace(temperature, variable="relative_humidity", value=derived.value, units="percent")
+            fields.append(
+                _derived_evidence_field(
+                    store,
+                    field_name="relative_humidity",
+                    basis=basis,
+                    inputs=[("temperature", temperature), ("dew_point", dewpoint)],
+                    method=RELATIVE_HUMIDITY_METHOD,
+                    value=derived.value,
+                    derivation=derived.derivation,
+                    derivation_version=derived.version,
+                    flags=derived.flags,
+                    reference=reference,
+                )
+            )
 
         # Fog from the present-weather group. No provider fog diagnostic exists
         # here (``provider_diagnostic=None``), so the only live values are
@@ -1238,23 +1741,47 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
         fog, vicinity = variables.get("weather_fog_code"), variables.get("weather_fog_vicinity_code")
         if fog is not None or vicinity is not None:
             visibility = variables.get("visibility")
-            fog_code = _flag_is_present(fog) is True or _flag_is_present(vicinity) is True
-            state = fog_state(
-                provider_diagnostic=None,
+            derived = _registered_fog_state(
                 visibility_m=visibility.value if visibility is not None and isinstance(visibility.value, float) else None,
-                fog_code=fog_code,
+                fog_code=_flag_is_present(fog) is True or _flag_is_present(vicinity) is True,
             )
             basis = replace(fog if fog is not None else vicinity, variable="fog_state", value=None, units="category")
-            fields.append(EvidenceField(field="fog_state", value=state, provenance=live_provenance(basis, field_name="fog_state", reference=reference, derivation=FOG_DERIVATION, derivation_version=FOG_DERIVATION_VERSION)))
+            inputs = [(name, item) for name, item in (("weather_fog_code", fog), ("weather_fog_vicinity_code", vicinity), ("visibility", visibility)) if item is not None]
+            fields.append(
+                _derived_evidence_field(
+                    store,
+                    field_name="fog_state",
+                    basis=basis,
+                    inputs=inputs,
+                    method=FOG_STATE_METHOD,
+                    value=derived.value,
+                    derivation=derived.derivation,
+                    derivation_version=derived.version,
+                    reference=reference,
+                )
+            )
 
         for u_name, v_name, speed_field, direction_field in WIND_COMPONENT_PAIRS:
             u, v = variables.get(u_name), variables.get(v_name)
             if u is None or v is None or u.value is None or v.value is None:
                 continue
-            speed, direction, derivation, version = resolve_wind(u.value, v.value)
-            for name, value, units in ((speed_field, speed, WIND_SPEED_UNITS), (direction_field, direction, WIND_DIRECTION_UNITS)):
-                basis = replace(u, variable=name, value=value, units=units)
-                fields.append(EvidenceField(field=name, value=value, provenance=live_provenance(basis, field_name=name, reference=reference, derivation=derivation, derivation_version=version)))
+            speed, direction = _registered_wind(u.value, v.value)
+            for name, derived, units in ((speed_field, speed, WIND_SPEED_UNITS), (direction_field, direction, WIND_DIRECTION_UNITS)):
+                basis = replace(u, variable=name, value=derived.value, units=units)
+                fields.append(
+                    _derived_evidence_field(
+                        store,
+                        field_name=name,
+                        basis=basis,
+                        inputs=[(u_name, u), (v_name, v)],
+                        method=WIND_METHOD,
+                        value=derived.value,
+                        derivation=derived.derivation,
+                        derivation_version=derived.version,
+                        flags=derived.flags,
+                        reference=reference,
+                    )
+                )
 
     return fields, consensus, sorted(by_source)
 
@@ -1264,11 +1791,22 @@ def live_profile_levels(store: LiveStore, latitude: float, longitude: float, val
 
     reference = datetime.now(UTC)
     levels: list[ProfileLevel] = []
+    isolated: set[str] = set()
     for pressure, samples in sorted(store.sample_profile(latitude, longitude, valid_time, pressures).items(), key=lambda item: -item[0]):
-        fields = [
-            EvidenceField(field=FIELD_BY_VARIABLE.get(sample.variable, sample.variable), value=sample.value, provenance=live_provenance(sample, field_name=sample.variable, reference=reference))
-            for sample in samples
-        ]
+        fields = []
+        for sample in samples:
+            name = FIELD_BY_VARIABLE.get(sample.variable, sample.variable)
+            try:
+                provenance = live_provenance(sample, field_name=sample.variable, reference=reference)
+            except ProvenanceUnmodelled as error:
+                # One artifact's provenance failure loses that artifact's
+                # levels, never the profile.
+                if sample.revision_id not in isolated:
+                    isolated.add(sample.revision_id)
+                    _note(store, source_id=sample.source_id, revision_id=sample.revision_id, reason=str(error))
+                fields.append(EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=sample.units, flags=["provenance_unmodelled"], source_id=sample.source_id, product=sample.logical_name, level=sample.level, reference=reference)))
+                continue
+            fields.append(EvidenceField(field=name, value=sample.value, provenance=provenance))
         if fields:
             levels.append(ProfileLevel(pressure_hpa=pressure, fields=fields))
     return levels
@@ -1321,6 +1859,12 @@ def registry_source_records() -> list[Any]:
                 state=SourceState(_REGISTRY_STATE_CEILING.get(str(record["status"]), "unavailable")),
                 status_reason=str(record["reason"]),
                 role=str(record["poc_role"]),
+                # Copied from the record, never inferred: the registry is the
+                # only place that knows whether a value is the producer's own
+                # cell or an aggregator's rendering of it.
+                delivery_kind=record.get("delivery_kind"),
+                intermediary=(record.get("intermediary") or {}).get("name"),
+                display_primary=bool(record.get("display_primary", True)),
                 may_enter_consensus=bool(record.get("consensus", {}).get("eligible", False)),
                 exact_variables=[str(name) for name in variables.get("names", [])],
                 levels=[str(level) for level in variables.get("levels", [])],
@@ -1434,12 +1978,21 @@ UNAVAILABLE_PROFILE_FIELDS: tuple[tuple[str, str], ...] = (
 )
 
 
-def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable", level: str = "unavailable", reference: datetime | None = None) -> Any:
+def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable", level: str = "unavailable", reference: datetime | None = None, evidence_class: str = "retrieved") -> Any:
+    """The provenance of a value that does not exist.
+
+    ``evidence_class`` is required on every provenance, so this placeholder
+    states the class the absent value would have carried - ``retrieved`` for a
+    field nothing retrieved, ``derived_here`` for a derivation that was
+    refused. What says the value is absent is the null value beside it, the
+    ``unavailable`` data mode and the ``no_retrieval`` flag, never the class.
+    """
     from .models import Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
 
     moment = reference or datetime.now(UTC)
     return Provenance(
         data_mode=DataMode.UNAVAILABLE,
+        evidence_class=evidence_class,
         source_id=source_id,
         provider="unavailable",
         product=product,

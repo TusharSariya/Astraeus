@@ -1,5 +1,7 @@
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
-import type { CatalogResult, CatalogSource, CloudLayerReading, EvidenceSnapshot, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
+import { declaredEvidenceClass, resolveEvidenceClass } from './evidenceClass'
+import { resolveDeliveryKind } from './deliveryKind'
+import type { CatalogResult, CatalogSource, CloudLayerReading, DerivationInput, DerivationMethod, EvidenceSnapshot, FieldAlternative, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedEvidenceClass, ResolvedFrame, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
 } from './types'
 
 const prefix = '/api/experiments/weather/v0'
@@ -23,6 +25,10 @@ export interface ApiPointResponse {
     selected_product_id?: string | null
   }
   fields: ApiEvidenceField[]
+  /** The response's own notices. They carry the reason a derivation was
+   *  refused or an artifact's provenance could not be modelled, which is the
+   *  only place that reason exists. */
+  notices?: unknown
 }
 
 /** Map a declared `data_mode` onto the UI union. A missing or unrecognised value
@@ -45,25 +51,189 @@ function isPointResponse(value: unknown): value is ApiPointResponse {
  *  header named. When the response says which source it selected, that
  *  source's field is preferred; only when it does not is the first one taken,
  *  and either way the attribution beside the number says whose it is. */
-function pickField(fields: ApiEvidenceField[], name: string, preferredSourceId: string | null): ApiEvidenceField | undefined {
+function pickField(fields: ApiEvidenceField[], name: string, preferredSourceId: string | null, nonPrimarySources: ReadonlySet<string> = EMPTY_SOURCES): ApiEvidenceField | undefined {
   const matches = fields.filter((field) => field.field === name)
+  // A reprocessed, intermediary-derived or uncalibrated value, or one from a
+  // source the catalogue refuses, is never the reading — not even when the
+  // response selected its source, and not even when it is the only value the
+  // field has. It is offered as an alternative instead (`alternativesOf`).
+  const eligible = matches.filter((field) => isDisplayPrimary(field, nonPrimarySources))
   if (preferredSourceId) {
-    const preferred = matches.find((field) => field.provenance?.source_id === preferredSourceId)
+    const preferred = eligible.find((field) => field.provenance?.source_id === preferredSourceId)
     if (preferred) return preferred
   }
-  return matches[0]
+  return eligible[0]
+}
+
+const EMPTY_SOURCES: ReadonlySet<string> = new Set<string>()
+
+/** An alternative reading in words: the value as served, in the unit the
+ *  response declared for it. Deliberately NOT unit-converted — an alternative
+ *  is shown to be compared with the primary, and silently rewriting its unit
+ *  is how a number stops matching the source it names. */
+function describeValue(field: ApiEvidenceField): string {
+  const value = field.value
+  const units = String(field.provenance?.normalized_units ?? field.provenance?.original_units ?? '').trim()
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const shown = Number.isInteger(value) ? String(value) : value.toFixed(1)
+    return units ? `${shown} ${units}` : shown
+  }
+  if (typeof value === 'string' && value.trim()) return value
+  return 'no value'
+}
+
+/** The values of `name` that may not be the reading, in response order. */
+function alternativesOf(fields: ApiEvidenceField[], name: string, nonPrimarySources: ReadonlySet<string>): ApiEvidenceField[] {
+  return fields.filter((field) => field.field === name && !isDisplayPrimary(field, nonPrimarySources))
+}
+
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+/** `quality` as `{ status, flags }`. A response that carries neither reports
+ *  null and an empty flag list rather than a status this client made up. */
+function qualityOf(provenance: Record<string, unknown>): { status: string | null; flags: string[] } {
+  const quality = provenance.quality
+  if (!quality || typeof quality !== 'object') return { status: null, flags: [] }
+  const record = quality as Record<string, unknown>
+  const flags = Array.isArray(record.flags) ? record.flags.filter((flag): flag is string => typeof flag === 'string') : []
+  return { status: text(record.status), flags }
+}
+
+/** The inputs a `derived_here` value names, as `provenance.derivation_inputs`.
+ *  Each entry keeps its own declared class, so an input that is not
+ *  `retrieved` is visible to the reader rather than folded into the result. */
+function derivationInputsOf(provenance: Record<string, unknown>): DerivationInput[] {
+  const raw = provenance.derivation_inputs
+  if (!Array.isArray(raw)) return []
+  return raw.filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object').map((entry) => {
+    // The API publishes `quality` as the same `{ status, flags }` object a
+    // value's own provenance carries; a bare status string is accepted too so
+    // that a hand-written or older response still reads as a status rather
+    // than as "[object Object]".
+    const quality = entry.quality
+    const status = typeof quality === 'string' ? quality
+      : quality && typeof quality === 'object' ? text((quality as Record<string, unknown>).status)
+        : null
+    return {
+      field: String(entry.field ?? 'unnamed input'),
+      sourceId: text(entry.source_id),
+      product: text(entry.product),
+      validTime: text(entry.valid_time),
+      runTime: text(entry.run_time),
+      units: text(entry.units),
+      quality: status,
+      evidenceClass: resolveEvidenceClass(entry.evidence_class),
+      declaredClass: declaredEvidenceClass(entry.evidence_class),
+    }
+  })
+}
+
+/** The registered method a derived value names.
+ *
+ *  The API's shape is flat — `derivation`, `derivation_version`,
+ *  `derivation_citation` — and that is the contract. The nested
+ *  `derivation_method: { name, version, citation }` object is still accepted
+ *  first because it costs three lines and lets a response that groups them
+ *  read correctly; nothing produces it today. */
+function derivationMethodOf(provenance: Record<string, unknown>): DerivationMethod | null {
+  const method = provenance.derivation_method
+  if (method && typeof method === 'object') {
+    const record = method as Record<string, unknown>
+    const name = text(record.name)
+    if (name) return { name, version: text(record.version), citation: text(record.citation) }
+  }
+  const name = text(provenance.derivation)
+  if (!name) return null
+  return { name, version: text(provenance.derivation_version), citation: text(provenance.derivation_citation) }
+}
+
+/** Flags the API sets when a value exists as a refusal rather than a reading. */
+const DERIVATION_REFUSED = 'derivation_refused'
+const PROVENANCE_UNMODELLED = 'provenance_unmodelled'
+
+/** The three classes that are served but never a field's primary reading
+ *  (`point-evidence-sampling`: "Values of class `reprocessed`,
+ *  `intermediary_derived` and `uncalibrated_observation` SHALL be sampled and
+ *  served as non-primary"). */
+const NON_PRIMARY_CLASSES: readonly ResolvedEvidenceClass[] = ['reprocessed', 'intermediary_derived', 'uncalibrated_observation']
+
+/** Whether a value may occupy a field's reading slot.
+ *
+ *  `unrecognised` deliberately MAY: a class the client cannot read is a
+ *  failure to be shown in the reading's place, with its reason, and demoting
+ *  it to an alternative instead would hide the fault behind a disclosure
+ *  panel — the opposite of what the class field is for. The API's own
+ *  `display_primary_eligible` is authoritative for the six it knows; when it
+ *  says nothing the class is read directly, so a reprocessed value never
+ *  becomes a reading merely because a field was missing from the response. */
+function displayPrimaryEligibleOf(provenance: Record<string, unknown>, evidenceClass: ResolvedEvidenceClass): boolean {
+  if (evidenceClass === 'unrecognised') return true
+  if (typeof provenance.display_primary_eligible === 'boolean') return provenance.display_primary_eligible
+  return !NON_PRIMARY_CLASSES.includes(evidenceClass)
 }
 
 function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | null {
   if (!field) return null
   const provenance = field.provenance ?? {}
+  const quality = qualityOf(provenance)
+  const evidenceClass = resolveEvidenceClass(provenance.evidence_class)
+  const deliveryKind = resolveDeliveryKind(provenance.delivery_kind)
   return {
     sourceId: typeof provenance.source_id === 'string' ? provenance.source_id : null,
     product: typeof provenance.product === 'string' ? provenance.product : null,
     provider: String(provenance.provider ?? 'Unknown provider'),
     derivation: typeof provenance.derivation === 'string' && provenance.derivation.trim() ? provenance.derivation : null,
     derivationVersion: typeof provenance.derivation_version === 'string' ? provenance.derivation_version : null,
+    evidenceClass,
+    declaredClass: declaredEvidenceClass(provenance.evidence_class),
+    qualityStatus: quality.status,
+    qualityFlags: quality.flags,
+    // Inputs and method are read only for the one class that is defined by
+    // them. A reprocessed value naming a `derivation` is the intermediary's
+    // sentence, not a registered method this deployment can cite.
+    derivationMethod: evidenceClass === 'derived_here' ? derivationMethodOf(provenance) : null,
+    derivationInputs: evidenceClass === 'derived_here' ? derivationInputsOf(provenance) : [],
+    deliveryKind,
+    intermediary: text(provenance.intermediary),
+    intermediaryMethod: text(provenance.intermediary_method),
+    displayPrimaryEligible: displayPrimaryEligibleOf(provenance, evidenceClass),
+    derivationRefused: quality.flags.includes(DERIVATION_REFUSED),
+    provenanceUnmodelled: quality.flags.includes(PROVENANCE_UNMODELLED),
+    // Filled in by `normalizePoint`, which is where the field name and the
+    // response's notices are both in hand.
+    notice: null,
   }
+}
+
+/** The response notice that explains one field's refusal.
+ *
+ *  The API writes a notice per skipped artifact,
+ *  "artifact from <source> (revision <id>) was skipped: <reason>", and the
+ *  reason for a refused derivation names the field. So a notice naming the
+ *  field is preferred, and a notice naming only the source is the fallback —
+ *  an unmodelled artifact's notice names the artifact, not each field it
+ *  would have carried. Null when nothing in the response explains it, which
+ *  the interface says out loud rather than inventing a reason. */
+export function noticeForField(fieldName: string, attribution: FieldAttribution, notices: string[]): string | null {
+  if (!attribution.derivationRefused && !attribution.provenanceUnmodelled) return null
+  const named = notices.find((notice) => notice.includes(fieldName))
+  if (named) return named
+  const sourceId = attribution.sourceId
+  return (sourceId && notices.find((notice) => notice.includes(sourceId))) ?? null
+}
+
+/** Whether a value may stand as a field's primary reading.
+ *
+ *  Two gates, both refusing: the value's own provenance (the class), and the
+ *  catalogue record for its source (`display_primary: false`). Either one is
+ *  enough to keep it out of the reading, because they refuse for different
+ *  reasons — what the value is, and what the registry says the source is. */
+function isDisplayPrimary(field: ApiEvidenceField, nonPrimarySources: ReadonlySet<string>): boolean {
+  const attribution = attributionOf(field)
+  if (!attribution?.displayPrimaryEligible) return false
+  return !(attribution.sourceId && nonPrimarySources.has(attribution.sourceId))
 }
 
 function finiteValue(field: ApiEvidenceField | undefined): number | null {
@@ -174,7 +344,24 @@ function cloudLayersOf(fields: ApiEvidenceField[], preferredSourceId: string | n
   return layers
 }
 
-export function normalizePoint(point: ApiPointResponse): EvidenceSnapshot {
+/** Options a caller may narrow the reading with. `nonPrimarySources` are the
+ *  catalogue records whose `display_primary` is false; the catalogue is
+ *  fetched separately, so a point normalised before it arrives simply applies
+ *  the provenance gate alone and re-normalises when the catalogue lands. */
+export interface NormalizeOptions {
+  nonPrimarySources?: ReadonlySet<string>
+}
+
+/** The source ids a catalogue refuses as any field's primary reading. */
+export function nonPrimarySourceIds(sources: CatalogSource[]): ReadonlySet<string> {
+  // `display_primary` absent is NOT false: a record that has not declared one
+  // is undeclared, not refused, and refusing it here would blank a reading on
+  // the strength of a field the registry has not filled in yet.
+  return new Set(sources.filter((source) => source.display_primary === false).map((source) => source.id))
+}
+
+export function normalizePoint(point: ApiPointResponse, options: NormalizeOptions = {}): EvidenceSnapshot {
+  const nonPrimarySources = options.nonPrimarySources ?? EMPTY_SOURCES
   // The response names the product it answered with. The old code inferred the
   // mode from whichever `temperature` field came first, which on the blended
   // response is the METAR observation, so the header and the number disagreed.
@@ -185,12 +372,19 @@ export function normalizePoint(point: ApiPointResponse): EvidenceSnapshot {
     : point.selection.mode === 'evidence_only' ? 'unavailable'
       : selectedProduct === 'HRDPS' ? 'hrdps'
         : selectedProduct === 'RDPS' ? 'rdps' : 'unavailable'
-  const fields = point.fields
-  const pick = (name: string) => pickField(fields, name, selectedSourceId)
+  const allFields = point.fields
+  // Every metric reads from the values that MAY be a reading. A reprocessed,
+  // intermediary-derived or uncalibrated value, or one from a source the
+  // catalogue refuses, is filtered out here rather than at each call site, so
+  // no converter, stratum or cloud-layer reader can promote one by accident.
+  const fields = allFields.filter((field) => isDisplayPrimary(field, nonPrimarySources))
+  const pick = (name: string) => pickField(fields, name, selectedSourceId, nonPrimarySources)
   const fogValue = pick('fog_state')?.value
   const fogRisk = fogValue === 'evidence_present' || fogValue === 'not_indicated' ? fogValue : 'unknown'
   const uniqueProvenance = new Map<string, ProvenanceRow>()
-  fields.forEach((field) => {
+  // The provenance table lists every source that answered, primary or not:
+  // it is the record of what was retrieved, not of what was displayed.
+  allFields.forEach((field) => {
     const provenance = field.provenance ?? {}
     const provider = String(provenance.provider ?? 'Unknown provider')
     const product = String(provenance.product ?? field.field)
@@ -199,7 +393,14 @@ export function normalizePoint(point: ApiPointResponse): EvidenceSnapshot {
     const key = `${provider}/${product}`
     const derivation = attributionOf(field)?.derivation ?? null
     const existing = uniqueProvenance.get(key)
+    // Every class this provider/product reported, deduplicated. A row that
+    // mixes classes says so rather than showing the first one it saw.
+    const evidenceClass = resolveEvidenceClass(provenance.evidence_class)
+    const evidenceClasses = existing?.evidenceClasses.includes(evidenceClass)
+      ? existing.evidenceClasses
+      : [...(existing?.evidenceClasses ?? []), evidenceClass]
     uniqueProvenance.set(key, {
+      evidenceClasses,
       provider,
       product,
       run: String(provenance.run_time ?? 'Unknown run'),
@@ -213,16 +414,33 @@ export function normalizePoint(point: ApiPointResponse): EvidenceSnapshot {
   })
   // Mode and attribution are recorded for the field that is shown, not for
   // whichever copy of the name happened to come last in the list.
+  const notices = Array.isArray(point.notices)
+    ? point.notices.filter((notice): notice is string => typeof notice === 'string' && notice.trim().length > 0)
+    : []
   const fieldModes: Record<string, FieldDataMode> = {}
   const fieldSources: Record<string, FieldAttribution> = {}
+  const fieldAlternatives: Record<string, FieldAlternative[]> = {}
   DISPLAYED_FIELDS.forEach((name) => {
     const field = pick(name)
-    if (!field) return
-    fieldModes[name] = toDataMode(field.provenance?.data_mode)
-    const attribution = attributionOf(field)
-    if (attribution) fieldSources[name] = attribution
+    if (field) {
+      fieldModes[name] = toDataMode(field.provenance?.data_mode)
+      const attribution = attributionOf(field)
+      if (attribution) fieldSources[name] = { ...attribution, notice: noticeForField(name, attribution, notices) }
+    }
+    // Recorded whether or not the field has a primary: a field whose only
+    // value is reprocessed reads as Unknown with that value beside it, which
+    // is the whole point of the rule.
+    const alternatives = alternativesOf(allFields, name, nonPrimarySources)
+      .map((entry) => {
+        const attribution = attributionOf(entry)
+        return attribution ? { field: name, text: describeValue(entry), attribution } : null
+      })
+      .filter((entry): entry is FieldAlternative => entry !== null)
+    if (alternatives.length > 0) fieldAlternatives[name] = alternatives
   })
   return {
+    fieldAlternatives,
+    notices,
     mode: selectionMode,
     selectionBadge: typeof point.selection.badge === 'string' && point.selection.badge.trim() ? point.selection.badge : null,
     selectedProductId,
@@ -258,13 +476,17 @@ export function normalizePoint(point: ApiPointResponse): EvidenceSnapshot {
     },
     auroraProbabilityPct: numericField(fields, 'aurora_probability', selectedSourceId),
     marine: { waveHeightM: numericField(fields, 'wave_height', selectedSourceId), sstC: numericField(fields, 'sea_surface_temperature', selectedSourceId), tide: 'Tide feed unavailable' },
-    warnings: alertTexts(fields),
+    // Alerts read from every field, not only the display-primary ones. An
+    // alert is a published hazard text rather than a reading to be outranked,
+    // and withholding one because its source is not a display primary would
+    // drop a warning to satisfy a rule about numbers.
+    warnings: alertTexts(allFields),
     story: [],
     provenance: [...uniqueProvenance.values()],
   }
 }
 
-export async function loadPoint(location: LocationPoint, validTime?: string, product?: string, signal?: AbortSignal): Promise<{ snapshot: EvidenceSnapshot; source: PointDataSource; error?: string }> {
+export async function loadPoint(location: LocationPoint, validTime?: string, product?: string, signal?: AbortSignal, options: NormalizeOptions = {}): Promise<{ snapshot: EvidenceSnapshot; source: PointDataSource; error?: string }> {
   try {
     const params = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude) })
     if (validTime) params.set('valid_time', validTime)
@@ -273,7 +495,7 @@ export async function loadPoint(location: LocationPoint, validTime?: string, pro
     if (!response.ok) throw new Error(`weather API returned ${response.status}`)
     const body: unknown = await response.json()
     if (!isPointResponse(body)) throw new Error('weather API returned an incompatible point schema')
-    const snapshot = normalizePoint(body)
+    const snapshot = normalizePoint(body, options)
     const declared = (body as ApiPointResponse).data_mode
     // The mode is stated first, because that is what fails the response closed.
     // The response's own `selection.reason` is appended when it gives one: a
@@ -453,6 +675,15 @@ export function layerGroup(layer: LayerItem): LayerGroup {
   if (layer.evidence_basis === 'live_proxy') return 'forecast_proxy'
   if (layer.evidence_basis === 'published_artifact') return layer.kind === 'raster' ? 'published_model' : 'observation'
   return 'unknown'
+}
+
+/** A layer's declared evidence class. `/layers` declares it per layer the way
+ *  `/point` declares it per value; an absent or unknown declaration resolves
+ *  to `unrecognised`, which the drawer says out loud. It is never inferred
+ *  from `evidence_basis` or the group: a published artifact can hold values of
+ *  any class, and guessing here is exactly what the class field replaces. */
+export function layerEvidenceClass(layer: LayerItem): ResolvedEvidenceClass {
+  return resolveEvidenceClass(layer.evidence_class)
 }
 
 /** Layers bucketed by group in the shared order, empty groups omitted, and the
@@ -1073,7 +1304,7 @@ function hourIso(reference: Date, offsetHours: number): string {
 /** Build the 28-hour story from the hours the API actually served.
  *  Every card is one real `/point` response; nothing is interpolated between
  *  them, and an hour the timeline does not publish is simply not requested. */
-export async function loadStory(location: LocationPoint, timeline: TimelineResponse | null, product: string | undefined, signal?: AbortSignal): Promise<StoryStep[]> {
+export async function loadStory(location: LocationPoint, timeline: TimelineResponse | null, product: string | undefined, signal?: AbortSignal, options: NormalizeOptions = {}): Promise<StoryStep[]> {
   // An undeclared or unavailable timeline names no published hour, so no card is
   // built from it. Its hours would otherwise read as coverage on the strength of
   // a response that never claimed any.
@@ -1089,7 +1320,7 @@ export async function loadStory(location: LocationPoint, timeline: TimelineRespo
     .map((offset) => ({ offset, iso: hourIso(reference, offset) }))
     .filter((candidate) => published.has(new Date(candidate.iso).getTime()))
   const results = await Promise.all(wanted.map(async (candidate) => {
-    const result = await loadPoint(location, candidate.iso, product, signal)
+    const result = await loadPoint(location, candidate.iso, product, signal, options)
     if (result.source === 'unavailable') return null
     const snapshot = result.snapshot
     const step: StoryStep = {

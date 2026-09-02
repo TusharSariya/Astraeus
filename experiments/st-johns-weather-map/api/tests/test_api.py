@@ -59,7 +59,7 @@ def test_catalog_is_the_whole_registry_and_never_claims_an_active_source():
     assert payload["operational"] is False
     ids = [source["id"] for source in payload["sources"]]
     assert ids == [record["id"] for record in registry()["sources"]]
-    assert len(ids) == 63
+    assert len(ids) == 64
     assert "active" not in {source["state"] for source in payload["sources"]}
     assert all(source["status_reason"] and source["fixture_status"] for source in payload["sources"])
     assert {source["id"] for source in payload["sources"] if source["schedulable"]} == schedulable_source_ids()
@@ -316,6 +316,8 @@ def use_live_store(monkeypatch, data_mode, store) -> None:
     monkeypatch.setattr(api_module, "live_store", lambda: store)
 
 
+
+
 def assert_no_evidence_was_invented(payload: dict) -> None:
     assert payload["data_mode"] == "unavailable"
     assert payload["operational"] is False
@@ -396,7 +398,7 @@ def test_product_selection_never_claims_a_source_that_published_nothing(monkeypa
             return [
                 Sample(
                     source_id="eccc-hrdps", logical_name="surface", variable="temperature_2m", value=9.25,
-                    units="degC", level="2 m above ground", valid_time=valid_time, run_time=None,
+                    units="degC", evidence_class="retrieved", level="2 m above ground", valid_time=valid_time, run_time=None,
                     retrieved_at=None, native_crs="EPSG:4326", provenance={},
                 ),
                 _sample("eccc-rdps", "temperature_2m", 11.5, "degC", valid_time),
@@ -486,7 +488,7 @@ def test_a_taf_never_rides_along_as_an_observation(monkeypatch, data_mode):
 
 def _sample(source_id: str, variable: str, value: float | None, units: str, valid_time: datetime) -> Sample:
     return Sample(
-        source_id=source_id, logical_name="surface", variable=variable, value=value, units=units,
+        source_id=source_id, logical_name="surface", variable=variable, value=value, units=units, evidence_class="retrieved",
         level="surface", valid_time=valid_time, run_time=None, retrieved_at=None, native_crs="EPSG:4326", provenance={},
     )
 
@@ -512,7 +514,9 @@ def test_wind_is_served_as_speed_and_direction_with_its_derivation_disclosed(mon
     assert direction["value"] == 90.0 and direction["provenance"]["normalized_units"] == "degree"
     for item in (speed, direction):
         assert item["provenance"]["source_id"] == "eccc-hrdps"
-        assert "MetPy" in item["provenance"]["derivation"]
+        assert item["provenance"]["derivation"] == "wind_speed_and_direction_from_components"
+        assert item["provenance"]["evidence_class"] == "derived_here"
+        assert "MetPy" in item["provenance"]["derivation_citation"]
         assert item["provenance"]["derivation_version"] == "metpy-1.7.1-wind-v1"
 
 

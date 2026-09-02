@@ -29,6 +29,20 @@ _LATITUDE_NAMES = ("latitude", "lat", "y")
 _LONGITUDE_NAMES = ("longitude", "lon", "x")
 
 
+#: The six evidence classes, mirrored from ``api.weather_api.models`` so the
+#: worker image - which does not ship the API package - can validate against
+#: them. Kept as one list in both places on purpose: a manifest that declares a
+#: class the API cannot model would publish and then fail at read time.
+EVIDENCE_CLASSES: tuple[str, ...] = (
+    "retrieved",
+    "reprocessed",
+    "derived_here",
+    "intermediary_derived",
+    "generated_display",
+    "uncalibrated_observation",
+)
+
+
 class ManifestError(ValueError):
     """A manifest is self-contradictory; the adapter, not the data, is wrong."""
 
@@ -40,12 +54,23 @@ class RequiredField:
     ``units`` is the *normalized* unit the experiment stores, not the
     provider's. A mismatch is a QC failure rather than an incompleteness:
     the data arrived, but it does not mean what the rest of the stack assumes.
+
+    ``evidence_class`` is how this field's values came to exist. An adapter
+    fetches what the producer issued, so ``retrieved`` is the default here and
+    only here: a derivation or a display construction states its own class,
+    and a publisher that says nothing has said "the producer issued this",
+    which is a claim the audit can check rather than an inference.
     """
 
     name: str
     units: str
     level: str = "surface"
     optional: bool = False
+    evidence_class: str = "retrieved"
+
+    def __post_init__(self) -> None:
+        if self.evidence_class not in EVIDENCE_CLASSES:
+            raise ManifestError(f"{self.name}: {self.evidence_class!r} is not one of the six evidence classes")
 
 
 @dataclass(frozen=True)
@@ -57,10 +82,19 @@ class RunManifest:
     required_valid_times: tuple[datetime, ...] = ()
     min_coverage_fraction: float = 1.0
     bounds: Mapping[str, float] | None = None
+    #: The set of evidence classes this artifact declares it contains. Left
+    #: empty it is the set its own fields declare, which is what an adapter
+    #: publishing only retrieved fields means. Stated explicitly it must agree
+    #: with those fields: a manifest that understates its classes is refused
+    #: with ``evidence_class_mismatch`` rather than published.
+    evidence_classes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.fields:
             raise ManifestError(f"{self.source_id}: a manifest must declare at least one field")
+        for name in self.evidence_classes:
+            if name not in EVIDENCE_CLASSES:
+                raise ManifestError(f"{self.source_id}: {name!r} is not one of the six evidence classes")
         if not 0.0 < self.min_coverage_fraction <= 1.0:
             raise ManifestError(f"{self.source_id}: min_coverage_fraction must fall in (0, 1]")
         names = [field.name for field in self.fields]
@@ -74,6 +108,48 @@ class RunManifest:
     @property
     def mandatory(self) -> tuple[RequiredField, ...]:
         return tuple(field for field in self.fields if not field.optional)
+
+    @property
+    def declared_classes(self) -> tuple[str, ...]:
+        """The class set this artifact publishes, in a stable order."""
+        stated = self.evidence_classes or tuple(field.evidence_class for field in self.fields)
+        return tuple(sorted(set(stated)))
+
+    @property
+    def class_by_field(self) -> dict[str, str]:
+        """Each declared field's own class, for the artifact's manifest block."""
+        return {field.name: field.evidence_class for field in self.fields}
+
+    def as_manifest_block(self) -> dict[str, Any]:
+        """The class declaration an artifact records in its own provenance.
+
+        This is the block ``weather_api.store`` reads to admit or exclude an
+        artifact and to give each sampled value its class, so it is produced
+        here rather than assembled by hand in each adapter. Splat it into the
+        provenance dict an adapter builds.
+        """
+        return declared_classes(self.declared_classes, by_variable=self.class_by_field)
+
+
+def declared_classes(classes: Sequence[str], *, by_variable: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The class declaration for an artifact that has no run manifest.
+
+    A derived or display construction stages its own artifact without an
+    adapter's manifest, and it still has to say what its values are. The
+    classes are checked here rather than at read time, because an artifact
+    that declares a class the contract does not know is isolated by the API
+    and answers null - a defect worth catching where it is written.
+    """
+    declared = tuple(dict.fromkeys(classes))
+    if not declared:
+        raise ManifestError("an artifact declares at least one evidence class")
+    for name in (*declared, *(by_variable or {}).values()):
+        if name not in EVIDENCE_CLASSES:
+            raise ManifestError(f"{name!r} is not one of the six evidence classes")
+    undeclared = sorted({name for name in (by_variable or {}).values() if name not in declared})
+    if undeclared:
+        raise ManifestError(f"evidence_class_mismatch: values carry {', '.join(undeclared)}, which the artifact does not declare")
+    return {"evidence_classes": sorted(declared), "evidence_class_by_variable": dict(by_variable or {})}
 
 
 @dataclass(frozen=True)
@@ -176,6 +252,20 @@ def validate_run(
         if int(getattr(dataset[coord_name], "size", 0)) == 0:
             result = result.failing(f"empty_grid:{axis}", f"{axis} dimension is empty; the bbox crop matched nothing")
 
+    # A manifest that understates the classes it contains is refused before
+    # anything is published: the class is what a data path admits or excludes
+    # on, so an artifact whose declaration disagrees with its values would let
+    # a generated value through a gate that read the declaration and believed
+    # it. A contract violation, so it fails QC rather than completeness.
+    if manifest.evidence_classes:
+        undeclared = sorted({field.evidence_class for field in manifest.fields} - set(manifest.evidence_classes))
+        for name in undeclared:
+            result = result.failing(
+                f"evidence_class_mismatch:{name}",
+                f"the manifest declares {', '.join(manifest.evidence_classes)} and a declared field carries {name}",
+                qc=True,
+            )
+
     coverages: list[float] = []
     for field in manifest.fields:
         if field.name not in data_vars:
@@ -191,6 +281,16 @@ def validate_run(
         if coverage <= 0.0:
             result = result.failing(f"empty_field:{field.name}", f"{field.name} is present but entirely missing values")
 
+        # A value may state its own class in its attributes. Where it does, it
+        # is the value speaking, and the manifest is checked against it rather
+        # than the other way round.
+        carried = str(variable.attrs.get("evidence_class", "")).strip()
+        if carried and carried != field.evidence_class:
+            result = result.failing(
+                f"evidence_class_mismatch:{field.name}:{carried}",
+                f"{field.name} carries evidence class {carried!r}, not the declared {field.evidence_class!r}",
+                qc=True,
+            )
         got = str(variable.attrs.get("units", "")).strip()
         if got != field.units:
             result = result.failing(

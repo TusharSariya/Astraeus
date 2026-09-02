@@ -4,11 +4,67 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+# --- evidence classes -----------------------------------------------------
+# How a value came to exist. Exactly one of six, carried on every value and
+# recorded per artifact (ADR 0001, ``docs/adr/0001-five-evidence-classes.md``).
+# The class is a declared field and is never inferred from a derivation name,
+# an ``evidence_basis``, a generated flag or a logical name: each of those was
+# added for one feature, none knows about the others, and that is how a
+# generated repair reached a data path on 2026-09-01.
+
+EvidenceClass = Literal[
+    "retrieved",
+    "reprocessed",
+    "derived_here",
+    "intermediary_derived",
+    "generated_display",
+    "uncalibrated_observation",
+]
+
+EVIDENCE_CLASSES: tuple[str, ...] = (
+    "retrieved",
+    "reprocessed",
+    "derived_here",
+    "intermediary_derived",
+    "generated_display",
+    "uncalibrated_observation",
+)
+
+#: Classes that may be the display primary for a field and may be read as an
+#: input to a derivation. Reprocessed, intermediary-derived and uncalibrated
+#: values are served side by side, labelled, and never promoted.
+PRIMARY_ELIGIBLE_CLASSES: frozenset[str] = frozenset({"retrieved", "derived_here"})
+
+#: The only class a derivation may read.
+DERIVATION_INPUT_CLASSES: frozenset[str] = frozenset({"retrieved"})
+
+#: Never on ``/point``, ``/profile``, ``/timeline``, ``/features``, stories or
+#: readings; display construction only, under the ``openspec/config.yaml``
+#: carve-outs.
+DISPLAY_ONLY_CLASSES: frozenset[str] = frozenset({"generated_display"})
+
+
+# --- delivery kinds -------------------------------------------------------
+# How a source's values reach this deployment, declared per registry record.
+# A separate axis from the evidence class on purpose: a delivery kind says
+# whose cell a value is, a class says how the value came to exist. An
+# ``intermediary_derived`` value is still retrieved by this deployment, so
+# reusing ``retrieved`` for a delivery kind would make one word mean two
+# things.
+
+DeliveryKind = Literal["published_cell", "reprocessed", "intermediary_derived"]
+
+#: The only kind whose values may be a field's display primary. A value a
+#: third party transformed or computed has no business outranking a producer's
+#: own published cell.
+PRIMARY_ELIGIBLE_DELIVERY_KINDS: frozenset[str] = frozenset({"published_cell"})
 
 
 class DataMode(StrEnum):
@@ -37,9 +93,48 @@ class SourceState(StrEnum):
     REJECTED = "rejected"
 
 
+#: ``derived`` is a flag, never a fifth status: a fifth status would break
+#: every consumer that switches on the four, and a derived artifact whose QC
+#: status was ``derived`` failed a whole ``/point`` response on 2026-09-01.
+DERIVED_FLAG = "derived"
+#: Set where a method's output was pulled back to the declared physical range.
+RANGE_CLAMPED_FLAG = "range_clamped"
+
+#: Worst-first ordering of the four statuses. A derived value takes the worst
+#: status among its inputs: it is the only rule that cannot launder a suspect
+#: input into a passed output. ``unknown`` outranks ``suspect`` because an
+#: unmeasured input is a weaker claim than a measured, doubted one.
+QUALITY_SEVERITY: dict[str, int] = {"passed": 0, "suspect": 1, "unknown": 2, "failed": 3}
+
+
 class Quality(StrictModel):
+    """QC verdict on one value.
+
+    ``status`` keeps exactly four values. Recognised ``flags`` include
+    ``derived`` (this value was computed here by a registered method) and
+    ``range_clamped``; the list stays open because adapters record their own
+    QC flags, but ``derived`` is the one a client reads to know a number was
+    constructed rather than read.
+    """
+
     status: Literal["passed", "suspect", "failed", "unknown"]
     flags: list[str] = Field(default_factory=list)
+
+    @property
+    def derived(self) -> bool:
+        return DERIVED_FLAG in self.flags
+
+    @classmethod
+    def worst_of(cls, inputs: list[Quality], *, flags: list[str] | None = None) -> Quality:
+        """The derived quality: no better than the worst input, flagged derived.
+
+        A method may downgrade further; nothing here may raise a status.
+        """
+        status = "unknown"
+        if inputs:
+            status = max((item.status for item in inputs), key=lambda value: QUALITY_SEVERITY.get(value, 2))
+        collected = [DERIVED_FLAG, *(flags or [])]
+        return cls(status=status, flags=list(dict.fromkeys(collected)))
 
 
 class Coverage(StrictModel):
@@ -72,9 +167,31 @@ class ContributorProvenance(StrictModel):
     attribution: str
 
 
+class DerivedInput(StrictModel):
+    """One value a ``derived_here`` construction read, with its own lineage.
+
+    Every input of a derived value is listed, whatever source it came from, so
+    a reader can see what the number was built out of rather than being asked
+    to trust the method's name.
+    """
+
+    field: str
+    source_id: str
+    product: str
+    valid_time: datetime
+    units: str
+    evidence_class: EvidenceClass
+    quality: Quality
+    run_time: datetime | None = None
+
+
 class Provenance(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
+    #: How this value came to exist. Required, with no default: a required
+    #: field cannot be forgotten, so the failure mode is a validation error at
+    #: publication rather than a silent promotion at read time.
+    evidence_class: EvidenceClass
     source_id: str
     provider: str
     product: str
@@ -95,6 +212,25 @@ class Provenance(StrictModel):
     attribution: str
     derivation: str | None = None
     derivation_version: str | None = None
+    #: The registry entry's citation to the published construction it
+    #: implements. A ``derived_here`` value names one; nothing else does.
+    derivation_citation: str | None = None
+    #: Every input the method read, each with its own provenance.
+    derivation_inputs: list[DerivedInput] = Field(default_factory=list)
+    #: How this source's values reach the deployment, read from its registry
+    #: record. A record that declares no kind leaves this ``None`` rather than
+    #: claiming the producer's own cell on the record's behalf.
+    delivery_kind: DeliveryKind | None = None
+    #: What the source's registry record says about being a display primary.
+    #: It follows from the kind unless the record overrides it, so it is
+    #: carried rather than recomputed: a record may refuse the primary for a
+    #: reason no other field states.
+    source_display_primary: bool | None = None
+    #: For ``reprocessed`` and ``intermediary_derived``: the intermediary that
+    #: stands between the producer and this deployment, and its own method
+    #: where the intermediary documents one. ``provider`` remains the producer.
+    intermediary: str | None = None
+    intermediary_method: str | None = None
     adapter_version: str
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
@@ -116,6 +252,67 @@ class Provenance(StrictModel):
         if value is not None and value.tzinfo is None:
             raise ValueError("timestamps must include an offset")
         return value
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def display_primary_eligible(self) -> bool:
+        """Whether this value may be a field's display primary.
+
+        Three things can refuse it and none can grant it alone: the evidence
+        class (a reprocessed, intermediary-derived or uncalibrated value is
+        shown beside the others, labelled, and never promoted over a
+        producer's own published cell), the delivery kind (a value a third
+        party transformed is not the producer's own cell either), and the
+        source record's own `display_primary`, which a record may set false
+        for a reason no other field states. Computed rather than stored so it
+        can never disagree with what it is computed from.
+        """
+        if self.evidence_class not in PRIMARY_ELIGIBLE_CLASSES:
+            return False
+        if self.delivery_kind is not None and self.delivery_kind not in PRIMARY_ELIGIBLE_DELIVERY_KINDS:
+            return False
+        return self.source_display_primary is not False
+
+
+class ArtifactManifest(StrictModel):
+    """The evidence classes one published artifact declares it contains.
+
+    Recorded per artifact so storage and QC gates can act on it without
+    opening the data, and so sampling can exclude a display-only artifact by
+    its class rather than by matching its logical name - the match that
+    stopped matching when the name grew a layer suffix.
+
+    ``evidence_class_by_variable`` is required whenever an artifact carries
+    more than one class: a value's class is per value, and an artifact that
+    declares two classes without saying which variable carries which cannot be
+    resolved to a value's class at read time.
+    """
+
+    source_id: str
+    logical_name: str
+    evidence_classes: Annotated[list[EvidenceClass], Field(min_length=1)]
+    evidence_class_by_variable: dict[str, EvidenceClass] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def declared_set_covers_its_values(self) -> ArtifactManifest:
+        declared = set(self.evidence_classes)
+        carried = set(self.evidence_class_by_variable.values())
+        missing = sorted(carried - declared)
+        if missing:
+            raise ValueError(f"evidence_class_mismatch: values carry {', '.join(missing)}, which the manifest does not declare")
+        return self
+
+    def class_for(self, variable: str) -> EvidenceClass:
+        """The class of one value, or a refusal that names why it is unknown."""
+        stated = self.evidence_class_by_variable.get(variable)
+        if stated is not None:
+            return stated
+        if len(set(self.evidence_classes)) == 1:
+            return self.evidence_classes[0]
+        raise ValueError(
+            f"evidence_class_mismatch: {self.source_id}/{self.logical_name} declares "
+            f"{', '.join(sorted(set(self.evidence_classes)))} and says nothing about {variable!r}"
+        )
 
 
 FieldValue = float | int | str | bool | list[float] | list[str] | None
@@ -139,6 +336,15 @@ class SourceRecord(StrictModel):
     state: SourceState
     status_reason: str
     role: str
+    #: How this source's values reach the deployment, and who stands between
+    #: the producer and this deployment when anyone does. A catalogue reader
+    #: can then tell a producer's own cell from an aggregator's rendering of
+    #: it without opening a value.
+    delivery_kind: DeliveryKind | None = None
+    intermediary: str | None = None
+    #: Whether this source's values may be a field's display primary, as the
+    #: record declares it. Never inferred from the id or the producer.
+    display_primary: bool = True
     may_enter_consensus: bool
     exact_variables: list[str]
     levels: list[str]
