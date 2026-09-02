@@ -213,7 +213,7 @@ def point_fields(valid_time: datetime) -> tuple[list[EvidenceField], object]:
 
     fields = [
         EvidenceField(field="temperature", value=consensus.value, provenance=provenance("multi-centre", "experimental-consensus", "independent centres", valid_time, units="degC", level="approximately 10 km grid", contributors=list(consensus.contributors))),
-        EvidenceField(field="relative_humidity", value=rh, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", derivation=derivation, derivation_version=derivation_version)),
+        EvidenceField(field="relative_humidity", phase="liquid", value=rh, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", derivation=derivation, derivation_version=derivation_version)),
         EvidenceField(field="dew_point", value=base_dew, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="degC")),
         EvidenceField(field="wind_speed", value=wind_spd, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="m s-1", level="10 m above ground")),
         EvidenceField(field="wind_gust", value=wind_gst, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="m s-1", level="10 m above ground")),
@@ -221,7 +221,7 @@ def point_fields(valid_time: datetime) -> tuple[list[EvidenceField], object]:
         EvidenceField(field="cloud_low", value=c_low, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="low cloud")),
         EvidenceField(field="cloud_middle", value=c_mid, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="middle cloud")),
         EvidenceField(field="cloud_high", value=c_high, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="high cloud")),
-        EvidenceField(field="total_cloud", value=c_tot, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="total atmosphere")),
+        EvidenceField(field="total_cloud_opacity", value=c_tot, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="total atmosphere")),
         EvidenceField(field="fog_state", value=fog_state(provider_diagnostic=None, visibility_m=int(vis_km * 1000), fog_code=fog_code), provenance=provenance("CYYT", "CYYT METAR/SPECI", "observation", valid_time, units="category", level="surface")),
         EvidenceField(field="radar_echo", value=radar_echo_semantics(False), provenance=provenance("ECCC", "Weather radar", "ECCC", valid_time, units="category", level="composite")),
     ]
@@ -270,7 +270,7 @@ def selected_forecast_fields(valid_time: datetime, product: str) -> list[Evidenc
     rh, derivation, version = resolve_relative_humidity(None, temp, dew)
     return [
         fallback_temperature(valid_time, product),
-        EvidenceField(field="relative_humidity", value=rh, provenance=provenance(provider, product_name, provider, valid_time, units="percent", derivation=derivation, derivation_version=version)),
+        EvidenceField(field="relative_humidity", phase="liquid", value=rh, provenance=provenance(provider, product_name, provider, valid_time, units="percent", derivation=derivation, derivation_version=version)),
         EvidenceField(field="dew_point", value=dew, provenance=provenance(provider, product_name, provider, valid_time, units="degC")),
     ]
 
@@ -283,15 +283,22 @@ def unavailable_forecast_fields(valid_time: datetime) -> list[EvidenceField]:
 
 
 def profile_levels(valid_time: datetime) -> list[ProfileLevel]:
+    """The development profile, keyed on the catalogue's pressure-level fields.
+
+    Dew point is not among them: the catalogue carries dew point at 2, 40, 80
+    and 120 m and no dew point on pressure levels, and a fixture may not invent
+    a key the catalogue lacks any more than an artifact may. The dew point is
+    still what the relative humidity is derived from; it is simply not served
+    at a level the catalogue does not define.
+    """
     result: list[ProfileLevel] = []
     for pressure, temp, dew, wind in [(1000, 15.2, 12.1, 8.0), (850, 8.0, 3.0, 14.0), (700, -2.0, -10.0, 22.0), (500, -18.0, -32.0, 31.0), (300, -43.0, -56.0, 45.0)]:
         rh, derivation, version = resolve_relative_humidity(None, temp, dew)
         level = f"{pressure} hPa"
         result.append(ProfileLevel(pressure_hpa=pressure, fields=[
-            EvidenceField(field="temperature", value=temp, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="degC", level=level)),
-            EvidenceField(field="dew_point", value=dew, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="degC", level=level)),
-            EvidenceField(field="relative_humidity", value=rh, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level=level, derivation=derivation, derivation_version=version)),
-            EvidenceField(field="wind_speed", value=wind, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="m s-1", level=level)),
+            EvidenceField(field="temperature", key="temperature_pressure", value=temp, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="degC", level=level)),
+            EvidenceField(field="relative_humidity", key="relative_humidity_pressure", phase="liquid", value=rh, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level=level, derivation=derivation, derivation_version=version)),
+            EvidenceField(field="wind_speed", key="wind_speed_pressure", value=wind, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="m s-1", level=level)),
         ]))
     return result
 

@@ -137,3 +137,40 @@ web owner (4.1) in parallel against a response contract fixed up front: per
 field `key`, `family`, `phase`, `storage`; per response `comparability`
 pairs; per catalogue source `fields`; uncatalogued variables refused with
 the `uncatalogued_field` flag.
+
+### Step 4: field-catalogue-and-families, section 3 (API)
+
+The response contract was fixed before sections 3 and 4 started so the API and
+the web could be built against it at once; it is in `design.md` under
+"Response contract". Section 3 landed it on `api/weather_api/`:
+
+- Task 3.0 re-keyed the API's own tables, which sections 1 and 2 had left
+  alone on purpose. Until this landed the API looked for a `total_cloud` no
+  adapter writes any more, so live cloud reached neither `/point` nor the
+  raster layers. The live half of the check was run as a pytest that builds an
+  HRDPS-keyed artifact through the store, not against the running stack: that
+  stack is built from code predating the re-key and would have measured the
+  old tables.
+- `VARIABLE_LEVELS` lost its four upper-air entries to `catalogue.resolve()`,
+  which answers a level-expanded variable with the one profile key plus its
+  level. The rest of the table stayed: an artifact's own declared
+  `vertical_level` is a retrieved fact and the catalogue's level convention is
+  not, so only the level-expanded names take their level from the catalogue.
+- `comparability` is a computed property of `PointResponse` rather than a
+  stored list, so it cannot describe a set of members the response does not
+  carry. Pairs are deduplicated on the unordered key pair, and a key served by
+  two sources appears once as a pair naming that key twice - which is the
+  `comparable: true` case the spec's "two comparable members" scenario asks
+  for.
+
+Facts worth knowing after this step:
+
+- The four cloud keys are four API field names now. Nothing in a response says
+  `total_cloud` any more; a client reading that name reads nothing.
+- The catalogue carries no dew point on pressure levels. The unavailable
+  profile list and the fixture profile therefore stopped serving one, rather
+  than claiming `dew_point_2m` at 850 hPa. Recorded as an open question in
+  `design.md`; extending the catalogue is registry work.
+- A derived relative humidity is stamped `liquid` from its registered method's
+  own declaration. It is the only phase in a response that does not come off
+  an artifact attribute.

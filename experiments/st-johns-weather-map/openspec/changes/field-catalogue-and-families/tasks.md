@@ -100,7 +100,7 @@ three are different answers a response must keep apart. Nothing outside
 
 ## 3. Responses (API owner)
 
-- [ ] 3.0 Re-key the API's own variable tables. Sections 1 and 2 left them
+- [x] 3.0 Re-key the API's own variable tables. Sections 1 and 2 left them
   untouched on purpose - they are the API owner's files - so the API still
   looks for a `total_cloud` no adapter writes any more, and live cloud will
   not reach `/point` or the raster layers until this lands. The places, all
@@ -116,14 +116,49 @@ three are different answers a response must keep apart. Nothing outside
   artifact variable name.
   Verify: `cd api && uv run pytest` stays green and a `/point` against a live
   HRDPS artifact returns a cloud value.
-- [ ] 3.1 Add `family`, `comparability` and `phase` to field responses and
+  Verify result: pass — 717 passed, 36 skipped (703 was the baseline; the 14
+  new tests are section 3's). Every place the task named is re-keyed:
+  `FIELD_BY_VARIABLE` carries the four cloud keys under their own names,
+  `UNAVAILABLE_POINT_FIELDS` takes `total_cloud_opacity`, the two
+  `eccc-*-surface-total-cloud` grid specs and the `geomet-live-hrdps-nt` WMS
+  spec take `total_cloud_opacity`, and so do `OBSERVATION_FIELDS` and the
+  fixture field. `grep -rn 'total_cloud' api/weather_api/` now returns only
+  the four catalogue keys, `total_cloud_weong` and one prose mention.
+  `VARIABLE_LEVELS` lost its four hand-written upper-air entries: the new
+  `store.variable_level` asks `catalogue.resolve()`, which answers
+  `wind_u_200hPa` with the profile key plus "200 hPa".
+  The live-artifact half of the check was done as a pytest
+  (`test_an_hrdps_keyed_artifact_reaches_point_with_its_cloud`) that builds an
+  HRDPS-keyed artifact through the store, **not** against the running stack:
+  that stack is built from code predating the re-key, so asking it would have
+  measured the old tables. The test asserts the cloud reaches `/point` as
+  `total_cloud_opacity` in family `cloud_cover` with `data_mode: live`; the
+  raster half is covered by
+  `test_rendered_cloud_curvilinear.py::test_the_hrdps_total_cloud_layer_is_offered_from_the_stored_grid`,
+  whose fixture artifact is now keyed the way the adapters write.
+- [x] 3.1 Add `family`, `comparability` and `phase` to field responses and
   compute pairwise comparability from the catalogue, including the
   below-freezing humidity rule.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k
   "family or comparab or phase"`.
-- [ ] 3.2 Refuse to serve a variable with no catalogue key, with a notice.
+  Verify result: pass — 10 passed, 27 deselected. Covers key and family on
+  every served field, three cloud members reporting all three pairs as
+  `definition`-incomparable, two opacity-weighted members reporting
+  `comparable: true`, two families never being paired, the phase read off
+  `catalogue.PHASE_ATTRIBUTE` and carried only by humidity, the same
+  liquid/mixed pair refused at -5 degC and allowed at +6.5 degC, a humidity
+  with no phase answering `phase_missing` rather than guessing, and the
+  derived humidity carrying the `liquid` phase its registered method declares.
+  `/catalog` source entries carry `fields` from `catalogue.source_mapping`
+  (noaa-gfs: 15 entries, 4 of them `available-not-stored`).
+- [x] 3.2 Refuse to serve a variable with no catalogue key, with a notice.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k
   uncatalogued`.
+  Verify result: pass — 2 passed, 35 deselected. A variable the catalogue
+  cannot resolve is served null with `data_mode: unavailable` and
+  `uncatalogued_field` in `quality.flags`, the notice names the variable and
+  `eccc-hrdps/surface`, every other field on the artifact still answers, and
+  the refused field enters no comparability pair.
 
 ## 4. Web (web owner)
 
