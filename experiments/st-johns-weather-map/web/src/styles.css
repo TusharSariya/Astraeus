@@ -276,6 +276,9 @@ html[data-theme='dark'] .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: 
 .scrubber-labels .scrubber-mark.start { transform: none; }
 .scrubber-labels .scrubber-mark.end { transform: translateX(-100%); }
 .scrubber-labels .scrubber-now { color: var(--orange); font-weight: 700; }
+/* The core/planning boundary: a tick plus a label, never colour alone. */
+.scrubber-labels .boundary-mark { transform: translateX(-50%); color: var(--cyan); font-weight: 700; }
+.scrubber-labels .boundary-mark::before { content: ''; position: absolute; top: -4px; left: 50%; width: 1px; height: 18px; background: var(--cyan); transform: translateX(-50%); }
 .timeline-slider { width: 100%; height: 6px; appearance: none; background: linear-gradient(90deg, #3498db 0%, #1abc9c 15%, #f39c12 50%, #e74c3c 100%); border-radius: 3px; outline: none; cursor: pointer; }
 .timeline-slider::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--orange); border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 8px rgba(255, 158, 64, 0.8); }
 .timeline-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--orange); border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 8px rgba(255, 158, 64, 0.8); }
@@ -286,10 +289,27 @@ html[data-theme='dark'] .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: 
 .frame-marker-rail { position: relative; height: 12px; margin-top: 2px; }
 .frame-marker { position: absolute; top: 0; width: 3px; height: 12px; padding: 0; transform: translateX(-50%); border: 0; border-radius: 1px; cursor: pointer; opacity: .85; }
 .frame-marker:hover, .frame-marker:focus-visible { opacity: 1; outline: 1px solid var(--ink); outline-offset: 1px; height: 14px; }
+/* A small change-point marker where a segment's run_time differs from its
+   predecessor's (task 4.3) — a notch above the tick, not a colour swap, so
+   it reads the same under a colour-blind palette. */
+.frame-marker.frame-marker-run-change::after { content: ''; position: absolute; top: -5px; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: var(--orange); transform: translateX(-50%); }
 .frame-marker-key { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; }
 .frame-marker-key .marker-key-entry { display: inline-flex; align-items: center; gap: 5px; }
 .frame-marker-key .marker-key-entry i { width: 8px; height: 8px; border-radius: 1px; }
 .frame-marker-key .marker-key-note { font-style: italic; }
+.marker-key-note.planning-tier-empty { color: var(--orange); font-style: normal; font-weight: 600; }
+
+/* Coverage panel: every source covering the selected instant, beside the
+   valid-instant badge (task 4.2). */
+.coverage-panel { display: flex; flex-direction: column; gap: 2px; font: 500 10px 'IBM Plex Mono', monospace; color: var(--muted); }
+.coverage-panel-title { margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.coverage-notice { margin: 0; }
+.coverage-notice.coverage-unavailable { color: var(--alarm); }
+.coverage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.coverage-entry { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.coverage-source { color: var(--ink); font-weight: 700; }
+.coverage-stale-badge { color: var(--orange); font-weight: 700; }
+.coverage-stale-unknown { font-style: italic; }
 
 .scrubber-transport-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .timeline-transport { display: flex; align-items: center; gap: 4px; margin-top: 12px; padding: 3px 6px; background: #0c252c; border: 1px solid #23434c; border-radius: 3px; }

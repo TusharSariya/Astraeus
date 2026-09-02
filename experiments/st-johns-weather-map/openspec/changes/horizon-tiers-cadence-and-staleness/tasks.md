@@ -77,15 +77,18 @@ so the two changes may run concurrently.
 
 ## 4. Web: boundary, coverage list, run labels (web owner)
 
-- [ ] 4.1 Mark the 24 h boundary and the step change beyond it, with a text
+- [x] 4.1 Mark the 24 h boundary and the step change beyond it, with a text
   alternative naming both ranges and the no-frames-beyond case.
   Verify: `cd web && npm test -- --run boundary`
-- [ ] 4.2 List the covering sources per instant with run times, offsets and
+  Verify result: `cd web && npm test -- --run boundary` -> 17 passed (1 file), 0 failed.
+- [x] 4.2 List the covering sources per instant with run times, offsets and
   run-stale badges, distinguishing nothing-covers-it from a failed request.
   Verify: `cd web && npm test -- --run coverage`
-- [ ] 4.3 Label each run segment across a short-cycle run change and draw no
+  Verify result: `cd web && npm test -- --run coverage` -> 13 passed (1 file), 0 failed.
+- [x] 4.3 Label each run segment across a short-cycle run change and draw no
   value across the join.
   Verify: `cd web && npm test -- --run runchange`
+  Verify result: `cd web && npm test -- --run runchange` -> 11 passed (1 file), 0 failed.
 
 ## 5. Gate
 

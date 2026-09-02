@@ -503,7 +503,10 @@ describe('timeline mode is applied like every other fetch', () => {
     render(<App />)
     await openStory()
 
-    expect(await screen.findByText(/timeline declared no data_mode/i)).toBeInTheDocument()
+    // The same timeline reason now also surfaces in the dock's coverage panel
+    // (task 4.2), so this is scoped to the story panel's own notice rather
+    // than asserting there is exactly one match in the whole page.
+    expect(await screen.findByText(/timeline declared no data_mode/i, { selector: '.unwired-notice' })).toBeInTheDocument()
     // No story card is built from hours the response never claimed.
     expect(screen.queryByRole('button', { name: /^Scrub to \+3h\./ })).not.toBeInTheDocument()
   })
@@ -1096,11 +1099,14 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
     render(<App />)
     expect(await screen.findByText('Kp observed')).toBeInTheDocument()
     expect(screen.getByText('4.33')).toBeInTheDocument()
-    // The forecast max is the largest value INSIDE the 28-hour window (5.0,
-    // predicted) — the 7.0 two days out never stands in for it — and the
-    // provider's own status label rides the caption.
+    // The forecast max is the largest value inside the scrubber's window,
+    // which task 4.1 widened to 24h back/14d ahead (from /timeline start..end,
+    // falling back to that fixed span here since the timeline is empty): the
+    // reading two days out (7.0, predicted) is now inside it and is the max,
+    // where the old 24h-ahead window would have left 5.0 as the max instead.
+    // The provider's own status label still rides the caption.
     expect(screen.getByText('Kp forecast max')).toBeInTheDocument()
-    expect(screen.getByText('5.00')).toBeInTheDocument()
+    expect(screen.getByText('7.00')).toBeInTheDocument()
     expect(screen.getByText(/provider status: predicted/)).toBeInTheDocument()
     expect(screen.getByText(/photographable at St. John's from about Kp 4-5/)).toBeInTheDocument()
     expect(screen.getByText('-4.1 nT')).toBeInTheDocument()
