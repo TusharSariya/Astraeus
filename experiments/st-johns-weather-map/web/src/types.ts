@@ -390,10 +390,43 @@ export interface SpaceWeatherResponse {
 
 export interface SpaceWeatherResult { spaceWeather: SpaceWeatherResponse | null; error: string | null }
 
+/** One source's standing at an hourly timeline instant, as `/timeline`
+ *  `coverage[]` declares it (Seam, design.md). Listed only when a retrieved
+ *  run actually covers the instant — a declared reach with no retrieved run
+ *  is absent here, not listed with a null run_time. */
+export interface CoverageEntry {
+  source_id: string
+  provider_run_id: string
+  run_time: string | null
+  run_cadence_seconds: number | null
+  run_age_seconds: number | null
+  run_stale: boolean | null
+  run_stale_reason: string | null
+}
+
+/** A horizon tier as a valid-time range: `core` (24 h back to 24 h ahead) or
+ *  `planning` (24 h ahead to 14 d ahead). Names no source. */
+export interface TierRange {
+  id: string
+  start: string
+  end: string
+}
+
 export interface TimelineItem {
   valid_time_utc: string
   valid_time_newfoundland: string
   available_products: string[]
+  /** Which tier this instant falls in. Optional: an older API has not
+   *  declared tiers yet. */
+  tier?: 'core' | 'planning'
+  /** Every source a retrieved run actually covers this instant with, sorted
+   *  source_id then run_time; `[]` means nothing covers it. Optional/absent
+   *  on an older API — absence is a different claim from an empty array and
+   *  the two are never conflated. */
+  coverage?: CoverageEntry[]
+  /** "nothing covers this instant" when `coverage` is `[]` and the store
+   *  answered; null otherwise. */
+  coverage_notice?: string | null
 }
 
 export interface TimelineResponse {
@@ -403,6 +436,12 @@ export interface TimelineResponse {
   start: string
   end: string
   items: TimelineItem[]
+  /** reference + 24 h: the core/planning boundary. Optional: an older API
+   *  has not declared one, and the boundary is then not marked at all rather
+   *  than guessed. */
+  boundary?: string
+  /** The two tier ranges, `core` then `planning`. Optional, same reason. */
+  tiers?: TierRange[]
 }
 
 export interface TimelineResult {
@@ -481,6 +520,34 @@ export interface LayerItem {
   storage?: string
   /** The declared phase, for a humidity layer. */
   phase?: string | null
+  /** The run time of this layer's newest run, and whether it is stale
+   *  (older than twice the declared producer run cadence). `run_stale_reason`
+   *  is required whenever `run_stale` is null (unknown run time or cadence,
+   *  or an observation layer with no run concept). */
+  run_time?: string | null
+  run_stale?: boolean | null
+  run_stale_reason?: string | null
+  run_cadence_seconds?: number | null
+  /** One entry per entry of `times`, same order: which run produced that
+   *  frame and whether that run is stale. Drives `runSegments.ts`. */
+  frames?: LayerFrame[]
+  /** Every run this layer index carries frames from, most useful when a
+   *  short cycle leaves a previous run serving leads the newest one lacks. */
+  runs?: LayerRun[]
+}
+
+export interface LayerFrame {
+  valid_time: string
+  run_time: string | null
+  provider_run_id: string | null
+  run_stale: boolean | null
+}
+
+export interface LayerRun {
+  provider_run_id: string
+  run_time: string | null
+  run_stale: boolean | null
+  frame_count: number
 }
 
 export interface LayersResult {
