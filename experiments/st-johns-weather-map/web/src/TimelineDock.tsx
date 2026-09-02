@@ -5,9 +5,11 @@
  *  playback clock live in one place (App) for both this and the expert
  *  slider. */
 
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { stJohnsTime, type FrameMarkers, type InterpolationMethodItem } from './api'
 import { MethodMenu } from './MethodMenu'
 import { describeSpeed, PLAYBACK_SPEEDS, type PlaybackDirection, type PlaybackSpeed } from './playback'
+import { placeScaleMarks, textMeasurer, type ScaleMark } from './scrubberAxis'
 
 export interface TimelineDockProps {
   offsetMinutes: number
@@ -54,14 +56,17 @@ export interface TimelineDockProps {
 
 const QUICK_JUMPS = [-3, -1, 0, 3, 6, 12, 18, 24]
 
-const SCALE_MARKS: Array<{ hours: number; label: string }> = [
-  { hours: -3, label: '-3h (Past)' },
-  { hours: -1, label: '-1h' },
-  { hours: 0, label: 'Now (0h)' },
-  { hours: 6, label: '+6h' },
-  { hours: 12, label: '+12h' },
-  { hours: 18, label: '+18h' },
-  { hours: 24, label: '+24h (Forecast)' },
+/** The axis labels, each with the shorter form the two boundaries fall back
+ *  to on a narrow rail. `short` equal to `label` means the mark has nothing
+ *  left to shed and is dropped instead. */
+const SCALE_MARKS: readonly ScaleMark[] = [
+  { hours: -3, label: '-3h (Past)', short: '-3h' },
+  { hours: -1, label: '-1h', short: '-1h' },
+  { hours: 0, label: 'Now (0h)', short: 'Now (0h)' },
+  { hours: 6, label: '+6h', short: '+6h' },
+  { hours: 12, label: '+12h', short: '+12h' },
+  { hours: 18, label: '+18h', short: '+18h' },
+  { hours: 24, label: '+24h (Forecast)', short: '+24h' },
 ]
 
 /** The thumb width the slider draws, so a marker at the same instant sits
@@ -77,6 +82,36 @@ export function TimelineDock({
   storyOpen, onToggleStory, storyToggleRef,
 }: TimelineDockProps) {
   const span = windowEndMs - windowStartMs
+  // The rail the scale labels are placed on, measured rather than assumed:
+  // the same viewport can give it very different widths depending on whether
+  // the conditions strip sits beside it.
+  const labelsRef = useRef<HTMLDivElement | null>(null)
+  const [railPx, setRailPx] = useState(0)
+  const [labelFont, setLabelFont] = useState('')
+  useEffect(() => {
+    const element = labelsRef.current
+    if (!element) return
+    const read = () => {
+      setRailPx(element.getBoundingClientRect().width)
+      const style = getComputedStyle(element)
+      setLabelFont(`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`)
+    }
+    read()
+    if (typeof ResizeObserver !== 'function') return
+    const observer = new ResizeObserver(read)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+  // `text-transform: uppercase` is what is actually painted, so that is what
+  // is measured. The face is monospaced, so this only matters if it ever
+  // stops being.
+  const scaleMarks = useMemo(() => placeScaleMarks({
+    marks: SCALE_MARKS,
+    backMinutes,
+    forwardMinutes,
+    railPx,
+    measure: textMeasurer(labelFont, (text) => text.toUpperCase()),
+  }), [backMinutes, forwardMinutes, railPx, labelFont])
   // One swatch per layer that actually has a tick on the rail, in the order
   // the markers carry (which is the retrieved layer order).
   const key = new Map<string, { title: string; color: string }>()
@@ -126,21 +161,16 @@ export function TimelineDock({
       </div>
       <div className="timeline-scrubber-controls">
         <div className="scrubber-bar-wrapper">
-          <div className="scrubber-labels">
-            {SCALE_MARKS.map(({ hours, label }) => {
-              const fraction = (hours * 60 + backMinutes) / (backMinutes + forwardMinutes)
-              if (fraction < 0 || fraction > 1) return null
-              const edge = fraction === 0 ? 'start' : fraction === 1 ? 'end' : ''
-              return (
-                <span
-                  key={hours}
-                  className={`scrubber-mark ${edge} ${hours === 0 ? 'scrubber-now' : ''}`}
-                  style={{ left: `${fraction * 100}%` }}
-                >
-                  {label}
-                </span>
-              )
-            })}
+          <div className="scrubber-labels" ref={labelsRef}>
+            {scaleMarks.map(({ hours, text, fraction, anchor }) => (
+              <span
+                key={hours}
+                className={`scrubber-mark ${anchor === 'center' ? '' : anchor} ${hours === 0 ? 'scrubber-now' : ''}`}
+                style={{ left: `${fraction * 100}%` }}
+              >
+                {text}
+              </span>
+            ))}
           </div>
           <input
             aria-label="Valid timeline scrubber"
