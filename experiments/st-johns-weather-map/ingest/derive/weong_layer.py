@@ -15,7 +15,7 @@ model's own relative-humidity profile, combined as ``NT_WEonG = max[NT ; LLC]``.
 The algorithm itself lives in :mod:`ingest.derive.weong_low_cloud`, transcribed
 from that section. This module is the plumbing that runs it over a published
 surface artifact and files the answer as its own artifact, so nothing about
-the retrieved ``total_cloud`` layer changes: the provider's field stays
+the retrieved ``total_cloud_opacity`` layer changes: the provider's field stays
 untouched and this sits beside it, disclosed as generated.
 
 WHY A SEPARATE ARTIFACT AND NOT A REPAIRED FIELD
@@ -248,7 +248,7 @@ def missing_profile_variables(dataset: Any) -> list[str]:
     honest outcome for an optional variable a cycle omitted.
     """
     rh_names, temp_names, height_names = _profile_variable_names()
-    wanted = ["total_cloud", *rh_names, *temp_names, *height_names]
+    wanted = ["total_cloud_opacity", *rh_names, *temp_names, *height_names]
     missing = [name for name in wanted if name not in dataset.data_vars]
     if "surface_height" not in dataset.data_vars and "surface_pressure" not in dataset.data_vars:
         missing.append("surface_height or surface_pressure")
@@ -285,9 +285,9 @@ def derive_weong_low_cloud(store: Any, surface: Any, workdir: Path) -> RunResult
     for name in rh_names:
         assert_liquid_water_rh(dataset[name])
 
-    time_name = next((candidate for candidate in ("valid_time", "time") if candidate in dataset["total_cloud"].dims), None)
+    time_name = next((candidate for candidate in ("valid_time", "time") if candidate in dataset["total_cloud_opacity"].dims), None)
     if time_name is None:
-        _log.info("%s: no WEonG layer, total_cloud carries no time axis", surface.source_id)
+        _log.info("%s: no WEonG layer, total_cloud_opacity carries no time axis", surface.source_id)
         return None
     steps = int(dataset.sizes[time_name])
 
@@ -327,15 +327,15 @@ def derive_weong_low_cloud(store: Any, surface: Any, workdir: Path) -> RunResult
         below_ground_fraction.append(float(numpy.mean(below_ground > 0.0)))
 
         llc = weong_low_cloud_from_profile(heights_agl, rh_profile, temp_profile)
-        cloud = numpy.asarray(step["total_cloud"].values, dtype=float)
+        cloud = numpy.asarray(step["total_cloud_opacity"].values, dtype=float)
         llc_frames.append(llc)
         nt_frames.append(numpy.clip(combine_nt_weong(cloud / 100.0, llc) * 100.0, 0.0, 100.0))
 
     llc_stack = numpy.stack(llc_frames).astype("float32")
     nt_stack = numpy.stack(nt_frames).astype("float32")
-    retrieved = numpy.asarray(dataset["total_cloud"].values, dtype=float)
+    retrieved = numpy.asarray(dataset["total_cloud_opacity"].values, dtype=float)
 
-    template = dataset["total_cloud"]
+    template = dataset["total_cloud_opacity"]
     dims = template.dims
     data_vars: dict[str, Any] = {
         "total_cloud_weong": (
@@ -368,7 +368,7 @@ def derive_weong_low_cloud(store: Any, surface: Any, workdir: Path) -> RunResult
     # The retrieved field travels with the derived one so a reader can see
     # exactly what was added, and so the difference never has to be fetched
     # from a second artifact to be checked.
-    data_vars["total_cloud"] = dataset["total_cloud"]
+    data_vars["total_cloud_opacity"] = dataset["total_cloud_opacity"]
 
     derived = xarray.Dataset(
         data_vars,

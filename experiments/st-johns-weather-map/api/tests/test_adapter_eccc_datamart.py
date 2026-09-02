@@ -233,7 +233,7 @@ def test_eccc_fetch_with_mocked_decode(tmp_path: Path, monkeypatch: pytest.Monke
     assert "dew_point_2m" in ds.data_vars
     # Only what the map declared, and never the withheld cloud field.
     assert set(ds.data_vars) == {"temperature_2m", "dew_point_2m"}
-    assert "total_cloud" not in ds.data_vars
+    assert "total_cloud_opacity" not in ds.data_vars
     assert float(ds["temperature_2m"].sel(latitude=47.5, longitude=-52.7).values[0]) == 15.0
     assert float(ds["dew_point_2m"].sel(latitude=47.5, longitude=-52.7).values[0]) == 12.0
 
@@ -309,7 +309,7 @@ HRDPS_EVIDENCE_FIELDS = frozenset(
         "wind_u_10m",
         "wind_v_10m",
         "mean_sea_level_pressure",
-        "total_cloud",
+        "total_cloud_opacity",
     }
 )
 HRDPS_PUBLISHED_FIELDS = (
@@ -360,9 +360,9 @@ def test_total_cloud_is_published_from_the_messages_own_wmo_keys(tmp_path: Path,
     coded WMO keys themselves - they are retrieved facts in the message - with
     the basis recorded in the variable's attrs.
     """
-    assert "total_cloud" in HRDPS_VARS
-    assert "total_cloud" in RDPS_VARS
-    assert "total_cloud" not in GDPS_VARS
+    assert "total_cloud_opacity" in HRDPS_VARS
+    assert "total_cloud_opacity" in RDPS_VARS
+    assert "total_cloud_opacity" not in GDPS_VARS
     assert set(HRDPS_VARS) == HRDPS_PUBLISHED_FIELDS
     # The steering winds and the vertical velocity are optional - they inform
     # display derivations only; every evidence field is mandatory. That
@@ -375,7 +375,7 @@ def test_total_cloud_is_published_from_the_messages_own_wmo_keys(tmp_path: Path,
     assert optional.isdisjoint(HRDPS_EVIDENCE_FIELDS)
 
     client = make_mock_client(_TCDC_URL_MAP)
-    adapter = make_adapter(client, var_map={"total_cloud": ("TCDC", "Sfc")})
+    adapter = make_adapter(client, var_map={"total_cloud_opacity": ("TCDC", "Sfc")})
     monkeypatch.setattr(client, "download", lambda url, dest, max_bytes: dest.write_bytes(b"dummy"))
 
     seen_read_keys: list[tuple[str, ...] | None] = []
@@ -398,7 +398,7 @@ def test_total_cloud_is_published_from_the_messages_own_wmo_keys(tmp_path: Path,
     store = zarr.storage.ZipStore(str(result.artifacts[0].payload_path), mode="r")
     try:
         stored = xarray.open_zarr(store, consolidated=False)
-        cloud = stored["total_cloud"]
+        cloud = stored["total_cloud_opacity"]
         assert cloud.attrs["units"] == "percent"
         assert cloud.attrs["original_units"] == "unknown"
         assert "WMO GRIB2 code table 4.2" in cloud.attrs["units_basis"]
@@ -415,7 +415,7 @@ def test_total_cloud_without_its_wmo_identity_is_still_refused(tmp_path: Path, m
     loudly rather than shipping an artifact with undeclared units.
     """
     client = make_mock_client(_TCDC_URL_MAP)
-    adapter = make_adapter(client, var_map={"total_cloud": ("TCDC", "Sfc")})
+    adapter = make_adapter(client, var_map={"total_cloud_opacity": ("TCDC", "Sfc")})
     monkeypatch.setattr(client, "download", lambda url, dest, max_bytes: dest.write_bytes(b"dummy"))
     monkeypatch.setattr(
         "ingest.adapters.eccc_datamart.open_grib",
@@ -726,7 +726,7 @@ def test_every_profile_field_is_optional_in_both_manifests():
                 continue
             assert by_name[name].optional is True, f"{source_id}:{name}"
         # The evidence fields are still mandatory - optionality did not leak.
-        assert by_name["total_cloud"].optional is False
+        assert by_name["total_cloud_opacity"].optional is False
         assert by_name["temperature_2m"].optional is False
 
 

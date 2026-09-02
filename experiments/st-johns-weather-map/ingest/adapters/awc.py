@@ -25,7 +25,7 @@ from ingest.contract import (
     RunCandidate,
     RunResult,
 )
-from ingest.grib import write_zarr
+from ingest.grib import RH_PHASE_LIQUID_WATER, write_zarr
 from ingest.http import PoliteClient
 from ingest.manifest import RequiredField, RunManifest, validate_run
 from ingest.registry import register
@@ -34,6 +34,20 @@ UTC = timezone.utc
 CYYT_LAT = 47.6186
 CYYT_LON = -52.7519
 CYYT_ELEV_M = 140.0
+#: Why this adapter may declare a saturation phase without measuring one. The
+#: measured bases in ``ingest.grib`` reconstruct a model's phase from its own
+#: specific humidity, because a model publishes an RH whose definition is not
+#: coded anywhere. A METAR publishes no RH at all, so there is nothing to
+#: reconstruct: the value is computed here and the phase is a property of the
+#: formula, which states it.
+AWC_RH_PHASE_BASIS = (
+    "not a producer claim: the METAR carries no humidity, so relative_humidity_2m is computed "
+    "here from the report's own temperature and dew point by MetPy "
+    "relative_humidity_from_dewpoint with phase='liquid' explicitly passed "
+    "(ingest.meteorology.HUMIDITY_DERIVATION, metpy-1.7.1-liquid-v1). The phase is the formula's, "
+    "read out of the call rather than inferred from the source."
+)
+
 AWC_METAR_URL = "https://aviationweather.gov/api/data/metar?ids=CYYT&format=json&hours=4"
 AWC_TAF_URL = "https://aviationweather.gov/api/data/taf?ids=CYYT&format=json"
 
@@ -49,7 +63,7 @@ METAR_MANIFEST = RunManifest(
         RequiredField("relative_humidity_2m", "percent", level="2 m"),
         RequiredField("mean_sea_level_pressure", "hPa", level="mean sea level", optional=True),
         RequiredField("visibility", "m", optional=True),
-        RequiredField("total_cloud", "percent", level="column", optional=True),
+        RequiredField("total_cloud_okta", "percent", level="column", optional=True),
         RequiredField("wind_u_10m", "m s-1", level="10 m", optional=True),
         RequiredField("wind_v_10m", "m s-1", level="10 m", optional=True),
         # Per-layer cloud and the present-weather flags are published as
@@ -73,7 +87,7 @@ TAF_MANIFEST = RunManifest(
         RequiredField("wind_u_10m", "m s-1", level="10 m"),
         RequiredField("wind_v_10m", "m s-1", level="10 m"),
         RequiredField("visibility", "m"),
-        RequiredField("total_cloud", "percent", level="column", optional=True),
+        RequiredField("total_cloud_okta", "percent", level="column", optional=True),
         RequiredField("cloud_layer_1_cover_code", "code", optional=True),
         RequiredField("cloud_layer_1_base", "m", optional=True),
         RequiredField("weather_fog_code", "flag", optional=True),
@@ -477,10 +491,25 @@ class AWCMetarAdapter:
             {
                 "temperature_2m": (("valid_time", "latitude", "longitude"), temp_arr, {"units": "degC", "original_units": "degC"}),
                 "dew_point_2m": (("valid_time", "latitude", "longitude"), dewp_arr, {"units": "degC", "original_units": "degC"}),
-                "relative_humidity_2m": (("valid_time", "latitude", "longitude"), rh_arr, {"units": "percent", "original_units": "derived"}),
+                "relative_humidity_2m": (
+                    ("valid_time", "latitude", "longitude"),
+                    rh_arr,
+                    {
+                        "units": "percent",
+                        "original_units": "derived",
+                        # The catalogue requires every humidity value to carry
+                        # its saturation phase. A METAR publishes no humidity at
+                        # all: this one is computed here from the report's own
+                        # temperature and dew point, and the phase is not a
+                        # guess about the producer but a property of the formula
+                        # used, which names it explicitly.
+                        "rh_phase_convention": RH_PHASE_LIQUID_WATER,
+                        "rh_phase_basis": AWC_RH_PHASE_BASIS,
+                    },
+                ),
                 "mean_sea_level_pressure": (("valid_time", "latitude", "longitude"), pres_arr, {"units": "hPa", "original_units": "hPa"}),
                 "visibility": (("valid_time", "latitude", "longitude"), vis_arr, {"units": "m", "original_units": "SM"}),
-                "total_cloud": (("valid_time", "latitude", "longitude"), cloud_arr, {"units": "percent", "original_units": "okta_fraction"}),
+                "total_cloud_okta": (("valid_time", "latitude", "longitude"), cloud_arr, {"units": "percent", "original_units": "okta_fraction"}),
                 "wind_u_10m": (("valid_time", "latitude", "longitude"), wind_u_arr, {"units": "m s-1", "original_units": "kt"}),
                 "wind_v_10m": (("valid_time", "latitude", "longitude"), wind_v_arr, {"units": "m s-1", "original_units": "kt"}),
                 **_cloud_layer_data_vars(layer_arrays, "METAR"),
@@ -654,7 +683,7 @@ class AWCTafAdapter:
         dataset = xarray.Dataset(
             {
                 "visibility": (("valid_time", "latitude", "longitude"), vis_arr, {"units": "m", "original_units": "SM"}),
-                "total_cloud": (("valid_time", "latitude", "longitude"), cloud_arr, {"units": "percent", "original_units": "okta_fraction"}),
+                "total_cloud_okta": (("valid_time", "latitude", "longitude"), cloud_arr, {"units": "percent", "original_units": "okta_fraction"}),
                 "wind_u_10m": (("valid_time", "latitude", "longitude"), wind_u_arr, {"units": "m s-1", "original_units": "kt"}),
                 "wind_v_10m": (("valid_time", "latitude", "longitude"), wind_v_arr, {"units": "m s-1", "original_units": "kt"}),
                 **_cloud_layer_data_vars(layer_arrays, "TAF"),

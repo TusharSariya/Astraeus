@@ -269,7 +269,7 @@ def profile_dataset(
         data[f"geopotential_height_{level}hPa"] = (
             ("valid_time", "y", "x"), numpy.full(shape, STANDARD_HEIGHTS_M[level]), {"units": "gpm"},
         )
-    data["total_cloud"] = (("valid_time", "y", "x"), numpy.full(shape, total_cloud_percent), {"units": "percent"})
+    data["total_cloud_opacity"] = (("valid_time", "y", "x"), numpy.full(shape, total_cloud_percent), {"units": "percent"})
     if surface_variable == "surface_height":
         surface = numpy.broadcast_to(numpy.array(datum_m).reshape(1, 1, 2), shape).copy()
         data["surface_height"] = (("valid_time", "y", "x"), surface, {"units": "m"})
@@ -404,7 +404,7 @@ def test_the_derived_cloud_is_never_below_the_retrieved_cloud(tmp_path: Path):
     derived, zip_store = stored(result.artifacts[0])
     try:
         repaired = derived["total_cloud_weong"].values
-        retrieved = derived["total_cloud"].values
+        retrieved = derived["total_cloud_opacity"].values
         assert numpy.all(repaired >= retrieved - 1e-4)
         assert numpy.all((repaired >= 0.0) & (repaired <= 100.0))
         # Sea level: LLC 0.9 beats the retrieved 40 %, so the repair fires.

@@ -62,7 +62,13 @@ from ingest.contract import (
     RunCandidate,
     RunResult,
 )
-from ingest.grib import normalize_precipitation, normalize_units, write_zarr
+from ingest.grib import (
+    ECCC_RH_PHASE_BASIS,
+    RH_PHASE_LIQUID_WATER,
+    normalize_precipitation,
+    normalize_units,
+    write_zarr,
+)
 from ingest.http import PoliteClient
 from ingest.manifest import RequiredField, RunManifest, declared_classes, validate_run
 from ingest.registry import register
@@ -1100,7 +1106,7 @@ HRDPS_SURFACE = (
     LayerBinding("dew_point_2m", "HRDPS.CONTINENTAL_TD", "degC", "2 m"),
     LayerBinding("relative_humidity_2m", "HRDPS.CONTINENTAL_HR", "percent", "2 m"),
     LayerBinding("mean_sea_level_pressure", "HRDPS.CONTINENTAL_PN-SLP", "Pa", "mean sea level", "hPa"),
-    LayerBinding("total_cloud", "HRDPS.CONTINENTAL_NT", "percent", "entire atmosphere"),
+    LayerBinding("total_cloud_opacity", "HRDPS.CONTINENTAL_NT", "percent", "entire atmosphere"),
 )
 HRDPS_WIND = (
     LayerBinding("wind_speed_10m", "HRDPS.CONTINENTAL_WSPD", "m s-1", "10 m"),
@@ -1114,7 +1120,7 @@ RDPS_SURFACE = (
     LayerBinding("dew_point_2m", "RDPS_10km_DewPoint_2m", "degC", "2 m"),
     LayerBinding("relative_humidity_2m", "RDPS_10km_RelativeHumidity_2m", "percent", "2 m"),
     LayerBinding("mean_sea_level_pressure", "RDPS_10km_Pressure_MSL", "Pa", "mean sea level", "hPa"),
-    LayerBinding("total_cloud", "RDPS_10km_TotalCloudCover", "percent", "entire atmosphere"),
+    LayerBinding("total_cloud_opacity", "RDPS_10km_TotalCloudCover", "percent", "entire atmosphere"),
 )
 RDPS_WIND = (
     LayerBinding("wind_speed_10m", "RDPS_10km_WindSpeed_10m", "m s-1", "10 m"),
@@ -2255,7 +2261,7 @@ def humidity_profile(
 
     dataset = xarray.Dataset(
         {
-            "relative_humidity": (
+            "relative_humidity_pressure": (
                 ("valid_time", "pressure", "latitude", "longitude"),
                 array,
                 {
@@ -2263,6 +2269,12 @@ def humidity_profile(
                     "original_units": units_raw or "%",
                     "long_name": title,
                     "geomet_layer_template": template,
+                    # The catalogue requires a phase on every humidity value.
+                    # This is the same HRDPS/RDPS field the GRIB path measures
+                    # against the model's own specific humidity; GeoMet only
+                    # changes how it is delivered, not what it means.
+                    "rh_phase_convention": RH_PHASE_LIQUID_WATER,
+                    "rh_phase_basis": ECCC_RH_PHASE_BASIS,
                 },
             )
         },
@@ -2370,16 +2382,25 @@ class _GeoMetModelAdapter(_GeoMetPointAdapter):
                 client, binding.layer, latitude, longitude, times, expected_units=binding.published_units
             )
             record(series, binding)
+            attrs = {
+                "units": series.units or binding.published_units,
+                "original_units": series.units_raw or binding.published_units,
+                "geomet_layer": binding.layer,
+                "level": binding.level,
+                "long_name": series.title,
+            }
+            # The catalogue requires a phase on every humidity value, and this
+            # is the same GEM field the GRIB path measured against the model's
+            # own specific humidity. GeoMet changes the delivery, not the
+            # saturation definition, so the measured basis carries over
+            # verbatim rather than being restated as a fresh claim.
+            if binding.variable.startswith("relative_humidity"):
+                attrs["rh_phase_convention"] = RH_PHASE_LIQUID_WATER
+                attrs["rh_phase_basis"] = ECCC_RH_PHASE_BASIS
             variables[binding.variable] = (
                 ("valid_time", "latitude", "longitude"),
                 _column(series.values),
-                {
-                    "units": series.units or binding.published_units,
-                    "original_units": series.units_raw or binding.published_units,
-                    "geomet_layer": binding.layer,
-                    "level": binding.level,
-                    "long_name": series.title,
-                },
+                attrs,
             )
             fields.append(RequiredField(binding.variable, binding.units_in_artifact, level=binding.level))
 
@@ -2467,7 +2488,24 @@ class _GeoMetModelAdapter(_GeoMetPointAdapter):
         # published title and carried through normalize_units - never read back
         # out of the dataset, which would make the unit check tautological.
         manifest = RunManifest(source_id=self.source_id, fields=tuple(fields), required_valid_times=times)
-        validation = validate_run(manifest, dataset, window=window, decode_errors=errors)
+        # Every coverage this run touched, by GeoMet's own id. A GeoMet source
+        # is subset server side, so its scope rule is "every field the producer
+        # publishes": a coverage the catalogue does not claim must be reported
+        # by name rather than skipped, and reported without stopping the fields
+        # the catalogue does know from publishing.
+        #
+        # The limit worth stating: these are the coverages this adapter asked
+        # for, not everything GeoMet advertises. Enumerating the latter means
+        # the unfiltered capabilities document, which is 39 MB and which this
+        # module deliberately never fetches, so a coverage that appears upstream
+        # and is never requested here is not visible from this seam.
+        validation = validate_run(
+            manifest,
+            dataset,
+            window=window,
+            decode_errors=errors,
+            upstream_fields=sorted(layers),
+        )
 
         surface_path = workdir / f"{self.source_id}-surface.zarr.zip"
         write_zarr(dataset, surface_path)
@@ -2526,7 +2564,7 @@ class _GeoMetModelAdapter(_GeoMetPointAdapter):
             return None
         manifest = RunManifest(
             source_id=self.source_id,
-            fields=(RequiredField("relative_humidity", "percent", level="pressure levels"),),
+            fields=(RequiredField("relative_humidity_pressure", "percent", level="pressure levels"),),
             required_valid_times=(moment,),
         )
         validation = validate_run(manifest, profile.dataset, window=window, decode_errors=profile.errors)

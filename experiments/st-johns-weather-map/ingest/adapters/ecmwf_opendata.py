@@ -51,7 +51,7 @@ ECMWF_PARAM_MAP = {
     "10v": "wind_v_10m",
     "msl": "mean_sea_level_pressure",
     "tp": "precipitation_accumulation",
-    "tcc": "total_cloud",
+    "tcc": "total_cloud_geometric",
 }
 
 # GRIB short names produced by cfgrib for ECMWF
@@ -62,7 +62,7 @@ ECMWF_GRIB_RENAME = {
     "v10": "wind_v_10m",
     "msl": "mean_sea_level_pressure",
     "tp": "precipitation_accumulation",
-    "tcc": "total_cloud",
+    "tcc": "total_cloud_geometric",
 }
 
 

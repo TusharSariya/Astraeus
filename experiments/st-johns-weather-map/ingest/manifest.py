@@ -16,9 +16,17 @@ There is no such thing as a partially published run in this experiment.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
+
+_EXPERIMENT_ROOT = Path(__file__).resolve().parent.parent
+if str(_EXPERIMENT_ROOT) not in sys.path:  # registry/ ships beside ingest/ in both images
+    sys.path.insert(0, str(_EXPERIMENT_ROOT))
+
+from registry import fields as catalogue  # noqa: E402
 
 UTC = timezone.utc
 
@@ -49,11 +57,23 @@ class ManifestError(ValueError):
 
 @dataclass(frozen=True)
 class RequiredField:
-    """One canonical variable a run must carry to be worth publishing.
+    """One catalogue field a run must carry to be worth publishing.
+
+    ``name`` is a **catalogue key** (``registry.fields``), not a convention the
+    adapter invented. That is the whole change: three adapters used to declare
+    a field called ``total_cloud`` and two of them were not the same quantity,
+    because a manifest name meant only what its author remembered it to mean.
+    A name the catalogue does not carry raises here, at import time, so the
+    adapter is never schedulable rather than publishing a colliding key. A
+    level-expanded name a GRIB adapter writes one variable per level for
+    (``relative_humidity_850hPa``) resolves to its one profile key.
 
     ``units`` is the *normalized* unit the experiment stores, not the
-    provider's. A mismatch is a QC failure rather than an incompleteness:
-    the data arrived, but it does not mean what the rest of the stack assumes.
+    provider's, and it must be the unit the catalogue declares: a mismatch is
+    the adapter contradicting the catalogue and is refused here. A mismatch
+    between the catalogue and what the *data* carries is a QC failure instead,
+    raised by :func:`validate_run`, because the data arrived and does not mean
+    what the rest of the stack assumes.
 
     ``evidence_class`` is how this field's values came to exist. An adapter
     fetches what the producer issued, so ``retrieved`` is the default here and
@@ -71,6 +91,23 @@ class RequiredField:
     def __post_init__(self) -> None:
         if self.evidence_class not in EVIDENCE_CLASSES:
             raise ManifestError(f"{self.name}: {self.evidence_class!r} is not one of the six evidence classes")
+        try:
+            resolved = catalogue.resolve(self.name)
+        except catalogue.UnknownFieldKey:
+            raise ManifestError(
+                f"uncatalogued_field:{self.name}: the field catalogue carries no key {self.name!r}, "
+                "so this manifest cannot be validated and the adapter is not schedulable"
+            ) from None
+        expected = resolved.field.units
+        if expected is not None and self.units != expected:
+            raise ManifestError(
+                f"bad_units:{self.name}: the catalogue declares {expected!r} and this manifest "
+                f"declares {self.units!r}"
+            )
+    @property
+    def catalogue_field(self) -> "catalogue.Field":
+        """The catalogue entry this field declares. Resolution already succeeded."""
+        return catalogue.resolve(self.name).field
 
 
 @dataclass(frozen=True)
@@ -161,6 +198,13 @@ class ValidationResult:
     coverage_fraction: float
     flags: tuple[str, ...]
     detail: str
+    #: Advisory items that do not lower the verdict. The one this change adds is
+    #: ``uncatalogued_upstream_field``: a producer advertising a field the
+    #: catalogue does not know must not stop the fields it does know from
+    #: publishing, and must not be silently skipped either. The name is carried
+    #: through provenance so the registry audit can list it until someone
+    #: extends the catalogue.
+    notices: tuple[str, ...] = ()
 
     @property
     def publishable(self) -> bool:
@@ -176,6 +220,10 @@ class ValidationResult:
             detail="; ".join(part for part in (self.detail, detail) if part),
         )
 
+    def noting(self, notice: str) -> ValidationResult:
+        """Record something a reader must be told without judging the run for it."""
+        return replace(self, notices=tuple(dict.fromkeys((*self.notices, notice))))
+
     def as_quality(self) -> dict[str, Any]:
         """Provenance quality block. ``passed`` is only ever earned, never set."""
         if not self.qc_passed:
@@ -184,7 +232,10 @@ class ValidationResult:
             status = "suspect"
         else:
             status = "passed"
-        return {"status": status, "flags": list(self.flags), "detail": self.detail}
+        block: dict[str, Any] = {"status": status, "flags": list(self.flags), "detail": self.detail}
+        if self.notices:
+            block["notices"] = list(self.notices)
+        return block
 
     def as_coverage(self) -> dict[str, Any]:
         if self.coverage_fraction <= 0.0:
@@ -226,20 +277,58 @@ def _field_coverage(variable: Any) -> float:
 _MAX_REPORTED_OUT_OF_WINDOW = 5
 
 
+UNCATALOGUED_UPSTREAM = "uncatalogued_upstream_field"
+
+
+def uncatalogued_upstream(names: Iterable[str], *, source_id: str | None = None) -> tuple[str, ...]:
+    """The upstream names in ``names`` that no catalogue key claims.
+
+    A GeoMet source is subset server side, so the scope rule is "every field the
+    producer publishes". That makes a newly advertised coverage a real event: it
+    must neither block the fields the catalogue does know, nor vanish. This
+    returns the names to carry as notices, and the caller passes them to
+    :func:`validate_run`.
+
+    ``names`` are the producer's own names - WCS coverage ids, GRIB record
+    labels - so with a ``source_id`` they are resolved through that source's
+    field mapping. Without one, they are read as catalogue keys, which is what a
+    caller that has already canonicalised them wants.
+    """
+    unknown: list[str] = []
+    for name in names:
+        if source_id is not None and catalogue.key_for_upstream(source_id, name) is not None:
+            continue
+        try:
+            catalogue.resolve(name)
+        except catalogue.UnknownFieldKey:
+            unknown.append(name)
+    return tuple(dict.fromkeys(unknown))
+
+
 def validate_run(
     manifest: RunManifest,
     dataset: Any,
     *,
     window: Any,
     decode_errors: Iterable[str] = (),
+    upstream_fields: Iterable[str] = (),
 ) -> ValidationResult:
     """Judge one assembled run against its manifest.
 
     ``decode_errors`` is the list of variables or URLs the adapter failed to
     read. Adapters used to swallow those with ``except Exception: continue``;
     passing them here is what turns a silent gap into a refused publication.
+
+    ``upstream_fields`` is what the producer advertised for this product, by the
+    producer's own name. Any of them the catalogue does not carry is reported as
+    ``uncatalogued_upstream_field`` and does not lower the verdict: the run
+    publishes what it knows and names what it does not, which is the opposite of
+    the silent skip this module exists to rule out.
     """
     result = ValidationResult(complete=True, qc_passed=True, coverage_fraction=0.0, flags=(), detail="")
+
+    for name in uncatalogued_upstream(upstream_fields, source_id=manifest.source_id):
+        result = result.noting(f"{UNCATALOGUED_UPSTREAM}:{name}")
 
     data_vars = dict(getattr(dataset, "data_vars", {}))
 
@@ -298,6 +387,40 @@ def validate_run(
                 f"{field.name} carries units {got or 'unset'!r}, not the normalized {field.units!r}",
                 qc=True,
             )
+
+        # The catalogue says which classes a field may carry at all: Sun
+        # altitude is never retrieved, a producer's own cloud cover is never
+        # derived here. A declaration outside that set is a contract violation,
+        # not a gap, so it fails QC. Checked here rather than at declaration
+        # because a manifest is allowed to be built with a wrong class on
+        # purpose - the mismatch gate above exists to catch exactly that - and
+        # the run, not the constructor, is what must refuse to publish.
+        if field.catalogue_field.evidence_class_refused(field.evidence_class):
+            result = result.failing(
+                f"evidence_class_not_permitted:{field.name}:{field.evidence_class}",
+                f"the catalogue does not allow evidence class {field.evidence_class!r} on "
+                f"{field.name}; it allows {', '.join(field.catalogue_field.evidence_classes)}",
+                qc=True,
+            )
+
+        # A humidity value without its phase cannot be weighed. HRDPS divides
+        # by saturation over liquid water at every temperature and GFS by a
+        # mixed-phase saturation ramping from ice at 253.16 K, so at -25 degC
+        # they differ by about 24 percent for identical air. A threshold
+        # calibrated on one is not valid on the other, which makes an unstamped
+        # humidity a contract violation rather than a gap.
+        if field.catalogue_field.phase_attribute:
+            convention = str(variable.attrs.get(catalogue.PHASE_ATTRIBUTE, "")).strip()
+            phase = catalogue.phase_from_convention(convention)
+            if phase is None:
+                result = result.failing(
+                    f"missing_phase:{field.name}",
+                    f"{field.name} carries {catalogue.PHASE_ATTRIBUTE}="
+                    f"{convention or 'unset'!r}, which is not one of the measured saturation "
+                    "conventions the catalogue maps to a phase; a threshold calibrated on one "
+                    "phase is not transferable to the other",
+                    qc=True,
+                )
 
     for item in decode_errors:
         result = result.failing(f"decode_error:{item}", f"could not decode {item}")
