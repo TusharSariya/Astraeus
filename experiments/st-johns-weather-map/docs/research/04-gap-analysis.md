@@ -38,7 +38,7 @@ cannot do these things at all today.
 
 | # | Source | Closes | Effort | Verified by orchestrator |
 |---|---|---|---|---|
-| 1 | **ECCC CYYT forecast sounding** `vertical_profile/forecast/csv/ProgTephi_00_CYYT.csv` | vertical profile; **bypasses the broken GRIB2 path entirely** | trivial — plain CSV | ✅ 32 levels (10-1015 mb), 0-48 h in 3 h steps, `TT ES HR GZ UV WD WW`, 240 sites, `observation/` counterpart exists |
+| 1 | ~~**ECCC CYYT forecast sounding**~~ **DEAD as of 2026-09-02** | — | — | ❌ `https://dd.weather.gc.ca/today/vertical_profile/` now returns 200 containing **only `doc/`**; every `forecast/` and `observation/` path is 404 on Datamart and on the hpfx mirror. Same shape as the GEPS and REPS disappearance. Replacement for vertical structure is **NUCAPS-EDR** satellite soundings plus **Mode-S winds aloft**, both verified live 2026-09-02. See `01-atmospheric-nwp-satellite.md` R1 and R3 |
 | 2 | **NL Water Resources via SWOB partners** `swob-ml/partners/nl-water/` | best local surface obs; snow water equivalent, snow depth, solar radiation, soil moisture the airport lacks | low — same SWOB parser already written | ✅ `NLENCL0001` "Pippy Park in St. Johns" 47.58036/-52.73936, **2.2 km from map centre**, live 00:30Z: 18.0 °C, RH **99 %**, QA flags present |
 | 3 | **Open-Meteo historical-forecast archive** | **verification** — past forecasts as issued, from 2021; also lead-time-aligned previous runs from 2024 | low — plain JSON, no key | agent-verified 200 at 47.56/-52.71; CC BY 4.0 |
 | 4 | **ARCO-ERA5** on Google Cloud | reanalysis, from nothing | low — anonymous Zarr | agent-verified `.zmetadata`, 1940-01-01 → 2026-08-24, CC-BY-4.0 |
@@ -51,9 +51,27 @@ cannot do these things at all today.
 | 11 | **CoCoRaHS `CAN-NL-2`** | manual gauge; automated gauges undercatch winter precipitation | low | agent: 47.564/-52.713, **within 400 m of map centre** |
 | 12 | ~~**Fix cfgrib/numpy**~~ **DONE 2026-08-30 - and it was never cfgrib/numpy** | unblocked HRDPS, RDPS, GFS | small - one function | Real cause: `crop_to_bbox` assumed 1-D lat/lon; HRDPS/RDPS are on a **rotated** grid so cfgrib returns **2-D** coords. Pins were never changed. See the retraction in `docs/live-stack-report.md`. |
 
-**#1 and #12 are the two that matter most.** #12 unblocks every gridded model at
-once. #1 delivers a real vertical profile *without waiting for #12*, which is
-why it ranks first.
+~~**#1 and #12 are the two that matter most.**~~ **Superseded 2026-09-02.**
+#12 is done. #1 is dead: the feed it depended on was withdrawn. The ranking
+that replaces it, after the re-verification pass in
+`01-atmospheric-nwp-satellite.md`:
+
+1. **GeoMet WCS.** 6123 coverages, 377 of them HRDPS at 2.5 km, and the stack
+   already talks to GeoMet over WMS. It carries the 40/80/120 m boundary-layer
+   stack, humidity on 28 pressure levels, boundary-layer height, skin
+   temperature and ice cover — none of which the project has, and most of
+   which are the fog problem directly. It is also where the withdrawn ECCC
+   feeds appear to have gone.
+2. **VIIRS `JRR-CloudBase` and NUCAPS-EDR.** The satellite gap and, now, the
+   only vertical structure available over the Grand Banks.
+3. **ARCO-ERA5.** Unchanged from the old #4, still verified, still keyless.
+4. **Mode-S winds aloft.** Cheapest real wind aloft at this point, verified
+   with 9 reporting aircraft at the moment of probing.
+
+**Standing warning added 2026-09-02:** three ECCC Datamart recommendations in
+these documents died within three days of being written, each leaving an empty
+directory containing only `doc/`. Re-probe any ECCC path here before building
+against it.
 
 ---
 

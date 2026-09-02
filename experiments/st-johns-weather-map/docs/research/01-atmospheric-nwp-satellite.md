@@ -95,7 +95,7 @@ The honest summary: **almost none of the headline AI models publish an open, ope
 | **ECMWF AIFS Single + AIFS ENS** | ECMWF | **Yes** — operational since 1 Jul 2025 for ENS. 0.25°, 6-hourly steps to 15 d, 4 runs/day, 51 members for ENS | `https://data.ecmwf.int/forecasts/{YYYYMMDD}/{HH}z/aifs-single/0p25/oper/` and `.../aifs-ens/`; also `models=ecmwf_aifs025_single` on Open-Meteo | **Open**, no key | **CC-BY-4.0** + ECMWF Terms of Use. Redistribution and commercial use allowed with attribution | **Yes — `ecmwf_aifs025_single` returned 18.3 °C at the point; `aifs-ens` directory confirmed on data.ecmwf.int** | **Already in the registry** (`ecmwf-aifs-single`, `ecmwf-aifs-ens`). Correctly prioritised. Note `models=ecmwf_aifs025` (no `_single`) returned all-nulls — the working id is `ecmwf_aifs025_single`. |
 | **NOAA AI-GFS / AI-GEFS** (`ncep_aigfs025`, `ncep_aigefs025`) | NOAA/NCEP | **Yes** | `https://openmeteo.s3.amazonaws.com/data/ncep_aigfs025/`; `models=ncep_aigfs025` on Open-Meteo | Open | Public domain upstream | **Yes — `ncep_aigfs025` returned 48 non-null hourly values, first 18.5 °C** | **Not in the registry, and it should be.** NOAA now runs its own AI global model operationally and it is public-domain and free. This is the cheapest new AI model the project can add. Ranked #4 below. |
 | **GraphCast (as run by NCEP)** (`ncep_gfs_graphcast025`) | DeepMind model, NCEP-run | Nominally yes | `https://openmeteo.s3.amazonaws.com/data/ncep_gfs_graphcast025/` | Open | Public domain | **Endpoint exists but returned zero non-null values at this point across a `past_days=2, forecast_days=3` window on 2026-08-30.** Either stalled or retired in favour of AI-GFS | Do not build against it without re-verifying. AI-GFS supersedes it in practice. |
-| **Google WeatherNext 2 (GenCast lineage)** | Google DeepMind | Yes, but gated | Earth Engine asset `projects/gcp-public-data-weathernext/assets/weathernext_2_0_0`; BigQuery public dataset | **Application** — a "WeatherNext Data Request" form, reviewed weekly, 5–7 business days | **Split licence: forecasts >48 h old are CC-BY-4.0; forecasts <48 h old are under "GDM Real-Time Weather Forecasting Experimental Data Terms of Use"** — i.e. the *operationally useful* window is the restricted one | Documented, not verified (requires a Google account and approval) | Registry already has `google-weathernext-2` as `credential_required`, which is the correct classification. The 64-member ensemble is genuinely excellent, but the real-time terms are the catch — read them before putting it in a public map. |
+| **Google WeatherNext 2 (GenCast lineage)** | Google DeepMind | Yes, but gated | Earth Engine asset `projects/gcp-public-data-weathernext/assets/weathernext_2_0_0`; BigQuery public dataset | **Application** — a "WeatherNext Data Request" form, reviewed weekly, 5–7 business days | **Split licence, and it splits on VALID TIME, not run age** (corrected 2026-09-02, definitions read): Historic Experimental Data is "any data that relates to a time that is more than 48 hours ago" and is CC-BY-4.0; Real-Time Experimental Data is "any data that relates to a time that is no more than 48 hours in the past" and falls under the "GDM Real-Time Weather Forecasting Experimental Data Terms of Use". A forecast for tomorrow relates to a time that is not in the past at all, so **every forward-looking value is in the restricted tier** and only the past is Creative Commons. Waiting does not buy you a permissively licensed forecast; it buys you history | **Band list verified 2026-09-02** from the Earth Engine catalogue (access to the data itself still requires approval) | Registry already has `google-weathernext-2` as `credential_required`, which is the correct classification. **The 64-member ensemble is genuinely excellent and publishes no cloud variable of any kind** — surface and single-level bands are 2 m temperature, 10 m and 100 m winds, MSLP, SST and 6-hourly total precipitation; pressure levels 50–1000 hPa carry geopotential, specific humidity, temperature, u, v and vertical velocity. For a map whose subject is cloud that is decisive, and it means any "cloud cover" an aggregator advertises for WeatherNext is that aggregator's own humidity closure, not model output. See `ensembles-and-source-plurality.md` §7. |
 | **Microsoft Aurora 1.5** | Microsoft Research | **No public real-time feed.** Open weights only | GitHub + Hugging Face checkpoints; inference endpoints via Microsoft Foundry on your own compute | Weights: open. Running it: **paid** (your own GPU or Azure) | Model licence on the repo; check before any redistribution of outputs | Not verified — no anonymous forecast endpoint exists to verify | You would have to run inference yourself, on GPU, with your own initial conditions. Out of scope for this project unless it grows a GPU budget. **However, see AIWP below — NOAA archives Aurora runs.** |
 | **NOAA AIWP reforecast archive** (GraphCast, Pangu, FourCastNet v1/v2, Aurora) | NOAA OAR | Twice-daily (00Z/12Z), from GFS *and* IFS initial conditions | `s3://noaa-oar-mlwp-data` → `https://noaa-oar-mlwp-data.s3.amazonaws.com/`. Prefixes verified: `AURO_v100_GFS/`, `AURO_v100_IFS/`, `FOUR_v100_GFS/`, `FOUR_v200_GFS/`, `FOUR_v200_IFS/`, `GRAP_v100_GFS/`, `GRAP_v100_IFS/`, `PANG_v100_GFS/`, `PANG_v100_IFS/`, plus `Derived/` and `parquet/` | **Open**, anonymous S3 | AWS Open Data / NOAA public domain | **Yes — bucket listed 200, all model prefixes enumerated, years 2021–2026 present under `GRAP_v100_GFS/`** | **This is the way to get Aurora, Pangu, FourCastNet and GraphCast without running a single GPU.** Four AI models, two initialisations each, archived back to 2021, free, no key. Latency is not nowcast-grade, but for *model comparison and skill assessment over the Avalon* it is exactly right. Ranked #3 below. |
 | **ECMWF AIFS-ENS as Zarr** | dynamical.org | Icechunk/Zarr repackaging of AIFS ENS | AWS Open Data registry entry `dynamical-ecmwf-aifs-ens` | Open | CC-BY-4.0 (inherits ECMWF) | Registry page found via search; `dynamical.org/catalog/` returned 200 but I could not enumerate the catalogue (JS-rendered) — **treat the exact Zarr path as unverified** | Nice-to-have. Zarr is far more pleasant than GRIB. Verify the store path before committing. |
@@ -358,6 +358,122 @@ Things I could **not** verify, stated so they are not mistaken for confirmed:
 7. **UKMO ensemble, KMA GDPS, BOM ACCESS, GraphCast-at-NCEP, SEAS5, AI-GEFS-mean** all returned all-null series at this point on 2026-08-30. That could be run-timing rather than absence of coverage — **re-test before either adopting or rejecting them.**
 8. **GOES-19 `GLM-L2-LCFA` prefix** — the bucket is verified and the prefix is documented, but I enumerated ABI prefixes specifically and did not individually confirm the GLM one.
 9. **Licence text for RDRS/CaSR** and for the CDS collections listed as `other` (`insitu-observations-gnss`, the CDS IGRA copy, `satellite-cloud-properties`, `satellite-humidity-profiles`). Read them before redistributing anything derived.
+10. **ECCC's own ensembles have left the open HTTP feed** (added 2026-09-02).
+    `https://dd.weather.gc.ca/today/model_geps/` and `model_reps` both 404, as
+    do `ensemble/geps` and `ensemble/reps` on `dd.weather.gc.ca` and on the
+    `hpfx.collab.science.gc.ca` mirror; the `ensemble/` tree holds only
+    `cansips/` and `doc/`, and neither directory appears in the `today/`
+    listing where it would sort. **The registry declares the dead path**, and
+    MSC's own product readme still documents it. They survive through GeoMet:
+    REPS publishes 1239 individual member coverages as `REPS.MEM.<VAR>.<NN>`
+    for members 01-21 in both WMS and WCS, while GEPS publishes no members at
+    all, only its own mean, spread, percentiles and threshold probabilities.
+    The one open ECCC route not probed is MetPX Sarracenia over AMQP. Full
+    detail in `ensembles-and-source-plurality.md` §2 and §3.
+
+---
+
+# Re-verification pass, 2026-09-02
+
+Prompted by the owner asking what else could be pulled in for cloud, moisture,
+humidity and wind. Every row below was re-probed from this machine on
+2026-09-02. **Three of this document's ECCC recommendations had died in three
+days**, which is the reason the pass happened at all and the reason anything
+ECCC here should be re-probed before it is built against.
+
+## R1. What died
+
+| What | Was | Now |
+|---|---|---|
+| ECCC CYYT forecast sounding, ranked **#1** in `04-gap-analysis.md` | the whole vertical-profile answer, plain CSV | `https://dd.weather.gc.ca/today/vertical_profile/` returns 200 and contains **only `doc/`**. Every path under `forecast/` and `observation/` is 404, on `dd.weather.gc.ca` and on the `hpfx.collab.science.gc.ca` mirror |
+| GEPS and REPS raw GRIB2 | `today/model_geps/`, `today/ensemble/geps/` | 404 everywhere; see uncertainty-register entry 10 |
+
+The pattern is the same in both cases: the directory still exists, the
+documentation folder inside it still exists, and the data is gone. That is not
+how a transient outage usually looks, and MSC's own readmes still document the
+dead paths. **Do not trust an ECCC Datamart path in this document without
+re-probing it.** Everything that vanished has a GeoMet equivalent, which is
+the strong hint about where ECCC has moved.
+
+## R2. GeoMet is the largest untapped source, and the stack already talks to it
+
+The project proxies 17 GeoMet WMS layers. GeoMet's WCS advertises **6123
+coverages**, of which **377 are HRDPS at 2.5 km**. A WCS coverage is a gridded
+field that can be subset and decoded, not a picture and not the single-pixel
+`GetFeatureInfo` answer of hard-won fact 1. **VERIFIED** by reading both
+capabilities documents.
+
+What HRDPS carries there that the stack does not ingest today:
+
+| Layer family | What it gives | Why it matters here |
+|---|---|---|
+| `HRDPS.CONTINENTAL_{TT,TD,HR,HU,ES,WSPD,WD,UU,M3}_{40m,80m,120m}` | temperature, dew point, relative and specific humidity, dew-point depression, wind speed, direction and components at 40, 80 and 120 m | **A boundary-layer stack sampled three times inside the first 120 m.** This is the fog layer itself. The stack currently jumps from 2 m to 1015 hPa |
+| `HRDPS.CONTINENTAL.PRES_HR.<L>` | relative humidity on **28 pressure levels**, 50 to 1015 hPa | the Datamart GRIB ingest carries 9 levels, 1015 to 850 |
+| `HRDPS.CONTINENTAL.PRES_{HU,QQ,WP,ES,UU,WD,WSPD,TT,GZ}` | specific humidity, mixing ratio, vertical motion, dew-point depression, wind, temperature, height on the same levels | the residual timing options already want omega and RH; this is a second route to both |
+| `HRDPS.CONTINENTAL_HPBL` | boundary layer height | separates fog from lifted stratus directly |
+| `HRDPS.CONTINENTAL_SKINT` | skin temperature | **half of the air-sea temperature difference that drives Grand Banks advection fog**; the other half is SST, already available from GOES `ABI-L2-SSTF` |
+| `HRDPS.CONTINENTAL_ICEC` | ice cover | the registry has no ice at all (structural gap 4) |
+| `HRDPS-WEonG_2.5km_SkyState` | ECCC's own sky-state diagnostic | sits beside the fog visibility layers already proxied |
+
+`HRDPS.CONTINENTAL_NT` is the total cloud already ingested from GRIB, so the
+two routes can be cross-checked against each other.
+
+**GAP:** no coverage was actually fetched. The cost of a WCS subset per layer
+per lead over the Avalon is unmeasured, and `geomet-wms-access` already
+budgets upstream calls per request and per process. Measure before committing.
+
+## R3. Satellite, re-verified and still the right answer at this latitude
+
+Section 4.1's zenith-angle argument stands and is the reason this matters:
+polar orbiters look near-nadir at 47.6 N while GOES-East looks through roughly
+twice the air.
+
+| Product | Route | Probed 2026-09-02 |
+|---|---|---|
+| VIIRS `JRR-CloudBase` | `https://noaa-nesdis-n20-pds.s3.amazonaws.com/VIIRS-JRR-CloudBase/2026/09/02/` | **live**, granules timestamped today |
+| NUCAPS-EDR soundings | `https://noaa-nesdis-n20-pds.s3.amazonaws.com/NUCAPS-EDR/2026/09/02/` | **live**, granule timestamped today |
+| GOES-19 `ABI-L2-ACHAF`, `-TPWF`, `-DMWF`, `-CODF`, `-ACMF` | `https://noaa-goes19.s3.amazonaws.com/<PREFIX>/2026/245/` | **all five populated today** |
+
+Cloud top height, total precipitable water, derived motion winds, cloud
+optical depth and the clear-sky mask cover cloud, moisture and wind between
+them, all keyless and public domain. NUCAPS is the only vertical structure
+available over the Grand Banks now that the ECCC sounding has gone.
+
+## R4. Two more, both live
+
+- **ARCO-ERA5** on Google Cloud: `.zmetadata` fetched 2026-09-02, reporting
+  1940-01-01 through 2026-08-26 with `last_updated` 2026-09-01. Anonymous
+  Zarr, CC-BY-4.0, humidity and wind on 37 levels. Still the best reanalysis
+  route and still requires no account. **VERIFIED.**
+- **Mode-S winds aloft** via `https://api.adsb.lol/v2/point/47.56/-52.71/250`:
+  11 aircraft over the Avalon at the moment of the probe, **9 reporting wind
+  direction, speed and outside air temperature** between 22,900 and 37,000
+  feet. With the nearest radiosonde 600 km away and the ECCC forecast sounding
+  now gone, this is the only routinely available in-situ wind aloft over this
+  point. ODbL, no key. **VERIFIED.**
+
+## R5. The aggregator question, and what changed because of it
+
+Section 1.1's foreign models - UKMO Global 10 km, JMA GSM, ARPEGE-world, CMA
+GRAPES - are reachable only through Open-Meteo at this location. That route
+does not hand back a published grid cell. Open-Meteo selects a cell by a
+policy that defaults to finding nearby land at similar elevation rather than
+the nearest cell, applies statistical downscaling against a 90 m elevation
+model, and interpolates a model's native step up to hourly. **VERIFIED** from
+its own documentation, 2026-09-02.
+
+That collided with `point-evidence-sampling`'s requirement that a value is one
+published cell, unmodified. The owner's decision on 2026-09-02 was to loosen
+that rule rather than reject the sources: a value that an intermediary
+reprocessed is still a value somebody retrieved, and the honest fix is to
+declare what kind of source it came from rather than to pretend the
+distinction does not exist. The normative text is in
+`openspec/changes/ensemble-members-and-source-plurality/`. The short version:
+a source declares whether it delivers published cells or reprocessed values;
+a reprocessed value names both the originating producer and the intermediary,
+and the reprocessing that was applied; and it is never the declared primary,
+because a downscaled global has no business outranking a 2.5 km regional model
+that publishes its own cells.
 
 ---
 

@@ -9,7 +9,15 @@ context: |
   Nothing is displayed or returned that was not actually retrieved. Missing data
   must be null / unknown / unavailable WITH provenance. Never fabricate, never
   interpolate into a gap, never silently substitute, and never fall back from a
-  live failure to a fixture value. One owner-approved carve-out, display
+  live failure to a fixture value. "Retrieved" means retrieved by this
+  deployment; it does NOT mean the originating producer computed it. A value an
+  intermediary transformed before delivering it is still retrieved, and may be
+  served, but only from a source the registry declares `reprocessed`, naming
+  the producer and the intermediary separately and every documented
+  transformation, never as the display primary and never as an input to a
+  derivation (owner decision 2026-09-02, so that the foreign global models
+  reachable here only through an aggregator are admitted by declaration rather
+  than lost or laundered). One owner-approved carve-out, display
   paths only (frame-fallback-and-viewport-layout 2026-08-31; extended by
   scrub-performance-and-motion-interpolation 2026-08-31, by
   multi-frame-cloud-motion 2026-08-31 and by believable-cloud-motion
@@ -162,6 +170,73 @@ context: |
     optical thickness in water and ice, so thin cloud reads near zero; GFS is
     a geometric maximum-random overlap fraction (ccpp-physics `gethml`). Do
     not compare their values, thresholds or scores directly.
+  - ECCC IS WITHDRAWING FEEDS FROM DATAMART FASTER THAN THE RESEARCH AGES.
+    Three catalogued sources died within three days of being written up: the
+    CYYT forecast sounding ranked first in `04-gap-analysis.md`, plus GEPS and
+    REPS. Each leaves the same fingerprint - the directory still answers 200
+    and contains only `doc/`, while MSC's own readme still documents the dead
+    path. Everything that vanished has a GeoMet equivalent, so GeoMet looks
+    like where ECCC has moved. Re-probe any `dd.weather.gc.ca` path before
+    building against it, however recently it was verified.
+  - GEOMET IS THE LARGEST UNTAPPED SOURCE AND THE STACK ALREADY TALKS TO IT.
+    Its WCS advertises 6123 coverages, 377 of them HRDPS at 2.5 km, and a WCS
+    coverage is a gridded field rather than the single-pixel `GetFeatureInfo`
+    answer of the first fact above. It carries what this project most lacks:
+    temperature, dew point, humidity and wind at 40, 80 and 120 m (the fog
+    layer itself, where the stack currently jumps from 2 m to 1015 hPa),
+    relative humidity on 28 pressure levels against the 9 ingested today,
+    boundary-layer height, skin temperature for the air-sea difference that
+    drives Grand Banks advection fog, and ice cover. Cost per coverage is
+    unmeasured and `geomet-wms-access` budgets upstream calls, so measure
+    before committing.
+  - CONSENSUS WAS UNSATISFIABLE BY CONSTRUCTION, and was removed rather than
+    repaired (owner decision 2026-09-02). `point-evidence-sampling` required
+    an ensemble among the candidates; `_consensus_candidates` admitted only
+    records with `consensus.eligible`; `registry/audit.py` refused eligibility
+    to anything that was not `deterministic_forecast`; and `is_ensemble` was
+    read from that same category. A candidate had to be eligible to count,
+    deterministic to be eligible, and an ensemble to satisfy the gate. The
+    branch never once produced a value, and the map's "consensus unavailable"
+    badge was reporting an unsatisfiable requirement, not a missing feed. Do
+    not reintroduce a blended value: a mean across centres is a value no
+    centre issued, it damps the gradients a 2.5 km model exists to resolve,
+    and the fields being averaged are frequently not the same quantity. Every
+    source that published is shown side by side instead.
+  - ENSEMBLES ARE NOT ONE SHAPE. Measured 2026-09-02: `noaa-gefs` publishes 31
+    members as per-member GRIB2 on S3 (`gec00` plus `gep01`-`gep30`, control
+    self-labelled `ENS=low-res ctl`); `eccc-reps` publishes 21 members as 1239
+    individual `REPS.MEM.<VAR>.<NN>` GeoMet coverages, with wind speed but no
+    u/v so no direction; `eccc-geps` publishes NO members at all, only its own
+    reduction (`ERMEAN`, `ERSSTD`, percentiles `ERC0`-`ERC100`, threshold
+    probabilities). Both ECCC ensembles are 404 on every open ECCC HTTP path
+    including the one the registry declared, on dd.weather.gc.ca and on the
+    hpfx mirror, and MSC's own readme still documents the dead path. A
+    provider's own statistic is retrieved evidence and is stored as such;
+    never recompute it here and never combine it with a statistic over a
+    different member set.
+  - NOTHING IN THIS STACK UNDERSTANDS AN ENSEMBLE MEMBER, as of 2026-09-02.
+    `ingest/grib.py` drops `number` as an anonymous message scalar, so the
+    member identity is deleted at decode and is unrecoverable downstream,
+    unlike the time coordinates dropped beside it which the artifact's own
+    axes still carry. `_sample_dataset` knows only latitude, longitude, time
+    and an optional pressure coordinate; a member array reaches `float()`,
+    raises, is caught, and becomes None - a silent loss where the same
+    function already refuses an unrequested pressure DIMENSION outright four
+    lines earlier. `Provenance.member` exists and no adapter has ever set it.
+  - GEFS TOTAL CLOUD IS A SIX-HOUR AVERAGE (`TCDC:entire atmosphere:0-6 hour
+    ave fcst` in the `pgrb2a` inventory), one product further along the same
+    trap as GFS's PDT 4.0 vs 4.8 duplicates. Do not draw it beside the
+    instantaneous HRDPS or GFS field. Whether `pgrb2b` carries an
+    instantaneous record is unverified.
+  - GOOGLE WEATHERNEXT 2 PUBLISHES NO CLOUD VARIABLE. Verified band list
+    2026-09-02: 2 m temperature, 10 m and 100 m winds, MSLP, SST, 6-hourly
+    precipitation, and geopotential, specific humidity, temperature, u, v and
+    vertical velocity on 50-1000 hPa. Any "cloud cover" a reseller advertises
+    for it is that reseller's own humidity closure, not model output, and
+    would be a GENERATED value under carve-out (d) rather than provider
+    output. Its licence also splits on VALID TIME, not run age: only data
+    relating to a time more than 48 hours ago is CC BY 4.0, so every
+    forward-looking value sits in the restricted real-time terms.
   - A derived artifact is kept off the data paths by its provenance flags
     (`derived` / `generated`), never by matching its logical name. The name
     match in `LiveStore.sample_point` stopped covering the motion artifact the
