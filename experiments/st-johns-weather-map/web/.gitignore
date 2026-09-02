@@ -4,3 +4,7 @@ dist/
 vite.config.js
 vite.config.d.ts
 
+
+# Vitest browser-mode failure screenshots: diagnostic output, never source.
+src/__screenshots__/
+src/**/__screenshots__/

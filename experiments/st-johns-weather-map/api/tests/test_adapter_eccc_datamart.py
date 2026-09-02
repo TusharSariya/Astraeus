@@ -22,9 +22,16 @@ import xarray
 import zarr
 
 from ingest.adapters.eccc_datamart import (
+    CANONICAL_FIELD_UNITS,
     GDPS_VARS,
     HRDPS_OMEGA_VARS,
+    HRDPS_PROFILE_VARS,
     HRDPS_STEERING_VARS,
+    HRDPS_THERMO_VARS,
+    LOW_LEVELS_HPA,
+    OPTIONAL_VARIABLES,
+    RDPS_PROFILE_VARS,
+    RDPS_THERMO_VARS,
     HRDPS_VARS,
     RDPS_VARS,
     ECCCDataMartAdapter,
@@ -304,7 +311,13 @@ HRDPS_EVIDENCE_FIELDS = frozenset(
         "total_cloud",
     }
 )
-HRDPS_PUBLISHED_FIELDS = HRDPS_EVIDENCE_FIELDS | set(HRDPS_STEERING_VARS) | set(HRDPS_OMEGA_VARS)
+HRDPS_PUBLISHED_FIELDS = (
+    HRDPS_EVIDENCE_FIELDS
+    | set(HRDPS_STEERING_VARS)
+    | set(HRDPS_OMEGA_VARS)
+    | set(HRDPS_THERMO_VARS)
+    | set(HRDPS_PROFILE_VARS)
+)
 
 _TCDC_URL_MAP = {
     "20260830/WXO-DD/model_hrdps/continental/2.5km/": make_html_listing(["12/"]),
@@ -355,7 +368,9 @@ def test_total_cloud_is_published_from_the_messages_own_wmo_keys(tmp_path: Path,
     # disjointness is the invariant that matters: a display input may go
     # missing, a reading may not.
     optional = {field.name for field in manifest_for("eccc-hrdps", HRDPS_VARS).fields if field.optional}
-    assert optional == set(HRDPS_STEERING_VARS) | set(HRDPS_OMEGA_VARS)
+    assert optional == (
+        set(HRDPS_STEERING_VARS) | set(HRDPS_OMEGA_VARS) | set(HRDPS_THERMO_VARS) | set(HRDPS_PROFILE_VARS)
+    )
     assert optional.isdisjoint(HRDPS_EVIDENCE_FIELDS)
 
     client = make_mock_client(_TCDC_URL_MAP)
@@ -459,3 +474,372 @@ def test_live_hrdps_tcdc_still_carries_wmo_total_cloud_keys(tmp_path: Path):
     assert keys["discipline"] == 0
     assert keys["parameterCategory"] == 6
     assert keys["parameterNumber"] == 1
+
+
+def test_isobaric_rh_and_temperature_tokens_are_the_verified_ones():
+    """The two models do not name temperature the same way.
+
+    Verified live against the 2026-09-01 12Z PT003H listings: HRDPS publishes
+    ``RH_ISBL_0700`` / ``TMP_ISBL_0700``, RDPS ``RelativeHumidity_IsbL-0700``
+    and ``AirTemp_IsbL-0700``. ``Temperature_IsbL-`` does not exist on RDPS,
+    which is the mistake this pins.
+    """
+    assert HRDPS_THERMO_VARS["relative_humidity_850hPa"] == ("RH", "ISBL_0850")
+    assert HRDPS_THERMO_VARS["temperature_700hPa"] == ("TMP", "ISBL_0700")
+    assert RDPS_THERMO_VARS["relative_humidity_500hPa"] == ("RelativeHumidity", "IsbL-0500")
+    assert RDPS_THERMO_VARS["temperature_850hPa"] == ("AirTemp", "IsbL-0850")
+    assert not any(prefix == "Temperature" for prefix, _ in RDPS_THERMO_VARS.values())
+    # Every level the winds and omega already use, and no others.
+    assert set(HRDPS_THERMO_VARS) == {
+        f"{name}_{level}hPa" for name in ("relative_humidity", "temperature") for level in (850, 700, 500)
+    }
+    # And the screen-level fields keep their own distinct tokens, so the
+    # isobaric entries cannot shadow them.
+    assert HRDPS_VARS["temperature_2m"] == ("TMP", "AGL-2m")
+    assert HRDPS_VARS["relative_humidity_2m"] == ("RH", "AGL-2m")
+
+
+def test_eccc_rh_carries_the_liquid_water_convention_it_was_measured_to_use(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """GRIB2 0/1/1 has no phase key, so this is a measurement carried in attrs.
+
+    HRDPS and RDPS were both measured on 2026-09-01 against their own SPFH at
+    500 hPa and divide by saturation over liquid water at every temperature -
+    which is the convention the WEonG LLC table is calibrated on. Without this
+    declaration the diagnosis could not tell an ECCC field from a GFS one.
+    """
+    from ingest.derive.weong_low_cloud import assert_liquid_water_rh
+    from ingest.grib import RH_PHASE_LIQUID_WATER
+
+    url_map = {
+        "20260829/WXO-DD/model_hrdps/continental/2.5km/": make_html_listing(["12/"]),
+        "20260829/WXO-DD/model_hrdps/continental/2.5km/12/": make_html_listing(["000/"]),
+        "20260829/WXO-DD/model_hrdps/continental/2.5km/12/000/": make_html_listing(
+            [
+                "20260829T12Z_MSC_HRDPS_RH_ISBL_0850_RLatLon0.0225_PT000H.grib2",
+                "20260829T12Z_MSC_HRDPS_TMP_ISBL_0850_RLatLon0.0225_PT000H.grib2",
+                "20260829T12Z_MSC_HRDPS_RH_AGL-2m_RLatLon0.0225_PT000H.grib2",
+            ]
+        ),
+    }
+    client = make_mock_client(url_map)
+    fetch_var_map = {
+        "relative_humidity_850hPa": HRDPS_VARS["relative_humidity_850hPa"],
+        "temperature_850hPa": HRDPS_VARS["temperature_850hPa"],
+        "relative_humidity_2m": HRDPS_VARS["relative_humidity_2m"],
+    }
+    adapter = make_adapter(client, var_map=fetch_var_map)
+    monkeypatch.setattr(client, "download", lambda url, dest, max_bytes: dest.write_bytes(b"dummy"))
+
+    def mock_open_grib(path: Path):
+        isobaric = "850hPa" in str(path)
+        name, value, units = ("t", 271.15, "K") if "temperature" in str(path) else ("r", 91.0, "%")
+        dataset = xarray.Dataset(
+            {name: (("latitude", "longitude"), numpy.full((2, 2), value))},
+            coords={"latitude": numpy.array([47.5, 47.6]), "longitude": numpy.array([-52.8, -52.7])},
+        )
+        dataset[name].attrs["units"] = units
+        dataset[name].attrs["GRIB_typeOfFirstFixedSurface"] = "pl" if isobaric else "sfc"
+        return dataset
+
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.open_grib", mock_open_grib)
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.crop_to_bbox", lambda ds, bounds: ds)
+
+    window = FetchWindow(now=datetime(2026, 8, 29, 13, tzinfo=UTC), back_hours=3, forward_hours=24)
+    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+    assert result.complete is True
+
+    with zarr.storage.ZipStore(str(result.artifacts[0].payload_path), mode="r") as store:
+        dataset = xarray.open_zarr(store, consolidated=False).load()
+
+    rh = dataset["relative_humidity_850hPa"]
+    assert rh.attrs["rh_phase_convention"] == RH_PHASE_LIQUID_WATER
+    assert "SPFH" in rh.attrs["rh_phase_basis"]
+    assert_liquid_water_rh(rh)  # the WEonG table accepts it
+    # Kelvin still becomes degC on the isobaric level, as on the screen level.
+    assert dataset["temperature_850hPa"].attrs["units"] == "degC"
+    assert float(dataset["temperature_850hPa"].isel(valid_time=0).mean()) == pytest.approx(-2.0)
+
+
+@pytest.mark.skipif(os.environ.get("WEATHER_LIVE_SMOKE") != "1", reason="set WEATHER_LIVE_SMOKE=1 to hit Datamart")
+def test_live_isobaric_rh_and_temperature_urls_resolve_for_both_models():
+    """The tokens actually resolve to files, for HRDPS and RDPS, at all three levels."""
+    from ingest.adapters.eccc_datamart import HRDPS_ADAPTER, RDPS_ADAPTER
+
+    client = PoliteClient()
+    for source, var_map in ((HRDPS_ADAPTER, HRDPS_THERMO_VARS), (RDPS_ADAPTER, RDPS_THERMO_VARS)):
+        adapter = ECCCDataMartAdapter(
+            source_id=source.source_id,
+            model_subpath=source.model_subpath,
+            grid_token=source.grid_token,
+            var_map=HRDPS_VARS,
+            client=client,
+        )
+        window = FetchWindow(now=datetime.now(UTC))
+        candidate = next((c for c in adapter.discover(window) if "003" in c.detail["available_hours"]), None)
+        if candidate is None:
+            pytest.skip(f"no {source.source_id} cycle with a populated 003/ directory right now")
+        files = client.list_directory(candidate.detail["cycle_url"] + "003/", suffixes=(".grib2",))
+        for canonical, (prefix, level) in var_map.items():
+            matches = [f for f in files if f"_{prefix}_" in f and level in f]
+            assert matches, f"{source.source_id}: no file for {canonical} ({prefix}, {level})"
+
+
+@pytest.mark.skipif(os.environ.get("WEATHER_LIVE_SMOKE") != "1", reason="set WEATHER_LIVE_SMOKE=1 to hit Datamart")
+def test_live_hrdps_rh_is_over_liquid_water_not_ice(tmp_path: Path):
+    """The claim in ECCC_RH_PHASE_BASIS, re-measured against the live listing.
+
+    Reconstructs vapour pressure from HRDPS's own ``SPFH_ISBL_0500`` and
+    compares against Buck (1981) saturation over water and over ice below
+    -25 degC. Measured 2026-09-01: matches water to 0.08 %, misses ice by
+    19.1 %. This is the assumption every WEonG RH threshold rests on, so it
+    is asserted rather than believed.
+    """
+    eccodes = pytest.importorskip("eccodes")
+    from ingest.adapters.eccc_datamart import HRDPS_ADAPTER
+
+    client = PoliteClient()
+    adapter = ECCCDataMartAdapter(
+        source_id=HRDPS_ADAPTER.source_id,
+        model_subpath=HRDPS_ADAPTER.model_subpath,
+        grid_token=HRDPS_ADAPTER.grid_token,
+        var_map=HRDPS_VARS,
+        client=client,
+    )
+    window = FetchWindow(now=datetime.now(UTC))
+    candidate = next((c for c in adapter.discover(window) if "003" in c.detail["available_hours"]), None)
+    if candidate is None:
+        pytest.skip("no HRDPS cycle with a populated 003/ directory right now")
+    hour_url = candidate.detail["cycle_url"] + "003/"
+    files = client.list_directory(hour_url, suffixes=(".grib2",))
+
+    def field(token: str) -> numpy.ndarray:
+        matches = [f for f in files if token in f]
+        if not matches:
+            pytest.skip(f"no {token} file under {hour_url}")
+        local = tmp_path / matches[0]
+        client.download(hour_url + matches[0], local, max_bytes=10 * 1024 * 1024)
+        with local.open("rb") as handle:
+            gid = eccodes.codes_grib_new_from_file(handle)
+            try:
+                return numpy.asarray(eccodes.codes_get_values(gid), dtype=float)
+            finally:
+                eccodes.codes_release(gid)
+
+    q = field("_SPFH_ISBL_0500_")
+    temperature = field("_TMP_ISBL_0500_")
+    rh = field("_RH_ISBL_0500_")
+    vapour = q * 50000.0 / (0.622 + 0.378 * q)
+    celsius = temperature - 273.15
+    over_water = 611.21 * numpy.exp((18.678 - celsius / 234.5) * (celsius / (257.14 + celsius)))
+    over_ice = 611.15 * numpy.exp((23.036 - celsius / 333.7) * (celsius / (279.82 + celsius)))
+    cold = (celsius < -25.0) & (rh > 50.0)
+    if cold.sum() < 1000:
+        pytest.skip("no sufficiently cold saturated air at 500 hPa in this cycle")
+    bias_water = float(numpy.mean(100 * vapour[cold] / over_water[cold] - rh[cold]))
+    bias_ice = float(numpy.mean(100 * vapour[cold] / over_ice[cold] - rh[cold]))
+    print(f"HRDPS 500 hPa RH below -25 degC: bias vs water {bias_water:+.2f} %, vs ice {bias_ice:+.2f} %")
+    assert abs(bias_water) < 2.0, "HRDPS RH no longer matches saturation over liquid water"
+    assert abs(bias_ice) > 10.0, "HRDPS RH now matches saturation over ice; the declared convention is wrong"
+
+
+# --- the nine-level low-cloud profile ------------------------------------
+
+
+def test_the_low_level_profile_tokens_are_the_ones_listed_live():
+    """Nine levels, three fields each, plus one AGL datum per model.
+
+    Verified against the live 2026-09-01 12Z PT003H listings for both models:
+    HRDPS publishes ``RH_ISBL_``, ``TMP_ISBL_`` and ``HGT_ISBL_`` at 1015,
+    1000, 0985, 0970, 0950, 0925, 0900, 0875 and 0850, plus ``HGT_Sfc``; RDPS
+    publishes ``RelativeHumidity_IsbL-``, ``AirTemp_IsbL-`` and
+    ``GeopotentialHeight_IsbL-`` at the same nine, and NO surface height at
+    all - its 21 ``_Sfc_`` tokens were enumerated and none is a height - but it
+    does publish ``Pressure_Sfc``.
+    """
+    assert LOW_LEVELS_HPA == (1015, 1000, 985, 970, 950, 925, 900, 875, 850)
+    assert HRDPS_PROFILE_VARS["relative_humidity_1015hPa"] == ("RH", "ISBL_1015")
+    assert HRDPS_PROFILE_VARS["geopotential_height_985hPa"] == ("HGT", "ISBL_0985")
+    assert HRDPS_PROFILE_VARS["temperature_875hPa"] == ("TMP", "ISBL_0875")
+    assert HRDPS_PROFILE_VARS["surface_height"] == ("HGT", "Sfc")
+    assert RDPS_PROFILE_VARS["relative_humidity_970hPa"] == ("RelativeHumidity", "IsbL-0970")
+    assert RDPS_PROFILE_VARS["geopotential_height_1000hPa"] == ("GeopotentialHeight", "IsbL-1000")
+    assert RDPS_PROFILE_VARS["temperature_925hPa"] == ("AirTemp", "IsbL-0925")
+    # The datum each model actually offers, and only that one.
+    assert RDPS_PROFILE_VARS["surface_pressure"] == ("Pressure", "Sfc")
+    assert "surface_height" not in RDPS_PROFILE_VARS
+    assert "surface_pressure" not in HRDPS_PROFILE_VARS
+    # 850 hPa is shared with the steering thermo set; the merged map must
+    # agree with itself rather than shadow one entry with another.
+    assert HRDPS_VARS["relative_humidity_850hPa"] == HRDPS_THERMO_VARS["relative_humidity_850hPa"]
+    assert RDPS_VARS["temperature_850hPa"] == RDPS_THERMO_VARS["temperature_850hPa"]
+    # And the screen-level fields still keep their own distinct tokens.
+    assert HRDPS_VARS["relative_humidity_2m"] == ("RH", "AGL-2m")
+
+
+def test_the_profile_units_are_the_ones_the_messages_declare():
+    """Not the ones the plan guessed: these were decoded, level by level.
+
+    Decoded on 2026-09-01 (12Z PT003H, 950 hPa, ecCodes 2.48.0), both models
+    identical on the isobaric levels: RH is discipline 0 / category 1 /
+    number 1 -> ``r``, paramId 157, ``%``; temperature 0/0/0 -> ``t``,
+    paramId 130, ``K`` (normalised to degC); geopotential height 0/3/5 ->
+    ``gh``, paramId 156, ``gpm`` (no normalisation rule, so untouched).
+
+    The two surface datums are where a guess would have been wrong.
+    HRDPS ``HGT_Sfc`` is 0/3/5 on ``sfc`` but decodes as ``orog`` /
+    "Orography", paramId 228002, units ``m`` - terrain height, not gpm. RDPS
+    ``Pressure_Sfc`` is 0/3/0 on ``sfc`` -> ``sp``, paramId 134, ``Pa``, and
+    stays Pa because ``normalize_units`` keys its hPa rule on the decoded
+    variable name and ``sp`` does not match it.
+    """
+    for level in LOW_LEVELS_HPA:
+        assert CANONICAL_FIELD_UNITS[f"relative_humidity_{level}hPa"] == ("percent", f"{level} hPa")
+        assert CANONICAL_FIELD_UNITS[f"temperature_{level}hPa"] == ("degC", f"{level} hPa")
+        assert CANONICAL_FIELD_UNITS[f"geopotential_height_{level}hPa"] == ("gpm", f"{level} hPa")
+    assert CANONICAL_FIELD_UNITS["surface_height"][0] == "m"
+    assert CANONICAL_FIELD_UNITS["surface_pressure"][0] == "Pa"
+
+
+def test_every_profile_field_is_optional_in_both_manifests():
+    """A level ECCC omits costs the derived layer, never the evidence artifact.
+
+    The whole surface map is drawn from this artifact. If one of 28 optional
+    display-derivation files were mandatory, a single absent level would fail
+    the run's QC and take the temperature, the wind and the cloud with it.
+    """
+    profile_names = (
+        [f"relative_humidity_{level}hPa" for level in LOW_LEVELS_HPA]
+        + [f"temperature_{level}hPa" for level in LOW_LEVELS_HPA]
+        + [f"geopotential_height_{level}hPa" for level in LOW_LEVELS_HPA]
+        + ["surface_height", "surface_pressure"]
+    )
+    for name in profile_names:
+        assert name in OPTIONAL_VARIABLES, name
+    for source_id, var_map in (("eccc-hrdps", HRDPS_VARS), ("eccc-rdps", RDPS_VARS)):
+        manifest = manifest_for(source_id, var_map)
+        by_name = {field.name: field for field in manifest.fields}
+        for name in profile_names:
+            if name not in var_map:
+                continue
+            assert by_name[name].optional is True, f"{source_id}:{name}"
+        # The evidence fields are still mandatory - optionality did not leak.
+        assert by_name["total_cloud"].optional is False
+        assert by_name["temperature_2m"].optional is False
+
+
+def test_the_profile_adds_exactly_twenty_eight_files_per_lead_hour():
+    """The measured cost in the module docstring is a count, so count it.
+
+    28 per model per lead hour: 9 levels x (RH, T, height) + 1 datum. At 25
+    lead hours that is 700 extra retrievals per run, which is the number the
+    docstring's measured byte totals are per-lead multiples of.
+    """
+    for var_map, profile in ((HRDPS_VARS, HRDPS_PROFILE_VARS), (RDPS_VARS, RDPS_PROFILE_VARS)):
+        assert len(profile) == 28
+        added = set(profile) - set(HRDPS_THERMO_VARS) - set(RDPS_THERMO_VARS)
+        # 850 hPa RH and T are shared with the steering thermo set, so only 26
+        # of the 28 are new names in the variable map.
+        assert len(added) == 26
+        assert added <= set(var_map)
+
+
+@pytest.mark.skipif(os.environ.get("WEATHER_LIVE_SMOKE") != "1", reason="set WEATHER_LIVE_SMOKE=1 to hit Datamart")
+def test_live_low_level_profile_urls_resolve_for_both_models():
+    from ingest.adapters.eccc_datamart import HRDPS_ADAPTER, RDPS_ADAPTER
+
+    client = PoliteClient()
+    for source, profile in ((HRDPS_ADAPTER, HRDPS_PROFILE_VARS), (RDPS_ADAPTER, RDPS_PROFILE_VARS)):
+        adapter = ECCCDataMartAdapter(
+            source_id=source.source_id,
+            model_subpath=source.model_subpath,
+            grid_token=source.grid_token,
+            var_map=source.var_map,
+            client=client,
+        )
+        window = FetchWindow(now=datetime.now(UTC))
+        candidate = next((c for c in adapter.discover(window) if "003" in c.detail["available_hours"]), None)
+        if candidate is None:
+            pytest.skip(f"no {source.source_id} cycle with a populated 003/ directory right now")
+        files = client.list_directory(candidate.detail["cycle_url"] + "003/", suffixes=(".grib2",))
+        for canonical, (prefix, level) in profile.items():
+            matches = [f for f in files if f"_{prefix}_" in f and level in f]
+            assert matches, f"{source.source_id}: no file for {canonical} ({prefix}, {level})"
+
+
+def test_one_lead_hours_files_download_in_a_bounded_pool(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Downloads overlap up to the bound; one failed file is one error, not a lost lead."""
+    import threading
+    import time as _time
+
+    from ingest.adapters.eccc_datamart import download_parallelism
+
+    monkeypatch.setenv("WEATHER_DATAMART_PARALLEL", "3")
+    assert download_parallelism() == 3
+    names = ("TMP", "DPT", "RH", "UGRD", "VGRD", "PRMSL")
+    files = [f"20260829T12Z_MSC_HRDPS_{name}_AGL-2m_RLatLon0.0225_PT000H.grib2" for name in names[:5]]
+    files.append("20260829T12Z_MSC_HRDPS_PRMSL_MSL_RLatLon0.0225_PT000H.grib2")
+    url_map = {
+        "20260829/WXO-DD/model_hrdps/continental/2.5km/": make_html_listing(["12/"]),
+        "20260829/WXO-DD/model_hrdps/continental/2.5km/12/": make_html_listing(["000/"]),
+        "20260829/WXO-DD/model_hrdps/continental/2.5km/12/000/": make_html_listing(files),
+    }
+    client = make_mock_client(url_map)
+    fetch_var_map = {
+        "temperature_2m": ("TMP", "AGL-2m"),
+        "dew_point_2m": ("DPT", "AGL-2m"),
+        "relative_humidity_2m": ("RH", "AGL-2m"),
+        "wind_u_10m": ("UGRD", "AGL-2m"),
+        "wind_v_10m": ("VGRD", "AGL-2m"),
+        "mean_sea_level_pressure": ("PRMSL", "MSL"),
+    }
+    adapter = make_adapter(client, var_map=fetch_var_map)
+
+    lock = threading.Lock()
+    in_flight = {"now": 0, "peak": 0}
+
+    def slow_download(url, dest, max_bytes):
+        with lock:
+            in_flight["now"] += 1
+            in_flight["peak"] = max(in_flight["peak"], in_flight["now"])
+        try:
+            _time.sleep(0.05)
+            if "_DPT_" in url:
+                raise RuntimeError("simulated 500 after retries")
+            dest.write_bytes(b"dummy")
+        finally:
+            with lock:
+                in_flight["now"] -= 1
+
+    monkeypatch.setattr(client, "download", slow_download)
+
+    latitudes = numpy.array([47.5, 47.6])
+    longitudes = numpy.array([-52.8, -52.7])
+
+    def mock_open_grib(path: Path, **_kwargs):
+        name = path.name.split("_000")[0]
+        ds = xarray.Dataset(
+            {name: (("latitude", "longitude"), numpy.full((2, 2), 1.0))},
+            coords={"latitude": latitudes, "longitude": longitudes},
+        )
+        ds[name].attrs["units"] = "degC"
+        return ds
+
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.open_grib", mock_open_grib)
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.crop_to_bbox", lambda ds, bounds: ds)
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.normalize_units", lambda ds: ds)
+
+    window = FetchWindow(now=datetime(2026, 8, 29, 13, tzinfo=UTC), back_hours=3, forward_hours=24)
+    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+
+    # Overlap happened, and never past the bound.
+    assert 2 <= in_flight["peak"] <= 3, in_flight
+    # The failed file is named as a download error; the other five arrived
+    # and the lead was still assembled from them.
+    store = zarr.storage.ZipStore(str(result.artifacts[0].payload_path), mode="r")
+    ds = xarray.open_zarr(store, consolidated=False)
+    assert "dew_point_2m" not in ds.data_vars
+    assert {"temperature_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure"} <= set(ds.data_vars)
+    flagged = str(result.artifacts[0].provenance)
+    assert "download:20260829T12Z_MSC_HRDPS_DPT_AGL-2m" in flagged

@@ -11,7 +11,6 @@ from ingest.derive.flow_ops import (
     STEERING_LEVEL_BY_VARIABLE,
     _cell_metres,
     _consistency,
-    _development_agreement,
     _dis_flow,
     _display_weight,
     _prior_corrected,
@@ -19,7 +18,7 @@ from ingest.derive.flow_ops import (
     _supported_flow,
 )
 from ingest.derive.methods.contract import Requirement, InterpolationMethod, MethodContext, PairMotion
-from ingest.derive.methods.baseline import BaselineMethod
+from ingest.derive.methods.baseline import TCDC_NOTE, BaselineMethod
 from ingest.derive.methods.companion import published_companion
 
 
@@ -367,6 +366,12 @@ class HeightSteeringMethod(BaselineMethod):
         "and 500 hPa winds. Cells with no observed cloud top keep the single-level behaviour "
         "exactly, and the wind still only fills what the imagery could not read."
     )
+    plain = "Uses the satellite's measured cloud height to pick which level's wind moves each patch."
+    gap = "Only the hour around a live scan; forecast frames draw exactly entry 1."
+    notes = (
+        "Per-cell steering level from GOES-19 ACHAF cloud-top height; AMV height assignment "
+        "(Liu et al. 2025 GRL; EUMETrain); CIRACast / INCA. " + TCDC_NOTE
+    )
     shader = "hermite"
 
 
@@ -458,7 +463,7 @@ class HeightSteeringMethod(BaselineMethod):
                     flow10=flow10,
                     confidence=agreed,
                     support=support,
-                    advect_weight=_display_weight(support, _development_agreement(previous, following, flow01)),
+                    advect_weight=_display_weight(support),
                     diagnostics={
                         "prior_weight_carried": carried,
                         # How much of the field the OBSERVATION actually
@@ -471,11 +476,3 @@ class HeightSteeringMethod(BaselineMethod):
                 )
             )
         return results
-
-
-#: The fractions of an interval a held-out frame is reconstructed at. The
-#: midpoint is the hardest case and the one the shipped thresholds were
-#: measured against; the thirds are reached by holding a frame out of a
-#: three-interval span, and they catch a construction that is right at the
-#: middle and wrong on the way there - which a midpoint-only score cannot
-#: see, and which is exactly what the reader watches during playback.

@@ -133,6 +133,19 @@ class RenderedGridSpec:
     title_field: str
     #: The provider's own level name for the stratum, disclosed verbatim.
     provider_level: str
+    #: Set only for a layer this experiment DERIVED from retrieved fields
+    #: rather than read from a provider artifact: names the construction so
+    #: the layer is disclosed as generated wherever it is offered. None for a
+    #: retrieved field.
+    derived_disclosure: str | None = None
+
+
+#: The one disclosure string for the WEonG low-cloud layers, so the title, the
+#: semantics and any client note cannot drift apart. It names the construction
+#: and its citation, and says GENERATED without hedging.
+WEONG_DISCLOSURE = (
+    "low cloud diagnosed from the model's own humidity profile by ECCC's published WEonG algorithm (technote v2.4.1 sec 7.9); generated, display only"
+)
 
 
 RENDERED_GRID_SPECS: tuple[RenderedGridSpec, ...] = (
@@ -156,9 +169,37 @@ RENDERED_GRID_SPECS: tuple[RenderedGridSpec, ...] = (
         "eccc-rdps-surface-total-cloud", "eccc-rdps", "surface", "total_cloud",
         "total_cloud", "total cloud cover", "surface (whole-column cover)",
     ),
+    # The two derived layers. They read a DIFFERENT artifact from the layers
+    # above - ``low_cloud_weong``, published by ``ingest.derive.weong_layer`` -
+    # so the provider's own ``surface`` field stays untouched and frame-exact
+    # for every reading, and this sits beside it disclosed as generated. A
+    # spec whose artifact is absent is simply not offered (the kill switch
+    # being off is exactly that case), which ``rendered_grid_layers`` already
+    # does for every missing artifact.
+    RenderedGridSpec(
+        "eccc-hrdps-low-cloud-weong", "eccc-hrdps", "low_cloud_weong", "total_cloud_weong",
+        "total_cloud_weong", "total cloud cover with the WEonG low-cloud repair",
+        "surface (whole-column cover, repaired below 850 hPa)",
+        derived_disclosure=WEONG_DISCLOSURE,
+    ),
+    RenderedGridSpec(
+        "eccc-rdps-low-cloud-weong", "eccc-rdps", "low_cloud_weong", "total_cloud_weong",
+        "total_cloud_weong", "total cloud cover with the WEonG low-cloud repair",
+        "surface (whole-column cover, repaired below 850 hPa)",
+        derived_disclosure=WEONG_DISCLOSURE,
+    ),
 )
 
 _SPEC_BY_ID = {spec.layer_id: spec for spec in RENDERED_GRID_SPECS}
+
+#: Logical names of artifacts this experiment DERIVED and offers as rendered
+#: layers. Read off the specs rather than listed, so a new derived layer cannot
+#: be added without the generic ``/layers`` path learning to stand aside for it
+#: - which is what keeps a generated grid from being offered twice, once
+#: without its disclosure.
+DERIVED_GRID_LOGICAL_NAMES = frozenset(
+    spec.logical_name for spec in RENDERED_GRID_SPECS if spec.derived_disclosure
+)
 
 
 def rendered_grid_spec(layer_id: str) -> RenderedGridSpec | None:
@@ -181,6 +222,7 @@ def grid_semantics(spec: RenderedGridSpec, provenance: Mapping[str, Any]) -> str
         "smoothed - the blocky cells are the stored data. Values and times are read from the "
         f"published {spec.source_id} artifact; no pixel is interpolated, extrapolated or substituted. "
         f"Colormap (presentation only): {COLORMAP_DOC}."
+        + (f" GENERATED: {spec.derived_disclosure}." if spec.derived_disclosure else "")
     )
 
 
@@ -733,17 +775,42 @@ def render_grid(
 
 # ------------------------------------------------------- derived motion
 
-#: Logical name of the worker-derived cloud-motion artifact (see
-#: ``ingest/derive/cloud_motion.py``). Display-support only: it feeds the
-#: /flow endpoint below and nothing else.
+#: Logical name of the worker-derived cloud-motion artifact for a source's
+#: retrieved ``surface`` grid (see ``ingest/derive/cloud_motion.py``).
+#: Display-support only: it feeds the /flow endpoint below and nothing else.
 CLOUD_MOTION_LOGICAL_NAME = "cloud_motion"
+
+
+def motion_logical_name(base_logical_name: str) -> str:
+    """The motion artifact's logical name for the artifact a layer reads.
+
+    Mirrors ``ingest.derive.cloud_motion.motion_logical_name`` exactly, and is
+    duplicated rather than imported for the same reason the rest of this module
+    does not import the derive: the API reads published artifacts and must not
+    depend on the code that wrote them. ``surface`` keeps the bare
+    ``cloud_motion`` every existing artifact carries; a derived base is
+    suffixed, giving ``cloud_motion_low_cloud_weong``.
+    """
+    if base_logical_name == "surface":
+        return CLOUD_MOTION_LOGICAL_NAME
+    return f"{CLOUD_MOTION_LOGICAL_NAME}_{base_logical_name}"
+
+
+def is_cloud_motion_logical_name(logical_name: str) -> bool:
+    """True for any derived motion artifact, whatever base it derives from.
+
+    Used where the answer is about motion artifacts as a class - keeping them
+    out of ``/layers``, gathering them for the ``/methods`` bench - rather than
+    about one layer's own motion.
+    """
+    return logical_name == CLOUD_MOTION_LOGICAL_NAME or logical_name.startswith(f"{CLOUD_MOTION_LOGICAL_NAME}_")
 
 FLOW_SEMANTICS_DOC = (
     "each pixel carries the derived motion vector of the stored cell under it, in output pixels "
     "over the frame interval, quantized to 8 bits over the declared scale; blue channel is the "
     "weight the display mixes advection against a plain crossfade on (255 = advect, 0 = "
-    "crossfade), being the lesser of the local trusted-flow support and the photometric "
-    "agreement of the two half-interval warps, and zero for a pair whose warp does not beat "
+    "crossfade), being the local trusted-flow support - how much of the neighbourhood carries "
+    "a forward-backward consistent vector - and zero for a pair whose warp does not beat "
     "persistence; artifacts predating that weight carry the raw forward-backward consistency "
     "there instead; this is a display derivation computed between two published frames - not "
     "provider output, not evidence"
@@ -755,16 +822,6 @@ TANGENT_SEMANTICS_DOC = (
     "frame interval, quantized to 8 bits over the declared scale, alpha opaque; knot velocities "
     "are QVI central differences of the neighbouring pairs' flows, derived only from the layer's "
     "retrieved frames; display derivation - not provider output, not evidence"
-)
-
-BACKWARD_SEMANTICS_DOC = (
-    "the pair's BACKWARD derived motion, frame 1 -> frame 0: R/G the vector in output pixels over "
-    "the frame interval, quantized to 8 bits over the declared scale exactly as the motion texture "
-    "is, blue unused, alpha opaque - a vector component never rides the alpha channel, where "
-    "browser premultiplication would destroy its precision near zero; it is derived from the same "
-    "two published frames as the forward field and is served so a construction can approximate the "
-    "intermediate flows from both directions instead of assuming the forward field inverts; "
-    "display derivation - not provider output, not evidence"
 )
 
 VISIBILITY_SEMANTICS_DOC = (
@@ -779,34 +836,43 @@ VISIBILITY_SEMANTICS_DOC = (
 )
 
 RESIDUAL_SEMANTICS_DOC = (
-    "the pair's development shaping: R is a signed value in [-1, 1], quantized to 8 bits the same "
-    "way a vector component is, green and blue unused, alpha opaque - it never rides the alpha "
-    "channel, where browser premultiplication would destroy its precision near zero. It re-times "
-    "the dissolve between the two retrieved frames from the same model run's own vertical "
-    "velocity: positive delivers the change earlier in the interval, negative later. The shaped "
-    "mixing fraction stays in [0, 1], so the displayed value stays between the two retrieved "
-    "frames at that cell - no cloud is added that is in neither and none removed that is in "
-    "both; display derivation - not provider output, not evidence"
+    "the pair's per-cell envelope coefficients a (R) and b (G), in cloud percent, signed and "
+    "quantized to 8 bits around 128 over the declared scale exactly as a vector component is, "
+    "blue unused, alpha opaque - a coefficient never rides the alpha channel, where browser "
+    "premultiplication would destroy its precision near zero. The client adds t(1-t)(a + b t) "
+    "after the advection mix and clamps to the variable's range: the envelope is zero at both "
+    "real frames by construction, so every retrieved frame shows untouched, and it is the "
+    "computed advection residual of the same two retrieved frames - source term of the "
+    "advection equation, computed rather than learned - on a published, capped envelope; "
+    "display derivation - not provider output, not evidence"
 )
 
 #: The texture variants /flow serves. ``motion`` is the pairwise flow the
-#: first carve-out approved; ``tangents`` is the C1 Hermite extension;
-#: ``backward`` is the frame1 -> frame0 field, derived and stored since the
-#: first cycle and unserved until a method had a use for it. ``visibility``
-#: is a per-frame fusion weight pair and ``residual`` a per-cell re-timing;
-#: each belongs to the one method that derives it, and is refused for a
-#: method that does not, because the derive pads an undeclared suffix with
+#: first carve-out approved; ``tangents`` is the C1 Hermite extension.
+#: ``visibility`` is a per-frame fusion weight pair and ``residual`` the
+#: per-cell envelope coefficients of the computed advection residual; each
+#: belongs to the one shader that evaluates it, and is refused for a method
+#: whose shader does not, because the derive pads an undeclared suffix with
 #: explicit zeros and a zero weight is an absent measurement rather than a
-#: reliability of zero.
-FLOW_TEXTURES = ("motion", "tangents", "backward", "visibility", "residual")
+#: reliability of zero. The frame1 -> frame0 field stays stored (the
+#: tangents and error-variance derivations read it) but is not served: its
+#: only consumer was a construction that has been retired.
+FLOW_TEXTURES = ("motion", "tangents", "visibility", "residual")
 
 #: What each texture's ``X-Weather-Render-Semantics`` says, verbatim.
 FLOW_SEMANTICS_BY_TEXTURE = {
     "motion": FLOW_SEMANTICS_DOC,
     "tangents": TANGENT_SEMANTICS_DOC,
-    "backward": BACKWARD_SEMANTICS_DOC,
     "visibility": VISIBILITY_SEMANTICS_DOC,
     "residual": RESIDUAL_SEMANTICS_DOC,
+}
+
+#: Which shader a per-method texture belongs to. A texture listed here is
+#: served only for a method whose registry shader is one of the named ones;
+#: a texture not listed is served for every method.
+FLOW_TEXTURE_SHADERS: dict[str, tuple[str, ...]] = {
+    "visibility": ("visibility",),
+    "residual": ("residual-advection",),
 }
 
 #: The interpolation method served when a request names none. Mirrors
@@ -920,12 +986,12 @@ def render_flow(
     side by side in one double-width image (left = start knot, right = end
     knot), alpha opaque - a vector component never rides the alpha channel,
     where browser premultiplication would destroy its precision near zero.
-    ``texture="backward"`` is the pair's frame1 -> frame0 field, R/G on the
-    same rule, for a construction that approximates the intermediate flows
-    from both directions rather than assuming the forward one inverts.
     ``texture="visibility"`` is the pair's per-frame fusion weights (R = frame
     0, G = frame 1, each 0..1 over 255, alpha opaque), served only for a method
-    that actually derives them.
+    whose shader fuses on them. ``texture="residual"`` is the pair's per-cell
+    envelope coefficients (R = a, G = b, in cloud percent, signed around 128
+    over a scale fitted per request), served only for a method whose shader
+    evaluates ``t(1-t)(a + b t)`` after the advection mix.
     All are resampled with the same pixel-to-cell rule as the frame raster,
     so their pixels align with frame pixels, vectors converted from grid
     cells to output pixels of exactly this request. A pair with no derived
@@ -950,13 +1016,20 @@ def render_flow(
     surface = _grid_artifact(store, spec)
     if surface is None:
         raise GridNotPublished(f"no {spec.source_id} {spec.logical_name} artifact is currently published")
+    # Resolved from the LAYER's own artifact, not from the source: a source
+    # publishes motion for its retrieved surface grid and, separately, for its
+    # derived WEonG low-cloud grid, and serving one layer the other's
+    # displacements would be a flow fitted to a different picture.
+    wanted_motion = motion_logical_name(spec.logical_name)
     motion = next(
         (item for item in _current_artifacts(store)
-         if item.source_id == spec.source_id and item.logical_name == CLOUD_MOTION_LOGICAL_NAME),
+         if item.source_id == spec.source_id and item.logical_name == wanted_motion),
         None,
     )
     if motion is None:
-        raise FlowNotAvailable(f"no derived cloud-motion artifact is published for {spec.source_id}")
+        raise FlowNotAvailable(
+            f"no derived cloud-motion artifact ({wanted_motion}) is published for {spec.source_id}"
+        )
     if str(motion.provenance.get("base_revision_id", "")) != str(getattr(surface, "revision_id", "")):
         raise FlowNotAvailable(
             f"the published cloud-motion artifact derives from revision "
@@ -998,42 +1071,39 @@ def render_flow(
     method_index = published_methods.index(method)
     if texture == "tangents":
         suffixes = ("vs_u", "vs_v", "ve_u", "ve_v")
-    elif texture == "backward":
-        # The frame1 -> frame0 field, alone: the blue channel would only
-        # repeat the display weight the motion texture already carries.
-        suffixes = ("u10", "v10")
     elif texture == "visibility":
         suffixes = ("vis0", "vis1")
     elif texture == "residual":
-        suffixes = ("dev_shape",)
+        suffixes = ("gen_a", "gen_b")
     else:
         # The blue channel is the weight the client mixes advection against a
-        # crossfade on. Newer artifacts publish the display weight (support
-        # AND development agreement, vetoed per pair on measured skill); older
+        # crossfade on. Newer artifacts publish the display weight (the
+        # trusted-flow support, vetoed per pair on measured skill); older
         # ones carry only the raw consistency, which is what they mixed on, so
         # they keep serving that rather than nothing.
         weight_name = f"{spec.variable}_advect_weight"
         weight_suffix = "advect_weight" if weight_name in motion_dataset.data_vars else "confidence"
         suffixes = ("u01", "v01", weight_suffix)
-    if texture == "visibility" and flow_shader_for(method) != "visibility":
+    owning_shaders = FLOW_TEXTURE_SHADERS.get(texture)
+    if owning_shaders and flow_shader_for(method) not in owning_shaders:
         # The derive pads a suffix no method declared with an explicit zero
         # field, so this variable exists on every method's slice of the axis.
         # A zero weight is an absent measurement, not a reliability of zero,
-        # and serving it would let a method be drawn with fusion weights it
-        # never derived. The absence is named instead.
-        raise FlowNotAvailable(
-            f"the {method!r} method derives no visibility weights; that texture belongs to a "
-            "method whose construction fuses on them"
-        )
+        # and serving it would let a method be drawn with fields it never
+        # derived. The absence is named instead.
+        what = {
+            "visibility": "visibility weights; that texture belongs to a method whose construction fuses on them",
+            "residual": "envelope coefficients; that texture belongs to a method whose construction adds the computed residual",
+        }[texture]
+        raise FlowNotAvailable(f"the {method!r} method derives no {what}")
     names = [f"{spec.variable}_{suffix}" for suffix in suffixes]
     if any(name not in motion_dataset.data_vars for name in names):
         raise FlowNotAvailable(
             f"the cloud-motion artifact carries no {texture} data for {spec.variable}"
             + {
                 "tangents": " (it predates the Hermite derivation)",
-                "backward": " (it predates the stored backward flow)",
                 "visibility": " (it predates the stored visibility weights)",
-                "residual": " (only the development-residual method publishes one)",
+                "residual": " (it predates the stored envelope coefficients)",
             }.get(texture, "")
         )
 
@@ -1102,16 +1172,6 @@ def render_flow(
         rgba[:, width:, 0] = quantized(end_dx, scale)
         rgba[:, width:, 1] = quantized(end_dy, scale)
         rgba[..., 3] = 255
-    elif texture == "backward":
-        # Same quantization and same cell-to-pixel conversion as the motion
-        # texture, so a client can mix the two fields componentwise after
-        # scaling each by its own declared scale.
-        pixel_dx, pixel_dy = pixel_vectors(fields["u10"], fields["v10"])
-        scale = float(max(numpy.max(numpy.abs(pixel_dx)), numpy.max(numpy.abs(pixel_dy)), 1e-6))
-        rgba = numpy.zeros((height, width, 4), dtype="uint8")
-        rgba[..., 0] = quantized(pixel_dx, scale)
-        rgba[..., 1] = quantized(pixel_dy, scale)
-        rgba[..., 3] = 255
     elif texture == "visibility":
         # Two scalars in [0, 1], not a displacement: they are sampled through
         # the same pixel-to-cell rule as every other texture so they align with
@@ -1127,15 +1187,19 @@ def render_flow(
             rgba[..., channel] = numpy.clip(numpy.rint(sampled * 255.0), 0, 255).astype("uint8")
         rgba[..., 3] = 255
     elif texture == "residual":
-        # A scalar in [-1, 1], not a displacement, so it is NOT run through
-        # pixel_vectors: no cell-to-pixel conversion applies to a re-timing.
-        # The scale is fixed at 1 rather than fitted to the field, so the
-        # client's decode never depends on how strong this cycle happened to
-        # be and two cycles are directly comparable on screen.
-        shaping = numpy.where(inside, fields["dev_shape"][rows, cols], 0.0)
-        scale = 1.0
+        # Two signed scalars in cloud percent, not a displacement, so they are
+        # NOT run through pixel_vectors: no cell-to-pixel conversion applies
+        # to a coefficient. The scale is fitted per request to the larger
+        # magnitude of the two, exactly as a vector texture's is, and declared
+        # in the header so the client decodes ``value = (byte/255 - 0.5) * 2 *
+        # scale``; outside the grid both read zero, which is an envelope of
+        # zero - the plain advection mix - never an invented coefficient.
+        coefficient_a = numpy.where(inside, fields["gen_a"][rows, cols], 0.0)
+        coefficient_b = numpy.where(inside, fields["gen_b"][rows, cols], 0.0)
+        scale = float(max(numpy.max(numpy.abs(coefficient_a)), numpy.max(numpy.abs(coefficient_b)), 1e-6))
         rgba = numpy.zeros((height, width, 4), dtype="uint8")
-        rgba[..., 0] = quantized(shaping, scale)
+        rgba[..., 0] = quantized(coefficient_a, scale)
+        rgba[..., 1] = quantized(coefficient_b, scale)
         rgba[..., 3] = 255
     else:
         pixel_dx, pixel_dy = pixel_vectors(fields["u01"], fields["v01"])
@@ -1218,7 +1282,8 @@ def rendered_grid_layers(store: Any, layer_model: Any, *, z_index: int, stalenes
         layers.append(
             layer_model(
                 id=spec.layer_id,
-                title=f"{product} {spec.title_field} (rendered grid)",
+                title=f"{product} {spec.title_field} (rendered grid)"
+                + (f" (generated: {spec.derived_disclosure})" if spec.derived_disclosure else ""),
                 kind="raster",
                 field=spec.field,
                 product=product,

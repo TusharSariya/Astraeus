@@ -15,6 +15,7 @@ import zarr
 
 from ingest.adapters.noaa_s3 import (
     GFS_DECODE_SPECS,
+    GFS_MANIFEST,
     GFS_IDX_SELECTORS,
     MAX_BYTES_PER_LEAD,
     NOAAS3Adapter,
@@ -38,8 +39,6 @@ SAMPLE_GFS_IDX_LINES = [
     ("PRMSL", "mean sea level", "3 hour fcst", True),
     ("VIS", "surface", "3 hour fcst", True),
     ("UGRD", "planetary boundary layer", "3 hour fcst", False),
-    ("TMP", "500 mb", "3 hour fcst", False),
-    ("RH", "500 mb", "3 hour fcst", False),
     ("UGRD", "10 mb", "3 hour fcst", False),
     ("VGRD", "10 mb", "3 hour fcst", False),
     ("TCDC", "850 mb", "3 hour fcst", False),
@@ -77,8 +76,11 @@ SAMPLE_GFS_IDX_LINES = [
     ("VGRD", "700 mb", "3 hour fcst", True),
     ("UGRD", "500 mb", "3 hour fcst", True),
     ("VGRD", "500 mb", "3 hour fcst", True),
-    # Vertical velocity at the same three steering levels, for the
-    # development-residual re-timing. DZDT is the geometric vertical velocity
+    # Vertical velocity at the same three steering levels, read by the
+    # computed-residual interpolation methods to re-time growth and decay
+    # inside an interval (the `development-residual` module that first asked
+    # for it was deleted on 2026-09-01; `residual-advection` and its
+    # generative sibling are what read omega now). DZDT is the geometric vertical velocity
     # GFS publishes beside every one of these messages; it is a deliberate
     # distractor here because the adapter takes omega (VVEL, Pa s-1) only -
     # mixing the two conventions is how a sign error would get in.
@@ -89,6 +91,19 @@ SAMPLE_GFS_IDX_LINES = [
     ("DZDT", "700 mb", "3 hour fcst", False),
     ("VVEL", "500 mb", "3 hour fcst", True),
     ("DZDT", "500 mb", "3 hour fcst", False),
+    # RH and temperature at the same three levels, for the humidity-based
+    # low-cloud diagnosis. The 800 mb neighbours and the 2 m screen messages
+    # above are the distractors that matter here: `TMP` and `RH` are the two
+    # parameters GFS publishes at BOTH a screen level and every isobaric
+    # level, so a param-only or level-only match mixes them.
+    ("RH", "850 mb", "3 hour fcst", True),
+    ("TMP", "850 mb", "3 hour fcst", True),
+    ("RH", "800 mb", "3 hour fcst", False),
+    ("TMP", "800 mb", "3 hour fcst", False),
+    ("RH", "700 mb", "3 hour fcst", True),
+    ("TMP", "700 mb", "3 hour fcst", True),
+    ("RH", "500 mb", "3 hour fcst", True),
+    ("TMP", "500 mb", "3 hour fcst", True),
     ("PWAT", "entire atmosphere (considered as a single layer)", "3 hour fcst", True),
     # A trailing unwanted message so the last selected range is closed, as in
     # the real inventory where hundreds of messages follow PWAT.
@@ -225,6 +240,12 @@ def full_message_set() -> dict[str, xarray.Dataset]:
         # Omega at the three steering levels, in the units ecCodes spells for
         # WMO 0/2/8. Negative is ascent, which is why the values are signed.
         "w": _isobaric_message("w", {500: -0.12, 700: -0.31, 850: 0.18}, "Pa s**-1"),
+        # RH and temperature on the same three levels. Both come back under
+        # the bare shortNames `r` and `t`, which is exactly why the decode
+        # spec pins typeOfLevel=isobaricInhPa: the screen-level twins above
+        # decode as `2r` and `2t` only because cfgrib was given a filter.
+        "r": _isobaric_message("r", {500: 40.0, 700: 78.0, 850: 92.0}, "%"),
+        "t": _isobaric_message("t", {500: 253.15, 700: 268.15, 850: 278.15}, "K"),
         "pwat": _message("pwat", 12.5, "kg m**-2", {"atmosphereSingleLayer": 0.0}),
     }
 
@@ -541,3 +562,137 @@ def test_live_gfs_idx_carries_upper_air_messages_under_the_ceiling():
     total = selected_bytes(ranges)
     assert total is not None
     assert total < MAX_BYTES_PER_LEAD, f"merged span {total} bytes exceeds the {MAX_BYTES_PER_LEAD} ceiling"
+
+
+def test_isobaric_rh_and_temperature_publish_beside_the_screen_fields(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """`t` and `r` at pressure must not collide with, or merge into, `2t`/`2r`.
+
+    GFS publishes TMP and RH at both 2 m above ground and every isobaric
+    level. The decode spec pins ``typeOfLevel=isobaricInhPa`` on the isobaric
+    open for exactly that reason; this asserts the outcome - six suffixed
+    upper-level variables AND the two screen-level ones, all in one dataset.
+    """
+    client = _four_lead_client()
+    adapter = NOAAS3Adapter(client=client)
+    monkeypatch.setattr(client, "download_ranges", lambda url, dest, ranges, max_bytes: dest.write_bytes(b"x") or 100)
+    monkeypatch.setattr("ingest.adapters.noaa_s3.open_grib", make_mock_open_grib(full_message_set()))
+    monkeypatch.setattr("ingest.adapters.noaa_s3.crop_to_bbox", lambda ds, bounds: ds)
+
+    now = datetime(2026, 8, 29, 13, tzinfo=UTC)
+    window = FetchWindow(now=now, back_hours=1, forward_hours=2)
+    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+    assert result.complete is True
+
+    surface = next(a for a in result.artifacts if a.logical_name == "surface")
+    with zarr.storage.ZipStore(str(surface.payload_path), mode="r") as store:
+        dataset = xarray.open_zarr(store, consolidated=False).load()
+
+    for level in (850, 700, 500):
+        assert f"relative_humidity_{level}hPa" in dataset
+        assert f"temperature_{level}hPa" in dataset
+    # The screen-level twins survive untouched and keep their own values.
+    assert float(dataset["relative_humidity_2m"].isel(valid_time=0).mean()) == pytest.approx(82.0)
+    assert float(dataset["relative_humidity_850hPa"].isel(valid_time=0).mean()) == pytest.approx(92.0)
+    # Temperature is normalised to degC on every level, screen and isobaric.
+    assert float(dataset["temperature_850hPa"].isel(valid_time=0).mean()) == pytest.approx(5.0)
+    assert float(dataset["temperature_500hPa"].isel(valid_time=0).mean()) == pytest.approx(-20.0)
+    assert dataset["temperature_500hPa"].attrs["units"] == "degC"
+    assert dataset["relative_humidity_700hPa"].attrs["units"] == "percent"
+
+
+def test_gfs_relative_humidity_carries_its_measured_saturation_phase(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """GRIB2 0/1/1 codes no phase key, so the measurement travels in attrs.
+
+    GFS divides by a mixed-phase saturation (linear ice->water between 253.16 K
+    and 273.16 K, measured 2026-09-01); ECCC divides by liquid water. A
+    threshold scheme has to be able to tell them apart, and the only place that
+    information can live is the variable's own attrs.
+    """
+    client = _four_lead_client()
+    adapter = NOAAS3Adapter(client=client)
+    monkeypatch.setattr(client, "download_ranges", lambda url, dest, ranges, max_bytes: dest.write_bytes(b"x") or 100)
+    monkeypatch.setattr("ingest.adapters.noaa_s3.open_grib", make_mock_open_grib(full_message_set()))
+    monkeypatch.setattr("ingest.adapters.noaa_s3.crop_to_bbox", lambda ds, bounds: ds)
+
+    now = datetime(2026, 8, 29, 13, tzinfo=UTC)
+    window = FetchWindow(now=now, back_hours=1, forward_hours=2)
+    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+
+    surface = next(a for a in result.artifacts if a.logical_name == "surface")
+    with zarr.storage.ZipStore(str(surface.payload_path), mode="r") as store:
+        dataset = xarray.open_zarr(store, consolidated=False).load()
+
+    from ingest.derive.weong_low_cloud import assert_liquid_water_rh
+    from ingest.grib import RH_PHASE_MIXED_LINEAR_253K_273K
+
+    for level in (850, 700, 500):
+        attrs = dataset[f"relative_humidity_{level}hPa"].attrs
+        assert attrs["rh_phase_convention"] == RH_PHASE_MIXED_LINEAR_253K_273K
+        assert "SPFH" in attrs["rh_phase_basis"]
+        # And the ECCC-calibrated WEonG table refuses it rather than silently
+        # applying a threshold it was not calibrated for.
+        with pytest.raises(ValueError, match="liquid water"):
+            assert_liquid_water_rh(dataset[f"relative_humidity_{level}hPa"])
+
+
+def test_isobaric_rh_and_temperature_are_optional_not_mandatory():
+    """A level the inventory omits costs the diagnosis, never the artifact."""
+    optional = {field.name for field in GFS_MANIFEST.fields if field.optional}
+    for level in (850, 700, 500):
+        assert f"relative_humidity_{level}hPa" in optional
+        assert f"temperature_{level}hPa" in optional
+
+
+@pytest.mark.skipif(os.environ.get("WEATHER_LIVE_SMOKE") != "1", reason="set WEATHER_LIVE_SMOKE=1 to hit the noaa-gfs-bdp-pds bucket")
+def test_live_gfs_rh_is_mixed_phase_and_eccc_rh_is_not():
+    """The claim in GFS_RH_PHASE_BASIS, re-measured against the live bucket.
+
+    Reconstructs vapour pressure from the message's own SPFH at 500 mb and
+    checks it against Buck (1981) saturation over ice and over water below
+    -25 degC. Measured 2026-09-01: matches ice to 0.24 %, misses water by
+    24.5 %. Fails loudly if NCEP ever changes the convention, because every
+    RH threshold downstream is calibrated against a phase.
+    """
+    eccodes = pytest.importorskip("eccodes")
+    import tempfile
+
+    from ingest.grib import ByteRange, parse_idx
+
+    client = PoliteClient()
+    adapter = NOAAS3Adapter(client=client)
+    window = FetchWindow(now=datetime.now(UTC).replace(minute=0, second=0, microsecond=0))
+    candidate = adapter.discover(window)[0]
+    detail = candidate.detail
+    base = f"{adapter._base_url}/gfs.{detail['date_str']}/{detail['cycle']}/atmos/gfs.t{detail['cycle']}z.pgrb2.0p25.f003"
+    records = parse_idx(client.get_text(base + ".idx"))
+    wanted = {"RH": None, "TMP": None, "SPFH": None}
+    for record in records:
+        if record.param.upper() in wanted and record.level.lower() == "500 mb" and "hour fcst" in record.forecast:
+            wanted[record.param.upper()] = record
+    if any(value is None for value in wanted.values()):
+        pytest.skip("live inventory does not carry RH/TMP/SPFH at 500 mb")
+
+    def read(record) -> numpy.ndarray:
+        response = client.get(base, headers={"Range": ByteRange(record.offset, record.end).header})
+        with tempfile.NamedTemporaryFile(suffix=".grib2") as handle:
+            handle.write(response.content)
+            handle.flush()
+            with open(handle.name, "rb") as grib:
+                gid = eccodes.codes_grib_new_from_file(grib)
+                try:
+                    return numpy.asarray(eccodes.codes_get_values(gid), dtype=float)
+                finally:
+                    eccodes.codes_release(gid)
+
+    q, temperature, rh = read(wanted["SPFH"]), read(wanted["TMP"]), read(wanted["RH"])
+    vapour = q * 50000.0 / (0.622 + 0.378 * q)
+    celsius = temperature - 273.15
+    over_water = 611.21 * numpy.exp((18.678 - celsius / 234.5) * (celsius / (257.14 + celsius)))
+    over_ice = 611.15 * numpy.exp((23.036 - celsius / 333.7) * (celsius / (279.82 + celsius)))
+    cold = (celsius < -25.0) & (rh > 50.0)
+    assert cold.sum() > 1000
+    bias_ice = float(numpy.mean(100 * vapour[cold] / over_ice[cold] - rh[cold]))
+    bias_water = float(numpy.mean(100 * vapour[cold] / over_water[cold] - rh[cold]))
+    print(f"GFS 500 mb RH below -25 degC: bias vs ice {bias_ice:+.2f} %, vs water {bias_water:+.2f} %")
+    assert abs(bias_ice) < 2.0, "GFS RH no longer matches saturation over ice below -25 degC"
+    assert abs(bias_water) > 10.0, "GFS RH now matches saturation over water; the declared convention is wrong"

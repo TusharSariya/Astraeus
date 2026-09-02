@@ -51,6 +51,7 @@ testpaths = ["tests"]
 # that reported success while testing nothing.
 markers = [
   "live_smoke: contacts a real upstream provider; opt in with WEATHER_LIVE_SMOKE=1",
+  "layer_contract: sweeps every layer of a running stack; opt in with WEATHER_LAYER_CONTRACT=1",
 ]
 
 [build-system]

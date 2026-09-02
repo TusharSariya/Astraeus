@@ -51,7 +51,7 @@ def motion_dataset(
     """One-pair motion dataset; ``tangents=(vs_u, ve_u)`` adds Hermite vars.
 
     ``visibility=(v0, v1)`` adds the per-frame fusion weights the
-    ``visibility-blend`` method publishes for itself.
+    ``error-variance-blend`` method publishes for itself.
     """
     times = frame_times()
     shape = (1,) + LAT2D.shape
@@ -171,8 +171,8 @@ def test_flow_is_served_aligned_quantized_and_disclosed(monkeypatch, data_mode):
 def test_the_blue_channel_carries_the_display_weight_when_the_artifact_has_one(monkeypatch, data_mode):
     # The client mixes advection against a crossfade on this channel. Newer
     # artifacts publish a display weight that already accounts for
-    # neighbourhood support, in-place development and the held-out skill
-    # veto; it is that, not the raw forward-backward agreement, that must be
+    # neighbourhood support and the held-out skill veto; it is that, not the
+    # raw forward-backward agreement, that must be
     # served. Here the raw agreement is total and the display weight is a
     # fifth: the channel must read the fifth.
     use_store(monkeypatch, data_mode, MotionStore(motion=motion_dataset(confidence=1.0, advect_weight=0.2)))
@@ -231,99 +231,131 @@ def test_an_artifact_without_tangents_is_a_404_for_tangents(monkeypatch, data_mo
     assert client.get(flow_url()).status_code == 200
 
 
-def test_the_backward_flow_is_served_quantized_and_disclosed(monkeypatch, data_mode):
-    # The frame1 -> frame0 field has been derived and stored every cycle and
-    # never served. The intermediate-flow construction needs it, and it must
-    # arrive under the same quantization and pixel-conversion rule as the
-    # motion texture or the two cannot be combined componentwise.
-    use_store(monkeypatch, data_mode, MotionStore(motion=motion_dataset(u=1.0)))
-    response = client.get(flow_url(texture="backward"))
-    assert response.status_code == 200
-    headers = response.headers
-    assert headers["x-weather-image-basis"] == "derived_motion"
-    assert headers["x-weather-flow-texture"] == "backward"
-    assert "frame 1 -> frame 0" in headers["x-weather-render-semantics"]
-    assert "not evidence" in headers["x-weather-render-semantics"]
-    scale = float(headers["x-weather-flow-scale"])
-    assert scale > 0
-    rgba = decode_png(response.content)
-    assert int(rgba[..., 3].min()) == 255  # a vector never rides the alpha channel
-    decoded_dx = (rgba[..., 0].astype("float64") / 255.0 - 0.5) * 2.0 * scale
-    # The fixture's backward flow is the negation of its +1-cell forward flow,
-    # so inside pixels decode westward where the motion texture decodes east -
-    # proof the served field is u10/v10 and not u01/v01 relabelled. Nothing
-    # decodes east beyond one quantization step, which is what a cell whose
-    # westward path is clamped at the grid edge reads as.
-    forward = decode_png(client.get(flow_url()).content)
-    inside = forward[..., 2] == 255
-    assert inside.any()
-    assert float(decoded_dx[inside].min()) < 0
-    assert float(decoded_dx[inside].max()) <= scale / 255.0 + 1e-9
+def envelope_dataset(a: float, b: float, *, method_id: str = "residual-advection") -> xarray.Dataset:
+    """The one-pair motion dataset on a method axis, plus uniform envelope coefficients.
 
-
-def test_an_artifact_without_a_backward_flow_is_a_404_for_it(monkeypatch, data_mode):
-    # One honest rung down, named: the client then draws the construction the
-    # forward field alone supports rather than inventing a backward field by
-    # negating the forward one, which is the very assumption this texture exists
-    # to stop the map from making.
-    dataset = motion_dataset().drop_vars(["total_cloud_u10", "total_cloud_v10"])
-    use_store(monkeypatch, data_mode, MotionStore(motion=dataset))
-    response = client.get(flow_url(texture="backward"))
-    assert response.status_code == 404
-    assert "predates the stored backward flow" in response.json()["detail"]
-    # The forward motion texture is unaffected.
-    assert client.get(flow_url()).status_code == 200
-
-
-def residual_dataset(shaping: float) -> xarray.Dataset:
-    """The one-pair motion dataset plus a uniform development shaping."""
-    dataset = motion_dataset()
+    ``gen_a``/``gen_b`` are the per-cell coefficients, in cloud percent, of
+    the envelope ``t(1-t)(a + b t)`` the residual-advection shader adds after
+    the advection mix. They belong to that one shader, so they can only be
+    asked for on a method whose registry shader is it.
+    """
+    base = motion_dataset()
     shape = (1,) + LAT2D.shape
-    dataset["total_cloud_dev_shape"] = (("pair", "y", "x"), numpy.full(shape, shaping, dtype="float32"))
-    return dataset
+    base["total_cloud_res_s"] = (("pair", "y", "x"), numpy.full(shape, a / 4.0, dtype="float32"))
+    base["total_cloud_gen_a"] = (("pair", "y", "x"), numpy.full(shape, a, dtype="float32"))
+    base["total_cloud_gen_b"] = (("pair", "y", "x"), numpy.full(shape, b, dtype="float32"))
+    expanded = base.expand_dims({"method": [method_id]})
+    expanded.attrs = dict(base.attrs)
+    return expanded
 
 
-def test_the_development_shaping_is_served_signed_on_a_fixed_scale(monkeypatch, data_mode):
-    # The re-timing is a signed scalar in [-1, 1], not a displacement, so it is
-    # served on a FIXED scale of 1 rather than one fitted to the field: two
-    # cycles must decode the same way, and a weak cycle must not be stretched
-    # to look like a strong one.
-    use_store(monkeypatch, data_mode, MotionStore(motion=residual_dataset(0.5)))
-    response = client.get(flow_url(texture="residual"))
-    assert response.status_code == 200
+def pinned_registry(monkeypatch, shaders: dict[str, str]) -> None:
+    """A registry of ``{method id: shader}``, pinned rather than read.
+
+    Patching keeps a test about the serving rule rather than about which
+    methods exist this week; the real registry is pinned separately by the
+    tests that name it.
+    """
+    monkeypatch.setattr(grids, "flow_method_catalogue", lambda: [
+        {"id": method_id, "title": method_id, "summary": "", "shader": shader, "enabled": True, "generative": False}
+        for method_id, shader in shaders.items()
+    ])
+
+
+def residual_registry(monkeypatch) -> None:
+    """The baseline, whose shader evaluates no envelope, and the one whose shader does."""
+    pinned_registry(monkeypatch, {"baseline": "hermite", "residual-advection": "residual-advection"})
+
+
+def visibility_registry(monkeypatch) -> None:
+    """The baseline, whose shader fuses on no weights, and the one whose shader does."""
+    pinned_registry(monkeypatch, {"baseline": "hermite", "error-variance-blend": "visibility"})
+
+
+def _decode_signed(channel: Any, scale: float) -> Any:
+    return (channel.astype("float64") / 255.0 - 0.5) * 2.0 * scale
+
+
+def test_the_envelope_coefficients_are_served_signed_on_a_fitted_scale(monkeypatch, data_mode):
+    # R is a, G is b, in cloud percent, signed and quantized around 128 over a
+    # scale fitted per request to the larger magnitude of the two - the rule
+    # every vector texture already uses - and declared in the header so the
+    # client's decode is exact to one quantum.
+    residual_registry(monkeypatch)
+    use_store(monkeypatch, data_mode, MotionStore(motion=envelope_dataset(12.0, -30.0)))
+    response = client.get(flow_url(texture="residual", method="residual-advection"))
+    assert response.status_code == 200, response.json()
     headers = response.headers
     assert headers["x-weather-image-basis"] == "derived_motion"
     assert headers["x-weather-flow-texture"] == "residual"
-    assert "vertical velocity" in headers["x-weather-render-semantics"]
+    assert headers["x-weather-interpolation-method"] == "residual-advection"
+    assert headers["x-weather-flow-shader"] == "residual-advection"
+    assert "envelope coefficients" in headers["x-weather-render-semantics"]
+    assert "t(1-t)(a + b t)" in headers["x-weather-render-semantics"]
     assert "not evidence" in headers["x-weather-render-semantics"]
     scale = float(headers["x-weather-flow-scale"])
-    assert scale == 1.0
+    assert scale == pytest.approx(30.0)
     rgba = decode_png(response.content)
     # Never on the alpha channel, where browser premultiplication would
     # destroy the precision of a value that is meant to pass through zero.
     assert int(rgba[..., 3].min()) == 255
-    decoded = (rgba[..., 0].astype("float64") / 255.0 - 0.5) * 2.0 * scale
-    inside = decode_png(client.get(flow_url()).content)[..., 2] == 255
+    inside = decode_png(client.get(flow_url(method="residual-advection")).content)[..., 2] == 255
     assert inside.any()
-    assert float(numpy.abs(decoded[inside] - 0.5).max()) < 0.01
-    # And the sign survives the round trip, which is the whole content of the
-    # field: negative delivers the change later, positive earlier.
-    use_store(monkeypatch, data_mode, MotionStore(motion=residual_dataset(-0.5)))
-    negative = decode_png(client.get(flow_url(texture="residual")).content)
-    decoded_negative = (negative[..., 0].astype("float64") / 255.0 - 0.5) * 2.0
-    assert float(numpy.abs(decoded_negative[inside] + 0.5).max()) < 0.01
+    quantum = 2.0 * scale / 255.0
+    decoded_a = _decode_signed(rgba[..., 0], scale)
+    decoded_b = _decode_signed(rgba[..., 1], scale)
+    assert float(numpy.abs(decoded_a[inside] - 12.0).max()) <= quantum
+    assert float(numpy.abs(decoded_b[inside] + 30.0).max()) <= quantum
+    # Outside the grid both channels decode to zero: an envelope of zero is
+    # the plain advection mix, never an invented coefficient.
+    outside = ~inside
+    if outside.any():
+        assert float(numpy.abs(decoded_a[outside]).max()) <= quantum
+        assert float(numpy.abs(decoded_b[outside]).max()) <= quantum
+    # The scale follows the field: a weaker cycle declares a smaller scale
+    # rather than being stretched to look like a strong one.
+    use_store(monkeypatch, data_mode, MotionStore(motion=envelope_dataset(-3.0, 1.0)))
+    weaker = client.get(flow_url(texture="residual", method="residual-advection"))
+    assert float(weaker.headers["x-weather-flow-scale"]) == pytest.approx(3.0)
+    decoded_weak = _decode_signed(decode_png(weaker.content)[..., 0], 3.0)
+    assert float(numpy.abs(decoded_weak[inside] + 3.0).max()) <= 2.0 * 3.0 / 255.0
 
 
-def test_an_artifact_without_a_development_shaping_is_a_404_for_it(monkeypatch, data_mode):
-    # Only one method publishes this suffix, so every other artifact answers
-    # 404 naming the absence and the client dissolves at a constant rate -
-    # never on a shaping the browser made up, which would be a displayed value
-    # nothing retrieved.
-    use_store(monkeypatch, data_mode, MotionStore(motion=motion_dataset()))
-    response = client.get(flow_url(texture="residual"))
+def test_a_method_whose_shader_evaluates_no_envelope_is_refused_it_by_name(monkeypatch, data_mode):
+    # The derive pads a suffix no method declared with an explicit zero field,
+    # so the variable exists on the baseline's slice too. Serving it would let
+    # the baseline be drawn with an envelope it never derived; the absence is
+    # named, and the client draws the plain advection mix.
+    residual_registry(monkeypatch)
+    use_store(monkeypatch, data_mode, MotionStore(motion=envelope_dataset(12.0, 0.0, method_id="baseline")))
+    response = client.get(flow_url(texture="residual", method="baseline"))
     assert response.status_code == 404
-    assert "development-residual" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert "'baseline'" in detail
+    assert "derives no envelope coefficients" in detail
+    # Every other texture is unaffected for that method.
     assert client.get(flow_url()).status_code == 200
+
+
+def test_an_artifact_without_envelope_coefficients_is_a_404_for_them(monkeypatch, data_mode):
+    # One honest rung down, named: the client then draws the advection mix
+    # alone rather than inventing coefficients of its own.
+    residual_registry(monkeypatch)
+    dataset = envelope_dataset(12.0, 0.0).drop_vars(["total_cloud_gen_a", "total_cloud_gen_b"])
+    use_store(monkeypatch, data_mode, MotionStore(motion=dataset))
+    response = client.get(flow_url(texture="residual", method="residual-advection"))
+    assert response.status_code == 404
+    assert "predates the stored envelope coefficients" in response.json()["detail"]
+    assert client.get(flow_url(method="residual-advection")).status_code == 200
+
+
+def test_the_backward_flow_is_stored_but_not_a_served_texture(monkeypatch, data_mode):
+    # The frame1 -> frame0 field stays in the artifact (the tangents and
+    # error-variance derivations read it) but its only display consumer was
+    # retired, so asking for it is an unknown texture, not a 404.
+    assert "backward" not in grids.FLOW_TEXTURES
+    use_store(monkeypatch, data_mode, MotionStore(motion=motion_dataset()))
+    assert client.get(flow_url(texture="backward")).status_code == 422
 
 
 def test_the_served_shader_names_the_construction_the_fields_are_for(monkeypatch, data_mode):
@@ -331,13 +363,13 @@ def test_the_served_shader_names_the_construction_the_fields_are_for(monkeypatch
     # to load. The server's own registry answers, in a header.
     use_store(monkeypatch, data_mode, MotionStore(motion=motion_dataset()))
     assert client.get(flow_url()).headers["x-weather-flow-shader"] == grids.flow_shader_for(grids.DEFAULT_FLOW_METHOD)
-    assert grids.flow_shader_for("intermediate-flow") == "intermediate"
+    assert grids.flow_shader_for("residual-advection") == "residual-advection"
     # An unregistered name never invents a branch; it falls back to the
     # construction every method's fields support.
     assert grids.flow_shader_for("no-such-method") == "hermite"
 
 
-def visibility_motion_dataset(first: float, second: float, *, method_id: str = "visibility-blend") -> xarray.Dataset:
+def visibility_motion_dataset(first: float, second: float, *, method_id: str = "error-variance-blend") -> xarray.Dataset:
     """The one-pair dataset on a method axis carrying only ``method_id``.
 
     The visibility weights belong to one method, so they can only be asked for
@@ -351,17 +383,18 @@ def visibility_motion_dataset(first: float, second: float, *, method_id: str = "
 
 
 def test_the_visibility_weights_are_served_as_two_channels_and_disclosed(monkeypatch, data_mode):
-    # The per-frame fusion weights the visibility-blend construction needs.
+    # The per-frame fusion weights the error-variance-blend construction needs.
     # R is frame 0's reliability and G is frame 1's; neither may ride the alpha
     # channel, where browser premultiplication would destroy precision near
     # zero, and the two must be distinguishable from each other.
+    visibility_registry(monkeypatch)
     use_store(monkeypatch, data_mode, MotionStore(motion=visibility_motion_dataset(0.8, 0.2)))
-    response = client.get(flow_url(texture="visibility", method="visibility-blend"))
+    response = client.get(flow_url(texture="visibility", method="error-variance-blend"))
     assert response.status_code == 200
     headers = response.headers
     assert headers["x-weather-image-basis"] == "derived_motion"
     assert headers["x-weather-flow-texture"] == "visibility"
-    assert headers["x-weather-interpolation-method"] == "visibility-blend"
+    assert headers["x-weather-interpolation-method"] == "error-variance-blend"
     assert headers["x-weather-flow-shader"] == "visibility"
     assert "per-pixel visibility weights" in headers["x-weather-render-semantics"]
     assert "not evidence" in headers["x-weather-render-semantics"]
@@ -386,6 +419,7 @@ def test_a_method_that_derives_no_visibility_weights_is_refused_them(monkeypatch
     # The derive pads a suffix no method declared with an explicit zero field,
     # so the variable exists on every method's slice. Serving it would draw a
     # method with fusion weights it never derived; the absence is named.
+    visibility_registry(monkeypatch)
     use_store(monkeypatch, data_mode, MotionStore(motion=visibility_motion_dataset(0.8, 0.2, method_id="baseline")))
     response = client.get(flow_url(texture="visibility"))
     assert response.status_code == 404
@@ -398,18 +432,22 @@ def test_an_artifact_without_visibility_weights_is_a_404_for_them(monkeypatch, d
     # One honest rung down, named: the client then fuses symmetrically, which
     # is the construction already approved, rather than inventing a
     # reliability of its own from the frames it holds.
+    visibility_registry(monkeypatch)
     dataset = visibility_motion_dataset(0.8, 0.2).drop_vars(["total_cloud_vis0", "total_cloud_vis1"])
     use_store(monkeypatch, data_mode, MotionStore(motion=dataset))
-    response = client.get(flow_url(texture="visibility", method="visibility-blend"))
+    response = client.get(flow_url(texture="visibility", method="error-variance-blend"))
     assert response.status_code == 404
     assert "predates the stored visibility weights" in response.json()["detail"]
-    assert client.get(flow_url(method="visibility-blend")).status_code == 200
+    assert client.get(flow_url(method="error-variance-blend")).status_code == 200
 
 
 def test_the_visibility_method_names_its_own_shader(monkeypatch, data_mode):
     # The client must not infer the fusion from which textures happened to
     # load. The server's own registry answers.
-    assert grids.flow_shader_for("visibility-blend") == "visibility"
+    assert grids.flow_shader_for("error-variance-blend") == "visibility"
+    # And the per-shader textures are refused by shader, not by method name:
+    # the refusal table names the one shader each belongs to.
+    assert grids.FLOW_TEXTURE_SHADERS == {"visibility": ("visibility",), "residual": ("residual-advection",)}
 
 
 def test_an_unknown_texture_is_a_422(monkeypatch, data_mode):
@@ -560,16 +598,24 @@ def test_the_methods_endpoint_reports_the_bench_and_its_scores(monkeypatch, data
         "quality": {"status": "derived", "per_variable": {"total_cloud": {
             "per_method": {"baseline": {
                 "advect_weight_median": 0.44,
+                "options": {"applied": True, "steering_reached": 0.9, "prior_weight": 0.5},
                 "leave_one_out": {
                     "held_out_frames": 3,
                     "improvement_over_reversed_flow": 0.114,
                     "improvement_over_crossfade": 0.09,
+                    "improvement_over_advection": 0.03,
                     "midpoint_mae_percent": 12.5,
                     "midpoint_ssim": 0.81,
+                    "midpoint_sharpness_ratio": 0.92,
+                    "midpoint_spectral_ratio_error": 0.11,
+                    "midpoint_fss": {"25%/3": 0.7},
+                    "midpoint_mae_grew": 14.0,
+                    "midpoint_mae_decayed": 9.5,
                 },
             }},
         }}},
     }})
+    pinned_registry(monkeypatch, {"baseline": "hermite"})
     use_store(monkeypatch, data_mode, MotionStore(motion=bench_motion_dataset({"baseline": 1.0}), motion_row=scored))
     payload = client.get(f"{PREFIX}/methods").json()
     assert payload["operational"] is False
@@ -577,14 +623,110 @@ def test_the_methods_endpoint_reports_the_bench_and_its_scores(monkeypatch, data
     baseline = next(item for item in payload["methods"] if item["id"] == grids.DEFAULT_FLOW_METHOD)
     assert baseline["published"] is True
     assert baseline["generative"] is False
+    # Reader copy and the kill-switch flag travel with every entry.
+    for key in ("plain", "gap", "notes"):
+        assert isinstance(baseline[key], str)
+    assert baseline["generation_disabled"] is False
     score = baseline["scores"][0]
     assert score["layer_id"] == "eccc-hrdps-surface-total-cloud"
     assert score["improvement_over_reversed_flow"] == pytest.approx(0.114)
     assert score["midpoint_ssim"] == pytest.approx(0.81)
+    # Fixed-control skill and the structure scores that stop blur from
+    # winning are carried through as measured, and absent means absent.
+    assert score["improvement_over_crossfade"] == pytest.approx(0.09)
+    assert score["improvement_over_advection"] == pytest.approx(0.03)
+    assert score["midpoint_sharpness_ratio"] == pytest.approx(0.92)
+    assert score["midpoint_spectral_ratio_error"] == pytest.approx(0.11)
+    assert score["midpoint_mae_grew"] == pytest.approx(14.0)
+    assert score["midpoint_mae_decayed"] == pytest.approx(9.5)
+    # Only the switches cross as ``applied``; the measurements beside them
+    # under ``options`` are not switches and are not misread as one.
+    assert score["applied"] == {"applied": True}
+    assert score["reduced_to_default"] is False
+
+
+def _scored_row(per_method: dict[str, dict]) -> CurrentArtifact:
+    row = motion_artifact()
+    return CurrentArtifact(**{**row.__dict__, "provenance": {
+        **row.provenance,
+        "derivation_version": "cloud-motion-bench-v6",
+        "quality": {"status": "derived", "per_variable": {"total_cloud": {"per_method": per_method}}},
+    }})
+
+
+_MEASURED = {"held_out_frames": 3, "improvement_over_reversed_flow": 0.0, "improvement_over_crossfade": 0.0, "midpoint_mae_percent": 12.5}
+
+
+def test_a_method_that_drew_the_default_says_so_per_layer(monkeypatch, data_mode):
+    # A reader who selects a method and sees the baseline's picture is owed
+    # the reason. Three ways to reduce, each pinned: every measured switch
+    # refused on a hermite-shader method other than the baseline; every switch
+    # refused on a method whose shader is another construction (its fields
+    # then reduce to the advection mix); an unmet requirement. The baseline
+    # itself with its own switch refused is not reduced: it IS the default.
+    monkeypatch.setattr(grids, "flow_method_catalogue", lambda: [
+        {"id": "baseline", "title": "Baseline", "summary": "", "shader": "hermite", "enabled": True, "generative": False},
+        {"id": "steered", "title": "Steered", "summary": "", "shader": "hermite", "enabled": True, "generative": False},
+        {"id": "fused", "title": "Fused", "summary": "", "shader": "visibility", "enabled": True, "generative": False},
+        {"id": "borrowed", "title": "Borrowed", "summary": "", "shader": "hermite", "enabled": True, "generative": False,
+         "requirements": [{"name": "companion", "met": False, "detail": "not ingested", "diagnostic": ""}]},
+        {"id": "working", "title": "Working", "summary": "", "shader": "visibility", "enabled": True, "generative": False},
+        # The live-cycle case of 2026-09-01: the inherited steering-prior flag
+        # is the only true switch while the method's own term was refused.
+        {"id": "inherited", "title": "Inherited", "summary": "", "shader": "residual-advection", "enabled": True, "generative": False},
+    ])
+    row = _scored_row({
+        "baseline": {"options": {"applied": False}, "leave_one_out": _MEASURED},
+        "steered": {"options": {"applied": False}, "leave_one_out": _MEASURED},
+        "fused": {"options": {"error_variance_applied": False, "prior_applied": False}, "leave_one_out": _MEASURED},
+        "borrowed": {"options": {"applied": True}, "leave_one_out": _MEASURED},
+        "working": {"options": {"error_variance_applied": True, "prior_applied": False}, "leave_one_out": _MEASURED},
+        "inherited": {"options": {"applied": True, "residual_applied": False}, "leave_one_out": _MEASURED},
+    })
+    use_store(monkeypatch, data_mode, MotionStore(motion=bench_motion_dataset({"baseline": 1.0}), motion_row=row))
+    payload = client.get(f"{PREFIX}/methods").json()
+    by_id = {item["id"]: item["scores"][0] for item in payload["methods"]}
+    assert by_id["baseline"]["reduced_to_default"] is False
+    assert by_id["steered"]["reduced_to_default"] is True
+    assert by_id["fused"]["reduced_to_default"] is True
+    assert by_id["fused"]["applied"] == {"error_variance_applied": False, "prior_applied": False}
+    assert by_id["borrowed"]["reduced_to_default"] is True  # applied, but its ingredient is absent
+    assert by_id["working"]["reduced_to_default"] is False
+    # The prior filled some cells, the residual was refused: that is the
+    # baseline's picture under another name, and the map must say so.
+    assert by_id["inherited"]["reduced_to_default"] is True
+
+
+def test_the_kill_switch_is_reported_by_the_methods_endpoint(monkeypatch, data_mode):
+    # WEATHER_GENERATED_DISPLAY=off refuses every generative construction at
+    # derive time; /methods must say so, on every branch, so the menu never
+    # offers a generated entry the deployment refused to derive.
+    try:
+        from ingest.derive.methods import generated_display_enabled  # noqa: F401
+    except Exception as error:  # noqa: BLE001 - the switch lives in the ingest package
+        pytest.xfail(f"ingest.derive.methods.generated_display_enabled has not landed yet ({type(error).__name__})")
+    pinned_registry(monkeypatch, {"baseline": "hermite"})
+    monkeypatch.setenv("WEATHER_GENERATED_DISPLAY", "off")
+    use_store(monkeypatch, data_mode, MotionStore(motion=bench_motion_dataset({"baseline": 1.0})))
+    notices = client.get(f"{PREFIX}/methods").json()["notices"]
+    assert api_module.GENERATED_DISPLAY_OFF_NOTICE in notices
+    monkeypatch.setenv("WEATHER_GENERATED_DISPLAY", "on")
+    assert api_module.GENERATED_DISPLAY_OFF_NOTICE not in client.get(f"{PREFIX}/methods").json()["notices"]
+
+
+def test_an_absent_kill_switch_helper_reads_as_on(monkeypatch):
+    # The API imports the bench lazily; a package that predates the switch is
+    # read as "on", the only value it could have had, and the API still starts.
+    pinned_registry(monkeypatch, {"baseline": "hermite"})
+    monkeypatch.setattr(api_module, "_generated_display_enabled", lambda: True)
+    assert api_module.GENERATED_DISPLAY_OFF_NOTICE not in client.get(f"{PREFIX}/methods").json()["notices"]
+    monkeypatch.setattr(api_module, "_generated_display_enabled", lambda: False)
+    assert api_module.GENERATED_DISPLAY_OFF_NOTICE in client.get(f"{PREFIX}/methods").json()["notices"]
 
 
 def test_a_method_with_no_measurement_reports_no_score_rather_than_a_zero(monkeypatch, data_mode):
     # An unmeasured method and a measured-and-beaten one are different facts.
+    pinned_registry(monkeypatch, {"baseline": "hermite"})
     use_store(monkeypatch, data_mode, MotionStore(motion=bench_motion_dataset({"baseline": 1.0})))
     payload = client.get(f"{PREFIX}/methods").json()
     baseline = next(item for item in payload["methods"] if item["id"] == grids.DEFAULT_FLOW_METHOD)

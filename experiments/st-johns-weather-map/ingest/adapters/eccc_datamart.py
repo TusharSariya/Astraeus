@@ -16,9 +16,37 @@ Two discovery facts, verified live on 2026-08-30, shape this module:
   (``20260829T18Z_MSC_HRDPS_TMP_AGL-2m_...``). Deriving it from ``window.now``
   instead — as this adapter used to — mislabels every run fetched after 00Z from
   the previous day's directory.
+
+WHAT THE LOW-LEVEL PROFILE COSTS (measured, not estimated)
+----------------------------------------------------------
+``LOW_LEVELS_HPA`` adds 28 single-parameter GRIB2 files per lead hour to each
+ECCC model (9 levels x RH/T/height, plus one surface datum). Measured on
+2026-09-01 by fetching the 12Z PT003H set for both models and running them
+through this adapter's own ``open_grib`` -> ``crop_to_bbox`` ->
+``normalize_units`` -> ``write_zarr`` path at ``AVALON_CORE_BOUNDS``:
+
+===========================  ===========  ==========
+per lead hour                HRDPS        RDPS
+===========================  ===========  ==========
+files added                  28           28
+bytes downloaded             59 330 113   20 625 348
+largest single file          4 326 678    1 133 025
+cropped grid                 148 x 149    35 x 36
+added zipped-Zarr bytes      1 285 189    150 833
+decode + crop wall time      10.1 s       3.3 s
+===========================  ===========  ==========
+
+Every file is well under the 10 MiB per-file cap ``fetch`` passes to
+``PoliteClient.download``. Over the 25 lead hours a cycle retrieves that is
+~1.38 GiB downloaded and ~30.6 MiB of added artifact for HRDPS, ~492 MiB
+downloaded and ~3.6 MiB added for RDPS - about 34 MiB per pair of runs against
+the 25 GiB retention cap, and ~5.5 minutes of added decode time per HRDPS run
+on this machine. The download is the cost, not the storage.
 """
 
 from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import logging
 import re
@@ -41,8 +69,11 @@ from ingest.contract import (
     RunResult,
 )
 from ingest.grib import (
+    ECCC_RH_PHASE_BASIS,
+    RH_PHASE_LIQUID_WATER,
     WMO_IDENTITY_READ_KEYS,
     crop_to_bbox,
+    declare_rh_phase,
     declare_wmo_total_cloud,
     normalize_units,
     open_grib,
@@ -117,9 +148,9 @@ def _omega_vars(prefix: str, token: str) -> dict[str, tuple[str, str]]:
     """`omega_850hPa -> (prefix, level token)` for each steering level.
 
     Vertical velocity on pressure surfaces - omega, d(pressure)/dt, so
-    negative is ascent. It informs the `development-residual` interpolation
-    method, which re-times a dissolve by where the model says air is rising
-    or sinking; it never reaches a reading. Verified present in the Datamart
+    negative is ascent. It informs the computed-residual interpolation
+    methods, which re-time growth and decay by where the model says air is
+    rising or sinking; it never reaches a reading. Verified present in the Datamart
     listing for both models (2026-09-01): HRDPS publishes
     `VVEL_ISBL_0850/0700/0500`, RDPS `VerticalVelocity_IsbL-0850/0700/0500`.
     One HRDPS message was decoded to confirm the identity rather than trust
@@ -133,6 +164,137 @@ def _omega_vars(prefix: str, token: str) -> dict[str, tuple[str, str]]:
 HRDPS_OMEGA_VARS = _omega_vars("VVEL", "ISBL_{level:04d}")
 RDPS_OMEGA_VARS = _omega_vars("VerticalVelocity", "IsbL-{level:04d}")
 
+
+def _thermo_vars(rh_prefix: str, temp_prefix: str, token: str) -> dict[str, tuple[str, str]]:
+    """`relative_humidity_850hPa` / `temperature_850hPa` for each steering level.
+
+    Relative humidity and temperature on the same three pressure surfaces the
+    winds and omega already use. They feed the humidity-based low-cloud
+    diagnosis (`ingest.derive.weong_low_cloud`), which exists because ECCC's
+    own WEonG technical note (v2.4.1, 2025-06-23, section 7.9) documents that
+    HRDPS's published NT under-reports low cloud and repairs it from the RH
+    profile. Display derivation only; never a reading.
+
+    Tokens verified present in the live Datamart listing for both models on
+    2026-09-01 (12Z, PT003H): HRDPS publishes `RH_ISBL_0850/0700/0500` and
+    `TMP_ISBL_0850/0700/0500`; RDPS publishes
+    `RelativeHumidity_IsbL-0850/0700/0500` and `AirTemp_IsbL-0850/0700/0500`.
+    Note RDPS names temperature `AirTemp`, not `Temperature`, matching its own
+    surface naming.
+
+    Four messages were decoded rather than trusting the filenames (HRDPS and
+    RDPS, RH and temperature, 700 hPa, ecCodes 2.48.0). All four carry
+    centre=cwao, tablesVersion=4, template 4.0, typeOfFirstFixedSurface=100
+    (`pl`), level=700, stepType=instant. RH decodes as discipline 0 /
+    parameterCategory 1 / parameterNumber 1 -> shortName `r`, paramId 157,
+    units `%`; temperature as 0/0/0 -> shortName `t`, paramId 130, units `K`.
+    Unlike `TCDC_Sfc`, none of these decode as `unknown`, so no WMO-key
+    declaration is needed - only the unit normalisation the adapter already
+    applies.
+
+    What the coded keys do NOT say is which saturation the RH was divided by;
+    GRIB2 0/1/1 has no phase key. That was measured instead - see
+    ``ingest.grib.ECCC_RH_PHASE_BASIS`` - and both ECCC models turn out to use
+    saturation over LIQUID WATER at every temperature, which is what the
+    WEonG thresholds below are calibrated against. The convention is stamped
+    into each variable's attrs on retrieval.
+    """
+    entries: dict[str, tuple[str, str]] = {}
+    for level in STEERING_LEVELS_HPA:
+        entries[f"relative_humidity_{level}hPa"] = (rh_prefix, token.format(level=level))
+        entries[f"temperature_{level}hPa"] = (temp_prefix, token.format(level=level))
+    return entries
+
+
+HRDPS_THERMO_VARS = _thermo_vars("RH", "TMP", "ISBL_{level:04d}")
+RDPS_THERMO_VARS = _thermo_vars("RelativeHumidity", "AirTemp", "IsbL-{level:04d}")
+
+# The nine lowest isobaric levels both ECCC models publish, ascending in
+# height (descending in pressure). Verified present in the live Datamart
+# listing for both models on 2026-09-01 (12Z, PT003H): HRDPS publishes
+# `RH_ISBL_`, `TMP_ISBL_` and `HGT_ISBL_` at every one of them, RDPS
+# `RelativeHumidity_IsbL-`, `AirTemp_IsbL-` and `GeopotentialHeight_IsbL-`.
+#
+# This is the profile the WEonG low-cloud diagnosis needs and the three
+# steering levels cannot give it. ECCC's technote (v2.4.1 sec 7.9) requires a
+# saturated layer with a base under 2000 m AGL and a thickness of at least
+# 150 m; on 850/700/500 hPa only 850 lies inside that window at all, and one
+# level has zero thickness, so the diagnosis can never fire. Nine levels
+# between 1015 and 850 hPa span roughly the surface to ~1.5 km AGL over the
+# Avalon at 100-200 m spacing, which is where marine stratus and advection
+# fog actually sit.
+LOW_LEVELS_HPA = (1015, 1000, 985, 970, 950, 925, 900, 875, 850)
+
+
+def _profile_vars(rh_prefix: str, temp_prefix: str, height_prefix: str, token: str) -> dict[str, tuple[str, str]]:
+    """RH, temperature and geopotential height at each of ``LOW_LEVELS_HPA``.
+
+    Follows ``_thermo_vars``' shape, and adds the height that turns a pressure
+    profile into the height-AGL profile the WEonG algorithm is written
+    against. Display derivation only; never a reading.
+
+    Three messages per model were decoded rather than trusting the filenames
+    (950 hPa, 2026-09-01 12Z PT003H, ecCodes 2.48.0). All six carry
+    ``typeOfFirstFixedSurface=pl`` (100), ``typeOfSecondFixedSurface=255``,
+    ``stepType=instant``, and identical coded identities across the two
+    models:
+
+    * relative humidity - discipline 0, parameterCategory 1, parameterNumber 1
+      -> shortName ``r``, paramId 157, units ``%``
+    * temperature - 0/0/0 -> shortName ``t``, paramId 130, units ``K``
+    * geopotential height - 0/3/5 -> shortName ``gh``, paramId 156, units
+      ``gpm``
+
+    None decodes as ``unknown``, so no WMO-key declaration is needed here (see
+    the ``total_cloud`` comment above for the one field that does); only the
+    unit normalisation the adapter already applies, plus the measured
+    saturation-phase stamp on every RH level.
+
+    Geopotential metres are not geometric metres, but below 2 km the two
+    differ by under 0.05 %, well inside the 150 m thickness test's own
+    level-spacing error. The height is used as a height and the difference is
+    stated rather than corrected.
+    """
+    entries: dict[str, tuple[str, str]] = {}
+    for level in LOW_LEVELS_HPA:
+        entries[f"relative_humidity_{level}hPa"] = (rh_prefix, token.format(level=level))
+        entries[f"temperature_{level}hPa"] = (temp_prefix, token.format(level=level))
+        entries[f"geopotential_height_{level}hPa"] = (height_prefix, token.format(level=level))
+    return entries
+
+
+HRDPS_PROFILE_VARS = {
+    **_profile_vars("RH", "TMP", "HGT", "ISBL_{level:04d}"),
+    # The AGL datum, and the one place the two models genuinely differ.
+    #
+    # HRDPS publishes `HGT_Sfc` (verified live 2026-09-01). Decoded, that
+    # message is NOT a geopotential height in gpm: discipline 0,
+    # parameterCategory 3, parameterNumber 5 on typeOfFirstFixedSurface=sfc
+    # (1), which ecCodes 2.48.0 names `orog` / "Orography", paramId 228002,
+    # units `m`. So it is the model's terrain height in metres - exactly the
+    # datum the WEonG algorithm's "AGL" means - and the canonical units below
+    # say `m`, not `gpm`, because that is what the message says.
+    "surface_height": ("HGT", "Sfc"),
+}
+
+RDPS_PROFILE_VARS = {
+    **_profile_vars("RelativeHumidity", "AirTemp", "GeopotentialHeight", "IsbL-{level:04d}"),
+    # RDPS publishes NO surface geopotential height and no orography: the
+    # 2026-09-01 12Z PT003H listing carries 21 `_Sfc_` tokens and none of them
+    # is a height (checked by enumeration, not by absence of a guess). It does
+    # publish `Pressure_Sfc`, decoded as 0/3/0 on sfc -> shortName `sp`,
+    # paramId 134, units `Pa` (left in Pa by `normalize_units`, whose hPa rule
+    # keys on the decoded variable name and `sp` does not match it).
+    #
+    # The derive therefore reconstructs the RDPS AGL datum by interpolating
+    # `geopotential_height_*hPa` to `surface_pressure` in log-pressure. That
+    # datum is the height of the model's own surface pressure surface, which
+    # is the model's terrain height to within the hydrostatic error of the
+    # interpolation - see `ingest.derive.weong_layer.surface_height_from_profile`
+    # for the bias this carries and which way it points.
+    "surface_pressure": ("Pressure", "Sfc"),
+}
+
 # HRDPS variable map: canonical -> (GRIB file var prefix, level token)
 HRDPS_VARS = {
     "temperature_2m": ("TMP", "AGL-2m"),
@@ -144,6 +306,8 @@ HRDPS_VARS = {
     "total_cloud": ("TCDC", "Sfc"),
     **HRDPS_STEERING_VARS,
     **HRDPS_OMEGA_VARS,
+    **HRDPS_THERMO_VARS,
+    **HRDPS_PROFILE_VARS,
 }
 
 # RDPS variable map (CamelCase upstream naming)
@@ -156,6 +320,8 @@ RDPS_VARS = {
     "total_cloud": ("TotalCloudCover", "Sfc"),
     **RDPS_STEERING_VARS,
     **RDPS_OMEGA_VARS,
+    **RDPS_THERMO_VARS,
+    **RDPS_PROFILE_VARS,
 }
 
 # GDPS variable map (CamelCase upstream naming)
@@ -180,25 +346,47 @@ CANONICAL_FIELD_UNITS = {
     **{f"wind_{component}_{level}hPa": ("m s-1", f"{level} hPa")
        for level in STEERING_LEVELS_HPA for component in ("u", "v")},
     **{f"omega_{level}hPa": ("Pa s-1", f"{level} hPa") for level in STEERING_LEVELS_HPA},
+    **{f"relative_humidity_{level}hPa": ("percent", f"{level} hPa") for level in STEERING_LEVELS_HPA},
+    **{f"temperature_{level}hPa": ("degC", f"{level} hPa") for level in STEERING_LEVELS_HPA},
+    **{f"relative_humidity_{level}hPa": ("percent", f"{level} hPa") for level in LOW_LEVELS_HPA},
+    **{f"temperature_{level}hPa": ("degC", f"{level} hPa") for level in LOW_LEVELS_HPA},
+    # `gpm` is what the message declares (0/3/5, shortName `gh`) and
+    # `normalize_units` has no rule for it, so it arrives untouched.
+    **{f"geopotential_height_{level}hPa": ("gpm", f"{level} hPa") for level in LOW_LEVELS_HPA},
+    # HRDPS only, and `m` rather than `gpm`: the decoded message is orography
+    # (paramId 228002, units `m`), not a geopotential height.
+    "surface_height": ("m", "surface (model orography)"),
+    # RDPS only. Left in Pa: the hPa conversion in `normalize_units` keys on
+    # the decoded variable name, and this one decodes as `sp`.
+    "surface_pressure": ("Pa", "surface"),
 }
 
 #: Variables the run may publish without, because they only inform a display
-#: derivation (the cloud-motion steering prior, and the development residual's
-#: vertical velocity). A level absent from one cycle must never fail the
-#: surface artifact the whole map is drawn from.
+#: derivation (the cloud-motion steering prior, the development residual's
+#: vertical velocity, and the WEonG low-cloud diagnosis' RH/T/height profile
+#: with its AGL datum). A level absent from one cycle must never fail the
+#: surface artifact the whole map is drawn from; it costs the derived layer,
+#: which is then simply not offered.
 OPTIONAL_VARIABLES = frozenset(
     [f"wind_{component}_{level}hPa" for level in STEERING_LEVELS_HPA for component in ("u", "v")]
     + [f"omega_{level}hPa" for level in STEERING_LEVELS_HPA]
+    + [f"relative_humidity_{level}hPa" for level in STEERING_LEVELS_HPA]
+    + [f"temperature_{level}hPa" for level in STEERING_LEVELS_HPA]
+    + [f"relative_humidity_{level}hPa" for level in LOW_LEVELS_HPA]
+    + [f"temperature_{level}hPa" for level in LOW_LEVELS_HPA]
+    + [f"geopotential_height_{level}hPa" for level in LOW_LEVELS_HPA]
+    + ["surface_height", "surface_pressure"]
 )
 
 
 def manifest_for(source_id: str, var_map: Mapping[str, tuple[str, str]]) -> RunManifest:
     """Every mapped variable is mandatory: the map is the adapter's own promise.
 
-    Except the steering winds and the vertical velocity, which are declared
-    optional: they inform a display derivation only, so a level ECCC did not
-    publish this cycle must cost the map its motion prior or its development
-    residual, never its evidence.
+    Except the steering winds, the vertical velocity and the low-level
+    RH/temperature/height profile, which are declared optional: they inform a
+    display derivation only, so a level ECCC did not publish this cycle must
+    cost the map its motion prior, its development residual or its WEonG
+    low-cloud layer, never its evidence.
     """
     fields = []
     for name in var_map:
@@ -232,6 +420,27 @@ def parse_run_stamp(filename: str) -> datetime | None:
     except ValueError:
         return None
 
+
+
+#: How many files of one lead hour are downloaded at once. Bounded, and
+#: settable per deployment through ``WEATHER_DATAMART_PARALLEL``; the polite
+#: client's per-host interval (``WEATHER_HTTP_MIN_HOST_INTERVAL``) still
+#: applies across the pool, so this never exceeds the provider's request
+#: rate ceiling, it only stops one slow response from stalling the others.
+DEFAULT_DOWNLOAD_PARALLELISM = 6
+
+
+def download_parallelism(default: int = DEFAULT_DOWNLOAD_PARALLELISM) -> int:
+    """``WEATHER_DATAMART_PARALLEL`` as a positive int, else ``default``."""
+    import os  # noqa: PLC0415
+
+    raw = os.environ.get("WEATHER_DATAMART_PARALLEL", "").strip()
+    if not raw:
+        return default
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return default
 
 class ECCCDataMartAdapter:
     """Ingests GRIB2 datasets from ECCC Datamart dated directory trees."""
@@ -363,6 +572,10 @@ class ECCCDataMartAdapter:
                 continue
 
             var_datasets: dict[str, xarray.DataArray] = {}
+            # Resolve every file for this lead first, sequentially and with
+            # the run-stamp check per file, so the download pool below only
+            # ever sees files already judged to belong to this run.
+            planned: list[tuple[str, str, str, Path]] = []
             for canonical_name, (eccc_var, level) in self.var_map.items():
                 match_file = None
                 for fname in file_list:
@@ -379,11 +592,39 @@ class ECCCDataMartAdapter:
                     # into one artifact would be an invented forecast.
                     decode_errors.append(f"run_stamp_mismatch:{match_file}")
                     continue
+                planned.append((canonical_name, match_file, f"{hour_dir_url}{match_file}", workdir / f"{canonical_name}_{hour_str}.grib2"))
 
-                file_url = f"{hour_dir_url}{match_file}"
-                local_grib = workdir / f"{canonical_name}_{hour_str}.grib2"
+            # The downloads run in a bounded pool; the decode stays
+            # sequential below. Fetching is latency-bound (about 48 files of
+            # 1-4 MB per lead, ~1,200 per run once the low-level profile is
+            # requested) and the polite client's per-host interval is the
+            # real ceiling, so the pool buys nothing past that interval's
+            # reciprocal. Each file keeps its own byte cap and its own
+            # failure: one bad download is one `download:` error, never a
+            # lost lead. `PoliteClient` is safe to share across threads (one
+            # httpx.Client, one locked limiter).
+            fetched: dict[str, Path] = {}
+            if planned:
+                with ThreadPoolExecutor(max_workers=max(1, min(download_parallelism(), len(planned)))) as pool:
+                    futures = {
+                        pool.submit(client.download, file_url, local_grib, max_bytes=10 * 1024 * 1024): (canonical_name, match_file, file_url, local_grib)
+                        for canonical_name, match_file, file_url, local_grib in planned
+                    }
+                    for future in as_completed(futures):
+                        canonical_name, match_file, file_url, local_grib = futures[future]
+                        try:
+                            future.result()
+                        except Exception as error:
+                            decode_errors.append(f"download:{match_file}")
+                            _log.warning("Failed to download %s: %s", file_url, error)
+                            local_grib.unlink(missing_ok=True)
+                            continue
+                        fetched[canonical_name] = local_grib
+
+            for canonical_name, match_file, file_url, local_grib in planned:
+                if canonical_name not in fetched:
+                    continue
                 try:
-                    client.download(file_url, local_grib, max_bytes=10 * 1024 * 1024)
                     # total_cloud's identity must be read from the message's own
                     # WMO keys (see the map comment above), so those keys are
                     # requested for it and the declaration is applied - or the
@@ -415,7 +656,19 @@ class ECCCDataMartAdapter:
                     # only fetched at write_zarr time and every run dies with
                     # FileNotFoundError. The crop already bounded this to the
                     # Avalon window, so what is held is one small field.
-                    var_datasets[canonical_name] = strip_message_scalars(decoded[data_var_names[0]].load())
+                    field = strip_message_scalars(decoded[data_var_names[0]].load())
+                    if canonical_name.startswith("relative_humidity_"):
+                        # GRIB2 0/1/1 codes no saturation-phase key, so the
+                        # convention cannot be read off the message; it was
+                        # measured against the model's own SPFH instead and is
+                        # recorded here so a threshold scheme can see what it
+                        # is thresholding. Both ECCC models: liquid water.
+                        field = declare_rh_phase(
+                            field,
+                            convention=RH_PHASE_LIQUID_WATER,
+                            basis=ECCC_RH_PHASE_BASIS,
+                        )
+                    var_datasets[canonical_name] = field
                 except Exception as error:
                     decode_errors.append(f"decode:{match_file}")
                     _log.warning("Failed to decode %s: %s", file_url, error)

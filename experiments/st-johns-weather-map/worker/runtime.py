@@ -226,7 +226,13 @@ class Scheduler:
         moment = time.monotonic()
         return [pair for pair in self._pairs if force or self._due.get(pair[1].source_id, 0.0) <= moment]
 
-    def cycle(self, *, force: bool = False, heartbeat: Callable[[], None] | None = None) -> list[SourceOutcome]:
+    def cycle(
+        self,
+        *,
+        force: bool = False,
+        heartbeat: Callable[[], None] | None = None,
+        after_publish: Callable[[], None] | None = None,
+    ) -> list[SourceOutcome]:
         reference = datetime.now(UTC)
         outcomes: list[SourceOutcome] = []
         for adapter, config in self.due_now(force=force):
@@ -236,6 +242,15 @@ class Scheduler:
                 heartbeat()
             outcome = run_source(adapter, config, self._store, reference=reference, heartbeat=heartbeat)
             self._record_progress(outcome)
+            # Derived artifacts follow the run that produced their inputs, not
+            # the end of the cycle. A cycle is a serial pass over every due
+            # source and outlives any one of them, so waiting for it to finish
+            # left a source that republished early with motion pinned to its
+            # previous revision - which /flow refuses - until the slowest or
+            # most broken adapter in the rotation was done. Only a publish can
+            # invalidate derived motion, so only a publish triggers this.
+            if after_publish is not None and outcome.state == "succeeded":
+                after_publish()
             # Reschedule on cadence regardless of outcome: a failing source must
             # not spin, and must not be dropped from the rotation either.
             self._due[config.source_id] = time.monotonic() + config.cadence_seconds
@@ -250,7 +265,12 @@ class Scheduler:
                     log(f"could not record outcome for {config.source_id}: {error!r}")
         return outcomes
 
-    def drain_jobs(self, *, heartbeat: Callable[[], None] | None = None) -> None:
+    def drain_jobs(
+        self,
+        *,
+        heartbeat: Callable[[], None] | None = None,
+        after_publish: Callable[[], None] | None = None,
+    ) -> None:
         """Serve API refresh requests. Failures here never stop the loop."""
         if self._store is None:
             return
@@ -272,6 +292,10 @@ class Scheduler:
             outcome = run_source(adapter, config, self._store, reference=reference, heartbeat=heartbeat)
             self._record_progress(outcome)
             outcomes.append(outcome)
+            # Same rule as `cycle`: an on-demand refresh that republishes a
+            # source invalidates that source's derived motion immediately.
+            if after_publish is not None and outcome.state == "succeeded":
+                after_publish()
         # A job that matched no schedulable adapter did not succeed; reporting
         # it as succeeded is exactly the dishonesty this experiment forbids.
         if not outcomes:
@@ -320,6 +344,15 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
         outcomes = scheduler.cycle(force=True, heartbeat=beat)
         if store is not None:
             try:
+                # Before the motion pass, because the WEonG layer is one of
+                # the artifacts that pass derives motion FOR.
+                from ingest.derive.weong_layer import weong_cycle  # noqa: PLC0415
+
+                for line in weong_cycle(store):
+                    log(line)
+            except Exception as error:
+                log(f"weong low-cloud derive pass failed: {error!r}")
+            try:
                 from ingest.derive.cloud_motion import cloud_motion_cycle  # noqa: PLC0415
 
                 for line in cloud_motion_cycle(store):
@@ -341,23 +374,51 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    def derive() -> None:
+        """Bring derived display-support artifacts up to the current revisions.
+
+        Cheap when nothing changed: one `current_artifacts` read and a revision
+        comparison per source. Called after every publish rather than once per
+        cycle, because a cycle is a serial pass over every due source and a
+        source that republishes at the start of one would otherwise have motion
+        pinned to its previous revision - which `/flow` refuses outright, so the
+        map falls back to a plain cross-dissolve - for as long as the rest of
+        the rotation takes, including any adapter that is slow or failing.
+        """
+        if store is None:
+            return
+        try:
+            # The WEonG low-cloud layer is derived first: it publishes an
+            # artifact the motion pass below then derives motion for, so the
+            # order is a dependency and not a preference. One pass late means
+            # the derived layer draws a plain crossfade for a whole cycle.
+            from ingest.derive.weong_layer import weong_cycle  # noqa: PLC0415
+
+            for line in weong_cycle(store):
+                log(line)
+        except Exception as error:
+            log(f"weong low-cloud derive pass failed: {error!r}")
+        try:
+            from ingest.derive.cloud_motion import cloud_motion_cycle  # noqa: PLC0415
+
+            for line in cloud_motion_cycle(store):
+                log(line)
+        except Exception as error:
+            log(f"cloud-motion derive pass failed: {error!r}")
+        # The derive can outlast the healthcheck window on its own, so the
+        # liveness signal is refreshed on the way out as well as on the way in.
+        beat()
+
     last_prune = 0.0
     while not stopping:
         beat()
         try:
-            scheduler.cycle(heartbeat=beat)
-            scheduler.drain_jobs(heartbeat=beat)
-            # Derived display-support artifacts (cloud motion) follow the runs
-            # that produced their inputs. Cheap when nothing changed: one
-            # current_artifacts read and a revision comparison per source.
-            if store is not None:
-                try:
-                    from ingest.derive.cloud_motion import cloud_motion_cycle  # noqa: PLC0415
-
-                    for line in cloud_motion_cycle(store):
-                        log(line)
-                except Exception as error:
-                    log(f"cloud-motion derive pass failed: {error!r}")
+            scheduler.cycle(heartbeat=beat, after_publish=derive)
+            scheduler.drain_jobs(heartbeat=beat, after_publish=derive)
+            # A final pass catches anything the per-publish hook could not: a
+            # derive whose own inputs were published earlier in this same cycle
+            # by a different source.
+            derive()
             if store is not None and time.monotonic() - last_prune > 3600:
                 store.prune()
                 last_prune = time.monotonic()

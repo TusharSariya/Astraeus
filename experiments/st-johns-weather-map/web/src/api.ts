@@ -640,7 +640,7 @@ export function layerLegendUrl(layer: LayerItem): string {
  *  align with theirs. */
 /** The texture variants /flow serves. Two of them belong to one method each
  *  and are requested only for that method. */
-export type FlowTextureName = 'motion' | 'tangents' | 'backward' | 'visibility' | 'residual'
+export type FlowTextureName = 'motion' | 'tangents' | 'visibility' | 'residual'
 
 export interface FlowTexture {
   objectUrl: string
@@ -650,24 +650,23 @@ export interface FlowTexture {
    *  when the artifact predates them - the shader then advects linearly. */
   tangentsUrl: string | null
   tangentsScalePixels: number
-  /** The pair's backward (frame1 -> frame0) motion, or null when the artifact
-   *  predates it - the intermediate construction then has only one direction
-   *  to read and the shader stays on the advection already approved. */
-  backwardUrl: string | null
-  backwardScalePixels: number
   /** The pair's per-frame visibility weights (R = frame 0, G = frame 1), or
    *  null when the served method derives none - the fusion is then the
    *  symmetric (1-t, t) every other construction uses. */
   visibilityUrl: string | null
-  /** The pair's development re-timing (R = phi in [-1, 1]), or null when the
-   *  served method publishes none - the shader then dissolves at a constant
-   *  rate, never on a phi the client made up. */
+  /** The pair's development envelope coefficients (R = a, G = b, signed
+   *  around 128, in cloud percent at `residualScalePixels` per 255), or null
+   *  when the served method publishes none - the shader then draws the
+   *  advection mix alone, never an envelope the client made up. */
   residualUrl: string | null
+  /** The cloud-percent value encoded at channel value 255 of the residual
+   *  texture (`X-Weather-Flow-Scale` on that response); 0 when absent. */
+  residualScalePixels: number
   frameFrom: string
   frameTo: string
   request: RasterRequest
   /** The client construction the server says these fields are meant for, from
-   *  its own registry: 'hermite' | 'intermediate' | whatever a method adds. */
+   *  its own registry: 'hermite' | 'visibility' | 'residual-advection'. */
   shader: string
   /** The interpolation method these fields were derived by, as the server
    *  named it back. Carried so the on-map disclosure can say which
@@ -678,27 +677,53 @@ export interface FlowTexture {
 /** One entry of the interpolation bench, exactly as `/methods` declares it.
  *  The registry is the server's: the menu can never offer a construction the
  *  derivation does not publish. */
+export interface InterpolationMethodScore {
+  layerId: string
+  sourceId: string
+  variable: string
+  heldOutFrames: number
+  /** The motion veto's number. Decides only whether motion is displayed; it
+   *  ranks nothing in the menu and is never printed there. */
+  improvementOverReversedFlow: number
+  /** Skill against the FIXED control: a plain crossfade of the same frames. */
+  improvementOverCrossfade: number
+  /** Skill against the second fixed control: linear advection of the pair. */
+  improvementOverAdvection: number
+  midpointMaePercent: number
+  midpointSsim: number | null
+  /** Gradient energy of the midpoint composite over the real frame's; 1.0 is
+   *  as sharp as real, below it is blurred. */
+  midpointSharpnessRatio: number | null
+  midpointSpectralRatioError: number | null
+  midpointMaeGrew: number | null
+  midpointMaeDecayed: number | null
+  /** Which of the method's options the derive actually applied on this
+   *  layer, by option name. All false means the method reduced to the default
+   *  construction there. */
+  applied: Record<string, boolean>
+  reducedToDefault: boolean
+}
+
 export interface InterpolationMethodItem {
   id: string
   title: string
   summary: string
+  /** Reader copy (plan 0b): one plain sentence, one "gap" sentence, and the
+   *  science note with its citations - all the server's words. */
+  plain: string
+  gap: string
+  notes: string
   shader: string
   enabled: boolean
   generative: boolean
+  /** True when the deployment's kill switch (WEATHER_GENERATED_DISPLAY=off)
+   *  refused this generative construction: shown, never selectable. */
+  generationDisabled: boolean
   published: boolean
   /** Unmet requirements are why a selected method may draw the same picture
    *  the baseline does. */
   requirements: Array<{ name: string; met: boolean; detail: string }>
-  scores: Array<{
-    layerId: string
-    sourceId: string
-    variable: string
-    heldOutFrames: number
-    improvementOverReversedFlow: number
-    improvementOverCrossfade: number
-    midpointMaePercent: number
-    midpointSsim: number | null
-  }>
+  scores: InterpolationMethodScore[]
 }
 
 export const DEFAULT_INTERPOLATION_METHOD = 'baseline'
@@ -711,13 +736,18 @@ export async function loadMethods(signal?: AbortSignal): Promise<{ methods: Inte
     const response = await fetch(`${prefix}/methods`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) return { methods: [], defaultMethod: DEFAULT_INTERPOLATION_METHOD, notices: [], error: `the interpolation bench returned ${response.status}` }
     const payload = await response.json()
+    const optional = (value: unknown): number | null => (value === null || value === undefined ? null : Number(value))
     const methods: InterpolationMethodItem[] = (payload.methods ?? []).map((item: Record<string, unknown>) => ({
       id: String(item.id),
       title: String(item.title ?? item.id),
       summary: String(item.summary ?? ''),
+      plain: String(item.plain ?? ''),
+      gap: String(item.gap ?? ''),
+      notes: String(item.notes ?? ''),
       shader: String(item.shader ?? 'hermite'),
       enabled: item.enabled !== false,
       generative: item.generative === true,
+      generationDisabled: item.generation_disabled === true,
       published: item.published === true,
       requirements: ((item.requirements ?? []) as Array<Record<string, unknown>>).map((req) => ({
         name: String(req.name),
@@ -731,8 +761,17 @@ export async function loadMethods(signal?: AbortSignal): Promise<{ methods: Inte
         heldOutFrames: Number(score.held_out_frames ?? 0),
         improvementOverReversedFlow: Number(score.improvement_over_reversed_flow ?? 0),
         improvementOverCrossfade: Number(score.improvement_over_crossfade ?? 0),
+        improvementOverAdvection: Number(score.improvement_over_advection ?? 0),
         midpointMaePercent: Number(score.midpoint_mae_percent ?? 0),
-        midpointSsim: score.midpoint_ssim === null || score.midpoint_ssim === undefined ? null : Number(score.midpoint_ssim),
+        midpointSsim: optional(score.midpoint_ssim),
+        midpointSharpnessRatio: optional(score.midpoint_sharpness_ratio),
+        midpointSpectralRatioError: optional(score.midpoint_spectral_ratio_error),
+        midpointMaeGrew: optional(score.midpoint_mae_grew),
+        midpointMaeDecayed: optional(score.midpoint_mae_decayed),
+        applied: Object.fromEntries(
+          Object.entries((score.applied ?? {}) as Record<string, unknown>).map(([name, on]) => [name, on === true]),
+        ),
+        reducedToDefault: score.reduced_to_default === true,
       })),
     }))
     return {
@@ -807,23 +846,13 @@ export async function loadLayerFlow(
     let tangents: { objectUrl: string; scale: number } | null = null
     const fetched = await fetchTexture('tangents').catch(() => 'absent' as const)
     if (fetched !== 'absent' && !('error' in fetched)) tangents = { objectUrl: fetched.objectUrl, scale: fetched.scale }
-    // The backward field is the same kind of upgrade: an artifact that never
-    // stored it answers 404 and the intermediate construction degrades one
-    // honest rung to the advection already approved - never to a backward
-    // field guessed at by negating the forward one, which is exactly the
-    // assumption the intermediate method exists to stop making.
-    let backward: { objectUrl: string; scale: number } | null = null
-    const backwardFetched = await fetchTexture('backward').catch(() => 'absent' as const)
-    if (backwardFetched !== 'absent' && !('error' in backwardFetched)) {
-      backward = { objectUrl: backwardFetched.objectUrl, scale: backwardFetched.scale }
-    }
-    // These two suffixes exist for exactly one construction each, unlike the
-    // tangents and the backward field which every method's artifact carries.
-    // So they are fetched only when the server says it served the method that
-    // publishes one - asking on every pair of every other method would be a
-    // guaranteed 404 per frame pair. Absent either way means the shader falls
-    // back to symmetric fusion at a constant rate, never to a reliability or
-    // a re-timing the client made up.
+    // These two suffixes exist for exactly one shader each, unlike the
+    // tangents which every method's artifact carries. So they are fetched only
+    // when the server says it served a method with that shader - the server
+    // refuses them by name for every other method, so asking on every pair
+    // would be a guaranteed 404 per frame pair. Absent either way means the
+    // shader falls back to symmetric fusion with no envelope, never to a
+    // reliability or a development term the client made up.
     const served = motion.shader ?? ''
     let visibility: { objectUrl: string } | null = null
     if (served === 'visibility') {
@@ -832,11 +861,11 @@ export async function loadLayerFlow(
         visibility = { objectUrl: visibilityFetched.objectUrl }
       }
     }
-    let residual: { objectUrl: string } | null = null
-    if (served === 'development-residual') {
+    let residual: { objectUrl: string; scale: number } | null = null
+    if (served === 'residual-advection') {
       const residualFetched = await fetchTexture('residual').catch(() => 'absent' as const)
       if (residualFetched !== 'absent' && !('error' in residualFetched)) {
-        residual = { objectUrl: residualFetched.objectUrl }
+        residual = { objectUrl: residualFetched.objectUrl, scale: residualFetched.scale }
       }
     }
     return {
@@ -845,10 +874,9 @@ export async function loadLayerFlow(
         scalePixels: motion.scale,
         tangentsUrl: tangents?.objectUrl ?? null,
         tangentsScalePixels: tangents?.scale ?? 0,
-        backwardUrl: backward?.objectUrl ?? null,
-        backwardScalePixels: backward?.scale ?? 0,
         visibilityUrl: visibility?.objectUrl ?? null,
         residualUrl: residual?.objectUrl ?? null,
+        residualScalePixels: residual?.scale ?? 0,
         frameFrom: motion.frameFrom ?? request.from,
         frameTo: motion.frameTo ?? request.to,
         request,
@@ -867,7 +895,7 @@ export async function loadLayerFlow(
 
 /** Every object URL a FlowTexture holds, for revocation on eviction. */
 export function flowObjectUrls(flow: FlowTexture): string[] {
-  return [flow.objectUrl, flow.tangentsUrl, flow.backwardUrl, flow.visibilityUrl, flow.residualUrl].filter(
+  return [flow.objectUrl, flow.tangentsUrl, flow.visibilityUrl, flow.residualUrl].filter(
     (url): url is string => !!url,
   )
 }

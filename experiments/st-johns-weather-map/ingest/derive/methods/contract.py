@@ -27,6 +27,16 @@ class MethodContext:
     indices: tuple[int, ...]
     interval_seconds: float
     dataset: Any = None
+    #: Scratch shared by everything that reads this context: the harness
+    #: memoises its fixed advection control per ``(first, last)`` frame pair
+    #: here, and the baseline memoises its raw DIS flow per pair, so a method
+    #: with several options to settle (the residual's gain, the generative
+    #: sibling's timing switches) scores each of them without paying for the
+    #: same optical flow again. Keyed by the artifact's own frame indices, so
+    #: the harness's pair sub-contexts and the derive's full context share
+    #: one cache safely. Excluded from equality: two contexts over the same
+    #: frames are the same context whatever has been memoised so far.
+    cache: dict = field(default_factory=dict, compare=False)
 
 
 @dataclass
@@ -65,6 +75,19 @@ class Requirement:
     name: str
     met: bool
     detail: str = ""
+    #: Name of the per-method provenance diagnostic that actually answers this
+    #: requirement, when one does.
+    #:
+    #: Some ingredients cannot be checked here at all. `requirements()` is a
+    #: method-level call with no variable and no dataset, and the answer for
+    #: omega is genuinely per variable - it lives in the surface artifact being
+    #: derived, at the level that variable steers on. Hardcoding `met=False`
+    #: to express "cannot know" told the menu the ingredient was MISSING, which
+    #: for omega was simply untrue: it has been ingested all along, read
+    #: correctly, and switched off by its own held-out gate instead. Naming the
+    #: diagnostic lets the reader be told what the last derive actually found,
+    #: rather than a placeholder that reads as a verdict.
+    diagnostic: str = ""
 
 
 class InterpolationMethod:
@@ -78,10 +101,29 @@ class InterpolationMethod:
     id: str = "baseline"
     title: str = "Baseline"
     summary: str = ""
+    #: Reader-facing copy, served beside ``summary`` by ``/methods``. ``plain``
+    #: is one sentence a non-specialist can act on; ``gap`` is one sentence
+    #: on what the method cannot show; ``notes`` is the science - the cited
+    #: constructions and the measured decisions - rendered collapsed under
+    #: the plain copy. Empty strings mean the API serves nothing for them.
+    plain: str = ""
+    gap: str = ""
+    notes: str = ""
     #: Client construction: 'linear' | 'hermite' | one a method adds.
     shader: str = "hermite"
     #: Extra stored field suffixes, beyond the ones every method publishes.
     extra_suffixes: tuple[str, ...] = ()
+    #: Of those, the ones that must be ZEROED when a pair or a variable is
+    #: vetoed, alongside `advect_weight`.
+    #:
+    #: A method whose contribution is fenced by `advect_weight` needs nothing
+    #: here - zeroing the weight already silences it. A method fenced by
+    #: `1 - advect_weight`, which is the natural fence for anything that acts
+    #: where advection FAILED, has the opposite polarity: zeroing the weight
+    #: would turn its contribution up to maximum on exactly the pairs the
+    #: derive just judged unfit to advect. Naming those suffixes here is what
+    #: makes "published with zero weight" mean the same thing for them.
+    vetoed_suffixes: tuple[str, ...] = ()
     #: False keeps a method in the registry but out of every cycle.
     enabled: bool = True
     #: True where the disclosure must say the pixels were generated rather

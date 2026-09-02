@@ -383,3 +383,173 @@ def test_the_legend_is_the_renderers_own_declared_colormap(monkeypatch, data_mod
     # graphic: 0 percent shows the bare backdrop, 100 percent is opaque white.
     assert rgba[0, 0, 3] == 255 and rgba[0, -1, 3] == 255
     assert rgba[0, 0, 0] == 196 and rgba[0, -1, 0] == 255
+
+
+# --- the derived WEonG low-cloud layer ------------------------------------
+#
+# The layer this experiment DERIVED rather than retrieved. Three things have
+# to hold and only one of them is about pixels: it is offered when its
+# artifact is published, it is NOT offered when the artifact is absent (which
+# is what the deployment kill switch looks like from here - the worker
+# publishes nothing and the layer simply is not there), and wherever it IS
+# offered it says GENERATED with the construction named.
+
+
+def weong_dataset() -> xarray.Dataset:
+    stamps = [numpy.datetime64(stamp.replace(tzinfo=None), "ns") for stamp in frame_times()]
+    data = numpy.stack([FRAME0, FRAME1])
+    repaired = numpy.clip(numpy.nan_to_num(data, nan=0.0) + 20.0, 0, 100)
+    return xarray.Dataset(
+        {
+            "total_cloud_weong": (("valid_time", "latitude", "longitude"), repaired, {"units": "percent"}),
+            "llc": (("valid_time", "latitude", "longitude"), repaired / 100.0, {"units": "1"}),
+            "total_cloud": (("valid_time", "latitude", "longitude"), data.copy(), {"units": "percent"}),
+        },
+        coords={"valid_time": stamps, "latitude": LATS, "longitude": LONS},
+    )
+
+
+def weong_artifact() -> CurrentArtifact:
+    stamp = now()
+    return CurrentArtifact(
+        source_id="eccc-hrdps",
+        logical_name="low_cloud_weong",
+        revision_id="revision-eccc-hrdps-low-cloud-weong",
+        object_key="artifacts/eccc-hrdps/low_cloud_weong",
+        media_type="application/zarr+zip",
+        byte_size=2048,
+        provenance={
+            "product": "ECCC-HRDPS",
+            "native_resolution": "RLatLon0.0225 (2.5 km)",
+            "derived": True,
+            "generated": True,
+            "derivation_version": "weong-low-cloud-v1",
+        },
+        published_at=stamp,
+        run_time=stamp - timedelta(hours=3),
+        retrieved_at=stamp,
+        provider_run_id="2026090112+low-cloud-weong",
+        native_crs="EPSG:4326",
+    )
+
+
+class MultiGridStore(GridStore):
+    """A store publishing several artifacts, each with its own dataset.
+
+    Keyed by object key rather than by the artifact itself: ``CurrentArtifact``
+    carries a provenance dict and is not hashable.
+    """
+
+    def __init__(self, pairs) -> None:
+        self._pairs = list(pairs)
+        self._artifact = None
+
+    def current(self):
+        return [artifact for artifact, _ in self._pairs]
+
+    def open(self, artifact):
+        return next(dataset for other, dataset in self._pairs if other.object_key == artifact.object_key)
+
+
+def test_the_weong_layer_is_offered_and_names_itself_generated(monkeypatch, data_mode):
+    weong = weong_artifact()
+    use_store(monkeypatch, data_mode, MultiGridStore([(gfs_artifact(), grid_dataset()), (weong, weong_dataset())]))
+    payload = client.get(f"{PREFIX}/layers").json()
+    by_id = {layer["id"]: layer for layer in payload["layers"]}
+    layer = by_id["eccc-hrdps-low-cloud-weong"]
+    assert layer["group"] == "rendered_grid"
+    assert layer["field"] == "total_cloud_weong"
+    assert layer["units"] == "percent"
+    assert layer["evidence_basis"] == "published_artifact"
+    assert layer["raster_available"] is True
+    # The disclosure is in the title AND in the semantics, so neither a menu
+    # that shows only titles nor a reader who opens the semantics can meet
+    # this layer without being told it is generated.
+    assert "generated" in layer["title"]
+    assert "WEonG" in layer["title"]
+    assert "GENERATED:" in layer["semantics"]
+    assert "technote v2.4.1 sec 7.9" in layer["semantics"]
+    assert "display only" in layer["semantics"]
+    # And the retrieved layer next to it says nothing of the kind: the
+    # provider's own field is untouched and undisclosed as generated.
+    assert "GENERATED" not in by_id["noaa-gfs-surface-cloud-low"]["semantics"]
+
+
+def test_the_weong_layer_is_absent_when_its_artifact_is(monkeypatch, data_mode):
+    """Which is exactly what `WEATHER_GENERATED_DISPLAY=off` looks like here.
+
+    The worker publishes nothing, so there is no artifact, so the layer is not
+    offered - fail closed, with no notice, because nothing was expected and
+    failed. A layer offered with no artifact behind it would 404 or, worse,
+    draw the retrieved field under a generated name.
+    """
+    use_store(monkeypatch, data_mode, MultiGridStore([(gfs_artifact(), grid_dataset())]))
+    payload = client.get(f"{PREFIX}/layers").json()
+    ids = {layer["id"] for layer in payload["layers"]}
+    assert "eccc-hrdps-low-cloud-weong" not in ids
+    assert "eccc-rdps-low-cloud-weong" not in ids
+    assert not any("low-cloud-weong" in notice for notice in payload["notices"])
+
+
+def test_the_derived_grid_is_offered_once_and_only_with_its_disclosure(monkeypatch, data_mode):
+    """The generic `/layers` path stands aside for a grid rendered here.
+
+    Without that, the same artifact would be listed twice: once by
+    `rendered_grid_layers` with its generated disclosure, and once by the
+    generic published-artifact loop with no disclosure and no way to draw it.
+    """
+    weong = weong_artifact()
+    use_store(monkeypatch, data_mode, MultiGridStore([(gfs_artifact(), grid_dataset()), (weong, weong_dataset())]))
+    payload = client.get(f"{PREFIX}/layers").json()
+    matching = [layer["id"] for layer in payload["layers"] if "low_cloud_weong" in layer["id"] or "low-cloud-weong" in layer["id"]]
+    assert matching == ["eccc-hrdps-low-cloud-weong"]
+
+
+def test_the_weong_raster_draws_the_derived_variable_not_the_retrieved_one(monkeypatch, data_mode):
+    weong = weong_artifact()
+    use_store(monkeypatch, data_mode, MultiGridStore([(gfs_artifact(), grid_dataset()), (weong, weong_dataset())]))
+    stamp = frame_times()[0]
+    response = client.get(raster_url(
+        "eccc-hrdps-low-cloud-weong",
+        valid_time=stamp.isoformat().replace("+00:00", "Z"),
+        south=str(CELL_BOUNDS["south"]), west=str(CELL_BOUNDS["west"]),
+        north=str(CELL_BOUNDS["north"]), east=str(CELL_BOUNDS["east"]),
+        width="6", height="6",
+    ))
+    assert response.status_code == 200, response.text
+    assert response.headers["x-weather-source-id"] == "eccc-hrdps"
+    rgba = decode_png(response.content)
+    # Cell (0,0) holds 0 percent retrieved and 20 percent repaired; drawing
+    # the retrieved field here would be a fully transparent pixel.
+    assert rgba[0, 0, 3] == alpha_for(20.0)
+    assert rgba[0, 0, 3] != alpha_for(0.0)
+    # And the top-right cell: 50 percent retrieved, 70 percent repaired.
+    assert rgba[0, 5, 3] == alpha_for(70.0)
+
+
+def test_the_motion_artifact_a_derived_layer_reads_is_its_own(monkeypatch, data_mode):
+    """`/flow` resolves motion from the LAYER's artifact, not from the source.
+
+    A source now publishes two motion artifacts - `cloud_motion` for its
+    retrieved surface grid and `cloud_motion_low_cloud_weong` for the derived
+    one. Serving one layer the other's displacements would be a flow fitted to
+    a different picture, so the name is derived from the layer and the refusal
+    says which artifact was looked for.
+    """
+    assert grids.motion_logical_name("surface") == "cloud_motion"
+    assert grids.motion_logical_name("low_cloud_weong") == "cloud_motion_low_cloud_weong"
+    assert grids.is_cloud_motion_logical_name("cloud_motion")
+    assert grids.is_cloud_motion_logical_name("cloud_motion_low_cloud_weong")
+    assert not grids.is_cloud_motion_logical_name("low_cloud_weong")
+
+    weong = weong_artifact()
+    use_store(monkeypatch, data_mode, MultiGridStore([(gfs_artifact(), grid_dataset()), (weong, weong_dataset())]))
+    first, second = frame_times()
+    response = client.get(
+        f"{PREFIX}/layers/eccc-hrdps-low-cloud-weong/flow"
+        f"?from={first.isoformat().replace('+00:00', 'Z')}&to={second.isoformat().replace('+00:00', 'Z')}"
+        f"&south={CELL_BOUNDS['south']}&west={CELL_BOUNDS['west']}"
+        f"&north={CELL_BOUNDS['north']}&east={CELL_BOUNDS['east']}&width=6&height=6"
+    )
+    assert response.status_code == 404
+    assert "cloud_motion_low_cloud_weong" in response.json()["detail"]

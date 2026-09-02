@@ -234,6 +234,32 @@ def test_a_broken_artifact_does_not_remove_evidence_from_the_others():
     assert {sample.source_id for sample in store.sample_point(*ST_JOHNS, VALID_TIME)} == {"eccc-hrdps"}
 
 
+def test_a_generated_derivation_is_never_sampled_onto_a_data_path():
+    """The WEonG low-cloud repair holds cloud values no provider published.
+
+    Rule (d) lets a generated value be drawn and forbids it on a data path.
+    It reached /point once because the skip was matched by logical name, and
+    the response then failed whole: the derivation records its own QC status,
+    which is not one of the four the evidence contract allows.
+    """
+    retrieved = make_artifact()
+    generated = make_artifact(
+        source_id="eccc-hrdps",
+        provenance={"derived": True, "generated": True, "quality": {"status": "passed", "flags": ["generated"]}},
+    )
+    generated = CurrentArtifact(**{**generated.__dict__, "logical_name": "low_cloud_weong", "revision_id": "revision-2"})
+    motion = make_artifact(source_id="eccc-hrdps", provenance={"derived": True})
+    motion = CurrentArtifact(**{**motion.__dict__, "logical_name": "cloud_motion_low_cloud_weong", "revision_id": "revision-3"})
+    store = StubStore([(retrieved, make_dataset()), (generated, make_dataset()), (motion, make_dataset())])
+
+    samples = store.sample_point(*ST_JOHNS, VALID_TIME)
+
+    assert {sample.logical_name for sample in samples} == {"surface"}
+    assert store.skipped == [], "a derivation that was never evidence is not a lost artifact"
+    fields, _, sources = live_point_fields(store, *ST_JOHNS, VALID_TIME)
+    assert fields and sources == ["eccc-hrdps"]
+
+
 def test_an_empty_store_produces_no_fields_and_no_consensus():
     store = StubStore([])
     fields, consensus, sources = live_point_fields(store, *ST_JOHNS, VALID_TIME)

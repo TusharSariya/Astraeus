@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MapPanel } from './MapPanel'
+import { FlowBlendLayer } from './FlowBlendLayer'
 import { stations } from './fixtures'
 import type { LayerItem, SourceStatusItem } from './types'
 
@@ -562,11 +563,11 @@ describe('MapPanel imagery', () => {
     expect((globalThis as Record<string, unknown>).__mapLayersNow as string[]).toContain(`flowblend-${strataBlend.id}`)
   })
 
-  it('names the advection-corrected method when the pair has a derived motion field', async () => {
+  it('names the advection construction when the pair has a derived motion field', async () => {
     vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse()))
     render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
     await waitFor(() => {
-      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/advection-corrected along a motion field derived from the two published frames/i)
+      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/advection along a motion field derived from the two published frames, crossfading where no motion is trusted/i)
     })
   })
 
@@ -575,7 +576,7 @@ describe('MapPanel imagery', () => {
     render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
     await waitFor(() => {
       const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
-      expect(note).toMatch(/advection-corrected along motion fitted through neighbouring published frames \(C1 trajectories\)/i)
+      expect(note).toMatch(/advection along motion derived from the two published frames, C1 through neighbouring frames where held/i)
       expect(note).toMatch(/display only, not evidence/i)
     })
   })
@@ -585,16 +586,97 @@ describe('MapPanel imagery', () => {
     // map's governing rule does not tolerate. The name that appears is the
     // one the SERVER says it served, not the one that was requested.
     const urls: string[] = []
-    const fetcher = routedFetch(() => renderedRaster(), undefined, () => flowResponse({ 'X-Weather-Interpolation-Method': 'scale-cascade' }))
+    const fetcher = routedFetch(() => renderedRaster(), undefined, () => flowResponse({ 'X-Weather-Interpolation-Method': 'error-variance-blend' }))
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       urls.push(String(url))
       return fetcher(url)
     }))
-    render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z'), interpolationMethod: 'scale-cascade' }))
+    render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z'), interpolationMethod: 'error-variance-blend' }))
     await waitFor(() => {
-      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/interpolation method "scale-cascade"/)
+      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/interpolation method "error-variance-blend"/)
     })
-    expect(urls.some((url) => url.includes('/flow?') && url.includes('method=scale-cascade'))).toBe(true)
+    expect(urls.some((url) => url.includes('/flow?') && url.includes('method=error-variance-blend'))).toBe(true)
+  })
+
+  it('follows the menu when the method changes mid-pair, rather than redrawing the first method cached for that pair', async () => {
+    // The flow cache holds one entry per (frame pair, METHOD) - a reader
+    // comparing constructions has several in flight at once. Looking one up by
+    // the pair alone returned whichever landed first, so switching methods left
+    // the previous construction on the map while the menu, the disclosure and
+    // the request all said otherwise: a control that appears to do something
+    // without doing it. Found by the end-to-end pixel check (plan H3), which
+    // read the same canvas hash back for every entry in the menu.
+    const served = (url: string) => new URL(url, 'http://localhost').searchParams.get('method') ?? 'baseline'
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/raster')
+      ? renderedRaster()
+      : url.includes('/flow')
+        ? (url.includes('texture=tangents')
+          ? new Response(JSON.stringify({ detail: 'no tangents' }), { status: 404, headers: { 'content-type': 'application/json' } })
+          : flowResponse({ 'X-Weather-Interpolation-Method': served(url), 'X-Weather-Flow-Shader': 'hermite' }))
+        : new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 }))))
+    const { rerender } = render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
+    await waitFor(() => {
+      expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/temporally interpolated for display/i)
+    })
+    expect(document.querySelector('.map-frame-notes')?.textContent ?? '').not.toMatch(/interpolation method/i)
+    rerender(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z'), interpolationMethod: 'error-variance-blend' }))
+    await waitFor(() => {
+      const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
+      expect(note).toMatch(/interpolation method "error-variance-blend"/)
+      // Naming it is not enough: the fields for the NEW method have to have
+      // been fetched and drawn. A note that names the method while describing
+      // a plain cross-dissolve is the same failure wearing the right label.
+      expect(note).toMatch(/advection along/i)
+      expect(note).not.toMatch(/no derived motion field/i)
+    })
+    expect(
+      (fetch as unknown as { mock: { calls: Array<[string]> } }).mock.calls
+        .some(([url]) => url.includes('/flow') && url.includes('method=error-variance-blend')),
+      'the panel never asked the server for the newly selected method',
+    ).toBe(true)
+  })
+
+  it('says on the map when the selected method reduced to the default construction on this layer, with the reasons', async () => {
+    // A menu entry that draws exactly the baseline on a layer must say so
+    // where the picture is, not only in the menu; the reasons are the
+    // server's own (unmet requirement, no option applied), never guessed.
+    vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse({ 'X-Weather-Interpolation-Method': 'height-steering', 'X-Weather-Flow-Shader': 'hermite' })))
+    render(strataPanel({
+      interpolate: true,
+      validTime: new Date('2026-08-30T04:30:00Z'),
+      interpolationMethod: 'height-steering',
+      methodStatus: { [strataBlend.id]: { reducedToDefault: true, reasons: ['needs goes-cloud-top-height: no live scan within the hour'], expectedShader: 'hermite' } },
+    }))
+    await waitFor(() => {
+      const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
+      expect(note).toMatch(/method "height-steering" reduced to the default construction on this layer: needs goes-cloud-top-height: no live scan within the hour/)
+    })
+  })
+
+  it('discloses a generative residual picture as GENERATED and names the served options', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse({ 'X-Weather-Interpolation-Method': 'residual-generative', 'X-Weather-Flow-Shader': 'residual-advection' })))
+    render(strataPanel({
+      interpolate: true,
+      validTime: new Date('2026-08-30T04:30:00Z'),
+      interpolationMethod: 'residual-generative',
+      methodStatus: { [strataBlend.id]: { reducedToDefault: false, reasons: [], applied: ['sundqvist', 'omega'], expectedShader: 'residual-advection' } },
+    }))
+    await waitFor(() => {
+      const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
+      expect(note).toMatch(/GENERATED between the real frames: sundqvist, omega/)
+      expect(note).toMatch(/interpolation method "residual-generative"/)
+      expect(note).not.toMatch(/reduced to the default/)
+    })
+  })
+
+  it('describes the non-generative residual as staying between the two retrieved values', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse({ 'X-Weather-Interpolation-Method': 'residual-advection', 'X-Weather-Flow-Shader': 'residual-advection' })))
+    render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z'), interpolationMethod: 'residual-advection' }))
+    await waitFor(() => {
+      const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
+      expect(note).toMatch(/computed development residual on an envelope that vanishes at both real frames; stays between the two retrieved values/)
+      expect(note).not.toMatch(/GENERATED/)
+    })
   })
 
   it('leaves the default method unnamed, because it is what the disclosure already describes', async () => {
@@ -602,7 +684,7 @@ describe('MapPanel imagery', () => {
     render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
     await waitFor(() => {
       const note = document.querySelector('.map-frame-notes')?.textContent ?? ''
-      expect(note).toMatch(/advection-corrected/i)
+      expect(note).toMatch(/advection along a motion field derived from the two published frames/i)
       expect(note).not.toMatch(/interpolation method/i)
     })
   })
@@ -764,6 +846,171 @@ describe('MapPanel imagery', () => {
 
     expect((await screen.findAllByText(/Unknown evidence basis/i)).length).toBeGreaterThan(0)
     expect(screen.queryAllByText(/passed ingest, QC and atomic publication/i).length).toBe(0)
+  })
+})
+
+/** The GOES-19 cloud-mask layer as `/layers` publishes it: `evidence_basis:
+ *  'published_artifact'` and `raster_available: true` (so `isLocallyRendered`
+ *  in MapPanel.tsx is true), `group: 'satellite'` (an OBSERVED group per
+ *  api.ts's `isObservedGroup`, so `resolveLayerFrame` never returns a `blend`
+ *  for it — observed layers always resolve to a single slot), and exactly ONE
+ *  published frame. This is the reported shape: a locally-rendered, observed,
+ *  single-frame layer that the reader says disappears from the map, and that
+ *  toggling display interpolation makes "appear briefly". */
+describe('MapPanel observed locally-rendered single-frame layer', () => {
+  beforeEach(() => {
+    ;(globalThis as Record<string, unknown>).__mapControls = []
+    ;(globalThis as Record<string, unknown>).__mapLayerAdds = []
+    ;(globalThis as Record<string, unknown>).__mapSourceAdds = []
+    ;(globalThis as Record<string, unknown>).__mapLayersNow = []
+    ;(globalThis as Record<string, unknown>).__mapLayerRemovals = []
+    let created = 0
+    ;(URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => `blob:cloud-mask-${++created}`)
+    ;(URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn()
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  const cloudMaskLayer: LayerItem = {
+    id: 'noaa-goes19-cloud-mask',
+    title: 'GOES-19 observed clouds (cloud mask)',
+    kind: 'raster',
+    field: 'cloud_mask',
+    product: 'GOES-19',
+    units: 'category',
+    semantics: 'cloud mask derived from GOES-19 imagery; rendered by this experiment',
+    times: ['2026-08-30T04:00:00Z'],
+    cadence_seconds: 600,
+    staleness_tolerance_seconds: 1800,
+    evidence_basis: 'published_artifact',
+    raster_available: true,
+    legend_available: true,
+    group: 'satellite',
+  }
+  // Rendered-grid-shaped response headers: this is a stored artifact rendered
+  // by us, not a live WMS proxy — it carries no upstream WMS layer name.
+  const cloudMaskRaster = () => rasterResponse(
+    { 'X-Weather-Image-Basis': 'rendered_grid', 'X-Weather-Source-Id': 'noaa-goes19', 'X-Weather-Evidence-Basis': 'published_artifact' },
+    ['X-Weather-Wms-Layer'],
+  )
+  const cloudMaskPanel = (props: Partial<React.ComponentProps<typeof MapPanel>> = {}) => panel({
+    layers: [cloudMaskLayer],
+    selections: [{ id: cloudMaskLayer.id, visible: true, opacity: 0.85 }],
+    // The layer's only frame is exactly at NOW, so the resolution is `exact`
+    // and carries no fallback/blend disclosure of its own.
+    validTime: NOW,
+    ...props,
+  })
+  const paintedIds = () => (globalThis as Record<string, unknown>).__mapLayersNow as string[]
+  const paintedSomething = () => paintedIds().includes(`raster-${cloudMaskLayer.id}-0`) || paintedIds().includes(`flowblend-${cloudMaskLayer.id}`)
+
+  it('paints as a plain raster layer beneath the reference casing when interpolation is off', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => cloudMaskRaster()))
+    render(cloudMaskPanel({ interpolate: false }))
+
+    await waitFor(() => {
+      const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string; beforeId?: string }>
+      expect(adds.find((add) => add.id === `raster-${cloudMaskLayer.id}-0`)?.beforeId).toBe('reference-water-casing')
+    })
+    expect(paintedIds()).toContain(`raster-${cloudMaskLayer.id}-0`)
+  })
+
+  // REGRESSION GUARD for the reported bug: this observed single-frame layer
+  // never resolves to a `blend` (isObservedGroup is true for 'satellite'), so
+  // with interpolation on it takes the single-slot flowblend branch at
+  // MapPanel.tsx ~944 rather than the plain raster branch. Without this test,
+  // a change that left that branch producing nothing (no raster layer AND no
+  // flowblend layer) would silently blank a layer the reader had on.
+  it('still paints something with interpolation on, rather than vanishing', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => cloudMaskRaster()))
+    render(cloudMaskPanel({ interpolate: true }))
+
+    await waitFor(() => expect(paintedSomething()).toBe(true))
+  })
+
+  it('stays painted across interpolate off -> on -> off; a display-only setting never blanks a layer the reader had on', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => cloudMaskRaster()))
+    const { rerender } = render(cloudMaskPanel({ interpolate: false }))
+    await waitFor(() => expect(paintedSomething()).toBe(true))
+
+    rerender(cloudMaskPanel({ interpolate: true }))
+    await waitFor(() => expect(paintedSomething()).toBe(true))
+
+    rerender(cloudMaskPanel({ interpolate: false }))
+    await waitFor(() => expect(paintedSomething()).toBe(true))
+  })
+
+  it('feeds the flowblend shader the same real frame twice at t=0 (the identity), never inventing a second frame that does not exist', async () => {
+    const updateSpy = vi.spyOn(FlowBlendLayer.prototype, 'update')
+    vi.stubGlobal('fetch', routedFetch(() => cloudMaskRaster()))
+    render(cloudMaskPanel({ interpolate: true }))
+
+    await waitFor(() => {
+      const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string; type?: string }>
+      expect(adds.some((add) => add.id === `flowblend-${cloudMaskLayer.id}` && add.type === 'custom')).toBe(true)
+    })
+    await waitFor(() => expect(updateSpy).toHaveBeenCalled())
+    const state = updateSpy.mock.calls.at(-1)?.[0]
+    expect(state?.frame0Url).toMatch(/^blob:cloud-mask-/)
+    expect(state?.frame0Url).toBe(state?.frame1Url)
+    expect(state?.t).toBe(0)
+    updateSpy.mockRestore()
+  })
+
+  it('paints and discloses no motion between frames when /flow 404s for this layer, because it has no second frame to interpolate toward', async () => {
+    // No `flow` responder is given to `routedFetch`, so any /flow request this
+    // layer made would 404 — matching what the running API returns for a
+    // layer group whose derived motion exists only for rendered-grid layers.
+    vi.stubGlobal('fetch', routedFetch(() => cloudMaskRaster()))
+    render(cloudMaskPanel({ interpolate: true }))
+
+    await waitFor(() => expect(paintedSomething()).toBe(true))
+    // An observed single-frame layer must never claim it was "temporally
+    // interpolated between ... frames": there is no second published frame,
+    // so no such claim can be true.
+    expect(document.querySelector('.map-frame-notes')?.textContent ?? '').not.toMatch(/temporally interpolated/i)
+  })
+
+  // The real-world failure, not the fixture-friendly one above: the artifact
+  // this layer is drawn from holds exactly one scan and is replaced every
+  // ~10 minutes. `/layers` still advertises the instant it handed out last,
+  // but once the scan has rolled, `/raster` for that instant now 422s —
+  // verified live against the running API:
+  //   GET /layers/noaa-goes19-cloud-mask/raster?valid_time=<10-min-old instant>
+  //   -> 422 {"detail":"no stored scan within 300 s of ...; the nearest is ... (600 s away)"}
+  // This is the case the reader is actually hitting, and this test asserts
+  // what the panel actually does with it — not a chosen/expected answer.
+  it('on the real 422 (advertised scan already rolled off the server): paints nothing, leaves no stale pixels, and discloses the failure on the map itself as well as in the drawer', async () => {
+    const detail = 'no stored scan within 300 s of 2026-08-30T04:00:00Z; the nearest is 2026-08-30T04:10:00Z (600 s away)'
+    vi.stubGlobal('fetch', routedFetch(() => new Response(
+      JSON.stringify({ detail }),
+      { status: 422, headers: { 'content-type': 'application/json' } },
+    )))
+    render(cloudMaskPanel({ interpolate: false }))
+
+    // The failure IS surfaced to the reader, verbatim, in the drawer row and
+    // the "Map contents as text" alternative.
+    expect((await screen.findAllByText(/the image request was refused as malformed: no stored scan within 300 s of/i)).length).toBeGreaterThan(0)
+
+    // No stale image is left on screen under the new timestamp: the layer
+    // paints nothing at all — neither the plain-raster id nor the flowblend
+    // id ever reaches the map, matching MapPanel.tsx's `unavailable` status,
+    // which is never composed from a prior held frame.
+    expect(paintedIds()).not.toContain(`raster-${cloudMaskLayer.id}-0`)
+    expect(paintedIds()).not.toContain(`flowblend-${cloudMaskLayer.id}`)
+    const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string }>
+    expect(adds.some((add) => add.id.startsWith(`raster-${cloudMaskLayer.id}`) || add.id === `flowblend-${cloudMaskLayer.id}`)).toBe(false)
+
+    // `.map-frame-notes` is the ONE disclosure channel visible to a reader who
+    // is looking at the map and never opens the drawer, and it used to say
+    // nothing at all here: it was built purely from each layer's
+    // `FrameResolution`, and this layer's advertised time resolves `exact`
+    // (its `times` array still names the rolled-off instant), so no note was
+    // ever queued for it, 422 or not. The layer just vanished. `layerNoteFor`
+    // now reads the raster outcome first, so the reason reaches the map too.
+    const notes = document.querySelector('.map-frame-notes')
+    expect(notes).not.toBeNull()
+    expect(notes?.textContent).toMatch(/no map image for the .* frame this layer advertises/i)
+    expect(notes?.textContent).toContain('no stored scan within 300 s of')
   })
 })
 

@@ -39,7 +39,9 @@ context: |
   whose held-out midpoint reconstruction it measurably improves, with both
   scores published in provenance. A variable whose motion does not beat the
   same construction with its motion reversed is published with a zero
-  display weight and crossfades everywhere.
+  display weight and crossfades everywhere. That control decides only
+  whether MOTION is displayed; methods are ranked against each other and
+  any generated term is admitted only on fixed controls.
   Three further sources MAY inform the DISPLAY construction, each fenced the
   same way and each owner-approved (interpolation-method-bench 2026-09-01).
   In all three the pixels drawn stay the layer's own two retrieved frames:
@@ -70,20 +72,34 @@ context: |
   with no gap - nothing is extrapolated, stretched across a hole or taken
   stale, and a pair the scans do not span is disclosed as having no
   transferred prior and falls back to the layer's own motion.
-  (c) The dissolve between two retrieved frames may be re-timed by the SAME
-  MODEL RUN's own retrieved vertical velocity at the stratum's pressure
-  level, and by nothing else, under every one of these together: the
-  re-timing is a monotone reparameterisation of the mixing fraction that is
-  zero at both real instants by construction rather than by a clamp, so every
-  real frame still shows untouched; it is bounded so the displayed value
-  stays a convex combination of the two retrieved frames at that same cell,
-  adding no cloud that is in neither and removing none that is in both - the
-  vertical velocity decides only WHEN the change between two retrieved values
-  is delivered, never what that change is; it reaches the display only in
-  proportion to how far advection has already failed to explain the change,
-  so wherever the imagery shows motion the motion wins; and it is applied
-  only for a variable whose held-out reconstruction it measurably improves,
-  with both scores published in provenance.
+  (c) Vertical-velocity re-timing of the dissolve was retired 2026-09-01 and
+  is subsumed by (d), where omega may shift the timing envelope of a computed
+  residual.
+  (d) GENERATED DISPLAY VALUES (owner decision 2026-09-01, superseding "what
+  crosses is a displacement, a level choice or a timing, never a value" for
+  display paths only). Between two retrieved frames of one layer, the display
+  MAY draw a value that is in neither frame, under every one of these
+  together: it is produced by a published, cited physical or statistical
+  construction - a computed advection residual, a humidity-to-cloud closure,
+  a producer's own documented diagnostic - and by nothing fitted to the
+  pictures it produces; it is built the most robust way the literature
+  supports, with the evidence for that choice recorded in
+  `docs/research/`; it reads only the same model run's own retrieved fields
+  and the layer's own retrieved frames; it is zero at both real instants by
+  construction, so every retrieved frame still shows untouched; it is bounded
+  to the variable's physical range and to a published cap; it is applied only
+  for a variable whose held-out reconstruction it measurably improves on a
+  FIXED control (a plain crossfade of the same frames, never a control that
+  moves with the method), on both mean error and structural similarity, with
+  every score published in provenance; the on-map disclosure names it as
+  GENERATED and names the construction; it is off by default for the reader
+  and can be disabled at three levels - per method in the registry
+  (`enabled = False`), per deployment by environment variable
+  (`WEATHER_GENERATED_DISPLAY=off`, refusing every generative method at derive
+  time), and per reader in the menu; and it never reaches a data path -
+  /point, /timeline, /features, stories and readings stay frame-exact.
+  A generative construction whose ingredient is absent reduces to the
+  permitted advection and says so.
   Every method offered to the reader SHALL declare what it needs in order to
   differ from the default, and an unmet requirement SHALL be shown, because a
   method that silently reduces to another construction is a control that
@@ -124,6 +140,39 @@ context: |
     draws quietly, beyond it the web map may show a neighbouring frame only with
     a visible disclosure (observed groups previous-only, never for future
     instants), and with nothing drawable it says why.
+  - HRDPS and RDPS relative humidity is over LIQUID WATER at every temperature;
+    GFS relative humidity is MIXED-PHASE, a linear ramp from ice at 253.16 K to
+    water at 273.16 K. Both were measured from each model's own specific
+    humidity, because GRIB2 0/1/1 codes no phase key, and are stamped on the
+    field by `ingest/grib.py declare_rh_phase`. A humidity threshold calibrated
+    on one model is not transferable to the other below freezing, where GFS
+    reads up to ~24 % higher for identical air.
+  - GFS pgrb2 publishes total cloud TWICE per lead: instantaneous (PDT 4.0,
+    "N hour fcst") and a trailing average (PDT 4.8, "N-M hour ave fcst", a 1 h
+    window to f120 and 3 h beyond). Only the instantaneous record is the
+    quantity the manifest declares, and the adapter selects it by
+    `_INSTANTANEOUS_FORECAST` in `noaa_s3.py`; mixing the two step types in
+    one file also makes cfgrib refuse the decode.
+  - ECCC's own WEonG total cloud (NT) is temporally smoothed with a
+    [0.25, 0.5, 0.25] hourly kernel (technote v2.4.1 sec 7.9), so the
+    producer itself treats HRDPS hourly cloud timing as uncertain to about an
+    hour. Do not read a one-hour phase difference between frames as a fact.
+  - HRDPS `TCDC` and GFS `TCDC` are not the same quantity. HRDPS is
+    opacity-weighted, NT = TCC[1 - exp(-0.1(W3 + W4))] with W3/W4 the column
+    optical thickness in water and ice, so thin cloud reads near zero; GFS is
+    a geometric maximum-random overlap fraction (ccpp-physics `gethml`). Do
+    not compare their values, thresholds or scores directly.
+  - A derived artifact is kept off the data paths by its provenance flags
+    (`derived` / `generated`), never by matching its logical name. The name
+    match in `LiveStore.sample_point` stopped covering the motion artifact the
+    moment its name grew a layer suffix, and it never covered the generated
+    WEonG repair at all - which put generated cloud values into /point and
+    /profile, against carve-out (d), and then failed the WHOLE response,
+    because a derivation records its own QC status and `derived` is not one of
+    the four the evidence contract allows (passed/suspect/failed/unknown). One
+    artifact with an unmodelled field takes down every source in the
+    response: `live_provenance` is not isolated per artifact the way `open`
+    is.
 
 rules:
   proposal:

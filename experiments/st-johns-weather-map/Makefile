@@ -1,4 +1,4 @@
-.PHONY: config build up down logs test test-api test-web test-registry test-sql spec-validate smoke live-smoke
+.PHONY: config build up down logs test test-api test-web test-registry test-sql spec-validate smoke live-smoke test-layers
 
 config:
 	docker compose config --quiet
@@ -44,3 +44,8 @@ smoke:
 # run never hammers a public good, and never silently depends on the weather.
 live-smoke:
 	cd api && WEATHER_LIVE_SMOKE=1 uv run pytest -m live_smoke -q
+
+# Opt-in: sweeps every layer of a running stack. Kept out of `test` because it
+# needs the Compose stack up, not just the API importable.
+test-layers:
+	cd api && WEATHER_LAYER_CONTRACT=1 uv run pytest -m layer_contract

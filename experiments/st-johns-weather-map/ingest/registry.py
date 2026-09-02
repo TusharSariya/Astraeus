@@ -45,12 +45,69 @@ STEERING_WIND_VARIABLES = (
 )
 
 #: Vertical velocity (omega, Pa s-1) at the same three steering levels, read
-#: by the `development-residual` interpolation method to decide WHEN inside an
-#: interval the model made or destroyed cloud. Display only, exactly as the
+#: by the computed-residual interpolation methods (`residual-advection` and
+#: its generative sibling) to decide WHEN inside an interval the model made or
+#: destroyed cloud. Display only, exactly as the
 #: steering winds are, and declared at all three levels for the same reason
 #: they are: the level a cloud stratum steers on is a display-derivation
 #: table that may change, and the retrieval should not have to change with it.
 VERTICAL_VELOCITY_VARIABLES = ("omega_850hPa", "omega_700hPa", "omega_500hPa")
+
+#: Relative humidity and temperature on the same three pressure surfaces, read
+#: by the humidity-based low-cloud diagnosis (`ingest.derive.weong_low_cloud`).
+#: ECCC's own WEonG technical note (v2.4.1, 2025-06-23, section 7.9) states
+#: that HRDPS's published NT under-reports low cloud and repairs it from the
+#: RH profile; these are the fields that repair reads. Display only, and
+#: declared optional in every adapter manifest for the same reason the
+#: steering winds are.
+#:
+#: The two producers do NOT agree on what RH means. Measured 2026-09-01
+#: against each model's own specific humidity (see
+#: ``ingest.grib.ECCC_RH_PHASE_BASIS`` and ``ingest.grib.GFS_RH_PHASE_BASIS``):
+#: HRDPS and RDPS divide by saturation over liquid water at every temperature,
+#: while GFS divides by a mixed-phase saturation ramping linearly from ice at
+#: 253.16 K to water at 273.16 K - so at -25 degC GFS reads ~24 % higher for
+#: identical air. A threshold calibrated on one is not valid on the other, and
+#: the convention travels in each variable's attrs so a consumer can check.
+PROFILE_THERMO_VARIABLES = (
+    "relative_humidity_850hPa", "relative_humidity_700hPa", "relative_humidity_500hPa",
+    "temperature_850hPa", "temperature_700hPa", "temperature_500hPa",
+)
+
+#: The nine lowest isobaric levels ECCC publishes (1015..850 hPa), with the
+#: geopotential height that turns the pressure profile into the height-AGL
+#: profile ECCC's WEonG algorithm is written against, plus the AGL datum each
+#: model actually offers. This is what `ingest.derive.weong_layer` reads.
+#:
+#: The three steering levels cannot support the algorithm at all: the technote
+#: requires a saturated layer with a base under 2000 m AGL and a thickness of
+#: at least 150 m, and of 850/700/500 hPa only 850 is inside the base window
+#: while a single level has zero thickness. Nine levels between 1015 and
+#: 850 hPa resolve roughly the surface to 1.5 km AGL at 100-200 m spacing,
+#: which is where the Avalon's marine stratus and advection fog actually sit.
+#:
+#: The AGL datum differs by model, verified live 2026-09-01: HRDPS publishes
+#: `HGT_Sfc`, which decodes as orography in metres (paramId 228002), while
+#: RDPS publishes no surface height at all and the datum is reconstructed by
+#: interpolating the height profile to `surface_pressure` in log-pressure.
+#: Both are declared optional in the adapter manifest for the same reason the
+#: steering winds are: a level a cycle omits costs the derived layer and
+#: nothing else.
+LOW_PROFILE_LEVELS_HPA = (1015, 1000, 985, 970, 950, 925, 900, 875, 850)
+
+LOW_PROFILE_VARIABLES = tuple(
+    name
+    for level in LOW_PROFILE_LEVELS_HPA
+    for name in (
+        f"relative_humidity_{level}hPa",
+        f"temperature_{level}hPa",
+        f"geopotential_height_{level}hPa",
+    )
+    # 850 hPa RH and temperature are already declared by
+    # PROFILE_THERMO_VARIABLES; the overrides below are deduplicated so a
+    # variable is never announced twice.
+    if name not in PROFILE_THERMO_VARIABLES
+) + ("surface_height", "surface_pressure")
 
 VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
     # What the GFS adapter actually stores: the surface set plus the
@@ -65,17 +122,21 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "wind_u_850hPa", "wind_v_850hPa", "wind_u_700hPa", "wind_v_700hPa",
         "wind_u_500hPa", "wind_v_500hPa",
         "omega_850hPa", "omega_700hPa", "omega_500hPa",
+        "relative_humidity_850hPa", "relative_humidity_700hPa", "relative_humidity_500hPa",
+        "temperature_850hPa", "temperature_700hPa", "temperature_500hPa",
         "precipitable_water",
     ),
     "noaa-swpc-kp": ("kp_index", "a_running", "kp_status"),
     "noaa-swpc-rtsw": ("bz_gsm", "bt"),
     "noaa-swpc-ovation": ("aurora_probability",),
     # HRDPS and RDPS carry the default surface set plus the cloud steering
-    # winds and the vertical velocity at the same levels; all are declared
-    # optional in the adapter manifest, so a level a cycle omits costs the
-    # display prior or the development residual and nothing else.
-    "eccc-hrdps": DEFAULT_VARIABLES + STEERING_WIND_VARIABLES + VERTICAL_VELOCITY_VARIABLES,
-    "eccc-rdps": DEFAULT_VARIABLES + STEERING_WIND_VARIABLES + VERTICAL_VELOCITY_VARIABLES,
+    # winds, the vertical velocity, the RH/temperature profile at the same
+    # levels and the nine-level low-cloud profile with its AGL datum; all are
+    # declared optional in the adapter manifest, so a level a cycle omits
+    # costs the display prior, the development residual or the WEonG
+    # low-cloud layer and nothing else.
+    "eccc-hrdps": DEFAULT_VARIABLES + STEERING_WIND_VARIABLES + VERTICAL_VELOCITY_VARIABLES + PROFILE_THERMO_VARIABLES + LOW_PROFILE_VARIABLES,
+    "eccc-rdps": DEFAULT_VARIABLES + STEERING_WIND_VARIABLES + VERTICAL_VELOCITY_VARIABLES + PROFILE_THERMO_VARIABLES + LOW_PROFILE_VARIABLES,
     "eccc-radar": ("precipitation_rate", "precipitation_type"),
     "eccc-lightning": ("lightning_strike",),
     "awc-metar-speci": ("temperature", "dew_point", "visibility", "cloud_layers", "weather_codes", "wind_u_10m", "wind_v_10m"),

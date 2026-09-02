@@ -260,14 +260,35 @@ class MethodScore(StrictModel):
     source_id: str
     variable: str
     held_out_frames: int
-    #: Improvement over the same construction with its motion reversed. The
-    #: honest margin: beating a plain crossfade is available to any blur.
+    #: Improvement over the same construction with its motion reversed. Kept
+    #: as the motion veto's own number; it cannot rank methods against each
+    #: other because the control moves with the method.
     improvement_over_reversed_flow: float
+    #: Fixed-control skill: improvement over a plain crossfade of the same
+    #: two frames, and over plain linear advection of them. These rank
+    #: methods, because the control does not move with the method.
     improvement_over_crossfade: float
+    improvement_over_advection: float | None = None
     midpoint_mae_percent: float
     midpoint_ssim: float | None = None
+    #: Structure scores at the midpoint: sharpness relative to the real frame
+    #: (1.0 = as sharp as real; pointwise error alone rewards blur) and the
+    #: radial power-spectrum log-ratio error against it.
+    midpoint_sharpness_ratio: float | None = None
+    midpoint_spectral_ratio_error: float | None = None
+    #: Midpoint error stratified by what the cell did between the frames.
+    midpoint_mae_grew: float | None = None
+    midpoint_mae_decayed: float | None = None
     advect_weight_median: float | None = None
     derivation_version: str | None = None
+    #: Which of the method's measured options the derive actually applied on
+    #: this layer, by option name. Every False here is a switch the harness
+    #: refused on this variable's own held-out frames.
+    applied: dict[str, bool] = Field(default_factory=dict)
+    #: True where this method drew the default construction on this layer -
+    #: an unmet requirement, or every option refused - so a reader who picks
+    #: it is told rather than left to wonder whether the control did anything.
+    reduced_to_default: bool = False
 
 
 class MethodRequirement(StrictModel):
@@ -282,6 +303,9 @@ class MethodRequirement(StrictModel):
     name: str
     met: bool
     detail: str = ""
+    #: The per-method provenance diagnostic the API read `met` from, when it
+    #: had one. Empty where the method answered for itself.
+    diagnostic: str = ""
 
 
 class InterpolationMethodItem(StrictModel):
@@ -296,6 +320,15 @@ class InterpolationMethodItem(StrictModel):
     #: True where the disclosure must say the pixels were generated rather
     #: than retrieved. Never true without an owner-approved carve-out.
     generative: bool = False
+    #: Reader-facing copy, server-supplied so the menu never paraphrases a
+    #: construction: one plain sentence, one sentence on what it cannot show,
+    #: and the cited science behind it.
+    plain: str = ""
+    gap: str = ""
+    notes: str = ""
+    #: True when this deployment's kill switch (WEATHER_GENERATED_DISPLAY=off)
+    #: refuses this generative method, so it is neither derived nor offered.
+    generation_disabled: bool = False
     #: Whether any currently published motion artifact carries this method.
     published: bool = False
     #: Unmet requirements are why a selected method may draw the same picture

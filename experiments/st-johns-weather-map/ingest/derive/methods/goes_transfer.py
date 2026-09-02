@@ -13,15 +13,14 @@ from ingest.derive.flow_ops import (
     PRIOR_AGREEMENT_FRACTION,
     STATIONARY_CELLS,
     _cell_metres,
-    _development_agreement,
     _dis_flow,
     _display_weight,
     _gaussian,
     _prior_corrected,
 )
 from ingest.derive.methods.contract import Requirement, InterpolationMethod, MethodContext, PairMotion
-from ingest.derive.methods.baseline import BaselineMethod
-from ingest.derive.methods.harness import _interpolation_skill
+from ingest.derive.methods.baseline import TCDC_NOTE, BaselineMethod
+from ingest.derive.methods.harness import _interpolation_skill, admit, admit_reasons
 from ingest.derive.methods.companion import published_companion
 
 
@@ -395,6 +394,13 @@ class GOESTransferMethod(BaselineMethod):
         "refused where the model flow says the field is standing still, and is absent entirely "
         "for any pair the GOES scans do not exactly span."
     )
+    plain = "Ten-minute satellite frames give motion in short steps instead of one hourly jump."
+    gap = "Needs a rolling scan sequence the ingest does not keep; today draws exactly entry 1."
+    notes = (
+        "CMORPH morphing (Joyce et al. 2004, J. Hydrometeorol. 5): short-step displacements from "
+        "the ten-minute GOES-19 cloud mask composed Lagrangian into one model interval; "
+        "displacement only, never a value. " + TCDC_NOTE
+    )
 
 
     def requirements(self) -> list[Requirement]:
@@ -453,19 +459,28 @@ class GOESTransferMethod(BaselineMethod):
             variable=context.variable,
             interval_seconds=context.interval_seconds,
             indices=context.indices,
+            cache=context.cache,
         )
-        use_transfer = (
-            with_transfer is not None
-            and without is not None
-            and with_transfer["improvement_over_reversed_flow"] > without["improvement_over_reversed_flow"]
-        )
+        # Fixed controls only (`harness.admit`); the reversed-flow ratio is
+        # published beside the decision, never read by it.
+        use_transfer = admit(with_transfer, without)
+        read = lambda skill, name: skill[name] if skill else None  # noqa: E731
         notes["applied"] = bool(use_transfer)
-        notes["held_out_improvement_with_transfer"] = (
-            with_transfer["improvement_over_reversed_flow"] if with_transfer else None
+        notes["held_out_improvement_with_transfer"] = read(with_transfer, "improvement_over_crossfade")
+        notes["held_out_improvement_without_transfer"] = read(without, "improvement_over_crossfade")
+        notes["held_out_improvement_over_advection_with_transfer"] = read(with_transfer, "improvement_over_advection")
+        notes["held_out_improvement_over_advection_without_transfer"] = read(without, "improvement_over_advection")
+        notes["held_out_ssim_with_transfer"] = read(with_transfer, "midpoint_ssim")
+        notes["held_out_ssim_without_transfer"] = read(without, "midpoint_ssim")
+        notes["held_out_sharpness_ratio_with_transfer"] = read(with_transfer, "midpoint_sharpness_ratio")
+        notes["held_out_sharpness_ratio_without_transfer"] = read(without, "midpoint_sharpness_ratio")
+        notes["held_out_improvement_over_reversed_flow_with_transfer"] = read(
+            with_transfer, "improvement_over_reversed_flow"
         )
-        notes["held_out_improvement_without_transfer"] = (
-            without["improvement_over_reversed_flow"] if without else None
+        notes["held_out_improvement_over_reversed_flow_without_transfer"] = read(
+            without, "improvement_over_reversed_flow"
         )
+        notes["transfer_admission"] = admit_reasons(with_transfer, without)
         notes["skill"] = with_transfer if use_transfer else without
         return type(self)(use_prior=based.use_prior, use_transfer=use_transfer), notes
 
@@ -501,16 +516,12 @@ class GOESTransferMethod(BaselineMethod):
             transfer, covered = transferred
             flow01, weight = _transfer_corrected(pair.flow01, pair.support, transfer, covered)
             flow10, _ = _transfer_corrected(pair.flow10, pair.support, -transfer, covered)
-            previous = context.frames[position]
-            following = context.frames[position + 1]
             results[position] = PairMotion(
                 flow01=flow01,
                 flow10=flow10,
                 confidence=pair.confidence,
                 support=pair.support,
-                advect_weight=_display_weight(
-                    pair.support, _development_agreement(previous, following, flow01)
-                ),
+                advect_weight=_display_weight(pair.support),
                 diagnostics=dict(pair.diagnostics),
             )
             carried.append(weight)
@@ -519,11 +530,3 @@ class GOESTransferMethod(BaselineMethod):
             pair.diagnostics["goes_transfer_weight_carried"] = carried[position]
             pair.diagnostics["goes_transfer_pairs_reached"] = float(reached)
         return results
-
-
-#: The fractions of an interval a held-out frame is reconstructed at. The
-#: midpoint is the hardest case and the one the shipped thresholds were
-#: measured against; the thirds are reached by holding a frame out of a
-#: three-interval span, and they catch a construction that is right at the
-#: middle and wrong on the way there - which a midpoint-only score cannot
-#: see, and which is exactly what the reader watches during playback.

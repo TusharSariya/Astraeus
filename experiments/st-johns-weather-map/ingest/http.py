@@ -10,14 +10,19 @@ from __future__ import annotations
 import random
 import threading
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterator, Mapping
 from urllib.parse import unquote, urlparse
 
+import os
 import httpx
+
+import logging
+
+_log = logging.getLogger(__name__)
 
 USER_AGENT = "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)"
 
@@ -25,8 +30,28 @@ RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
 DEFAULT_ATTEMPTS = 5
 DEFAULT_BACKOFF_SECONDS = 0.5
 DEFAULT_MAX_BACKOFF_SECONDS = 30.0
+#: The gap between two requests to one host, in seconds. The default is
+#: deliberately polite (two requests a second). A deployment that fetches
+#: many small files from a provider that tolerates more - MSC Datamart
+#: serves ~1,200 GRIB files per HRDPS run once the low-level profile is
+#: requested, and at two a second that is ten minutes of waiting whatever the
+#: link does - may lower it through ``WEATHER_HTTP_MIN_HOST_INTERVAL``. The
+#: client counts every 429 it is answered with (``retry_counts``) and logs
+#: them, so a value that turns out to be impolite is visible in the worker
+#: log rather than silently absorbed by the retry loop.
 DEFAULT_MIN_HOST_INTERVAL_SECONDS = 0.5
 DEFAULT_TIMEOUT_SECONDS = 60.0
+
+
+def min_host_interval_from_env(default: float = DEFAULT_MIN_HOST_INTERVAL_SECONDS) -> float:
+    """``WEATHER_HTTP_MIN_HOST_INTERVAL`` as seconds, else ``default``; never negative."""
+    raw = os.environ.get("WEATHER_HTTP_MIN_HOST_INTERVAL", "").strip()
+    if not raw:
+        return default
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        return default
 
 
 class MaxBytesExceeded(RuntimeError):
@@ -114,9 +139,13 @@ class PoliteClient:
 
     attempts: int = DEFAULT_ATTEMPTS
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
-    min_host_interval_seconds: float = DEFAULT_MIN_HOST_INTERVAL_SECONDS
+    min_host_interval_seconds: float = field(default_factory=min_host_interval_from_env)
     limiter: HostRateLimiter = field(init=False)
     _client: httpx.Client = field(init=False)
+    #: Retryable statuses seen, by code, across the client's life. A 429 here
+    #: means the provider asked us to slow down; a run that shows any must be
+    #: read as having been throttled, and the host interval raised.
+    retry_counts: Counter = field(init=False, default_factory=Counter)
 
     def __post_init__(self) -> None:
         if self.attempts < 1:
@@ -153,6 +182,12 @@ class PoliteClient:
                 continue
             if response.status_code in RETRY_STATUS and attempt < self.attempts:
                 retry_after = parse_retry_after(response.headers.get("Retry-After"))
+                self.retry_counts[response.status_code] += 1
+                if response.status_code == 429:
+                    _log.warning(
+                        "429 from %s (attempt %d/%d, Retry-After %s, %d so far): slow down",
+                        host, attempt, self.attempts, retry_after, self.retry_counts[429],
+                    )
                 response.close()
                 time.sleep(retry_after if retry_after is not None else backoff_delay(attempt))
                 continue

@@ -1,8 +1,10 @@
 """Numeric primitives the cloud-motion derivation and its methods share.
 
-This module is the toolbox: dense flow, warping, the forward-backward
-consistency score, the neighbourhood fill, the development agreement, the
-display weight and the model steering prior. It knows nothing about
+This module is the toolbox: dense flow, warping (nearest and linear), the
+forward-backward consistency score, the neighbourhood fill, the display
+weight, the model steering prior and vertical-velocity tendency, and the
+held-out scoring primitives (structural similarity, sharpness ratio, radial
+power-spectrum ratio, fractions skill score). It knows nothing about
 artifacts, stores or methods, so an interpolation method in
 ``ingest.derive.methods`` can be written against it without touching the
 derive loop.
@@ -33,18 +35,36 @@ FB_TOLERANCE_FLOOR_CELLS = 1.5
 #: field: an untrusted cell drifts with its trusted neighbourhood instead of
 #: standing still under a moving field.
 FLOW_FILL_SIGMA_CELLS = 2.0
-#: Cloud-percent disagreement between the two warps at which advection is
-#: judged not to explain the change (growth or decay in place) and the
-#: display weight falls to a plain crossfade.
-DEVELOPMENT_TOLERANCE_PERCENT = 25.0
-#: Radius (grid cells) the development agreement is smoothed over, so the
-#: advection/crossfade weight varies gradually instead of per pixel.
-DEVELOPMENT_SIGMA_CELLS = 3.0
+#: Floor, in cloud percent, of the warp error at which an error-variance
+#: estimate stops being "small": the inverse-variance reliability in
+#: ``error_variance_blend`` is ``floor^2 / (sigma^2 + floor^2)``, so this is
+#: the squared-error scale that halves a warp's weight.
+#:
+#: HISTORY, kept so the number is not re-derived. Until cloud-motion-bench-v6
+#: this was ``DEVELOPMENT_TOLERANCE_PERCENT``, the floor of the "development
+#: agreement" test that dropped the display weight to a crossfade wherever
+#: the two half-warps disagreed by more than this. That test was measured
+#: against a fixed control and against stratified growth/decay error on
+#: 2026-09-01 and lost on every layer tried (the table is in
+#: ``BaselineMethod``'s docstring), so it was deleted rather than tuned. The
+#: value survives only as this floor, where it does a different job: it was
+#: the scale at which a warp error was judged material, and that is exactly
+#: what an error-variance floor has to be. Two things measured on the way to
+#: deleting the test, recorded so they are not re-derived: smoothing the
+#: disagreement BEFORE the ratio rather than the agreement after it was much
+#: worse (-0.05 HRDPS, -0.15 GFS total), and forcing the agreement to 1
+#: everywhere scored higher on every layer - which is what the deletion is.
+WARP_ERROR_FLOOR_PERCENT = 25.0
+#: Radius (grid cells) a per-pixel squared warp error is smoothed over before
+#: it is inverted into a reliability, so the fusion weight is a local error
+#: VARIANCE rather than one pixel's noisy square. Was ``DEVELOPMENT_SIGMA_CELLS``
+#: (the same radius, applied to the agreement field that no longer exists).
+ERROR_SMOOTHING_SIGMA_CELLS = 3.0
 #: Fraction of trusted flow a neighbourhood needs before its filled vector
-#: counts as supported at all. Above this the display weight is the
-#: development agreement alone - the direct measure of whether advection
-#: explains the change here - and below it the weight fades to a crossfade,
-#: because a vector with nothing trustworthy behind it is not a measurement.
+#: counts as supported at all. Above this the display advects at full
+#: strength; below it the weight fades to a crossfade, because a vector with
+#: nothing trustworthy behind it is not a measurement. Since bench-v6 this is
+#: the ONLY thing the display weight reads (see ``_display_weight``).
 #:
 #: Chosen by held-out skill (2026-08-31). Weighting by min(support,
 #: agreement) scored +0.056 against the reversed-flow control on HRDPS total
@@ -92,6 +112,31 @@ def _warp_nearest(field: Any, flow: Any) -> Any:
     source_rows = numpy.clip(numpy.rint(row_index - flow[..., 1]).astype("int64"), 0, rows - 1)
     source_cols = numpy.clip(numpy.rint(col_index - flow[..., 0]).astype("int64"), 0, cols - 1)
     return field[source_rows, source_cols]
+
+
+def _warp_linear(field: Any, flow: Any) -> Any:
+    """``field`` advected by the full flow, bilinear, edges replicated.
+
+    Same sign convention as ``_warp_nearest``: the result at ``p`` reads
+    ``field`` at ``p - flow``. OpenCV ``remap`` with ``INTER_LINEAR`` and
+    ``BORDER_REPLICATE`` does the sampling; the nearest-cell warp stays the
+    one the display and the composites use (a bilinear warp of a bimodal
+    cloud field manufactures intermediate values at every edge, which is the
+    blur the bench exists to remove). This one is for the residual
+    computation and the regime gate, where the quantity being read is an
+    error rather than a picture and sub-cell placement matters more than
+    crispness.
+    """
+    import cv2  # noqa: PLC0415
+    import numpy  # noqa: PLC0415
+
+    values = numpy.asarray(field, dtype="float32")
+    rows, cols = values.shape
+    row_index, col_index = numpy.mgrid[0:rows, 0:cols]
+    map_x = (col_index - numpy.asarray(flow)[..., 0]).astype("float32")
+    map_y = (row_index - numpy.asarray(flow)[..., 1]).astype("float32")
+    warped = cv2.remap(values, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    return warped.astype("float64")
 
 
 def _consistency(flow01: Any, flow10: Any) -> Any:
@@ -178,26 +223,6 @@ def _supported_flow(flow: Any, confidence: Any) -> tuple[Any, Any]:
         neighbourhood = numpy.where(usable, smoothed / numpy.maximum(denominator, 1e-9), flow[..., axis])
         filled[..., axis] = flow[..., axis] + (1.0 - weight) * (neighbourhood - flow[..., axis])
     return filled, support
-
-
-def _development_agreement(previous: Any, following: Any, flow: Any) -> Any:
-    """How well advection explains the change, per cell, in [0, 1].
-
-    Both frames are warped to the midpoint along the flow. Where they land on
-    the same picture, the change between the two published frames really is
-    motion and the display should advect. Where they disagree, cloud grew or
-    decayed in place - the Avalon's own regime - and a plain cross-dissolve
-    is the honest picture, because no motion field can move cloud that was
-    never somewhere else.
-    """
-    import numpy  # noqa: PLC0415
-
-    half = 0.5 * numpy.asarray(flow, dtype="float64")
-    forward_half = _warp_nearest(numpy.nan_to_num(previous, nan=0.0), half)
-    backward_half = _warp_nearest(numpy.nan_to_num(following, nan=0.0), -half)
-    disagreement = numpy.abs(forward_half - backward_half)
-    agreement = numpy.clip(1.0 - disagreement / DEVELOPMENT_TOLERANCE_PERCENT, 0.0, 1.0)
-    return numpy.clip(_gaussian(agreement, DEVELOPMENT_SIGMA_CELLS), 0.0, 1.0)
 
 
 def _clamped_tangent(velocity: Any, flow: Any) -> Any:
@@ -382,17 +407,27 @@ def _prior_corrected(flow: Any, support: Any, prior: Any) -> tuple[Any, float]:
     return corrected, float(numpy.mean(weight))
 
 
-def _display_weight(support: Any, agreement: Any) -> Any:
+def _display_weight(support: Any) -> Any:
     """The weight the client mixes advection against a crossfade on.
 
-    Agreement leads: it measures the thing the reader sees - whether warping
-    the two frames toward each other lands on the same picture. Support only
-    gates it, so a vector nothing trustworthy stood behind cannot carry the
-    display however plausible the two warps happen to look.
+    Support only: ``clip(support / SUPPORT_FLOOR, 0, 1)``. A cell with a
+    trustworthy vector behind it advects at full strength; a cell with
+    nothing trustworthy behind its fill fades to the crossfade, which is a
+    statement about the measurement rather than about the weather.
+
+    Until bench-v6 this was multiplied by a "development agreement" - the
+    photometric agreement of the two half-warps - on the reasoning that
+    where the warps disagree cloud grew or decayed in place and no motion
+    field can move it. Measured on fixed controls and on growth and decay
+    separately, that term made every layer worse and blurrier (the table is
+    in ``BaselineMethod``'s docstring): it was not protecting development,
+    it was suppressing advection wherever the flow was imperfect. Growth and
+    decay are now the computed residual's job (``residual-advection``), not
+    the weight's.
     """
     import numpy  # noqa: PLC0415
 
-    return agreement * numpy.clip(numpy.asarray(support, dtype="float64") / SUPPORT_FLOOR, 0.0, 1.0)
+    return numpy.clip(numpy.asarray(support, dtype="float64") / SUPPORT_FLOOR, 0.0, 1.0)
 
 
 def _midpoint_composite(previous: Any, following: Any, flow: Any, weight: Any) -> Any:
@@ -403,3 +438,143 @@ def _midpoint_composite(previous: Any, following: Any, flow: Any, weight: Any) -
     warped = 0.5 * _warp_nearest(previous, half) + 0.5 * _warp_nearest(following, -half)
     plain = 0.5 * previous + 0.5 * following
     return plain + weight * (warped - plain)
+
+
+def _omega_tendency(
+    dataset: Any, variable: str, indices: tuple[int, int], shape: tuple[int, int]
+) -> Any | None:
+    """``omega_1 - omega_0`` at the stratum's steering level, in Pa s-1, or None.
+
+    Vertical velocity on pressure surfaces, WMO discipline 0 category 2
+    parameter 8 - verified in the message's own coded keys, not inferred from
+    a name (HRDPS ``VVEL_ISBL_0850``, RDPS ``VerticalVelocity_IsbL-0850``,
+    GFS ``VVEL:850 mb``, all decoding to ecCodes ``w``, paramId 135,
+    ``Pa s**-1``). The sign convention follows from the units: omega is
+    d(pressure)/dt, so NEGATIVE is ascent and positive is descent.
+
+    What is read is the DIFFERENCE between the pair's two instants rather
+    than the interval mean, because a mean says only which way the forcing
+    points and a timing needs to know WHEN inside the interval the change
+    happened. Stronger ascent at the start means the growth it forced
+    happened early; stronger ascent at the end means it happened late. That
+    is the only thing a re-timing can honestly express, and the rationale the
+    retired ``development-residual`` method rested on (carve-out (c), now
+    subsumed by (d)): where the two retrieved frames fix the net change per
+    cell, omega may shift the timing envelope of a computed residual - it
+    never decides what the change is. A ``d ln RH/dt = (omega/p)(1 - kappa
+    L/(R_v T))`` closure turns the same tendency into a humidity crossing
+    time for the generative sibling of ``residual-advection``.
+
+    Absent omega is an absent tendency, never a zero one: a consumer then
+    reduces to the permitted advection and says so, which is the same rule
+    the steering prior already follows.
+    """
+    import numpy  # noqa: PLC0415
+
+    level = STEERING_LEVEL_BY_VARIABLE.get(variable)
+    if level is None:
+        return None
+    name = f"omega_{level}hPa"
+    if name not in getattr(dataset, "data_vars", {}):
+        return None
+    try:
+        field = dataset[name]
+        time_name = next((dim for dim in ("valid_time", "time") if dim in field.dims), None)
+        if time_name is None or field.sizes[time_name] <= max(indices):
+            return None
+        pair = numpy.asarray(field.isel({time_name: list(indices)}).values, dtype="float64")
+        if pair.shape[1:] != shape:
+            return None
+        return numpy.nan_to_num(pair[1] - pair[0], nan=0.0)
+    except Exception:
+        # Unreadable omega is simply absent. It never fails the motion
+        # artifact, which stands on the imagery.
+        return None
+
+
+def _sharpness_ratio(composite: Any, truth: Any) -> float:
+    """Mean gradient magnitude of ``composite`` over that of ``truth``; 1 is as sharp as reality.
+
+    Pointwise error rewards blur - a smooth field is close to everything -
+    so a construction can win on MAE by dissolving harder. The ratio of mean
+    |grad| is the plainest measure of whether it did (Harris et al. 2001, on
+    the smoothness of NWP precipitation fields relative to radar; the
+    sharpness diagnostics of Ravuri et al. 2021, Nature 597). Below 1 the
+    reconstruction is blurrier than the frame it is scored against; above 1
+    it has manufactured edges. A featureless truth returns 1.0 against a
+    featureless reconstruction, since nothing was lost.
+    """
+    import numpy  # noqa: PLC0415
+
+    a = numpy.nan_to_num(numpy.asarray(composite, dtype="float64"), nan=0.0)
+    b = numpy.nan_to_num(numpy.asarray(truth, dtype="float64"), nan=0.0)
+    rows_a, cols_a = numpy.gradient(a)
+    rows_b, cols_b = numpy.gradient(b)
+    sharp_a = float(numpy.mean(numpy.hypot(rows_a, cols_a)))
+    sharp_b = float(numpy.mean(numpy.hypot(rows_b, cols_b)))
+    if sharp_b <= 1e-9:
+        return 1.0 if sharp_a <= 1e-9 else float("inf")
+    return sharp_a / sharp_b
+
+
+def _radial_psd_log_ratio(composite: Any, truth: Any, bins: int = 16) -> float:
+    """Mean |log10| ratio of the two radially averaged power spectra; 0 is a perfect match.
+
+    The spectral counterpart of the sharpness ratio (Ravuri et al. 2021,
+    Nature 597, radially averaged PSD; Harris et al. 2001, power spectra of
+    NWP versus radar): a blurred reconstruction loses power at high
+    wavenumber and a noisy one gains it, and either shows here as a log
+    ratio far from zero in the bins it affects. Averaged over radial bins
+    so every scale counts once rather than the many high-wavenumber cells
+    swamping the few low ones. Plain numpy FFT on the mean-removed fields.
+    """
+    import numpy  # noqa: PLC0415
+
+    a = numpy.nan_to_num(numpy.asarray(composite, dtype="float64"), nan=0.0)
+    b = numpy.nan_to_num(numpy.asarray(truth, dtype="float64"), nan=0.0)
+    rows, cols = a.shape
+    freq_rows = numpy.fft.fftfreq(rows)[:, None]
+    freq_cols = numpy.fft.fftfreq(cols)[None, :]
+    radius = numpy.hypot(freq_rows, freq_cols)
+    edges = numpy.linspace(0.0, 0.5, bins + 1)
+    membership = numpy.clip(numpy.digitize(radius, edges) - 1, 0, bins - 1)
+    power_a = numpy.abs(numpy.fft.fft2(a - a.mean())) ** 2
+    power_b = numpy.abs(numpy.fft.fft2(b - b.mean())) ** 2
+    ratios = []
+    for index in range(bins):
+        selected = membership == index
+        if not selected.any():
+            continue
+        mean_a = float(numpy.mean(power_a[selected]))
+        mean_b = float(numpy.mean(power_b[selected]))
+        if mean_a <= 1e-12 and mean_b <= 1e-12:
+            continue
+        ratios.append(abs(numpy.log10((mean_a + 1e-12) / (mean_b + 1e-12))))
+    return float(numpy.mean(ratios)) if ratios else 0.0
+
+
+def _fss(composite: Any, truth: Any, threshold: float, radius: int) -> float:
+    """Fractions skill score at one percent threshold and one neighbourhood radius.
+
+    Roberts & Lean 2008 (MWR 136): both fields are thresholded, the fraction
+    of exceeding cells in a ``(2 radius + 1)`` square around each cell is
+    taken (``cv2.blur``), and the score is ``1 - MSE(fractions) / (mean f_c^2
+    + mean f_t^2)``. 1 is a perfect match at that scale, 0 is no skill, and
+    a reconstruction that puts the right amount of cloud a little in the
+    wrong place scores well at a radius that covers the displacement and
+    badly at one that does not - which is the scale-aware verdict a cell-wise
+    error cannot give. Two fields that both exceed nowhere are identical at
+    every scale and score 1.
+    """
+    import cv2  # noqa: PLC0415
+    import numpy  # noqa: PLC0415
+
+    size = 2 * int(radius) + 1
+    exceed_a = (numpy.nan_to_num(numpy.asarray(composite, dtype="float64"), nan=0.0) >= threshold).astype("float32")
+    exceed_b = (numpy.nan_to_num(numpy.asarray(truth, dtype="float64"), nan=0.0) >= threshold).astype("float32")
+    fraction_a = cv2.blur(exceed_a, (size, size), borderType=cv2.BORDER_REFLECT).astype("float64")
+    fraction_b = cv2.blur(exceed_b, (size, size), borderType=cv2.BORDER_REFLECT).astype("float64")
+    denominator = float(numpy.mean(fraction_a**2) + numpy.mean(fraction_b**2))
+    if denominator <= 1e-12:
+        return 1.0
+    return float(1.0 - numpy.mean((fraction_a - fraction_b) ** 2) / denominator)

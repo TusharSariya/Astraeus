@@ -21,33 +21,22 @@ import xarray
 pytest.importorskip("cv2")
 
 from ingest.derive.methods import (
+    METHODS,
     BaselineMethod,
-    IntermediateFlowMethod,
     MethodContext,
-    PairMotion,
-    _score_one,
+    generated_display_enabled,
     method_by_id,
+    method_catalogue,
 )
-from ingest.derive.methods.development_residual import (
-    DevelopmentResidualMethod,
-    RESIDUAL_SHAPE_GAIN,
-)
-from ingest.derive.methods.scale_cascade import (
-    CASCADE_OCTAVES,
-    ScaleCascadeMethod,
-    _cascade_bands,
-)
-from ingest.derive.methods.visibility_blend import (
-    VisibilityBlendMethod,
-)
+from ingest.derive.methods.residual_advection import RESIDUAL_GAIN
 from ingest.derive.cloud_motion import (
+    CLOUD_MOTION_SOURCES,
     DEFAULT_METHOD_ID,
     LOGICAL_NAME,
     MIN_HELD_OUT_IMPROVEMENT,
     VERSION,
     enabled_methods,
     _consistency,
-    _development_agreement,
     _dis_flow,
     _interpolation_skill,
     _prior_corrected,
@@ -56,6 +45,7 @@ from ingest.derive.cloud_motion import (
     _warp_nearest,
     cloud_motion_cycle,
     derive_cloud_motion,
+    motion_logical_name,
 )
 from ingest.grib import write_zarr
 from ingest.store import CurrentArtifact, sha256_of
@@ -128,22 +118,6 @@ def test_a_wholly_untrusted_field_keeps_the_crossfade_fallback():
     # Nothing stood behind any fill: the display weight stays at zero and the
     # client crossfades, which is the disclosed fallback.
     assert float(support.max()) < 0.01
-
-
-def test_development_agreement_separates_motion_from_growth_in_place():
-    moving_from = blob_field(48, 48, centre=(24, 20))
-    moving_to = blob_field(48, 48, centre=(24, 28))  # same blob, 8 cells east
-    flow = uniform_flow(8.0, 0.0, shape=(48, 48))
-    agreement = _development_agreement(moving_from, moving_to, flow)
-    assert float(numpy.median(agreement)) > 0.8
-
-    # Same place, twice the cloud: no motion field can explain this, so the
-    # display must dissolve rather than drag anything across the map.
-    growing_from = blob_field(48, 48, centre=(24, 24), sigma=6.0)
-    growing_to = 2.0 * growing_from
-    core = growing_from > 20.0
-    grown = _development_agreement(growing_from, growing_to, flow)
-    assert float(numpy.median(grown[core])) < 0.5
 
 
 def uniform_flow(dx: float, dy: float, shape=(8, 8)) -> numpy.ndarray:
@@ -258,576 +232,6 @@ def test_leave_one_out_beats_a_crossfade_on_a_moving_field():
     assert skill["improvement_over_reversed_flow"] > 0.1
 
 
-def wide_blob(centre_col: float, *, size: int = 96, sigma: float = 7.0) -> numpy.ndarray:
-    """One blob on a grid wide enough that a warp never runs off an edge.
-
-    Edge clamping in ``_warp_nearest`` is honest behaviour at a grid boundary,
-    but it is not what these tests are measuring, and on a 64-cell grid it was
-    larger than the difference between the two methods.
-    """
-    return blob_field(size, size, centre=(size // 2, centre_col), sigma=sigma)
-
-
-def held_pair(forward: float, backward: float, *, size: int = 96) -> PairMotion:
-    """A pair whose two derived directions are supplied rather than estimated.
-
-    The claim of intermediate-flow is about the COMPOSITE, so the two flows are
-    handed in directly: DIS would decide both, and there would be no way to
-    construct the disagreement the method exists to exploit.
-    """
-    return PairMotion(
-        flow01=uniform_flow(forward, 0.0, shape=(size, size)),
-        flow10=uniform_flow(backward, 0.0, shape=(size, size)),
-        confidence=numpy.ones((size, size)),
-        support=numpy.ones((size, size)),
-        advect_weight=numpy.ones((size, size)),
-    )
-
-
-def test_intermediate_flow_is_registered_with_its_own_shader():
-    method = method_by_id("intermediate-flow")
-    assert method is not None
-    assert method.enabled and not method.generative
-    # A new client construction: the fields are the baseline's, but they are
-    # combined differently, so the shader branch must be named separately.
-    assert method.shader == "intermediate"
-    assert method.shader != BaselineMethod.shader
-
-
-def test_intermediate_flow_is_endpoint_exact():
-    # Non-negotiable for every method on the bench: at a real instant the real
-    # frame shows untouched, whatever the two flows claim - including flows
-    # that disagree wildly with each other.
-    previous, following = wide_blob(30), wide_blob(42)
-    motion = held_pair(14.0, 3.0)
-    method = IntermediateFlowMethod()
-    assert numpy.array_equal(method.composite(previous, following, motion, 0.0), previous)
-    assert numpy.array_equal(method.composite(previous, following, motion, 1.0), following)
-
-
-def test_intermediate_flow_reduces_to_the_baseline_when_the_flow_inverts():
-    # F10 = -F01 is exactly the assumption the shipped construction makes. Where
-    # it holds, the quadratic forms collapse to it, so this method can only ever
-    # differ where the two measured directions actually disagree.
-    previous, following = wide_blob(30), wide_blob(42)
-    motion = held_pair(12.0, -12.0)
-    for fraction in (0.25, 0.5, 0.75):
-        baseline = BaselineMethod().composite(previous, following, motion, fraction)
-        intermediate = IntermediateFlowMethod().composite(previous, following, motion, fraction)
-        assert numpy.allclose(baseline, intermediate, atol=1e-12)
-
-
-def test_intermediate_flow_matches_the_baseline_on_a_purely_translating_field():
-    # The same held-out harness both methods are ranked by, on a field that
-    # genuinely translates and whose forward and backward flows therefore very
-    # nearly invert. The method must not cost anything here: it is the
-    # disagreement case it is for.
-    frames = [wide_blob(20 + 8 * step) for step in range(5)]
-    baseline = _interpolation_skill(frames, method=BaselineMethod(), variable="total_cloud")
-    intermediate = _interpolation_skill(frames, method=IntermediateFlowMethod(), variable="total_cloud")
-    assert baseline is not None and intermediate is not None
-    assert intermediate["midpoint_mae_percent"] <= baseline["midpoint_mae_percent"] + 1e-3
-    assert intermediate["midpoint_ssim"] >= baseline["midpoint_ssim"] - 1e-4
-    assert intermediate["improvement_over_reversed_flow"] > MIN_HELD_OUT_IMPROVEMENT
-
-
-def test_intermediate_flow_beats_the_baseline_when_the_two_directions_disagree():
-    # The whole claim, deliberately constructed. Content really moves 12 cells
-    # east, but both derived directions carry the same 2-cell eastward bias:
-    # F01 = +14 and F10 = -10 rather than the -14 that would invert it. The
-    # baseline uses F01 alone and drags everything two cells too far; the
-    # intermediate form's (1-t)F01 - t F10 cancels the shared bias at the
-    # midpoint and lands on the frame that was held out.
-    previous, truth, following = wide_blob(30), wide_blob(36), wide_blob(42)
-    motion = held_pair(14.0, -10.0)
-    baseline_mae, baseline_ssim = _score_one(BaselineMethod().composite(previous, following, motion, 0.5), truth)
-    intermediate_mae, intermediate_ssim = _score_one(
-        IntermediateFlowMethod().composite(previous, following, motion, 0.5), truth
-    )
-    assert intermediate_mae < baseline_mae
-    assert intermediate_ssim >= baseline_ssim
-    # Not a marginal win: the bias is removed rather than reduced.
-    assert intermediate_mae < 0.1 * baseline_mae
-
-
-def visibility_pair(v0: float, v1: float, *, size: int = 96, flow: float = 12.0) -> PairMotion:
-    """A pair whose two visibility weights are supplied rather than measured.
-
-    The claim of visibility-blend is about the FUSION, so the reliabilities are
-    handed in: measuring them would decide both, and there would be no way to
-    construct the asymmetry the method exists to exploit.
-    """
-    return PairMotion(
-        flow01=uniform_flow(flow, 0.0, shape=(size, size)),
-        flow10=uniform_flow(-flow, 0.0, shape=(size, size)),
-        confidence=numpy.ones((size, size)),
-        support=numpy.ones((size, size)),
-        advect_weight=numpy.ones((size, size)),
-        extra={"vis0": numpy.full((size, size), v0), "vis1": numpy.full((size, size), v1)},
-    )
-
-
-def test_visibility_blend_is_registered_with_its_own_shader_and_fields():
-    method = method_by_id("visibility-blend")
-    assert method is not None
-    assert method.enabled and not method.generative
-    # A new client construction and two fields nothing else publishes: the
-    # weights are derived here and only fused on the client.
-    assert method.shader == "visibility"
-    assert method.shader not in (BaselineMethod.shader, IntermediateFlowMethod.shader)
-    assert method.extra_suffixes == ("vis0", "vis1")
-
-
-def test_visibility_blend_is_endpoint_exact():
-    # Non-negotiable for every method on the bench, and the reliabilities must
-    # not be able to break it: at a real instant the real frame shows untouched
-    # even where the weight pair says that frame's own warp is worthless.
-    previous, following = wide_blob(30), wide_blob(42)
-    method = VisibilityBlendMethod()
-    for weights in ((1.0, 1.0), (0.01, 1.0), (1.0, 0.01), (0.5, 0.5)):
-        motion = visibility_pair(*weights)
-def shaped_pair(shaping: Any, *, size: int = 96, advect: float = 0.0) -> PairMotion:
-    """A pair carrying a supplied development shaping and a chosen display weight.
-
-    ``advect = 0`` is the regime the residual exists for: advection has failed
-    to explain the change, so the display is the dissolve the shaping re-times.
-    """
-    field = numpy.full((size, size), float(shaping)) if numpy.isscalar(shaping) else numpy.asarray(shaping)
-    return PairMotion(
-        flow01=uniform_flow(0.0, 0.0, shape=(size, size)),
-        flow10=uniform_flow(0.0, 0.0, shape=(size, size)),
-        confidence=numpy.ones((size, size)),
-        support=numpy.ones((size, size)),
-        advect_weight=numpy.full((size, size), advect),
-        extra={"dev_shape": field},
-    )
-
-
-def omega_dataset(
-    frames: int = 3, *, variable: str = "total_cloud", omega: list[float] | None = None
-) -> xarray.Dataset:
-    """A surface dataset carrying total cloud and the 700 hPa omega beside it.
-
-    700 hPa is what ``STEERING_LEVEL_BY_VARIABLE`` assigns total cloud, and
-    the omega field is uniform per frame so the test controls the tendency
-    exactly rather than inferring it.
-    """
-    base = datetime(2026, 8, 31, 12, tzinfo=UTC)
-    stamps = [numpy.datetime64((base + timedelta(hours=step)).replace(tzinfo=None), "ns") for step in range(frames)]
-    cloud = numpy.stack([numpy.roll(blob_field(), 4 * step, axis=1) for step in range(frames)])
-    values = omega if omega is not None else [0.0] * frames
-    column = numpy.stack([numpy.full(cloud.shape[1:], value) for value in values])
-    return xarray.Dataset(
-        {
-            variable: (("valid_time", "y", "x"), cloud, {"units": "percent"}),
-            "omega_700hPa": (("valid_time", "y", "x"), column, {"units": "Pa s-1"}),
-        },
-        coords={"valid_time": stamps},
-    )
-
-
-def test_development_residual_is_registered_with_its_own_shader():
-    method = method_by_id("development-residual")
-    assert method is not None
-    assert method.enabled
-    # Every displayed value remains a mix of two retrieved frames, so this is
-    # emphatically not a generative method and needs no generative slot.
-    assert not method.generative
-    assert method.shader == "development-residual"
-    assert method.shader != BaselineMethod.shader
-    # The shaping has to reach the client as a stored field: the browser has
-    # no omega and must never be handed one.
-    assert method.extra_suffixes == ("dev_shape",)
-
-
-def test_development_residual_is_endpoint_exact_under_any_shaping():
-    # Non-negotiable, and the property the whole carve-out rests on. The
-    # t(1-t) factor is zero at both ends, so this holds for every shaping
-    # value including the saturated ones - it is algebra, not a clamp.
-    previous, following = wide_blob(30), wide_blob(42)
-    method = DevelopmentResidualMethod()
-    for shaping in (-1.0, -0.5, 0.0, 0.5, 1.0):
-        motion = shaped_pair(shaping)
-        assert numpy.array_equal(method.composite(previous, following, motion, 0.0), previous)
-        assert numpy.array_equal(method.composite(previous, following, motion, 1.0), following)
-
-
-def test_visibility_blend_reduces_to_the_baseline_where_both_warps_are_equally_reliable():
-    # The reduction that makes this method a controlled change: equal weights
-    # normalise back to (1-t, t) exactly, whatever their common value, so the
-    # method can only differ where the two warps measurably disagree about
-    # their own reliability.
-    previous, following = wide_blob(30), wide_blob(42)
-    for value in (1.0, 0.4, 0.05):
-        motion = visibility_pair(value, value)
-        for fraction in (0.25, 0.5, 0.75):
-            baseline = BaselineMethod().composite(previous, following, motion, fraction)
-            visibility = VisibilityBlendMethod().composite(previous, following, motion, fraction)
-            assert numpy.allclose(baseline, visibility, atol=1e-12)
-
-
-def test_visibility_blend_with_no_stored_weights_is_the_baseline():
-    # An absent weight pair is an absent measurement, never a zero one: the
-    # fusion falls back to the symmetric weights rather than making one frame
-    # vanish. This is also what the harness's synthetic pairs hand it.
-    previous, following = wide_blob(30), wide_blob(42)
-    motion = held_pair(12.0, -12.0)
-    assert not motion.extra
-    for fraction in (0.25, 0.5, 0.75):
-        baseline = BaselineMethod().composite(previous, following, motion, fraction)
-        visibility = VisibilityBlendMethod().composite(previous, following, motion, fraction)
-        assert numpy.allclose(baseline, visibility, atol=1e-12)
-
-
-def test_visibility_blend_lets_the_reliable_warp_carry_the_pixel():
-    # The whole claim, deliberately constructed. Content really moves 12 cells
-    # east and the flow says so, but frame 1's warp is declared unreliable
-    # (v1 = 0.02) while frame 0's is trusted. The baseline averages the two
-    # warps 50/50 at the midpoint; the visibility fusion gives frame 0 about
-    # 98 percent of the pixel, which is the frame whose warp is right here.
-    previous, truth, following = wide_blob(30), wide_blob(36), wide_blob(42)
-    # A displaced frame 1, so a 50/50 average really is a double image.
-    following_wrong = wide_blob(54)
-    motion = visibility_pair(1.0, 0.02)
-    baseline_mae, baseline_ssim = _score_one(
-        BaselineMethod().composite(previous, following_wrong, motion, 0.5), truth
-    )
-    visibility_mae, visibility_ssim = _score_one(
-        VisibilityBlendMethod().composite(previous, following_wrong, motion, 0.5), truth
-    )
-    assert visibility_mae < baseline_mae
-    assert visibility_ssim > baseline_ssim
-    # And nothing is invented: every value stays inside the range of the two
-    # retrieved frames' own values.
-    drawn = VisibilityBlendMethod().composite(previous, following_wrong, motion, 0.5)
-    assert float(drawn.min()) >= min(float(previous.min()), float(following_wrong.min())) - 1e-9
-    assert float(drawn.max()) <= max(float(previous.max()), float(following_wrong.max())) + 1e-9
-    assert following is not None  # the correct frame is unused here, by design
-
-
-def test_visibility_weights_are_derived_smooth_bounded_and_asymmetric_at_an_occlusion():
-    # The derivation, not the fusion. A blob translating east, with a second
-    # blob that appears only in the later frame: the later frame carries
-    # content the earlier one cannot explain, so the backward warp's residual
-    # is larger there than the forward warp's and the two weights part company.
-    previous = wide_blob(30)
-    following = wide_blob(42) + blob_field(96, 96, centre=(20, 70), sigma=5.0)
-    method = VisibilityBlendMethod()
-    context = MethodContext(
-        variable="total_cloud", frames=[previous, following], indices=(0, 1), interval_seconds=3600.0
-    )
-    motion = method.motion(context)[0]
-    visibility0 = motion.extra["vis0"]
-    visibility1 = motion.extra["vis1"]
-    assert visibility0.shape == previous.shape and visibility1.shape == previous.shape
-    # Strictly positive and at most 1, so the normalised fusion can never
-    # divide by zero and can never exceed a convex combination.
-    for weights in (visibility0, visibility1):
-        assert float(weights.min()) > 0.0
-        assert float(weights.max()) <= 1.0
-    # The weights actually differ somewhere: a pair that never parts company
-    # would make this method the baseline with extra storage.
-    assert float(numpy.max(numpy.abs(visibility0 - visibility1))) > 0.01
-    assert motion.diagnostics["visibility_asymmetry_mean"] > 0.0
-
-
-def test_visibility_blend_matches_the_baseline_on_a_purely_translating_field():
-    # The same held-out harness both methods are ranked by, on a field that
-    # genuinely translates and where both warps are therefore about equally
-    # reliable. The method must not cost anything here: it is the disagreement
-    # case it is for.
-    frames = [wide_blob(20 + 8 * step) for step in range(5)]
-    baseline = _interpolation_skill(frames, method=BaselineMethod(), variable="total_cloud")
-    visibility = _interpolation_skill(frames, method=VisibilityBlendMethod(), variable="total_cloud")
-    assert baseline is not None and visibility is not None
-    assert visibility["midpoint_mae_percent"] <= baseline["midpoint_mae_percent"] + 1e-3
-    assert visibility["midpoint_ssim"] >= baseline["midpoint_ssim"] - 1e-4
-    assert visibility["improvement_over_reversed_flow"] > MIN_HELD_OUT_IMPROVEMENT
-def test_the_residual_re_times_the_change_and_never_leaves_the_two_frames():
-    # THE BOUND, stated as a test. Whatever omega says, the displayed value at
-    # every cell stays between the two retrieved values at that cell: nothing
-    # is added that is in neither frame, nothing removed that is in both.
-    rng = numpy.random.default_rng(20260901)
-    previous = rng.uniform(0.0, 100.0, size=(64, 64))
-    following = rng.uniform(0.0, 100.0, size=(64, 64))
-    lower = numpy.minimum(previous, following)
-    upper = numpy.maximum(previous, following)
-    method = DevelopmentResidualMethod()
-    for shaping in (-1.0, -0.75, 0.25, 1.0):
-        motion = shaped_pair(rng.uniform(-1.0, 1.0, size=(64, 64)) * shaping, size=64)
-        for fraction in (0.05, 0.25, 0.5, 0.75, 0.95):
-            drawn = method.composite(previous, following, motion, fraction)
-            assert numpy.all(drawn >= lower - 1e-9)
-            assert numpy.all(drawn <= upper + 1e-9)
-
-
-def test_the_residual_cannot_invent_or_erase_cloud_the_frames_agree_on():
-    # The sharpest form of the bound. A cell clear in both frames stays clear
-    # and a cell full in both stays full, however hard the model says air is
-    # rising or sinking there. Growth in place is only ever a re-timing of a
-    # change the two RETRIEVED frames already contain.
-    clear = numpy.zeros((32, 32))
-    full = numpy.full((32, 32), 100.0)
-    method = DevelopmentResidualMethod()
-    for shaping in (-1.0, 1.0):
-        motion = shaped_pair(shaping, size=32)
-        for fraction in (0.25, 0.5, 0.75):
-            assert numpy.allclose(method.composite(clear, clear, motion, fraction), 0.0, atol=1e-12)
-            assert numpy.allclose(method.composite(full, full, motion, fraction), 100.0, atol=1e-12)
-
-
-def test_the_shaped_fraction_stays_monotone_so_the_display_never_backs_up():
-    # s(t) = t + gain*phi*t(1-t) is monotone exactly while |gain*phi| <= 1,
-    # and monotone-with-fixed-endpoints is what puts s(t) in [0, 1]. If the
-    # gain ever moved above the limit this test is what would catch it.
-    assert RESIDUAL_SHAPE_GAIN <= 1.0
-    steps = numpy.linspace(0.0, 1.0, 201)
-    for phi in (-1.0, -0.4, 0.0, 0.4, 1.0):
-        fractions = steps + RESIDUAL_SHAPE_GAIN * phi * steps * (1.0 - steps)
-        assert numpy.all(numpy.diff(fractions) >= -1e-12)
-        assert fractions[0] == pytest.approx(0.0) and fractions[-1] == pytest.approx(1.0)
-        assert numpy.all(fractions >= -1e-12) and numpy.all(fractions <= 1.0 + 1e-12)
-
-
-def test_a_zero_shaping_is_the_baseline_exactly():
-    # The residual must cost nothing where the model says nothing. With no
-    # shaping the construction IS the baseline, to the last bit.
-    previous, following = wide_blob(30), wide_blob(42)
-    motion = shaped_pair(0.0, advect=0.6)
-    for fraction in (0.25, 0.5, 0.75):
-        assert numpy.allclose(
-            BaselineMethod().composite(previous, following, motion, fraction),
-            DevelopmentResidualMethod().composite(previous, following, motion, fraction),
-            atol=1e-12,
-        )
-
-
-def test_where_advection_explains_the_change_the_motion_wins():
-    # Constraint: the residual applies only where advection already failed.
-    # With the display weight at 1 the shaping cannot reach the picture at
-    # all, however saturated it is.
-    previous, following = wide_blob(30), wide_blob(42)
-    for shaping in (-1.0, 1.0):
-        advecting = shaped_pair(shaping, advect=1.0)
-        neutral = shaped_pair(0.0, advect=1.0)
-        for fraction in (0.25, 0.5, 0.75):
-            assert numpy.allclose(
-                DevelopmentResidualMethod().composite(previous, following, advecting, fraction),
-                DevelopmentResidualMethod().composite(previous, following, neutral, fraction),
-                atol=1e-12,
-            )
-
-
-def test_ascent_early_makes_cloud_appear_early_and_descent_early_thins_it_early():
-    # The whole point, and the thing advection provably cannot do. A cell that
-    # is clear in frame 0 and cloudy in frame 1 grew in place. Where the model
-    # says the ascent that made it was strongest at the START of the interval,
-    # the cloud must be most of the way there by the midpoint; where the
-    # ascent builds towards the END it must still be mostly absent.
-    clear, cloudy = numpy.zeros((16, 16)), numpy.full((16, 16), 80.0)
-    method = DevelopmentResidualMethod()
-    early = method.composite(clear, cloudy, shaped_pair(0.8, size=16), 0.5)
-    late = method.composite(clear, cloudy, shaped_pair(-0.8, size=16), 0.5)
-    dissolve = method.composite(clear, cloudy, shaped_pair(0.0, size=16), 0.5)
-    assert float(early.mean()) > float(dissolve.mean()) > float(late.mean())
-    # And the mirror case: cloud DECAYING in place, front-loaded, must be
-    # further gone at the midpoint than a constant-rate fade.
-    thinning = method.composite(cloudy, clear, shaped_pair(0.8, size=16), 0.5)
-    assert float(thinning.mean()) < float(dissolve.mean())
-
-
-def test_the_shaping_is_read_from_the_model_omega_with_the_right_sign():
-    # Sign convention, end to end, from the stored field rather than by
-    # inspection. Omega is d(pressure)/dt, so NEGATIVE is ascent. Omega goes
-    # -1.0 -> 0.0 Pa/s across the interval: ascent was stronger at the start,
-    # so a growing cell must be front-loaded, phi > 0.
-    dataset = omega_dataset(3, omega=[-1.0, 0.0, 0.0])
-    frames = [dataset["total_cloud"].isel(valid_time=step).values for step in range(3)]
-    context = MethodContext(
-        variable="total_cloud", frames=frames, indices=(0, 1, 2),
-        interval_seconds=3600.0, dataset=dataset,
-    )
-    motions = DevelopmentResidualMethod().motion(context)
-    growing = frames[1] > frames[0]
-    shaping = motions[0].extra["dev_shape"]
-    assert motions[0].diagnostics["omega_reached"] == 1.0
-    assert float(numpy.median(shaping[growing])) > 0.0
-    # A decaying cell over the same interval is front-loaded by the DESCENT
-    # reading of the same tendency, so its shaping is positive too - one
-    # expression covering formation and dissipation is the claim.
-    decaying = frames[1] < frames[0]
-    assert float(numpy.median(shaping[decaying])) < 0.0
-
-
-def test_absent_vertical_velocity_is_an_absent_residual_never_a_zero_one():
-    # The steering prior's rule, applied to omega: a model that did not
-    # publish the level costs the re-timing and nothing else. The method then
-    # composites exactly as the baseline does.
-    dataset = omega_dataset(3).drop_vars("omega_700hPa")
-    frames = [dataset["total_cloud"].isel(valid_time=step).values for step in range(3)]
-    context = MethodContext(
-        variable="total_cloud", frames=frames, indices=(0, 1, 2),
-        interval_seconds=3600.0, dataset=dataset,
-    )
-    motions = DevelopmentResidualMethod().motion(context)
-    for pair in motions:
-        assert pair.diagnostics["omega_reached"] == 0.0
-        assert numpy.allclose(pair.extra["dev_shape"], 0.0)
-    baseline = BaselineMethod().motion(context)
-    for mine, theirs in zip(motions, baseline):
-        assert numpy.allclose(mine.flow01, theirs.flow01)
-
-
-def test_the_residual_is_earned_per_variable_and_both_numbers_are_published():
-    # `configure` is where an optional ingredient earns its place. Whatever it
-    # decides, provenance must carry the held-out score both with the residual
-    # and without it, so the claim is checkable rather than asserted.
-    dataset = omega_dataset(5, omega=[-1.0, -0.5, 0.0, 0.3, 0.6])
-    frames = [dataset["total_cloud"].isel(valid_time=step).values for step in range(5)]
-    context = MethodContext(
-        variable="total_cloud", frames=frames, indices=(0, 1, 2, 3, 4),
-        interval_seconds=3600.0, dataset=dataset,
-    )
-    active, notes = DevelopmentResidualMethod().configure(context)
-    assert isinstance(active, DevelopmentResidualMethod)
-    assert notes["residual_applied"] is active.use_residual
-    assert notes["residual_level_hpa"] == 700
-    assert notes["held_out_improvement_with_residual"] is not None
-    assert notes["held_out_improvement_without_residual"] is not None
-    # The two numbers must be two REAL measurements of two different
-    # constructions. They came back identical to five decimals once, because
-    # the with-residual case was reusing the steering prior's own no-prior
-    # score, which is computed without the dataset the shaping is read from -
-    # so the residual was being compared against itself and would have been
-    # refused for the wrong reason, silently.
-    assert (
-        notes["held_out_improvement_with_residual"]
-        != notes["held_out_improvement_without_residual"]
-    )
-    # Applied only if it actually predicts the held-out frames better. This is
-    # the direction of the inequality, not a claim about which way it went.
-    if active.use_residual:
-        assert notes["held_out_improvement_with_residual"] > notes["held_out_improvement_without_residual"]
-    else:
-        assert notes["held_out_improvement_with_residual"] <= notes["held_out_improvement_without_residual"]
-def cascade_frames(size: int = 96) -> list[numpy.ndarray]:
-    """A translating blob with fine texture riding on it.
-
-    A smooth blob alone has almost nothing in the fine bands, so it cannot
-    tell a cascade that dissolves fine texture from one that advects it. The
-    ripple is what makes the finest octaves carry anything at all.
-    """
-    row_index, col_index = numpy.mgrid[0:size, 0:size]
-    ripple = 6.0 * numpy.sin(col_index * 1.7) * numpy.cos(row_index * 1.3)
-    return [numpy.clip(wide_blob(24 + 8 * step, size=size) + numpy.roll(ripple, 8 * step, axis=1), 0.0, 100.0)
-            for step in range(5)]
-
-
-def test_scale_cascade_is_registered_disabled_with_its_own_shader_and_fields():
-    method = method_by_id("scale-cascade")
-    assert method is not None
-    # Registered but out of every cycle: it loses to its own scale-blind
-    # control, and the client could not evaluate the pyramid if it won. The
-    # registry keeps the code and the measurement readable either way.
-    assert method.enabled is False
-    assert not method.generative
-    assert method.shader == "cascade"
-    assert method.shader not in (BaselineMethod.shader, IntermediateFlowMethod.shader)
-    # One stored ratio per band, plus the residual the last octave leaves.
-    assert method.extra_suffixes == tuple(f"cascade_w{index}" for index in range(CASCADE_OCTAVES + 1))
-    # Disabled means the derive never pays for it and the artifact never
-    # carries it, which is the point of the flag.
-    assert method not in enabled_methods()
-
-
-def test_cascade_bands_recombine_to_the_retrieved_frame():
-    # The evidence rule, as arithmetic: the bands are a partition of the real
-    # frame, so nothing downstream can weight them into content that was not
-    # retrieved. If this ever fails, every endpoint guarantee below is void.
-    field = blob_field() + 3.0 * numpy.sin(numpy.mgrid[0:96, 0:96][1] * 0.9)
-    bands = _cascade_bands(field)
-    assert len(bands) == CASCADE_OCTAVES + 1
-    assert numpy.allclose(sum(bands), field, atol=1e-12)
-    # And the split is real: the finest band is not an empty field.
-    assert float(numpy.max(numpy.abs(bands[0]))) > 1.0
-
-
-def test_scale_cascade_is_endpoint_exact():
-    # The constraint a decomposition is most likely to break, so it is pinned
-    # bit for bit rather than approximately - and with band ratios present,
-    # because the fallback path is not what ships.
-    frames = cascade_frames()
-    context = MethodContext(
-        variable="total_cloud", frames=[frames[0], frames[1]], indices=(0, 1), interval_seconds=3600.0
-    )
-    motion = ScaleCascadeMethod().motion(context)[0]
-    assert set(motion.extra) == set(ScaleCascadeMethod.extra_suffixes)
-    method = ScaleCascadeMethod()
-    assert numpy.array_equal(method.composite(frames[0], frames[1], motion, 0.0), frames[0])
-    assert numpy.array_equal(method.composite(frames[0], frames[1], motion, 1.0), frames[1])
-
-
-def test_scale_cascade_reduces_to_the_baseline_when_every_band_agrees():
-    # Ratio 1 on every band is exactly the shipped construction, so this
-    # method can only differ where the bands actually disagree about whether
-    # advection explains the change. A pair carrying no ratios at all - an
-    # older artifact, or a hand-built motion - must take the same path.
-    previous, following = wide_blob(30), wide_blob(42)
-    plain_pair = held_pair(12.0, -12.0)
-    ones = {suffix: numpy.ones(previous.shape) for suffix in ScaleCascadeMethod.extra_suffixes}
-    unit_pair = PairMotion(
-        flow01=plain_pair.flow01, flow10=plain_pair.flow10, confidence=plain_pair.confidence,
-        support=plain_pair.support, advect_weight=plain_pair.advect_weight, extra=ones,
-    )
-    for fraction in (0.25, 0.5, 0.75):
-        baseline = BaselineMethod().composite(previous, following, plain_pair, fraction)
-        for pair in (unit_pair, plain_pair):
-            assert numpy.allclose(
-                ScaleCascadeMethod().composite(previous, following, pair, fraction), baseline, atol=1e-9
-            )
-
-
-def test_the_held_out_veto_reaches_every_band_of_the_cascade():
-    # The derive publishes a zero display weight for a variable that fails its
-    # held-out control, and that variable must then crossfade EVERYWHERE. The
-    # per-band field is stored as a ratio ON that weight precisely so a method
-    # carrying its own weights cannot walk past the veto.
-    frames = cascade_frames()
-    context = MethodContext(
-        variable="total_cloud", frames=[frames[0], frames[1]], indices=(0, 1), interval_seconds=3600.0
-    )
-    motion = ScaleCascadeMethod().motion(context)[0]
-    vetoed = PairMotion(
-        flow01=motion.flow01, flow10=motion.flow10, confidence=motion.confidence,
-        support=motion.support, advect_weight=numpy.zeros(frames[0].shape), extra=motion.extra,
-    )
-    # Some band did want to advect, or this test would pass vacuously.
-    assert float(numpy.max(motion.extra["cascade_w0"])) > 0.1
-    crossfade = 0.5 * frames[0] + 0.5 * frames[1]
-    assert numpy.allclose(
-        ScaleCascadeMethod().composite(frames[0], frames[1], vetoed, 0.5), crossfade, atol=1e-9
-    )
-
-
-def test_scale_cascade_actually_advects_rather_than_dissolving():
-    # The failure this method could hide: a cascade whose bands advect but
-    # whose recombination cancels the motion would still score well and show
-    # nothing. On a field that genuinely translates, the midpoint composite
-    # must sit where the content actually is, not halfway between two ghosts.
-    frames = cascade_frames()
-    context = MethodContext(
-        variable="total_cloud", frames=[frames[0], frames[2]], indices=(0, 2), interval_seconds=3600.0
-    )
-    motion = ScaleCascadeMethod().motion(context)[0]
-    composite = ScaleCascadeMethod().composite(frames[0], frames[2], motion, 0.5)
-    crossfade = 0.5 * frames[0] + 0.5 * frames[2]
-    truth = frames[1]
-    assert _score_one(composite, truth)[0] < _score_one(crossfade, truth)[0]
-    # The brightest column moves with the flow instead of standing still.
-    column_of = lambda field: float(numpy.argmax(field.sum(axis=0)))  # noqa: E731
-    assert column_of(frames[0]) < column_of(composite) < column_of(frames[2])
-
-
 def test_leave_one_out_is_absent_not_zero_when_nothing_can_be_held_out():
     assert _interpolation_skill([blob_field(), blob_field()]) is None
 
@@ -859,10 +263,14 @@ class FakeStore:
         return []
 
 
-def surface_artifact(tmp_path: Path, *, frames: int = 3, variable: str = "total_cloud") -> tuple[CurrentArtifact, Path]:
+def surface_artifact(
+    tmp_path: Path, *, frames: int = 3, variable: str = "total_cloud", data: numpy.ndarray | None = None
+) -> tuple[CurrentArtifact, Path]:
     base = datetime(2026, 8, 31, 12, tzinfo=UTC)
+    if data is None:
+        data = numpy.stack([numpy.roll(blob_field(), 4 * step, axis=1) for step in range(frames)])
+    frames = int(data.shape[0])
     stamps = [numpy.datetime64((base + timedelta(hours=step)).replace(tzinfo=None), "ns") for step in range(frames)]
-    data = numpy.stack([numpy.roll(blob_field(), 4 * step, axis=1) for step in range(frames)])
     dataset = xarray.Dataset(
         {variable: (("valid_time", "y", "x"), data, {"units": "percent"})},
         coords={"valid_time": stamps},
@@ -931,44 +339,6 @@ def test_derive_publishes_flow_with_full_derivation_provenance(tmp_path: Path):
         ))) < 1.0
         assert stored.sizes["pair"] == 2
         assert stored.attrs["derivation_version"] == VERSION
-    finally:
-        zip_store.close()
-
-
-def test_the_derive_publishes_the_residual_shaping_on_the_method_axis(tmp_path: Path):
-    # End to end: the extra suffix reaches the stored artifact under the
-    # development-residual method, and the methods that do not declare it get
-    # an explicit zero field rather than a ragged artifact - so a client
-    # reading dev_shape for the wrong method gets a no-op, never another
-    # method's numbers under this method's name.
-    artifact, payload = surface_artifact(tmp_path)
-    store = FakeStore({artifact.object_key: payload}, [artifact])
-    workdir = tmp_path / "derive"
-    workdir.mkdir()
-    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
-    assert result is not None
-    derived = result.artifacts[0]
-    per_method = derived.provenance["quality"]["per_variable"]["total_cloud"]["per_method"]
-    assert "development-residual" in per_method
-    options = per_method["development-residual"]["options"]
-    # Both numbers published, whatever the decision - the claim is checkable.
-    assert "residual_applied" in options
-    assert "held_out_improvement_with_residual" in options
-
-    import zarr
-
-    zip_store = zarr.storage.ZipStore(str(derived.payload_path), mode="r")
-    try:
-        stored = xarray.open_zarr(zip_store, consolidated=False)
-        assert "total_cloud_dev_shape" in stored.data_vars
-        published = [str(value) for value in stored["method"].values]
-        baseline = stored["total_cloud_dev_shape"].values[published.index(DEFAULT_METHOD_ID)]
-        assert numpy.allclose(baseline, 0.0)
-        # This fixture carries no omega at all, so the shaping is absent
-        # rather than zeroed by decision - and absent shaping is a stored zero
-        # field, which the shader reads as a constant-rate dissolve.
-        mine = stored["total_cloud_dev_shape"].values[published.index("development-residual")]
-        assert numpy.allclose(mine, 0.0)
     finally:
         zip_store.close()
 
@@ -1070,3 +440,414 @@ def test_cycle_derives_when_the_surface_moved_on(tmp_path: Path):
     lines = cloud_motion_cycle(store)
     assert len(store.published) == 1
     assert any("published for surface revision rev-surface-1" in line for line in lines)
+
+
+def test_a_vetoed_method_has_its_own_fields_zeroed_not_just_the_advection_weight():
+    """The veto must silence a method, not invert it.
+
+    Both vetoes work by zeroing `advect_weight`, which silences anything fenced
+    by it. But a method that acts where advection FAILED is naturally fenced by
+    `1 - advect_weight`, and for those the same veto is an amplifier: the pair
+    the derive just judged unfit to advect gets that method's contribution at
+    full strength. `vetoed_suffixes` is what closes that, and this test is here
+    because the failure is silent, inverted, and would look like the method
+    working unusually hard exactly where it should be quiet.
+    """
+    from ingest.derive.cloud_motion import _derive_one_method
+
+    class FencedByTheInverse(BaselineMethod):
+        id = "test-fenced-by-the-inverse"
+        extra_suffixes = ("test_residual",)
+        vetoed_suffixes = ("test_residual",)
+
+        def motion(self, context):
+            motions = super().motion(context)
+            for item in motions:
+                item.extra["test_residual"] = numpy.ones_like(item.advect_weight)
+            return motions
+
+    # Two frames of independent noise: the warp cannot beat persistence and the
+    # held-out reconstruction cannot beat its own reversal, so both vetoes fire.
+    generator = numpy.random.default_rng(11)
+    frames = [generator.uniform(0.0, 100.0, (32, 32)) for _ in range(4)]
+    context = MethodContext(
+        variable="total_cloud", frames=frames, indices=(0, 1, 2, 3), interval_seconds=3600.0
+    )
+    pairs = [(None, None, frames[index], frames[index + 1]) for index in range(3)]
+    fields, _ = _derive_one_method(FencedByTheInverse(), context, pairs)
+
+    assert float(numpy.max(fields["advect_weight"])) == 0.0, "the veto did not fire; this test proves nothing"
+    assert float(numpy.max(fields["test_residual"])) == 0.0, (
+        "a vetoed method's own field survived the veto at full strength: fenced by "
+        "1 - advect_weight it now draws hardest on exactly the pairs judged unfit"
+    )
+
+
+# --- H4: one real derive, read back from the published artifact ----------
+#
+# Not unit tests. Each of these runs `derive_cloud_motion` over a synthetic
+# artifact and reads the stored zarr and the published provenance, so what is
+# pinned is what a client would actually be served rather than what a method
+# object returns in isolation.
+
+
+def growing_in_place_frames(size: int = 96) -> numpy.ndarray:
+    """Three frames: one blob that TRANSLATES, one that forms in place.
+
+    Both halves are load-bearing. The moving blob is what carries the motion
+    veto - a field that does not move cannot beat its own reversal, the derive
+    zeroes every stored field for the pair, and the envelope would never reach
+    the artifact whatever the residual measured. The stationary blob is the one
+    regime advection provably cannot express, and it grows FRONT-LOADED (three
+    quarters of the change by the held-out middle frame), because a field that
+    grew linearly is predicted exactly by the crossfade and the harness would
+    correctly refuse the term - the right outcome there, and no use as a
+    fixture here.
+    """
+    row_index, col_index = numpy.mgrid[0:size, 0:size]
+
+    def gaussian(centre, sigma: float):
+        return 100.0 * numpy.exp(
+            -((row_index - centre[0]) ** 2 + (col_index - centre[1]) ** 2) / (2 * sigma**2)
+        )
+
+    return numpy.stack([
+        numpy.clip(gaussian((30, 20 + 8 * step), 8.0) + weight * gaussian((68, 64), 12.0), 0.0, 100.0)
+        for step, weight in enumerate((0.0, 0.75, 1.0))
+    ])
+
+
+def stored_dataset(derived) -> tuple[Any, Any]:
+    import zarr  # noqa: PLC0415
+
+    zip_store = zarr.storage.ZipStore(str(derived.payload_path), mode="r")
+    return xarray.open_zarr(zip_store, consolidated=False), zip_store
+
+
+def test_a_real_derive_publishes_exactly_the_registered_methods_on_the_axis(tmp_path: Path):
+    # The `method` axis is a wire contract: the client indexes it by id, and a
+    # method that is registered but silently missing from the artifact 404s
+    # into the crossfade with no explanation. Pinned against the registry
+    # rather than a hard-coded list so adding a method cannot leave the
+    # artifact behind - and against the five ids by name so DELETING one
+    # cannot pass unnoticed either.
+    artifact, payload = surface_artifact(tmp_path)
+    store = FakeStore({artifact.object_key: payload}, [artifact])
+    workdir = tmp_path / "derive"
+    workdir.mkdir()
+    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
+    assert result is not None
+    stored, zip_store = stored_dataset(result.artifacts[0])
+    try:
+        published = [str(value) for value in stored["method"].values]
+        assert published == [method.id for method in enabled_methods()]
+        assert published == [
+            "baseline",
+            "error-variance-blend",
+            "residual-advection",
+            "residual-generative",
+            "height-steering",
+            "goes-transfer",
+        ]
+        assert published[0] == DEFAULT_METHOD_ID
+        # Every method's own stored fields exist on every method's slot, so a
+        # client reading `gen_a` under `baseline` gets an explicit zero rather
+        # than a ragged artifact or another method's numbers.
+        for suffix in ("res_s", "gen_a", "gen_b", "vis0", "vis1"):
+            assert f"total_cloud_{suffix}" in stored.data_vars
+    finally:
+        zip_store.close()
+
+
+def test_the_derive_publishes_a_drawable_envelope_for_residual_advection(tmp_path: Path):
+    # The whole of section D in one assertion: on a layer where the residual
+    # earns its place, `gen_a` reaches the artifact NON-ZERO, so the shader has
+    # something to add and the map draws something the baseline cannot. This
+    # test is here because the previous shipped version of this construction
+    # stored a field no client branch ever read - it was a menu entry that drew
+    # the baseline under another name.
+    artifact, payload = surface_artifact(tmp_path, data=growing_in_place_frames())
+    store = FakeStore({artifact.object_key: payload}, [artifact])
+    workdir = tmp_path / "derive"
+    workdir.mkdir()
+    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
+    assert result is not None
+    derived = result.artifacts[0]
+
+    per_method = derived.provenance["quality"]["per_variable"]["total_cloud"]["per_method"]
+    options = per_method["residual-advection"]["options"]
+    # Whatever the decision, both sides of it are published: the claim is
+    # checkable from provenance alone.
+    assert options["residual_applied"] is True
+    assert options["held_out_improvement_with_residual"] > options["held_out_improvement_without_residual"]
+    assert options["residual_admission"]["admitted"] is True
+    assert options["residual_admission_against_negated"]["admitted"] is True
+
+    stored, zip_store = stored_dataset(derived)
+    try:
+        published = [str(value) for value in stored["method"].values]
+        mine = stored["total_cloud_gen_a"].values[published.index("residual-advection")]
+        theirs = stored["total_cloud_gen_a"].values[published.index(DEFAULT_METHOD_ID)]
+        assert float(numpy.abs(mine).max()) > 1.0, (
+            "the envelope reached the artifact as zeros: the method is a menu entry that "
+            "draws the baseline"
+        )
+        # gen_b is zero for this non-generative sibling by construction: the
+        # envelope is the symmetric 4 g s t(1-t), no timing term.
+        assert numpy.allclose(stored["total_cloud_gen_b"].values[published.index("residual-advection")], 0.0)
+        # And the algebra of the contract, read off the stored fields rather
+        # than asserted about the code: gen_a = 4 * RESIDUAL_GAIN * res_s.
+        residual = stored["total_cloud_res_s"].values[published.index("residual-advection")]
+        assert numpy.allclose(mine, 4.0 * RESIDUAL_GAIN * residual, atol=1e-4)
+        # A method that does not declare the field gets an explicit zero.
+        assert numpy.allclose(theirs, 0.0)
+    finally:
+        zip_store.close()
+
+
+def test_a_vetoed_pair_reaches_the_client_with_no_envelope_at_all(tmp_path: Path):
+    # The inverse-fencing failure, end to end. The envelope is ADDITIVE: it
+    # survives `advect_weight = 0` untouched, so a pair the derive just judged
+    # unfit to advect would otherwise be handed to the client with the residual
+    # at full strength - drawing hardest exactly where the derive said trust
+    # nothing. `vetoed_suffixes` is what closes that, and this reads the
+    # published artifact rather than the method object to prove it.
+    generator = numpy.random.default_rng(11)
+    noise = numpy.stack([generator.uniform(0.0, 100.0, (96, 96)) for _ in range(3)])
+    artifact, payload = surface_artifact(tmp_path, data=noise)
+    store = FakeStore({artifact.object_key: payload}, [artifact])
+    workdir = tmp_path / "derive"
+    workdir.mkdir()
+    result = derive_cloud_motion(store, artifact, ("total_cloud",), workdir)
+    assert result is not None
+
+    stored, zip_store = stored_dataset(result.artifacts[0])
+    try:
+        published = [str(value) for value in stored["method"].values]
+        slot = published.index("residual-advection")
+        assert float(stored["total_cloud_advect_weight"].values[slot].max()) == 0.0, (
+            "the veto did not fire on three unrelated fields; this test proves nothing"
+        )
+        for suffix in ("res_s", "gen_a", "gen_b"):
+            assert float(numpy.abs(stored[f"total_cloud_{suffix}"].values[slot]).max()) == 0.0, (
+                f"{suffix} survived the veto: the client draws a generated term on a pair "
+                "the derive refused to advect"
+            )
+    finally:
+        zip_store.close()
+
+
+def test_the_kill_switch_takes_a_generative_method_out_of_the_derive(monkeypatch):
+    """The middle of carve-out (d)'s three switches, on the derive side.
+
+    ``WEATHER_GENERATED_DISPLAY=off`` must mean a generative method is not
+    derived AT ALL - no slot on the `method` axis, no zeroed field - rather
+    than derived and hidden, because a field that exists is a field a client
+    can read. A local dummy stands in for the generative sibling so this
+    holds the moment that module lands and does not depend on it.
+    """
+    class Generated(BaselineMethod):
+        id = "test-generative"
+        generative = True
+
+    monkeypatch.setattr("ingest.derive.methods.METHODS", (*METHODS, Generated()))
+
+    monkeypatch.delenv("WEATHER_GENERATED_DISPLAY", raising=False)
+    assert generated_display_enabled() is True
+    assert "test-generative" in [method.id for method in enabled_methods()]
+
+    for value in ("off", "OFF", " off ", "0", "false", "no"):
+        monkeypatch.setenv("WEATHER_GENERATED_DISPLAY", value)
+        assert generated_display_enabled() is False
+        published = [method.id for method in enabled_methods()]
+        assert "test-generative" not in published
+        # And nothing else moves: the switch refuses generated values, it does
+        # not disable the bench.
+        assert published == [method.id for method in METHODS if method.enabled and not method.generative]
+        assert published[0] == DEFAULT_METHOD_ID
+
+    # Anything else - unset, empty, a typo - means enabled, because a
+    # construction that is never derived is never measured. The reader's own
+    # default-off is enforced in the menu, not here.
+    for value in ("", "on", "yes", "true", "maybe"):
+        monkeypatch.setenv("WEATHER_GENERATED_DISPLAY", value)
+        assert generated_display_enabled() is True
+        assert "test-generative" in [method.id for method in enabled_methods()]
+
+
+# --- the registry as the API and the menu see it -------------------------
+
+def test_the_registry_is_exactly_the_six_shipped_constructions():
+    # Acceptance 1, as a test: six methods, baseline first. Six modules were
+    # DELETED on 2026-09-01 rather than registered disabled - a construction
+    # that measured worse is absent, not switched off - so an id reappearing
+    # here means a deletion was reverted, not that a method was re-enabled.
+    assert [method.id for method in METHODS] == [
+        "baseline",
+        "error-variance-blend",
+        "residual-advection",
+        "residual-generative",
+        "height-steering",
+        "goes-transfer",
+    ]
+    assert METHODS[0].id == DEFAULT_METHOD_ID and METHODS[0].enabled
+    for retired in (
+        "intermediate-flow", "visibility-blend", "scale-cascade",
+        "flow-net", "full-advection", "development-residual",
+    ):
+        assert method_by_id(retired) is None
+    # Exactly one shipped method is generative, and it is the one the kill
+    # switch governs: `residual-generative` may draw a value in neither frame
+    # (carve-out (d)); `residual-advection` stays inside the bracket.
+    assert [method.id for method in METHODS if method.generative] == ["residual-generative"]
+
+
+def test_every_menu_entry_carries_the_reader_copy_the_api_serves():
+    # `/methods` serves `plain`, `gap` and `notes` straight from these class
+    # attributes, and the menu renders all three. An entry missing any of them
+    # renders as a bare title with no way for a reader to tell what it does or
+    # what it cannot show - which is the specific failure the plain/gap copy
+    # exists to prevent.
+    catalogue = {entry["id"]: entry for entry in method_catalogue()}
+    assert list(catalogue) == [method.id for method in METHODS]
+    for entry in catalogue.values():
+        for field in ("plain", "gap", "notes", "title", "summary", "shader"):
+            assert entry[field].strip(), f"{entry['id']} has no {field}"
+        assert entry["plain"].endswith(".") and entry["gap"].endswith(".")
+        # The science note is a citation, not a restatement of the plain copy.
+        assert len(entry["notes"]) > len(entry["plain"])
+        assert entry["generation_disabled"] is False
+        assert isinstance(entry["requirements"], list)
+    # The gap sentences that say a method reduces to the default today must
+    # keep saying it: the on-map "reduced to the default" note is keyed on the
+    # same fact, and the two disagreeing is a lie to the reader.
+    assert "draw exactly entry 1" in catalogue["height-steering"]["gap"]
+    assert "draws exactly entry 1" in catalogue["goes-transfer"]["gap"]
+    # Every note carries the "not the same quantity" warning about TCDC, so a
+    # reader comparing HRDPS and GFS cloud is told they are different fields.
+    for entry in catalogue.values():
+        assert "Not the same quantity" in entry["notes"]
+
+
+def test_the_catalogue_marks_a_generative_entry_disabled_by_the_deployment(monkeypatch):
+    # What `/methods` has to say when the kill switch is off: the method is
+    # still registered - the menu can name it and say why it is unavailable -
+    # but this deployment derives and offers nothing from it.
+    class Generated(BaselineMethod):
+        id = "test-generative"
+        generative = True
+
+    monkeypatch.setattr("ingest.derive.methods.METHODS", (*METHODS, Generated()))
+    monkeypatch.setenv("WEATHER_GENERATED_DISPLAY", "off")
+    catalogue = {entry["id"]: entry for entry in method_catalogue()}
+    assert catalogue["test-generative"]["generation_disabled"] is True
+    assert catalogue["baseline"]["generation_disabled"] is False
+
+
+def test_the_display_weight_is_support_and_nothing_else():
+    # Section B's absorption of `full-advection`: the weight is the support
+    # gate alone. The development-agreement factor that used to multiply it
+    # measured worse on every layer and is gone, so a cell with a trustworthy
+    # vector behind it advects at FULL strength however imperfectly the two
+    # half-warps agree - which is what stopped the map looking like a
+    # cross-dissolve everywhere but the flat interiors.
+    from ingest.derive.flow_ops import SUPPORT_FLOOR, _display_weight
+
+    assert float(_display_weight(numpy.array([[1.0]]))[0, 0]) == 1.0
+    assert float(_display_weight(numpy.array([[SUPPORT_FLOOR]]))[0, 0]) == pytest.approx(1.0)
+    assert float(_display_weight(numpy.array([[0.0]]))[0, 0]) == 0.0
+    assert float(_display_weight(numpy.array([[SUPPORT_FLOOR / 2]]))[0, 0]) == pytest.approx(0.5)
+    # One argument. A signature that still took the two frames would mean the
+    # photometric term could come back without anyone noticing.
+    import inspect
+
+    assert list(inspect.signature(_display_weight).parameters) == ["support"]
+
+
+# --- one motion artifact per (source, artifact), not per source ----------
+#
+# A source now publishes more than one grid with cloud frames in it: the
+# retrieved `surface` grid, and the derived `low_cloud_weong` layer. Each
+# needs its own motion, because the WEonG layer's cloud is a different field
+# from the provider's and a displacement fitted to one picture is not a
+# displacement of the other.
+
+
+def test_the_motion_source_table_is_keyed_by_source_and_artifact():
+    assert ("eccc-hrdps", "surface") in CLOUD_MOTION_SOURCES
+    assert CLOUD_MOTION_SOURCES[("eccc-hrdps", "low_cloud_weong")] == ("total_cloud_weong",)
+    assert CLOUD_MOTION_SOURCES[("eccc-rdps", "low_cloud_weong")] == ("total_cloud_weong",)
+    # GFS has no WEonG layer: the RH->LLC table is an ECCC calibration and the
+    # derive refuses GFS humidity out loud rather than mis-applying it.
+    assert not any(source == "noaa-gfs" and base != "surface" for source, base in CLOUD_MOTION_SOURCES)
+
+
+def test_the_surface_motion_name_is_unchanged_and_a_derived_one_is_suffixed():
+    """Backwards compatibility is the point of the first half of this.
+
+    Every motion artifact ever published, and every client that reads one,
+    calls the surface layer's motion `cloud_motion`. Renaming it would 404 the
+    whole map into a crossfade on the first deploy.
+    """
+    assert motion_logical_name("surface") == LOGICAL_NAME == "cloud_motion"
+    assert motion_logical_name("low_cloud_weong") == "cloud_motion_low_cloud_weong"
+
+
+def weong_layer_artifact(tmp_path: Path) -> tuple[CurrentArtifact, Path]:
+    """A published WEonG layer, shaped like what `weong_layer` writes."""
+    base, payload = surface_artifact(
+        tmp_path / "weong", variable="total_cloud_weong", data=growing_in_place_frames()
+    )
+    return CurrentArtifact(**{
+        **base.__dict__,
+        "logical_name": "low_cloud_weong",
+        "revision_id": "rev-weong-1",
+        "object_key": "published/eccc-hrdps/low_cloud_weong",
+        "provider_run_id": "2026083112+low-cloud-weong",
+    }), payload
+
+
+def test_the_cycle_derives_motion_for_the_derived_layer_under_its_own_name(tmp_path: Path):
+    (tmp_path / "weong").mkdir()
+    surface, surface_payload = surface_artifact(tmp_path)
+    weong, weong_payload = weong_layer_artifact(tmp_path)
+    store = FakeStore(
+        {surface.object_key: surface_payload, weong.object_key: weong_payload},
+        [surface, weong],
+    )
+    lines = cloud_motion_cycle(store)
+    assert len(store.published) == 2, lines
+
+    by_name = {result.artifacts[0].logical_name: result for result in store.published}
+    assert set(by_name) == {"cloud_motion", "cloud_motion_low_cloud_weong"}
+    derived = by_name["cloud_motion_low_cloud_weong"]
+    # It derives from the WEonG layer's OWN revision, so /flow's revision
+    # check compares the right two things and a stale surface cannot make a
+    # fresh derived layer look stale.
+    assert derived.artifacts[0].provenance["base_revision_id"] == "rev-weong-1"
+    assert derived.artifacts[0].provenance["base_object_key"] == weong.object_key
+    quality = derived.artifacts[0].provenance["quality"]["per_variable"]
+    # Motion for the derived variable, and only for it: the retrieved
+    # `total_cloud` is not in this artifact's table.
+    assert set(quality) == {"total_cloud_weong"}
+    assert quality["total_cloud_weong"]["methods"] == [method.id for method in enabled_methods()]
+
+    # And the surface artifact's motion is untouched by any of it.
+    assert by_name["cloud_motion"].artifacts[0].provenance["base_revision_id"] == "rev-surface-1"
+
+
+def test_an_absent_derived_layer_costs_nothing_and_says_nothing(tmp_path: Path):
+    """The kill switch, seen from the motion pass.
+
+    `WEATHER_GENERATED_DISPLAY=off` means `weong_cycle` publishes no layer, so
+    there is no `low_cloud_weong` artifact for this pass to find. That is the
+    ordinary state, not a failure, so it produces no line - the noise would be
+    indistinguishable from a real derive failure on every cycle of every
+    deployment that has the switch off.
+    """
+    surface, payload = surface_artifact(tmp_path)
+    store = FakeStore({surface.object_key: payload}, [surface])
+    lines = cloud_motion_cycle(store)
+    assert len(store.published) == 1
+    assert store.published[0].artifacts[0].logical_name == "cloud_motion"
+    assert not any("low_cloud_weong" in line for line in lines)

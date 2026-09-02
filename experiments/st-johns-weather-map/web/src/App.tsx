@@ -430,13 +430,61 @@ export default function App() {
     const controller = new AbortController()
     loadMethods(controller.signal).then((result) => {
       if (result.error === 'aborted') return
-      setMethods(result.methods)
+      // Only methods this deployment actually derives are offered. The server
+      // publishes the whole registry, disabled entries included, because that
+      // is the truth about what exists - but a method no cycle derives cannot
+      // draw anything, and offering it would be a control that does nothing.
+      // Filtering HERE rather than in the menu also fixes the stored-preference
+      // case: the fallback below tests against the offerable list, so a saved
+      // id that has since been switched off resets to the default instead of
+      // surviving as a selection that silently draws the baseline.
+      // A generative construction the deployment's kill switch refused is
+      // still LISTED - the menu says why it cannot be chosen - because a
+      // reader who remembers it from another deployment deserves the reason,
+      // not a silent absence.
+      const offerable = result.methods.filter((item) => item.enabled || item.generationDisabled)
+      setMethods(offerable)
       setMethodNotices(result.notices)
       setMethodError(result.error)
-      setMethod((current) => (result.methods.some((item) => item.id === current) ? current : result.defaultMethod))
+      setMethod((current) => {
+        const stored = offerable.find((item) => item.id === current)
+        // Carve-out (d): generated display is off by default for the reader
+        // and reached only through the menu's explicit confirm. A remembered
+        // generative preference is therefore NOT restored - every session
+        // starts on a construction that draws only retrieved values.
+        return stored && stored.enabled && !stored.generative ? current : result.defaultMethod
+      })
     }).catch(() => undefined)
     return () => controller.abort()
   }, [])
+
+  // Whether the selected method reduced to the default construction on each
+  // layer, and why, from the server's own bench: an unmet requirement (which
+  // applies everywhere), a score row that says `reduced_to_default`, or a row
+  // on which none of the method's options applied. The panel appends it to
+  // the on-map disclosure, so an entry that draws exactly the baseline on a
+  // layer says so where the picture is - never only in the menu.
+  const methodStatus = useMemo(() => {
+    const status: Record<string, { reducedToDefault: boolean; reasons: string[]; applied?: string[]; expectedShader?: string }> = {}
+    const item = methods.find((entry) => entry.id === method)
+    if (!item || item.id === DEFAULT_INTERPOLATION_METHOD) return status
+    const unmet = item.requirements.filter((req) => !req.met).map((req) => `needs ${req.name}: ${req.detail}`)
+    const fresh = () => ({ reducedToDefault: unmet.length > 0, reasons: [...unmet], expectedShader: item.shader })
+    for (const layer of layers) status[layer.id] = fresh()
+    for (const score of item.scores) {
+      const entry = status[score.layerId] ?? (status[score.layerId] = fresh())
+      const optionNames = Object.keys(score.applied)
+      entry.applied = optionNames.filter((name) => score.applied[name])
+      if (score.reducedToDefault) {
+        entry.reducedToDefault = true
+        entry.reasons.push('the derive reduced it to the default construction on this layer')
+      } else if (optionNames.length > 0 && entry.applied.length === 0) {
+        entry.reducedToDefault = true
+        entry.reasons.push('none of its options applied on this layer')
+      }
+    }
+    return status
+  }, [methods, method, layers])
 
   const toggleInterpolate = useCallback(() => {
     setInterpolate((previous) => {
@@ -794,6 +842,7 @@ export default function App() {
                 reference={reference}
                 interpolate={interpolate}
                 interpolationMethod={method}
+                methodStatus={methodStatus}
                 fixtureMode={dataSource === 'fixture'}
                 layers={layers}
                 layersError={layersError}
@@ -1165,6 +1214,7 @@ export default function App() {
                 reference={reference}
                 interpolate={interpolate}
                 interpolationMethod={method}
+                methodStatus={methodStatus}
                 fixtureMode={dataSource === 'fixture'}
                 layers={layers}
                 layersError={layersError}

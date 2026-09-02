@@ -1157,19 +1157,42 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     methods: [
       {
         id: 'baseline', title: 'Baseline advection', summary: 'warped both ways along the pair flow',
-        shader: 'hermite', enabled: true, generative: false, published: true,
+        plain: 'We work out how the cloud moved between the two hourly pictures and slide it along that path.',
+        gap: 'Cloud that appeared or vanished in place fades evenly; that is most Avalon fog.',
+        notes: 'Dense optical flow (OpenCV DIS, Kroeger et al. 2016) both ways.',
+        shader: 'hermite', enabled: true, generative: false, generation_disabled: false, published: true,
         scores: [{
           layer_id: 'eccc-hrdps-surface-total-cloud', source_id: 'eccc-hrdps', variable: 'total_cloud',
           held_out_frames: 3, improvement_over_reversed_flow: 0.114, improvement_over_crossfade: 0.09,
-          midpoint_mae_percent: 12.5, midpoint_ssim: 0.81,
+          improvement_over_advection: 0, midpoint_mae_percent: 12.5, midpoint_ssim: 0.81,
+          midpoint_sharpness_ratio: 0.87, applied: {}, reduced_to_default: false,
         }],
       },
       {
-        id: 'scale-cascade', title: 'Scale cascade', summary: 'coarse structure advects, fine texture dissolves',
-        shader: 'hermite', enabled: true, generative: false, published: false, scores: [],
+        id: 'error-variance-blend', title: 'Move the cloud, trust the clearer picture',
+        summary: 'inverse-error-variance fusion of the two warps',
+        plain: 'Same slide, but where one picture explains the in-between better, it wins.',
+        gap: 'Only changes the mix, not what appears.',
+        notes: 'Inverse-error-variance fusion: Joyce & Xie 2011.',
+        shader: 'visibility', enabled: true, generative: false, generation_disabled: false, published: false, scores: [],
       },
     ],
     notices: [],
+  }
+
+  const generativeMethod = {
+    id: 'residual-generative', title: 'Move the cloud, then grow and clear it',
+    summary: 'computed residual on a physics-timed envelope',
+    plain: 'Same slide, plus we measure how much cloud formed or dissolved in place and draw that happening.',
+    gap: 'Cloud that forms and clears entirely inside one hour is invisible.',
+    notes: 'Computed residual s = warp(I1, backward) - I0: NowcastNet source term (Zhang et al. 2023).',
+    shader: 'residual-advection', enabled: true, generative: true, generation_disabled: false, published: true,
+    scores: [{
+      layer_id: 'eccc-hrdps-surface-total-cloud', source_id: 'eccc-hrdps', variable: 'total_cloud',
+      held_out_frames: 3, improvement_over_reversed_flow: 0.02, improvement_over_crossfade: 0.15,
+      improvement_over_advection: 0.05, midpoint_mae_percent: 11.0, midpoint_ssim: 0.83,
+      midpoint_sharpness_ratio: 0.95, applied: { sundqvist: true }, reduced_to_default: false,
+    }],
   }
 
   it('offers the interpolation bench only once interpolation is on, and reports each method honestly', async () => {
@@ -1183,10 +1206,103 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     const menu = await screen.findByRole('button', { name: /^Interpolation:/ })
     expect(menu).toHaveTextContent('Baseline advection')
     await userEvent.click(menu)
-    // A measured method reports its margin against the reversed-motion
-    // control; an unpublished one says so rather than showing a zero.
-    expect(screen.getByText(/11\.4% over the reversed-motion control/)).toBeInTheDocument()
+    // A measured method reports its skill against the FIXED control (a plain
+    // crossfade) and its sharpness; an unpublished one says so rather than
+    // showing a zero. The reversed-motion number is the motion veto's, not a
+    // ranking, and is printed nowhere.
+    expect(screen.getByText(/9\.0% closer to the real frame than a plain fade; sharpness 0\.87 of real/)).toBeInTheDocument()
     expect(screen.getByText('not published by the current cycle')).toBeInTheDocument()
+    const panel = screen.getByRole('group', { name: 'Interpolation method' })
+    expect(panel.textContent).not.toMatch(/reversed/i)
+    expect(panel.textContent).not.toMatch(/11\.4/)
+    // The reader copy: the plain sentence, the gap, and the science folded away.
+    expect(screen.getByText(/slide it along that path/)).toBeInTheDocument()
+    expect(screen.getByText(/Gap: Cloud that appeared or vanished in place fades evenly/)).toBeInTheDocument()
+    expect(screen.getAllByText('The science').length).toBeGreaterThan(0)
+    expect(screen.getByText(/Kroeger et al\. 2016/)).toBeInTheDocument()
+    // The header names the producer's own timing uncertainty.
+    expect(screen.getByText(/WEonG smooths it 0\.25\/0\.5\/0\.25/)).toBeInTheDocument()
+  })
+
+  it('ranks the menu by skill against the fixed control, leaving an unscored method last', async () => {
+    // The fixed control (a plain crossfade of the same two frames) is what
+    // makes an ORDER meaningful at all: the reversed-motion number moves with
+    // the method and can rank nothing. Here the second entry measured better
+    // than the baseline, so it is offered first - and the unscored one stays
+    // at the end rather than being ranked at a zero it never earned.
+    const better = {
+      ...benchMethods.methods[1],
+      published: true,
+      scores: [{
+        layer_id: 'eccc-hrdps-surface-total-cloud', source_id: 'eccc-hrdps', variable: 'total_cloud',
+        held_out_frames: 3, improvement_over_reversed_flow: 0.01, improvement_over_crossfade: 0.21,
+        improvement_over_advection: 0.04, midpoint_mae_percent: 10.2, midpoint_ssim: 0.86,
+        midpoint_sharpness_ratio: 0.93, applied: {}, reduced_to_default: false,
+      }],
+    }
+    const unscored = { ...benchMethods.methods[1], id: 'goes-transfer', title: 'Motion borrowed from the satellite', published: false, scores: [] }
+    vi.stubGlobal('fetch', routedFetch({ methods: { ...benchMethods, methods: [benchMethods.methods[0], unscored, better] } }))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
+    const names = [...screen.getByRole('group', { name: 'Interpolation method' }).querySelectorAll('.method-option-name')]
+      .map((node) => node.textContent)
+    expect(names).toEqual([
+      'Move the cloud, trust the clearer picture',
+      'Baseline advection',
+      'Motion borrowed from the satellite',
+    ])
+  })
+
+  it('lists generated constructions under their own heading, selects one only on a second confirming click, and refuses one the kill switch disabled', async () => {
+    const withGenerated = { ...benchMethods, methods: [...benchMethods.methods, generativeMethod] }
+    vi.stubGlobal('fetch', routedFetch({ methods: withGenerated }))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
+    expect(screen.getByRole('heading', { name: 'Generated (off by default)' })).toBeInTheDocument()
+    expect(screen.getByText('generates pixels')).toBeInTheDocument()
+    // Not a radio: a generated construction is never one accidental click away.
+    expect(screen.queryByRole('radio', { name: /grow and clear it/ })).not.toBeInTheDocument()
+    const arm = screen.getByRole('button', { name: 'select' })
+    await userEvent.click(arm)
+    // First click arms; nothing is drawn differently yet.
+    expect(screen.getByRole('button', { name: 'confirm generated?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Baseline advection')
+    await userEvent.click(screen.getByRole('button', { name: 'confirm generated?' }))
+    expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Move the cloud, then grow and clear it')
+    expect(screen.getByText(/15\.0% closer to the real frame than a plain fade; sharpness 0\.95 of real/)).toBeInTheDocument()
+  })
+
+  it('shows a generated construction the deployment switched off, with the reason, and does not let it be chosen', async () => {
+    const disabled = { ...benchMethods, methods: [...benchMethods.methods, { ...generativeMethod, enabled: false, generation_disabled: true }] }
+    vi.stubGlobal('fetch', routedFetch({ methods: disabled }))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
+    expect(screen.getByText('disabled by WEATHER_GENERATED_DISPLAY')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'select' })).toBeDisabled()
+  })
+
+  it('does not restore a remembered generated construction: every session starts on retrieved values only', async () => {
+    const withGenerated = { ...benchMethods, methods: [...benchMethods.methods, generativeMethod] }
+    vi.stubGlobal('fetch', routedFetch({ methods: withGenerated }))
+    const first = render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'select' }))
+    await userEvent.click(screen.getByRole('button', { name: 'confirm generated?' }))
+    expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('grow and clear it')
+    expect(localStorage.getItem('weather-interpolation-method')).toBe('residual-generative')
+    first.unmount()
+
+    // Same viewer, next session, same registry: the generated construction
+    // is still offered, but the choice is not remembered on the reader's
+    // behalf - carve-out (d) says off by default, reached only by the confirm.
+    render(<App />)
+    await waitFor(async () =>
+      expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Baseline advection'),
+    )
   })
 
   it('remembers the chosen method and drops one the server stops publishing', async () => {
@@ -1194,16 +1310,80 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     const first = render(<App />)
     await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast · display only/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
-    await userEvent.click(screen.getByRole('radio', { name: /Scale cascade/ }))
-    expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Scale cascade')
+    await userEvent.click(screen.getByRole('radio', { name: /trust the clearer picture/ }))
+    expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Move the cloud, trust the clearer picture')
     first.unmount()
 
     // The same viewer, next session, against a server that no longer offers
     // it: the map falls back to the default rather than asking for fields
     // nobody publishes.
+    //
+    // Note what is NOT done here: the interpolation toggle is not clicked
+    // again. It is remembered in the same store as the method, so the second
+    // session already has interpolation on, and clicking would turn it OFF and
+    // take the menu away with it. This test asserted the opposite for as long
+    // as `localStorage` silently threw in this environment, which made both
+    // halves of it vacuous - the preference never persisted, so the fallback
+    // it claims to check was never exercised.
     vi.stubGlobal('fetch', routedFetch({ methods: { ...benchMethods, methods: [benchMethods.methods[0]] } }))
     render(<App />)
-    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast · display only/ }))
+    await waitFor(async () =>
+      expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Baseline advection'),
+    )
+  })
+
+  it('does not offer a method this deployment has switched off', async () => {
+    // The server publishes the whole registry, disabled entries included,
+    // because that is the truth about what exists. The menu must not offer
+    // them: a method no cycle derives cannot draw anything, so selecting it
+    // would be a control that appears to do something without doing it.
+    const withDisabled = {
+      ...benchMethods,
+      methods: [
+        benchMethods.methods[0],
+        { ...benchMethods.methods[1], id: 'goes-transfer', title: 'Motion borrowed from the satellite', enabled: false },
+      ],
+    }
+    vi.stubGlobal('fetch', routedFetch({ methods: withDisabled }))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
+    expect(screen.getByRole('radio', { name: /Baseline advection/ })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /Motion borrowed from the satellite/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Motion borrowed from the satellite/)).not.toBeInTheDocument()
+  })
+
+  it('drops a remembered method that has since been switched off', async () => {
+    // The stale-preference case, which is the one that bites: the id is still
+    // in the server registry, so a fallback testing "does the server know it"
+    // would keep it and quietly draw the baseline under its name.
+    const bothOn = {
+      ...benchMethods,
+      methods: [
+        benchMethods.methods[0],
+        { ...benchMethods.methods[1], id: 'goes-transfer', title: 'Motion borrowed from the satellite', enabled: true },
+      ],
+    }
+    vi.stubGlobal('fetch', routedFetch({ methods: bothOn }))
+    const first = render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
+    await userEvent.click(screen.getByRole('radio', { name: /Motion borrowed from the satellite/ }))
+    expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Motion borrowed from the satellite')
+    first.unmount()
+
+    // Same viewer, next session, same server registry - but the method is now
+    // switched off rather than removed.
+    const nowOff = {
+      ...benchMethods,
+      methods: [
+        benchMethods.methods[0],
+        { ...benchMethods.methods[1], id: 'goes-transfer', title: 'Motion borrowed from the satellite', enabled: false },
+      ],
+    }
+    vi.stubGlobal('fetch', routedFetch({ methods: nowOff }))
+    render(<App />)
+    // Interpolation is already on, remembered alongside the method.
     await waitFor(async () =>
       expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Baseline advection'),
     )

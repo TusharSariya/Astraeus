@@ -37,6 +37,11 @@ interface MapPanelProps {
    *  Named in the disclosure whenever it is not the default, so a screenshot
    *  is never ambiguous about what produced the picture. */
   interpolationMethod?: string
+  /** Per layer, whether the selected method reduced to the default construction
+   *  there and why (from `/methods`: unmet requirements, `reduced_to_default`,
+   *  no option applied). Appended to the on-map disclosure, so a menu entry
+   *  that draws exactly the baseline never passes for something else. */
+  methodStatus?: Record<string, { reducedToDefault: boolean; reasons: string[]; applied?: string[]; expectedShader?: string }>
   selected: LocationPoint
   onSelect: (point: LocationPoint) => void
   /** Layer list exactly as published by `/layers`. No layer is invented here. */
@@ -345,9 +350,16 @@ function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: n
   ]
 }
 
+/** The served generative options, named for the disclosure. An empty list is
+ *  said outright: a GENERATED picture with no named construction behind it is
+ *  exactly what the note exists to prevent. */
+function describeAppliedOptions(applied: string[] | undefined): string {
+  return applied && applied.length > 0 ? applied.join(', ') : 'no option named by the server'
+}
+
 export function MapPanel({
   label, field, comparison, selected, onSelect, validTime, reference, interpolate,
-  interpolationMethod = DEFAULT_INTERPOLATION_METHOD, fixtureMode = false,
+  interpolationMethod = DEFAULT_INTERPOLATION_METHOD, methodStatus = {}, fixtureMode = false,
   layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, theme = 'dark', initialDrawerOpen = false,
 }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -397,6 +409,11 @@ export function MapPanel({
   const flowLayersRef = useRef<Map<string, FlowBlendLayer>>(new Map())
   // Bumped when a motion texture lands, so the map-sync effect re-runs.
   const [flowVersion, setFlowVersion] = useState(0)
+  // Why an interpolation layer cannot draw, by layer id, when it cannot.
+  // The disclosure is otherwise built from FETCH state alone, so a shader that
+  // failed to compile drew nothing while the map went on saying it had
+  // advected - a control that appears to do something without doing it.
+  const [renderErrors, setRenderErrors] = useState<Record<string, string>>({})
   // The map layers this panel owns, so it removes exactly what it added, and
   // what stack they were painted for, so an unchanged stack is left alone.
   const rasterLayerIdsRef = useRef<string[]>([])
@@ -489,6 +506,14 @@ export function MapPanel({
   // frame, shared verbatim by the on-map notes, the drawer rows and the text
   // alternative. A blend that lost one image mid-pair says so.
   const layerNoteFor = (layer: LayerItem, resolution: FrameResolution): string | null => {
+    // A frame the index advertised can still fail to render - the layer then
+    // resolves `exact`, so nothing below would say a word, and the layer
+    // simply disappears. The drawer and the text alternative already carry the
+    // reason; this is what puts it on the map itself.
+    const raster = rasters[layer.id]
+    if (raster?.status === 'unavailable') {
+      return `no map image for the ${stJohnsTime(raster.frame.time)} NT frame this layer advertises: ${raster.reason}`
+    }
     if (resolution.kind === 'blend') {
       const state = rasters[layer.id]
       if (state?.status === 'shown' && state.slots.length === 1) {
@@ -496,27 +521,60 @@ export function MapPanel({
         return `showing ${stJohnsTime(slot.frame.time)} NT (${describeOffset(slot.frame.offsetSeconds)} than the selected time); the second frame of the display composite was not retrieved`
       }
       if (isLocallyRendered(layer)) {
+        // A layer whose shader will not compile draws nothing at all. Saying
+        // it was advection-corrected would describe a picture that is not on
+        // the screen, so the failure outranks every construction below.
+        const failure = renderErrors[layer.id]
+        if (failure) {
+          return `nothing is drawn for this layer: the display interpolation could not be prepared by this browser (${failure}) — turn interpolation off to see the published frames`
+        }
         // Rendered-grid blends draw through the interpolation shader; the
-        // note names the method actually applied to this pair.
+        // note names the method actually applied to this pair. The cache is
+        // keyed by pair AND method (one layer holds several methods' fields at
+        // once while the reader compares them), so the SELECTED method has to
+        // be part of the prefix: matching on the pair alone returned whichever
+        // method landed in the cache first, and the map then went on describing
+        // - and drawing, at the sibling lookup in the map-sync effect - the
+        // previous construction after the menu had moved on. Found by the
+        // end-to-end pixel check (plan H3), which read the same hash back for
+        // every entry in the menu.
+        const heldPrefix = `${resolution.previous.time}->${resolution.next.time}|${interpolationMethod}|`
         const held = [...(flowCacheRef.current.get(layer.id)?.entries() ?? [])]
-          .find(([key]) => key.startsWith(`${resolution.previous.time}->${resolution.next.time}|`))?.[1]
+          .find(([key]) => key.startsWith(heldPrefix))?.[1]
+        // The wording is keyed on the shader the server said it served, so
+        // the note describes the arithmetic the GPU is running, not the menu
+        // entry that was asked for.
+        const served = held && held !== 'absent' ? held.method : interpolationMethod
+        const advection = held && held !== 'absent' && held.tangentsUrl
+          ? 'advection along motion derived from the two published frames, C1 through neighbouring frames where held'
+          : 'advection along a motion field derived from the two published frames'
+        const status = methodStatus[layer.id]
         const construction = held && held !== 'absent'
-          ? (held.shader === 'intermediate' && held.backwardUrl
-            ? 'advection-corrected along intermediate motion approximated from both the forward and the backward field derived for this pair, dissolving where the two frames say cloud grew or decayed in place rather than moved'
-            : held.shader === 'visibility' && held.visibilityUrl
-            ? 'advection-corrected along motion derived from the two published frames and fused per pixel by how reliable each frame\u2019s own warp measured, dissolving where the two frames say cloud grew or decayed in place rather than moved'
-            : held.shader === 'development-residual' && held.residualUrl
-            ? 'advection-corrected along motion derived from the two published frames, and where cloud grew or decayed in place rather than moved the dissolve between them is re-timed by the same model run’s own vertical velocity — the displayed value stays between the two retrieved frames at every cell'
-            : held.tangentsUrl
-            ? 'advection-corrected along motion fitted through neighbouring published frames (C1 trajectories), dissolving where the two frames say cloud grew or decayed in place rather than moved'
-            : 'advection-corrected along a motion field derived from the two published frames, dissolving where cloud grew or decayed in place rather than moved')
+          ? (held.shader === 'visibility' && held.visibilityUrl
+            ? `${advection}, the two warps fused per pixel by inverse error variance - the frame whose warp measured more reliable carries the pixel; crossfading where no motion is trusted`
+            : held.shader === 'residual-advection' && held.residualUrl && served === 'residual-generative'
+            ? `${advection}, plus GENERATED between the real frames: ${describeAppliedOptions(status?.applied)}; a cited construction (the computed advection residual on a t(1-t) envelope that vanishes at both real frames), gated on a fixed control (scores in the menu); display only`
+            : held.shader === 'residual-advection' && held.residualUrl
+            ? `${advection}, plus the computed development residual on an envelope that vanishes at both real frames; stays between the two retrieved values`
+            : `${advection}, crossfading where no motion is trusted`)
           : 'a linear cross-dissolve; no derived motion field for this pair'
         // Any construction other than the default is named outright: an
         // admin menu that silently changes what is drawn is the one thing
-        // this map's governing rule does not tolerate.
-        const served = held && held !== 'absent' ? held.method : interpolationMethod
+        // this map's governing rule does not tolerate. And a method that
+        // reduced to the default on THIS layer says so on the map, with the
+        // server's reasons, rather than borrowing the baseline's picture
+        // under its own name.
+        // A third reason only the panel can see: the server answered with a
+        // different construction than the method's registry entry declares.
+        const shaderFellBack = !!status?.expectedShader && held && held !== 'absent' && held.shader !== status.expectedShader
+          ? [`the server served the "${held.shader}" construction, not "${status.expectedShader}"`]
+          : []
+        const reasons = [...(status?.reasons ?? []), ...shaderFellBack]
+        const reduced = served && served !== DEFAULT_INTERPOLATION_METHOD && (status?.reducedToDefault || shaderFellBack.length > 0)
+          ? `; method "${served}" reduced to the default construction on this layer: ${reasons.join('; ') || 'no option applied'}`
+          : ''
         const method = served && served !== DEFAULT_INTERPOLATION_METHOD
-          ? `${construction}; interpolation method "${served}"`
+          ? `${construction}; interpolation method "${served}"${reduced}`
           : construction
         return `temporally interpolated for display between the ${stJohnsTime(resolution.previous.time)} and ${stJohnsTime(resolution.next.time)} NT frames (${method}) — display only, not evidence`
       }
@@ -536,6 +594,14 @@ export function MapPanel({
       zoom: 6.5,
       attributionControl: false,
       style: createWeatherMapStyle(theme),
+      // Only the end-to-end pixel check reads the canvas back after a frame;
+      // keeping the drawing buffer costs every reader a compositing step, so
+      // it is on only under that build flag. MapLibre v5 takes it inside
+      // `canvasContextAttributes` - the v4 top-level option is silently
+      // ignored (and a spread hides that from the type checker), which is
+      // exactly how the e2e check first read one identical blank canvas back
+      // for every method in the menu.
+      ...(import.meta.env.VITE_E2E ? { canvasContextAttributes: { preserveDrawingBuffer: true } } : {}),
     })
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right')
     // MapLibre's own scale bar, recomputed from the map's real zoom and centre
@@ -870,7 +936,15 @@ export function MapPanel({
     return () => {
       cancelled = true
     }
-  }, [frameKey, resolved, extent, interpolate, cacheGet, cachePut, cacheDropLayer])
+    // `interpolationMethod` is load-bearing here, not incidental: it is part of
+    // every flow cache key and of every /flow request this effect makes. Left
+    // out of the list, choosing a different construction in the menu fetched
+    // nothing at all - the map went on drawing the method that happened to be
+    // selected when the pair was first warmed, while the menu, the request the
+    // reader could see in the network panel and the on-map disclosure all said
+    // otherwise. Found by the end-to-end pixel check (plan H3), which read one
+    // identical canvas hash back for every entry in the menu.
+  }, [frameKey, resolved, extent, interpolate, interpolationMethod, cacheGet, cachePut, cacheDropLayer])
 
   // Sync the map with the images actually held. When the painted stack differs
   // from the held one, every managed layer is removed and re-added in published
@@ -923,10 +997,9 @@ export function MapPanel({
       flowScalePixels: number
       tangentsUrl: string | null
       tangentsScalePixels: number
-      backwardUrl: string | null
-      backwardScalePixels: number
       visibilityUrl: string | null
       residualUrl: string | null
+      residualScalePixels: number
       construction: string
       bounds: { west: number; south: number; east: number; north: number }
       widthPx: number
@@ -945,9 +1018,12 @@ export function MapPanel({
         const previous = state.slots[0]
         const next = blendPair ? state.slots[1] : state.slots[0]
         const request = previous.image.request
+        // Pair AND method, for the reason in `layerNoteFor` above: the cache
+        // holds one entry per (pair, method), and a prefix that stops at the
+        // pair draws whichever method was fetched first.
         const pairKey = blendPair
           ? [...(flowCacheRef.current.get(layer.id)?.keys() ?? [])]
-            .find((key) => key.startsWith(`${previous.frame.time}->${next.frame.time}|`))
+            .find((key) => key.startsWith(`${previous.frame.time}->${next.frame.time}|${interpolationMethod}|`))
           : undefined
         const flow = pairKey ? flowCacheRef.current.get(layer.id)?.get(pairKey) : undefined
         return [{
@@ -959,10 +1035,9 @@ export function MapPanel({
           flowScalePixels: flow && flow !== 'absent' ? flow.scalePixels : 0,
           tangentsUrl: flow && flow !== 'absent' ? flow.tangentsUrl : null,
           tangentsScalePixels: flow && flow !== 'absent' ? flow.tangentsScalePixels : 0,
-          backwardUrl: flow && flow !== 'absent' ? flow.backwardUrl : null,
-          backwardScalePixels: flow && flow !== 'absent' ? flow.backwardScalePixels : 0,
           visibilityUrl: flow && flow !== 'absent' ? flow.visibilityUrl : null,
           residualUrl: flow && flow !== 'absent' ? flow.residualUrl : null,
+          residualScalePixels: flow && flow !== 'absent' ? flow.residualScalePixels : 0,
           // Which construction the shader evaluates is the server's answer,
           // read from the headers of the fields it actually served - never
           // inferred from which textures happened to load.
@@ -991,7 +1066,7 @@ export function MapPanel({
     })
     const contentOf = (slot: ImageEntry | FlowEntry) => slot.kind === 'image'
       ? `${slot.url}|${slot.opacity}|${slot.coordinates.flat().join(',')}`
-      : `${slot.frame0Url}|${slot.frame1Url}|${slot.flowUrl}|${slot.flowScalePixels}|${slot.tangentsUrl}|${slot.tangentsScalePixels}|${slot.backwardUrl}|${slot.backwardScalePixels}|${slot.visibilityUrl}|${slot.residualUrl}|${slot.construction}|${slot.t}|${slot.opacity}|${Object.values(slot.bounds).join(',')}`
+      : `${slot.frame0Url}|${slot.frame1Url}|${slot.flowUrl}|${slot.flowScalePixels}|${slot.tangentsUrl}|${slot.tangentsScalePixels}|${slot.visibilityUrl}|${slot.residualUrl}|${slot.residualScalePixels}|${slot.construction}|${slot.t}|${slot.opacity}|${Object.values(slot.bounds).join(',')}`
 
     const updateFlowLayer = (slot: FlowEntry) => {
       flowLayersRef.current.get(slot.id)?.update({
@@ -1001,10 +1076,9 @@ export function MapPanel({
         flowScalePixels: slot.flowScalePixels,
         tangentsUrl: slot.tangentsUrl,
         tangentsScalePixels: slot.tangentsScalePixels,
-        backwardUrl: slot.backwardUrl,
-        backwardScalePixels: slot.backwardScalePixels,
         visibilityUrl: slot.visibilityUrl,
         residualUrl: slot.residualUrl,
+        residualScalePixels: slot.residualScalePixels,
         construction: slot.construction,
         bounds: slot.bounds,
         widthPx: slot.widthPx,
@@ -1026,12 +1100,18 @@ export function MapPanel({
         }
         rasterLayerIdsRef.current = []
         paintedContentRef.current.clear()
+        // `addLayer` runs the layer's onAdd synchronously, so a compile or
+        // link failure is known by the time this loop ends and can be told to
+        // the reader on this same paint rather than a scrub later.
+        const failures: Record<string, string> = {}
         for (const slot of desired) {
           if (slot.kind === 'flowblend') {
             const instance = new FlowBlendLayer(slot.id)
             flowLayersRef.current.set(slot.id, instance)
             map.addLayer(instance as unknown as maplibregl.LayerSpecification & { type: 'custom' }, WEATHER_REFERENCE_ANCHOR_ID)
             updateFlowLayer(slot)
+            const failure = instance.renderError
+            if (failure) failures[slot.id.replace(/^flowblend-/, '')] = failure
           } else {
             map.addSource(slot.id, { type: 'image', url: slot.url, coordinates: slot.coordinates })
             map.addLayer(
@@ -1042,6 +1122,10 @@ export function MapPanel({
           rasterLayerIdsRef.current.push(slot.id)
           paintedContentRef.current.set(slot.id, contentOf(slot))
         }
+        // Only on a real change: this runs inside the map-sync effect, and an
+        // unconditional set would re-enter it every paint.
+        setRenderErrors((current) =>
+          JSON.stringify(current) === JSON.stringify(failures) ? current : failures)
         return
       }
       // Same stack: swap image bytes / uniforms in place. No source or layer

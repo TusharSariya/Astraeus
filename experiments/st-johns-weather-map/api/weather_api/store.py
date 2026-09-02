@@ -158,6 +158,23 @@ def _is_geojson(media_type: str) -> bool:
     return media_type.split(";")[0].strip() == "application/geo+json"
 
 
+def _is_display_only(artifact: Any) -> bool:
+    """True for a derived artifact that exists only to be drawn.
+
+    Two derivations are published beside the retrieved fields: the
+    interpolation motion that the shader reads, and the WEonG low-cloud
+    repair, which is GENERATED - it holds cloud values that no provider
+    published. The governing rule allows a generated value on a display path
+    and forbids it on a data path, so neither may be sampled for /point,
+    /profile or /cross-section. The flag is read from provenance rather than
+    matched by name because the motion artifact's logical name now varies with
+    the layer it supports (``cloud_motion_low_cloud_weong``), and a name list
+    silently stops covering a new derivation the moment one is added.
+    """
+    provenance = getattr(artifact, "provenance", None) or {}
+    return bool(provenance.get("derived") or provenance.get("generated"))
+
+
 def _parse_iso(raw: Any) -> datetime | None:
     if isinstance(raw, datetime):
         return raw.astimezone(UTC) if raw.tzinfo else raw.replace(tzinfo=UTC)
@@ -587,9 +604,10 @@ class LiveStore:
                 # artifact told every caller that evidence had been lost when
                 # none had. Alerts are served by /layers/{id}/features.
                 continue
-            if artifact.logical_name == "cloud_motion":
-                # Derived display-support motion (interpolation shader input);
-                # it carries no reading and must never reach a data path.
+            if _is_display_only(artifact):
+                # Derived display-only imagery (interpolation motion, the
+                # generated WEonG low-cloud repair); it carries no retrieved
+                # reading and must never reach a data path.
                 continue
             try:
                 dataset = self.open(artifact)
@@ -709,6 +727,8 @@ class LiveStore:
         for artifact in artifacts:
             if _is_geojson(artifact.media_type):
                 continue  # see sample_point: no gridded values to sample
+            if _is_display_only(artifact):
+                continue  # see sample_point: a derived display artifact is not evidence
             try:
                 dataset = self.open(artifact)
             except Exception as error:

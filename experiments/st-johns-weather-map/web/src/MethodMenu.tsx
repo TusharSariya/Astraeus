@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import type { InterpolationMethodItem } from './api'
+import type { InterpolationMethodItem, InterpolationMethodScore } from './api'
 
 /** The interpolation bench, as a menu.
  *
@@ -10,10 +10,17 @@ import type { InterpolationMethodItem } from './api'
  *  than showing a zero, because "not measured" and "measured and beaten" are
  *  different facts.
  *
- *  Skill is reported against a reversed-motion control, not against a
- *  crossfade: any blend of two warps is smoother than the average of two
- *  frames, and a smoother field scores better against almost anything, so
- *  only the control says whether the direction carried information.
+ *  Every entry carries the server's own reader copy: one plain sentence, one
+ *  "gap" sentence saying what it cannot show, and the cited science under a
+ *  collapsed heading. Skill is reported against a FIXED control - a plain
+ *  crossfade of the same two frames - together with how sharp the midpoint is
+ *  relative to the real frame. The reversed-motion number decides only whether
+ *  motion is displayed at all; it ranks nothing here and is not printed.
+ *
+ *  Generative constructions (carve-out (d)) sit under their own heading, off
+ *  by default, and take two clicks: the first arms the entry and says so, the
+ *  second selects. One refused by the deployment's kill switch is listed with
+ *  the reason and cannot be chosen at all.
  */
 export function MethodMenu({
   methods,
@@ -29,9 +36,22 @@ export function MethodMenu({
   error: string | null
 }) {
   const [open, setOpen] = useState(false)
+  const [armed, setArmed] = useState<string | null>(null)
   const panelId = useId()
   const current = methods.find((method) => method.id === active)
   const label = current?.title ?? active
+  const plain = ranked(methods.filter((method) => !method.generative))
+  const generated = ranked(methods.filter((method) => method.generative))
+
+  const selectGenerated = (method: InterpolationMethodItem) => {
+    if (method.generationDisabled || !method.enabled) return
+    if (armed === method.id) {
+      setArmed(null)
+      onSelect(method.id)
+    } else {
+      setArmed(method.id)
+    }
+  }
 
   return (
     <div className="method-menu">
@@ -47,53 +67,64 @@ export function MethodMenu({
       {open && (
         <div className="method-menu-panel" id={panelId} role="group" aria-label="Interpolation method">
           <p className="method-menu-note">
-            Display construction only. Every method here advects — they draw the same retrieved
-            frames and differ in how those frames are warped and mixed between them. A plain
-            cross-dissolve is not a choice on this list: it is the disclosed fallback wherever no
-            motion was derived, or where the two warps say cloud grew in place rather than moved.
-            Scores are held-out reconstructions of real frames, against the same construction with
-            its motion reversed.
+            HRDPS&rsquo;s producer treats its hourly cloud timing as uncertain to about an hour (WEonG
+            smooths it 0.25/0.5/0.25). Everything here is display between two real frames, never
+            evidence.
           </p>
           {error && <p className="method-menu-error">{error}</p>}
           {methods.length === 0 && !error && <p className="method-menu-error">no interpolation methods are published</p>}
           <ul className="method-list">
-            {methods.map((method) => {
-              const best = [...method.scores].sort(
-                (a, b) => b.improvementOverReversedFlow - a.improvementOverReversedFlow,
-              )[0]
-              return (
-                <li key={method.id}>
-                  <label className={method.id === active ? 'method-option on' : 'method-option'}>
-                    <input
-                      type="radio"
-                      name="interpolation-method"
-                      value={method.id}
-                      checked={method.id === active}
-                      disabled={!method.enabled}
-                      onChange={() => onSelect(method.id)}
-                    />
-                    <span className="method-option-name">
-                      {method.title}
-                      {method.generative && <em className="method-generated"> generates pixels</em>}
-                    </span>
-                  </label>
-                  {method.summary && <p className="method-option-summary">{method.summary}</p>}
-                  {method.requirements.filter((item) => !item.met).map((item) => (
-                    <p className="method-option-unmet" key={item.name}>
-                      needs {item.name}: {item.detail}
-                    </p>
-                  ))}
-                  <p className="method-option-score">
-                    {!method.published
-                      ? 'not published by the current cycle'
-                      : best
-                        ? `best held-out skill ${(best.improvementOverReversedFlow * 100).toFixed(1)}% over the reversed-motion control on ${best.variable} (${best.heldOutFrames} frames held out)`
-                        : 'published, not yet scored against a held-out frame'}
-                  </p>
-                </li>
-              )
-            })}
+            {plain.map((method) => (
+              <li key={method.id}>
+                <label className={method.id === active ? 'method-option on' : 'method-option'}>
+                  <input
+                    type="radio"
+                    name="interpolation-method"
+                    value={method.id}
+                    checked={method.id === active}
+                    disabled={!method.enabled}
+                    onChange={() => { setArmed(null); onSelect(method.id) }}
+                  />
+                  <span className="method-option-name">{method.title}</span>
+                </label>
+                <MethodCopy method={method} />
+              </li>
+            ))}
           </ul>
+          {generated.length > 0 && (
+            <>
+              <h3 className="method-group-heading">Generated (off by default)</h3>
+              <ul className="method-list">
+                {generated.map((method) => {
+                  const selectable = method.enabled && !method.generationDisabled
+                  const isArmed = armed === method.id
+                  return (
+                    <li key={method.id}>
+                      <div className={method.id === active ? 'method-option on' : 'method-option'}>
+                        <button
+                          type="button"
+                          className={`method-option-confirm${isArmed ? ' armed' : ''}`}
+                          aria-pressed={method.id === active}
+                          disabled={!selectable}
+                          onClick={() => selectGenerated(method)}
+                        >
+                          {method.id === active ? 'selected' : isArmed ? 'confirm generated?' : 'select'}
+                        </button>
+                        <span className="method-option-name">
+                          {method.title}
+                          <em className="method-generated"> generates pixels</em>
+                        </span>
+                      </div>
+                      {method.generationDisabled && (
+                        <p className="method-option-unmet">disabled by WEATHER_GENERATED_DISPLAY</p>
+                      )}
+                      <MethodCopy method={method} />
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
           {notices.map((notice) => (
             <p className="method-menu-error" key={notice}>
               {notice}
@@ -102,5 +133,63 @@ export function MethodMenu({
         </div>
       )}
     </div>
+  )
+}
+
+/** The menu's order: best skill against the FIXED control first, within each
+ *  group. Ranking on `improvementOverCrossfade` is the whole point of the
+ *  fixed control - the reversed-motion number moves WITH the method and can
+ *  order nothing. A method the current cycle has not scored keeps its registry
+ *  position at the end of the list rather than being ranked at zero, because
+ *  "not measured" and "measured and beaten" are different facts. */
+function ranked(methods: InterpolationMethodItem[]): InterpolationMethodItem[] {
+  const skill = (method: InterpolationMethodItem): number | null => {
+    const best = bestScore(method)
+    return best ? best.improvementOverCrossfade : null
+  }
+  return methods
+    .map((method, index) => ({ method, index, skill: skill(method) }))
+    .sort((a, b) => {
+      if (a.skill === null || b.skill === null) {
+        if (a.skill === b.skill) return a.index - b.index
+        return a.skill === null ? 1 : -1
+      }
+      return b.skill - a.skill || a.index - b.index
+    })
+    .map((entry) => entry.method)
+}
+
+/** The best score by the fixed control. */
+function bestScore(method: InterpolationMethodItem): InterpolationMethodScore | undefined {
+  return [...method.scores].sort((a, b) => b.improvementOverCrossfade - a.improvementOverCrossfade)[0]
+}
+
+function scoreLine(method: InterpolationMethodItem): string {
+  if (!method.published) return 'not published by the current cycle'
+  const best = bestScore(method)
+  if (!best) return 'not yet scored'
+  const closer = `${(best.improvementOverCrossfade * 100).toFixed(1)}% closer to the real frame than a plain fade`
+  const sharpness = best.midpointSharpnessRatio === null ? '' : `; sharpness ${best.midpointSharpnessRatio.toFixed(2)} of real`
+  return `${closer}${sharpness} on ${best.variable} (${best.heldOutFrames} frames held out)`
+}
+
+function MethodCopy({ method }: { method: InterpolationMethodItem }) {
+  return (
+    <>
+      {(method.plain || method.summary) && <p className="method-option-summary">{method.plain || method.summary}</p>}
+      {method.gap && <p className="method-option-gap">Gap: {method.gap}</p>}
+      {method.notes && (
+        <details className="method-option-science">
+          <summary>The science</summary>
+          <p>{method.notes}</p>
+        </details>
+      )}
+      {method.requirements.filter((item) => !item.met).map((item) => (
+        <p className="method-option-unmet" key={item.name}>
+          needs {item.name}: {item.detail}
+        </p>
+      ))}
+      <p className="method-option-score">{scoreLine(method)}</p>
+    </>
   )
 }

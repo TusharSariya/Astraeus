@@ -480,10 +480,19 @@ def get_layers() -> LayersResponse:
             # Same rule for the OVATION aurora grid: the aurora module below
             # lists it once, rendered, with its model disclosure.
             continue
-        if artifact.logical_name == grids.CLOUD_MOTION_LOGICAL_NAME:
+        if grids.is_cloud_motion_logical_name(artifact.logical_name):
             # Derived display-support material (cloud motion for the
-            # interpolation shader). It is not a layer, not evidence, and is
-            # served only through /layers/{id}/flow with its derivation.
+            # interpolation shader, for the retrieved grid and for each derived
+            # one). It is not a layer, not evidence, and is served only through
+            # /layers/{id}/flow with its derivation.
+            continue
+        if artifact.logical_name in grids.DERIVED_GRID_LOGICAL_NAMES:
+            # A grid this experiment derived (today: the WEonG low-cloud
+            # repair). It IS a layer, but it is offered below by
+            # `rendered_grid_layers`, which is the only path that carries its
+            # generated disclosure; the generic entry here would offer the same
+            # grid a second time with no disclosure at all and no way to draw
+            # it.
             continue
         identifier = layer_id_for(artifact.source_id, artifact.logical_name)
         entry = coverage.get(identifier)
@@ -950,7 +959,7 @@ def get_layer_flow(
     north: float = Query(default=AVALON_CORE_BOUNDS["north"], ge=-90, le=90),
     east: float = Query(default=AVALON_CORE_BOUNDS["east"], ge=-180, le=180),
     crs: str = Query(default="EPSG:4326", description="EPSG:4326 (default) or EPSG:3857; must match the frame rasters it will warp"),
-    texture: str = Query(default="motion", description="'motion' (pairwise flow + consistency), 'tangents' (the pair's Hermite knot velocities), 'backward' (the pair's frame1 -> frame0 field), 'visibility' (the pair's per-frame fusion weights) or 'residual' (the development-residual method's per-cell re-timing)"),
+    texture: str = Query(default="motion", description="'motion' (pairwise flow + display weight), 'tangents' (the pair's Hermite knot velocities), 'visibility' (the pair's per-frame fusion weights; only for a method whose shader is 'visibility') or 'residual' (the pair's per-cell envelope coefficients a, b of the computed advection residual; only for a method whose shader is 'residual-advection')"),
     method: str = Query(default=grids.DEFAULT_FLOW_METHOD, description="which interpolation method's fields to serve; see /methods"),
 ) -> Response:
     """The derived motion field between two adjacent published frames.
@@ -960,14 +969,16 @@ def get_layer_flow(
     (method and version in the headers), aligned pixel-for-pixel with the
     frame raster of the same bounds and size. `texture=tangents` adds the
     pair's cubic Hermite knot velocities so displayed motion is C1 across
-    real frames; `texture=backward` adds the pair's frame1 -> frame0 field,
-    for a construction that reads both directions rather than assuming the
-    forward one inverts; `texture=visibility` adds the pair's per-frame fusion
+    real frames; `texture=visibility` adds the pair's per-frame fusion
     weights, for a construction that lets the reliable warp carry a pixel
     instead of averaging it with an unreliable one; and `texture=residual`
-    adds the development-residual method's per-cell re-timing, which shifts
-    WHEN the change between the two retrieved frames is delivered without
-    changing what that change is.
+    adds the pair's per-cell envelope coefficients (a, b in cloud percent,
+    signed, scale fitted per request in `X-Weather-Flow-Scale`) for the
+    construction that adds `t(1-t)(a + b t)` after the advection mix - the
+    computed advection residual on an envelope that is zero at both real
+    frames. Each per-shader texture is refused by name for a method whose
+    registry shader does not evaluate it (`X-Weather-Flow-Shader` names the
+    shader every served texture is meant for).
     It is a derivation, disclosed as such; it is never sampled,
     never a reading, and its absence is answered 404 - the client then falls
     back one honest rung (linear advection, then crossfade) and says so.
@@ -999,6 +1010,78 @@ def get_layer_flow(
     return Response(content=image.payload, media_type=image.content_type, headers=image.headers(layer_id=layer_id))
 
 
+GENERATED_DISPLAY_OFF_NOTICE = "WEATHER_GENERATED_DISPLAY=off: generative constructions are not derived or offered"
+
+
+def _generated_display_enabled() -> bool:
+    """The deployment kill switch, read from the ingest package that honours it.
+
+    Imported lazily like every other ingest symbol; a package that predates
+    the switch is read as "on", which is the only value it could have had.
+    """
+    try:
+        from ingest.derive.methods import generated_display_enabled  # noqa: PLC0415
+    except Exception:  # noqa: BLE001 - an older or absent bench has no switch
+        return True
+    try:
+        return bool(generated_display_enabled())
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _optional_float(value: object) -> float | None:
+    """A measured number, or None where nothing was measured - never a zero."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def _applied_options(options: object) -> dict[str, bool]:
+    """Which of a method's published options the derive actually applied.
+
+    A method publishes every number it settled under ``options``; the
+    switches among them are the key ``applied`` and every key ending
+    ``_applied``. Anything else there is a measurement, not a switch.
+    """
+    if not isinstance(options, dict):
+        return {}
+    return {
+        str(key): bool(value)
+        for key, value in options.items()
+        if (key == "applied" or str(key).endswith("_applied")) and isinstance(value, (bool, int, float))
+    }
+
+
+def _reduced_to_default(item: InterpolationMethodItem, applied: dict[str, bool]) -> bool:
+    """Whether this method drew the default construction on this layer.
+
+    True when an ingredient it needs is missing from the deployment, or when
+    every switch it measured was refused: a hermite-shader method other than
+    the baseline with nothing applied IS the baseline, and a method whose
+    shader is another construction with nothing applied has fields the
+    shader reduces to the plain advection mix.
+    """
+    if any(not requirement.met for requirement in item.requirements):
+        return True
+    if item.id == grids.DEFAULT_FLOW_METHOD:
+        return False
+    # Which switches are THIS method's own. Every method inherits the
+    # baseline's steering-prior decision, published as the bare `applied`
+    # (or `prior_applied` where a method renames it), and a prior that filled
+    # a few unsupported cells does not make an error-variance fusion or a
+    # residual "applied": on the live cycle of 2026-09-01 that inherited
+    # flag was the only true one on every GFS layer while every method's own
+    # term had been refused, and reading it as the method's own would have
+    # told the map nothing had reduced. A method that publishes its own
+    # `<term>_applied` switches is judged on those alone; one that publishes
+    # only `applied` (the prior IS its term, as for the cloud-top steering
+    # and the GOES transfer) is judged on that.
+    own = {key: value for key, value in applied.items() if key.endswith("_applied") and key != "prior_applied"}
+    if own:
+        return not any(own.values())
+    return not bool(applied.get("applied", False))
+
+
 @app.get(f"{PREFIX}/methods", response_model=MethodsResponse)
 def get_interpolation_methods() -> MethodsResponse:
     """The interpolation bench: what the map can be switched between, and how each scores.
@@ -1018,21 +1101,27 @@ def get_interpolation_methods() -> MethodsResponse:
             methods=[],
             notices=["the interpolation method registry could not be read; the map falls back to the default construction"],
         )
+    # Only the keys this API models cross; a registry key added ahead of the
+    # model is left for the next release rather than refusing every request.
+    modelled = set(InterpolationMethodItem.model_fields) - {"requirements", "published", "scores"}
     items = {
         entry["id"]: InterpolationMethodItem(
-            **{key: value for key, value in entry.items() if key != "requirements"},
+            **{key: value for key, value in entry.items() if key in modelled},
             requirements=[MethodRequirement(**item) for item in entry.get("requirements", [])],
             published=False,
             scores=[],
         )
         for entry in catalogue
     }
+    # The deployment kill switch is a fact about every branch below, so it
+    # is said whether or not a score could be read.
+    notices: list[str] = [] if _generated_display_enabled() else [GENERATED_DISPLAY_OFF_NOTICE]
     if fixture_mode():
         return MethodsResponse(
             data_mode=DataMode.FIXTURE,
             default_method=grids.DEFAULT_FLOW_METHOD,
             methods=list(items.values()),
-            notices=["fixture mode: no motion artifact has been scored"],
+            notices=[*notices, "fixture mode: no motion artifact has been scored"],
         )
     store = live_store()
     if store is None:
@@ -1040,13 +1129,16 @@ def get_interpolation_methods() -> MethodsResponse:
             data_mode=DataMode.UNAVAILABLE,
             default_method=grids.DEFAULT_FLOW_METHOD,
             methods=list(items.values()),
-            notices=["no live artifact store is reachable; no method can report a measured score"],
+            notices=[*notices, "no live artifact store is reachable; no method can report a measured score"],
         )
-    notices: list[str] = []
     try:
         artifacts = [
             artifact for artifact in store.current()
-            if artifact.logical_name == grids.CLOUD_MOTION_LOGICAL_NAME
+            # Every motion artifact, whichever grid it derives from: the bench
+            # scores the derived WEonG layer exactly as it scores the retrieved
+            # one, and the layer each score belongs to is settled by the
+            # variable name below, not by the artifact's.
+            if grids.is_cloud_motion_logical_name(artifact.logical_name)
         ]
     except Exception:
         LOGGER.exception("published motion artifacts could not be listed for the method bench")
@@ -1054,7 +1146,7 @@ def get_interpolation_methods() -> MethodsResponse:
             data_mode=DataMode.UNAVAILABLE,
             default_method=grids.DEFAULT_FLOW_METHOD,
             methods=list(items.values()),
-            notices=["the live artifact store raised while listing published motion artifacts"],
+            notices=[*notices, "the live artifact store raised while listing published motion artifacts"],
         )
     for artifact in artifacts:
         provenance = artifact.provenance or {}
@@ -1074,9 +1166,26 @@ def get_interpolation_methods() -> MethodsResponse:
                     notices.append(f"{artifact.source_id} publishes an unknown interpolation method {method_id!r}")
                     continue
                 item.published = True
+                # A requirement that named a diagnostic is answered by what the
+                # derive actually found, not by the placeholder the method
+                # carries for the case where no cycle has reported yet. Any
+                # variable reaching the ingredient settles it: the menu is a
+                # per-deployment statement, and "some strata have it" is the
+                # honest reading of a per-variable fact shown in one line.
+                for requirement in item.requirements:
+                    if not requirement.diagnostic or requirement.met:
+                        continue
+                    reached = measured.get(requirement.diagnostic)
+                    if isinstance(reached, (int, float)) and float(reached) > 0.0:
+                        requirement.met = True
+                        requirement.detail = (
+                            f"read by the last cycle ({requirement.diagnostic}="
+                            f"{float(reached):.2f} on {artifact.source_id} {variable})"
+                        )
                 skill = measured.get("leave_one_out")
                 if not skill:
                     continue
+                applied = _applied_options(measured.get("options"))
                 item.scores.append(MethodScore(
                     layer_id=spec.layer_id if spec else f"{artifact.source_id}:{variable}",
                     source_id=artifact.source_id,
@@ -1084,10 +1193,17 @@ def get_interpolation_methods() -> MethodsResponse:
                     held_out_frames=int(skill.get("held_out_frames", 0)),
                     improvement_over_reversed_flow=float(skill.get("improvement_over_reversed_flow", 0.0)),
                     improvement_over_crossfade=float(skill.get("improvement_over_crossfade", 0.0)),
+                    improvement_over_advection=_optional_float(skill.get("improvement_over_advection")),
                     midpoint_mae_percent=float(skill.get("midpoint_mae_percent", 0.0)),
-                    midpoint_ssim=skill.get("midpoint_ssim"),
-                    advect_weight_median=measured.get("advect_weight_median"),
+                    midpoint_ssim=_optional_float(skill.get("midpoint_ssim")),
+                    midpoint_sharpness_ratio=_optional_float(skill.get("midpoint_sharpness_ratio")),
+                    midpoint_spectral_ratio_error=_optional_float(skill.get("midpoint_spectral_ratio_error")),
+                    midpoint_mae_grew=_optional_float(skill.get("midpoint_mae_grew")),
+                    midpoint_mae_decayed=_optional_float(skill.get("midpoint_mae_decayed")),
+                    advect_weight_median=_optional_float(measured.get("advect_weight_median")),
                     derivation_version=str(version) if version else None,
+                    applied=applied,
+                    reduced_to_default=_reduced_to_default(item, applied),
                 ))
     if not artifacts:
         notices.append("no cloud-motion artifact is currently published; no method has been scored")

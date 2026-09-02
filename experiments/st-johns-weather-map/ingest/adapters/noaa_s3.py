@@ -28,10 +28,13 @@ from ingest.contract import (
     RunResult,
 )
 from ingest.grib import (
+    GFS_RH_PHASE_BASIS,
+    RH_PHASE_MIXED_LINEAR_253K_273K,
     ByteRange,
     byte_ranges,
     cap_open_range,
     crop_to_bbox,
+    declare_rh_phase,
     normalize_units,
     open_grib,
     parse_idx,
@@ -99,8 +102,8 @@ GFS_IDX_SELECTORS: frozenset[tuple[str, str]] = frozenset(
         ("UGRD", "500 mb"),
         ("VGRD", "500 mb"),
         # Vertical velocity at the same three levels: omega, d(pressure)/dt,
-        # so negative is ascent. It tells the `development-residual`
-        # interpolation method WHEN inside an interval the model made or
+        # so negative is ascent. It tells the computed-residual
+        # interpolation methods WHEN inside an interval the model made or
         # destroyed cloud. Display derivation only, never a reading. Verified
         # in the real .idx (gfs.20260831/00 f006): `VVEL:850 mb` and the same
         # at 700 and 500. GFS also publishes `DZDT` (geometric vertical
@@ -111,6 +114,16 @@ GFS_IDX_SELECTORS: frozenset[tuple[str, str]] = frozenset(
         ("VVEL", "850 mb"),
         ("VVEL", "700 mb"),
         ("VVEL", "500 mb"),
+        # Relative humidity and temperature on the same three levels: the
+        # profile a humidity-based low-cloud diagnosis reads. Verified in the
+        # real .idx (gfs.20260901/06 f003): `RH:850 mb`, `TMP:850 mb` and the
+        # same at 700 and 500. Display derivation only, never a reading.
+        ("RH", "850 mb"),
+        ("RH", "700 mb"),
+        ("RH", "500 mb"),
+        ("TMP", "850 mb"),
+        ("TMP", "700 mb"),
+        ("TMP", "500 mb"),
         ("PWAT", "entire atmosphere (considered as a single layer)"),
     }
 )
@@ -122,11 +135,28 @@ GFS_IDX_SELECTORS: frozenset[tuple[str, str]] = frozenset(
 # the quantity the manifest declares.
 _INSTANTANEOUS_FORECAST = re.compile(r"^(anl|\d+ hour fcst)$")
 
-# Ceiling on the byte ranges fetched for one lead hour. Selected messages
-# measure ~8.4 MB and the 1 MiB gap-merge brings the request to ~10.5 MB
-# (measured against gfs.20260830/06 f000 and f007), so 25 MB is ample
-# headroom without ever permitting a whole-file pull.
-MAX_BYTES_PER_LEAD = 25 * 1024 * 1024
+# Ceiling on the byte ranges fetched for one lead hour. It exists to stop a
+# careless selector turning into a whole-file pull: one f003 pgrb2.0p25 file
+# is 521 MiB.
+#
+# RE-MEASURED 2026-09-01, and the previous comment here was badly out of date.
+# It claimed ~10.5 MB per lead "measured against gfs.20260830/06 f000 and
+# f007". Against the live sidecars the selector set BEFORE this change already
+# requested 19.1-21.8 MiB per lead - i.e. it had been sitting inside 15% of
+# the 25 MiB ceiling, not at 40% of it. Adding the six isobaric RH/TMP
+# messages adds ~4.6 MiB and takes the request to:
+#
+#   gfs.20260901/06  f000 23.73  f001 25.09  f003 25.37  f006 26.32
+#                    f012 25.66  f024 26.11   MiB
+#   gfs.20260831/18  f003 26.45 MiB
+#
+# Four of those seven leads exceed 25 MiB, so keeping the old ceiling would
+# have failed the whole run closed on most leads - exactly the failure this
+# constant was introduced to catch, arriving from the ceiling being stale
+# rather than from the selector being careless. The ceiling is therefore
+# raised to 40 MiB: ~1.5x the largest measured request, and still ~13x below
+# a whole-file pull, so it remains a real guard.
+MAX_BYTES_PER_LEAD = 40 * 1024 * 1024
 
 # GRIB shortNames decoded from the subset file, one cfgrib open per
 # (shortName, extra cfgrib filter) so a single heterogeneous file (meanSea +
@@ -156,6 +186,13 @@ GFS_DECODE_SPECS: tuple[tuple[str, dict[str, object], tuple[tuple[str, str], ...
     ("u", {"typeOfLevel": "isobaricInhPa"}, (("UGRD", "200 mb"), ("UGRD", "300 mb"), ("UGRD", "850 mb"), ("UGRD", "700 mb"), ("UGRD", "500 mb"))),
     ("v", {"typeOfLevel": "isobaricInhPa"}, (("VGRD", "200 mb"), ("VGRD", "300 mb"), ("VGRD", "850 mb"), ("VGRD", "700 mb"), ("VGRD", "500 mb"))),
     ("w", {"typeOfLevel": "isobaricInhPa"}, (("VVEL", "850 mb"), ("VVEL", "700 mb"), ("VVEL", "500 mb"))),
+    # The explicit ``typeOfLevel`` filter is load-bearing on these two, more so
+    # than on u/v/w: GFS publishes `t` at 2 m above ground and `r` at 2 m above
+    # ground as well, and both are already selected above. Without the filter a
+    # single cfgrib open on shortName `t` would try to merge the isobaric
+    # messages with the screen-level one on incompatible level coordinates.
+    ("r", {"typeOfLevel": "isobaricInhPa"}, (("RH", "850 mb"), ("RH", "700 mb"), ("RH", "500 mb"))),
+    ("t", {"typeOfLevel": "isobaricInhPa"}, (("TMP", "850 mb"), ("TMP", "700 mb"), ("TMP", "500 mb"))),
     ("pwat", {}, (("PWAT", "entire atmosphere (considered as a single layer)"),)),
 )
 
@@ -163,7 +200,11 @@ GFS_DECODE_SPECS: tuple[tuple[str, dict[str, object], tuple[tuple[str, str], ...
 # under; the level suffix comes from the .idx level ("200 mb" -> 200hPa).
 # `w` is VVEL, vertical velocity on pressure surfaces (ecCodes paramId 135,
 # Pa s-1), not DZDT.
-_ISOBARIC_PREFIXES = {"u": "wind_u", "v": "wind_v", "w": "omega"}
+# ``r`` and ``t`` split to `relative_humidity_700hPa` / `temperature_700hPa`,
+# which do not collide with the screen-level `relative_humidity_2m` /
+# `temperature_2m` those same shortNames' 2 m messages publish under (`2r`,
+# `2t` in GFS_VAR_MAP - cfgrib gives the screen fields distinct shortNames).
+_ISOBARIC_PREFIXES = {"u": "wind_u", "v": "wind_v", "w": "omega", "r": "relative_humidity", "t": "temperature"}
 
 # Variables that belong to the upper_air artifact rather than surface.
 UPPER_AIR_VARIABLES = ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa")
@@ -212,6 +253,23 @@ GFS_MANIFEST = RunManifest(
         RequiredField("omega_850hPa", "Pa s-1", level="850 hPa", optional=True),
         RequiredField("omega_700hPa", "Pa s-1", level="700 hPa", optional=True),
         RequiredField("omega_500hPa", "Pa s-1", level="500 hPa", optional=True),
+        # Humidity and temperature on the steering levels: the profile a
+        # humidity-based low-cloud diagnosis reads. Optional for the same
+        # reason the winds are - a level the inventory omits must cost the
+        # diagnosis, never the artifact.
+        #
+        # NOTE for anyone thresholding these: GFS RH below freezing is NOT the
+        # same quantity as ECCC RH. Measured 2026-09-01 (see
+        # ``ingest.grib.GFS_RH_PHASE_BASIS``), GFS divides by a mixed-phase
+        # saturation that ramps linearly from ice at 253.16 K to water at
+        # 273.16 K, while HRDPS and RDPS divide by liquid water at every
+        # temperature. At -25 degC the same air reads ~24 % higher here.
+        RequiredField("relative_humidity_850hPa", "percent", level="850 hPa", optional=True),
+        RequiredField("relative_humidity_700hPa", "percent", level="700 hPa", optional=True),
+        RequiredField("relative_humidity_500hPa", "percent", level="500 hPa", optional=True),
+        RequiredField("temperature_850hPa", "degC", level="850 hPa", optional=True),
+        RequiredField("temperature_700hPa", "degC", level="700 hPa", optional=True),
+        RequiredField("temperature_500hPa", "degC", level="500 hPa", optional=True),
         RequiredField("precipitable_water", "kg m-2", level="column", optional=True),
     ),
 )
@@ -237,7 +295,7 @@ def select_gfs_ranges(idx_text: str, *, merge_gap_bytes: int = 1 << 20) -> tuple
     """Resolve one sidecar to the byte ranges and the .idx params they carry.
 
     Selection is by exact (parameter, level) pair plus the instantaneous
-    forecast filter, so only the sixteen declared messages ever qualify. The
+    forecast filter, so only the declared messages ever qualify. The
     returned (parameter, level) pair set lets the decode loop distinguish
     "the inventory did not publish this optional message" from "we fetched it
     and could not read it" - per level, because UGRD at 10 m and UGRD at
@@ -379,7 +437,8 @@ class NOAAS3Adapter:
 
             # Byte-range subsetting is mandatory here: one f003 file is 521 MiB.
             # ``select_gfs_ranges`` picks exactly the declared (param, level)
-            # messages, so the request stays ~10.5 MB per lead.
+            # messages, so the request stays ~24-27 MiB per lead (measured
+            # 2026-09-01; see MAX_BYTES_PER_LEAD).
             ranges, present_pairs = select_gfs_ranges(idx_text)
             ranges = cap_open_range(ranges)
             if not ranges:
@@ -441,7 +500,14 @@ class NOAAS3Adapter:
                                     )
                                     continue
                                 # ``load`` materialises before the finally-unlink below.
-                                step_fields[canonical] = strip_message_scalars(selected_level.load())
+                                field = strip_message_scalars(selected_level.load())
+                                if canonical.startswith("relative_humidity_"):
+                                    field = declare_rh_phase(
+                                        field,
+                                        convention=RH_PHASE_MIXED_LINEAR_253K_273K,
+                                        basis=GFS_RH_PHASE_BASIS,
+                                    )
+                                step_fields[canonical] = field
                             continue
                         canonical = GFS_VAR_MAP.get(lowered)
                         if canonical is None:

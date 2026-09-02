@@ -10,11 +10,13 @@ each other along the motion field and cross-dissolve. The scheme is
 endpoint-exact - at the two real instants the real frames show untouched -
 and where the flow is zero or unconfident it degrades to a plain crossfade.
 
-Evidence rules (owner carve-out 2026-08-31): this artifact is a display
-derivation. It is published with its method, version and base revision in
-provenance, it never feeds ``/point``, ``/timeline`` or any reading, and a
-pair whose flow cannot be computed is simply absent - the client then
-crossfades, disclosed as such.
+Evidence rules (owner carve-out 2026-08-31, amended by carve-out (d)
+2026-09-01): this artifact is a display derivation. It is published with its
+method, version and base revision in provenance, it never feeds ``/point``,
+``/timeline`` or any reading, and a pair whose flow cannot be computed is
+simply absent - the client then crossfades, disclosed as such. A method that
+draws a GENERATED value between frames (``generative = True``) is derived
+only while ``WEATHER_GENERATED_DISPLAY`` allows it (``enabled_methods``).
 """
 
 from __future__ import annotations
@@ -31,7 +33,6 @@ from ingest.derive.flow_ops import (  # noqa: F401 - re-exported for tests and m
     MIN_HELD_OUT_IMPROVEMENT,
     STEERING_LEVEL_BY_VARIABLE,
     _consistency,
-    _development_agreement,
     _dis_flow,
     _display_weight,
     _midpoint_composite,
@@ -40,6 +41,7 @@ from ingest.derive.flow_ops import (  # noqa: F401 - re-exported for tests and m
     _ssim,
     _steering_prior,
     _supported_flow,
+    _warp_linear,
     _warp_nearest,
 )
 from ingest.derive.methods import (  # noqa: F401 - re-exported for tests
@@ -48,6 +50,7 @@ from ingest.derive.methods import (  # noqa: F401 - re-exported for tests
     PairMotion,
     _interpolation_skill,
     enabled_methods,
+    generated_display_enabled,
     method_catalogue,
 )
 from ingest.grib import write_zarr
@@ -55,15 +58,39 @@ from ingest.store import sha256_of
 
 UTC = timezone.utc
 
-#: Cloud variables worth motion fields, per source. Only the rendered-grid
-#: cloud layers consume them; nothing else is derived.
-CLOUD_MOTION_SOURCES: dict[str, tuple[str, ...]] = {
-    "noaa-gfs": ("cloud_low", "cloud_middle", "cloud_high", "total_cloud"),
-    "eccc-hrdps": ("total_cloud",),
-    "eccc-rdps": ("total_cloud",),
+#: Cloud variables worth motion fields, keyed by the (source, artifact) the
+#: frames are read from. Only the rendered-grid cloud layers consume them;
+#: nothing else is derived.
+#:
+#: Keyed by BOTH parts because a source now publishes more than one artifact
+#: with cloud frames in it: the retrieved ``surface`` grid, and the derived
+#: ``low_cloud_weong`` layer (``ingest.derive.weong_layer``). Each gets its own
+#: motion artifact, derived from its own frames - the WEonG layer's cloud is a
+#: different field from the provider's and borrowing the other's flow would be
+#: a displacement fitted to the wrong picture.
+CLOUD_MOTION_SOURCES: dict[tuple[str, str], tuple[str, ...]] = {
+    ("noaa-gfs", "surface"): ("cloud_low", "cloud_middle", "cloud_high", "total_cloud"),
+    ("eccc-hrdps", "surface"): ("total_cloud",),
+    ("eccc-rdps", "surface"): ("total_cloud",),
+    ("eccc-hrdps", "low_cloud_weong"): ("total_cloud_weong",),
+    ("eccc-rdps", "low_cloud_weong"): ("total_cloud_weong",),
 }
 
 LOGICAL_NAME = "cloud_motion"
+
+
+def motion_logical_name(base_logical_name: str) -> str:
+    """The motion artifact's logical name for the artifact it derives from.
+
+    ``surface`` keeps the bare ``cloud_motion`` it has always had, so every
+    published artifact, every stored provenance record and every client that
+    predates the derived layers still resolves; anything else is suffixed with
+    its base, giving ``cloud_motion_low_cloud_weong``. One rule, one place,
+    read identically by the derive and by the API's ``/flow`` lookup.
+    """
+    if base_logical_name == "surface":
+        return LOGICAL_NAME
+    return f"{LOGICAL_NAME}_{base_logical_name}"
 METHOD = (
     "dense optical flow between adjacent published frames: OpenCV DIS (medium preset) on the "
     "Gaussian-presmoothed percent field, forward and backward, with a forward-backward "
@@ -72,17 +99,24 @@ METHOD = (
     "(normalized convolution), with the local trusted density kept as support; per-knot "
     "velocities by QVI central difference of the two adjacent pairs' flows (one-sided at the "
     "sequence ends), stored as cubic Hermite segment tangents so displayed velocity is C1 "
-    "across every real frame; the display weight between advection and a plain crossfade is the "
-    "photometric agreement of the two half-interval warps, gated by that support, so cloud that "
-    "grew or decayed in place dissolves rather than being dragged; a variable whose held-out "
-    "midpoint reconstruction does not beat the same construction with the motion reversed is "
-    "published with a zero weight and crossfades everywhere; where the model publishes the "
-    "stratum's steering wind (850/700/500 hPa) that wind may fill cells the imagery leaves "
-    "unsupported, weighted by its agreement with the trusted image flow, never where a "
-    "well-supported image flow reports the field standing still, and only for a variable whose "
-    "held-out reconstruction the prior measurably improves"
+    "across every real frame; the display weight between advection and a plain crossfade is "
+    "that support over its floor, so every cell with a trustworthy vector behind it advects at "
+    "full strength and only cells with nothing trustworthy behind their fill dissolve (the "
+    "photometric development test that used to gate the weight measured worse on growth, decay "
+    "and sharpness on every layer and was removed); a variable whose held-out midpoint "
+    "reconstruction does not beat the same construction with the motion reversed is published "
+    "with a zero weight and crossfades everywhere - that control decides only whether motion is "
+    "displayed; methods are ranked against each other, and any optional or generated term is "
+    "admitted, on fixed controls (a plain crossfade and a plain advection of the same frames) "
+    "with structural similarity and sharpness; where the model publishes the stratum's steering "
+    "wind (850/700/500 hPa) that wind may fill cells the imagery leaves unsupported, weighted by "
+    "its agreement with the trusted image flow, never where a well-supported image flow reports "
+    "the field standing still, and only for a variable whose held-out reconstruction the prior "
+    "measurably improves; a method may store a per-cell envelope t(1-t)(gen_a + gen_b t) in "
+    "cloud percent, zero at both real instants by construction, added after the advection mix "
+    "and clamped to the percent range"
 )
-VERSION = "cloud-motion-bench-v5"
+VERSION = "cloud-motion-bench-v6"
 
 
 def _open_zarr_zip(path: Path) -> Any:
@@ -129,15 +163,32 @@ _FIELD_ATTRS = {
     },
     # A weight is not a displacement, so these never inherit the flow
     # attributes' "grid cells per frame interval".
-    "vis0": {"units": "1", "role": "per-pixel reliability of the frame-0 warp at the midpoint (visibility-blend)"},
-    "vis1": {"units": "1", "role": "per-pixel reliability of the frame-1 warp at the midpoint (visibility-blend)"},
-    "dev_shape": {
-        "units": "1",
+    "vis0": {"units": "1", "role": "per-pixel reliability of the frame-0 warp at the midpoint (inverse error variance; error-variance-blend)"},
+    "vis1": {"units": "1", "role": "per-pixel reliability of the frame-1 warp at the midpoint (inverse error variance; error-variance-blend)"},
+    # The computed residual and the envelope built from it. These are percent
+    # fields, not displacements, so they never inherit the flow attributes.
+    "res_s": {
+        "units": "percent",
         "role": (
-            "signed re-timing of the dissolve in [-1, 1] from the model run's own vertical "
-            "velocity: positive delivers the change between the two retrieved frames earlier in "
-            "the interval, negative later. The shaped mixing fraction stays in [0, 1], so the "
-            "displayed value stays between the two retrieved frames at that cell"
+            "computed development residual s = warp(following, -flow01) - previous, capped, "
+            "expressed at the trajectory's start; diagnostic only, never served; zeroed with the "
+            "display weight wherever the pair or the variable is vetoed"
+        ),
+    },
+    "gen_a": {
+        "units": "percent",
+        "role": (
+            "envelope coefficient a: the display adds t(1-t)(a + b t) after the advection mix, "
+            "clamped to [0, 100]; zero at both real instants by construction; residual-advection "
+            "stores a = 4 * gain * s (non-generative at gain <= 1/4); a generative method fits "
+            "(a, b) to a cited timing target; zeroed with the display weight wherever vetoed"
+        ),
+    },
+    "gen_b": {
+        "units": "percent",
+        "role": (
+            "envelope coefficient b (see gen_a); zero for residual-advection; zeroed with the "
+            "display weight wherever vetoed"
         ),
     },
     "vs_u": {**_FLOW_ATTRS, "role": "cubic Hermite segment tangent (QVI central-difference knot velocity)"},
@@ -156,7 +207,10 @@ def _derive_one_method(
     whether motion is worth displaying at all rather than about how it was
     derived: a pair whose warp cannot beat persistence, and a variable whose
     held-out reconstruction cannot beat the same construction with its motion
-    reversed, are published with a zero display weight and crossfade.
+    reversed, are published with a zero display weight and crossfade. That
+    reversed-flow control decides ONLY whether motion is displayed; methods
+    are ranked against each other, and any optional or generated term is
+    admitted, on the fixed controls the harness scores beside it.
     """
     import numpy  # noqa: PLC0415
 
@@ -191,9 +245,20 @@ def _derive_one_method(
         filled_following = numpy.nan_to_num(following, nan=0.0)
         mae_warp.append(float(numpy.mean(numpy.abs(_warp_nearest(filled_previous, motion.flow01) - filled_following))))
         mae_persistence.append(float(numpy.mean(numpy.abs(filled_previous - filled_following))))
+    # Silencing a method means zeroing everything that carries its
+    # contribution, not only the advection weight. A field fenced by
+    # `1 - advect_weight` would otherwise be turned UP to maximum by the very
+    # veto meant to switch it off. See `InterpolationMethod.vetoed_suffixes`.
+    vetoed = tuple(name for name in getattr(method, "vetoed_suffixes", ()) if name in fields)
+
+    def silence(index: int | slice) -> None:
+        fields["advect_weight"][index] = 0.0
+        for name in vetoed:
+            fields[name][index] = 0.0
+
     for index, (warped, persisted) in enumerate(zip(mae_warp, mae_persistence)):
         if warped >= persisted:
-            fields["advect_weight"][index] = 0.0
+            silence(index)
     skill = _interpolation_skill(
         context.frames,
         method=method,
@@ -201,9 +266,10 @@ def _derive_one_method(
         variable=context.variable,
         interval_seconds=context.interval_seconds,
         indices=context.indices,
+        cache=context.cache,
     )
     if skill is not None and skill["improvement_over_reversed_flow"] < MIN_HELD_OUT_IMPROVEMENT:
-        fields["advect_weight"][:] = 0.0
+        silence(slice(None))
     tangents = _segment_tangents(
         [motion.flow01 for motion in motions],
         [motion.flow10 for motion in motions],
@@ -278,21 +344,28 @@ def derive_cloud_motion(store: Any, surface: Any, variables: Iterable[str], work
         # frames of the same cycle, so the held-out scores in provenance rank
         # them directly rather than across cycles that saw different weather.
         methods = enabled_methods()
-        stacks: dict[str, list[Any]] = {}
+        derived_fields: list[dict[str, Any]] = []
         per_method: dict[str, Any] = {}
         for method in methods:
             active, notes = method.configure(context)
             fields, method_quality = _derive_one_method(active, context, pairs)
-            for suffix, values in fields.items():
-                stacks.setdefault(suffix, []).append(values)
+            derived_fields.append(fields)
             per_method[method.id] = {**method_quality, "options": {key: value for key, value in notes.items() if key != "skill"}}
         # A method that published a suffix nothing else did leaves the others
         # an explicit zero field rather than a ragged artifact: the client
-        # reads a suffix only for the method that declared it.
+        # reads a suffix only for the method that declared it. Filled BY SLOT
+        # rather than by append order - a suffix only one method declares would
+        # otherwise be written at position 0 of the method axis and read back
+        # under `baseline`, silently handing every reader one method's stored
+        # field under another method's name.
         empty = numpy.zeros((len(pairs),) + frames[0].shape, dtype="float32")
-        for suffix, values in stacks.items():
-            while len(values) < len(methods):
-                values.append(empty)
+        suffixes: list[str] = []
+        for fields in derived_fields:
+            suffixes.extend(suffix for suffix in fields if suffix not in suffixes)
+        stacks = {
+            suffix: [fields.get(suffix, empty) for fields in derived_fields]
+            for suffix in suffixes
+        }
         for suffix, values in stacks.items():
             data_vars[f"{variable}_{suffix}"] = (("method", "pair", "y", "x"), numpy.stack(values), _FIELD_ATTRS.get(suffix, _FLOW_ATTRS))
         quality[variable] = {
@@ -340,7 +413,7 @@ def derive_cloud_motion(store: Any, surface: Any, variables: Iterable[str], work
         "base_revision_id": str(surface.revision_id),
         "base_object_key": surface.object_key,
         "interpolation_methods": method_catalogue(),
-        "quality": {"status": "derived", "per_variable": quality},
+        "quality": {"status": "passed", "flags": ["derived", "display_only"], "per_variable": quality},
     }
     return RunResult(
         source_id=surface.source_id,
@@ -349,7 +422,7 @@ def derive_cloud_motion(store: Any, surface: Any, variables: Iterable[str], work
         retrieved_at=datetime.now(UTC),
         complete=True,
         qc_passed=True,
-        artifacts=[Artifact(LOGICAL_NAME, MEDIA_ZARR, path, provenance)],
+        artifacts=[Artifact(motion_logical_name(surface.logical_name), MEDIA_ZARR, path, provenance)],
         native_crs=surface.native_crs,
         notes=f"cloud motion derived from surface revision {surface.revision_id}",
     )
@@ -362,11 +435,15 @@ def cloud_motion_cycle(store: Any) -> list[str]:
         current = {(item.source_id, item.logical_name): item for item in store.current_artifacts()}
     except Exception as error:
         return [f"cloud-motion: current artifacts unreadable - {error!r}"]
-    for source_id, variables in CLOUD_MOTION_SOURCES.items():
-        surface = current.get((source_id, "surface"))
+    for (source_id, base_logical_name), variables in CLOUD_MOTION_SOURCES.items():
+        surface = current.get((source_id, base_logical_name))
         if surface is None:
+            # Nothing published under that name this cycle. For a derived base
+            # - the WEonG layer - that is the ordinary state when the kill
+            # switch is off or the profile was incomplete, and motion for a
+            # layer nobody is offered is not worth a line.
             continue
-        existing = current.get((source_id, LOGICAL_NAME))
+        existing = current.get((source_id, motion_logical_name(base_logical_name)))
         if (
             existing is not None
             and str(existing.provenance.get("base_revision_id", "")) == str(surface.revision_id)
@@ -376,13 +453,13 @@ def cloud_motion_cycle(store: Any) -> list[str]:
         ):
             continue
         try:
-            with tempfile.TemporaryDirectory(prefix=f"{source_id}-cloud-motion-") as workdir:
+            with tempfile.TemporaryDirectory(prefix=f"{source_id}-{base_logical_name}-cloud-motion-") as workdir:
                 result = derive_cloud_motion(store, surface, variables, Path(workdir))
                 if result is None:
-                    lines.append(f"cloud-motion {source_id}: nothing derivable (no cloud variable with two frames)")
+                    lines.append(f"cloud-motion {source_id}/{base_logical_name}: nothing derivable (no cloud variable with two frames)")
                     continue
                 store.stage_and_publish(result)
-            lines.append(f"cloud-motion {source_id}: published for surface revision {surface.revision_id}")
+            lines.append(f"cloud-motion {source_id}/{base_logical_name}: published for {base_logical_name} revision {surface.revision_id}")
         except Exception as error:
-            lines.append(f"cloud-motion {source_id}: derive failed - {error!r}")
+            lines.append(f"cloud-motion {source_id}/{base_logical_name}: derive failed - {error!r}")
     return lines

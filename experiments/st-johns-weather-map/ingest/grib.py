@@ -443,6 +443,79 @@ def declare_wmo_total_cloud(dataset: Any) -> bool:
     return declared
 
 
+# --- relative humidity: which saturation the producer divided by ------------
+#
+# GRIB2 discipline 0 / parameterCategory 1 / parameterNumber 1 is "Relative
+# humidity, %" and says NOTHING about the phase of the saturation vapour
+# pressure in the denominator. There is no coded key for it, so the identity
+# CANNOT be read out of the message the way ``declare_wmo_total_cloud`` reads
+# total cloud - it has to be measured. It matters enormously: at -20 degC
+# e_s,water / e_s,ice ~ 1.21, so the same air reads RH 0.85 on one convention
+# and ~1.03 on the other, which is the difference between clear and overcast
+# under any threshold scheme.
+#
+# Measured here on 2026-09-01, 12Z PT003H (ECCC) and gfs.20260901/06 f003
+# (NOAA), by reconstructing vapour pressure from the model's OWN specific
+# humidity on the same level and dividing by Buck (1981) saturation over
+# water and over ice:
+#
+#   HRDPS  RH_ISBL_0500                 -25..-28 degC  bias vs water +0.08 %,
+#                                                      vs ice       +19.09 %
+#   RDPS   RelativeHumidity_IsbL-0500   -25..-34 degC  bias vs water -0.02 %,
+#                                                      vs ice       +20.17 %
+#   GFS    RH:500 mb                    -25..-50 degC  bias vs water -24.48 %,
+#                                                      vs ice        -0.21 %
+#
+# So the two ECCC models divide by saturation over LIQUID WATER at every
+# temperature, and GFS does not. Resolving GFS's blend weight per 5 degC bin
+# at 850 and 700 mb (solving e_s,pub = a*e_s,water + (1-a)*e_s,ice) gives
+# a = 1.00 at T >= 0 degC, 0.00 at T <= -20 degC, and 0.12 / 0.37 / 0.62 /
+# 0.80 at the midpoints of [-20,-15), [-15,-10), [-10,-5), [-5,0) - i.e. a
+# linear ramp in temperature between 253.16 K and 273.16 K, which is NCEP's
+# standard mixed-phase saturation function.
+#
+# Consequence for anything thresholding RH: a threshold calibrated on ECCC RH
+# is NOT transferable to GFS RH below freezing, where GFS reads up to ~24 %
+# higher for identical air.
+RH_PHASE_LIQUID_WATER = "liquid_water"
+RH_PHASE_MIXED_LINEAR_253K_273K = "mixed_linear_253K_273K"
+
+ECCC_RH_PHASE_BASIS = (
+    "measured, not coded: GRIB2 0/1/1 carries no phase key, so the convention was "
+    "determined on 2026-09-01 by reconstructing vapour pressure from the model's own "
+    "SPFH on the same isobaric level and comparing against Buck (1981) saturation over "
+    "water and over ice at -25 degC and below. HRDPS 500 hPa matched water to 0.08 % "
+    "and missed ice by 19.1 %; RDPS 500 hPa matched water to 0.13 % and missed ice by "
+    "20.2 %. Both models divide by saturation over liquid water at all temperatures."
+)
+
+GFS_RH_PHASE_BASIS = (
+    "measured, not coded: GRIB2 0/1/1 carries no phase key, so the convention was "
+    "determined on 2026-09-01 from gfs.20260901/06 f003 by reconstructing vapour "
+    "pressure from the message's own SPFH on the same level. At 500 mb below -25 degC "
+    "the published RH matches saturation over ice to 0.24 % and misses water by 24.5 %. "
+    "Solving the blend weight per temperature bin at 850 and 700 mb gives a linear ramp "
+    "in temperature from all-ice at 253.16 K to all-water at 273.16 K. A threshold "
+    "calibrated on ECCC's liquid-water RH is not transferable to this field below 0 degC."
+)
+
+
+def declare_rh_phase(variable: Any, *, convention: str, basis: str) -> Any:
+    """Stamp the measured saturation-phase convention onto a humidity variable.
+
+    Unlike ``declare_wmo_total_cloud`` - which reads a declaration out of the
+    message's own coded keys - this records a MEASURED fact, because GRIB2
+    codes no key for it. The basis string travels with the data so a reader
+    can see how the claim was established rather than trusting the name.
+    """
+    variable.attrs = {
+        **variable.attrs,
+        "rh_phase_convention": convention,
+        "rh_phase_basis": basis,
+    }
+    return variable
+
+
 def normalize_units(dataset: Any) -> Any:
     """Convert to project units, leaving anything unrecognised untouched.
 

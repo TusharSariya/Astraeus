@@ -9,44 +9,39 @@ vi.mock('maplibre-gl', () => ({
   default: { MercatorCoordinate: { fromLngLat: (point: { lng: number; lat: number }) => ({ x: point.lng, y: point.lat }) } },
 }))
 
-import { FlowBlendLayer, blendReference, hermiteDisplacement, intermediateDisplacement, shapedFraction, visibilityWeights } from './FlowBlendLayer'
+import { FlowBlendLayer, blendReference, envelopeTerm, hermiteDisplacement, visibilityWeights } from './FlowBlendLayer'
 
-describe('shapedFraction (the development-residual re-timing)', () => {
-  it('is endpoint-exact for every shaping, by algebra rather than a clamp', () => {
-    for (const phi of [-1, -0.5, 0, 0.37, 1]) {
-      expect(shapedFraction(phi, 0)).toBeCloseTo(0, 12)
-      expect(shapedFraction(phi, 1)).toBeCloseTo(1, 12)
+describe('envelopeTerm (the residual-advection development envelope)', () => {
+  it('is zero at both real frames for every (a, b), by algebra rather than a clamp', () => {
+    // The whole licence for drawing it: whatever the server fitted, the two
+    // retrieved frames show untouched at their own instants.
+    for (const [a, b] of [[0.4, 0], [-0.3, 0.2], [1, -1], [0, 0.7]]) {
+      expect(envelopeTerm(a, b, 0)).toBeCloseTo(0, 12)
+      expect(envelopeTerm(a, b, 1)).toBeCloseTo(0, 12)
     }
   })
 
-  it('stays monotone and inside [0, 1], so the mix stays a convex combination', () => {
-    // This is the whole licence for the method: s(t) in [0, 1] means the
-    // displayed value is between the two RETRIEVED frames at that cell, so no
-    // cloud is invented and none erased. Monotonicity is what guarantees it.
-    for (const phi of [-1, -0.6, 0.6, 1]) {
-      let last = -Infinity
-      for (let step = 0; step <= 200; step += 1) {
-        const value = shapedFraction(phi, step / 200)
-        expect(value).toBeGreaterThanOrEqual(-1e-12)
-        expect(value).toBeLessThanOrEqual(1 + 1e-12)
-        expect(value).toBeGreaterThanOrEqual(last - 1e-12)
-        last = value
-      }
-    }
+  it('is identically zero where the server measured no residual, so it costs nothing', () => {
+    for (const t of [0.1, 0.25, 0.5, 0.9]) expect(envelopeTerm(0, 0, t)).toBe(0)
   })
 
-  it('is the identity where the model says nothing, so the residual costs nothing', () => {
-    for (const t of [0.1, 0.25, 0.5, 0.9]) expect(shapedFraction(0, t)).toBeCloseTo(t, 12)
+  it('evaluates exactly the parabola the server stored: t(1-t)(a + b t)', () => {
+    // The same numbers ResidualAdvectionMethod.composite evaluates in
+    // ingest/derive/methods/residual_advection.py. If these drift, the bench
+    // ranks a construction the map does not draw.
+    expect(envelopeTerm(0.4, 0, 0.5)).toBeCloseTo(0.25 * 0.4, 12)
+    expect(envelopeTerm(0.4, 0.2, 0.5)).toBeCloseTo(0.25 * (0.4 + 0.1), 12)
+    expect(envelopeTerm(-0.4, 0, 0.25)).toBeCloseTo(0.1875 * -0.4, 12)
   })
 
-  it('brings the change forward for a positive shaping and holds it back for a negative one', () => {
-    expect(shapedFraction(0.8, 0.5)).toBeGreaterThan(0.5)
-    expect(shapedFraction(-0.8, 0.5)).toBeLessThan(0.5)
-    // The exact values DevelopmentResidualMethod.composite computes in
-    // ingest/derive/methods.py: s = t + phi*t*(1-t). If these two ever drift,
-    // the bench ranks a construction the map does not draw.
-    expect(shapedFraction(0.8, 0.5)).toBeCloseTo(0.5 + 0.8 * 0.25, 12)
-    expect(shapedFraction(-0.4, 0.25)).toBeCloseTo(0.25 - 0.4 * 0.1875, 12)
+  it('can draw a value in neither frame between them - which is why the map discloses it', () => {
+    // Frame0 alpha 0, frame1 alpha 1, midpoint mix 0.5. A positive a pushes
+    // the midpoint above the crossfade; a large one pushes it above BOTH
+    // retrieved values at a cell where both are low. That is carve-out (d),
+    // allowed only for the generative method and named GENERATED on the map.
+    const lowBoth = 0.1 * 0.5 + 0.1 * 0.5 + envelopeTerm(1, 0, 0.5)
+    expect(lowBoth).toBeGreaterThan(0.1)
+    expect(0.5 + envelopeTerm(0.4, 0, 0.5)).toBeCloseTo(0.6, 12)
   })
 })
 
@@ -81,43 +76,6 @@ describe('hermiteDisplacement (the fragment shader cubic)', () => {
     const mid = hermiteDisplacement(3, 2, 4, 0.5)
     expect(mid).toBeLessThan(1.5)
     expect(mid).toBeGreaterThan(0)
-  })
-})
-
-describe('intermediateDisplacement (the fragment shader intermediate branch)', () => {
-  it('is endpoint-exact: each frame is sampled unshifted at its own instant', () => {
-    // Two flows that disagree badly (the round trip does not invert at all):
-    // the branch must still show each real frame untouched at its own end.
-    expect(intermediateDisplacement(5, 1, 0).d0).toBeCloseTo(0, 10)
-    expect(intermediateDisplacement(5, 1, 1).d1).toBeCloseTo(0, 10)
-    // And the blend weight at each endpoint is entirely that frame's, so the
-    // other frame's displacement there is never displayed.
-    expect(intermediateDisplacement(5, 1, 1).d0).toBeCloseTo(-1, 10)
-  })
-
-  it('reduces exactly to the shipped construction when F10 = -F01', () => {
-    // The current shader assumes the forward flow inverts. Where it does, this
-    // branch must be indistinguishable from it - so any visible difference is
-    // a measured disagreement between the two derived directions, never a new
-    // trajectory model applied everywhere.
-    for (const t of [0, 0.1, 0.25, 0.5, 0.9, 1]) {
-      const { d0, d1 } = intermediateDisplacement(4, -4, t)
-      expect(d0).toBeCloseTo(4 * t, 10)
-      expect(d1).toBeCloseTo(4 * (1 - t), 10)
-    }
-  })
-
-  it('splits the difference between the two directions where they disagree', () => {
-    // F01 = 14 and F10 = -10: both directions carry the same +2 bias. At the
-    // midpoint the construction reads (F01 - F10)/2 = 12 - the motion without
-    // the shared bias - where the forward field alone would carry 14.
-    const { d0, d1 } = intermediateDisplacement(14, -10, 0.5)
-    expect(d0).toBeCloseTo(6, 10)
-    expect(d1).toBeCloseTo(6, 10)
-    expect(d0 + d1).toBeCloseTo(12, 10)
-    // The shipped construction moves the pair 14 cells apart across the same
-    // interval, which is the two-cell error this method removes.
-    expect(0.5 * 14 + 0.5 * 14).toBeCloseTo(14, 10)
   })
 })
 
@@ -212,7 +170,7 @@ describe('FlowBlendLayer before GL exists', () => {
     layer.update({
       frame0Url: 'blob:a', frame1Url: 'blob:b', flowUrl: null, flowScalePixels: 0,
       tangentsUrl: null, tangentsScalePixels: 0,
-      backwardUrl: null, backwardScalePixels: 0, visibilityUrl: null, residualUrl: null, construction: 'visibility',
+      visibilityUrl: null, residualUrl: null, residualScalePixels: 0, construction: 'visibility',
       bounds: { west: -55, south: 46, east: -50, north: 49 }, widthPx: 100, heightPx: 100,
       t: 0.5, opacity: 0.85,
     })
