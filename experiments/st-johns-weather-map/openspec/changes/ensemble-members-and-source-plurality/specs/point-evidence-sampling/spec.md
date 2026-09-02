@@ -145,9 +145,13 @@ null because the source published the field and the cell held no number.
 Where an artifact carries individual ensemble members, a sampled value SHALL
 name the member it came from in provenance, using the provider's own member
 identifier, and SHALL distinguish a perturbed member from the control. A
-value SHALL NOT be produced by reducing members at sample time: a mean,
-median or spread SHALL be served only where the provider itself published it
-as a field. A dataset carrying a member dimension that the request did not
+value SHALL NOT be produced by reducing members at sample time except through
+an enabled entry in the derivation method registry, served as `derived_here`
+beside the raw members and never presented as a provider field (owner
+decision 2026-09-02, wayfinder ticket 22, specified in
+`ensemble-families-and-member-statistics`); a provider's own mean, median or
+spread is served as retrieved only where the provider published it as a
+field. A dataset carrying a member dimension that the request did not
 address SHALL yield no value and SHALL be reported as read-but-unusable,
 following the treatment of an unrequested pressure dimension, because
 returning null there loses evidence silently and returning one arbitrary
