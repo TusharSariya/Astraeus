@@ -12,8 +12,8 @@ exercised here against the real registry records without a live PostgreSQL,
 MinIO or any array machinery. The last two tests check that
 ``worker/runtime.py``'s ``Scheduler`` actually schedules on them.
 
-Tasks 2.2 (the bounded ten-minute poll and the Datamart fallback) and 2.3 (the
-heartbeat latency write) are deliberately not covered here.
+Task 2.2's bounded ten-minute poll and the declared ECCC Datamart fallback are
+covered here too. Task 2.3 (the heartbeat latency write) is deliberately not.
 """
 
 from __future__ import annotations
@@ -21,15 +21,18 @@ from __future__ import annotations
 import dataclasses
 from datetime import datetime, timedelta, timezone
 
+import httpx
 import pytest
 
 from ingest.registry import PublicationLatency, get_config
 from ingest.scheduler import (
     POLL_INTERVAL_SECONDS,
+    PollState,
     first_attempt,
     latest_run_time,
     next_due,
     next_run_time,
+    poll_decision,
 )
 
 UTC = timezone.utc
@@ -234,3 +237,327 @@ def test_scheduler_progress_carries_latency_measured(scheduler_over) -> None:
     # Attempted inside the 00z cycle, so the next attempt is the 06z run time
     # itself - REPS has no measured latency and borrows nobody else's.
     assert state["next_due"] == datetime(2026, 9, 2, 6, tzinfo=UTC).isoformat()
+
+
+@pytest.fixture()
+def scheduler_over_adapters(monkeypatch: pytest.MonkeyPatch):
+    """A ``Scheduler`` over given ``(adapter, config)`` pairs and no store."""
+    from worker.runtime import Scheduler
+    import ingest.registry as registry
+
+    def build(*pairs):
+        monkeypatch.setattr(registry, "load_adapters", lambda *a, **k: [])
+        monkeypatch.setattr(registry, "scheduled", lambda: iter(list(pairs)))
+        return Scheduler(None)
+
+    return build
+
+
+# --- the bounded ten-minute poll -----------------------------------------
+
+SIX_HOURLY = 21600
+
+
+def test_poll_repeats_every_ten_minutes_until_the_bound() -> None:
+    """Absence is polled through, not reported: every attempt before the bound
+    asks again ten minutes later and nothing is fetched in the run's place."""
+    started = RUN_00Z
+    state = PollState(run_time=RUN_00Z, since=started, attempts=1)
+    decision = poll_decision(state, run_cadence_seconds=SIX_HOURLY, now=started)
+    assert decision.exhausted is False
+    assert decision.due == started + timedelta(seconds=POLL_INTERVAL_SECONDS)
+    assert decision.bound == datetime(2026, 9, 2, 6, tzinfo=UTC)
+    assert "polling for run" in decision.detail
+
+    later = poll_decision(
+        dataclasses.replace(state, attempts=4),
+        run_cadence_seconds=SIX_HOURLY,
+        now=started + timedelta(minutes=30),
+    )
+    assert later.exhausted is False
+    assert later.due == started + timedelta(minutes=40)
+    assert later.polled_minutes == 30
+
+
+def test_poll_stops_at_the_next_run_time_and_names_the_run_and_duration() -> None:
+    """At the bound the missing run is superseded, not late."""
+    state = PollState(run_time=RUN_00Z, since=RUN_00Z, attempts=36)
+    bound = datetime(2026, 9, 2, 6, tzinfo=UTC)
+    decision = poll_decision(state, run_cadence_seconds=SIX_HOURLY, now=bound)
+    assert decision.exhausted is True
+    assert decision.due is None
+    assert decision.bound == bound
+    assert decision.detail == (
+        f"run {RUN_00Z.isoformat()} did not appear after polling 360 min; previous run stays visible"
+    )
+
+
+def test_poll_names_the_provider_run_id_where_the_candidate_gave_one() -> None:
+    state = PollState(run_time=RUN_00Z, since=RUN_00Z, attempts=2, provider_run_id="2026090200")
+    decision = poll_decision(
+        state, run_cadence_seconds=SIX_HOURLY, now=RUN_00Z + timedelta(hours=6),
+    )
+    assert decision.detail.startswith("run 2026090200 did not appear after polling 360 min")
+
+
+def test_poll_last_attempt_lands_exactly_on_the_bound() -> None:
+    """The window closes on an attempt, not on a clock the source never answered."""
+    state = PollState(run_time=RUN_00Z, since=RUN_00Z, attempts=35)
+    almost = datetime(2026, 9, 2, 5, 55, tzinfo=UTC)
+    decision = poll_decision(state, run_cadence_seconds=SIX_HOURLY, now=almost)
+    assert decision.due == datetime(2026, 9, 2, 6, tzinfo=UTC)
+    assert decision.due == decision.bound
+
+
+def test_poll_refuses_a_cadence_that_is_not_a_positive_number_of_seconds() -> None:
+    with pytest.raises(ValueError):
+        poll_decision(PollState(run_time=RUN_00Z, since=RUN_00Z), run_cadence_seconds=0, now=RUN_00Z)
+
+
+# --- the worker polls on those decisions ---------------------------------
+
+def _cancelled(source_id: str):
+    from worker.runtime import SourceOutcome
+
+    return SourceOutcome(source_id, "cancelled", "nothing usable upstream: no populated run cycle")
+
+
+def test_scheduler_poll_opens_on_a_cancelled_forecast_attempt(scheduler_over) -> None:
+    """A forecast run that is not there yet is polled for, and the poll state
+    is recorded so task 2.3 can write the publication instant when it lands."""
+    scheduler = scheduler_over("eccc-gdps")
+    config = get_config("eccc-gdps")
+    now = datetime(2026, 9, 2, 0, 5, tzinfo=UTC)
+
+    outcome, due = scheduler._poll(config, _cancelled("eccc-gdps"), now)
+    assert outcome.state == "cancelled"
+    assert due == now + timedelta(seconds=POLL_INTERVAL_SECONDS)
+    polling = scheduler.progress["eccc-gdps"]["polling"]
+    assert polling == {"run_time": RUN_00Z.isoformat(), "since": now.isoformat(), "attempts": 1}
+    assert scheduler.progress["eccc-gdps"]["poll_bound"] == datetime(2026, 9, 2, 12, tzinfo=UTC).isoformat()
+
+
+def test_scheduler_poll_counts_attempts_and_keeps_the_run_it_waits_for(scheduler_over) -> None:
+    scheduler = scheduler_over("eccc-gdps")
+    config = get_config("eccc-gdps")
+    started = datetime(2026, 9, 2, 0, 5, tzinfo=UTC)
+    for index in range(3):
+        outcome, due = scheduler._poll(config, _cancelled("eccc-gdps"), started + timedelta(minutes=10 * index))
+        assert outcome.state == "cancelled"
+        assert due is not None
+    polling = scheduler.progress["eccc-gdps"]["polling"]
+    assert polling["attempts"] == 3
+    assert polling["since"] == started.isoformat()
+    assert polling["run_time"] == RUN_00Z.isoformat()
+
+
+def test_scheduler_poll_at_the_bound_reports_the_declared_cancellation(scheduler_over) -> None:
+    scheduler = scheduler_over("eccc-gdps")
+    config = get_config("eccc-gdps")
+    started = datetime(2026, 9, 2, 0, tzinfo=UTC)
+    scheduler._poll(config, _cancelled("eccc-gdps"), started)
+
+    bound = datetime(2026, 9, 2, 12, tzinfo=UTC)
+    outcome, due = scheduler._poll(config, _cancelled("eccc-gdps"), bound)
+    assert outcome.state == "cancelled"
+    assert outcome.detail == (
+        f"run {RUN_00Z.isoformat()} did not appear after polling 720 min; previous run stays visible"
+    )
+    # The source goes back on its normal schedule, and nothing was written
+    # about a publication that never happened.
+    assert due is None
+    assert "polling" not in scheduler.progress["eccc-gdps"]
+    assert "observed_publication" not in scheduler.progress["eccc-gdps"]
+
+
+def test_scheduler_poll_records_the_publication_instant_when_the_run_appears(scheduler_over) -> None:
+    """The late run is fetched and the instant it was first seen is recorded;
+    no earlier poll was reported as a failure."""
+    from worker.runtime import SourceOutcome
+
+    scheduler = scheduler_over("eccc-gdps")
+    config = get_config("eccc-gdps")
+    started = datetime(2026, 9, 2, 0, tzinfo=UTC)
+    for index in range(3):
+        outcome, _ = scheduler._poll(config, _cancelled("eccc-gdps"), started + timedelta(minutes=10 * index))
+        assert outcome.state != "failed"
+
+    appeared = started + timedelta(minutes=40)
+    outcome, due = scheduler._poll(
+        config, SourceOutcome("eccc-gdps", "succeeded", "published 1 artifact(s)", 1), appeared,
+    )
+    assert outcome.state == "succeeded"
+    assert due is None
+    state = scheduler.progress["eccc-gdps"]
+    assert state["observed_publication"] == appeared.isoformat()
+    assert state["observed_publication_run_time"] == RUN_00Z.isoformat()
+    assert "polling" not in state
+
+
+def test_scheduler_poll_is_not_opened_for_an_observation_source(scheduler_over) -> None:
+    """Only a forecast run is polled for: an observation source has no run to
+    wait for and goes straight back onto its native cadence."""
+    scheduler = scheduler_over("eccc-radar")
+    outcome, due = scheduler._poll(get_config("eccc-radar"), _cancelled("eccc-radar"), INSIDE_00Z)
+    assert due is None
+    assert outcome.detail.startswith("nothing usable upstream")
+    assert "polling" not in scheduler.progress["eccc-radar"]
+
+
+def test_scheduler_poll_leaves_a_failed_attempt_alone(scheduler_over) -> None:
+    """A failure is a failure; polling absorbs absence, not error."""
+    from worker.runtime import SourceOutcome
+
+    scheduler = scheduler_over("eccc-gdps")
+    config = get_config("eccc-gdps")
+    outcome, due = scheduler._poll(
+        config, SourceOutcome("eccc-gdps", "failed", "discovery failed: TimeoutError()"), INSIDE_00Z,
+    )
+    assert outcome.state == "failed"
+    assert due is None
+    assert "polling" not in scheduler.progress["eccc-gdps"]
+
+
+def test_scheduler_poll_cycle_puts_the_source_back_at_its_next_poll(scheduler_over_adapters) -> None:
+    """One full cycle over an adapter with nothing upstream: the outcome is a
+    cancelled that names the poll, and the next attempt is the poll, not the
+    next run."""
+    from ingest.contract import AdapterUnavailable
+
+    class Empty:
+        source_id = "eccc-gdps"
+        adapter_version = "test"
+
+        def discover(self, window):
+            raise AdapterUnavailable("no populated run cycle")
+
+    scheduler = scheduler_over_adapters((Empty(), get_config("eccc-gdps")))
+    outcomes = scheduler.cycle(force=True)
+    assert [item.state for item in outcomes] == ["cancelled"]
+    assert "polling for run" in outcomes[0].detail
+    state = scheduler.progress["eccc-gdps"]
+    assert state["polling"]["attempts"] == 1
+    assert state["next_due"] <= state["poll_bound"]
+    assert "polling every 600s" in state["schedule_reason"]
+
+
+# --- the declared dated WXO-DD Datamart fallback -------------------------
+
+FALLBACK_TEMPLATE = (
+    "https://dd.weather.gc.ca/{YYYYMMDD}/WXO-DD/model_hrdps/continental/2.5km/{HH}/{FFF}/"
+)
+DISCOVERY_NOW = datetime(2026, 8, 29, 15, tzinfo=UTC)
+
+
+def _listing(items: list[str]) -> str:
+    return "<html><body>" + "".join(f'<a href="{item}">{item}</a><br>' for item in items) + "</body></html>"
+
+
+def _populated_tree(prefix: str) -> dict[str, str]:
+    stamped = [
+        f"20260829T12Z_MSC_HRDPS_{var}_AGL-2m_RLatLon0.0225_PT000H.grib2" for var in ("TMP", "DPT")
+    ]
+    return {
+        prefix: _listing(["12/"]),
+        f"{prefix}12/": _listing(["000/", "001/"]),
+        f"{prefix}12/000/": _listing(stamped),
+    }
+
+
+def _datamart_adapter(url_map: dict[str, str], **kwargs):
+    """An HRDPS adapter over a mocked directory tree. No network, no store."""
+    pytest.importorskip("numpy")
+    from ingest.adapters.eccc_datamart import HRDPS_VARS, ECCCDataMartAdapter
+    from ingest.http import PoliteClient, USER_AGENT
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url_str = str(request.url)
+        for pattern, html in sorted(url_map.items(), key=lambda item: len(item[0]), reverse=True):
+            if pattern in url_str:
+                return httpx.Response(200, text=html)
+        return httpx.Response(404)
+
+    client = PoliteClient(min_host_interval_seconds=0.0)
+    client._client = httpx.Client(transport=httpx.MockTransport(handler), headers={"User-Agent": USER_AGENT})
+    return ECCCDataMartAdapter(
+        source_id="eccc-hrdps",
+        model_subpath="model_hrdps/continental/2.5km",
+        grid_token="RLatLon0.0225",
+        var_map=HRDPS_VARS,
+        client=client,
+        fallback_days=0,
+        **kwargs,
+    )
+
+
+def test_datamart_fallback_path_is_declared_on_every_eccc_model_record() -> None:
+    """The path the adapter may fall back to is the record's, not the code's."""
+    for source_id in ("eccc-hrdps", "eccc-rdps", "eccc-gdps"):
+        declared = get_config(source_id).datamart_fallback_path
+        assert declared and declared.startswith("https://dd.weather.gc.ca/")
+        assert "{YYYYMMDD}" in declared and "WXO-DD" in declared
+
+
+def test_datamart_fallback_answers_when_the_primary_path_is_empty() -> None:
+    """A primary directory that answers with nothing usable sends discovery to
+    the declared dated WXO-DD path, and the answering path is recorded."""
+    from ingest.contract import FetchWindow
+
+    url_map = {"https://primary.example/20260829/WXO-DD/model_hrdps/continental/2.5km/": _listing(["doc/"])}
+    url_map.update(_populated_tree("https://dd.weather.gc.ca/20260829/WXO-DD/model_hrdps/continental/2.5km/"))
+    adapter = _datamart_adapter(
+        url_map, base_url="https://primary.example", datamart_fallback_path=FALLBACK_TEMPLATE,
+    )
+
+    candidates = adapter.discover(FetchWindow(now=DISCOVERY_NOW))
+    assert candidates
+    assert candidates[0].provider_run_id == "2026082912"
+    assert candidates[0].detail["datamart_path"] == (
+        "https://dd.weather.gc.ca/20260829/WXO-DD/model_hrdps/continental/2.5km/"
+    )
+
+
+def test_datamart_fallback_is_not_tried_when_the_primary_answers() -> None:
+    from ingest.contract import FetchWindow
+
+    url_map = _populated_tree("https://primary.example/20260829/WXO-DD/model_hrdps/continental/2.5km/")
+    adapter = _datamart_adapter(
+        url_map, base_url="https://primary.example", datamart_fallback_path=FALLBACK_TEMPLATE,
+    )
+    candidates = adapter.discover(FetchWindow(now=DISCOVERY_NOW))
+    assert candidates[0].detail["datamart_path"] == (
+        "https://primary.example/20260829/WXO-DD/model_hrdps/continental/2.5km/"
+    )
+
+
+def test_datamart_fallback_that_is_not_declared_is_never_inferred() -> None:
+    """A record with no declared fallback names its primary path only."""
+    from ingest.contract import AdapterUnavailable, FetchWindow
+
+    adapter = _datamart_adapter({}, base_url="https://primary.example", datamart_fallback_path="")
+    with pytest.raises(AdapterUnavailable) as error:
+        adapter.discover(FetchWindow(now=DISCOVERY_NOW))
+    message = str(error.value)
+    assert "primary.example" in message
+    assert "declares no fallback path" in message
+    assert "dd.weather.gc.ca" not in message
+
+
+def test_datamart_fallback_exhausted_names_both_paths() -> None:
+    from ingest.contract import AdapterUnavailable, FetchWindow
+
+    adapter = _datamart_adapter({}, base_url="https://primary.example", datamart_fallback_path=FALLBACK_TEMPLATE)
+    with pytest.raises(AdapterUnavailable) as error:
+        adapter.discover(FetchWindow(now=DISCOVERY_NOW))
+    message = str(error.value)
+    assert "https://primary.example/" in message
+    assert FALLBACK_TEMPLATE in message
+
+
+def test_datamart_fallback_root_fills_only_the_date() -> None:
+    """`{HH}` and `{FFF}` stay for the cycle and lead walk that follows."""
+    adapter = _datamart_adapter({}, datamart_fallback_path=FALLBACK_TEMPLATE)
+    assert adapter.fallback_root("20260829") == (
+        "https://dd.weather.gc.ca/20260829/WXO-DD/model_hrdps/continental/2.5km/"
+    )
+    assert _datamart_adapter({}, datamart_fallback_path="").fallback_root("20260829") is None

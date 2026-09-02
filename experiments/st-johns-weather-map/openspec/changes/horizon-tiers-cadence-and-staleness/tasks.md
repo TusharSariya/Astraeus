@@ -63,11 +63,29 @@ so the two changes may run concurrently.
   cadence rather than the poll interval, so a six-hourly model is not called
   stalled forty-five minutes after a run. Also `cd api && uv run pytest` ->
   887 passed, 36 skipped (856 + the 31 new; the 36 skips are unchanged).
-- [ ] 2.2 Poll every ten minutes until the run appears, bounded by the next
+- [x] 2.2 Poll every ten minutes until the run appears, bounded by the next
   scheduled run time, then report `cancelled` naming the run and poll duration
   with the previous run left visible; try the declared dated WXO-DD Datamart
   path for ECCC records and record which path answered.
   Verify: `cd api && uv run pytest tests/test_worker_scheduling.py -k "poll or datamart_fallback"`
+  Verify result: `cd api && uv run pytest tests/test_worker_scheduling.py -k
+  "poll or datamart_fallback"` -> 21 passed, 28 deselected. The decision is
+  `poll_decision(PollState, run_cadence_seconds=..., now=...)` in
+  `ingest/scheduler.py`; `worker/runtime.py`'s `Scheduler._poll` opens the poll
+  on a forecast source's `cancelled` attempt, reschedules it every 600 s
+  through `_schedule_poll`, and closes it at the next nominal run time with
+  exactly `run <id> did not appear after polling <N> min; previous run stays
+  visible`. No poll before the bound is a failure and nothing is substituted
+  for the missing run; the previous run is never touched. The poll state lives
+  in `progress[source_id]["polling"]` (`run_time`, `since`, `attempts`) and a
+  run that appears writes `observed_publication` plus
+  `observed_publication_run_time` for task 2.3 to re-measure from - a run that
+  never appeared writes neither. `ingest/adapters/eccc_datamart.py` tries the
+  record's `datamart_fallback_path` only when declared, records the answering
+  path in `RunCandidate.detail`, `RunResult.notes` and every artifact's
+  `provenance["datamart_path"]`, and names both paths when neither answers
+  (the primary alone where no fallback is declared). Also `cd api && uv run
+  pytest` -> 905 passed, 36 skipped (887 + 18 new; the 36 skips are unchanged).
 - [ ] 2.3 Record the observed publication instant and the re-measured latency in
   the heartbeat document, writing nothing when the run never appeared.
   Verify: `cd api && uv run pytest tests/test_worker_heartbeat.py -k latency`

@@ -34,8 +34,8 @@ if TYPE_CHECKING:  # pragma: no cover - typing only, and keeps this module regis
 UTC = timezone.utc
 
 #: How often a forecast run is polled for once its first attempt has passed.
-#: Owned by task 2.2; named here because ``next_due`` is where the bound will
-#: be read from and the two must agree on one number.
+#: ``next_due`` reads the bound from the same run cadence, so the two agree on
+#: one number.
 POLL_INTERVAL_SECONDS = 600
 
 #: The reason an idempotent no-op states. `ingestion-worker-scheduling`
@@ -58,6 +58,8 @@ __all__ = [
     "DerivedPlan",
     "FetchPlan",
     "InputState",
+    "PollDecision",
+    "PollState",
     "Reconciliation",
     "RestartCache",
     "Schedule",
@@ -68,6 +70,7 @@ __all__ = [
     "next_due",
     "next_run_time",
     "plan_fetch",
+    "poll_decision",
     "reconcile_on_start",
     "worst_absence",
 ]
@@ -199,6 +202,90 @@ def next_due(config: "IngestConfig", *, now: datetime, after: datetime | None = 
     return Schedule(
         source_id, "unscheduled", latency_measured=measured,
         reason="the record declares neither run_cadence_seconds nor native_cadence_seconds; nothing to schedule against",
+    )
+
+
+# --- polling for a run that has not appeared yet -------------------------
+
+@dataclass(frozen=True)
+class PollState:
+    """One source's open poll: which run it is waiting for, and since when.
+
+    Held per source by ``worker/runtime.py`` and carried into the heartbeat, so
+    a run that appears late can be reported with the instant it was actually
+    first seen at (task 2.3) rather than with the estimate that missed it.
+    """
+
+    run_time: datetime
+    since: datetime
+    attempts: int = 0
+    provider_run_id: str | None = None
+
+    def as_progress(self) -> dict[str, Any]:
+        return {
+            "run_time": self.run_time.isoformat(),
+            "since": self.since.isoformat(),
+            "attempts": int(self.attempts),
+        }
+
+
+@dataclass(frozen=True)
+class PollDecision:
+    """Poll again, or stop because the missing run has been superseded.
+
+    ``exhausted`` is the only state that reports anything: every poll before
+    the bound is an absence, not a failure, because the run being late is
+    exactly what the poll exists to absorb. At the bound the next run of the
+    same source is due, so the missing one is superseded rather than late, and
+    the outcome is a ``cancelled`` that names the run and how long it was
+    waited for. Nothing is fetched in its place, and the previous run stays
+    visible because nothing here touches it.
+    """
+
+    state: PollState
+    bound: datetime
+    due: datetime | None
+    exhausted: bool
+    polled_seconds: float
+    detail: str
+
+    @property
+    def polled_minutes(self) -> int:
+        return int(round(self.polled_seconds / 60.0))
+
+
+def poll_decision(
+    state: PollState,
+    *,
+    run_cadence_seconds: int,
+    now: datetime,
+    interval_seconds: int = POLL_INTERVAL_SECONDS,
+) -> PollDecision:
+    """Whether to poll ``state``'s run again, and when.
+
+    The bound is the next nominal run time for that source: past it the run
+    being waited for is superseded, not late, and a poll that carried on would
+    spin for as long as the upstream stayed broken. The final poll lands
+    exactly on the bound, so the window is closed by an attempt rather than by
+    a clock the source never got to answer.
+    """
+    if run_cadence_seconds <= 0:
+        raise ValueError("run cadence must be a positive number of seconds")
+    moment = now if now.tzinfo else now.replace(tzinfo=UTC)
+    bound = state.run_time + timedelta(seconds=int(run_cadence_seconds))
+    polled = max(0.0, (moment - state.since).total_seconds())
+    named = state.provider_run_id or state.run_time.isoformat()
+    if moment >= bound:
+        minutes = int(round(polled / 60.0))
+        return PollDecision(
+            state, bound, None, True, polled,
+            f"run {named} did not appear after polling {minutes} min; previous run stays visible",
+        )
+    due = min(moment + timedelta(seconds=int(interval_seconds)), bound)
+    return PollDecision(
+        state, bound, due, False, polled,
+        f"polling for run {state.run_time.isoformat()}; attempt {state.attempts} found nothing, "
+        f"next poll at {due.isoformat()}, bounded by {bound.isoformat()}",
     )
 
 
