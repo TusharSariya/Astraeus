@@ -303,10 +303,44 @@ never pairs two frames whose `run_time` differ.
 
 ## Open questions carried into implementation
 
-- Whether the latency estimator should be a rolling median or a high quantile.
+- ~~Whether the latency estimator should be a rolling median or a high quantile.
   A median schedules half the fetches early; a high quantile wastes horizon.
   The spec requires the estimate be measured and its basis published, and
-  leaves the statistic to implementation with the choice recorded.
+  leaves the statistic to implementation with the choice recorded.~~
+  **Settled (task 2.3): a high quantile, p = 0.8, computed as asymmetric
+  exponential smoothing.** `observe_latency` in `ingest/scheduler.py` moves the
+  estimate by `LATENCY_STEP_UP = 0.4` of the gap when the observed publication
+  is later than the estimate and `LATENCY_STEP_DOWN = 0.1` when it is earlier;
+  the ratio of the two steps is the quantile it converges on. Three reasons for
+  this shape over a rolling median. The asymmetry is the point: a median
+  schedules the first attempt where half the runs have not published yet, and
+  each of those misses costs ten-minute polls against the bound, while being
+  half an hour late costs half an hour of horizon on a fourteen-day forecast -
+  the two errors are not the same size. The state is one number and a count,
+  which is exactly what `PublicationLatency` carries, so nothing has to hold a
+  window of past observations and the estimate survives a restart through the
+  heartbeat rather than needing a store. And the estimate always moves toward
+  the observation by a fixed fraction, which is what the spec's scenario
+  requires and what makes the behaviour testable without simulating a
+  distribution. The first observation of a source with no seed (GDPS, GEPS,
+  REPS, HRDPS, RDPS) *is* the estimate: smoothing against a null publishes a
+  number no run produced.
+
+  Three implementation details the seam did not name, none of them a deviation
+  from it. (1) The live `PublicationLatency` is held per source by
+  `worker/runtime.py`'s `Scheduler`, seeded from the registry record and never
+  written back to it - the registry record stays research, and `next_due` takes
+  the live block through a new optional `latency=` argument so the next run's
+  first attempt lands on the re-measured estimate. (2) On start the worker reads
+  the existing heartbeat *before* the first beat overwrites it and restores any
+  block whose `latency_measured` is true, so a restart does not throw away
+  weeks of measurement and fall back to the seed; a block that is unmeasured,
+  malformed, or missing an estimate or count is ignored rather than repaired,
+  since a restart reading a guess as a measurement is the failure this change
+  exists to prevent. (3) A source refreshed on demand through `drain_jobs` does
+  not re-measure: that fetch happens when the API asked, not when the run
+  appeared, so recording it would measure this deployment's own timing rather
+  than the producer's.
 - Whether GDPS needs per-layer latency rather than per-source, given that its
   layers were measured on two different runs in one capabilities document.
 - Whether the ten-minute poll should back off for sources whose measured

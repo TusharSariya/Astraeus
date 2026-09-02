@@ -15,6 +15,7 @@ import sys
 import tempfile
 import time
 import traceback
+from collections.abc import Mapping as _MappingABC
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -101,6 +102,44 @@ def check_heartbeat(path: Path) -> int:
         print(f"ingestion stalled for: {', '.join(stalled)}", flush=True)
         return 1
     return 0
+
+
+def _restored_latencies(document: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Measured latency blocks carried over from a previous heartbeat.
+
+    A restart that forgot its measurements would fall back to the seed and
+    re-learn from scratch, so a source whose publication has been watched for
+    weeks would go back to being scheduled on research. Only *measured* blocks
+    are restored: an unmeasured one says nothing the registry seed does not
+    already say, and restoring it would let a stale basis outlive its record.
+    An unreadable or malformed block is skipped, never repaired - a restart
+    reading a guess as a measurement is the one failure this whole change
+    exists to prevent.
+    """
+    from ingest.registry import PublicationLatency  # noqa: PLC0415
+
+    restored: dict[str, Any] = {}
+    for source_id, state in ((document or {}).get("sources") or {}).items():
+        block = (state or {}).get("publication_latency")
+        if not isinstance(block, _MappingABC) or not block.get("latency_measured"):
+            continue
+        estimate = block.get("estimate_seconds")
+        count = block.get("observation_count")
+        try:
+            observed = datetime.fromisoformat(str(block.get("last_observed")))
+            latency = PublicationLatency(
+                estimate_seconds=None if estimate is None else int(estimate),
+                observation_count=int(count),
+                last_observed=observed if observed.tzinfo else observed.replace(tzinfo=UTC),
+                measured=True,
+                basis=str(block.get("basis") or "none"),
+            )
+        except (TypeError, ValueError):
+            continue
+        if latency.estimate_seconds is None or latency.observation_count < 1:
+            continue
+        restored[str(source_id)] = latency
+    return restored
 
 
 def log(message: str) -> None:
@@ -209,13 +248,34 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
 class Scheduler:
     """Tracks per-source due times and runs one cycle at a time."""
 
-    def __init__(self, store, *, source_ids: tuple[str, ...] | None = None) -> None:
+    def __init__(
+        self,
+        store,
+        *,
+        source_ids: tuple[str, ...] | None = None,
+        restore: Mapping[str, Any] | None = None,
+    ) -> None:
         from ingest.registry import load_adapters, scheduled  # noqa: PLC0415
+        from ingest.scheduler import latency_heartbeat_block  # noqa: PLC0415
 
         load_adapters()
         self._store = store
         self._pairs = [(adapter, config) for adapter, config in scheduled() if source_ids is None or config.source_id in source_ids]
         self._due: dict[str, float] = {config.source_id: 0.0 for _, config in self._pairs}
+        # The live publication latency per source: seeded from the registry
+        # record, restored from a previous heartbeat where that heartbeat
+        # carries a measurement, and re-measured from every observed
+        # publication. The registry record is never written back to.
+        self._latency: dict[str, Any] = {}
+        restored = _restored_latencies(restore)
+        for _, config in self._pairs:
+            seed = getattr(config, "publication_latency", None)
+            if seed is None:
+                continue
+            # A restart must not forget what this deployment measured: a
+            # restored measurement outranks the seed, and a seed never
+            # overwrites a measurement.
+            self._latency[config.source_id] = restored.get(config.source_id) or seed
         # Seeded with cadence but no last_success: a source that has never
         # worked is reported, not counted as a stall. See ``stalled_sources``.
         #
@@ -235,17 +295,29 @@ class Scheduler:
                 "last_state": "pending",
                 "last_detail": "",
             }
+            # The seed block is published from the start, so a reader can see
+            # `latency_measured: false` and the seed's own basis rather than an
+            # absence they have to interpret. It is only ever replaced by an
+            # observed publication.
+            live = self._latency.get(config.source_id)
+            if live is not None:
+                self._progress[config.source_id]["publication_latency"] = latency_heartbeat_block(live)
+                last_observed = getattr(live, "last_observed", None)
+                self._progress[config.source_id]["last_observed_publication"] = (
+                    last_observed.isoformat() if isinstance(last_observed, datetime) else None
+                )
             if not plan.scheduled:
                 # Never silently dropped: the source stays in the rotation's
                 # bookkeeping with the missing field named.
                 self._progress[config.source_id]["last_state"] = "unscheduled"
                 self._progress[config.source_id]["last_detail"] = plan.reason[:200]
 
-    @staticmethod
-    def _plan(config, now: datetime, *, after: datetime | None = None):
+    def _plan(self, config, now: datetime, *, after: datetime | None = None):
         from ingest.scheduler import next_due  # noqa: PLC0415
 
-        return next_due(config, now=now, after=after)
+        # The live latency, not the record's: after an observed publication the
+        # next run's first attempt belongs on the re-measured estimate.
+        return next_due(config, now=now, after=after, latency=self._latency.get(config.source_id))
 
     def _reschedule(self, config, now: datetime) -> None:
         """Put a source back in the rotation on its own declared cadence.
@@ -303,11 +375,19 @@ class Scheduler:
             return outcome, None
 
         if outcome.state != "cancelled":
-            if open_poll and outcome.state == "succeeded":
-                # The run appeared. Record when this deployment first saw it;
-                # task 2.3 turns that into the re-measured latency.
+            if outcome.state == "succeeded":
+                # The run appeared. Record when this deployment first saw it,
+                # and re-measure the latency from that instant - the observed
+                # publication, never the estimate that predicted it.
+                observed_run_time = latest_run_time(int(run_cadence), now)
+                if open_poll and open_poll.get("run_time"):
+                    try:
+                        observed_run_time = datetime.fromisoformat(str(open_poll["run_time"]))
+                    except ValueError:
+                        pass
                 state["observed_publication"] = now.isoformat()
-                state["observed_publication_run_time"] = open_poll.get("run_time")
+                state["observed_publication_run_time"] = observed_run_time.isoformat()
+                self._record_latency(config.source_id, run_time=observed_run_time, observed_at=now)
             state.pop("polling", None)
             return outcome, None
 
@@ -335,6 +415,23 @@ class Scheduler:
         state["polling"] = poll.as_progress()
         state["poll_bound"] = decision.bound.isoformat()
         return SourceOutcome(outcome.source_id, "cancelled", decision.detail), decision.due
+
+    def _record_latency(self, source_id: str, *, run_time: datetime, observed_at: datetime) -> None:
+        """Re-measure one source's latency from a publication actually observed.
+
+        Called from nowhere else: a bounded-out poll and every non-forecast
+        source leave the block exactly as it was, which is what makes the
+        observation count a count of observations rather than of attempts.
+        """
+        from ingest.scheduler import latency_heartbeat_block, observe_latency  # noqa: PLC0415
+
+        previous = self._latency.get(source_id)
+        updated = observe_latency(previous, run_time=run_time, observed_at=observed_at)
+        self._latency[source_id] = updated
+        state = self._progress.setdefault(source_id, {})
+        state["publication_latency"] = latency_heartbeat_block(updated)
+        state["last_observed_publication"] = observed_at.isoformat()
+        state["latency_measured"] = True
 
     @property
     def source_ids(self) -> list[str]:
@@ -460,6 +557,9 @@ class Scheduler:
 
 def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int:
     path = heartbeat_path()
+    # Read before the first beat overwrites it: the previous document is where
+    # this deployment's measured latencies live across a restart.
+    previous_document = read_heartbeat(path)
     write_heartbeat(path)
     store = _store()
     # Reconcile the retained window before scheduling anything: sweep
@@ -475,7 +575,7 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
         log("the store could not be reconciled; scheduling no fetch and reporting unhealthy")
         return 1
 
-    scheduler = Scheduler(store, source_ids=source_ids)
+    scheduler = Scheduler(store, source_ids=source_ids, restore=previous_document)
     if not scheduler.source_ids:
         log("no registered adapter is schedulable; the worker will idle and stay healthy")
     else:
