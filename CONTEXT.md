@@ -116,8 +116,14 @@ Sources. Views do not own data; they read the focus.
 _Avoid_: mode, dashboard, panel, tab
 
 **Layer stack**:
-The ordered set of layers the Map view draws at once, with each layer's
-opacity and the compare arrangement (stacked, swiped, side by side, small
-multiples) they are drawn in. Layers in one stack keep their own frames and
-their own evidence classes; a stack never blends them.
+The ordered set of layers the Map view draws at once, each with its opacity.
+Layers in one stack keep their own frames and their own evidence classes; a
+stack never blends them. On-map compare arrangements (swipe, side by side)
+are not part of a stack.
+
+**Saved stack**:
+A named layer stack a reader keeps to load again: the ordered layers and
+their opacities, nothing more. Kept in the reader's browser and handed over
+by URL. Not an activity profile; a profile may ship a built-in saved stack.
+_Avoid_: profile, preset, workspace
 _Avoid_: overlay set, active layers
