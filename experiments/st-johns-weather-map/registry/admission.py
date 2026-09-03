@@ -127,3 +127,46 @@ def access_path_of(record: Mapping[str, Any]) -> str | None:
     """
     endpoints = record.get("access_endpoints") or []
     return endpoints[0] if endpoints else None
+
+
+#: The mechanical part of Decision 1: every old ``status`` value the registry
+#: shipped before this change, and the new state it becomes. Only the values
+#: that rename or fold live here; the split (``implementing``) and the value
+#: that depends on the rest of the record (``retired``) are decided in
+#: ``migrate_status`` because a table cannot express them.
+_MIGRATION: dict[str, str] = {
+    "active": "operational",
+    "credential_required": "credential-required",
+    "licence_review": "licence-blocked",
+    "duplicate_evidence": "superseded",
+    "unsupported_field": "unavailable",
+}
+
+
+def migrate_status(
+    record: Mapping[str, Any], adapter_ids: set[str] | frozenset[str]
+) -> str:
+    """The new state for a record still carrying an old ``status`` value.
+
+    Mechanical by design, so the migration can be checked rather than argued:
+    a record already written in the new vocabulary is returned unchanged,
+    ``implementing`` is split by the objective test of Decision 1, ``retired``
+    becomes ``superseded`` only where the record names its successor, and the
+    remaining old values are a rename or a fold. An unrecognised value raises
+    rather than guessing, because guessing is how a state gets widened.
+    """
+    status = record["status"]
+    if status in STATES:
+        return status
+    if status == "implementing":
+        return (
+            "implemented-unverified"
+            if implemented_unverified_ok(record, adapter_ids)
+            else "catalogued"
+        )
+    if status == "retired":
+        return "superseded" if record.get("superseded_by") else "unavailable"
+    try:
+        return _MIGRATION[status]
+    except KeyError:
+        raise ValueError(f"no migration rule for status {status!r}") from None
