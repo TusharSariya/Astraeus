@@ -828,3 +828,344 @@ def test_a_last_valid_time_must_carry_an_offset():
 def test_absence_state_answers_aged_out_only_where_a_record_exists():
     assert absence_state(None, "eccc-hrdps", held={"eccc-hrdps": HELD_UNTIL}) == ("aged_out", HELD_UNTIL)
     assert absence_state(None, "eccc-hrdps", held={}) == ("null", None)
+
+
+# --- ensemble members, and the statistics served beside them ---------------
+# Every number below names four things on its own face: the family and run it
+# came from, which statistic it is, the member set it covers, and whether a
+# provider published it or this deployment computed it. A statistic is never
+# served without the members it summarises, and a refused statistic costs the
+# members nothing.
+#
+# Spec-Refs: openspec/changes/ensemble-families-and-member-statistics/specs/point-evidence-sampling/spec.md
+
+MEMBER_DIMS = ("member", "valid_time", "latitude", "longitude")
+
+
+def ensemble_artifact(
+    *,
+    source_id: str,
+    revision_id: str,
+    run_time: datetime = datetime(2026, 9, 2, 12, tzinfo=UTC),
+    members: dict[str, Any] | None = None,
+    quality: dict[str, Any] | None = None,
+) -> CurrentArtifact:
+    """One published member run, with the ``members`` provenance block on it."""
+    return CurrentArtifact(
+        source_id=source_id,
+        logical_name="surface",
+        revision_id=revision_id,
+        object_key=f"artifacts/{source_id}/{revision_id}",
+        media_type="application/zarr+zip",
+        byte_size=2048,
+        provenance={
+            "adapter_version": f"{source_id}-v1",
+            "evidence_classes": ["retrieved"],
+            "quality": quality or {"status": "passed", "flags": []},
+            **({"members": members} if members else {}),
+        },
+        published_at=run_time.replace(hour=13),
+        run_time=run_time,
+        retrieved_at=run_time.replace(minute=40),
+        provider_run_id=run_time.strftime("%Y%m%d%H"),
+        native_crs="EPSG:4326",
+    )
+
+
+def member_dataset(
+    values: dict[str, float | None],
+    *,
+    control: str | None = None,
+    variable: str = "temperature_2m",
+    units: str = "degC",
+    averaging_window_hours: float | None = None,
+    extra: dict[str, tuple[dict[str, float | None], float | None]] | None = None,
+) -> xarray.Dataset:
+    """One field on a ``member`` axis, with the control flagged along it.
+
+    ``values`` maps the provider's own member identifier to that member's
+    reading; ``None`` is a member that resolved nothing, which keeps its row
+    so the shortfall can be named rather than silently shrinking the set.
+    """
+    latitudes, longitudes = numpy.array([47.5, 47.6]), numpy.array([-52.8, -52.7])
+    stamps = numpy.array([numpy.datetime64(VALID_TIME.replace(tzinfo=None), "ns")])
+    identifiers = list(values)
+
+    def stack(readings: dict[str, float | None]) -> numpy.ndarray:
+        return numpy.array(
+            [numpy.full((1, 2, 2), numpy.nan if value is None else value, dtype="float64") for value in readings.values()]
+        )
+
+    def attributes(window: float | None, unit: str) -> dict[str, Any]:
+        attrs: dict[str, Any] = {"units": unit}
+        if window is not None:
+            attrs |= {"cell_methods": "time: mean", "averaging_window_hours": window, "averaging_window_basis": "0-6 hour ave fcst"}
+        return attrs
+
+    data_vars: dict[str, Any] = {variable: (MEMBER_DIMS, stack(values), attributes(averaging_window_hours, units))}
+    for name, (readings, window) in (extra or {}).items():
+        data_vars[name] = (MEMBER_DIMS, stack(readings), attributes(window, "percent"))
+    return xarray.Dataset(
+        data_vars,
+        coords={
+            "member": numpy.array(identifiers, dtype=numpy.str_),
+            "control": ("member", numpy.array([identifier == control for identifier in identifiers], dtype=bool)),
+            "valid_time": stamps,
+            "latitude": latitudes,
+            "longitude": longitudes,
+        },
+    )
+
+
+def ensemble_point(store: StubStore, **request: Any) -> list[Any]:
+    fields, _consensus, _sources = live_point_fields(store, *ST_JOHNS, VALID_TIME, **request)
+    return fields
+
+
+def statistic_field(fields: list[Any], field: str = "temperature") -> Any:
+    return next(
+        item for item in fields
+        if item.field == field and item.provenance.ensemble is not None and item.provenance.ensemble.statistic is not None
+    )
+
+
+def member_fields(fields: list[Any], field: str = "temperature") -> list[Any]:
+    return [item for item in fields if item.field == field and item.provenance.member is not None]
+
+
+REPS_THREE = {"01": 9.0, "02": 11.0, "03": 13.0}
+
+#: A run the artifact itself declares complete at three members. Without it the
+#: family's registry record declares 21, so three members is a genuinely
+#: partial set - which is the point of the partial test below, and noise in
+#: every other one.
+COMPLETE_THREE = {"declared": 3, "present": ["01", "02", "03"], "missing": [], "control": "01", "control_retrieval": "separate_coverage"}
+
+
+def reps_store(**kwargs: Any) -> StubStore:
+    return StubStore([(ensemble_artifact(source_id="eccc-reps", revision_id="reps-1", **kwargs), member_dataset(REPS_THREE, control="01"))])
+
+
+def test_an_ensemble_artifact_is_unread_until_the_request_addresses_its_members():
+    """No member and no statistic is not a request for the mean of all of them."""
+    store = reps_store()
+    fields = ensemble_point(store)
+
+    assert not member_fields(fields)
+    assert any("member_dimension_unaddressed:reps-1" in item.reason for item in store.skipped)
+
+
+def test_an_ensemble_member_is_served_with_its_own_identity_and_no_member_set():
+    """One member names itself and the control flag, and summarises nothing."""
+    served = member_fields(ensemble_point(reps_store(), member="02"))
+
+    assert [item.provenance.member for item in served] == ["02"]
+    value = served[0]
+    assert value.value == 11.0
+    assert value.provenance.member_control is False
+    assert value.provenance.evidence_class == "retrieved"
+    assert value.provenance.ensemble.family == "REPS"
+    assert value.provenance.ensemble.statistic is None
+    assert value.provenance.ensemble.computed_here is False
+    assert value.provenance.ensemble.member_set is None
+
+
+def test_ensemble_member_all_serves_every_member_with_the_control_flagged():
+    served = member_fields(ensemble_point(reps_store(), member="all"))
+
+    assert {item.provenance.member: item.value for item in served} == REPS_THREE
+    assert [item.provenance.member for item in served if item.provenance.member_control] == ["01"]
+
+
+def test_an_ensemble_statistic_names_its_member_set_and_is_served_beside_its_members():
+    fields = ensemble_point(reps_store(members=COMPLETE_THREE), statistic="ensemble_mean")
+    computed = statistic_field(fields)
+
+    assert computed.value == pytest.approx(11.0)
+    assert computed.provenance.evidence_class == "derived_here"
+    assert computed.provenance.derivation == "ensemble_mean"
+    assert computed.provenance.derivation_version
+    assert computed.provenance.derivation_citation
+    ensemble = computed.provenance.ensemble
+    assert (ensemble.family, ensemble.statistic, ensemble.computed_here) == ("REPS", "ensemble_mean", True)
+    assert ensemble.member_set.members_used == 3
+    assert ensemble.member_set.control_included is True
+    assert ensemble.member_set.partial is False
+    assert "derived" in computed.provenance.quality.flags
+    # A statistic is never the only view of the ensemble.
+    assert {item.provenance.member for item in member_fields(fields)} == set(REPS_THREE)
+
+
+def test_an_ensemble_statistic_echoes_the_threshold_and_the_comparison_it_was_asked_for():
+    computed = statistic_field(
+        ensemble_point(reps_store(), statistic="ensemble_threshold_probability", threshold=10.0, comparison="ge")
+    )
+
+    assert computed.value == pytest.approx(2 / 3)
+    assert (computed.provenance.ensemble.threshold, computed.provenance.ensemble.comparison) == (10.0, "ge")
+    assert computed.provenance.ensemble.threshold_units == "degC"
+
+
+def test_an_ensemble_statistic_over_two_families_is_refused_naming_both():
+    store = StubStore(
+        [
+            (ensemble_artifact(source_id="eccc-reps", revision_id="reps-1"), member_dataset(REPS_THREE, control="01")),
+            (ensemble_artifact(source_id="noaa-gefs", revision_id="gefs-1"), member_dataset({"gec00": 8.0, "gep01": 10.0}, control="gec00")),
+        ]
+    )
+    fields = ensemble_point(store, statistic="ensemble_mean")
+    computed = statistic_field(fields)
+
+    assert computed.value is None
+    assert computed.provenance.ensemble.refusal == "one_family:GEFS,REPS"
+    assert "statistic_refused" in computed.provenance.quality.flags
+    # Refusing a statistic never removes evidence.
+    assert {item.provenance.member for item in member_fields(fields)} == {"01", "02", "03", "gec00", "gep01"}
+
+
+def test_an_ensemble_statistic_over_two_runs_is_refused_naming_both():
+    store = StubStore(
+        [
+            (ensemble_artifact(source_id="eccc-reps", revision_id="reps-12z"), member_dataset(REPS_THREE, control="01")),
+            (
+                ensemble_artifact(source_id="eccc-reps", revision_id="reps-06z", run_time=datetime(2026, 9, 2, 6, tzinfo=UTC)),
+                member_dataset({"01": 8.0, "02": 8.5}, control="01"),
+            ),
+        ]
+    )
+    computed = statistic_field(ensemble_point(store, statistic="ensemble_mean"))
+
+    assert computed.value is None
+    assert computed.provenance.ensemble.refusal.startswith("one_run:2026-09-02T06:00:00")
+    assert "2026-09-02T12:00:00" in computed.provenance.ensemble.refusal
+
+
+def test_an_ensemble_statistic_mixing_a_provider_reduction_is_refused():
+    """The provider's own mean is retrieved evidence and stays the provider's."""
+    store = StubStore(
+        [
+            (ensemble_artifact(source_id="eccc-reps", revision_id="reps-1"), member_dataset(REPS_THREE, control="01")),
+            (artifact(source_id="eccc-geps", revision_id="geps-1"), dataset(temperature=10.4, dew_point=None)),
+        ]
+    )
+    fields = ensemble_point(store, statistic="ensemble_mean")
+    computed = statistic_field(fields)
+
+    assert computed.value is None
+    assert computed.provenance.ensemble.refusal == "provider_reduction_mixed"
+    reduction = next(item for item in fields if item.provenance.source_id == "eccc-geps" and item.field == "temperature")
+    assert reduction.value == 10.4
+    assert reduction.provenance.evidence_class == "retrieved"
+    assert reduction.provenance.ensemble.computed_here is False
+    assert reduction.provenance.ensemble.statistic is None
+    assert reduction.provenance.ensemble.family == "GEPS reductions"
+
+
+def test_an_ensemble_statistic_mixing_an_averaged_and_an_instantaneous_field_is_refused():
+    """A six-hour mean of cloud and an instantaneous cloud fraction are two
+    quantities, and a threshold probability over the mix would carry no unit."""
+    store = StubStore(
+        [
+            (
+                ensemble_artifact(source_id="noaa-gefs", revision_id="gefs-1"),
+                member_dataset(
+                    {"gec00": 40.0, "gep01": 60.0},
+                    control="gec00",
+                    variable="total_cloud_mean_6h",
+                    units="percent",
+                    averaging_window_hours=6.0,
+                    extra={"total_cloud_geometric": ({"gec00": 20.0, "gep01": 80.0}, None)},
+                ),
+            )
+        ]
+    )
+    computed = statistic_field(ensemble_point(store, statistic="ensemble_mean"), field="total_cloud_mean_6h")
+
+    assert computed.value is None
+    assert computed.provenance.ensemble.refusal == "averaged_with_instantaneous"
+    assert computed.provenance.ensemble.averaging_window_hours == 6.0
+
+
+def test_an_ensemble_statistic_with_no_member_resolved_is_refused_not_reported_absent():
+    store = StubStore([(ensemble_artifact(source_id="eccc-reps", revision_id="reps-1"), member_dataset({"01": None, "02": None}, control="01"))])
+    computed = statistic_field(ensemble_point(store, statistic="ensemble_mean"))
+
+    assert computed.value is None
+    assert computed.provenance.ensemble.refusal == "no_member_resolved"
+    assert computed.provenance.data_mode.value == "live"
+    assert "no_retrieval" not in computed.provenance.quality.flags
+
+
+def test_an_ensemble_statistic_the_reader_disabled_is_refused_naming_the_level():
+    """The umbrella switch nulls the statistic and leaves every member served."""
+    fields = ensemble_point(reps_store(), statistic="ensemble_mean", reader_disabled=[derive_registry.ENSEMBLE_STATISTICS])
+    computed = statistic_field(fields)
+
+    assert computed.value is None
+    assert computed.provenance.ensemble.refusal == "reader_disabled"
+    assert len(member_fields(fields)) == 3
+
+
+def test_a_partial_ensemble_member_set_is_flagged_and_names_what_it_missed():
+    store = StubStore(
+        [
+            (
+                ensemble_artifact(
+                    source_id="eccc-reps",
+                    revision_id="reps-1",
+                    members={"declared": 5, "present": ["01", "02", "03"], "missing": ["04", "05"], "control": "01", "control_retrieval": "separate_coverage"},
+                ),
+                member_dataset(REPS_THREE, control="01"),
+            )
+        ]
+    )
+    computed = statistic_field(ensemble_point(store, statistic="ensemble_mean"))
+    member_set = computed.provenance.ensemble.member_set
+
+    assert computed.value == pytest.approx(11.0)
+    assert (member_set.members_used, member_set.members_declared) == (3, 5)
+    assert member_set.members_missing == ["04", "05"]
+    assert member_set.partial is True
+    assert "partial_member_set" in computed.provenance.quality.flags
+
+
+def test_an_ensemble_statistic_quality_is_no_better_than_the_worst_member():
+    computed = statistic_field(ensemble_point(reps_store(quality={"status": "suspect", "flags": []}), statistic="ensemble_mean"))
+
+    assert computed.provenance.quality.status == "suspect"
+    assert "derived" in computed.provenance.quality.flags
+
+
+def test_the_live_point_request_carries_the_ensemble_parameters_to_the_sampler(empty_live_store):
+    """Seam D end to end: the five request parameters reach the store unchanged.
+
+    A parameter dropped between the query string and the sampler would answer
+    a member request with the deterministic response and no notice at all,
+    which reads as "this family publishes nothing" rather than "nobody asked".
+    """
+    from weather_api.science import build_consensus  # noqa: PLC0415
+
+    seen: dict[str, Any] = {}
+
+    def record(store, latitude, longitude, valid_time, **request):
+        seen.update(request)
+        return [], build_consensus([]), []
+
+    empty_live_store.setattr(_api_module, "live_point_fields", record)
+    _client.get(
+        f"{PREFIX}/point",
+        params={"member": "all", "statistic": "ensemble_threshold_probability", "quantile": 0.9, "threshold": 5.0, "comparison": "ge"},
+    )
+
+    assert seen == {"member": "all", "statistic": "ensemble_threshold_probability", "quantile": 0.9, "threshold": 5.0, "comparison": "ge"}
+
+
+def test_an_ensemble_value_whose_family_is_unknown_is_refused_service():
+    """A number that cannot name its family is the unattributed ensemble number."""
+    store = StubStore([(ensemble_artifact(source_id="eccc-hrdps", revision_id="hrdps-members"), member_dataset(REPS_THREE, control="01"))])
+    fields = ensemble_point(store, member="all")
+
+    assert not member_fields(fields)
+    unavailable = next(item for item in fields if item.field == "temperature")
+    assert unavailable.value is None
+    assert "ensemble_family_unknown" in unavailable.provenance.quality.flags

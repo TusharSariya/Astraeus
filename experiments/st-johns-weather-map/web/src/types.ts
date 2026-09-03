@@ -78,6 +78,39 @@ export interface ComparabilityPair {
   detail: string | null
 }
 
+/** One family's member set behind an ensemble value, as `provenance.ensemble.member_set`
+ *  declares it (Seam D). `membersMissing` is named wherever the set is partial,
+ *  never folded into a bare count. */
+export interface EnsembleMemberSet {
+  family: string
+  sourceId: string
+  runTime: string | null
+  membersDeclared: number
+  membersUsed: number
+  membersMissing: string[]
+  controlIncluded: boolean | null
+  partial: boolean
+}
+
+/** Everything an ensemble number needs to be labelled: the family and run it
+ *  came from, which statistic it is (null for a per-member value), the member
+ *  set it covers, and whether it was computed here or is a provider's own
+ *  reduction. A refused statistic carries `refusal` and no value. */
+export interface EnsembleProvenance {
+  family: string
+  statistic: string | null
+  computedHere: boolean
+  memberSet: EnsembleMemberSet | null
+  refusal: string | null
+  quantile: number | null
+  threshold: number | null
+  thresholdUnits: string | null
+  comparison: string | null
+  /** Set only on a time-averaged field (e.g. GEFS six-hour-mean total cloud).
+   *  Its presence is the averaged-versus-instantaneous fence. */
+  averagingWindowHours: number | null
+}
+
 /** One field of a `/catalog` source entry: what the source publishes, under
  *  which catalogue key, and whether this deployment stores it. */
 export interface CatalogFieldEntry {
@@ -174,6 +207,15 @@ export interface FieldAttribution {
    *  computes it from the class; the client additionally refuses a source the
    *  catalogue marks `display_primary: false`. */
   displayPrimaryEligible: boolean
+  /** `provenance.member`: the provider's own member identifier, set only on a
+   *  per-member value. Null for a statistic or a non-ensemble value. */
+  member: string | null
+  /** `provenance.member_control`: whether this member is the control run.
+   *  Null means the response declared nothing, not "not the control". */
+  memberControl: boolean | null
+  /** `provenance.ensemble`: present on every ensemble value, member or
+   *  statistic alike, and null for a value with no ensemble family. */
+  ensemble: EnsembleProvenance | null
   /** `derivation_refused`: a derived value the registry conditions refused.
    *  `provenance_unmodelled`: an artifact whose provenance could not be
    *  modelled. Either renders as unavailable with the response's own notice. */

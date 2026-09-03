@@ -13,6 +13,7 @@ EXPERIMENT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(EXPERIMENT_ROOT) not in sys.path:  # registry/ ships beside api/ in both images
     sys.path.insert(0, str(EXPERIMENT_ROOT))
 
+from ingest.derive.registry import ENSEMBLE_STATISTIC_ENTRIES  # noqa: E402
 from registry import fields as catalogue  # noqa: E402
 
 
@@ -108,6 +109,19 @@ class SourceState(StrEnum):
 DERIVED_FLAG = "derived"
 #: Set where a method's output was pulled back to the declared physical range.
 RANGE_CLAMPED_FLAG = "range_clamped"
+#: Set on a field whose ensemble statistic was refused: the request was not
+#: answerable, which is not the same thing as the data being absent. The value
+#: is null and ``provenance.ensemble.refusal`` names the condition that failed.
+STATISTIC_REFUSED_FLAG = "statistic_refused"
+#: Set where the member set a statistic covered is short of the count its
+#: family declares. A flag rather than a status for the same reason ``derived``
+#: is: the statistic is a true summary of the members that resolved, and what
+#: the reader must be told is which set that was.
+PARTIAL_MEMBER_SET_FLAG = "partial_member_set"
+#: The comparisons a threshold probability may count members against. Kept as
+#: a closed set beside the ``Literal`` on ``EnsembleProvenance`` so the request
+#: surface can refuse an unknown one at the edge, with the same four words.
+THRESHOLD_COMPARISONS: tuple[str, ...] = ("ge", "gt", "le", "lt")
 #: Set where this deployment held the frame and purged it because its valid
 #: time left the sliding window. A flag rather than a fifth QC status for the
 #: same reason ``derived`` is: ageing out is a retention fact about the store,
@@ -200,6 +214,102 @@ class DerivedInput(StrictModel):
     run_time: datetime | None = None
 
 
+class EnsembleMemberSet(StrictModel):
+    """The members one ensemble number covers, as they actually resolved.
+
+    Carried on the value rather than beside it, because a statistic whose
+    member set a reader cannot recover is exactly the unnamed ensemble number
+    this project refuses. ``members_declared`` is what the family's registry
+    record declares, ``members_used`` is what resolved a value, and
+    ``members_missing`` names the shortfall wherever the identifiers are known
+    (the shortfall is never filled with invented member ids). ``partial``
+    follows from the two counts at the derive step and is carried so a reader
+    need not recompute it.
+
+    There is deliberately no run-staleness field here. Run staleness is
+    ``Provenance.run_stale`` with ``Provenance.run_stale_reason``, added by the
+    horizon-tiers change, and this model hangs off that same ``Provenance``: a
+    second field would let one value say two things about one run.
+    """
+
+    family: str
+    source_id: str
+    run_time: datetime | None
+    members_declared: int = Field(ge=0)
+    members_used: int = Field(ge=0)
+    members_missing: list[str] = Field(default_factory=list)
+    #: Whether the control member entered the set. ``None`` where the family
+    #: publishes no control, which is not the same as excluding one.
+    control_included: bool | None = None
+    partial: bool = False
+
+    @field_validator("run_time")
+    @classmethod
+    def require_aware_run_time(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            raise ValueError("timestamps must include an offset")
+        return value
+
+    @model_validator(mode="after")
+    def counts_agree_with_the_partial_verdict(self) -> EnsembleMemberSet:
+        if self.members_used > self.members_declared:
+            raise ValueError(
+                f"member_set_overcounts: {self.members_used} members used exceeds the {self.members_declared} the family declares"
+            )
+        if self.partial != (self.members_used < self.members_declared):
+            raise ValueError(
+                f"member_set_partial_mismatch: partial={self.partial} with {self.members_used} of {self.members_declared} members used"
+            )
+        return self
+
+
+class EnsembleProvenance(StrictModel):
+    """What makes one value an ensemble number: family, statistic, member set.
+
+    ``statistic`` is null on a per-member value (that value is one member's
+    own reading, not a summary of any set) and is one of the five registered
+    entry names on a statistic. ``computed_here`` separates a statistic this
+    deployment computed over members it can serve from a provider's own
+    published reduction, which is ``retrieved`` and stays the provider's.
+
+    ``refusal`` names the condition code the derive step failed
+    (``one_family:``, ``one_run:``, ``provider_reduction_mixed``,
+    ``averaged_with_instantaneous``, ``below_minimum:``, ``no_member_resolved``
+    or a switch level). A refusal is not an absence, so it only ever appears on
+    a field whose value is null and whose quality carries
+    ``statistic_refused``.
+    """
+
+    family: str
+    statistic: str | None
+    computed_here: bool
+    member_set: EnsembleMemberSet | None
+    refusal: str | None = None
+    quantile: float | None = Field(default=None, ge=0, le=1)
+    threshold: float | None = None
+    threshold_units: str | None = None
+    comparison: Literal["ge", "gt", "le", "lt"] | None = None
+    #: The window a time-averaged member field is a mean over (the GEFS
+    #: six-hour-mean cloud). Null on an instantaneous field; never defaulted,
+    #: because a stated window is the only thing that makes the mean readable.
+    averaging_window_hours: float | None = Field(default=None, gt=0)
+
+    @field_validator("statistic")
+    @classmethod
+    def a_statistic_names_a_registered_entry(cls, value: str | None) -> str | None:
+        """The name is the registry entry's, never the umbrella and never a
+        short name a reader would have to map back."""
+        if value is not None and value not in ENSEMBLE_STATISTIC_ENTRIES:
+            raise ValueError(f"unregistered_method: {value} is not one of {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
+        return value
+
+    @model_validator(mode="after")
+    def a_refusal_names_the_statistic_it_refused(self) -> EnsembleProvenance:
+        if self.refusal is not None and self.statistic is None:
+            raise ValueError("statistic_refused requires the statistic that was refused; a per-member value has nothing to refuse")
+        return self
+
+
 class Provenance(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
@@ -214,7 +324,14 @@ class Provenance(StrictModel):
     run_time: datetime | None
     valid_time: datetime
     retrieval_time: datetime
+    #: The provider's own identifier for the member this value came from, on a
+    #: per-member value only. Null on a statistic and on every non-ensemble
+    #: value: a member id on a summary would name one member as the family.
     member: str | None = None
+    #: Whether that member is the family's control run. Null where the family
+    #: publishes no control or the control cannot be identified; never
+    #: defaulted to False, which would assert a perturbed member.
+    member_control: bool | None = None
     vertical_level: str
     original_units: str
     normalized_units: str
@@ -273,6 +390,12 @@ class Provenance(StrictModel):
     #: the run time or the cadence is unknown, and on a source with no run.
     run_stale: bool | None = None
     run_stale_reason: str | None = None
+    #: The family, statistic and member set behind an ensemble number. Null on
+    #: every value that is not one. An ensemble value whose family cannot be
+    #: read from its registry record carries no ``EnsembleProvenance`` and is
+    #: not served at all (``ensemble_family_unknown``), because a number whose
+    #: construction a reader cannot recover is not evidence.
+    ensemble: EnsembleProvenance | None = None
 
     @field_validator("run_time", "valid_time", "retrieval_time", "last_valid_time")
     @classmethod
@@ -292,6 +415,72 @@ class Provenance(StrictModel):
         """
         if AGED_OUT_FLAG in self.quality.flags and self.last_valid_time is None:
             raise ValueError("aged_out requires a recorded last_valid_time; without one the absence is null, not aged out")
+        return self
+
+    @model_validator(mode="after")
+    def a_control_flag_names_the_member_it_describes(self) -> Provenance:
+        """``member_control`` says something about *this* member.
+
+        Without a ``member`` there is no member for it to be true of, and a
+        control flag floating free would read as the family being the control.
+        """
+        if self.member_control is not None and self.member is None:
+            raise ValueError("member_control requires member; a control flag with no member identifier names nothing")
+        return self
+
+    @model_validator(mode="after")
+    def a_statistic_is_labelled_by_the_class_that_produced_it(self) -> Provenance:
+        """A computed statistic is ``derived_here`` and names its entry.
+
+        The three facts have to agree or the value lies about its own
+        construction: the class says a number was built here, the derivation
+        names the registered entry that built it, and ``computed_here`` says
+        this deployment did the building. A provider's own reduction is the
+        only way to carry a statistic with ``computed_here`` false, and it is
+        ``retrieved`` because the provider published the cell.
+        """
+        ensemble = self.ensemble
+        if ensemble is None:
+            return self
+        if ensemble.statistic is not None and ensemble.computed_here:
+            if self.evidence_class != "derived_here":
+                raise ValueError(
+                    f"a statistic computed here is derived_here, not {self.evidence_class}: {ensemble.statistic}"
+                )
+            if self.derivation != ensemble.statistic:
+                raise ValueError(
+                    f"derivation must name the statistic entry: {self.derivation!r} does not name {ensemble.statistic!r}"
+                )
+        if not ensemble.computed_here and ensemble.statistic is not None and self.evidence_class != "retrieved":
+            raise ValueError(
+                f"a statistic not computed here is the provider's own published reduction and is retrieved, not {self.evidence_class}"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def a_partial_member_set_is_flagged_on_the_quality(self) -> Provenance:
+        """A short member set is told on the verdict, not only in the counts.
+
+        A reader who switches on ``quality.flags`` must not have to open the
+        member set to learn that the number covers fewer members than the
+        family declares.
+        """
+        member_set = self.ensemble.member_set if self.ensemble is not None else None
+        if member_set is not None and member_set.partial and PARTIAL_MEMBER_SET_FLAG not in self.quality.flags:
+            raise ValueError(
+                f"{PARTIAL_MEMBER_SET_FLAG} must be flagged where the member set is partial "
+                f"({member_set.members_used} of {member_set.members_declared} members)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def a_refusal_is_flagged_as_a_refusal(self) -> Provenance:
+        """A refusal is a fact about the request, and the flag is how a reader
+        tells it apart from a field that is null because nothing was
+        retrieved."""
+        refusal = self.ensemble.refusal if self.ensemble is not None else None
+        if refusal is not None and STATISTIC_REFUSED_FLAG not in self.quality.flags:
+            raise ValueError(f"{STATISTIC_REFUSED_FLAG} must be flagged where a statistic was refused: {refusal}")
         return self
 
     @computed_field  # type: ignore[prop-decorator]
@@ -444,6 +633,23 @@ class EvidenceField(StrictModel):
         self.family = entry.family
         if self.phase is not None and not entry.phase_attribute:
             raise ValueError(f"{self.key} is not a phase-bearing field and must not carry phase={self.phase!r}")
+        return self
+
+    @model_validator(mode="after")
+    def a_refused_statistic_carries_no_number(self) -> EvidenceField:
+        """A refusal and a value cannot both be true of one field.
+
+        The refusal says the request was not answerable; a number beside it
+        would be a value computed over whatever subset happened to pass, which
+        is the thing the one-family, one-run rule exists to prevent. This is
+        checked here rather than on ``Provenance`` because the value lives on
+        the field.
+        """
+        ensemble = self.provenance.ensemble
+        if ensemble is not None and ensemble.refusal is not None and self.value is not None:
+            raise ValueError(
+                f"statistic_refused: {self.field} was refused ({ensemble.refusal}) and must carry no value"
+            )
         return self
 
 

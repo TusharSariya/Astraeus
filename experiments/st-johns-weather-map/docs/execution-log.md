@@ -279,3 +279,22 @@ satellite and aurora availability gates tightened to one native interval.
 The web scrubber now spans 24 h back to 14 d ahead.
 
 Landed as PR #34, 2026-09-02.
+
+### Step 7: ensemble-families-and-member-statistics
+
+Branch `execution/ensemble-families`, stacked on step 6. A rate limit killed
+the first lead and two task agents mid-task; their verified edits were
+committed as wip branches and a fresh lead finished from there. Ten task
+agents, one per task, none resumed. Six families declared with control
+identity, member counts where measured (`ecmwf-ens` 51 beside `unverified`),
+`dwd-icon-eps` unavailable; member is a coordinate on GRIB ingestion with
+`validate_run(control_retrieval=...)`; the umbrella registry entry
+`ensemble_statistics_within_run` is enabled with five per-statistic entries
+beside it; statistics served beside raw members with `comparison` and
+`statistic_refused` on the response; web selector and panel rows (statistic
+map layers deferred: `/layers` has no member axis). No family is
+schedulable yet (all `unverified`), so every live smoke is outstanding.
+Owner gates 6.1 to 6.3 ticked against ticket 22; 6.4 (minimum member count
+per statistic) is open for the owner.
+
+Landed as PR #35, 2026-09-02.

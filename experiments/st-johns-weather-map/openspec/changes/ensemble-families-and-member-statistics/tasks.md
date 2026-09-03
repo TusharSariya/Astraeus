@@ -55,88 +55,247 @@ Decision reference: wayfinder ticket
 
 ## 2. Registry (registry owner, implementation pass, NOT in this change)
 
-- [ ] 2.1 Add the six family declarations to `registry/source_data.py`:
+- [x] 2.1 Add the six family declarations to `registry/source_data.py`:
   build order, subsettability, storage scope, expected member count, control
   identification rule, declared gaps. ICON-EPS is declared unverified and not
   schedulable.
-  Owned files: `registry/source_data.py`, `registry/schema.json`.
-  Verify: `python3 registry/audit.py`.
+  Owned files: `registry/source_data.py`, `registry/schema.json`,
+  `registry/catalogue_coverage.json`, `ingest/registry.py` (the `ensemble`
+  block on `IngestConfig` and the `ingestible` gate, Seam A),
+  `api/tests/test_ingest_ensemble_declaration.py`.
+  Verify: `python3 registry/audit.py && cd api && uv run pytest tests/test_ingest_ensemble_declaration.py`.
+  Verify result: `python3 registry/audit.py` -> `registry valid: 65 sources,
+  version 0.1.0, as of 2026-08-29`, `catalogue valid: 135 fields in 20
+  families`; `cd api && uv run pytest tests/test_ingest_ensemble_declaration.py`
+  -> 28 passed. `python3 -m unittest discover -s registry/tests` -> 88 passed.
+  `cd api && uv run pytest` -> 996 passed, 36 skipped. Two Seam A clauses were
+  widened and are recorded in `design.md` Seam A: `control.identifier` may be
+  null where a member-publishing family's control was never located (REPS,
+  ICON-EPS), and `member_count` is null where nothing was measured at all
+  (ICON-EPS, `verification.evidence` `none`). `dwd-icon-eps` carries status
+  `unavailable`, not `implementing`: the enum `registry/audit.py` enforces has
+  no value meaning "admitted, catalogued, never probed", and `implementing`
+  would claim work that has not started. One line outside the owned set changed:
+  `api/tests/test_api.py` asserted the registry holds 64 sources and now asserts
+  65.
 
-- [ ] 2.2 Add the audit rules: an ensemble record with no subsettability, no
+- [x] 2.2 Add the audit rules: an ensemble record with no subsettability, no
   control rule where it declares members, or a declared gap that is also
   declared published, is refused.
   Owned file: `registry/audit.py`.
   Verify: `python3 -m unittest discover -s registry/tests`.
+  Verify result: `python3 -m unittest discover -s registry/tests` -> 111 tests OK.
+  Deviation: the member-count clause is enforced as the seam's biconditional
+  (null iff reduction-shaped or `verification.evidence == "none"`) plus a
+  refusal to schedule a family whose declared count is unverified, rather than
+  refusing a non-null count under an unverified mark outright. IFS ENS
+  declares 51 with `verification.member_count: "unverified"` because its
+  control was never located; the outright reading would refuse a record the
+  pinned seam requires, and the record is not this task's to edit. Nothing
+  becomes schedulable either way.
 
-- [ ] 2.3 Record the REPS direction gap and the GEFS six-hour-mean cloud key
+- [x] 2.3 Record the REPS direction gap and the GEFS six-hour-mean cloud key
   in `registry/fields.py`, against the catalogue that
   `field-catalogue-and-families` creates.
   Owned file: `registry/fields.py`.
   Verify: `python3 registry/audit.py` reports the catalogue valid with the
   averaged-cloud key present and no REPS direction key.
+  Verify result: `python3 registry/audit.py` -> `catalogue valid: 135 fields
+  in 20 families, version 1.0.0, as of 2026-09-02`; `grep -n '"noaa-gefs",
+  "total_cloud_mean_6h"' registry/fields.py` -> present (upstream
+  `TCDC:entire atmosphere (n-n+6 hour ave fcst)`, matching
+  docs/research/wayfinder/ensemble-access.md); `grep -n '"eccc-reps".*wind_'
+  registry/fields.py` -> only `wind_direction_10m` marked `not-published`,
+  no stored or derived REPS direction key. `api && uv run pytest` -> 968
+  passed, 36 skipped. `python3 -m unittest discover -s registry/tests` ->
+  88 passed.
 
 ## 3. Ingest (ingest owner, implementation pass, NOT in this change)
 
-- [ ] 3.1 One adapter per access shape, built in the declared order: GeoMet
+- [x] 3.1 One adapter per access shape, built in the declared order: GeoMet
   WCS per-member coverages (REPS), ECMWF byte ranges with a separate control
   file (AIFS-ENS), ECMWF byte ranges with the control in the member file
   (IFS ENS), S3 byte ranges per member file (GEFS).
   Owned files: `ingest/adapters/eccc_geomet_ensemble.py`,
-  `ingest/adapters/ecmwf_opendata.py`, `ingest/adapters/noaa_s3.py`.
+  `ingest/adapters/ecmwf_opendata.py`, `ingest/adapters/noaa_s3.py`,
+  `ingest/adapters/__init__.py`, `api/tests/test_adapter_ensemble.py`.
   Verify: `cd api && uv run pytest tests/ -k "ensemble and adapter"`.
+  Verify result: `cd api && uv run pytest tests/ -k "ensemble and adapter"` ->
+  25 passed, 6 skipped, 1143 deselected (the six skips are the unrelated `cv2`
+  motion-method modules). Full `cd api && uv run pytest` -> 1138 passed, 36
+  skipped. `python3 registry/audit.py` -> registry valid: 65 sources; catalogue
+  valid: 135 fields in 20 families; adapter keys 43/43 resolved across 21
+  registered adapters.
+  Adapters: `ECCCREPSEnsembleAdapter` (`eccc-reps`),
+  `ECMWFAIFSEnsembleAdapter` (`ecmwf-aifs-ens`), `ECMWFENSEnsembleAdapter`
+  (`ecmwf-ens`), `NOAAGEFSEnsembleAdapter` (`noaa-gefs`). Each reads its
+  family's `EnsembleDeclaration` and refuses in `discover` while
+  `schedulable` is false; `ingestible` stays false for all four and a test
+  asserts it. The retrieval path is a separate `assemble` method behind that
+  gate, which is what the fixture tests drive with fake clients and injected
+  readers.
+  One deviation from a literal reading of Seam A, recorded in `design.md`
+  Seam B: GEFS' `control_retrieval` is stated `separate_file` by the adapter
+  rather than mapped from `control.separate_retrieval`, which the registry
+  declares false. The two record different things - the flag says the control
+  needs no extra retrieval step (true, every GEFS member is its own object),
+  `control_retrieval` says which file it was in - and mapping the flag would
+  have written `same_file` into provenance, which is false for this family.
+  Live smoke remains, one per family, and none is schedulable: no real REPS
+  `GetCoverage` has been issued for the 21 member coverages of one field
+  (cadence unverified, control unlocated); no real AIFS-ENS `pf` plus `cf`
+  pair has been byte-ranged into one axis of 51 (owner gate 6.1); no real IFS
+  ENS `enfo-ef` file has been read to confirm whether a `cf` record exists at
+  any lead (the adapter reports the control missing either way); no real GEFS
+  member `.idx` has been selected down to the seven family fields with its
+  `N-M hour ave fcst` label stamped. The fixture tests are the whole of the
+  evidence; the first scheduled member run of each family is its smoke.
 
-- [ ] 3.2 Apply the per-family storage scope and write the
+- [x] 3.2 Apply the per-family storage scope and write the
   `available-not-stored` list into the manifest.
-  Owned file: `ingest/manifest.py`.
+  Owned files: `ingest/manifest.py`, `api/tests/test_manifest.py`.
   Verify: `cd api && uv run pytest tests/test_manifest.py -k "scope or available_not_stored"`.
+  Verify result: `cd api && uv run pytest tests/test_manifest.py -k "scope or
+  available_not_stored"` -> 10 passed, 20 deselected. Full `cd api && uv run
+  pytest` -> 1070 passed, 36 skipped. Public names task 3.1 calls:
+  `ingest.manifest.apply_storage_scope(source_id, *, scope, published,
+  retrieved)`, the frozen `StorageScopeReport(applied, available_not_stored,
+  not_retrieved)` with `as_provenance()`, `RunManifest.storage_scope`,
+  `validate_run(..., retrieved_fields=...)` (the producer's own names for what
+  arrived; `upstream_fields` stays what the producer publishes),
+  `ValidationResult.as_storage_scope()` beside `as_members()`, and the QC flag
+  `storage_scope_unstated`. The scope is applied against the field catalogue's
+  own `SOURCE_SCOPE` and `SOURCE_FIELDS`, never re-derived.
+  Live smoke remains: no family is schedulable, so no real REPS coverage list
+  and no real GEFS `.idx` record list has been run through the scope end to
+  end; the fixture tests are the whole of the evidence, and the first scheduled
+  member run is the smoke.
 
-- [ ] 3.3 Set the control flag on the member axis, including the two-file
+- [x] 3.3 Set the control flag on the member axis, including the two-file
   AIFS-ENS case, and store the averaging window on a time-averaged field.
-  Owned files: `ingest/grib.py`, `ingest/manifest.py`.
-  Verify: `cd api && uv run pytest tests/test_grib.py -k "control or averaging_window"`.
+  Owned files: `ingest/grib.py`, `ingest/manifest.py`,
+  `api/tests/test_ingest_grib.py`, `api/tests/test_ingest_manifest.py`.
+  Verify: `cd api && uv run pytest tests/test_ingest_grib.py tests/test_ingest_manifest.py -k "control or averaging_window or member"`.
+  Verify result: `cd api && uv run pytest tests/test_ingest_grib.py tests/test_ingest_manifest.py -k "control or averaging_window or member"` -> 40 passed, 56 deselected. Full `cd api && uv run pytest` -> 1009 passed, 36 skipped.
+  Live smoke remains: no member feed is scheduled (every family's `schedulable`
+  is false until 2.1 lands and owner gate 6.1 is decided), so nothing has yet
+  stacked a real REPS coverage set or a real AIFS-ENS `cf` plus `pf` pair, and
+  no real GEFS `.idx` `N-M hour ave fcst` label has been read end to end. The
+  fixture tests are the whole of the evidence here; the first scheduled member
+  run is the smoke.
 
 ## 4. Serving and reading (API owner 4.1 to 4.3, web owner 4.4, implementation pass, NOT in this change)
 
-- [ ] 4.1 Add the five derivation registry entries with inputs, ranges,
+- [x] 4.1 Add the five derivation registry entries with inputs, ranges,
   conventions, control treatment and the registration-time refusals.
-  Owned file: `api/weather_api/derivations.py`.
-  Verify: `cd api && uv run pytest tests/test_derivations.py -k ensemble`.
+  Owned files: `ingest/derive/registry.py`, `api/tests/test_derivation_registry.py`
+  (the change's plan named `api/weather_api/derivations.py`, which does not
+  exist; the registry is `ingest/derive/registry.py`).
+  Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k ensemble`.
+  Verify result: `cd api && uv run pytest tests/test_derivation_registry.py -k ensemble` -> 21 passed, 18 deselected.
 
-- [ ] 4.2 Serve statistics beside members with the family, run, statistic and
+- [x] 4.2 Serve statistics beside members with the family, run, statistic and
   member set on every value, and refuse a cross-family, cross-run or
   reduction-mixing request at derive time.
-  Owned files: `api/weather_api/store.py`, `api/weather_api/science.py`.
+  Owned files: `api/weather_api/store.py`, `api/weather_api/science.py`,
+  `api/weather_api/app.py` (passing the Seam D request parameters through),
+  `api/tests/test_point_evidence.py`.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k "ensemble and (refus or member_set)"`.
+  Verify result: `cd api && uv run pytest tests/test_point_evidence.py -k
+  "ensemble and (refus or member_set)"` -> 10 passed, 55 deselected. Full
+  `cd api && uv run pytest` -> 1116 passed, 36 skipped (the 36 skips are the
+  pre-existing ones; the new tests need numpy and xarray exactly as the rest
+  of `test_point_evidence.py` does, and run wherever that file runs).
+  `science.py` was not edited: the cross-family comparability rule lives in
+  `registry/fields.py` (`catalogue.comparability`, surfaced by
+  `models.FieldComparability`), not in `science.py`, and nothing there needed
+  to learn that a member row and a statistic row of one family are comparable.
+  The request-to-store path is `get_point` -> `_live_point` ->
+  `live_point_fields(member, statistic, quantile, threshold, comparison,
+  reader_disabled)` -> `LiveStore.sample_point(member, statistic)` ->
+  `_sample_dataset` -> `_member_samples`, with the statistic built in
+  `_ensemble_point_fields` from `derive_ensemble_statistic`. The four derive
+  parameters sit on `live_point_fields`, the sibling Seam B allows, rather
+  than on `sample_point`, which needs only the two that decide whether a
+  member axis is sampled at all; `sample_point` is also called with its extra
+  keywords only where the request set one, so an existing caller's double
+  keeps the signature it had.
+  Live smoke remains: no ensemble family is schedulable (Seam A, owner gate
+  6.1), so nothing has stacked a real REPS coverage set behind `/point`. A
+  live smoke needs one scheduled member run, then
+  `GET /point?member=all&statistic=ensemble_mean` against it, checking that
+  the 21 member rows and the one `derived_here` row all name family, run,
+  statistic and member set, and that a second family in the same window turns
+  the statistic into a `one_family:` refusal without removing any member row.
 
-- [ ] 4.3 Add the member request parameter and the statistic, member set,
+- [x] 4.3 Add the member request parameter and the statistic, member set,
   partial and run-stale fields to the response models.
-  Owned file: `api/weather_api/models.py`.
-  Verify: `cd api && uv run pytest tests/test_api.py -k member`.
+  Owned files: `api/weather_api/models.py`, `api/weather_api/fixtures.py`,
+  `api/tests/test_api.py`, `api/tests/test_models.py`.
+  Verify: `cd api && uv run pytest tests/test_api.py tests/test_models.py -k member`.
+  Verify result: `cd api && uv run pytest tests/test_api.py tests/test_models.py
+  -k member` -> 43 passed, 81 deselected. Full `cd api && uv run pytest` ->
+  1073 passed, 36 skipped.
+  Run staleness reuses `Provenance.run_stale` and `Provenance.run_stale_reason`
+  from the horizon-tiers change: `EnsembleProvenance` hangs off that same
+  `Provenance`, so the existing field is reachable and no second one was added.
+  `EnsembleMemberSet` deliberately carries no `run_stale`, and a test asserts
+  the absence so it is not added later by accident.
+  Ownership note (lead, 2026-09-02): 4.3 also edited `api/weather_api/app.py`
+  for exactly two things, because 4.2 starts from this merged result - the five
+  Seam D `Query` parameters on `get_point` (with `statistic` checked against
+  `ENSEMBLE_STATISTIC_ENTRIES` and `comparison` against `ge|gt|le|lt`, both 422
+  on a bad value) and the fixture-mode answer. `_live_point` and
+  `api/weather_api/store.py` were not touched; 4.2 wires live mode.
 
-- [ ] 4.4 Add the member selector, the statistic layers, the labelling rule in
+- [x] 4.4 Add the member selector, the statistic layers, the labelling rule in
   the text alternative and the averaged-versus-instantaneous fence.
-  Owned files: `web/src/App.tsx`, `web/src/components/`.
+  Owned files: `web/src/App.tsx`, `web/src/api.ts`, `web/src/types.ts`,
+  `web/src/ensemble.test.tsx` and any new `web/src/Ensemble*.tsx` component
+  (`web/src/components/` does not exist; components sit flat under `web/src/`).
   Verify: `cd web && npm test -- --run ensemble`.
+  Verify result: `cd web && npm test -- --run ensemble` -> 12 passed. Full
+  `cd web && npm test -- --run` -> 383 passed. `npx tsc --noEmit` -> clean.
+  Statistic and member layers on the map itself are deferred: `/layers`
+  carries no member axis (design.md's deviation list), so members and
+  statistics are rendered as rows of the evidence panel (`Ensemble.tsx`,
+  `EnsemblePanel`) and in the text alternative, not as map layers.
 
 ## 5. Gate (specs owner)
 
-- [ ] 5.1 `make test`, then
+- [x] 5.1 `make test`, then
   `openspec validate ensemble-families-and-member-statistics --strict`, then
   `uv run --project ../../tools/specs python ../../tools/specs/specctl.py validate`.
+  Verify result (2026-09-02, `execution/ensemble-families` 4b495f6, main
+  checkout): green. API 1308 passed, 25 skipped; web 383 passed in 19 files;
+  registry 111 passed; SQL PASS; specctl 0 errors, 0 warnings; strict
+  validation valid.
 
 ## 6. Owner gates (owner decisions; agents do not tick these)
 
-- [ ] 6.1 Accept the upstream cost of the non-subsettable families: about
+- [x] 6.1 Accept the upstream cost of the non-subsettable families: about
   7.7 MB per field per lead across 31 GEFS members, about 29 MB per lead for
   one IFS ENS field across 51 members and about 72 MB for the same AIFS-ENS
   field, all to store a few KB each. REPS at 40 224 bytes per member field per
   lead needs no such acceptance.
-- [ ] 6.2 Accept that `ensemble-members-and-source-plurality` forbids computing
+  Owner decision 2026-09-02 (wayfinder ticket 22, with the size probes in
+  `docs/research/wayfinder/size-probe-full-fields.md`): all six families are
+  admitted and non-subsettable feeds store catalogue-family fields only; the
+  per-lead upstream cost was shown to the owner there and accepted.
+- [x] 6.2 Accept that `ensemble-members-and-source-plurality` forbids computing
   any statistic at sample time, which ticket 22 reverses. That sentence must
   be corrected in that change before either is archived; only the owner
   decides which change carries the correction.
-- [ ] 6.3 Decide whether ICON-EPS is measured before or after the other five
+  Owner decision 2026-09-02 (wayfinder ticket 22): the sentence in
+  `ensemble-members-and-source-plurality` was amended in that change during
+  the charter session to permit statistics only through an enabled
+  derivation-method-registry entry served as `derived_here`; the correction
+  is carried by that change.
+- [x] 6.3 Decide whether ICON-EPS is measured before or after the other five
   are built, since nothing about it has been verified and it cannot be
   scheduled until it is.
+  Owner decision 2026-09-02 (wayfinder ticket 22): the ingest order is
+  REPS, AIFS-ENS, IFS ENS, GEFS, GEPS reductions, ICON-EPS, so ICON-EPS is
+  measured after the other five are built.
 - [ ] 6.4 Decide the owner-approved minimum member count, if any, for each
   statistic entry, since none is invented at derive time.

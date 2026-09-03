@@ -7,6 +7,7 @@ while the emitted record contains every required field.
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 ECCC_CATALOGUE = "https://eccc-msc.github.io/open-data/msc-data/readme_en/"
@@ -251,6 +252,322 @@ def _eccc_model(id: str, category: str, product: str, doc_slug: str, names: list
     return _source(id, category, "implementing", reason or "Official product is catalogued; ingestion and fixture/live tests are not implemented yet.", "Environment and Climate Change Canada", product, [f"https://eccc-msc.github.io/open-data/msc-data/{doc_slug}/readme_{document_name}_en/", ECCC_CATALOGUE], endpoints or [f"{ECCC_DATAMART}today/{endpoint_path}/"], ("official_sdk", "MetPX Sarracenia for ECCC AMQP discovery/distribution; ecCodes + cfgrib + xarray for official GRIB2/NetCDF"), names, levels, "Published native domain; crop high-resolution data to Avalon and retain coarser Grand Banks context.", cadence, horizon, (False, "Anonymous HTTPS/AMQP", None), ECCC_POLICY, "Official product definition as documented by ECCC; pin discovered GRIB2/NetCDF templates before activation", "newest complete run no older than two nominal cycles", role, (eligible, family if eligible else None, "One representative from the ECCC centre may vote only for semantically comparable raw-model fields." if eligible else "Analysis, post-processing, or non-comparable product; source-specific display only."), delivery_kind="published_cell", **horizon_fields)
 
 
+#: Where every ensemble number below was measured: one file, one ticket
+#: (wayfinder #22, 2026-09-02). A family declares this path as its evidence, or
+#: declares ``"none"`` and is unverified. Nothing here is a producer promise.
+ENSEMBLE_EVIDENCE = "docs/research/wayfinder/ensemble-access.md"
+
+#: The owner's admission order for the six ensemble families, as source ids.
+#: Declared here rather than left an implementation convention, so a partial
+#: build is a prefix of this tuple and a reader of the catalogue alone can tell
+#: which families are expected to exist yet.
+ENSEMBLE_BUILD_ORDER: tuple[str, ...] = (
+    "eccc-reps",
+    "ecmwf-aifs-ens",
+    "ecmwf-ens",
+    "noaa-gefs",
+    "eccc-geps",
+    "dwd-icon-eps",
+)
+
+#: The four reduction shapes a provider may publish instead of members. Listed
+#: on a ``reduction``-shaped record only: a member-publishing family's own
+#: provider reductions are retrieved evidence of a different product, and are
+#: never mixed with a statistic over its member set.
+PROVIDER_REDUCTIONS = ("mean", "spread", "percentile", "threshold_probability")
+
+
+def _control(identifier: str | None, rule: str, separate_retrieval: bool) -> dict[str, Any]:
+    """How one family identifies its control member, as a flag on the member axis.
+
+    ``identifier`` is the provider's own token (``gec00``, the GRIB ``number``
+    ``"0"``) and is null only where the family publishes members and no
+    measurement identifies which of them is the control. A null identifier is
+    not the same as a null ``control`` block: the block being null means the
+    family publishes no members and so has no control to declare (GEPS), while
+    a null identifier means the control exists and has not been located, which
+    is a reason not to schedule the family rather than a licence to promote a
+    perturbed member into its place.
+    """
+    return {"identifier": identifier, "rule": rule, "separate_retrieval": separate_retrieval}
+
+
+def _verification(member_count: str, access_path: str, cadence: str, evidence: str) -> dict[str, Any]:
+    """What was measured about a family, and where the measurement is written down.
+
+    Each field is ``verified`` or ``unverified``; a family carrying any
+    ``unverified`` field is not schedulable, because a member count that was
+    assumed cannot be used to check completeness and an access path that was
+    assumed cannot be retried.
+    """
+    return {"member_count": member_count, "access_path": access_path, "cadence": cadence, "evidence": evidence}
+
+
+def _ensemble(
+    *,
+    family: str,
+    build_order: int,
+    shape: str,
+    subsetting: str,
+    storage_scope: str,
+    member_count: int | None,
+    control: dict[str, Any] | None,
+    reductions: tuple[str, ...],
+    gaps: tuple[dict[str, str], ...],
+    verification: dict[str, Any],
+    schedulable: bool,
+    schedulable_reason: str,
+) -> dict[str, Any]:
+    """One ensemble family declaration, in the shape the schema validates.
+
+    ``subsetting`` and ``storage_scope`` reuse the exact values
+    ``registry/fields.py`` ``SOURCE_SCOPE`` already declares for the same source
+    ids, so the storage scope follows from the access shape in one place rather
+    than being judged twice.
+    """
+    return {
+        "family": family,
+        "build_order": build_order,
+        "shape": shape,
+        "subsetting": subsetting,
+        "storage_scope": storage_scope,
+        "member_count": member_count,
+        "control": control,
+        "reductions": list(reductions),
+        "gaps": [dict(gap) for gap in gaps],
+        "verification": verification,
+        "schedulable": schedulable,
+        "schedulable_reason": schedulable_reason,
+    }
+
+
+#: The six admitted ensemble families, keyed by source id. Every number and
+#: every access shape below is one measurement in ``ENSEMBLE_EVIDENCE``, and a
+#: family declares ``unverified`` wherever there is no measurement to name.
+#: All six are ``schedulable: false``: nothing is scheduled by this change, an
+#: unverified field makes a family unschedulable on its own, and the four
+#: families that cannot subset server side additionally wait on the owner's
+#: acceptance of their upstream cost.
+ENSEMBLE_DECLARATIONS: dict[str, dict[str, Any]] = {
+    "eccc-reps": _ensemble(
+        family="REPS",
+        build_order=1,
+        shape="members",
+        subsetting="server_side",
+        storage_scope="every_published_field",
+        member_count=21,
+        control=_control(
+            None,
+            "GeoMet publishes the members as REPS.MEM.<VAR>.01 through .21 and distinguishes no "
+            "coverage as the control: the 1239 member coverages enumerated on 2026-09-02 carry no "
+            "control label and no ECCC field definition read for this ticket names one. The "
+            "control is therefore not identified, no member stands in for it, and the family is "
+            "not schedulable until the identification rule is measured against the source GRIB.",
+            False,
+        ),
+        reductions=(),
+        gaps=(
+            {
+                "field": "wind_direction_10m",
+                "reason": "REPS publishes WSPD on its members and no ETA_UU or ETA_VV on any "
+                          "member, so member wind direction is not retrievable. It is not derived "
+                          "from the speed, not borrowed from a neighbouring model and not taken "
+                          "from the REPS provider reductions; the field stays null with this "
+                          "reason.",
+            },
+        ),
+        verification=_verification("verified", "verified", "unverified", ENSEMBLE_EVIDENCE),
+        schedulable=False,
+        schedulable_reason=(
+            "21 members and the GeoMet WCS GetCoverage path are verified live (40 224 bytes per "
+            "member field per lead, already subset to the box), but the run cycles and lead set "
+            "are cited from ECCC documentation and were never enumerated, and GeoMet names no "
+            "control among the 21 coverages. An unverified cadence and an unidentified control "
+            "each make the family unschedulable on their own. Nothing is scheduled by this change."
+        ),
+    ),
+    "ecmwf-aifs-ens": _ensemble(
+        family="AIFS-ENS",
+        build_order=2,
+        shape="members",
+        subsetting="none",
+        storage_scope="family_fields_only",
+        member_count=51,
+        control=_control(
+            "0",
+            "The GRIB number as a string: 0 is the cf control and 1 through 50 the pf members. "
+            "The control arrives in its own <stamp>-<L>h-enfo-cf.grib2 file beside the pf file "
+            "holding all 50 perturbed members. That is an access-shape difference and not an "
+            "identity difference: two files, one member axis of 51, and a run whose cf file is "
+            "absent is partial with the control named as the missing member.",
+            True,
+        ),
+        reductions=(),
+        gaps=(),
+        verification=_verification("verified", "verified", "verified", ENSEMBLE_EVIDENCE),
+        schedulable=False,
+        schedulable_reason=(
+            "Members, access path and cadence are all verified live, and AIFS-ENS is the only "
+            "admitted family publishing per-member layered cloud. It still cannot subset server "
+            "side: about 72 MB on the wire per lead for one field across 51 members, to store "
+            "about 4.5 KB per member. Scheduling waits on the owner's acceptance of that upstream "
+            "cost, and nothing is scheduled by this change."
+        ),
+    ),
+    "ecmwf-ens": _ensemble(
+        family="IFS ENS",
+        build_order=3,
+        shape="members",
+        subsetting="none",
+        storage_scope="family_fields_only",
+        member_count=51,
+        control=_control(
+            "0",
+            "The GRIB number as a string: 0 is the cf control and 1 through 50 the pf members. "
+            "The f024 enfo-ef file measured on 2026-09-02 carried type=pf number 1 to 50 and no "
+            "cf record, so where the control is published in the ifs/0p25/enfo layout is "
+            "unverified. separate_retrieval is declared false because no second file was found, "
+            "not because a second file was ruled out; the declared count of 51 rests on a control "
+            "nobody has located, which is why the member count is declared unverified too.",
+            False,
+        ),
+        reductions=(),
+        gaps=(
+            {
+                "field": "cloud_low",
+                "reason": "The IFS ENS open-data set publishes whole-column tcc and no lcc, mcc "
+                          "or hcc on any member. Not a storage-scope exclusion: the producer does "
+                          "not publish the field for this family.",
+            },
+            {
+                "field": "cloud_middle",
+                "reason": "As cloud_low: no layered cloud is published on any IFS ENS member.",
+            },
+            {
+                "field": "cloud_high",
+                "reason": "As cloud_low: no layered cloud is published on any IFS ENS member.",
+            },
+        ),
+        verification=_verification("unverified", "unverified", "unverified", ENSEMBLE_EVIDENCE),
+        schedulable=False,
+        schedulable_reason=(
+            "50 pf members, the byte-range access path and the 00z lead set are verified live, but "
+            "the control's file was never located, so neither the count of 51 nor the retrieval "
+            "path for the whole member axis is established, and 06z/18z coverage was not listed. "
+            "IFS ENS also cannot subset server side: about 29 MB on the wire per lead for one "
+            "field across 51 members. Both the unverified fields and the owner's cost acceptance "
+            "stand between this family and a schedule."
+        ),
+    ),
+    "noaa-gefs": _ensemble(
+        family="GEFS",
+        build_order=4,
+        shape="members",
+        subsetting="none",
+        storage_scope="family_fields_only",
+        member_count=31,
+        control=_control(
+            "gec00",
+            "The member token in the S3 object name: gec00 is the control, self-labelled "
+            "ENS=low-res ctl, beside the perturbed gep01 through gep30, and the expected count of "
+            "31 includes it. separate_retrieval is false because every GEFS member, the control "
+            "included, is already its own file: the control needs no retrieval step the perturbed "
+            "members do not, which is the difference the flag exists to record (contrast "
+            "AIFS-ENS, whose one pf file holds all 50 perturbed members and whose control needs a "
+            "second request).",
+            False,
+        ),
+        reductions=(),
+        gaps=(
+            {
+                "field": "total_cloud_geometric",
+                "reason": "GEFS publishes no instantaneous total-cloud column at any lead in any "
+                          "product set: TCDC:entire atmosphere is a 3 h or 6 h mean, confirmed at "
+                          "the GRIB2 level, and is stored under total_cloud_mean_6h instead. The "
+                          "only instantaneous cloud records are TCDC:475 mb (a single isobaric "
+                          "level), TCDC:convective cloud layer, HGT:cloud ceiling and "
+                          "CWAT:entire atmosphere, none of which is the column quantity, so the "
+                          "column field stays absent rather than being filled from one of them.",
+            },
+        ),
+        verification=_verification("verified", "verified", "verified", ENSEMBLE_EVIDENCE),
+        schedulable=False,
+        schedulable_reason=(
+            "31 members, the .idx byte-range path and the four-cycle 3-hourly-to-f240 lead set are "
+            "verified live. GEFS cannot subset server side: about 7.7 MB on the wire per lead for "
+            "one 0.5 degree field across 31 members, to store about 1.2 KB per member. Scheduling "
+            "waits on the owner's acceptance of that upstream cost, and nothing is scheduled by "
+            "this change."
+        ),
+    ),
+    "eccc-geps": _ensemble(
+        family="GEPS reductions",
+        build_order=5,
+        shape="reduction",
+        subsetting="server_side",
+        storage_scope="every_published_field",
+        member_count=None,
+        control=None,
+        reductions=PROVIDER_REDUCTIONS,
+        gaps=(),
+        verification=_verification("verified", "verified", "verified", ENSEMBLE_EVIDENCE),
+        schedulable=False,
+        schedulable_reason=(
+            "GEPS publishes no members at all: zero GEPS.MEM.* coverages exist and all 532 "
+            "coverages are the provider's own reduction (ERMEAN, ERSSTD, percentiles ERC0 to "
+            "ERC100, threshold probabilities), which is a measurement and not an omission. The "
+            "GeoMet path is verified and its 12z run advertised a 3-hourly interval to 384 h live "
+            "on 2026-09-02 (docs/research/wayfinder/planning-horizon-matrix.md). It is still not "
+            "schedulable here because nothing is scheduled by this change: the adapters and the "
+            "derivation entries its reductions are served beside land later. Those reductions are "
+            "retrieved evidence, stored as issued, never recomputed and never combined with a "
+            "statistic over another member set."
+        ),
+    ),
+    "dwd-icon-eps": _ensemble(
+        family="ICON-EPS",
+        build_order=6,
+        shape="members",
+        subsetting="none",
+        storage_scope="family_fields_only",
+        member_count=None,
+        control=_control(
+            None,
+            "Nothing about ICON-EPS was measured on wayfinder ticket 22, so no control identifier, "
+            "no member numbering and no retrieval shape is known. separate_retrieval is false "
+            "because a boolean must carry a value, not because a single-file retrieval was "
+            "observed; no code may rely on it while the family is unschedulable, and the rule is "
+            "rewritten from the measurement rather than confirmed by it.",
+            False,
+        ),
+        reductions=(),
+        gaps=(),
+        verification=_verification("unverified", "unverified", "unverified", "none"),
+        schedulable=False,
+        schedulable_reason=(
+            "Nothing was measured: no member count, no access path, no cadence, no field list and "
+            "no size figure. The record exists so that the sixth family in the owner's build order "
+            "is a registry fact rather than an implementation convention, and so that the "
+            "catalogue can say the family is unmeasured instead of showing an empty family as "
+            "though it were awaiting a run. It declares no member count at all rather than "
+            "inheriting one from another centre's EPS, because a count that was assumed cannot be "
+            "used to check completeness. Measurement order is the owner's decision."
+        ),
+    ),
+}
+
+
+def ensemble_families() -> list[dict[str, Any]]:
+    """The six ensemble declarations, in the owner's build order.
+
+    Deep copies, so a reader cannot edit the registry by holding a block.
+    """
+    return [
+        copy.deepcopy(ENSEMBLE_DECLARATIONS[source_id])
+        for source_id in sorted(ENSEMBLE_BUILD_ORDER, key=lambda sid: ENSEMBLE_DECLARATIONS[sid]["build_order"])
+    ]
+
+
 def registry() -> dict[str, Any]:
     s: list[dict[str, Any]] = []
     # Canadian NWP, analyses, nowcasting, land and ocean systems.
@@ -314,6 +631,16 @@ def registry() -> dict[str, Any]:
         _source("noaa-gfs", "deterministic_forecast", "implementing", "Official NOAA cloud/NOMADS data are public; Herbie path and GRIB inventory fixtures remain.", "NOAA/NCEP", "Global Forecast System", ["https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast", "https://registry.opendata.aws/noaa-gfs-bdp-pds/"], ["https://noaa-gfs-bdp-pds.s3.amazonaws.com/", "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/"], ("community_client", "Herbie with s3fs fallback to official stores; ecCodes/cfgrib decoding"), ["temperature", "relative_humidity", "specific_humidity", "wind", "gust", "pressure", "precipitation", "cloud", "visibility", "CAPE", "CIN", "precipitable_water", "soil_fields"], ["surface", "2 m", "10 m", "isobaric", "column", "soil"], "Global", "00/06/12/18 UTC", "global medium range; POC uses +24 h", (False, "Anonymous HTTPS/S3", None), OPEN_US_POLICY, "current NCEP GFS GRIB2 production schema", "newest run no older than two nominal cycles", "Independent NOAA deterministic comparison", (True, "NOAA", "One NOAA representative may vote for comparable fields."), delivery_kind="published_cell", reach=_reach(0, 384), run_cadence_seconds=RUN_CADENCE_4X_DAILY, publication_latency=_latency(GFS_LATENCY_SECONDS, LATENCY_SEED_BASIS)),
         _source("noaa-gefs", "ensemble", "implementing", "Official NOAA open store is available; member inventory and completeness fixtures remain.", "NOAA/NCEP", "Global Ensemble Forecast System", ["https://registry.opendata.aws/noaa-gefs/"], ["https://noaa-gefs-pds.s3.amazonaws.com/"], ("community_client", "Herbie with s3fs fallback; ecCodes/cfgrib decoding"), ["temperature", "humidity", "wind", "pressure", "precipitation", "cloud", "threshold_occurrence"], ["surface", "2 m", "10 m", "isobaric", "column", "all members and control"], "Global", "00/06/12/18 UTC", "global medium range; POC uses +24 h", (False, "Anonymous S3", None), OPEN_US_POLICY, "current NCEP GEFS GRIB2 production schema", "newest complete ensemble no older than two nominal cycles", "NOAA ensemble distribution", (False, "NOAA", "Members remain separate; GEFS does not add another NOAA centre vote."), delivery_kind="published_cell", reach=_reach(0, 384), run_cadence_seconds=RUN_CADENCE_4X_DAILY, publication_latency=_latency(GFS_LATENCY_SECONDS, f"{LATENCY_SEED_BASIS}; f024 measured at T+3 h 57 m and f384 still absent at T+5 h 21 m, so the final leads land later than this seed and the upper bound is unmeasured")),
         _source("dwd-icon-global", "deterministic_forecast", "implementing", "DWD publishes an official ICON open-data subset; exact inventory and licence notices must be captured per artifact.", "Deutscher Wetterdienst", "ICON Global", ["https://www.dwd.de/EN/ourservices/opendata/opendata.html", "https://isabel.dwd.de/SharedDocs/downloads/DE/modelldokumentationen/nwv/icon/icon_dbbeschr_aktuell.pdf"], ["https://opendata.dwd.de/weather/nwp/icon/grib/"], ("raw_protocol", "official HTTPS GRIB2 via httpx, ecCodes, cfgrib and xarray"), ["temperature", "relative_humidity", "specific_humidity", "wind", "pressure", "precipitation", "cloud", "visibility", "CAPE", "soil_fields"], ["surface", "2 m", "10 m", "model levels", "isobaric", "column", "soil"], "Global", "operational cycles documented by DWD", "global forecast; POC uses +24 h", (False, "Anonymous HTTPS", None), {"licence": {"name": "DWD Open Data terms", "url": "https://www.dwd.de/EN/service/copyright/copyright_artikel.html", "review_state": "verified"}, "attribution": "Credit Deutscher Wetterdienst (DWD) and ICON; preserve product metadata.", "caching": "Cache only bounded domain/run subsets.", "archival": "Latest and previous complete run locally; no permanent-archive claim.", "redistribution": "Subject to DWD open-data copyright and attribution terms."}, "current ICON database/open-data GRIB2 schema", "newest run no older than two nominal cycles", "Independent DWD deterministic comparison", (True, "DWD", "One DWD representative may vote for comparable fields."), delivery_kind="published_cell", reach=_reach(0, 180, {"00": 180, "06": 120, "12": 180, "18": 120}), run_cadence_seconds=RUN_CADENCE_4X_DAILY, publication_latency=_latency(ICON_LATENCY_SECONDS, LATENCY_SEED_BASIS)),
+        # Sixth in the owner's ensemble build order and the only one of the six
+        # nobody has probed. It is a record rather than a silence so that the
+        # catalogue can say the family is unmeasured, instead of a reader
+        # inferring from an absent record that no such family was admitted. The
+        # status is `unavailable` because no access path has been established
+        # for this deployment, and because the enum the audit enforces has no
+        # value meaning "admitted, catalogued, never probed"; `implementing`
+        # would claim work that has not started. Nothing is measured here and
+        # nothing is scheduled: see ENSEMBLE_DECLARATIONS["dwd-icon-eps"].
+        _source("dwd-icon-eps", "ensemble", "unavailable", "Nothing about ICON-EPS was measured on wayfinder ticket 22: no member count, no control identifier, no access path, no cadence, no field list and no size figure. The record is declared so that the sixth family in the owner's ensemble build order is a registry fact rather than an implementation convention; it is not schedulable, not retrievable and carries no inventory until it is probed.", "Deutscher Wetterdienst", "ICON-EPS", ["https://www.dwd.de/EN/ourservices/opendata/opendata.html", "https://isabel.dwd.de/SharedDocs/downloads/DE/modelldokumentationen/nwv/icon/icon_dbbeschr_aktuell.pdf"], ["https://opendata.dwd.de/weather/nwp/"], ("link_only", "No adapter and no client: the access path has never been probed, and an adapter written against an assumed layout is what the unverified declaration exists to prevent"), ["unmeasured: no field list has been established for this family"], ["unmeasured"], "Documented DWD ICON-EPS domain; never probed for this deployment", "unknown; the run cycles were not enumerated", "unknown; the lead set was not enumerated", (False, "Anonymous HTTPS as documented for the ICON open-data tree; not probed", None), {"licence": {"name": "DWD Open Data terms", "url": "https://www.dwd.de/EN/service/copyright/copyright_artikel.html", "review_state": "verified"}, "attribution": "Credit Deutscher Wetterdienst (DWD) and ICON-EPS; preserve product metadata.", "caching": "Not applicable until an access path is measured.", "archival": "Not applicable until an access path is measured.", "redistribution": "Subject to DWD open-data copyright and attribution terms."}, "unknown; no GRIB2 template has been pinned", "not applicable until a cadence is measured", "Sixth in the declared ensemble build order; unmeasured and never scheduled", (False, None, "Ensemble members remain a distribution and do not become independent centre votes."), "not_applicable", "not_applicable", delivery_kind="published_cell"),
         _source("google-weathernext-2", "research_comparison", "credential_required", "Terms read 2026-09-02 and the licence is now split rather than pending; access still requires a reviewed Google data request, so the status stays credential_required. Bands verified from the Earth Engine catalogue: 2 m temperature, 10 m and 100 m winds, MSLP, SST, 6-hourly total precipitation, and geopotential, specific humidity, temperature, u, v and vertical velocity on 50-1000 hPa. 0.25 degrees, 6-hourly, 64 members, 15 days. There is no cloud variable, which is decisive for a map whose subject is cloud.", "Google DeepMind", "WeatherNext 2 forecasts", ["https://developers.google.com/weathernext/guides/access-forecast"], ["https://console.cloud.google.com/marketplace/product/bigquery-public-data/weathernext"], ("typed_adapter", "xarray/Zarr or BigQuery adapter only after approved access and pinned official starter guide"), ["temperature", "wind", "precipitation", "humidity", "geopotential", "vertical_velocity", "pressure"], ["major surface fields", "published atmospheric levels"], "Global", "official dataset-dependent", "global medium range", (True, "Google-approved dataset access", "https://developers.google.com/weathernext/guides/access-forecast"), {"licence": {"name": "Split by VALID TIME, read 2026-09-02. Historic Experimental Data, \"any data that relates to a time that is more than 48 hours ago\", is CC BY 4.0. Real-Time Experimental Data, \"any data that relates to a time that is no more than 48 hours in the past\", is under the separate, revocable GDM Real-Time Weather Forecasting Experimental Data Terms of Use, which restrict redistribution and proxying. A forecast for a future instant relates to a time that is not in the past at all, so EVERY forward-looking value is in the restricted tier and only history is CC BY.", "url": "https://developers.google.com/earth-engine/datasets/catalog/projects_gcp-public-data-weathernext_assets_weathernext_2_0_0", "review_state": "restricted"}, "attribution": "Historic tier requires verbatim: \"(c) 2025 DeepMind Technologies Limited's machine learning models used to create the experimental data made available at [dataset URL] under CC BY 4.0 licence terms. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use.\" Real-time tier carries its own citation requirement in its terms document.", "caching": "Historic tier may be cached under CC BY with the required citation. No caching of the real-time tier until the owner accepts its terms.", "archival": "Historic tier only; the real-time terms are revocable, so nothing from that tier is archived locally.", "redistribution": "Historic tier permitted under CC BY 4.0 with the required citation. Real-time tier restricts redistribution and raw-data proxying and is prohibited here until the owner accepts the terms. Note the model publishes NO cloud variable of any kind, so any cloud field attributed to it downstream is that reseller's own humidity closure, not model output."}, "WeatherNext 2 dataset version to pin after access", "to be established by live latency audit", "Research comparison only", (False, "Google", "Excluded until operational latency, semantic fields and licence are validated."), "blocked", "blocked", delivery_kind="published_cell",
                 # 15 days at 6-hourly steps is documentation (Earth Engine
                 # catalogue, read 2026-09-02), so the reach can be stated. The
@@ -540,4 +867,14 @@ def registry() -> dict[str, Any]:
         _source("provincial-hydrometric", "hydrology", "licence_review", "No stable authoritative provincial machine endpoint has yet been verified for the selected Avalon stations.", "Government of Newfoundland and Labrador", "Provincial hydrometric network", ["https://www.gov.nl.ca/ecc/waterres/flooding/hydrometric/"], ["https://www.gov.nl.ca/ecc/waterres/flooding/hydrometric/"], ("link_only", "Link-only pending a stable machine endpoint"), ["water_level", "discharge", "station_metadata", "quality_flags"], ["gauging station"], "Newfoundland and Labrador", "unknown", "observations only", (False, "Unknown", None), {**optional_policy, "licence": {"name": "Government of Newfoundland and Labrador site/data terms", "url": "https://www.gov.nl.ca/disclaimer/", "review_state": "pending"}}, "unknown", "unknown", "Candidate supplemental hydrology", (False, None, "Not active and not blended."), "blocked", "blocked", delivery_kind="published_cell"),
         _source("municipal-hydrometric", "hydrology", "unavailable", "No stable authoritative municipal machine endpoint or named network was supplied or discovered for this POC audit.", "Applicable Avalon municipalities", "Municipal hydrometric networks", ["https://www.stjohns.ca/en/water-and-wastewater/water-and-wastewater.aspx"], ["https://www.stjohns.ca/en/water-and-wastewater/water-and-wastewater.aspx"], ("link_only", "No adapter until a real endpoint and provider are identified"), ["water_level", "flow", "quality_flags"], ["municipal station"], "Avalon municipalities", "unknown", "observations only", (False, "No endpoint", None), {**optional_policy, "licence": {"name": "Unknown", "url": "https://www.stjohns.ca/en/city-hall/terms-of-use.aspx", "review_state": "unknown"}}, "none", "not applicable", "Registry placeholder with explicit unavailable status", (False, None, "Unavailable source cannot contribute."), "not_applicable", "not_applicable", delivery_kind="published_cell"),
     ])
+    # The ensemble family declaration is attached here rather than threaded
+    # through every constructor call, so the six blocks stay readable side by
+    # side in one table above and no record can acquire one by inheriting a
+    # default. A block whose source id is not in the registry, or an ensemble
+    # record with no block, is refused by the audit rather than passed over
+    # silently here.
+    for record in s:
+        declaration = ENSEMBLE_DECLARATIONS.get(record["id"])
+        if declaration is not None:
+            record["ensemble"] = copy.deepcopy(declaration)
     return {"registry_version": "0.1.0", "as_of": "2026-08-29", "classification": "experiment", "sources": s}

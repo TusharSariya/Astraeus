@@ -34,6 +34,7 @@ EXPERIMENT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(EXPERIMENT_ROOT) not in sys.path:  # ingest/ ships beside api/ in both images
     sys.path.insert(0, str(EXPERIMENT_ROOT))
 
+from ingest.grib import CONTROL_COORD, MEMBER_DIM  # noqa: E402  (sys.path is set above)
 from registry import fields as catalogue  # noqa: E402  (sys.path is set above)
 
 from .config import (  # noqa: E402
@@ -263,6 +264,49 @@ def derivation_refusal(method: str, *, reader_disabled: Sequence[str] = ()) -> s
     if refusal is None:
         return ""
     return f"{refusal.code}: {refusal.detail} ({method})"
+
+
+# --- the member axis -------------------------------------------------------
+# A member-bearing artifact is not sampled unless the request addressed the
+# member axis. Averaging 21 REPS members into one cell because nobody said
+# which member they wanted would produce exactly the unnamed ensemble number
+# this project refuses, so silence is answered with a notice instead.
+
+#: The request value that means "every member the family publishes".
+MEMBER_ALL = "all"
+
+#: The notice a member-bearing artifact leaves when nothing addressed its
+#: member axis. Suffixed with the revision id, so a reader can see which
+#: artifact went unread rather than only that something did.
+MEMBER_DIMENSION_UNADDRESSED = "member_dimension_unaddressed"
+
+#: The flag on a field whose value carries a member axis but whose family the
+#: registry record does not state. Such a value is never served: a number that
+#: cannot name its family is the unattributed ensemble number.
+ENSEMBLE_FAMILY_UNKNOWN_FLAG = "ensemble_family_unknown"
+
+#: The family name a provider's own published reduction enters a derive-time
+#: check under. ``ingest.derive.registry.PROVIDER_REDUCTION_FAMILIES`` holds
+#: it, and a member set carrying it makes ``provider_reduction_mixed`` fire
+#: rather than the reduction being averaged in beside real members.
+PROVIDER_REDUCTION_FAMILY = "ensemble_reduction"
+
+
+def ensemble_declaration(source_id: str) -> Any | None:
+    """The source's ``EnsembleDeclaration``, or ``None`` where it has none.
+
+    Read from the registry record through the ingest config, never inferred
+    from a source id or from the shape of an artifact: which family a member
+    belongs to is a fact the record states.
+    """
+    config = _registry_config(source_id)
+    return getattr(config, "ensemble", None) if config is not None else None
+
+
+def ensemble_family(source_id: str) -> str | None:
+    declaration = ensemble_declaration(source_id)
+    family = getattr(declaration, "family", None)
+    return str(family) if family else None
 
 
 @dataclass(frozen=True)
@@ -529,6 +573,29 @@ class Sample:
     #: carries a convention the catalogue does not recognise - which is a
     #: refusal to compare, never a guess.
     phase: str | None = None
+    #: The provider's own member identifier this value was read at, and whether
+    #: that member is the family's control run. Set together and only on a
+    #: value taken off a member axis; ``None`` on every other value, including
+    #: a provider's own published reduction, which is one cell and not a
+    #: member.
+    member: str | None = None
+    member_control: bool | None = None
+    #: The ensemble family the source's registry record declares, and the
+    #: shape it declares (``members`` or ``reduction``). ``ensemble_family`` is
+    #: ``None`` where the record states no family, which is not a family to
+    #: serve under but the reason not to serve the value at all.
+    ensemble_family: str | None = None
+    ensemble_shape: str | None = None
+    #: The member count the family declares and the members that did not
+    #: resolve, from the artifact's own ``members`` provenance block. Carried
+    #: on the sample so a statistic can name what it covered without reopening
+    #: the artifact, and never invented where the block is absent.
+    members_declared: int | None = None
+    members_missing: tuple[str, ...] = ()
+    #: The window a time-averaged member field is a mean over, from the
+    #: variable's own ``averaging_window_hours`` attribute. None on an
+    #: instantaneous field.
+    averaging_window_hours: float | None = None
 
 
 def _coordinate_name(dataset: Any, candidates: Sequence[str]) -> str | None:
@@ -642,6 +709,21 @@ def _flag_meaning(attrs: Any, value: float) -> str | None:
 
 def _is_flag_coded(attrs: Any) -> bool:
     return attrs.get("flag_values") is not None and attrs.get("flag_meanings") is not None
+
+
+def _averaging_window(attrs: Any) -> float | None:
+    """The window a time-averaged variable is a mean over, in hours.
+
+    Read from the producer's own record label as ``ingest.grib`` stamped it. A
+    window that will not parse is ``None``: a mean whose window is unstated is
+    not readable as a mean, and inventing a window would state one the
+    producer never issued.
+    """
+    try:
+        window = float(attrs.get("averaging_window_hours"))
+    except (TypeError, ValueError):
+        return None
+    return window if window > 0 else None
 
 
 def _nearest_time_index(dataset: Any, name: str, moment: datetime) -> Any:
@@ -814,8 +896,45 @@ class LiveStore:
         self.unmodelled.append(entry)
         self.skipped.append(SkippedArtifact(source_id=source_id, revision_id=revision_id, reason=reason))
 
-    def sample_point(self, latitude: float, longitude: float, valid_time: datetime) -> list[Sample]:
-        """Nearest published grid value per source and variable."""
+    def _note_member_dimension(self, artifact: Any) -> None:
+        """Say that a member-bearing artifact was left unread, and why.
+
+        Not a failure: the artifact is intact and every value in it is
+        available. What is missing is a request that names a member or asks
+        for a statistic over them, and collapsing the axis without one would
+        serve a number no member holds.
+        """
+        revision_id = str(getattr(artifact, "revision_id", "unknown"))
+        self.skipped.append(
+            SkippedArtifact(
+                source_id=str(getattr(artifact, "source_id", "unknown")),
+                revision_id=revision_id,
+                reason=(
+                    f"{MEMBER_DIMENSION_UNADDRESSED}:{revision_id}; the artifact carries a "
+                    f"{MEMBER_DIM} dimension and the request named neither a member nor a "
+                    "statistic, so no value was taken from it"
+                ),
+            )
+        )
+
+    def sample_point(
+        self,
+        latitude: float,
+        longitude: float,
+        valid_time: datetime,
+        *,
+        member: str | None = None,
+        statistic: str | None = None,
+    ) -> list[Sample]:
+        """Nearest published grid value per source and variable.
+
+        ``member`` (a provider's own identifier or ``all``) and ``statistic``
+        are what address a member axis. A member-bearing artifact is sampled
+        only when one of them is set; otherwise it yields no value and leaves
+        the ``member_dimension_unaddressed`` notice, because a request that
+        never mentioned members must not be answered with one member's value
+        or with a silent mean over all of them.
+        """
         self.skipped = []
         self.unmodelled = []
         self.assert_object_store_reachable()
@@ -853,10 +972,10 @@ class LiveStore:
             except Exception as error:
                 self._record_skip(artifact, error)
                 continue
-            samples.extend(self._sample_dataset(dataset, artifact, latitude, longitude, valid_time, manifest=manifest))
+            samples.extend(self._sample_dataset(dataset, artifact, latitude, longitude, valid_time, manifest=manifest, member=member, statistic=statistic))
         return samples
 
-    def _sample_dataset(self, dataset: Any, artifact: Any, latitude: float, longitude: float, valid_time: datetime, *, pressure: int | None = None, manifest: Any | None = None) -> list[Sample]:
+    def _sample_dataset(self, dataset: Any, artifact: Any, latitude: float, longitude: float, valid_time: datetime, *, pressure: int | None = None, manifest: Any | None = None, member: str | None = None, statistic: str | None = None) -> list[Sample]:
         lat_name = _coordinate_name(dataset, LATITUDE_COORDINATES)
         lon_name = _coordinate_name(dataset, LONGITUDE_COORDINATES)
         if lat_name is None or lon_name is None:
@@ -923,6 +1042,18 @@ class LiveStore:
             except ProvenanceUnmodelled as error:
                 self._record_unmodelled(artifact, error, _served_fields(dataset))
                 return []
+        # Read once per artifact: which family this source's record declares,
+        # what it declares about its members, and what the artifact itself
+        # published. None of it is inferred from the dataset.
+        declaration = ensemble_declaration(artifact.source_id)
+        family = ensemble_family(artifact.source_id)
+        shape = getattr(declaration, "shape", None)
+        members_block = provenance.get("members") if isinstance(provenance.get("members"), dict) else {}
+        declared_count = members_block.get("declared", getattr(declaration, "member_count", None))
+        members_missing = tuple(str(item) for item in members_block.get("missing", ()) or ())
+        addressed = member is not None or statistic is not None
+        noted_member_dimension = False
+
         samples: list[Sample] = []
         for variable in dataset.data_vars:
             name = str(variable)
@@ -936,6 +1067,54 @@ class LiveStore:
                 # unavailable with a reason, never as retrieved.
                 self._record_unmodelled(artifact, error, _served_fields(dataset))
                 return []
+            attrs = dataset[name].attrs
+            common: dict[str, Any] = {
+                "source_id": artifact.source_id,
+                "logical_name": artifact.logical_name,
+                "variable": name,
+                "units": str(attrs.get("units", "unknown")),
+                "evidence_class": evidence_class,
+                "level": variable_level(name, str(level)),
+                "valid_time": valid_time,
+                "run_time": artifact.run_time,
+                "retrieved_at": artifact.retrieved_at,
+                "native_crs": artifact.native_crs or provenance.get("native_crs", "unknown"),
+                "revision_id": str(getattr(artifact, "revision_id", "unknown")),
+                "sampled_latitude": cell_latitude,
+                "sampled_longitude": cell_longitude,
+                "sample_distance_km": round(distance * KM_PER_DEGREE, 3),
+                "sample_method": sample_method,
+                # Read off the value, not off the source id: the phase is
+                # a measured property of the producer's own saturation
+                # function, and two products of one producer may differ.
+                "phase": catalogue.phase_from_convention(attrs.get(catalogue.PHASE_ATTRIBUTE)),
+                "ensemble_family": family,
+                "ensemble_shape": shape,
+                "averaging_window_hours": _averaging_window(attrs),
+            }
+
+            if MEMBER_DIM in getattr(dataset[name], "dims", ()):
+                if not addressed:
+                    # Nothing addressed the axis. Say so once for the artifact
+                    # and take no value: neither the first member nor a mean
+                    # over all of them is what was asked for.
+                    if not noted_member_dimension:
+                        self._note_member_dimension(artifact)
+                        noted_member_dimension = True
+                    continue
+                samples.extend(
+                    self._member_samples(
+                        located,
+                        name,
+                        provenance=provenance,
+                        common=common,
+                        member=member,
+                        declared=declared_count,
+                        members_missing=members_missing,
+                    )
+                )
+                continue
+
             raw = located[name].values
             value: float | str | None
             try:
@@ -944,35 +1123,62 @@ class LiveStore:
                 value = None
             if value is not None and value != value:  # NaN is absence, not a reading
                 value = None
-            attrs = dataset[name].attrs
             if value is not None and _is_flag_coded(attrs):
                 # A flag-coded variable is served as the meaning the artifact
                 # declared for that flag, exactly as retrieved; a flag the
                 # table does not define is None, never a bare integer.
                 value = _flag_meaning(attrs, value)
+            samples.append(Sample(value=value, provenance=provenance, members_declared=declared_count, **common))
+        return samples
+
+    def _member_samples(
+        self,
+        located: Any,
+        name: str,
+        *,
+        provenance: dict[str, Any],
+        common: dict[str, Any],
+        member: str | None,
+        declared: int | None,
+        members_missing: tuple[str, ...],
+    ) -> list[Sample]:
+        """One :class:`Sample` per member the request addressed.
+
+        Each member keeps its own identifier and its own control flag: no
+        member ever stands in for the family, and the axis is never collapsed
+        here. A named member that the artifact does not publish yields nothing
+        at all rather than the nearest one.
+        """
+        try:
+            identifiers = [str(item) for item in located[MEMBER_DIM].values.tolist()]
+        except Exception:
+            return []
+        try:
+            controls = [bool(item) for item in located[CONTROL_COORD].values.tolist()]
+        except Exception:
+            # A member axis with no control coordinate: the family may publish
+            # no control. False is what the artifact says, never a guess that
+            # one of these members is it.
+            controls = [False] * len(identifiers)
+        samples: list[Sample] = []
+        for index, identifier in enumerate(identifiers):
+            if member is not None and member != MEMBER_ALL and member != identifier:
+                continue
+            try:
+                value: float | None = float(located[name].isel({MEMBER_DIM: index}).values)
+            except (TypeError, ValueError, IndexError, KeyError):
+                value = None
+            if value is not None and value != value:  # NaN is absence, not a reading
+                value = None
             samples.append(
                 Sample(
-                    source_id=artifact.source_id,
-                    logical_name=artifact.logical_name,
-                    variable=name,
                     value=value,
-                    units=str(dataset[name].attrs.get("units", "unknown")),
-                    evidence_class=evidence_class,
-                    level=variable_level(name, str(level)),
-                    valid_time=valid_time,
-                    run_time=artifact.run_time,
-                    retrieved_at=artifact.retrieved_at,
-                    native_crs=artifact.native_crs or provenance.get("native_crs", "unknown"),
                     provenance=provenance,
-                    revision_id=str(getattr(artifact, "revision_id", "unknown")),
-                    sampled_latitude=cell_latitude,
-                    sampled_longitude=cell_longitude,
-                    sample_distance_km=round(distance * KM_PER_DEGREE, 3),
-                    sample_method=sample_method,
-                    # Read off the value, not off the source id: the phase is
-                    # a measured property of the producer's own saturation
-                    # function, and two products of one producer may differ.
-                    phase=catalogue.phase_from_convention(attrs.get(catalogue.PHASE_ATTRIBUTE)),
+                    member=identifier,
+                    member_control=controls[index] if index < len(controls) else False,
+                    members_declared=declared if declared is not None else len(identifiers),
+                    members_missing=members_missing,
+                    **common,
                 )
             )
         return samples
@@ -1874,6 +2080,7 @@ def live_provenance(
     derivation_inputs: Sequence[Any] = (),
     quality: Any | None = None,
     contributors: Sequence[str] = (),
+    ensemble: Any | None = None,
 ) -> Any:
     """Provenance for one sampled value.
 
@@ -1910,6 +2117,7 @@ def live_provenance(
             derivation_citation=derivation_citation,
             derivation_inputs=derivation_inputs,
             reference=reference,
+            ensemble=ensemble,
         )
     except Exception as error:  # an unknown class, a status outside the four
         raise ProvenanceUnmodelled(f"{sample.source_id}/{sample.logical_name} {sample.variable}: {error}") from error
@@ -1930,6 +2138,7 @@ def _build_live_provenance(
     derivation_citation: str | None,
     derivation_inputs: Sequence[Any],
     reference: datetime,
+    ensemble: Any | None = None,
 ) -> Any:
     from .models import Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
 
@@ -1955,7 +2164,12 @@ def _build_live_provenance(
         run_time=sample.run_time,
         valid_time=sample.valid_time,
         retrieval_time=sample.retrieved_at or reference,
-        member=provenance.get("member"),
+        # The member the value was actually read at wins over anything the
+        # artifact's own provenance says about the run as a whole: one value
+        # off a member axis names its own member, never the family's.
+        member=sample.member if sample.member is not None else provenance.get("member"),
+        member_control=sample.member_control,
+        ensemble=ensemble,
         vertical_level=sample.level,
         original_units=str(provenance.get("original_units", {}).get(sample.variable, sample.units)) if isinstance(provenance.get("original_units"), dict) else sample.units,
         normalized_units=sample.units,
@@ -2247,6 +2461,11 @@ def _consensus_candidates(samples: Sequence[Sample]) -> list[Any]:
     for sample in samples:
         if sample.variable != "temperature_2m" or sample.value is None:
             continue
+        if sample.member is not None:
+            # One member is not the family's forecast. A member row entering
+            # the centre mean would put a single perturbation beside a
+            # deterministic model as though the two were the same object.
+            continue
         if sample.evidence_class != "retrieved":
             # A reprocessed, intermediary-derived or uncalibrated value is
             # never the display primary and never feeds a construction.
@@ -2281,15 +2500,412 @@ def _flag_is_present(sample: Sample | None) -> bool | None:
     return bool(sample.value)
 
 
-def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid_time: datetime) -> tuple[list[Any], Any, list[str]]:
-    """Build live evidence fields, the consensus result, and the source ids used."""
+# --- ensemble members and the statistics over them --------------------------
+# Every number here names four things on its own face: the family and run it
+# came from, which statistic it is, the member set it covers, and whether a
+# provider published it or this deployment computed it. A value that cannot
+# name all four is not served, because that is exactly the unnamed ensemble
+# number the retired consensus badge demonstrated.
+
+
+def _is_time_averaged(registry: Any, variable: str) -> bool:
+    """Whether this catalogue key is a mean over a window rather than an instant.
+
+    The registry's own ``TIME_AVERAGED_FIELDS`` is the authority; nothing here
+    infers a window from a key's spelling.
+    """
+    from .models import catalogue_key_for  # noqa: PLC0415
+
+    key = catalogue_key_for(variable)
+    return key is not None and key in getattr(registry, "TIME_AVERAGED_FIELDS", frozenset())
+
+
+def _same_quantity_family(left: str, right: str) -> bool:
+    """Whether two catalogue keys belong to one quantity family."""
+    from .models import catalogue_key_for  # noqa: PLC0415
+
+    left_key, right_key = catalogue_key_for(left), catalogue_key_for(right)
+    if left_key is None or right_key is None:
+        return False
+    try:
+        return catalogue.field(left_key).family == catalogue.field(right_key).family
+    except Exception:
+        return False
+
+
+def _member_quality_status(sample: Sample) -> str:
+    stored = sample.provenance.get("quality") or {}
+    return str(stored.get("status", "unknown"))
+
+
+def _ensemble_provenance(
+    *,
+    family: str,
+    statistic: str | None,
+    computed_here: bool,
+    member_set: Any | None = None,
+    refusal: str | None = None,
+    quantile: float | None = None,
+    threshold: float | None = None,
+    threshold_units: str | None = None,
+    comparison: str | None = None,
+    averaging_window_hours: float | None = None,
+) -> Any:
+    from .models import EnsembleProvenance  # noqa: PLC0415
+
+    return EnsembleProvenance(
+        family=family,
+        statistic=statistic,
+        computed_here=computed_here,
+        member_set=member_set,
+        refusal=refusal,
+        quantile=quantile,
+        threshold=threshold,
+        threshold_units=threshold_units,
+        comparison=comparison,
+        averaging_window_hours=averaging_window_hours,
+    )
+
+
+def _member_sets_for(registry: Any, samples: Sequence[Sample]) -> list[Any]:
+    """One ``MemberSet`` per family, run and field, from what actually resolved.
+
+    Grouped by the *resolved* family and run rather than by the request,
+    because the artifacts are what carry them: two families or two runs
+    arriving for one field become two sets, and the derive step refuses them
+    by that shape rather than by anything asserted here. A provider's own
+    reduction enters under the reduction family so that it is refused beside
+    members rather than averaged in with them.
+    """
+    groups: dict[tuple[str, str, Any, str], list[Sample]] = {}
+    for sample in samples:
+        family = PROVIDER_REDUCTION_FAMILY if sample.member is None else sample.ensemble_family
+        if family is None:
+            # A member whose family the record does not state. It is not
+            # served at all, so it enters no set either.
+            continue
+        groups.setdefault((family, sample.source_id, sample.run_time, sample.variable), []).append(sample)
+    sets = []
+    for (family, source_id, run_time, variable), group in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], str(item[0][2]), item[0][3])):
+        members = tuple(
+            registry.MemberValue(
+                member=item.member if item.member is not None else item.source_id,
+                control=bool(item.member_control),
+                value=item.value if isinstance(item.value, float) else None,
+                quality_status=_member_quality_status(item),
+            )
+            for item in group
+        )
+        declared = max((item.members_declared or 0) for item in group) or len(members)
+        # A member the artifact named as missing keeps its name on the set, so
+        # a partial statistic can say which members it did not cover.
+        missing = tuple(dict.fromkeys(name for item in group for name in item.members_missing))
+        members += tuple(
+            registry.MemberValue(member=name, control=False, value=None, quality_status="unknown")
+            for name in missing
+            if name not in {item.member for item in members}
+        )
+        sets.append(
+            registry.MemberSet(
+                family=family,
+                source_id=source_id,
+                run_time=run_time,
+                field=variable,
+                declared=max(declared, len(members)),
+                members=members,
+                time_averaged=any(item.averaging_window_hours is not None for item in group),
+            )
+        )
+    return sets
+
+
+def _statistic_field(
+    store: Any,
+    registry: Any,
+    *,
+    field_name: str,
+    basis: Sample,
+    members: Sequence[Sample],
+    statistic: str,
+    result: Any,
+    reference: datetime,
+) -> Any:
+    """One statistic as an evidence field: the number, or the refusal.
+
+    A refusal is not an absence. The value is null and the quality carries
+    ``statistic_refused`` with the condition code on the provenance, while the
+    data mode stays live and the members go on being served beside it: the
+    data is present and it is the request that was not answerable.
+    """
+    from .models import (  # noqa: PLC0415
+        PARTIAL_MEMBER_SET_FLAG,
+        STATISTIC_REFUSED_FLAG,
+        EnsembleMemberSet,
+        EvidenceField,
+        Quality,
+        catalogue_key_for,
+    )
+
+    key = catalogue_key_for(basis.variable)
+    refusal = result.condition_failed or (result.refusal.code if result.refusal is not None else None)
+    partial = result.members_used < result.members_declared
+    flags = list(dict.fromkeys([*result.flags, *( [PARTIAL_MEMBER_SET_FLAG] if partial else [])]))
+    if refusal is not None:
+        flags = list(dict.fromkeys([*flags, STATISTIC_REFUSED_FLAG]))
+    member_set = EnsembleMemberSet(
+        family=basis.ensemble_family or "",
+        source_id=basis.source_id,
+        run_time=basis.run_time,
+        members_declared=result.members_declared,
+        members_used=result.members_used,
+        members_missing=list(result.members_missing),
+        control_included=result.control_included,
+        partial=partial,
+    )
+    units = basis.units
+    if statistic == registry.ENSEMBLE_THRESHOLD_PROBABILITY:
+        units = "1"
+    elif statistic == registry.ENSEMBLE_MEMBER_COUNT:
+        units = "count"
+    ensemble = _ensemble_provenance(
+        family=basis.ensemble_family or "",
+        statistic=statistic,
+        computed_here=True,
+        member_set=member_set,
+        refusal=refusal,
+        quantile=result.quantile,
+        threshold=result.threshold,
+        threshold_units=result.threshold_units,
+        comparison=result.comparison,
+        averaging_window_hours=basis.averaging_window_hours,
+    )
+    if refusal is not None:
+        _note(
+            store,
+            source_id=basis.source_id,
+            revision_id=basis.revision_id,
+            reason=(
+                f"{field_name}: {statistic} was refused ({refusal}); the members it would have "
+                "covered are served unchanged and nothing was computed over the part that passed"
+            ),
+        )
+    value = result.value if refusal is None else None
+    return EvidenceField(
+        field=field_name,
+        value=value,
+        key=key,
+        storage=storage_for(basis.source_id, key, value),
+        provenance=live_provenance(
+            replace(basis, variable=field_name, value=value, units=units, evidence_class="derived_here", member=None, member_control=None),
+            field_name=field_name,
+            reference=reference,
+            derivation=statistic,
+            derivation_version=getattr(result.method, "version", None),
+            derivation_citation=_method_citation(statistic),
+            derivation_inputs=_derived_input_records([(field_name, item) for item in members]),
+            quality=Quality(status=result.quality_status, flags=flags),
+            ensemble=ensemble,
+        ),
+    )
+
+
+def _ensemble_point_fields(
+    store: Any,
+    samples: Sequence[Sample],
+    *,
+    valid_time: datetime,
+    reference: datetime,
+    statistic: str | None,
+    quantile: float | None,
+    threshold: float | None,
+    comparison: str | None,
+    reader_disabled: Sequence[str],
+) -> list[Any]:
+    """The per-member values, and the statistic over them where one was asked.
+
+    The members come first and unconditionally: a statistic is never served
+    without them, and a statistic that is refused costs the members nothing.
+    """
+    from .models import EvidenceField, catalogue_key_for  # noqa: PLC0415
+
+    fields: list[Any] = []
+    members = [item for item in samples if item.member is not None]
+    if not members:
+        return fields
+
+    unknown: set[tuple[str, str]] = set()
+    for sample in members:
+        name = FIELD_BY_VARIABLE.get(sample.variable)
+        if name is None:
+            continue
+        key = catalogue_key_for(sample.variable)
+        if key is None:
+            if (name, sample.source_id) not in unknown:
+                unknown.add((name, sample.source_id))
+                fields.append(_uncatalogued_field(store, sample, name, valid_time, reference))
+            continue
+        if sample.ensemble_family is None:
+            # A number whose family its record does not state cannot name
+            # where it came from, so it is not served at all.
+            if (name, sample.source_id) in unknown:
+                continue
+            unknown.add((name, sample.source_id))
+            _note(
+                store,
+                source_id=sample.source_id,
+                revision_id=sample.revision_id,
+                reason=(
+                    f"{name}: {sample.source_id} publishes a member axis and its registry record "
+                    f"states no ensemble family ({ENSEMBLE_FAMILY_UNKNOWN_FLAG}), so no member value "
+                    "is served under an unnamed family"
+                ),
+            )
+            fields.append(
+                EvidenceField(
+                    field=name,
+                    value=None,
+                    key=key,
+                    storage=storage_for(sample.source_id, key, None),
+                    provenance=unavailable_provenance(
+                        valid_time,
+                        units=sample.units,
+                        flags=[ENSEMBLE_FAMILY_UNKNOWN_FLAG],
+                        source_id=sample.source_id,
+                        product=sample.logical_name,
+                        level=sample.level,
+                        reference=reference,
+                        evidence_class=sample.evidence_class,
+                    ),
+                )
+            )
+            continue
+        try:
+            provenance = live_provenance(
+                sample,
+                field_name=name,
+                reference=reference,
+                ensemble=_ensemble_provenance(
+                    family=sample.ensemble_family,
+                    # One member's own reading is not a summary of any set, so
+                    # it names no statistic and was computed nowhere.
+                    statistic=None,
+                    computed_here=False,
+                    member_set=None,
+                    averaging_window_hours=sample.averaging_window_hours,
+                ),
+            )
+        except ProvenanceUnmodelled as error:
+            _note(store, source_id=sample.source_id, revision_id=sample.revision_id, reason=str(error))
+            continue
+        fields.append(
+            EvidenceField(
+                field=name,
+                value=sample.value,
+                key=key,
+                phase=sample.phase if catalogue.requires_phase(key) else None,
+                storage=storage_for(sample.source_id, key, sample.value),
+                provenance=provenance,
+            )
+        )
+
+    if statistic is None:
+        return fields
+    registry = derivation_registry()
+    if registry is None:
+        # Fail closed: with no registry there is no enabled entry, so no
+        # statistic is served and the members stand alone.
+        _note(store, source_id=members[0].source_id, revision_id=members[0].revision_id, reason=f"the derivation method registry could not be read, so {statistic} was not computed")
+        return fields
+
+    # Everything that could enter a statistic for one field: the members, and
+    # any provider reduction of the same field, so that mixing the two is
+    # refused here rather than quietly averaged.
+    contributing: dict[str, list[Sample]] = {}
+    for sample in samples:
+        if sample.member is not None or sample.ensemble_shape == "reduction":
+            contributing.setdefault(sample.variable, []).append(sample)
+    for variable, group in sorted(contributing.items()):
+        name = FIELD_BY_VARIABLE.get(variable)
+        if name is None or catalogue_key_for(variable) is None:
+            continue
+        group_members = [item for item in group if item.member is not None]
+        if not group_members:
+            continue  # a reduction with no members here is retrieved evidence, not a statistic
+        # The averaged-versus-instantaneous fence. A six-hour mean of cloud and
+        # an instantaneous cloud fraction are two quantities, so where the same
+        # family publishes both on the member axis they enter the derive step
+        # together and are refused there, rather than one silently summarising
+        # the other. Two instantaneous keys of one family (wind's components)
+        # differ in no such way and stay apart.
+        mixed = [
+            item for item in samples
+            if item.member is not None
+            and item.variable != variable
+            and _same_quantity_family(item.variable, variable)
+            and _is_time_averaged(registry, item.variable) != _is_time_averaged(registry, variable)
+        ]
+        member_sets = _member_sets_for(registry, [*group, *mixed])
+        try:
+            result = registry.derive_ensemble_statistic(
+                statistic,
+                member_sets,
+                quantile=quantile,
+                threshold=threshold,
+                threshold_units=group_members[0].units,
+                comparison=comparison,
+                reader_disabled=list(reader_disabled),
+            )
+        except Exception as error:
+            _note(store, source_id=group_members[0].source_id, revision_id=group_members[0].revision_id, reason=f"{name}: {statistic} raised and produced no value ({type(error).__name__}: {error})")
+            continue
+        basis = next((item for item in group_members if item.ensemble_family is not None), None)
+        if basis is None:
+            continue  # no member names a family, so nothing may be served over them
+        try:
+            fields.append(
+                _statistic_field(
+                    store, registry,
+                    field_name=name, basis=basis, members=group_members,
+                    statistic=statistic, result=result, reference=reference,
+                )
+            )
+        except ProvenanceUnmodelled as error:
+            _note(store, source_id=basis.source_id, revision_id=basis.revision_id, reason=str(error))
+    return fields
+
+
+def live_point_fields(
+    store: LiveStore,
+    latitude: float,
+    longitude: float,
+    valid_time: datetime,
+    *,
+    member: str | None = None,
+    statistic: str | None = None,
+    quantile: float | None = None,
+    threshold: float | None = None,
+    comparison: str | None = None,
+    reader_disabled: Sequence[str] = (),
+) -> tuple[list[Any], Any, list[str]]:
+    """Build live evidence fields, the consensus result, and the source ids used.
+
+    ``member`` and ``statistic`` are the two things that address a member
+    axis; the remaining three shape the statistic the derivation registry
+    computes. All six are passed through from the request rather than assumed
+    here: a quantile with no convention and a threshold with no comparison are
+    requests this API refuses to guess at.
+    """
     from ingest.grib import RH_PHASE_LIQUID_WATER  # noqa: PLC0415
 
     from .models import EvidenceField, catalogue_key_for  # noqa: PLC0415
     from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS, build_consensus  # noqa: PLC0415
 
     reference = datetime.now(UTC)
-    samples = store.sample_point(latitude, longitude, valid_time)
+    # The member axis is addressed only where the request addressed it, so a
+    # store that samples no members at all - a caller's double, a deployment
+    # holding none - is called exactly as it always was.
+    addressing = {"member": member, "statistic": statistic} if member is not None or statistic is not None else {}
+    samples = store.sample_point(latitude, longitude, valid_time, **addressing)
     if not samples:
         return [], build_consensus([]), []
 
@@ -2312,8 +2928,27 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
         representative = next(sample for sample in samples if sample.source_id in consensus.contributors and sample.variable == "temperature_2m")
         fields.append(EvidenceField(field="temperature", value=consensus.value, provenance=live_provenance(representative, field_name="temperature", reference=reference, contributors=list(consensus.contributors))))
 
+    # A member value is served under its own member identity, beside any
+    # statistic asked for over the set it belongs to, and never through the
+    # generic path, which would serve one member as the family's value.
+    fields.extend(
+        _ensemble_point_fields(
+            store,
+            [item for item in samples if item.revision_id not in isolated],
+            valid_time=valid_time,
+            reference=reference,
+            statistic=statistic,
+            quantile=quantile,
+            threshold=threshold,
+            comparison=comparison,
+            reader_disabled=reader_disabled,
+        )
+    )
+
     seen: set[tuple[str, str]] = {("temperature", "consensus")} if consensus.available else set()
     for sample in samples:
+        if sample.member is not None:
+            continue  # served above, with its member identity on it
         name = FIELD_BY_VARIABLE.get(sample.variable)
         if name is None or sample.variable in DERIVATION_INPUTS or sample.variable in FOG_INPUTS or (name == "temperature" and consensus.available):
             continue
@@ -2329,7 +2964,27 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
             fields.append(_uncatalogued_field(store, sample, name, valid_time, reference))
             continue
         try:
-            provenance = live_provenance(sample, field_name=name, reference=reference)
+            provenance = live_provenance(
+                sample,
+                field_name=name,
+                reference=reference,
+                # A provider's own published reduction is retrieved evidence
+                # and stays the provider's: it names its family and the fact
+                # that this deployment computed nothing, and it names no
+                # statistic, because which reduction a cell is belongs to the
+                # key the producer published it under.
+                ensemble=(
+                    _ensemble_provenance(
+                        family=sample.ensemble_family,
+                        statistic=None,
+                        computed_here=False,
+                        member_set=None,
+                        averaging_window_hours=sample.averaging_window_hours,
+                    )
+                    if sample.ensemble_shape == "reduction" and sample.ensemble_family is not None
+                    else None
+                ),
+            )
         except ProvenanceUnmodelled as error:
             # Per-artifact isolation: this artifact's fields go null with a
             # notice naming it, and every other source still answers.
@@ -2351,7 +3006,10 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
 
     by_source: dict[str, dict[str, Sample]] = {}
     for sample in samples:
-        if sample.revision_id in isolated:
+        if sample.revision_id in isolated or sample.member is not None:
+            # A member row is not the source's value, so it never becomes the
+            # input to a humidity, wind or fog construction served without a
+            # member identity on it.
             continue
         by_source.setdefault(sample.source_id, {})[sample.variable] = sample
     # A derived field borrows the lineage of its inputs (source, run, cell,

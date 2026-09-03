@@ -141,6 +141,26 @@ LAYERS = [
 ]
 
 
+#: What fixture mode answers a member or statistic request with. The fixture
+#: snapshot is a hand-built point, not an ensemble: it holds no member axis,
+#: and the one thing it must never do is invent one. So the ordinary fixture
+#: fields are still served, unchanged, no field carries a ``member`` or an
+#: ``ensemble`` block, and this notice says why there is nothing more.
+NO_ENSEMBLE_MEMBERS_NOTICE = "fixture deployment carries no ensemble members"
+
+
+def ensemble_notices(member: str | None, statistic: str | None) -> list[str]:
+    """The notice a fixture-mode ensemble request earns, or nothing.
+
+    A request that names neither a member nor a statistic is not an ensemble
+    request and gets no notice; anything else is told, once, that this
+    deployment has no members to answer from.
+    """
+    if member is None and statistic is None:
+        return []
+    return [NO_ENSEMBLE_MEMBERS_NOTICE]
+
+
 def provenance(
     source: str,
     product: str,

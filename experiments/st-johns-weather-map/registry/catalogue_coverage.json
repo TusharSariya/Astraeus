@@ -40,6 +40,9 @@
     "DWD ICON Global": [
       "dwd-icon-global"
     ],
+    "DWD ICON EPS": [
+      "dwd-icon-eps"
+    ],
     "WeatherNext 2": [
       "google-weathernext-2",
       "open-meteo-weathernext-2"
