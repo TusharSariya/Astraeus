@@ -491,3 +491,103 @@ records the departure under Deviations rather than silently renaming.
   `awaiting_validation`; a claim from a disabled method is never rendered.
 - Vitest filters by file name, so the test file names above are the verify
   commands' filters.
+
+## Deviations
+
+Recorded by the change lead as the task agents reported them, 2026-09-03.
+None changes a registry status, admits a camera or enables a camera
+derivation.
+
+1. **Test dependencies.** `api/pyproject.toml` (dev group) gains
+   `jsonschema==4.25.1` and `pyyaml==6.0.3`; jsonschema was absent from the
+   api environment, and the profile, site and camera audits validate YAML
+   against JSON Schema. `api/uv.lock` follows.
+2. **Audit scripts.** `profile_audit.py`, `site_audit.py` and
+   `camera_audit.py` all take `--root` so tests audit a temporary registry;
+   `--strict` alone implies `--all`; `profile_audit.py` exposes
+   `profile_warnings` beside `audit_profile` as the warning channel
+   `--strict` fails on. `site_audit.py` exits 1 on a not-servable site,
+   not only an unreadable one.
+3. **Absence states on the wire.** The three spec states ride on the new
+   explicit `EvidenceField.absence_state`. The store's five-name
+   `ABSENCE_STATES` legend and the web's `resolveAbsenceState` flag order
+   from earlier steps are left as they were: `retrieval_failed` and
+   `no_retrieval` are reason flags on a `null` absence, and
+   `available-not-stored` stays a storage value. The web profile panel folds
+   a `retrieval_failed` fallback into `null`. `EvidenceField` gained two
+   extra guard messages (`absence_with_value`, `blocked_without_state`)
+   and `aged_out_without_flag`; `comparability` is filled only for
+   catalogued fields.
+4. **Blocked reasons.** `blocked_reason_for` writes `"<id>: the terms are
+   not recorded in the registry"` where a record states no clause, because
+   `BlockedReason.terms` is required and nothing is invented. No record
+   carries status `licence-blocked` today, so the `licence` kind is
+   exercised through `restricted_terms.redistribution: false`
+   (`google-weathernext-2`) and `request` through a synthetic mapping.
+   `missing_contract_element` is public beside `enforce_output_contract`.
+5. **Profile files.** The schema carries a `wanted_not_catalogued` list the
+   spec does not name, so a profile can disclose a quantity the owner
+   listed that the catalogue lacks (humidex, wind chill, UV index) instead
+   of omitting it. AQHI, OVATION probability and daylight are catalogue
+   fields (`air_quality_health_index`, `aurora_probability`,
+   `sun_altitude`) and were moved out of that list by the lead into the
+   families. Blocked-field keys (`road_state`,
+   `light_pollution_baseline`, `magnetometer_local_disturbance`) are not
+   catalogue keys, by design: a blocked field has no admitted source.
+6. **Sites.** No digital elevation model is checked into the repository, so
+   all three site records carry `terrain_check.status: not_run` with the
+   disclosure the spec's "No digital elevation model" scenario requires;
+   the below-terrain rule is exercised with a synthetic terrain horizon.
+   Horizons were hand-registered from map reading on 2026-09-03 (open sea
+   at -0.5 deg for horizon dip; Quidi Vidi ridges 4 to 12 deg) and await a
+   field survey, stated in an optional top-level `note`. The evidence box
+   is restated in `api/weather_api/sites.py` rather than imported from an
+   adapter's retrieval bounds. `HORIZON_DEPENDENT_FIELDS` names derivation
+   outputs, not catalogue keys, so a horizon-dependent null is emitted with
+   `key=None`.
+7. **Camera records.** Seventeen records are catalogued with every geometry
+   value null; `camera_audit.py` reports each `incomplete` naming the
+   missing elements, which keeps them listed and out of retrieval. The
+   tolerances are placeholders (5 px, 0.5 deg) because the schema requires
+   positive numbers. `terms.redistribution` is `const: false`, so a
+   permitted camera will need a schema conditional when permission
+   arrives. `registry/schema.json` gains an optional `cameras` list on a
+   source, `registry/audit.py` a `camera_id_errors` check that each listed
+   id has a file, and the three ledger records an unsatisfied
+   `admission_condition` naming the outstanding written-permission request
+   (Fort Amherst first, sent 2026-09-02). The two other CCG cameras carry
+   `requested_on: null` and say the request covers Fort Amherst first.
+8. **Sector sampling** is now `enabled=True` (the proposal's Impact section
+   says so; the spec's disabled scenario is still tested through the
+   three kill-switch levels). `sector.py` uses spherical haversine and
+   forward-azimuth formulas, documented as within 0.5 percent of the
+   entry's Karney geodesic citation at this range; the elevation-angle band
+   is carried in provenance and not applied to a two-dimensional grid.
+   `test_disabled_entry_produces_nothing` and the reader-switch catalogue
+   test now use `camera_fog_and_visibility_class` as the registered,
+   disabled example.
+9. **Camera derivation entries** are versioned `v0` with citations that
+   name the approach as pending validation (WMO No. 8 Part I Chapter 9 for
+   the landmark bound, ROI sky fraction, star-count night cloud); the
+   `camera_method_enabled_without_validation` check lives in
+   `validation_errors`, which `DerivationRegistry.__post_init__` runs.
+   `test_the_first_entries_are_registered` was extended with the five
+   names.
+10. **Frames.** Every health-flag threshold is a provisional named constant
+    pending the 30-day validation; `capture_time_unknown` is added by
+    `compute_health_flags` and is not a member of `HEALTH_FLAGS`; a frame
+    with no capture time is aged on its retrieval time.
+11. **Privacy.** `RefusedClaim` is shared from `ingest/cameras/derive.py`
+    rather than redefined; a raster whose pixel count disagrees with its
+    size raises `MaskUnavailable` (a fourth cause beside the three pinned).
+12. **Windows.** `any_window_within_24h` treats only samples inside its 24 h
+    as needed, so a null altitude days out does not unresolve today's
+    window; the `-0.833` crossing is interpolated linearly between samples;
+    `record_overrides` also refuses a threshold with no default.
+13. **Web.** The profile panel does not reuse `absenceBadge` for its rows
+    because the per-field contract carries no last valid time to format;
+    the three states differ in text and `data-absence`.
+14. **Open questions still open.** The DEM that will serve both the site
+    registry and camera validation, and the per-camera reprojection
+    tolerance, remain as the design's open questions; nothing here chose
+    them.
