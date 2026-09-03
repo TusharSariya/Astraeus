@@ -86,7 +86,7 @@ class DeliveryKindTests(unittest.TestCase):
         self.assertEqual([], errors)
         record = _record(data)
         self.assertEqual("intermediary_derived", record["delivery_kind"])
-        self.assertEqual("credential_required", record["status"])
+        self.assertEqual("credential-required", record["status"])
         self.assertEqual("Google DeepMind", record["producer"])
         self.assertEqual("Open-Meteo", record["intermediary"]["name"])
         self.assertIn("relative humidity", record["intermediary"]["method"])

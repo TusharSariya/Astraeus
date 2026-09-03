@@ -9,21 +9,11 @@ from pathlib import Path
 REGISTRY_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REGISTRY_DIR))
 
-import admission  # noqa: E402
 import audit  # noqa: E402
 from source_data import registry  # noqa: E402
 
-#: True while the registry still carries the pre-admission status values. The
-#: schema landed with task 1.1 and the records are rewritten by task 3.1, which
-#: removes this skip.
-_UNMIGRATED = any(s["status"] not in admission.STATES for s in registry()["sources"])
-
 
 class RegistryAuditTests(unittest.TestCase):
-    @unittest.skipIf(
-        _UNMIGRATED,
-        "the records still carry the old status vocabulary; task 3.1 migrates them and removes this skip",
-    )
     def test_registry_passes_schema_and_semantic_audit(self) -> None:
         data, errors = audit.validate()
         self.assertEqual([], errors)
