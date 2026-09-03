@@ -510,10 +510,20 @@ class IngestConfig:
     #: block at all - which makes that record unschedulable rather than giving
     #: it a member count, an access shape and a storage scope nobody stated.
     ensemble: EnsembleDeclaration | None = None
+    #: Whether the record carries an admission condition its owner has not
+    #: marked satisfied. An admission subject to a check is not an admission
+    #: until the check is recorded, so this alone makes the source
+    #: unschedulable, whatever else the record says.
+    admission_condition_outstanding: bool = False
 
     @property
     def ingestible(self) -> bool:
-        """Only catalogued, non-credential sources with a declared horizon.
+        """Only implemented-unverified sources, unconditionally admitted, with a declared horizon.
+
+        ``implemented-unverified`` is the single schedulable state: a record in
+        any other state is a catalogue entry, a blocked one or a dead one, and
+        none of those is fetched. A record admitted subject to a check nobody
+        has recorded is refused for the same reason.
 
         A source that will not say how far it reaches cannot be shown to answer
         any instant, and one with neither a run cadence nor a native cadence
@@ -528,7 +538,8 @@ class IngestConfig:
         not accepted, is not retrieved on an assumption.
         """
         return (
-            self.registry_status == "implementing"
+            self.registry_status == "implemented-unverified"
+            and not self.admission_condition_outstanding
             and self.freshness_threshold_seconds is not None
             and self.reach is not None
             and (self.run_cadence_seconds is not None or self.native_cadence_seconds is not None)
@@ -541,6 +552,13 @@ def _load_registry() -> dict[str, Any]:
         sys.path.insert(0, str(EXPERIMENT_ROOT))
     module = importlib.import_module("registry.source_data")
     return module.registry()
+
+
+def _admission() -> Any:
+    """``registry.admission``, the one definition of the admission vocabulary."""
+    if str(EXPERIMENT_ROOT) not in sys.path:
+        sys.path.insert(0, str(EXPERIMENT_ROOT))
+    return importlib.import_module("registry.admission")
 
 
 def _config_from_record(record: Mapping[str, Any]) -> IngestConfig:
@@ -584,6 +602,7 @@ def _config_from_record(record: Mapping[str, Any]) -> IngestConfig:
         run_cadence_seconds=record.get("run_cadence_seconds"),
         native_cadence_seconds=record.get("native_cadence_seconds"),
         publication_latency=_latency_from_record(record.get("publication_latency")),
+        admission_condition_outstanding=_admission().condition_outstanding(record),
         datamart_fallback_path=record.get("datamart_fallback_path"),
         ensemble=_ensemble_from_record(record.get("ensemble")),
     )

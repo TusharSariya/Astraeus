@@ -173,7 +173,7 @@ def test_refresh_rejects_a_source_the_scheduler_could_never_run(source_id):
     """A blocked or unwired registry id is not a job.
 
     Registry eligibility is necessary but insufficient: ``eccc-radiosonde``
-    is implementing with known freshness but has no registered adapter.
+    is catalogued because no registered adapter claims its id.
 
     Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
     """
@@ -193,6 +193,77 @@ def test_source_status_reports_registry_state_and_never_claims_live_activity():
     assert all(item["state"] != "active" for item in payload["statuses"])
     assert all(item["state"] == record["status"] for record in registry()["sources"] for item in [by_id[record["id"]]])
     assert all(item["last_retrieval"] is None and item["freshness"]["status"] == "unknown" for item in payload["statuses"])
+
+
+def test_source_status_never_emits_active_or_operational():
+    """The two unreachable words, and nothing outside the ten states.
+
+    ``active`` is not a state at all any more and ``operational`` is a state no
+    record may declare and no response may emit: the ceiling lowers it to
+    ``unavailable`` before it reaches the enum. Anything else emitted would be
+    a vocabulary this deployment has not agreed to.
+
+    Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
+    """
+    from registry.admission import STATES
+
+    payload = client.get(f"{PREFIX}/sources/status").json()
+    emitted = {item["state"] for item in payload["statuses"]}
+    assert "active" not in emitted
+    assert "operational" not in emitted
+    assert emitted <= set(STATES), sorted(emitted - set(STATES))
+    catalog = client.get(f"{PREFIX}/catalog").json()
+    record_states = {record["state"] for record in catalog["sources"]}
+    assert "active" not in record_states and "operational" not in record_states
+    assert record_states <= set(STATES), sorted(record_states - set(STATES))
+
+
+def test_refresh_naming_a_catalogued_source_is_refused_with_its_state():
+    """A refusal names the id and the state it was refused for.
+
+    "not schedulable" alone would leave the caller guessing whether the id is
+    blocked, merely catalogued, or admitted subject to a check.
+
+    Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
+    """
+    catalogued = sorted(
+        record["id"] for record in registry()["sources"] if record["status"] == "catalogued"
+    )
+    assert catalogued, "the registry declares no catalogued source"
+    source_id = catalogued[0]
+    response = client.post(f"{PREFIX}/refresh", json={"source_ids": [source_id]})
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail.startswith("source ids are not schedulable:")
+    assert f"{source_id} (catalogued)" in detail
+
+
+def test_refresh_names_an_outstanding_admission_condition(monkeypatch):
+    """An admission subject to an unrecorded check is not an admission.
+
+    The condition text the owner wrote is what the refusal must carry, so the
+    caller is told what is outstanding rather than only that something is.
+
+    Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
+    """
+    import weather_api.store as store_module
+
+    conditioned = {
+        "id": "synthetic-conditional",
+        "status": "implemented-unverified",
+        "admission_condition": {
+            "condition": "the Atlantic-domain check over the evidence box is unrecorded",
+            "satisfied_by": "a recorded probe covering the box",
+            "satisfied": False,
+            "recorded_on": "2026-09-02",
+        },
+    }
+    monkeypatch.setattr(store_module, "_registry_records", lambda: [conditioned])
+    detail = store_module.unschedulable_detail(["synthetic-conditional"])
+    assert detail.startswith("source ids are not schedulable:")
+    assert "condition outstanding:" in detail
+    assert "the Atlantic-domain check over the evidence box is unrecorded" in detail
+    assert "synthetic-conditional (implemented-unverified;" in detail
 
 
 def test_a_fixture_deployment_is_ready_but_says_so():
@@ -649,7 +720,7 @@ def test_a_live_source_status_never_promotes_a_source_to_active(monkeypatch, dat
     payload = client.get(f"{PREFIX}/sources/status").json()
     by_id = {item["source_id"]: item for item in payload["statuses"]}
     assert payload["data_mode"] == "mixed"
-    assert by_id["eccc-hrdps"]["state"] == "implementing"
+    assert by_id["eccc-hrdps"]["state"] == "implemented-unverified"
     assert by_id["eccc-hrdps"]["freshness"]["status"] == "fresh"
     assert by_id["eccc-hrdps"]["data_mode"] == "live"
     assert all(item["state"] != "active" for item in payload["statuses"])

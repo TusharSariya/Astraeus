@@ -66,7 +66,7 @@ def window_end(reference: datetime | None = None) -> datetime:
 
 SOURCES = [
     SourceRecord(
-        id="eccc-hrdps", category="deterministic_forecast", schedulable=True, producer="ECCC", product="HRDPS", state=SourceState.IMPLEMENTING,
+        id="eccc-hrdps", category="deterministic_forecast", schedulable=True, producer="ECCC", product="HRDPS", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned primary deterministic and fallback", may_enter_consensus=True,
         exact_variables=["temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_10m", "visibility"],
         levels=["surface", "2 m", "10 m", "1000-300 hPa"], geographic_coverage="Avalon and Atlantic context",
@@ -78,7 +78,7 @@ SOURCES = [
         fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="eccc-rdps", category="deterministic_forecast", schedulable=True, producer="ECCC", product="RDPS", state=SourceState.IMPLEMENTING,
+        id="eccc-rdps", category="deterministic_forecast", schedulable=True, producer="ECCC", product="RDPS", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned regional fallback", may_enter_consensus=True,
         exact_variables=["temperature_2m", "dew_point_2m", "wind_10m", "precipitation"], levels=["surface", "pressure levels"],
         geographic_coverage="Canada and adjacent waters", cadence="6 hours", forecast_horizon="84 hours", authentication="none",
@@ -89,7 +89,7 @@ SOURCES = [
         fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="eccc-reps", category="ensemble", schedulable=True, producer="ECCC", product="REPS", state=SourceState.IMPLEMENTING,
+        id="eccc-reps", category="ensemble", schedulable=True, producer="ECCC", product="REPS", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned ensemble distribution", may_enter_consensus=True,
         exact_variables=["temperature_2m", "precipitation", "wind_10m"], levels=["surface", "pressure levels"],
         geographic_coverage="North America", cadence="12 hours", forecast_horizon="72 hours", authentication="none",
@@ -100,7 +100,7 @@ SOURCES = [
         fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="noaa-gfs", category="deterministic_forecast", schedulable=True, producer="NOAA", product="GFS", state=SourceState.IMPLEMENTING,
+        id="noaa-gfs", category="deterministic_forecast", schedulable=True, producer="NOAA", product="GFS", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned independent comparison", may_enter_consensus=True,
         exact_variables=["temperature_2m", "dew_point_2m", "wind_10m"], levels=["surface", "pressure levels"],
         geographic_coverage="global", cadence="6 hours", forecast_horizon="384 hours", authentication="none",
@@ -110,7 +110,7 @@ SOURCES = [
         integration="Herbie with official S3 fallback planned", fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="awc-metar-speci", category="observation", schedulable=True, producer="NAV CANADA / ECCC", product="CYYT METAR/SPECI", state=SourceState.IMPLEMENTING,
+        id="awc-metar-speci", category="observation", schedulable=True, producer="NAV CANADA / ECCC", product="CYYT METAR/SPECI", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned observation supporting evidence", may_enter_consensus=False,
         exact_variables=["temperature", "dew_point", "visibility", "cloud_layers", "weather_codes"], levels=["surface"],
         geographic_coverage="CYYT", cadence="hourly and special", forecast_horizon="observation", authentication="none",
@@ -120,7 +120,7 @@ SOURCES = [
         integration="official OpenAPI generated client planned", fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="eccc-radar", category="observation", schedulable=True, producer="ECCC", product="Weather radar", state=SourceState.IMPLEMENTING,
+        id="eccc-radar", category="observation", schedulable=True, producer="ECCC", product="Weather radar", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned precipitation observation", may_enter_consensus=False,
         exact_variables=["precipitation_rate", "precipitation_type"], levels=["composite"], geographic_coverage="Newfoundland radar domain",
         cadence="6 minutes", forecast_horizon="observation", authentication="none", licence="Open Government Licence - Canada",

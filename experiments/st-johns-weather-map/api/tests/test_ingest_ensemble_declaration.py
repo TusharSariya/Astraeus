@@ -182,7 +182,7 @@ def test_a_declared_gap_is_never_also_a_stored_field() -> None:
 def test_icon_eps_is_unmeasured_declares_no_count_and_is_never_schedulable() -> None:
     record = _records()["dwd-icon-eps"]
     declaration = get_config("dwd-icon-eps").ensemble
-    assert record["status"] != "implementing"
+    assert record["status"] != "implemented-unverified"
     assert record["fixture_status"] == "not_applicable"
     assert record["live_smoke_test_status"] == "not_applicable"
     assert declaration.build_order == 6
