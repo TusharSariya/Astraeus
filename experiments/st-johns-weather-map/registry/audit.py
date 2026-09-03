@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -14,18 +15,21 @@ import jsonschema
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import admission  # noqa: E402
 import fields as field_catalogue  # noqa: E402
 from source_data import ENSEMBLE_BUILD_ORDER, registry  # noqa: E402
 
-ALLOWED_STATUSES = {
-    "active", "implementing", "credential_required", "licence_review",
-    "unavailable", "duplicate_evidence", "unsupported_field", "retired", "rejected",
-}
+#: The state vocabulary is defined once, in ``registry/admission.py``, so that
+#: the audit, the API ceiling and the ingest registry cannot drift apart.
+ALLOWED_STATUSES = set(admission.STATES)
 
 #: Where adapter manifests live. Read statically rather than imported: the audit
 #: must run in CI without numpy, xarray or a network stack, and an adapter that
 #: cannot be imported must still have its declared keys checked.
 INGEST_ROOT = HERE.parent / "ingest"
+
+#: The environment variable name shape a credential block may carry.
+_CREDENTIAL_NAME = re.compile(r"^WEATHER_SECRET_[A-Z0-9_]+$")
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -613,6 +617,123 @@ def ensemble_errors(data: dict[str, Any]) -> list[str]:
     return errors
 
 
+def state_errors(
+    source: dict[str, Any],
+    adapter_ids: set[str],
+    known_ids: set[str] | None = None,
+) -> list[str]:
+    """Everything the declared state itself promises about the rest of the record.
+
+    One state is refused outright: ``operational`` is the vocabulary's top and
+    no source may claim it, so a record declaring it is an error rather than a
+    record the ceiling quietly lowers. The rest are consistency checks. A
+    record cannot claim to be implemented without an adapter, a passing fixture
+    and a real integration; a terminal record cannot carry tests that will
+    never run; a record with no data path cannot list one; and the two states
+    that require a block (``credential-required``, ``superseded``) may not be
+    declared without it, nor may the block appear without the state.
+    """
+    sid = source["id"]
+    status = source["status"]
+    errors: list[str] = []
+    if status not in ALLOWED_STATUSES:
+        errors.append(f"{sid}: invalid status {status!r}")
+        return errors
+    if status == "operational":
+        errors.append(f"{sid}: declares operational, which no source may claim")
+    if status == "implemented-unverified" and not admission.implemented_unverified_ok(source, adapter_ids):
+        errors.append(
+            f"{sid}: claims implemented-unverified with no registered adapter, "
+            "a link_only integration or a fixture that is not passing"
+        )
+    if status in admission.TERMINAL_STATES:
+        if source["fixture_status"] != "not_applicable" or source["live_smoke_test_status"] != "not_applicable":
+            errors.append(f"{sid}: terminal status must mark fixture and live tests not_applicable")
+    if status in admission.NO_ACCESS_PATH_STATES and source["access_endpoints"]:
+        errors.append(f"{sid}: status {status!r} declares no data path, so access_endpoints must be empty")
+    has_credential = source.get("credential") is not None
+    if status == "credential-required" and not has_credential:
+        errors.append(f"{sid}: credential-required needs a credential block")
+    if has_credential and status != "credential-required":
+        errors.append(f"{sid}: carries a credential block without status credential-required")
+    successor = source.get("superseded_by")
+    if status == "superseded" and successor is None:
+        errors.append(f"{sid}: superseded must name its successor in superseded_by")
+    if successor is not None:
+        if status != "superseded":
+            errors.append(f"{sid}: carries superseded_by without status superseded")
+        if known_ids is not None and successor["source_id"] not in known_ids:
+            errors.append(f"{sid}: superseded_by names unknown source id {successor['source_id']!r}")
+    return errors
+
+
+def credential_errors(source: dict[str, Any]) -> list[str]:
+    """The credential block names a secret; it must never carry one.
+
+    The schema already forbids any key but the name and the registration URL,
+    which is what keeps key material out of the record. What is checked here is
+    that the name is one ``ingest/secrets.py`` could map, and that the record's
+    own ``authentication`` block agrees with it: a source that needs a
+    credential says so in both places, and points at the same registration
+    page from both.
+    """
+    block = source.get("credential")
+    if block is None:
+        return []
+    sid = source["id"]
+    errors: list[str] = []
+    name = block["name"]
+    if not _CREDENTIAL_NAME.match(name):
+        errors.append(f"{sid}: credential name {name!r} is not a WEATHER_SECRET_* environment variable name")
+    auth = source["authentication"]
+    if not auth["required"]:
+        errors.append(f"{sid}: credential-required must set authentication.required=true")
+    if auth["registration_url"] != block["registration_url"]:
+        errors.append(f"{sid}: authentication.registration_url must equal the credential block's registration_url")
+    return errors
+
+
+def restricted_terms_errors(source: dict[str, Any]) -> list[str]:
+    """Research-use admission is recorded, not assumed.
+
+    A record admitted under terms that forbid redistribution carries the clause
+    verbatim, so a later reader can check the admission against the words
+    rather than against someone's summary of them. Whitespace is not a clause.
+    The rest of the record has to agree: the licence is under restriction, and
+    the values may not stand as a centre's vote in a consensus.
+    """
+    block = source.get("restricted_terms")
+    if block is None:
+        return []
+    sid = source["id"]
+    errors: list[str] = []
+    if not block["terms_text"].strip():
+        errors.append(f"{sid}: restricted_terms needs the verbatim clause, not blank text")
+    if source["licence"]["review_state"] != "restricted":
+        errors.append(f"{sid}: restricted_terms requires licence.review_state 'restricted'")
+    if source["consensus"]["eligible"]:
+        errors.append(f"{sid}: a research-use-only source may not be consensus-eligible")
+    return errors
+
+
+def condition_errors(source: dict[str, Any]) -> list[str]:
+    """An outstanding condition has to say what it is and what would end it.
+
+    A condition nobody can act on is a permanent block dressed as a temporary
+    one, so both halves are required to be real text.
+    """
+    block = source.get("admission_condition")
+    if block is None:
+        return []
+    sid = source["id"]
+    errors: list[str] = []
+    if not block["condition"].strip():
+        errors.append(f"{sid}: admission_condition needs a condition, not blank text")
+    if not block["satisfied_by"].strip():
+        errors.append(f"{sid}: admission_condition needs to say what would satisfy it")
+    return errors
+
+
 def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     sources = data["sources"]
@@ -634,21 +755,17 @@ def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]
     if unreferenced:
         errors.append(f"registry sources absent from catalogue coverage: {', '.join(unreferenced)}")
 
+    adapter_ids = adapter_source_ids()
+
     for source in sources:
         sid = source["id"]
-        status = source["status"]
-        if status not in ALLOWED_STATUSES:
-            errors.append(f"{sid}: invalid status {status!r}")
         auth = source["authentication"]
-        if status == "credential_required" and not auth["required"]:
-            errors.append(f"{sid}: credential_required must set authentication.required=true")
+        errors.extend(state_errors(source, adapter_ids, known))
+        errors.extend(credential_errors(source))
+        errors.extend(restricted_terms_errors(source))
+        errors.extend(condition_errors(source))
         if auth["required"] and not auth["registration_url"]:
             errors.append(f"{sid}: authenticated source needs an official registration URL")
-        if status in {"retired", "unavailable", "rejected"}:
-            if source["fixture_status"] != "not_applicable" or source["live_smoke_test_status"] != "not_applicable":
-                errors.append(f"{sid}: terminal status must mark fixture and live tests not_applicable")
-        if status == "active" and (source["fixture_status"] != "passing" or source["live_smoke_test_status"] != "passing"):
-            errors.append(f"{sid}: active requires passing fixture and live smoke tests")
         if source["consensus"]["eligible"]:
             if not source["consensus"]["family"]:
                 errors.append(f"{sid}: consensus-eligible source needs an independent-centre family")
