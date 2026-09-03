@@ -79,11 +79,20 @@ Decision reference: wayfinder ticket
   `api/tests/test_api.py` asserted the registry holds 64 sources and now asserts
   65.
 
-- [ ] 2.2 Add the audit rules: an ensemble record with no subsettability, no
+- [x] 2.2 Add the audit rules: an ensemble record with no subsettability, no
   control rule where it declares members, or a declared gap that is also
   declared published, is refused.
   Owned file: `registry/audit.py`.
   Verify: `python3 -m unittest discover -s registry/tests`.
+  Verify result: `python3 -m unittest discover -s registry/tests` -> 111 tests OK.
+  Deviation: the member-count clause is enforced as the seam's biconditional
+  (null iff reduction-shaped or `verification.evidence == "none"`) plus a
+  refusal to schedule a family whose declared count is unverified, rather than
+  refusing a non-null count under an unverified mark outright. IFS ENS
+  declares 51 with `verification.member_count: "unverified"` because its
+  control was never located; the outright reading would refuse a record the
+  pinned seam requires, and the record is not this task's to edit. Nothing
+  becomes schedulable either way.
 
 - [x] 2.3 Record the REPS direction gap and the GEFS six-hour-mean cloud key
   in `registry/fields.py`, against the catalogue that
