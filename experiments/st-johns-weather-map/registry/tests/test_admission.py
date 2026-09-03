@@ -198,7 +198,6 @@ class SupersededTests(unittest.TestCase):
         self.data = rewritten_registry()
         self.source = record(self.data, "eccc-raqdps-firework")
         self.source["status"] = "superseded"
-        self.source["access_endpoints"] = self.source["access_endpoints"]
 
     def test_superseded_requires_successor(self) -> None:
         _, errors = audit.validate(self.data)
