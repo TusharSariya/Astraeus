@@ -1035,6 +1035,17 @@ SOURCE_SCOPE: list[dict[str, Any]] = [
                  "tke at 61, relhum at 18. 3.109 GB per lead on the wire for about 22 MB of box, "
                  "a ratio of 138 to 1."),
     },
+    {
+        "source_id": "dwd-icon-eps", "subsetting": "none", "policy": "family_fields_only",
+        "published_field_count": 0, "counted_from": "none",
+        "note": ("ICON-EPS is sixth in the owner's admission order natively, because nothing "
+                 "about it was measured on wayfinder ticket #22: no field list, no member count, "
+                 "no access path and no size figure. published_field_count is 0 and counted_from "
+                 "is 'none' because no probe was ever run against it, not because it publishes "
+                 "nothing. No field is mapped for it below; every field it would store is left "
+                 "for the measurement task design.md's owner gate 6.3 calls for, rather than "
+                 "guessed at here."),
+    },
 ]
 
 
@@ -1176,11 +1187,41 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
     _sf("eccc-reps", "wind_direction_10m", None, "not-published",
         "REPS publishes wind speed and no components on any member, so member wind direction is "
         "not retrievable. The value stays null and nothing derives a direction from a speed."),
+    _sf("eccc-reps", "temperature_2m", "REPS.MEM.ETA_TT.<member>", "stored",
+        "One of the 22 ETA_* surface fields the GeoMet inventory lists per member, subset server "
+        "side. Every published member field is stored under the every_published_field scope."),
+    _sf("eccc-reps", "relative_humidity_2m", "REPS.MEM.ETA_HR.<member>", "stored",
+        _ECCC_LIQUID, phase="liquid"),
+    _sf("eccc-reps", "specific_humidity_2m", "REPS.MEM.ETA_HU.<member>", "stored",
+        "One of the 22 ETA_* surface fields per member."),
+    _sf("eccc-reps", "downward_shortwave_accumulated", "REPS.MEM.ETA_N4.<member>", "stored",
+        "Accumulated downward shortwave, as HRDPS _N4; the accumulation window is not stated in "
+        "the WMS title for this family either."),
+    _sf("eccc-reps", "mean_sea_level_pressure", "REPS.MEM.ETA_PN-SLP.<member>", "stored",
+        "As HRDPS PN-SLP; published in Pa and normalized to hPa on ingest."),
     _sf("eccc-reps", "relative_humidity_pressure", "REPS.MEM.PRES_HR.<hPa>.<member>", "stored",
         "9 pressure levels per member. " + _ECCC_LIQUID, phase="liquid"),
+    _sf("eccc-reps", "temperature_pressure", "REPS.MEM.PRES_TT.<hPa>.<member>", "stored",
+        "9 pressure levels per member, the same PRES_* set as PRES_HR."),
+    _sf("eccc-reps", "geopotential_height_pressure", "REPS.MEM.PRES_GZ.<hPa>.<member>", "stored",
+        "9 pressure levels per member, the same PRES_* set as PRES_HR. The remaining ETA_* fields "
+        "the inventory names without an exact coverage id (precipitation types, NTAT_EI) and the "
+        "PRES_* 40/80/120 m height fields, whose exact coverage naming the research did not "
+        "establish, are left uncatalogued rather than mapped under a guessed id; they surface as "
+        "uncatalogued_upstream_field at ingest if retrieved."),
 
-    _sf("eccc-geps", "total_cloud_opacity", "GEPS.DIAG.*", "stored",
-        "Provider reductions only; no members exist. Stored as issued and never recombined."),
+    _sf("eccc-geps", "total_cloud_opacity", "GEPS.DIAG.*_NT.<reduction>", "stored",
+        "Provider reductions only (ERMEAN, ERSSTD, percentiles ERC0-ERC100, threshold "
+        "probabilities ERGE*/PROB); no GEPS.MEM.* coverages exist to reduce here. Stored as "
+        "issued and never recombined with a statistic computed over another member set. The "
+        "catalogue has no key that expresses 'a reduction of total_cloud_opacity' distinctly "
+        "from the retrieved value itself, so every reduction type lands under this one key and "
+        "the reduction identity (ERMEAN vs ERC50 vs ...) travels only in the upstream name, not "
+        "in a separate catalogue key."),
+    _sf("eccc-geps", "temperature_2m", "GEPS.DIAG.3_TT.<reduction>", "stored",
+        "Verified live: GEPS.DIAG.3_TT.ERC50 answered 200, 1 474 B at native 0.5 deg. As "
+        "total_cloud_opacity above: one of the provider's own reduction set, stored as issued, "
+        "with no catalogue key distinguishing which reduction a given value is."),
 
     # --- GFS: geometric cloud, mixed-phase humidity ------------------------
     _sf("noaa-gfs", "total_cloud_geometric", "TCDC:entire atmosphere", "stored",
@@ -1216,7 +1257,17 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
     _sf("noaa-gfs", "cloud_top_pressure", "PRES:cloud top", "available-not-stored",
         "One of the 349 pgrb2b records outside the catalogue's families."),
 
-    # --- GEFS: six-hour mean cloud ----------------------------------------
+    # --- GEFS: family fields only, plus the six-hour mean cloud ------------
+    _sf("noaa-gefs", "temperature_2m", "TMP:2 m above ground", "stored",
+        "One of the seven family fields the ensemble-families change stores for GEFS under its "
+        "family_fields_only scope."),
+    _sf("noaa-gefs", "dew_point_2m", "DPT:2 m above ground", "stored", "Family field."),
+    _sf("noaa-gefs", "relative_humidity_2m", "RH:2 m above ground", "stored", _GFS_MIXED,
+        phase="mixed"),
+    _sf("noaa-gefs", "wind_u_10m", "UGRD:10 m above ground", "stored", "Family field."),
+    _sf("noaa-gefs", "wind_v_10m", "VGRD:10 m above ground", "stored", "Family field."),
+    _sf("noaa-gefs", "mean_sea_level_pressure", "PRMSL:mean sea level", "stored",
+        "Family field; published in Pa and normalized to hPa on ingest."),
     _sf("noaa-gefs", "total_cloud_mean_6h", "TCDC:entire atmosphere (n-n+6 hour ave fcst)",
         "stored",
         "Confirmed at the GRIB2 level, not only from the .idx label: 0-3 hour ave at f003, 0-6 at "
@@ -1241,8 +1292,10 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
         "32 MB per lead across 31 members."),
     _sf("noaa-gefs", "relative_humidity_pressure", "RH:<n> mb", "available-not-stored",
         "10 pressure levels plus 2 m in pgrb2a and a further 21 levels plus 4 hybrid levels in "
-        "pgrb2b, none fetched: the ensemble members are outside the stored scope until the "
-        "quota decision in the storage ticket."),
+        "pgrb2b, none fetched: GEFS cannot subset server side, so only the seven catalogue-family "
+        "fields are stored (temperature_2m, dew_point_2m, relative_humidity_2m, wind_u_10m, "
+        "wind_v_10m, mean_sea_level_pressure, total_cloud_mean_6h) and the pressure-level profile "
+        "is outside that scope, not withheld for a storage quota."),
 
     # --- ECMWF -------------------------------------------------------------
     _sf("ecmwf-ifs", "total_cloud_geometric", "tcc", "stored",
@@ -1260,13 +1313,43 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
     _sf("ecmwf-ifs", "cloud_high", "hcc", "available-not-stored", "As lcc."),
     _sf("ecmwf-ifs", "geopotential_height_pressure", "gh", "available-not-stored",
         "Published on the pl levels and not fetched."),
-    _sf("ecmwf-ens", "total_cloud_geometric", "tcc", "available-not-stored",
-        "Instantaneous per-member tcc exists (PDT 4.1) and is not fetched: 51 members at "
-        "6.65 GB per lead on the wire is outside the storage budget until the quota decision."),
+    _sf("ecmwf-ens", "total_cloud_geometric", "tcc", "stored",
+        "Instantaneous per-member tcc, PDT 4.1. One of the six family fields IFS ENS stores under "
+        "its family_fields_only scope; the other 47 published parameters are not fetched."),
+    _sf("ecmwf-ens", "temperature_2m", "2t", "stored", "Family field."),
+    _sf("ecmwf-ens", "dew_point_2m", "2d", "stored", "Family field."),
+    _sf("ecmwf-ens", "wind_u_10m", "10u", "stored", "Family field."),
+    _sf("ecmwf-ens", "wind_v_10m", "10v", "stored", "Family field."),
+    _sf("ecmwf-ens", "mean_sea_level_pressure", "msl", "stored", "Family field."),
+    _sf("ecmwf-ens", "cloud_low", "lcc", "not-published",
+        "No layered cloud (lcc/mcc/hcc) exists in the IFS ENS open-data set; only whole-column "
+        "tcc is published. Not a scope exclusion: the producer does not publish this field for "
+        "this family."),
+    _sf("ecmwf-ens", "cloud_middle", "mcc", "not-published", "As cloud_low."),
+    _sf("ecmwf-ens", "cloud_high", "hcc", "not-published", "As cloud_low."),
+    _sf("ecmwf-ens", "geopotential_height_pressure", "gh", "available-not-stored",
+        "One of the 41 published parameters outside the six family fields; published on 14 "
+        "pressure levels per member and not fetched under the family_fields_only scope."),
     _sf("ecmwf-aifs-single", "total_cloud_geometric", "tcc", "available-not-stored",
         "Published and not fetched."),
-    _sf("ecmwf-aifs-ens", "total_cloud_geometric", "tcc", "available-not-stored",
-        "Published per member with lcc/mcc/hcc beside it, and not fetched."),
+    _sf("ecmwf-aifs-ens", "total_cloud_geometric", "tcc", "stored",
+        "Instantaneous per-member tcc, PDT 4.1 verified live. One of the nine family fields "
+        "AIFS-ENS stores under its family_fields_only scope."),
+    _sf("ecmwf-aifs-ens", "temperature_2m", "2t", "stored", "Family field."),
+    _sf("ecmwf-aifs-ens", "dew_point_2m", "2d", "stored", "Family field."),
+    _sf("ecmwf-aifs-ens", "wind_u_10m", "10u", "stored", "Family field."),
+    _sf("ecmwf-aifs-ens", "wind_v_10m", "10v", "stored", "Family field."),
+    _sf("ecmwf-aifs-ens", "mean_sea_level_pressure", "msl", "stored", "Family field."),
+    _sf("ecmwf-aifs-ens", "cloud_low", "lcc", "stored",
+        "The only catalogued family that publishes per-member low cloud; presence verified live, "
+        "product definition template unverified."),
+    _sf("ecmwf-aifs-ens", "cloud_middle", "mcc", "stored",
+        "Presence verified live, product definition template unverified."),
+    _sf("ecmwf-aifs-ens", "cloud_high", "hcc", "stored",
+        "Presence verified live, product definition template unverified."),
+    _sf("ecmwf-aifs-ens", "geopotential_height_pressure", "z", "available-not-stored",
+        "One of the 20 published parameters outside the nine family fields; published on 14 "
+        "pressure levels per member (AIFS-ENS names it z, not gh) and not fetched."),
 
     # --- ICON --------------------------------------------------------------
     _sf("dwd-icon-global", "total_cloud_geometric", "clct", "stored",
@@ -1883,7 +1966,13 @@ def validate_catalogue(*, adapter_keys: Iterable[str] = ()) -> list[str]:
                 f"{source_id}: stores only the family fields and records nothing as "
                 "available-not-stored, so a reader cannot see what the producer publishes"
             )
+    scope_by_id = {item["source_id"]: item for item in SOURCE_SCOPE}
     for source_id in sorted(known_sources - {item["source_id"] for item in SOURCE_FIELDS}):
+        # A source honestly declaring zero measured published fields (ICON-EPS: nothing about
+        # it was measured on ticket 22) maps no field by construction, which is a different
+        # statement from a source that was measured and simply never wired up.
+        if scope_by_id[source_id].get("published_field_count") == 0:
+            continue
         errors.append(f"{source_id}: declares a scope and maps no field")
 
     for key in sorted(set(adapter_keys)):
