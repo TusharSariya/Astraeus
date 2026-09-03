@@ -137,7 +137,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   Owns: `ingest/cameras/frames.py` (new).
   Verify: `cd api && uv run pytest tests/test_camera_frames.py -k
   "health_flag or duplicate or aged_out"`
-- [ ] 5.2 Apply privacy masks before storage and service, discard a frame
+- [x] 5.2 Apply privacy masks before storage and service, discard a frame
   whose mask cannot be applied, and refuse the named claims (face and plate
   recognition, person and vessel tracking, military inference, black ice,
   camera-only safe-wave and safe-road).
