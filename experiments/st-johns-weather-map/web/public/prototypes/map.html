@@ -242,6 +242,12 @@
   <div id="statusbody">loading…</div>
 </div>
 
+<div id="presetpop" popover>
+  <h3 style="margin:0 0 4px">Saved stacks</h3>
+  <p class="muted" style="margin:0 0 6px;font-size:12px">A saved stack is the ordered layers with their opacities. Saved in this browser only (no route exists); the URL already carries the current stack, so a link is the other way to hand one over. Not an <b>Activity profile</b>, which is a scored set of fields; a profile may ship a built-in stack later.</p>
+  <div id="presetlist"></div>
+  <div style="display:flex;gap:6px;margin-top:8px"><input id="presetname" placeholder="name this stack" style="flex:1;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg)"><button id="presetsave">save current</button></div>
+</div>
 <div id="treepop" popover>
   <h3 style="margin:0 0 4px">Add layers</h3>
   <p class="muted" style="margin:0 0 6px;font-size:12px">Grouped by field family, then source. Family and short names are derived here from <code>field</code> and <code>product</code>; <code>/layers</code> serves neither. Greyed rows have no raster.</p>
@@ -584,7 +590,8 @@ function viewEl(v, opts = {}) {
   const h = document.createElement('header'); h.innerHTML = `<span>${VIEW_NAME[v]}</span>`;
   if (v === 'map') { const n = document.createElement('span'); n.className = 'muted'; n.style.fontWeight = '400'; n.id = 'mapsummary'; h.appendChild(n); }
   const sp = document.createElement('span'); sp.className = 'spacer'; h.appendChild(sp);
-  if (v === 'map') { const a = document.createElement('button'); a.className = 'ghost'; a.textContent = focus.mv === 'C' ? '+ find layer  /' : '+ add layers'; if (focus.mv === 'C') a.onclick = openPalette; else a.setAttribute('popovertarget', 'treepop'); h.appendChild(a); }
+  if (v === 'map') { const a = document.createElement('button'); a.className = 'ghost'; a.textContent = focus.mv === 'C' ? '+ find layer  /' : '+ add layers'; if (focus.mv === 'C') a.onclick = openPalette; else a.setAttribute('popovertarget', 'treepop'); h.appendChild(a);
+    const pb = document.createElement('button'); pb.className = 'ghost'; pb.id = 'presetbtn'; pb.setAttribute('popovertarget', 'presetpop'); pb.textContent = 'stacks ▾'; pb.title = 'saved stacks: load, save, manage'; h.appendChild(pb); }
   if (opts.dockable) { const d = document.createElement('button'); d.className = 'ghost'; d.textContent = focus.dock === v ? 'undock' : 'dock →'; d.onclick = () => { if (focus.dock === v) focus.dock = null; else { focus.dock = v; if (focus.view === v) focus.view = VIEWS.find(x => x !== v); } renderAll(); }; h.appendChild(d); }
   if (opts.fullscreen) { const f = document.createElement('button'); f.className = 'ghost'; f.textContent = focus.full === v ? '⤡ exit full screen' : '⤢ full screen'; f.onclick = () => { focus.full = focus.full === v ? null : v; renderAll(); }; h.appendChild(f); }
   if (focus.full === v) el.classList.add('fullscreen');
@@ -810,6 +817,20 @@ function pickCompare(id) {
   document.querySelectorAll('[data-cmp]').forEach(b => b.onclick = () => { compare = { left: id, right: b.dataset.cmp, x: 0.5 }; document.getElementById('detaildlg').close(); writeUrl(); alignAndDraw(); });
   const e = document.getElementById('endcmp'); if (e) e.onclick = () => { document.getElementById('detaildlg').close(); endCompare(); };
 }
+// ---------- saved stacks ----------
+const BUILTIN = { 'Nowcast (default)': DEFAULT_STACK.map(id => ({ id, opacity: null, on: true })), 'Cloud, three models': ['geomet-live-goes-east-naturalcolor', 'eccc-hrdps-surface-total-cloud', 'eccc-rdps-surface-total-cloud', 'noaa-gfs-surface-cloud-low'].map(id => ({ id, opacity: null, on: true })), 'Fog watch': ['geomet-live-goes-east-snowfog-nightmicro', 'geomet-live-hrdps-weong-fog-liquid', 'geomet-live-hrdps-hr', 'eccc-hrdps-low-cloud-weong'].map(id => ({ id, opacity: null, on: true })) };
+function loadPresets() { try { return JSON.parse(localStorage.getItem('astraeus-map-stacks') || '{}'); } catch { return {}; } }
+function savePresets(p) { try { localStorage.setItem('astraeus-map-stacks', JSON.stringify(p)); } catch {} }
+function renderPresets() {
+  const mine = loadPresets(); const box = document.getElementById('presetlist'); if (!box) return;
+  const row = (name, st, builtin) => `<div style="display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px dashed var(--line)"><button data-load="${name}" style="flex:1;text-align:left">${name} <span class="muted">${st.length} layers${builtin ? ' · built in' : ''}</span></button>${builtin ? '' : `<button class="tiny" data-del="${name}" title="delete">✕</button>`}</div>`;
+  box.innerHTML = Object.entries(BUILTIN).map(([n, st]) => row(n, st, true)).join('') + Object.entries(mine).map(([n, st]) => row(n, st, false)).join('');
+  box.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const st = (BUILTIN[b.dataset.load] || mine[b.dataset.load] || []).filter(x => byId[x.id]); stack = st.map(x => ({ id: x.id, opacity: x.opacity ?? byId[x.id].default_opacity ?? 0.85, on: x.on !== false })); document.getElementById('presetpop').hidePopover(); writeUrl(); alignAndDraw(); renderTree(); });
+  box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { delete mine[b.dataset.del]; savePresets(mine); renderPresets(); });
+}
+document.getElementById('presetsave').onclick = () => { const n = document.getElementById('presetname').value.trim(); if (!n) return; const mine = loadPresets(); mine[n] = stack.map(s => ({ ...s })); savePresets(mine); document.getElementById('presetname').value = ''; renderPresets(); };
+document.getElementById('presetpop').addEventListener('beforetoggle', e => { if (e.newState === 'open') renderPresets(); });
+
 // ---------- palette (variant C) ----------
 let palSel = 0;
 function openPalette() { const d = document.getElementById('palette'); d.showModal(); const q = document.getElementById('palq'); q.value = ''; palSel = 0; renderPalette(''); q.focus(); }
