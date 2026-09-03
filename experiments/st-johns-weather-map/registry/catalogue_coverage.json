@@ -190,7 +190,10 @@
     "Aggregator foreign models": [
       "openmeteo-jma-gsm",
       "openmeteo-arpege",
-      "openmeteo-ukmo-global"
+      "openmeteo-ukmo-global",
+      "openmeteo-kma-gdps",
+      "openmeteo-cma-grapes",
+      "openmeteo-graphcast"
     ],
     "Bright Sky DWD MOSMIX": [
       "brightsky-dwd-mosmix-71801"

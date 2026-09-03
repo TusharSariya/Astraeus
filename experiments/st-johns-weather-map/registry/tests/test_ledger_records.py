@@ -371,5 +371,56 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertEqual([], errors)
 
 
+    def test_unavailable_aggregator_domains(self) -> None:
+        sources = _by_id()
+        stale = sources["openmeteo-kma-gdps"]
+        flat = sources["openmeteo-cma-grapes"]
+        null = sources["openmeteo-graphcast"]
+
+        for record in (stale, flat, null):
+            self.assertEqual("unavailable", record["status"])
+            self.assertEqual([], record["access_endpoints"])
+            self.assertEqual("not_applicable", record["fixture_status"])
+            self.assertEqual("not_applicable", record["live_smoke_test_status"])
+            self.assertEqual("reprocessed", record["delivery_kind"])
+            self.assertEqual("Open-Meteo", record["intermediary"]["name"])
+            self.assertFalse(record["display_primary"])
+            self.assertIn("docs/research/wayfinder/aggregator-models.md", record["reason"])
+
+        # Three different silences, and the reason has to say which one, because
+        # HTTP 200 is what all three return.
+        self.assertIn("Stale since March 2026", stale["reason"])
+        self.assertIn("Flat values over the box", flat["reason"])
+        self.assertIn("Null over the box", null["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_weathernext_cloud_is_the_existing_intermediary_derived_record(self) -> None:
+        # Deviation 1 of the change: `openmeteo-weathernext-2-cloud` is not
+        # created, because `open-meteo-weathernext-2` already declares the same
+        # product and a second record would be a duplicate declaration. This
+        # test is the ledger row, asserted against the record that carries it.
+        sources = _by_id()
+        self.assertNotIn("openmeteo-weathernext-2-cloud", sources)
+        cloud = sources["open-meteo-weathernext-2"]
+
+        self.assertEqual("credential-required", cloud["status"])
+        self.assertEqual("intermediary_derived", cloud["delivery_kind"])
+        self.assertEqual("Open-Meteo", cloud["intermediary"]["name"])
+        self.assertIn("Google", cloud["producer"])
+        self.assertFalse(cloud["display_primary"])
+
+        per_field = cloud["field_delivery_kinds"]
+        self.assertIn("intermediary_derived", per_field.values())
+        self.assertEqual("intermediary_derived", per_field["total_cloud"])
+
+        self.assertIn("Never the display primary", cloud["reason"])
+        self.assertIn("never a derivation input", cloud["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
 if __name__ == "__main__":  # pragma: no cover - convenience entry point
     unittest.main()

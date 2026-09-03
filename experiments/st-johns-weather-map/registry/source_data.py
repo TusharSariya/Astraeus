@@ -1614,6 +1614,64 @@ def registry() -> dict[str, Any]:
         ),
     ])
 
+    # Three aggregator domains that resolve, answer HTTP 200 and carry nothing
+    # usable over this box. They are recorded rather than omitted because the
+    # failure mode is silence: a stale or flat domain returns a well-formed
+    # response, and the next person to reach for a foreign model would find the
+    # name valid and the values wrong. Each carries the delivery kind the route
+    # would have had, so no reader mistakes an absent path for a producer path.
+    for id, producer, product, domain, reason in [
+        (
+            "openmeteo-kma-gdps",
+            "Korea Meteorological Administration",
+            "KMA GDPS global model (kma_gdps) delivered by Open-Meteo",
+            "kma_gdps",
+            "Stale since March 2026 behind HTTP 200: last_run_initialisation_time is 2026-03-31 18z and data_end_time 2026-04-04, five months old when read, so every hour over the box came back null while the response stayed well formed and said nothing about the domain having stopped ("
+            + AGGREGATOR_RESEARCH
+            + " section 5). The same shape as the SWPC stale-but-HTTP-200 records. Unavailable, with no access path declared, until a probe shows the domain updating again.",
+        ),
+        (
+            "openmeteo-cma-grapes",
+            "China Meteorological Administration",
+            "CMA GRAPES global model (cma_grapes_global) delivered by Open-Meteo",
+            "cma_grapes_global",
+            "Flat values over the box: cloud cover came back exactly 0 percent for all 24 hours probed on 2026-09-02, beside ICON at 62 to 67 percent and GEM at 56 percent for the same hours, which is not credible for a September night on the Avalon ("
+            + AGGREGATOR_RESEARCH
+            + " section 5). Either the field is not what it is labelled or the domain is degraded; unresolved, so the record declares no access path rather than serving a zero somebody would read as clear sky.",
+        ),
+        (
+            "openmeteo-graphcast",
+            "NOAA and Google DeepMind",
+            "GraphCast 0.25 degree (gfs_graphcast025) delivered by Open-Meteo",
+            "gfs_graphcast025",
+            "Null over the box: the model name resolves and the response is well formed, but every hour probed on 2026-09-02 was null and the domain's meta.json carries no run fields at all, so neither the values nor their vintage exist ("
+            + AGGREGATOR_RESEARCH
+            + " section 5). Unavailable, with no access path declared.",
+        ),
+    ]:
+        s.append(_source(
+            id, "deterministic_forecast", "unavailable", reason + OPEN_METEO_BEST_MATCH_REFUSAL,
+            producer, product,
+            ["https://open-meteo.com/en/docs"],
+            [],
+            ("link_only", f"No adapter and no client: the {domain} domain answers HTTP 200 and carries nothing usable over the box"),
+            ["total_cloud"], ["surface"],
+            "Global as documented; nothing usable over the evidence box",
+            "not applicable: the domain does not deliver over this box",
+            "not applicable: the domain does not deliver over this box",
+            (False, "none", None),
+            _open_meteo_policy(f"credit {producer} as the producer, were the domain ever to deliver."),
+            "Open-Meteo forecast JSON as served",
+            "not applicable while the record is unavailable",
+            "Recorded so a silent aggregator failure is a registry fact rather than a rediscovery",
+            (False, None, "An unavailable source cannot contribute."),
+            "not_applicable", "not_applicable",
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                f"Open-Meteo would ingest the {domain} domain and re-serve it as point time series; over this box it delivers nothing.",
+            ),
+        ))
+
     # The ensemble family declaration is attached here rather than threaded
     # through every constructor call, so the six blocks stay readable side by
     # side in one table above and no record can acquire one by inheriting a
