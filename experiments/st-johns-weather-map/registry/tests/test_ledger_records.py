@@ -256,5 +256,240 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertEqual([], errors)
 
 
+    def test_openmeteo_cams_aod_is_reprocessed(self) -> None:
+        sources = _by_id()
+        aod = sources["openmeteo-cams-aod"]
+
+        # No adapter claims the id, so the ledger's implemented-unverified is
+        # written catalogued and the reason says why.
+        self.assertEqual("catalogued", aod["status"])
+        self.assertIn("Catalogued until a registered adapter claims the id", aod["reason"])
+        self.assertEqual("reprocessed", aod["delivery_kind"])
+        self.assertFalse(aod["display_primary"])
+        self.assertEqual("Open-Meteo", aod["intermediary"]["name"])
+        self.assertIn("CAMS", aod["producer"])
+
+        # The six documented transformations plus the upsampling trap.
+        transformations = aod["intermediary"]["transformations"]
+        self.assertEqual(7, len(transformations))
+        self.assertTrue(any("0.4 degree CAMS global grid is served at 0.1 degree" in item for item in transformations))
+
+        # What the record must say out loud, because each is a way a reader
+        # would otherwise misread the value.
+        for phrase in ("no speciation", "sea-salt AOD", "T+10 h 16 m", "0.1 versus 0.4 degree", "credential-gated", "best_match"):
+            self.assertIn(phrase, aod["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_openmeteo_lsa_saf_radiation_is_conditional(self) -> None:
+        sources = _by_id()
+        radiation = sources["openmeteo-lsa-saf-radiation"]
+
+        self.assertEqual("catalogued", radiation["status"])
+        self.assertEqual("reprocessed", radiation["delivery_kind"])
+        self.assertEqual("Open-Meteo", radiation["intermediary"]["name"])
+        self.assertIn("LSA SAF", radiation["producer"])
+        self.assertEqual(["https://satellite-api.open-meteo.com/v1/archive"], radiation["access_endpoints"])
+
+        condition = radiation["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("limb-geometry", condition["condition"])
+        self.assertIn("view-angle mask", condition["satisfied_by"])
+        self.assertEqual("2026-09-02", condition["recorded_on"])
+
+        # An outstanding condition keeps the record unschedulable whatever else
+        # the declaration says.
+        self.assertTrue(admission.condition_outstanding(radiation))
+        self.assertFalse(admission.declaration_schedulable(radiation, audit.adapter_source_ids()))
+
+        for phrase in ("Direct, diffuse and DNI", "wet-bulb globe", "1 h latency", "Archive endpoint only"):
+            self.assertIn(phrase, radiation["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_openmeteo_gfs_wave_requires_sea_cell_selection(self) -> None:
+        sources = _by_id()
+        wave = sources["openmeteo-gfs-wave"]
+
+        self.assertEqual("catalogued", wave["status"])
+        self.assertEqual("reprocessed", wave["delivery_kind"])
+        self.assertEqual("wave", wave["category"])
+        self.assertEqual("Open-Meteo", wave["intermediary"]["name"])
+        self.assertIn("NCEP", wave["producer"])
+        self.assertFalse(wave["display_primary"])
+
+        self.assertIn(
+            "cell_selection=sea is mandatory; the default nearest cell over a coastal point is land and returns null",
+            wave["intermediary"]["transformations"],
+        )
+        for phrase in ("ncep_gfswave016", "ecmwf_wam", "T+5 h 21 m", "16-day", "0.16 degree", "retrieval failure, not calm"):
+            self.assertIn(phrase, wave["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
+    def test_openmeteo_ukmo_global_is_research_use_only(self) -> None:
+        sources = _by_id()
+        ukmo = sources["openmeteo-ukmo-global"]
+
+        self.assertEqual("catalogued", ukmo["status"])
+        self.assertEqual("reprocessed", ukmo["delivery_kind"])
+        self.assertEqual("Open-Meteo", ukmo["intermediary"]["name"])
+        self.assertEqual("UK Met Office", ukmo["producer"])
+
+        terms = ukmo["restricted_terms"]
+        self.assertIn("CC BY-SA 4.0", terms["terms_text"])
+        self.assertFalse(terms["redistribution"])
+        self.assertEqual("https://open-meteo.com/en/docs/ukmo-api", terms["terms_source_url"])
+        self.assertEqual("restricted", ukmo["licence"]["review_state"])
+        self.assertFalse(ukmo["consensus"]["eligible"])
+
+        # A share-alike clause this deployment cannot grant onward closes both
+        # export paths: the display primary and the consensus vote.
+        self.assertFalse(ukmo["display_primary"])
+        data, errors = audit.validate()
+        self.assertEqual([], errors)
+        self.assertIn("openmeteo-ukmo-global", audit.summary(data)["research_use_only"])
+
+    def test_brightsky_mosmix_names_dwd_as_producer(self) -> None:
+        sources = _by_id()
+        mosmix = sources["brightsky-dwd-mosmix-71801"]
+
+        self.assertEqual("catalogued", mosmix["status"])
+        self.assertEqual("reprocessed", mosmix["delivery_kind"])
+        self.assertEqual("Deutscher Wetterdienst", mosmix["producer"])
+        intermediary = mosmix["intermediary"]
+        self.assertEqual("Bright Sky", intermediary["name"])
+        self.assertIn("station 71801 selected by id; no spatial interpolation", intermediary["transformations"])
+        self.assertTrue(any("post-processing precedes the intermediary" in item for item in intermediary["transformations"]))
+        self.assertIn("visibility", [name for group in mosmix["variables"] for name in group["names"]])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
+    def test_unavailable_aggregator_domains(self) -> None:
+        sources = _by_id()
+        stale = sources["openmeteo-kma-gdps"]
+        flat = sources["openmeteo-cma-grapes"]
+        null = sources["openmeteo-graphcast"]
+
+        for record in (stale, flat, null):
+            self.assertEqual("unavailable", record["status"])
+            self.assertEqual([], record["access_endpoints"])
+            self.assertEqual("not_applicable", record["fixture_status"])
+            self.assertEqual("not_applicable", record["live_smoke_test_status"])
+            self.assertEqual("reprocessed", record["delivery_kind"])
+            self.assertEqual("Open-Meteo", record["intermediary"]["name"])
+            self.assertFalse(record["display_primary"])
+            self.assertIn("docs/research/wayfinder/aggregator-models.md", record["reason"])
+
+        # Three different silences, and the reason has to say which one, because
+        # HTTP 200 is what all three return.
+        self.assertIn("Stale since March 2026", stale["reason"])
+        self.assertIn("Flat values over the box", flat["reason"])
+        self.assertIn("Null over the box", null["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_weathernext_cloud_is_the_existing_intermediary_derived_record(self) -> None:
+        # Deviation 1 of the change: `openmeteo-weathernext-2-cloud` is not
+        # created, because `open-meteo-weathernext-2` already declares the same
+        # product and a second record would be a duplicate declaration. This
+        # test is the ledger row, asserted against the record that carries it.
+        sources = _by_id()
+        self.assertNotIn("openmeteo-weathernext-2-cloud", sources)
+        cloud = sources["open-meteo-weathernext-2"]
+
+        self.assertEqual("credential-required", cloud["status"])
+        self.assertEqual("intermediary_derived", cloud["delivery_kind"])
+        self.assertEqual("Open-Meteo", cloud["intermediary"]["name"])
+        self.assertIn("Google", cloud["producer"])
+        self.assertFalse(cloud["display_primary"])
+
+        per_field = cloud["field_delivery_kinds"]
+        self.assertIn("intermediary_derived", per_field.values())
+        self.assertEqual("intermediary_derived", per_field["total_cloud"])
+
+        self.assertIn("Never the display primary", cloud["reason"])
+        self.assertIn("never a derivation input", cloud["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
+    def test_openmeteo_rejected_endpoints(self) -> None:
+        sources = _by_id()
+        rejected_ids = [
+            "openmeteo-marine-sst",
+            "openmeteo-uv-index",
+            "openmeteo-pollen-ammonia",
+            "openmeteo-aqi-indices",
+            "openmeteo-beam-split",
+            "openmeteo-climate-cmip6",
+            "openmeteo-seasonal-seas5",
+        ]
+
+        for source_id in rejected_ids:
+            record = sources[source_id]
+            self.assertEqual("rejected", record["status"], source_id)
+            self.assertEqual([], record["access_endpoints"], source_id)
+            self.assertEqual("not_applicable", record["fixture_status"], source_id)
+            self.assertEqual("not_applicable", record["live_smoke_test_status"], source_id)
+            self.assertEqual("Open-Meteo", record["intermediary"]["name"], source_id)
+            self.assertFalse(record["display_primary"], source_id)
+            self.assertIn("best_match", record["reason"], source_id)
+
+        # All seven declare the reprocessed route they would have arrived by.
+        # The two the intermediary constructed itself say so in the reason
+        # rather than in the kind: `intermediary_derived` is an admission class
+        # (`open-meteo-weathernext-2` is its one member) and a refused record
+        # must not join it.
+        for source_id in rejected_ids:
+            self.assertEqual("reprocessed", sources[source_id]["delivery_kind"], source_id)
+        for source_id in ("openmeteo-aqi-indices", "openmeteo-beam-split"):
+            self.assertNotIn("field_delivery_kinds", sources[source_id], source_id)
+        self.assertIn("intermediary_derived", sources["openmeteo-aqi-indices"]["reason"])
+
+        self.assertIn("four different quantities", sources["openmeteo-marine-sst"]["reason"])
+        self.assertIn("producer output on GeoMet", sources["openmeteo-uv-index"]["reason"])
+        self.assertIn("0 of 216 non-null", sources["openmeteo-pollen-ammonia"]["reason"])
+        self.assertIn("index constructions", sources["openmeteo-aqi-indices"]["reason"])
+        self.assertIn("no method named", sources["openmeteo-beam-split"]["reason"])
+        self.assertIn("no marker distinguishing them from a forecast", sources["openmeteo-climate-cmip6"]["reason"])
+        self.assertIn("monthly run published at T+4.4 days", sources["openmeteo-seasonal-seas5"]["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_openmeteo_catalogued_endpoints(self) -> None:
+        sources = _by_id()
+        for source_id in (
+            "openmeteo-air-quality-particulates",
+            "openmeteo-marine-currents-sealevel",
+            "openmeteo-glofas",
+            "openmeteo-elevation",
+        ):
+            record = sources[source_id]
+            self.assertEqual("catalogued", record["status"], source_id)
+            self.assertEqual("reprocessed", record["delivery_kind"], source_id)
+            self.assertEqual("Open-Meteo", record["intermediary"]["name"], source_id)
+            self.assertFalse(record["display_primary"], source_id)
+            # These are catalogued by the owner's decision, not by the migration
+            # rule, so nothing here is waiting for an adapter.
+            self.assertNotIn("Catalogued until a registered adapter", record["reason"], source_id)
+
+        currents = sources["openmeteo-marine-currents-sealevel"]
+        self.assertIn("undeclarable", currents["producer"])
+        self.assertIn("meta.json carries no producer string", currents["producer"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
 if __name__ == "__main__":  # pragma: no cover - convenience entry point
     unittest.main()

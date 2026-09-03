@@ -181,6 +181,37 @@
     "Space weather citations": [
       "space-weather-canada-regional",
       "nasa-soho-sdo-goes-suvi-imagery"
+    ],
+    "Open-Meteo reprocessed admissions": [
+      "openmeteo-cams-aod",
+      "openmeteo-lsa-saf-radiation",
+      "openmeteo-gfs-wave"
+    ],
+    "Aggregator foreign models": [
+      "openmeteo-jma-gsm",
+      "openmeteo-arpege",
+      "openmeteo-ukmo-global",
+      "openmeteo-kma-gdps",
+      "openmeteo-cma-grapes",
+      "openmeteo-graphcast"
+    ],
+    "Bright Sky DWD MOSMIX": [
+      "brightsky-dwd-mosmix-71801"
+    ],
+    "Open-Meteo catalogued endpoints": [
+      "openmeteo-air-quality-particulates",
+      "openmeteo-marine-currents-sealevel",
+      "openmeteo-glofas",
+      "openmeteo-elevation"
+    ],
+    "Open-Meteo refused endpoints": [
+      "openmeteo-marine-sst",
+      "openmeteo-uv-index",
+      "openmeteo-pollen-ammonia",
+      "openmeteo-aqi-indices",
+      "openmeteo-beam-split",
+      "openmeteo-climate-cmip6",
+      "openmeteo-seasonal-seas5"
     ]
   }
 }
