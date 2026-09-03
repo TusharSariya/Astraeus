@@ -170,42 +170,42 @@ Verification commands used below, run from
 
 ## 6. New aggregator and foreign-model records (Registry owner)
 
-- [ ] 6.1 `openmeteo-cams-aod`, `implemented-unverified`, `reprocessed`,
+- [x] 6.1 `openmeteo-cams-aod`, `implemented-unverified`, `reprocessed`,
   producer CAMS, intermediary Open-Meteo, the six transformations plus the 0.1
   versus 0.4 degree upsampling trap and the no-speciation limit.
   Verify: `python3 -m unittest discover -s registry/tests -v -k cams_aod`.
-- [ ] 6.2 `openmeteo-lsa-saf-radiation`, `implemented-unverified`,
+- [x] 6.2 `openmeteo-lsa-saf-radiation`, `implemented-unverified`,
   `reprocessed`, producer EUMETSAT LSA SAF, intermediary Open-Meteo, with the
   Meteosat limb-geometry check as an outstanding admission condition.
   Verify: `python3 -m unittest discover -s registry/tests -v -k lsa_saf`.
-- [ ] 6.3 `openmeteo-gfs-wave`, `implemented-unverified`, `reprocessed`, model
+- [x] 6.3 `openmeteo-gfs-wave`, `implemented-unverified`, `reprocessed`, model
   `ncep_gfswave016`, with `cell_selection=sea` mandatory and the all-null
   column recorded as a retrieval failure.
   Verify: `python3 -m unittest discover -s registry/tests -v -k gfs_wave`.
-- [ ] 6.4 `openmeteo-jma-gsm`, `implemented-unverified`, `reprocessed`,
+- [x] 6.4 `openmeteo-jma-gsm`, `implemented-unverified`, `reprocessed`,
   producer JMA, intermediary Open-Meteo, six transformations named.
   Verify: `python3 registry/audit.py`.
-- [ ] 6.5 `openmeteo-arpege`, `implemented-unverified`, `reprocessed`, producer
+- [x] 6.5 `openmeteo-arpege`, `implemented-unverified`, `reprocessed`, producer
   Météo-France, intermediary Open-Meteo.
   Verify: `python3 registry/audit.py`.
-- [ ] 6.6 `openmeteo-ukmo-global`, `implemented-unverified`, `reprocessed`,
+- [x] 6.6 `openmeteo-ukmo-global`, `implemented-unverified`, `reprocessed`,
   restricted terms CC BY-SA recorded, `redistribution: false`.
   Verify: `python3 -m unittest discover -s registry/tests -v -k ukmo`.
-- [ ] 6.7 `brightsky-dwd-mosmix-71801`, `implemented-unverified`,
+- [x] 6.7 `brightsky-dwd-mosmix-71801`, `implemented-unverified`,
   `reprocessed`, producer DWD, intermediary Bright Sky, station 71801.
   Verify: `python3 registry/audit.py`.
-- [ ] 6.8 `openmeteo-kma-gdps`, `openmeteo-cma-grapes`, `openmeteo-graphcast`,
+- [x] 6.8 `openmeteo-kma-gdps`, `openmeteo-cma-grapes`, `openmeteo-graphcast`,
   `unavailable`, reasons stale, flat and null respectively.
   Verify: `python3 -m unittest discover -s registry/tests -v -k unavailable_aggregator`.
-- [ ] 6.9 `openmeteo-weathernext-2-cloud`, `implemented-unverified`, delivery
+- [x] 6.9 `openmeteo-weathernext-2-cloud`, `implemented-unverified`, delivery
   kind `intermediary_derived`, producer Google WeatherNext 2, intermediary
   Open-Meteo, never display primary, never a derivation input.
   Verify: `python3 -m unittest discover -s registry/tests -v -k weathernext_cloud`.
-- [ ] 6.10 The Open-Meteo catalogued set:
+- [x] 6.10 The Open-Meteo catalogued set:
   `openmeteo-air-quality-particulates`, `openmeteo-marine-currents-sealevel`,
   `openmeteo-glofas`, `openmeteo-elevation`, each `catalogued` with its reason.
   Verify: `python3 registry/audit.py`.
-- [ ] 6.11 The Open-Meteo refused set: `openmeteo-marine-sst`,
+- [x] 6.11 The Open-Meteo refused set: `openmeteo-marine-sst`,
   `openmeteo-uv-index`, `openmeteo-pollen-ammonia`, `openmeteo-aqi-indices`,
   `openmeteo-beam-split`, `openmeteo-climate-cmip6`,
   `openmeteo-seasonal-seas5`, each `rejected` with its reason.

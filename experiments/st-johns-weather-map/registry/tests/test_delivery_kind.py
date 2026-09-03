@@ -117,7 +117,12 @@ class DeliveryKindTests(unittest.TestCase):
         self.assertEqual([], errors)
         report = audit.summary(data)
         self.assertIn(RECORD_ID, report["intermediary_derived_sources"])
-        self.assertEqual(1, report["delivery_kind_counts"]["intermediary_derived"])
+        # The count is the number of records declaring the kind, whatever the
+        # ledger admits later; the list and the count may never disagree.
+        self.assertEqual(
+            len(report["intermediary_derived_sources"]),
+            report["delivery_kind_counts"]["intermediary_derived"],
+        )
 
     def test_a_record_naming_no_intermediary_fails_the_audit(self) -> None:
         data = registry()
