@@ -17,7 +17,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from collections import OrderedDict
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 UTC = timezone.utc
 LOGGER = logging.getLogger(__name__)
@@ -3090,7 +3090,9 @@ def live_point_fields(
                     )
                 )
 
-    return fields, consensus, sorted(by_source)
+    # The single place the point field list is finalised, so no path can serve
+    # a field with an element of the output contract missing.
+    return [enforce_output_contract(item) for item in fields], consensus, sorted(by_source)
 
 
 def live_profile_levels(store: LiveStore, latitude: float, longitude: float, valid_time: datetime, pressures: Sequence[int]) -> list[Any]:
@@ -3360,9 +3362,16 @@ def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[
     without the other, because a deployment that never held a frame must not
     claim it held one and lost it.
     """
-    from .models import Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
+    from .models import BLOCKED_FLAG, Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
 
     moment = reference or datetime.now(UTC)
+    stated = list(dict.fromkeys(flags))
+    # ``no_retrieval`` says an attempt produced nothing. It is stated for the
+    # plain null absence only: an aged-out field was retrieved and purged, and
+    # a blocked field was refused before any attempt was owed, so claiming a
+    # failed retrieval on either would fold three distinct states into one.
+    if last_valid_time is None and BLOCKED_FLAG not in stated:
+        stated = list(dict.fromkeys(["no_retrieval", *stated]))
     return Provenance(
         data_mode=DataMode.UNAVAILABLE,
         evidence_class=evidence_class,
@@ -3380,11 +3389,7 @@ def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[
         normalized_units=units,
         native_resolution="unavailable",
         native_crs="unavailable",
-        # ``no_retrieval`` is not stated for an aged-out absence: this
-        # deployment did retrieve the frame and then purged it, and saying
-        # nothing was retrieved would fold the third absence state back into
-        # the first one on the wire.
-        quality=Quality(status="unknown", flags=list(dict.fromkeys(flags if last_valid_time is not None else ["no_retrieval", *flags]))),
+        quality=Quality(status="unknown", flags=stated),
         coverage=Coverage(status="unknown", fraction=None),
         freshness=Freshness.evaluate(None, None),
         licence="unavailable",
@@ -3441,6 +3446,141 @@ def absence_state(store: Any, source_id: str, *, held: Any = _MISSING) -> tuple[
 def aged_out_flags(source_id: str, *, extra: Sequence[str] = ()) -> list[str]:
     """The QC flags an aged-out absence carries, naming the source."""
     return [AGED_OUT_FLAG, f"{AGED_OUT_FLAG}:{source_id}", *extra]
+
+
+def blocked_reason_for(source: Mapping[str, Any]) -> Any | None:
+    """Why this registry record may not be redistributed, or None where it may.
+
+    Read from the record rather than from a list of source ids, for the same
+    reason the evidence class is declared rather than inferred: a licence that
+    changes changes the record, and a block that outlives its clause is a
+    refusal nobody can check. The three kinds are read in the order the design
+    pins them, so a record that both carries restricted terms and needs a
+    credential blocks on the terms: the credential would not unlock it.
+
+    ``terms`` names or quotes the clause doing the refusing. Where the record
+    states no clause the string says so rather than inventing one; a refusal
+    with an invented reason is worse than a refusal a reader can chase.
+    """
+    from .models import BlockedReason  # noqa: PLC0415
+
+    status = str(source.get("status") or "")
+    terms_block = source.get("restricted_terms") or {}
+    licence = source.get("licence") or {}
+    credential = source.get("credential") or {}
+    condition = source.get("admission_condition") or {}
+    source_id = str(source.get("id") or "unavailable")
+    unstated = f"{source_id}: the terms are not recorded in the registry"
+
+    if status == "licence-blocked" or terms_block.get("redistribution") is False:
+        kind, terms = "licence", (terms_block.get("terms_text") or licence.get("name") or unstated)
+    elif status == "credential-required":
+        name = credential.get("name")
+        kind = "credential"
+        terms = f"a credential this deployment does not hold: {name}" if name else unstated
+    elif status == "partnership-only":
+        kind, terms = "partnership", (licence.get("name") or unstated)
+    else:
+        return None
+
+    return BlockedReason(kind=kind, source_id=source_id, terms=str(terms), request=condition.get("condition") or None)
+
+
+def blocked_field(
+    field: str,
+    *,
+    valid_time: datetime,
+    reason: Any,
+    units: str,
+    key: str | None = None,
+    level: str | None = None,
+    product: str = "blocked",
+) -> Any:
+    """One field refused under current terms, served with its reason.
+
+    A block is not an absence of data: the field is known, and something
+    other than the weather is stopping it. So it carries the ``blocked`` flag
+    and the kind beside it, never ``no_retrieval``, and the reason travels on
+    the field where a reader can check the clause rather than in a notice.
+    """
+    from .models import BLOCKED_FLAG, EvidenceField  # noqa: PLC0415
+
+    provenance = unavailable_provenance(
+        valid_time,
+        units=units,
+        flags=[BLOCKED_FLAG, f"{BLOCKED_FLAG}:{reason.kind}"],
+        source_id=reason.source_id,
+        product=product,
+        level=level or "unavailable",
+    )
+    return EvidenceField(field=field, value=None, key=key, provenance=provenance, absence_state="blocked", blocked=reason)
+
+
+#: The output contract a profile reads, element by element, in the order they
+#: are checked. Each name is what a ``contract_incomplete`` flag reports, so
+#: the flag says which element was missing rather than only that one was.
+OUTPUT_CONTRACT_ELEMENTS: tuple[str, ...] = (
+    "absence_state",
+    "evidence_class",
+    "quality",
+    "freshness",
+    "source_id",
+    "comparability",
+)
+
+
+def missing_contract_element(field: Any) -> str | None:
+    """The first element of the output contract this field does not carry."""
+    provenance = field.provenance
+    if field.value is None and field.absence_state is None:
+        return "absence_state"
+    if not getattr(provenance, "evidence_class", None):
+        return "evidence_class"
+    if getattr(provenance, "quality", None) is None:
+        return "quality"
+    if getattr(provenance, "freshness", None) is None:
+        return "freshness"
+    if not (getattr(provenance, "source_id", None) or ""):
+        return "source_id"
+    # Comparability is required only where the catalogue files the field: a
+    # field with no key has no family to be compared within, and demanding a
+    # note it cannot have would null every uncatalogued field.
+    if field.key is not None and not (field.comparability or ""):
+        return "comparability"
+    return None
+
+
+def enforce_output_contract(field: Any) -> Any:
+    """Serve a field whole, or serve it null naming the element it lacks.
+
+    A partially served field is the dangerous case: a caller cannot tell an
+    evidence class that was omitted from one that was never required, so a
+    profile would read a gap as a permission. The field is therefore emptied
+    rather than trimmed - value null, plain ``null`` absence, no block reason -
+    and the flag names the missing element. Every other field in the response
+    still answers, because one field's incompleteness is not evidence about
+    any other.
+    """
+    from .models import CONTRACT_INCOMPLETE_FLAG, Provenance, Quality  # noqa: PLC0415
+
+    missing = missing_contract_element(field)
+    if missing is None:
+        return field
+
+    def stated(model: Any) -> dict[str, Any]:
+        """The model's declared fields, by name, so validation runs on rebuild.
+
+        Read from ``model_fields`` rather than ``model_dump`` because a dump
+        carries the computed fields too, and a computed field handed back as
+        an input is an extra key the strict model refuses.
+        """
+        return {name: getattr(model, name) for name in type(model).model_fields}
+
+    provenance = field.provenance
+    flags = [*provenance.quality.flags, f"{CONTRACT_INCOMPLETE_FLAG}:{missing}"]
+    quality = Quality.model_validate({**stated(provenance.quality), "flags": list(dict.fromkeys(flags))})
+    rebuilt = Provenance.model_validate({**stated(provenance), "quality": quality})
+    return field.model_copy(update={"value": None, "absence_state": "null", "blocked": None, "provenance": rebuilt})
 
 
 def unavailable_profile_levels(valid_time: datetime, pressures: Sequence[int], *, flags: Sequence[str], last_valid_time: datetime | None = None) -> list[Any]:
