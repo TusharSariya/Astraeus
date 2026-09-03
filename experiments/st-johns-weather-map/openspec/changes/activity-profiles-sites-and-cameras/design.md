@@ -205,3 +205,289 @@ invented later under pressure.
 - The shape of the validation record itself: this change requires one and
   names what it must span, and the statistics it reports are settled when the
   first camera is admitted.
+
+## Seam
+
+Pinned by the change lead on 2026-09-03 before any task was dispatched, so
+that two agents never guess the same interface. Every task prompt carries
+the parts it touches verbatim. A task that needs to depart from a pin
+records the departure under Deviations rather than silently renaming.
+
+### Absence states and the per-field output contract (models.py, store.py, web)
+
+- `api/weather_api/models.py` gains `AbsenceState = Literal["null", "blocked",
+  "aged_out"]`, `ABSENCE_STATES = ("null", "blocked", "aged_out")`,
+  `BLOCKED_FLAG = "blocked"` and `CONTRACT_INCOMPLETE_FLAG =
+  "contract_incomplete"` beside the existing `AGED_OUT_FLAG`.
+- `BlockedReason(StrictModel)`: `kind: Literal["licence", "credential",
+  "partnership"]`, `source_id: str`, `terms: str` (the terms or notice, named
+  or quoted), `request: str | None = None` (an outstanding permission or
+  credential request, for example the Fort Amherst request).
+- `EvidenceField` gains `absence_state: AbsenceState | None = None`,
+  `blocked: BlockedReason | None = None` and `comparability: str | None =
+  None`. A model validator fills them: `comparability` is the catalogue
+  family note (`catalogue.family(name).note`) whenever the field has a key;
+  when `value is None` and `absence_state` is unset it is derived from the
+  flags in this order: `aged_out` in `quality.flags` -> `"aged_out"`,
+  `blocked` in flags -> `"blocked"`, otherwise `"null"`. When `value` is not
+  `None`, `absence_state` and `blocked` must be `None`. `absence_state ==
+  "blocked"` requires `blocked` to be set and the `blocked` flag to be
+  present; `absence_state == "aged_out"` keeps the existing
+  `last_valid_time` rule. `retrieval_failed` and `no_retrieval` stay reason
+  flags on a `"null"` absence; `available-not-stored` and `not-published`
+  stay `storage` values, not absence states.
+- The wire keeps the flag carrier: a blocked field is `value: null`,
+  `quality.flags` containing `"blocked"` and `"blocked:<kind>"`,
+  `absence_state: "blocked"`, and the `blocked` object. The web reads
+  `absence_state` first and falls back to the flag order it already has.
+- `api/weather_api/store.py` gains `blocked_reason_for(source: Mapping) ->
+  BlockedReason | None` (status `licence-blocked` or a `restricted_terms`
+  block with `redistribution: false` -> `licence`; `credential-required` ->
+  `credential`; `partnership-only` -> `partnership`; `request` is taken from
+  the record's `admission_condition.condition` when present),
+  `blocked_field(field, *, valid_time, reason, units, key=None, level=None)
+  -> EvidenceField` and `enforce_output_contract(field) -> EvidenceField`,
+  which returns the field unchanged when every element (value or absence
+  state, evidence class, quality, freshness, source id, comparability) is
+  present and otherwise a copy with `value=None`, `absence_state="null"` and
+  the flag `contract_incomplete:<element>`.
+
+### Profile files (registry/profiles)
+
+- One YAML file per profile at `registry/profiles/<id>.yaml`, validated by
+  `registry/profiles/schema.json` (JSON Schema draft 2020-12,
+  `additionalProperties: false`). Top-level keys, all required:
+  `id` (`^[a-z][a-z0-9_]*$`, equal to the file stem), `version` (integer
+  >= 1), `title`, `families` (list of catalogue family names), `thresholds`
+  (map name -> `{field, default, units, comparison}` with `comparison` in
+  `ge|gt|le|lt`; `default` required), `weights` (map criterion name ->
+  number in `[0, 1]`), `hard_stops` (list of `{name, field, threshold}`),
+  `graded_criteria` (list of `{name, field, threshold, weight}` where
+  `weight` names a key of `weights`), `window` (below), `site_needs`
+  (`{horizon_required: bool, sectors: [{name, field, bearing_deg,
+  width_deg, max_range_km}]}`; a sector is a parameter set of the
+  registered sector-sampling entry `sector_sampling_along_bearing`),
+  `blocked_fields` (list of `{field, reason, source_id, terms, request}`,
+  `reason` in `licence|credential|partnership`, `request` nullable) and
+  `wanted_not_catalogued` (list of `{field, note}` for quantities the
+  owner's list names that the field catalogue does not yet carry, so the
+  profile discloses them instead of omitting them). No key of any kind may
+  skip validation.
+- `window` is `{rule, geometry_entry, geometry_fields, params}` with `rule`
+  in `any_window_within_24h` (params `length_hours`, `daylight_only`),
+  `astronomical_night` (sun altitude below -18), `dark_hours` (sun altitude
+  below -12), `sunrise_sunset_margin` (param `margin_minutes`, around the
+  -0.833 crossings); `geometry_entry` must equal
+  `de442_sun_moon_geometry` and `geometry_fields` must be outputs of that
+  entry (`sun_altitude`, `sun_azimuth`, `moon_altitude`, `moon_azimuth`,
+  `moon_illuminated_fraction`, `moon_phase_angle`). Any `local_time`,
+  `wall_clock` or hour-range key is refused at validation.
+- `registry/profile_audit.py` exposes `load_profile(path) -> Profile`,
+  `load_profiles(root=PROFILES_ROOT) -> dict[str, Profile | ProfileError]`,
+  `audit_profile(profile) -> list[str]` and `main(argv)` with `--all` and
+  `--strict` (strict also fails on warnings). It resolves families with
+  `registry.fields.family`, field keys with `registry.fields.field`, units
+  with `registry.fields.units_for`, and fails closed with
+  `catalogue_unavailable` when the catalogue cannot be imported. A
+  `blocked_fields[].field` and a `wanted_not_catalogued[].field` must match
+  the catalogue key pattern but are not required to exist in the catalogue;
+  a `blocked_fields[].field` that does exist in the catalogue is an error
+  (an admitted source can supply it, so the entry must be removed first).
+  Error strings start with the profile id and the offending name.
+- Threshold field keys and the quantities the owner named that the
+  catalogue lacks: humidex, wind chill, UV, AQHI, OVATION probability and a
+  daylight field are listed under `wanted_not_catalogued`; the blocked
+  keys are `road_state` (running, `licence`, `nl-511`),
+  `light_pollution_baseline` (astronomy, `licence`, Falchi atlas
+  non-commercial clause, source id `falchi-light-pollution-atlas`), and
+  `magnetometer_local_disturbance` (aurora, `partnership`,
+  `nrcan-stj-magnetometer`).
+
+### Window resolution and overrides (api/weather_api/profiles)
+
+- New package `api/weather_api/profiles/` with `__init__.py`,
+  `windows.py` and `overrides.py`. Nothing in it calls Skyfield or reads the
+  kernel: geometry arrives as samples.
+- `windows.py`: `WindowRule` (from the profile `window` block),
+  `GeometrySample(at: datetime, sun_altitude: float | None)`,
+  `resolve_window(rule, samples, *, now) -> WindowResolution` where
+  `WindowResolution` has `intervals: list[tuple[datetime, datetime]]`,
+  `unresolved: str | None` (the absent geometry field, e.g.
+  `sun_altitude`, or `geometry_entry_disabled`), and `provenance`
+  (`{"derivation": "de442_sun_moon_geometry", "derivation_version":
+  "de442-skyfield-1.55-v1", "kernel_sha256": EPHEMERIS_SHA256}` from
+  `api.weather_api.ephemeris`). `validate_window_rule(rule) -> list[str]`
+  refuses wall-clock rules naming the profile and rule. The entry is looked
+  up with `ingest.derive.registry.get(DE442_GEOMETRY)` and
+  `resolve(DE442_GEOMETRY)`; a refusal yields `unresolved`.
+- `overrides.py`: `ThresholdOverride(threshold, profile_default, value)`,
+  `OverrideProvenance(profile_id, profile_version, overrides:
+  list[ThresholdOverride], no_override_in_force: bool)` and
+  `record_overrides(profile, overrides: Mapping[str, float]) ->
+  OverrideProvenance`; an unknown threshold name raises `ValueError`.
+
+### Site records (registry/sites)
+
+- One YAML file per site at `registry/sites/<id>.yaml`, schema
+  `registry/sites/schema.json`. Keys, all required: `id`, `name`,
+  `position: {latitude, longitude}`, `elevation: {metres, datum}` (datum
+  `CGVD2013` or `WGS84_ellipsoid`), `horizon: {bearing_resolution_deg,
+  elevation_deg: [...]}` with exactly `360 / bearing_resolution_deg`
+  values starting at true north and every value in `[-90, 90]`;
+  `terrain_check: {status, dem, tolerance_deg, terrain_elevation_deg,
+  note}` with `status` in `passed|failed|not_run`, `dem` and
+  `terrain_elevation_deg` nullable only when `status` is `not_run`;
+  `registered: {date, by}`.
+- `registry/site_audit.py` exposes `load_site(path)`, `load_sites(root)`,
+  `audit_site(site) -> list[str]` (errors `site_horizon_missing`,
+  `site_horizon_gap:<bearing>`, `below_terrain:<bearing>:<registered>:<terrain>`
+  when the registered angle sits below the terrain angle by more than
+  `tolerance_deg`) and `main(argv)` with `--all` and `--strict`.
+- First three site ids: `signal-hill`, `cape-spear`, `quidi-vidi`. No DEM
+  is checked into this repository, so the three records carry
+  `terrain_check.status: not_run` naming the absent DEM; the below-terrain
+  rule is exercised by tests with a synthetic terrain horizon.
+- `api/weather_api/sites.py`: `EVIDENCE_BOX = (45.0, 50.5, -58.0, -46.0)`
+  as (south, north, west, east), `inside_evidence_box(lat, lon)`,
+  `load_site_registry() -> SiteRegistry` (`sites`, `notice`), and
+  `horizon_for(site_id: str | None) -> Horizon | None`. A request that
+  names no site gets `None` and the caller emits `null` with flag
+  `no_registered_horizon`; nothing looks up a nearest site. A point outside
+  the box is refused with `outside_evidence_box` naming the box.
+
+### Derivation registry entries (ingest/derive/registry.py)
+
+- Sector sampling keeps its name `sector_sampling_along_bearing`
+  (`SECTOR_SAMPLING`) and version `geodesic-sector-v1`; task 3.4 flips it
+  to `enabled=True`, rewrites its summary and adds `conventions` naming the
+  reduction rule (`mean` over sampled cells), the parameters (origin,
+  bearing, width, max range, elevation-angle band) and the minimum covered
+  fraction (`0.8`). `ingest/derive/sector.py` exposes
+  `SectorParameters(origin_latitude, origin_longitude, bearing_deg,
+  width_deg, max_range_km, elevation_band_deg)`, `SectorInput(field,
+  family, source_id, evidence_class, quality_status, cells:
+  Sequence[tuple[lat, lon, value | None]])` and `sample_sector(inputs,
+  params) -> SectorResult(value, quality_status, covered_fraction,
+  refusal)`; refusal codes `input_class_refused:<class>`,
+  `uncovered_fraction:<fraction>`, `blend_refused`. Pure `math`, no numpy.
+- Camera entries, every one `enabled=False`, constants and names:
+  `CAMERA_FOG_VISIBILITY_CLASS = "camera_fog_and_visibility_class"`
+  (`camera-class-v0`), `CAMERA_VISIBILITY_BOUND =
+  "camera_visibility_bound_from_landmarks"` (`camera-landmark-bound-v0`),
+  `CAMERA_SECTOR_CLOUD_FRACTION = "camera_daytime_sector_cloud_fraction"`
+  (`camera-sector-cloud-v0`), `CAMERA_HORIZON_FOG_BANK =
+  "camera_horizon_fog_bank_presence"` (`camera-fog-bank-v0`),
+  `CAMERA_SKYDOME_NIGHT_CLOUD = "camera_skydome_night_cloud_from_starfield"`
+  (`camera-starfield-v0`), and `CAMERA_METHODS` naming all five. Inputs use
+  `Input(field="camera_frame", family="camera_frame",
+  source="registered-camera")` and, for the bound,
+  `Input(field="camera_landmarks", family="camera_geometry",
+  source="registered-camera")`. Outputs: `camera_fog_class` and
+  `camera_visibility_class` (category) plus `camera_class_confidence`
+  (fraction 0-1); `visibility_bound_lower_m` and `visibility_bound_upper_m`
+  (m, 0-100000, clamp); `camera_sector_cloud_fraction` (fraction);
+  `horizon_fog_bank_present` (category); `skydome_night_cloud_fraction`
+  (fraction). Registration refuses a `CAMERA_METHODS` entry with
+  `enabled=True` (`camera_method_enabled_without_validation`).
+- `ingest/cameras/derive.py`: `NUMERIC_VISIBILITY_REFUSED =
+  "numeric_visibility_from_image_refused"`; `request_numeric_visibility(...)`
+  raises `RefusedClaim` naming it; `derive(method, frame, ...)` returns
+  `null` with `awaiting_validation` naming the method for every disabled
+  camera method.
+
+### Camera records (registry/cameras)
+
+- One YAML file per camera at `registry/cameras/<id>.yaml`, schema
+  `registry/cameras/schema.json`. Ids: `ccg-fort-amherst`,
+  `ccg-st-johns-base`, `ccg-sir-humphrey-gilbert`, `city-new-gower-street`,
+  `city-middle-pond`, `city-shea-heights`, `city-thorburn-road`,
+  `city-windsor-lake`, `city-kenmount-road`, `ntv-st-johns-sky`,
+  `ntv-quidi-vidi-lake`, `ntv-downtown`, `ntv-george-street`,
+  `ntv-admirals-green`, `ntv-logy-bay-road`, `ntv-st-philips-bell-island`,
+  `ntv-port-de-grave`.
+- Required keys: `id`, `name`, `source_id` (the ledger record:
+  `ccg-harbour-cameras`, `city-st-johns-road-cameras`, `ntv-cameras`),
+  `operator`, `status` (`partnership-only` for all seventeen), `terms:
+  {text, url, read_date, redistribution: false, permission:
+  {requested_on, requested_from, granted_on, document}}` (`granted_on` and
+  `document` null until permission arrives; unresolved terms are stated in
+  `text`), `endpoint: {url, format, cadence_seconds, cadence_measured_on}`,
+  `position: {latitude, longitude, elevation: {metres, datum}, surveyed:
+  bool}`, `orientation: {bearing_deg, hfov_deg, vfov_deg, roll_deg}`,
+  `image: {width_px, height_px}`, `landmarks: [{name, bearing_deg,
+  distance_m, pixel: {x, y}}]`, `privacy_masks: [{name, polygon:
+  [[x, y], ...]}]`, `registered: {date, by}`, `geometry_validation:
+  {reprojection_tolerance_px, skyline_tolerance_deg, status, dem}` with
+  `status` in `not_run|passed|failed|unvalidated`. Geometry values nobody
+  has registered are `null`; `registry/camera_audit.py` reports such a
+  record `incomplete` naming the missing elements (`orientation.bearing_deg`
+  and so on), which keeps it in the catalogue and out of retrieval.
+- `registry/camera_audit.py` exposes `load_camera(path)`, `load_cameras
+  (root)`, `audit_camera(camera) -> CameraVerdict(status: complete |
+  incomplete, missing: list[str], errors: list[str])`,
+  `retrieval_allowed(camera) -> Refusal | None` (refuses every
+  `partnership-only` camera naming the camera and its terms) and `main`.
+- `registry/schema.json` gains an optional source property `cameras`
+  (array of camera record ids, pattern `^[a-z0-9]+(?:-[a-z0-9]+)*$`), and
+  the three ledger records list their camera ids there and carry an
+  `admission_condition` naming the outstanding written-permission request
+  (Fort Amherst first). No status changes.
+
+### Frames, privacy, geometry, night (ingest/cameras)
+
+- Package `ingest/cameras/` with `__init__.py`. Modules are pure Python
+  (`math`, `dataclasses`); no numpy, no Pillow. An image is a `Raster
+  (width, height, pixels: bytes)` greyscale abstraction defined in
+  `ingest/cameras/frames.py`.
+- `frames.py`: `HEALTH_FLAGS = ("stale_or_duplicate", "blur", "darkness",
+  "exposure", "obstruction", "lens_water_or_snow", "camera_moved")`,
+  `CAPTURE_TIME_UNKNOWN = "capture_time_unknown"`, `Frame(camera_id,
+  sha256, capture_time, retrieval_time, raster, flags: frozenset[str])`,
+  `FrameStore.put(frame, previous)` computing the flags,
+  `FrameStore.frame_at(camera_id, instant) -> Frame | FrameAbsence(state:
+  "null" | "aged_out", detail)` with the window from
+  `ingest.window.window_bounds(now)`, and `derivation_refusal(frame) ->
+  str | None` naming the first raised flag.
+- `privacy.py`: `MaskRegion(name, polygon)`, `apply_masks(raster, masks)
+  -> Raster` (fills the polygon), `MaskUnavailable` raised when `masks` is
+  empty or a polygon leaves the raster, `PRIVACY_MASK_UNAVAILABLE =
+  "privacy_mask_unavailable"`, `REFUSED_CLAIMS = ("face_recognition",
+  "licence_plate_recognition", "person_tracking", "vessel_tracking",
+  "military_inference", "black_ice_detected", "safe_wave_camera_only",
+  "safe_road_camera_only")`, `RefusedClaim(Exception)` and
+  `refuse_claim(name)` raising it with rule `standing_privacy_refusal`.
+- `geometry.py`: `CameraGeometry(latitude, longitude, elevation_m,
+  bearing_deg, hfov_deg, vfov_deg, roll_deg, width_px, height_px)`,
+  `Landmark(name, bearing_deg, distance_m, pixel_x, pixel_y)`,
+  `project_landmark(geometry, landmark) -> (x, y)` by a pinhole model,
+  `validate_geometry(geometry, landmarks, *, terrain_horizon:
+  Sequence[float] | None, skyline: Sequence[float] | None,
+  reprojection_tolerance_px, skyline_tolerance_deg) -> GeometryVerdict
+  (status: "accepted" | "refused" | "not_run", reprojection_errors:
+  list[(name, px)], skyline_disagreements: list[(bearing, terrain, skyline)],
+  unrun_check: str | None)`, `GEOMETRY_FAILED = "geometry_failed"`, and
+  `on_camera_moved(state) -> state` marking `unvalidated` and re-running
+  both checks.
+- `night.py`: `SUN_HORIZON_DEG = -0.833`, `darkness_flag(sun_altitude:
+  float | None) -> "darkness" | "darkness_unknown" | None`, and
+  `refuse_daytime_derivation(frame_flags) -> str | None`.
+  `validation_record.py`: `REQUIRED_CONDITIONS = frozenset({"day", "night",
+  "fog", "rain", "snow"})`, `MINIMUM_DAYS = 30`, `ValidationRecord(method,
+  start, end, conditions, metar_gaps, approved_by)`, and
+  `may_enable(record) -> str | None` returning
+  `incomplete_validation:<missing conditions or days or gap>`.
+
+### Web module boundaries (web/src)
+
+- `web/src/profiles/` (6.1): `types.ts` mirroring the profile file and the
+  per-field contract (`absence_state`, `blocked`, `comparability`),
+  `ProfilePanel.tsx`, and the test `profile-contract.test.tsx`. It reads
+  `absence_state` first and falls back to `resolveAbsenceState` from
+  `../fieldFamily`.
+- `web/src/sites/` (6.2): `types.ts`, `SitePanel.tsx`,
+  `site-preferred.test.tsx`.
+- `web/src/cameras/` (6.3): `types.ts`, `CameraPanel.tsx`,
+  `camera-frames.test.tsx`; states shown are `partnership-only` and
+  `awaiting_validation`; a claim from a disabled method is never rendered.
+- Vitest filters by file name, so the test file names above are the verify
+  commands' filters.
