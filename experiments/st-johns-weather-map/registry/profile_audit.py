@@ -547,6 +547,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", default=None, help="profile directory (defaults to registry/profiles)")
     args = parser.parse_args(argv)
 
+    # --strict alone audits the whole registry: a CI line that passes only
+    # --strict must not be a no-op, and there is only one registry to audit.
+    if args.strict:
+        args.all = True
+
     if not args.all:
         print("nothing to do: pass --all to audit the profile registry", file=sys.stderr)
         return 2

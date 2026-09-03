@@ -1,0 +1,140 @@
+id: running
+version: 1
+title: Running
+families:
+- temperature
+- humidity
+- wind
+- precipitation
+- air_quality
+- radiation
+- visibility
+- hazard
+- lightning
+thresholds:
+  lightning_in_range:
+    field: lightning_strike
+    default: 0.1
+    units: flash km-2 min-1
+    comparison: ge
+  alert_active:
+    field: alerts_in_force
+    default: 1.0
+    units: count
+    comparison: ge
+  heavy_precip:
+    field: precipitation_rate
+    default: 2.5
+    units: mm h-1
+    comparison: ge
+  heat:
+    field: temperature_2m
+    default: 24.0
+    units: degC
+    comparison: ge
+  gust:
+    field: wind_gust_10m
+    default: 15.0
+    units: m s-1
+    comparison: ge
+  humidity_high:
+    field: relative_humidity_2m
+    default: 85.0
+    units: percent
+    comparison: ge
+  vis_low:
+    field: visibility
+    default: 5000.0
+    units: m
+    comparison: le
+  pm25_high:
+    field: pm2_5_surface
+    default: 3.5e-08
+    units: kg m-3
+    comparison: ge
+  radiation_high:
+    field: downward_shortwave_flux
+    default: 700.0
+    units: W m-2
+    comparison: ge
+  dew_point_high:
+    field: dew_point_2m
+    default: 18.0
+    units: degC
+    comparison: ge
+weights:
+  heat: 0.25
+  wind: 0.15
+  humidity: 0.15
+  visibility: 0.1
+  air_quality: 0.15
+  radiation: 0.1
+  dew_point: 0.1
+hard_stops:
+- name: lightning
+  field: lightning_strike
+  threshold: lightning_in_range
+- name: alert
+  field: alerts_in_force
+  threshold: alert_active
+- name: heavy_rain
+  field: precipitation_rate
+  threshold: heavy_precip
+graded_criteria:
+- name: heat_stress
+  field: temperature_2m
+  threshold: heat
+  weight: heat
+- name: gustiness
+  field: wind_gust_10m
+  threshold: gust
+  weight: wind
+- name: humidity_load
+  field: relative_humidity_2m
+  threshold: humidity_high
+  weight: humidity
+- name: visibility_poor
+  field: visibility
+  threshold: vis_low
+  weight: visibility
+- name: air_quality_load
+  field: pm2_5_surface
+  threshold: pm25_high
+  weight: air_quality
+- name: radiation_load
+  field: downward_shortwave_flux
+  threshold: radiation_high
+  weight: radiation
+- name: dew_point_load
+  field: dew_point_2m
+  threshold: dew_point_high
+  weight: dew_point
+window:
+  rule: any_window_within_24h
+  geometry_entry: de442_sun_moon_geometry
+  geometry_fields:
+  - sun_altitude
+  params:
+    length_hours: 1.0
+    daylight_only: false
+site_needs:
+  horizon_required: false
+  sectors: []
+blocked_fields:
+- field: road_state
+  reason: licence
+  source_id: nl-511
+  terms: The NL 511 site terms grant no reuse and the API needs a developer key
+  request: null
+wanted_not_catalogued:
+- field: humidex
+  note: the owner's list names humidex; the catalogue has no key for it
+- field: wind_chill
+  note: the owner's list names wind chill; the catalogue has no key for it
+- field: uv_index
+  note: the owner's list names UV; the catalogue has no key for it
+- field: aqhi
+  note: the owner's list names AQHI by that name; the catalogue has no key spelled
+    aqhi
+- field: daylight
+  note: the owner's list names a daylight field; the catalogue has no key for it

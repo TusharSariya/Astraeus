@@ -1,0 +1,131 @@
+id: astronomy
+version: 1
+title: Astronomy
+families:
+- cloud_cover
+- cloud_geometry
+- transparency
+- seeing
+- humidity
+- air_quality
+- astronomy_geometry
+- wind
+- visibility
+thresholds:
+  overcast:
+    field: total_cloud_opacity
+    default: 90.0
+    units: percent
+    comparison: ge
+  vis_min:
+    field: visibility
+    default: 1000.0
+    units: m
+    comparison: le
+  cloud_high_thresh:
+    field: cloud_high
+    default: 30.0
+    units: percent
+    comparison: ge
+  transparency_thresh:
+    field: transparency_extinction
+    default: 0.3
+    units: mag airmass-1
+    comparison: ge
+  seeing_thresh:
+    field: seeing_arcsec
+    default: 3.0
+    units: arcsec
+    comparison: ge
+  pwv_thresh:
+    field: precipitable_water
+    default: 20.0
+    units: kg m-2
+    comparison: ge
+  aod_thresh:
+    field: aerosol_optical_depth_550nm
+    default: 0.2
+    units: '1'
+    comparison: ge
+  moon_thresh:
+    field: moon_illuminated_fraction
+    default: 0.5
+    units: '1'
+    comparison: ge
+  wind_thresh:
+    field: wind_speed_10m
+    default: 10.0
+    units: m s-1
+    comparison: ge
+  dew_point_thresh:
+    field: dew_point_2m
+    default: 10.0
+    units: degC
+    comparison: ge
+weights:
+  cloud: 0.2
+  transparency: 0.15
+  seeing: 0.15
+  humidity: 0.1
+  air_quality: 0.1
+  moon: 0.15
+  wind: 0.1
+  dew_point: 0.05
+hard_stops:
+- name: overcast
+  field: total_cloud_opacity
+  threshold: overcast
+- name: low_visibility
+  field: visibility
+  threshold: vis_min
+graded_criteria:
+- name: cloud_north_high
+  field: cloud_high
+  threshold: cloud_high_thresh
+  weight: cloud
+- name: transparency_load
+  field: transparency_extinction
+  threshold: transparency_thresh
+  weight: transparency
+- name: seeing_load
+  field: seeing_arcsec
+  threshold: seeing_thresh
+  weight: seeing
+- name: precipitable_water_load
+  field: precipitable_water
+  threshold: pwv_thresh
+  weight: humidity
+- name: aerosol_load
+  field: aerosol_optical_depth_550nm
+  threshold: aod_thresh
+  weight: air_quality
+- name: moon_brightness
+  field: moon_illuminated_fraction
+  threshold: moon_thresh
+  weight: moon
+- name: wind_load
+  field: wind_speed_10m
+  threshold: wind_thresh
+  weight: wind
+- name: dew_point_load
+  field: dew_point_2m
+  threshold: dew_point_thresh
+  weight: dew_point
+window:
+  rule: astronomical_night
+  geometry_entry: de442_sun_moon_geometry
+  geometry_fields:
+  - sun_altitude
+  - moon_altitude
+  - moon_illuminated_fraction
+  params: {}
+site_needs:
+  horizon_required: false
+  sectors: []
+blocked_fields:
+- field: light_pollution_baseline
+  reason: licence
+  source_id: falchi-light-pollution-atlas
+  terms: Falchi et al. 2016 world atlas, CC BY-NC 4.0 non-commercial clause
+  request: null
+wanted_not_catalogued: []
