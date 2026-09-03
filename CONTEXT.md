@@ -98,10 +98,29 @@ The registered position, bearing, field of view and horizon landmarks of a
 camera, which make its frames usable as an input to cloud and fog derivation.
 
 **Verdict**:
-A profile's derived-here score at a focus: its hard stops, its grades, the
-window rule that applied, and the fields that drove it. Shown beside the raw
-evidence, never in place of it.
+A profile's derived-here answer at a focus: one state (unresolved, stopped,
+unchecked, unscorable, outside window or scored), its hard stops, its grades,
+the window rule that applied, and the fields that drove it. Shown beside the
+raw evidence, never in place of it. Four verdicts, one per profile, always
+sit together and are never ranked.
 _Avoid_: rating, recommendation, forecast
+
+**Limiting criterion**:
+The graded criterion of a verdict that lost the most weight against its
+threshold. Named beside the score so a reader sees why before how much.
+_Avoid_: worst factor, blocker (a blocker is a hard stop)
+
+**Coverage**:
+How much of a profile a verdict stands on: the weight evaluated against the
+weight declared, with the weight reachable at all (declared minus blocked)
+stated apart. A verdict under the profile's floor is unscorable, not low.
+_Avoid_: confidence, completeness
+
+**Verdict strip**:
+One profile's verdicts laid along the horizon at the cadence the driving
+sources issue, hourly in the core window and coarser beyond. A picker for the
+shared instant, never a second clock.
+_Avoid_: timeline, forecast bar
 
 ### Reading
 
