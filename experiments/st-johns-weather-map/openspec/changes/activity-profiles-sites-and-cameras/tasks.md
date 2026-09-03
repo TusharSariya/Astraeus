@@ -114,7 +114,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   Owns: `registry/cameras/schema.json`, `registry/camera_audit.py` (new).
   Verify: `cd api && uv run pytest tests/test_camera_registry.py -k
   incomplete_record`
-- [ ] 4.2 Implement landmark reprojection and the DEM terrain-horizon check;
+- [x] 4.2 Implement landmark reprojection and the DEM terrain-horizon check;
   refuse a geometry that fails either, with no degraded path, and re-run both
   when `camera_moved` is raised.
   Owns: `ingest/cameras/geometry.py` (new).
