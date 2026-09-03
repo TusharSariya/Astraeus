@@ -16,14 +16,17 @@ import xarray
 from ingest.grib import (
     ByteRange,
     GribError,
+    averaging_window_hours,
     byte_ranges,
     crop_to_bbox,
+    declare_time_average,
     declare_wmo_total_cloud,
     is_curvilinear,
     normalize_units,
     parse_idx,
     select_records,
     selected_bytes,
+    stack_members,
     strip_message_scalars,
     subset_ranges,
 )
@@ -371,3 +374,157 @@ def test_normalize_units_keeps_the_declared_basis_record():
     attrs = normalized["unknown"].attrs
     assert attrs["units"] == "percent"
     assert attrs["original_units"] == "unknown"
+
+
+# --- the member axis --------------------------------------------------------
+#
+# A member is a first-class coordinate. Time, step and valid time are dropped
+# from a decoded message because the assembled artifact carries them on its own
+# axes; a member identity is recoverable from nothing, so dropping it is how an
+# ensemble silently becomes indistinguishable from a deterministic field.
+
+
+def _member_field(value: float) -> xarray.DataArray:
+    """One member's decoded field: a 2x2 grid, no message scalars left on it."""
+    return xarray.DataArray(
+        numpy.full((2, 2), value, dtype="float32"),
+        dims=("latitude", "longitude"),
+        coords={"latitude": [47.0, 48.0], "longitude": [-53.0, -52.0]},
+        attrs={"units": "percent"},
+    )
+
+
+def test_the_grib_member_number_survives_stripping_the_message_scalars():
+    """The regression this closes: ``number`` used to be dropped in silence."""
+    message = _message("t2m", level_type="heightAboveGround", level=2.0)
+    message = message.assign_coords(number=5)
+
+    stripped = strip_message_scalars(message)
+
+    assert "number" not in stripped.coords
+    assert stripped.attrs["grib_number"] == 5
+    # The other message scalars still go, and the grid is still untouched.
+    assert "step" not in stripped.coords and "valid_time" not in stripped.coords
+    assert list(stripped.dims) == ["latitude", "longitude"]
+
+
+def test_a_message_with_no_member_number_invents_no_identity():
+    stripped = strip_message_scalars(_message("t2m", level_type="heightAboveGround", level=2.0))
+    assert "grib_number" not in stripped.attrs
+
+
+def test_three_members_stack_onto_a_string_member_axis_with_one_control():
+    stacked = stack_members(
+        {"gec00": _member_field(10.0), "gep01": _member_field(20.0), "gep02": _member_field(30.0)},
+        control="gec00",
+    )
+
+    assert stacked.dims[0] == "member"
+    assert stacked.sizes["member"] == 3
+    # The provider's own tokens, as text: ``gec00`` and ``01`` are not integers.
+    assert stacked["member"].dtype.kind == "U"
+    assert stacked["member"].values.tolist() == ["gec00", "gep01", "gep02"]
+    assert stacked["control"].dims == ("member",)
+    assert stacked["control"].values.tolist() == [True, False, False]
+    assert stacked.sel(member="gep02").values.tolist() == [[30.0, 30.0], [30.0, 30.0]]
+    assert stacked.attrs["units"] == "percent"
+
+
+def test_two_members_that_would_collapse_onto_one_identifier_fail_naming_the_values():
+    with pytest.raises(GribError, match="collapse") as raised:
+        stack_members({1: _member_field(10.0), "1": _member_field(20.0)}, control=None)
+    assert "1" in str(raised.value)
+
+
+def test_a_family_with_no_control_carries_no_flag_on_any_member():
+    """Nothing may default the flag onto the lowest member number."""
+    stacked = stack_members({"01": _member_field(1.0), "02": _member_field(2.0)}, control=None)
+
+    assert stacked["control"].values.tolist() == [False, False]
+    assert not bool(stacked["control"].values.any())
+
+
+def test_a_run_whose_control_was_not_retrieved_flags_no_member_instead():
+    """A partial run, not a complete run of one fewer member."""
+    stacked = stack_members({"1": _member_field(1.0), "2": _member_field(2.0)}, control="0")
+
+    assert stacked["member"].values.tolist() == ["1", "2"]
+    assert stacked["control"].values.tolist() == [False, False]
+
+
+def test_the_two_file_aifs_ens_control_lands_on_the_same_member_axis():
+    """The ``cf`` file's field is just another entry in the same mapping."""
+    perturbed = {str(index): _member_field(float(index)) for index in range(1, 4)}
+    stacked = stack_members({"0": _member_field(0.0), **perturbed}, control="0")
+
+    assert stacked.sizes["member"] == 4
+    assert stacked["member"].values.tolist() == ["0", "1", "2", "3"]
+    assert stacked["control"].values.tolist() == [True, False, False, False]
+
+
+def test_a_single_member_still_gets_an_axis_rather_than_a_bare_field():
+    stacked = stack_members({"gec00": _member_field(5.0)}, control="gec00")
+    assert stacked.sizes["member"] == 1
+    assert stacked["control"].values.tolist() == [True]
+
+
+def test_stacking_an_already_stacked_member_field_is_refused():
+    stacked = stack_members({"1": _member_field(1.0)}, control=None)
+    with pytest.raises(GribError, match="already carries"):
+        stack_members({"1": stacked}, control=None)
+
+
+def test_stacking_no_members_at_all_is_refused():
+    with pytest.raises(GribError):
+        stack_members({}, control=None)
+
+
+# --- the averaging window ---------------------------------------------------
+#
+# GEFS ``TCDC:entire atmosphere`` is never instantaneous: the ``.idx`` labels it
+# ``0-3 hour ave fcst`` at f003 and ``18-24 hour ave fcst`` at f024. The window
+# is read from that record, never assumed from the lead.
+
+
+@pytest.mark.parametrize(
+    ("label", "hours"),
+    [
+        ("0-3 hour ave fcst", 3.0),
+        ("0-6 hour ave fcst", 6.0),
+        ("6-12 hour ave fcst", 6.0),
+        ("18-24 hour ave fcst", 6.0),
+        ("234-240 hour ave fcst", 6.0),
+        ("378-384 hour ave fcst", 6.0),
+    ],
+)
+def test_the_averaging_window_is_read_from_the_producers_own_record(label, hours):
+    assert averaging_window_hours(label) == pytest.approx(hours)
+
+
+@pytest.mark.parametrize(
+    "label",
+    ["24 hour fcst", "3 hour fcst", "anl", "", "18-24 hour fcst", "ave fcst", "18-18 hour ave fcst"],
+    ids=["lead-only", "short-lead", "analysis", "empty", "range-but-not-averaged", "averaged-but-no-range", "zero-window"],
+)
+def test_a_label_that_states_no_averaging_window_is_refused(label):
+    with pytest.raises(GribError, match="averaging window unstated"):
+        averaging_window_hours(label)
+
+
+def test_a_time_averaged_field_carries_its_averaging_window_and_its_label():
+    variable = declare_time_average(_member_field(50.0), window_label="18-24 hour ave fcst")
+
+    assert variable.attrs["cell_methods"] == "time: mean"
+    assert variable.attrs["averaging_window_hours"] == pytest.approx(6.0)
+    assert variable.attrs["averaging_window_basis"] == "18-24 hour ave fcst"
+    assert variable.attrs["units"] == "percent"
+    # The declaration names the quantity; it never rescales the values.
+    assert variable.values.tolist() == [[50.0, 50.0], [50.0, 50.0]]
+
+
+def test_a_field_whose_record_states_no_averaging_window_is_not_stamped():
+    variable = _member_field(50.0)
+    with pytest.raises(GribError, match="averaging window unstated"):
+        declare_time_average(variable, window_label="24 hour fcst")
+    assert "cell_methods" not in variable.attrs
+    assert "averaging_window_hours" not in variable.attrs
