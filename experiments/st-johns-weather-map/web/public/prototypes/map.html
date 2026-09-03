@@ -23,6 +23,17 @@
        search palette
   Served by serve.py (static + /api proxy forwarding X-Weather-* headers):
     python3 serve.py   then   http://localhost:5199/map.html
+  Owner decisions 2026-09-03 (round one), now built into variant A, which is
+  the Map: the legend is the stack (A) but legends are NOT repeated per row;
+  one legend per family lives in a scaled-up card bottom-right that collapses
+  on click; the top-right corner names every drawn frame and its age; a layer
+  always draws its previous valid frame (at or before the instant) while that
+  frame is under an hour old, then nothing; stepping walks the union of every
+  stacked layer's frames, with an opt-in continuous mode reserved for
+  science-backed generation between captured frames; untimed layers draw only
+  within tolerance of now; swipe compare is dropped (reorder and opacity stay);
+  the stack rides in the URL beside the Focus. B and C are kept as the
+  rejected alternatives.
   Nothing here is production code.
 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.7.1/maplibre-gl.min.js"></script>
@@ -146,7 +157,16 @@
   .overlay { position: absolute; z-index: 4; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
   #stackcard { left: 10px; bottom: 10px; width: 300px; max-height: 60%; overflow: auto; padding: 6px 8px; }
   #coveragebar { left: 10px; right: 10px; top: 8px; padding: 4px 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-  #legendcard { right: 10px; bottom: 10px; width: 210px; max-height: 60%; overflow: auto; padding: 6px 8px; }
+  #legendcard { right: 10px; bottom: 10px; width: 300px; max-height: 70%; overflow: auto; padding: 6px 10px; }
+  #legendcard .hd { cursor: pointer; font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  #legendcard.min { width: auto; max-height: none; overflow: hidden; }
+  #legendcard.min .bd { display: none; }
+  #legendcard .bd img { height: 220px; width: auto; max-width: 100%; display: block; background: #fff; border-radius: 3px; image-rendering: auto; }
+  #legendcard .bd .wide img { height: auto; max-height: 220px; }
+  #legendcard .member { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; margin: 4px 0 8px; }
+  #framecorner { right: 10px; top: 8px; padding: 4px 8px; display: grid; gap: 2px; max-width: 360px; }
+  #framecorner .fr { display: grid; grid-template-columns: 1.1em 1fr auto; gap: 6px; align-items: baseline; }
+  #framecorner .fr .age { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
   .fam { margin: 6px 0 2px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); display: flex; gap: 6px; align-items: center; }
   .row { display: grid; grid-template-columns: 14px 1.1em 1fr auto; gap: 6px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); }
   .row.drag { opacity: .4; }
@@ -157,7 +177,7 @@
   .row .ctl { grid-column: 3 / -1; display: flex; gap: 6px; align-items: center; }
   .row input[type=range] { flex: 1; min-width: 60px; accent-color: var(--accent); }
   .row .legend { grid-column: 3 / -1; }
-  .row .legend img, .legendcard img, .card img { max-width: 100%; max-height: 90px; display: block; border-radius: 3px; background: #fff; }
+  .row .legend img, .card img { max-width: 100%; max-height: 90px; display: block; border-radius: 3px; background: #fff; }
   .row .legend.noimg { color: var(--muted); font-style: italic; }
   .tree details { margin: 2px 0; }
   .tree summary { cursor: pointer; font-weight: 600; font-size: 12px; }
@@ -205,8 +225,8 @@
     <div class="transport">
       <span id="railtitle"><strong>Instant</strong> <span class="muted">shared by every open view</span></span>
       <span class="spacer" style="flex:1"></span>
-      <label class="muted">step by <select id="basis" aria-label="Time-match basis"><option value="">1 h (clock)</option></select></label>
-      <label class="muted" title="What to do when no frame of a layer lies within its tolerance of the instant"><select id="policy" aria-label="Out-of-tolerance policy"><option value="blank">beyond tolerance: draw nothing</option><option value="hold">beyond tolerance: hold nearest, disclosed</option></select></label>
+      <span class="muted" id="stepnote" title="the step is the smallest jump between any two frames of any stacked layer">step: union of stacked frames</span>
+      <label class="muted" title="opt in: between captured frames, draw a science-backed generated display (advection-corrected interpolation, FlowBlendLayer); every such picture is marked GENERATED"><input type="checkbox" id="continuous"> continuous (generated between frames)</label>
       <button id="jumpnow">Now</button>
       <button id="stepback" aria-label="Back one step">◀</button>
       <button id="play" aria-pressed="false">▶ play</button>
@@ -272,21 +292,21 @@ const VIEWS = ['map', 'series', 'sky', 'activity', 'sources'];
 const VIEW_NAME = { map: 'Map', series: 'Series', sky: 'Sky', activity: 'Activity', sources: 'Sources' };
 const GLYPH = { retrieved: '●', reprocessed: '◐', derived_here: '◆', intermediary_derived: '◇', generated_display: '○', uncalibrated_observation: '▲', unrecognised: '?' };
 const VARIANT_NOTES = {
-  A: 'the legend IS the stack: one row per drawn layer with glyph, short name, source, run, the frame actually drawn, opacity and legend; drag to reorder; add from a family tree popover',
+  A: 'THE MAP (decided 2026-09-03): the legend is the stack, one row per layer with glyph, short name, source, run, frame drawn and opacity; legends once per family in a collapsible card bottom-right; frames and ages in the top-right corner',
   B: 'family tree always open on the left; the stack is a compact card on the map, legends in a second card; coverage is a matrix strip across the top of the map, one cell per layer',
   C: 'layer cards across the top, each with a mini timeline of its frames around the instant so the alignment is visible; add layers from a search palette (press /)',
 };
 // The five the ticket asks for, bottom to top. z from /layers where it exists.
 const DEFAULT_STACK = ['geomet-live-goes-east-naturalcolor', 'eccc-hrdps-surface-total-cloud', 'eccc-cap-alerts-alerts_features', 'eccc-radar-radar', 'eccc-lightning-lightning'];
 const MAX_PX = 2048;
-const AL_LABEL = { probe: 'asking the server', exact: 'exact frame', within: 'nearest frame within tolerance', beyond: 'nearest frame beyond tolerance', none: 'no frame', untimed: 'current image, not time-indexed' };
+const AL_LABEL = { probe: 'asking the server', after: 'server offered a later frame', exact: 'exact frame', within: 'nearest frame within tolerance', beyond: 'nearest frame beyond tolerance', none: 'no frame', untimed: 'current image, not time-indexed' };
 
 // ---------- state (the Focus, plus the stack) ----------
 const focus = { mv: 'A', site: 'signal-hill', lat: null, lon: null, t: null, view: 'map', dock: null, theme: 'light', full: null };
 let stack = [];            // [{id, opacity, on}], bottom -> top
-let basisId = '';          // time-match basis layer id, '' = clock hours
-let policy = 'blank';      // 'blank' | 'hold'
-let compare = null;        // {left: id, right: id, x: 0..1}
+let continuous = false;    // opt-in generated display between captured frames (decided elsewhere; here only disclosed)
+const MAX_AGE = 3600;      // owner rule: a previous frame may be drawn while it is under an hour old
+let compare = null;        // dropped 2026-09-03; kept null
 let timeline = null, ready = null, status = null, layersInfo = null;
 const byId = {};
 let playing = false, playTimer = null;
@@ -300,9 +320,7 @@ function readUrl() {
   if (focus.lat != null) { focus.lat = +focus.lat; focus.lon = +focus.lon; focus.site = null; }
   if (!VARIANT_NOTES[focus.mv]) focus.mv = 'A';
   if (p.has('stack')) stack = p.get('stack').split(',').filter(Boolean).map(s => { const [id, op, on] = s.split(':'); return { id, opacity: op != null ? +op : null, on: on !== '0' }; });
-  if (p.has('basis')) basisId = p.get('basis');
-  if (p.has('policy')) policy = p.get('policy');
-  if (p.has('cmp')) { const [l, r, x] = p.get('cmp').split(':'); compare = { left: l, right: r, x: +x || 0.5 }; }
+  if (p.has('continuous')) continuous = p.get('continuous') === '1';
 }
 function writeUrl() {
   const p = new URLSearchParams();
@@ -313,9 +331,7 @@ function writeUrl() {
   if (focus.dock) p.set('dock', focus.dock);
   if (focus.full) p.set('full', focus.full);
   p.set('stack', stack.map(s => `${s.id}:${s.opacity}${s.on ? '' : ':0'}`).join(','));
-  if (basisId) p.set('basis', basisId);
-  if (policy !== 'blank') p.set('policy', policy);
-  if (compare) p.set('cmp', `${compare.left}:${compare.right}:${compare.x.toFixed(2)}`);
+  if (continuous) p.set('continuous', '1');
   history.replaceState(null, '', '?' + p.toString());
 }
 function nearestSite(lat, lon) { let best = null; for (const s of SITES) { const dx = (lon - s.lon) * 111.32 * Math.cos(lat * Math.PI / 180), dy = (lat - s.lat) * 110.57; const km = Math.hypot(dx, dy); if (!best || km < best.km) best = { site: s, km }; } return best; }
@@ -337,10 +353,10 @@ function setT(ms) {
   const w = windowOf(); ms = Math.min(Math.max(ms, w.start), w.end);
   focus.t = iso(ms); writeUrl(); renderFocusbar(); renderScrubber(); alignAndDraw();
 }
+function unionFrames() { const set = new Set(); for (const s of stack) { const l = byId[s.id]; if (!s.on || !l || untimed(l)) continue; for (const x of l.times) set.add(Date.parse(x)); } return [...set].sort((a, b) => a - b); }
 function step(dir) {
-  const t = currentT();
-  const b = byId[basisId];
-  if (b && b.times.length) { const ts = b.times.map(Date.parse); const next = dir > 0 ? ts.find(x => x > t) : [...ts].reverse().find(x => x < t); if (next != null) return setT(next); return; }
+  const t = currentT(); const ts = unionFrames();
+  if (ts.length) { const next = dir > 0 ? ts.find(x => x > t) : [...ts].reverse().find(x => x < t); if (next != null) return setT(next); return; }
   setT(snapHour(t) + dir * hour);
 }
 
@@ -382,18 +398,18 @@ function untimed(l) { return l.kind === 'alert' || (l.cadence_seconds == null &&
 // stop hours before the imagery does. So those layers ask the server for its frame at the instant and
 // read the valid time it served back, instead of trusting /layers.times.
 function isLiveImagery(l) { return !!l.upstream_wms_layer && !untimed(l); }
-function judge(l, servedMs, t) { const delta = (servedMs - t) / 1000; const tol = l.staleness_tolerance_seconds ?? l.cadence_seconds ?? 3600; return { frame: iso(servedMs), status: delta === 0 ? 'exact' : Math.abs(delta) <= tol ? 'within' : 'beyond', delta, tol, served: true }; }
+function judge(l, servedMs, t) { const delta = (servedMs - t) / 1000; return { frame: iso(servedMs), status: delta === 0 ? 'exact' : delta > 0 ? 'after' : -delta <= MAX_AGE ? 'within' : 'beyond', delta, tol: MAX_AGE, served: true }; }
 
 // Which frame of a layer stands for the instant, and how honestly.
 function align(l, t) {
   if (untimed(l)) return { frame: null, status: 'untimed', delta: null };
-  const ts = l.times.map(Date.parse); if (!ts.length) return { frame: null, status: 'none', delta: null };
-  let best = ts[0]; for (const x of ts) if (Math.abs(x - t) < Math.abs(best - t)) best = x;
-  const delta = (best - t) / 1000; const tol = l.staleness_tolerance_seconds ?? l.cadence_seconds ?? 3600;
-  const status = delta === 0 ? 'exact' : Math.abs(delta) <= tol ? 'within' : 'beyond';
-  return { frame: iso(best), status, delta, tol };
+  const ts = l.times.map(Date.parse).filter(x => x <= t); if (!ts.length) return { frame: null, status: 'none', delta: null, tol: MAX_AGE };
+  const best = ts[ts.length - 1]; const delta = (best - t) / 1000;
+  const status = delta === 0 ? 'exact' : -delta <= MAX_AGE ? 'within' : 'beyond';
+  return { frame: iso(best), status, delta, tol: MAX_AGE, generated: continuous && delta !== 0 && l.group === 'rendered_grid' };
 }
-function willDraw(a) { return a.status === 'probe' || a.status === 'exact' || a.status === 'within' || a.status === 'untimed' || (a.status === 'beyond' && policy === 'hold'); }
+function untimedOk() { return Math.abs(Date.now() - currentT()) <= 900e3; }
+function willDraw(a) { return a.status === 'probe' || a.status === 'exact' || a.status === 'within' || (a.status === 'untimed' && untimedOk()); }
 
 // ---------- data ----------
 async function getJson(path) { const r = await fetch(API + path); if (!r.ok) throw new Error(`${path} ${r.status}`); return r.json(); }
@@ -406,9 +422,7 @@ async function loadAll() {
   for (const s of stack) if (s.opacity == null) s.opacity = byId[s.id]?.default_opacity ?? 0.85;
   stack = stack.filter(s => byId[s.id]);
   if (!focus.t) focus.t = iso(snapHour(Date.now()));
-  const bs = document.getElementById('basis');
-  for (const l of Object.values(byId)) if (l.raster_available && !untimed(l)) { const o = document.createElement('option'); o.value = l.id; o.textContent = `frames of ${sourceTag(l)} ${shortTitle(l)}`; bs.appendChild(o); }
-  bs.value = byId[basisId] ? basisId : ''; document.getElementById('policy').value = policy;
+  document.getElementById('continuous').checked = continuous;
   renderAll();
   if (failed.length) document.getElementById('banner').textContent = 'API unreachable: ' + failed.join('; ');
 }
@@ -440,7 +454,7 @@ function baseStyle(theme) {
 }
 function makeMap(el) {
   const m = new maplibregl.Map({ container: el, style: baseStyle(focus.theme), center: [-52.9, 47.5], zoom: 7.2, attributionControl: { compact: true }, fadeDuration: 0 });
-  m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
   return m;
 }
 let syncing = false;
@@ -521,7 +535,6 @@ async function alignAndDraw(opts = {}) {
   orderRasters(mapA);
   for (const id in drawn) if (!stack.some(s => s.id === id)) { hideRaster(mapA, id); delete drawn[id]; }
   renderStack();
-  if (compare) drawCompare(bb, t);
   await Promise.allSettled(jobs);
   if (seq === drawSeq) { renderStack(); }
 }
@@ -605,32 +618,33 @@ function rowLine(l, d) {
   return `<b>${sourceTag(l)}</b> ${shortTitle(l)}${run} · ${frameLine(d)}`;
 }
 function frameLine(d) {
-  if (d.status === 'untimed') return `<span class="al untimed"></span> current image, not time-indexed`;
+  if (d.status === 'untimed') return `<span class="al untimed"></span> current image, not time-indexed${untimedOk() ? '' : ' · instant is not now, not drawn'}`;
+  if (d.status === 'after') return `<span class="al beyond"></span> server offered ${dhm(Date.parse(d.frame))}, after the instant; not drawn`;
   if (d.status === 'probe') return `<span class="al blank"></span> asking the server for its frame…`;
   if (d.status === 'none') return `<span class="al none"></span> no frame${d.extent ? ` (server extent ${d.extent[0].slice(5, 16)} to ${d.extent[1].slice(5, 16)})` : 's'}`;
   const by = d.served ? 'server frame' : 'frame';
   if (d.status === 'exact') return `<span class="al exact"></span> ${by} ${hm(Date.parse(d.frame))} exact`;
-  const s = `${by} ${dhm(Date.parse(d.frame))}, ${ago(d.delta)}`;
-  if (d.status === 'within') return `<span class="al within"></span> ${s} (within ${Math.round(d.tol / 60)} min)`;
-  return `<span class="al beyond"></span> ${s}${policy === 'hold' ? ', HELD beyond tolerance' : ', not drawn'}`;
+  const s = `${by} ${dhm(Date.parse(d.frame))}, ${ago(d.delta).replace(' before', ' old')}`;
+  if (d.status === 'within') return `<span class="al within"></span> previous ${s}${d.generated ? ' · <span class="glyph generated_display">○</span> GENERATED between frames' : ''}`;
+  return `<span class="al beyond"></span> previous ${s}, over an hour: not drawn`;
 }
 function stateBadge(s, l, d) {
   if (!s.on) return '<span class="chip">hidden</span>';
   if (d.error) return `<span class="chip bad" title="${d.error.replace(/"/g, '&quot;')}">${/no raster/.test(d.error) ? 'no raster' : 'not retrieved'}</span>`;
   if (d.loading) return '<span class="chip">loading…</span>';
   if (!willDraw(d)) return '<span class="chip warn">not drawn</span>';
-  const ev = evidenceOf(l); return `<span class="chip" style="background:var(--good-bg)">drawn${ev.cls === 'generated_display' ? ' · GENERATED' : ''}</span>`;
+  const ev = evidenceOf(l); return `<span class="chip" style="background:var(--good-bg)">drawn${ev.cls === 'generated_display' || d.generated ? ' · GENERATED' : ''}</span>`;
 }
 function coverageSummary() {
   const t = currentT(); const rows = stack.map(s => ({ s, l: byId[s.id], d: drawn[s.id] || align(byId[s.id], t) }));
   const on = rows.filter(r => r.s.on); const drawnN = on.filter(r => willDraw(r.d) && !r.d.error).length;
-  const c = { probe: 0, exact: 0, within: 0, beyond: 0, none: 0, untimed: 0 }; for (const r of on) c[r.d.status]++;
+  const c = { probe: 0, after: 0, exact: 0, within: 0, beyond: 0, none: 0, untimed: 0 }; for (const r of on) c[r.d.status]++;
   return { rows, on, drawnN, c };
 }
 function renderStack() {
   const sum = document.getElementById('mapsummary'); if (!sum) return;
   const cs = coverageSummary(); const t = currentT();
-  sum.textContent = `${cs.drawnN} of ${cs.on.length} drawn at ${hm(t)} · ${cs.c.exact} exact, ${cs.c.within} within tolerance, ${cs.c.beyond} beyond, ${cs.c.none} none, ${cs.c.untimed} untimed${cs.c.probe ? `, ${cs.c.probe} pending` : ''}`;
+  sum.textContent = `${cs.drawnN} of ${cs.on.length} drawn at ${hm(t)} · ${cs.c.exact} exact, ${cs.c.within} previous under 1 h, ${cs.c.beyond + cs.c.after} too old, ${cs.c.none} none, ${cs.c.untimed} untimed${cs.c.probe ? `, ${cs.c.probe} pending` : ''}`;
   if (focus.mv === 'A') renderStackA(cs); else if (focus.mv === 'B') renderStackB(cs); else renderStackC(cs);
   renderStrip(cs);
   if (mapReady) orderRasters(mapA);
@@ -651,7 +665,6 @@ function rowActions(s, l, d) {
   const same = Object.values(byId).filter(x => x.id !== l.id && x.raster_available && familyOf(x) === familyOf(l));
   return `<button class="tiny" data-act="toggle" data-id="${s.id}" aria-pressed="${s.on}" title="show or hide">${s.on ? '👁' : '—'}</button>` +
     `<button class="tiny" data-act="up" data-id="${s.id}" title="move up (toward the top of the stack)">▲</button><button class="tiny" data-act="down" data-id="${s.id}" title="move down">▼</button>` +
-    (same.length ? `<button class="tiny" data-act="compare" data-id="${s.id}" title="swipe against another ${familyOf(l)} layer">⇔</button>` : '') +
     `<button class="tiny" data-act="detail" data-id="${s.id}" title="full provenance">why?</button><button class="tiny" data-act="remove" data-id="${s.id}" title="remove from the stack">✕</button>`;
 }
 function wireRows(root) {
@@ -671,9 +684,8 @@ function act(a, id) {
   if (a === 'toggle') { s.on = !s.on; writeUrl(); alignAndDraw(); }
   if (a === 'up' && i < stack.length - 1) { stack.splice(i, 1); stack.splice(i + 1, 0, s); writeUrl(); renderStack(); }
   if (a === 'down' && i > 0) { stack.splice(i, 1); stack.splice(i - 1, 0, s); writeUrl(); renderStack(); }
-  if (a === 'remove') { stack.splice(i, 1); if (compare && (compare.left === id || compare.right === id)) endCompare(); writeUrl(); alignAndDraw(); }
+  if (a === 'remove') { stack.splice(i, 1); writeUrl(); alignAndDraw(); }
   if (a === 'detail') showLayerDetail(id);
-  if (a === 'compare') pickCompare(id);
 }
 function addLayer(id, toTop = true) { if (stack.some(s => s.id === id)) return; const l = byId[id]; const it = { id, opacity: l.default_opacity ?? 0.85, on: true }; if (toTop) stack.push(it); else stack.unshift(it); writeUrl(); alignAndDraw(); }
 function removeLayer(id) { const i = stack.findIndex(s => s.id === id); if (i >= 0) act('remove', id); }
@@ -692,25 +704,42 @@ function renderStackA(cs) {
         <span class="name">${shortTitle(r.l)} <span class="muted" style="font-weight:400">· ${sourceTag(r.l)}</span></span><span>${stateBadge(r.s, r.l, r.d)}</span>
         <span class="sub">${frameLine(r.d)}${r.d.headers?.['reference-time'] && r.d.headers['reference-time'] !== 'none' ? ` · run ${dhm(Date.parse(r.d.headers['reference-time']))} (${ago((Date.parse(r.d.headers['reference-time']) - Date.now()) / 1000).replace(' before', ' old')})` : ''}${r.d.error ? ` · <span style="color:var(--bad)">${r.d.error}</span>` : ''}</span>
         <span class="ctl"><input type="range" min="0" max="1" step="0.05" value="${r.s.opacity}" data-op="${r.s.id}" aria-label="opacity of ${shortTitle(r.l)}"><span class="mono" style="width:34px">${Math.round(r.s.opacity * 100)}%</span>${rowActions(r.s, r.l, r.d)}</span>
-        ${r.s.on ? legendHtml(r.s.id) : ''}
       </div>`;
     }
   }
   if (!stack.length) html += '<p class="placeholder" style="padding:10px">empty stack: add layers from the tree</p>';
-  panel.innerHTML = html; wireRows(panel); renderTree();
+  panel.innerHTML = html; wireRows(panel); renderTree(); renderLegendCard(cs); renderFrameCorner(cs);
+}
+let legendMin = false;
+function renderLegendCard(cs) {
+  const wrap = document.getElementById('mapwrap'); if (!wrap) return;
+  let lg = document.getElementById('legendcard'); if (!lg) { lg = document.createElement('div'); lg.id = 'legendcard'; lg.className = 'overlay legendcard'; wrap.appendChild(lg); }
+  lg.classList.toggle('min', legendMin);
+  const groups = familyGroups([...cs.rows].reverse().filter(r => r.s.on && willDraw(r.d) && !r.d.error));
+  lg.innerHTML = `<div class="hd" title="click to ${legendMin ? 'expand' : 'collapse'}">${legendMin ? '▸' : '▾'} Legends <span class="muted" style="font-weight:400">one per family</span></div><div class="bd">` +
+    ([...groups].map(([fam, members]) => `<div class="fam">${fam} ${separateScalesNote(members)}</div>` + members.map(r => `<div class="member"><div class="${r.l.group === 'rendered_grid' || r.l.kind === 'alert' ? 'wide' : ''}">${legendHtml(r.s.id)}</div><div><div><b>${sourceTag(r.l)}</b> ${shortTitle(r.l)}</div><div class="muted" style="font-size:11px">${r.l.units && r.l.units !== 'mixed' && r.l.units !== 'unknown' ? r.l.units : ''}</div></div></div>`).join('')).join('') || '<span class="placeholder">nothing drawn</span>') + '</div>';
+  lg.querySelector('.hd').onclick = () => { legendMin = !legendMin; renderStack(); };
+}
+function renderFrameCorner(cs) {
+  const wrap = document.getElementById('mapwrap'); if (!wrap) return;
+  let c = document.getElementById('framecorner'); if (!c) { c = document.createElement('div'); c.id = 'framecorner'; c.className = 'overlay'; wrap.appendChild(c); }
+  const rows = [...cs.rows].reverse().filter(r => r.s.on);
+  c.innerHTML = `<div class="muted" style="font-size:11px">frames drawn at ${hm(currentT())}</div>` + rows.map(r => { const d = r.d; const ok = willDraw(d) && !d.error; const ev = evidenceOf(r.l);
+    const when = d.status === 'untimed' ? (ok ? 'current' : 'current only') : d.frame ? hm(Date.parse(d.frame)) : '—';
+    const age = !ok ? 'not drawn' : d.status === 'exact' ? 'exact' : d.status === 'within' ? ago(d.delta).replace(' before', ' old') : d.status === 'untimed' ? 'now' : '';
+    return `<div class="fr" style="${ok ? '' : 'opacity:.55'}"><span class="glyph ${d.generated ? 'generated_display' : ev.cls}">${GLYPH[d.generated ? 'generated_display' : ev.cls]}</span><span>${sourceTag(r.l)} ${shortTitle(r.l)} <span class="mono">${when}</span></span><span class="age">${age}</span></div>`; }).join('');
 }
 // Variant B: tree left, stack card + legend card on the map, coverage matrix strip on top.
 function renderStackB(cs) {
   const panel = document.getElementById('stackpanel'); const wrap = document.getElementById('mapwrap'); if (!panel || !wrap) return;
   panel.innerHTML = `<div style="padding:6px 8px;border-bottom:1px solid var(--line)" class="muted">Layers by family, then source. Tick to stack.</div><div class="tree" id="treeinline"></div>`; renderTree(document.getElementById('treeinline'));
   let card = document.getElementById('stackcard'); if (!card) { card = document.createElement('div'); card.id = 'stackcard'; card.className = 'overlay'; wrap.appendChild(card); }
-  let lg = document.getElementById('legendcard'); if (!lg) { lg = document.createElement('div'); lg.id = 'legendcard'; lg.className = 'overlay legendcard'; wrap.appendChild(lg); }
   let cov = document.getElementById('coveragebar'); if (!cov) { cov = document.createElement('div'); cov.id = 'coveragebar'; cov.className = 'overlay'; wrap.appendChild(cov); }
   const rows = [...cs.rows].reverse();
   card.innerHTML = `<div class="muted" style="margin-bottom:4px">Stack, top first</div>` + rows.map(r => { const ev = evidenceOf(r.l); return `<div class="row ${r.s.on ? '' : 'hidden'}" data-row="${r.s.id}" style="padding:4px 0"><span class="handle">⋮</span><span class="glyph ${ev.cls}" title="${ev.tag}">${GLYPH[ev.cls]}</span><span class="name">${shortTitle(r.l)} <span class="muted" style="font-weight:400">${sourceTag(r.l)}</span></span><span>${stateBadge(r.s, r.l, r.d)}</span><span class="ctl"><input type="range" min="0" max="1" step="0.05" value="${r.s.opacity}" data-op="${r.s.id}" aria-label="opacity"><span class="mono" style="width:34px">${Math.round(r.s.opacity * 100)}%</span>${rowActions(r.s, r.l, r.d)}</span></div>`; }).join('') || '<p class="placeholder">empty stack</p>';
   wireRows(card);
   const groups = familyGroups(rows.filter(r => r.s.on));
-  lg.innerHTML = `<div class="muted" style="margin-bottom:4px">Legends, once per family</div>` + [...groups].map(([fam, members]) => `<div class="fam">${fam} ${separateScalesNote(members)}</div>` + members.map(r => `<div style="margin-bottom:6px"><div class="muted">${sourceTag(r.l)} ${shortTitle(r.l)}</div>${legendHtml(r.s.id)}</div>`).join('')).join('') || '<span class="placeholder">nothing drawn</span>';
+  renderLegendCard(cs);
   cov.innerHTML = `<span class="muted">at ${hm(currentT())}:</span><span class="matrix">` + rows.map(r => `<span class="cell" data-act="detail" data-id="${r.s.id}" title="${AL_LABEL[r.d.status]}${r.d.frame ? ' ' + r.d.frame : ''}"><span class="al ${r.s.on ? r.d.status : 'blank'}"></span>${sourceTag(r.l)} ${shortTitle(r.l)}${r.d.status === 'exact' || r.d.status === 'untimed' || r.d.status === 'none' ? '' : ` <span class="mono">${hm(Date.parse(r.d.frame))}</span>`}</span>`).join('') + `</span><span class="spacer" style="flex:1"></span><span class="muted"><span class="al exact"></span> exact <span class="al within"></span> within tol. <span class="al beyond"></span> beyond <span class="al untimed"></span> untimed <span class="al none"></span> none</span>`;
   cov.querySelectorAll('[data-act]').forEach(b => b.onclick = () => act('detail', b.dataset.id));
 }
@@ -736,16 +765,17 @@ function renderTree(root) {
 function renderStrip(cs) {
   const strip = document.getElementById('strip'); if (!strip) return;
   const t = currentT(); const on = cs.on;
-  const gen = on.filter(r => evidenceOf(r.l).cls === 'generated_display' && willDraw(r.d));
-  const held = on.filter(r => r.d.status === 'beyond' && policy === 'hold');
+  const gen = on.filter(r => (evidenceOf(r.l).cls === 'generated_display' || r.d.generated) && willDraw(r.d) && !r.d.error);
+  const held = [];
   const notDrawn = on.filter(r => !willDraw(r.d) || r.d.error);
   const untimedN = on.filter(r => r.d.status === 'untimed' && willDraw(r.d));
-  const parts = [`<span class="glyph retrieved">●</span><span><b>${cs.drawnN} of ${on.length}</b> layers drawn at ${hm(t)}</span>`];
-  if (notDrawn.length) parts.push(`<span class="muted">·</span><span>not drawn: ${notDrawn.map(r => `${sourceTag(r.l)} ${shortTitle(r.l)} (${r.d.status === 'none' && r.d.extent ? 'server extent ends ' + r.d.extent[1].slice(5, 16) : r.d.error ? r.d.error.split(':')[0] : r.d.status === 'none' ? 'no frames' : 'nearest ' + ago(r.d.delta)})`).join(', ')}</span>`);
+  const parts = [];
+  if (gen.length) parts.push(`<span class="glyph generated_display">○</span><span style="color:var(--cls-gen)">GENERATED display: ${gen.map(r => shortTitle(r.l)).join(', ')}</span><span class="muted">·</span>`);
+  parts.push(`<span class="glyph retrieved">●</span><span><b>${cs.drawnN} of ${on.length}</b> layers drawn at ${hm(t)}</span>`);
+  if (notDrawn.length) parts.push(`<span class="muted">·</span><span>not drawn: ${notDrawn.map(r => `${sourceTag(r.l)} ${shortTitle(r.l)} (${r.d.status === 'none' && r.d.extent ? 'server extent ends ' + r.d.extent[1].slice(5, 16) : r.d.error ? r.d.error.split(':')[0] : r.d.status === 'none' ? 'no earlier frame' : r.d.status === 'untimed' ? 'current only' : r.d.status === 'after' ? 'only a later frame' : 'previous frame ' + ago(r.d.delta).replace(' before', ' old')})`).join(', ')}</span>`);
   if (held.length) parts.push(`<span class="muted">·</span><span style="color:var(--warn)">held beyond tolerance: ${held.map(r => `${sourceTag(r.l)} ${shortTitle(r.l)} ${ago(r.d.delta)}`).join(', ')}</span>`);
   if (untimedN.length) parts.push(`<span class="muted">·</span><span>${untimedN.map(r => shortTitle(r.l)).join(', ')}: current image, not the instant</span>`);
-  parts.push(`<span class="muted">·</span><span style="color:${gen.length ? 'var(--cls-gen)' : 'inherit'}">${gen.length ? `<span class="glyph generated_display">○</span> GENERATED display: ${gen.map(r => shortTitle(r.l)).join(', ')}` : 'no generated display'}</span>`);
-  if (compare) parts.push(`<span class="muted">·</span><span>swipe: ${sourceTag(byId[compare.left])} | ${sourceTag(byId[compare.right])}</span>`);
+  if (!gen.length) parts.push(`<span class="muted">·</span><span>no generated display</span>`);
   strip.innerHTML = parts.join('') + `<span style="flex:1"></span><button class="ghost tiny" id="stripwhy">why?</button>`;
   document.getElementById('stripwhy').onclick = showStackDetail;
 }
@@ -768,7 +798,7 @@ function showLayerDetail(id) {
 function showStackDetail() {
   const cs = coverageSummary(); const t = currentT();
   document.getElementById('detailh').textContent = `Everything drawn at ${iso(t)}`;
-  document.getElementById('detailbody').innerHTML = `<p class="muted" style="font-size:12px">Policy: ${policy === 'blank' ? 'a layer with no frame within its tolerance of the instant draws nothing' : 'a layer with no frame within tolerance holds its nearest frame and says so'}. Basis: ${basisId ? 'the instant steps through the frames of ' + shortTitle(byId[basisId]) : 'clock hours'}.</p><table><tr><th></th><th>layer</th><th>source</th><th>run</th><th>frame drawn</th><th>alignment</th><th>bytes</th><th>state</th></tr>${[...cs.rows].reverse().map(r => { const ev = evidenceOf(r.l); const H = r.d.headers || {}; return `<tr><td><span class="glyph ${ev.cls}">${GLYPH[ev.cls]}</span></td><td>${shortTitle(r.l)}</td><td>${sourceTag(r.l)}</td><td class="mono">${H['reference-time'] && H['reference-time'] !== 'none' ? dhm(Date.parse(H['reference-time'])) : '—'}</td><td class="mono">${r.d.frame ? dhm(Date.parse(r.d.frame)) : H['valid-time'] === 'none' ? 'current' : '—'}</td><td>${frameLine(r.d)}</td><td class="mono">${r.d.bytes ? r.d.bytes.toLocaleString() : ''}</td><td>${stateBadge(r.s, r.l, r.d)}</td></tr>`; }).join('')}</table>
+  document.getElementById('detailbody').innerHTML = `<p class="muted" style="font-size:12px">Rule: every layer draws its previous valid frame (at or before the instant) while that frame is under an hour old, then nothing; the frame and its age are named in the map's top-right corner. Stepping walks the union of every stacked layer's frames${continuous ? '; continuous mode is ON: rendered grids between captured frames would carry the science-backed generated display, marked GENERATED' : ''}.</p><table><tr><th></th><th>layer</th><th>source</th><th>run</th><th>frame drawn</th><th>alignment</th><th>bytes</th><th>state</th></tr>${[...cs.rows].reverse().map(r => { const ev = evidenceOf(r.l); const H = r.d.headers || {}; return `<tr><td><span class="glyph ${ev.cls}">${GLYPH[ev.cls]}</span></td><td>${shortTitle(r.l)}</td><td>${sourceTag(r.l)}</td><td class="mono">${H['reference-time'] && H['reference-time'] !== 'none' ? dhm(Date.parse(H['reference-time'])) : '—'}</td><td class="mono">${r.d.frame ? dhm(Date.parse(r.d.frame)) : H['valid-time'] === 'none' ? 'current' : '—'}</td><td>${frameLine(r.d)}</td><td class="mono">${r.d.bytes ? r.d.bytes.toLocaleString() : ''}</td><td>${stateBadge(r.s, r.l, r.d)}</td></tr>`; }).join('')}</table>
   <p class="muted" style="font-size:12px;margin-top:8px">Licences: ${[...new Set(cs.rows.map(r => r.d.headers?.licence).filter(Boolean))].join('; ') || 'none read yet'}.</p>`;
   document.getElementById('detaildlg').showModal();
 }
@@ -795,8 +825,8 @@ document.getElementById('palq').onkeydown = e => { const hits = document.querySe
 // ---------- scrubber ----------
 function renderScrubber() {
   buildScrubber(document.getElementById('scrubber'), currentT());
-  const w = windowOf(); const b = byId[basisId];
-  document.getElementById('raillegend').textContent = `window ${iso(w.start)} to ${iso(w.end)} from /timeline · bars: sources with a frame per hour · ticks above the bars: frames of ${b ? shortTitle(b) + ' (the basis)' : 'the top drawable layer'} · dashed line: tier boundary · axis in Newfoundland time, stamps in UTC`;
+  const w = windowOf();
+  document.getElementById('raillegend').textContent = `window ${iso(w.start)} to ${iso(w.end)} from /timeline · bars: sources with a frame per hour · ticks: the union of every stacked layer's frames (the step) · dashed line: tier boundary · axis in Newfoundland time, stamps in UTC`;
 }
 function buildScrubber(root, t) {
   const w = windowOf(); const span = w.end - w.start; const pct = ms => ((ms - w.start) / span * 100).toFixed(3) + '%';
@@ -807,8 +837,7 @@ function buildScrubber(root, t) {
     let label = null; if (inCore && m === 30 && (h % 12 === 0)) label = `${h}:30`; if (h === 0 && m === 30) label = d.toISOString().slice(5, 10); if (!inCore && !(h === 0 && m === 30)) label = null;
     if (!label) continue; const x = (ms - w.start) / span * railW; if (x - lastX < 44) continue; lastX = x; marks += `<span style="left:${pct(ms)}">${label}</span>`;
   }
-  const fl = byId[basisId] || [...stack].reverse().map(s => byId[s.id]).find(l => l && l.raster_available && !untimed(l));
-  const frames = fl ? fl.times.map(Date.parse).filter(x => x >= w.start && x <= w.end).map(x => `<i style="left:${pct(x)}"></i>`).join('') : '';
+  const frames = unionFrames().filter(x => x >= w.start && x <= w.end).map(x => `<i style="left:${pct(x)}"></i>`).join('');
   root.innerHTML = `
     <div class="tiers" aria-hidden="true"><span style="left:0;width:${w.boundary ? pct(w.boundary) : '100%'};background:var(--core)"></span>${w.boundary ? `<span style="left:${pct(w.boundary)};right:0;background:var(--planning)"></span>` : ''}</div>
     <div class="coverage" aria-hidden="true">${items.map(i => `<i style="height:${Math.round(i.available_products.length / max * 100)}%" title="${i.valid_time_utc}: ${i.available_products.join(', ') || 'nothing'}"></i>`).join('')}</div>
@@ -817,14 +846,13 @@ function buildScrubber(root, t) {
     ${w.boundary ? `<div class="boundary" style="left:${pct(w.boundary)}"><label>+24 h · planning</label></div>` : ''}
     <div class="now" style="left:${pct(snapHour(Date.now()))}" title="now"></div>
     <div class="head" style="left:${pct(t)}"></div>
-    <input type="range" min="${w.start}" max="${w.end}" step="${basisId ? 60e3 : hour}" value="${t}" aria-label="Focus instant" aria-valuetext="${nlTime(t)}, ${tierAt(t)} tier">`;
-  root.querySelector('input').oninput = e => setT(basisId ? +e.target.value : snapHour(+e.target.value));
+    <input type="range" min="${w.start}" max="${w.end}" step="60000" value="${t}" aria-label="Focus instant" aria-valuetext="${nlTime(t)}, ${tierAt(t)} tier">`;
+  root.querySelector('input').oninput = e => { const v = +e.target.value; const ts = unionFrames(); const prev = [...ts].reverse().find(x => x <= v); setT(prev != null && v - prev < hour ? prev : Math.floor(v / 60e3) * 60e3); };
 }
 
 // ---------- wiring ----------
 document.getElementById('theme').onchange = e => { focus.theme = e.target.value; try { localStorage.setItem('astraeus-weather-theme', focus.theme); } catch {} document.documentElement.dataset.theme = focus.theme; if (mapA) { for (const m of [mapA, mapB]) { m.setStyle(baseStyle(focus.theme)); } mapA.once('styledata', () => { mapReady = false; mapA.once('idle', () => { mapReady = true; drawSites(mapA); for (const id in drawn) delete drawn[id].headers; alignAndDraw(); }); }); } };
-document.getElementById('basis').onchange = e => { basisId = e.target.value; writeUrl(); renderScrubber(); };
-document.getElementById('policy').onchange = e => { policy = e.target.value; writeUrl(); alignAndDraw(); };
+document.getElementById('continuous').onchange = e => { continuous = e.target.checked; writeUrl(); alignAndDraw(); };
 document.getElementById('jumpnow').onclick = () => setT(snapHour(Date.now()));
 document.getElementById('stepback').onclick = () => step(-1);
 document.getElementById('stepfwd').onclick = () => step(1);
