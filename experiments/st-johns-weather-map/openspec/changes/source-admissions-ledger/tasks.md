@@ -268,7 +268,7 @@ Verification commands used below, run from
 
 ## 10. Gate (Gate owner)
 
-- [ ] 10.1 Run the full gate from `experiments/st-johns-weather-map/` and fix
+- [x] 10.1 Run the full gate from `experiments/st-johns-weather-map/` and fix
   until all three pass with no error:
   `make test`,
   `openspec validate source-admissions-ledger --strict`,
