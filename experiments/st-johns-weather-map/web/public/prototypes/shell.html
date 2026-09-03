@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE shell and Focus (ticket #39)</title>
+<!--
+  PROTOTYPE, throwaway. Answers wayfinder ticket #39: how Focus, time control,
+  the tier boundary and the five views compose into one shell. Served by the
+  Vite dev server at http://localhost:5173/prototypes/shell.html so /api
+  proxies to the live API. Three variants via ?v=1|2|3. Nothing here is
+  production code.
+-->
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f7; --panel: #ffffff; --ink: #14171c; --muted: #5b6470; --line: #d5d9e0;
+    --accent: #1d5fd6; --accent-ink: #ffffff; --warn: #a15c00; --warn-bg: #fff3dd;
+    --bad: #b3261e; --bad-bg: #fde8e6; --core: #dfe9ff; --planning: #efe9dc; --now: #d6336c;
+    --cls-retrieved: #1a7f37; --cls-derived: #7a4bd6; --cls-reprocessed: #b0741a; --cls-inter: #8a8a8a; --cls-gen: #c2410c; --cls-uncal: #6b7280;
+    --rail-h: 108px; --focusbar-h: 52px; --tabs-w: 56px;
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1216; --panel: #171b21; --ink: #e8ebf0; --muted: #98a2b3; --line: #2b323c;
+    --accent: #6ea0ff; --accent-ink: #0b1220; --warn: #f3b352; --warn-bg: #3a2a0c;
+    --bad: #ff7b72; --bad-bg: #3d1513; --core: #1b2a48; --planning: #2d2a22; --now: #ff5c8a;
+    --cls-retrieved: #4ade80; --cls-derived: #c4a7ff; --cls-reprocessed: #f5c26b; --cls-inter: #a3a3a3; --cls-gen: #fb923c; --cls-uncal: #9ca3af;
+  }
+  :root[data-theme="night"] {
+    color-scheme: dark;
+    --bg: #000000; --panel: #120000; --ink: #ff3b30; --muted: #a32a22; --line: #3a0d0a;
+    --accent: #ff3b30; --accent-ink: #000000; --warn: #ff6a5e; --warn-bg: #2a0806;
+    --bad: #ff8a80; --bad-bg: #3d0f0c; --core: #240604; --planning: #170302; --now: #ff3b30;
+    --cls-retrieved: #ff3b30; --cls-derived: #ff3b30; --cls-reprocessed: #ff3b30; --cls-inter: #a32a22; --cls-gen: #ff3b30; --cls-uncal: #a32a22;
+  }
+  :root[data-theme="night"] img, :root[data-theme="night"] svg.map { filter: grayscale(1) sepia(1) hue-rotate(-50deg) saturate(6) brightness(.55); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+  button, input, select { font: inherit; color: inherit; }
+  button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  button[aria-pressed="true"], button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.ghost { background: transparent; border-color: transparent; }
+  button.ghost:hover { border-color: var(--line); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 12px; white-space: nowrap; }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+  .chip.bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+  .chip.core { background: var(--core); border-color: transparent; }
+  .chip.planning { background: var(--planning); border-color: transparent; }
+  .muted { color: var(--muted); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .glyph { display: inline-block; width: 1em; text-align: center; font-weight: 700; }
+  .glyph.retrieved { color: var(--cls-retrieved); } .glyph.derived_here { color: var(--cls-derived); } .glyph.reprocessed { color: var(--cls-reprocessed); }
+  .glyph.intermediary_derived { color: var(--cls-inter); } .glyph.generated_display { color: var(--cls-gen); } .glyph.uncalibrated_observation { color: var(--cls-uncal); } .glyph.unrecognised { color: var(--bad); }
+
+  /* ---------- shell grid ---------- */
+  #shell { height: 100%; display: grid; grid-template-rows: var(--focusbar-h) auto 1fr auto; grid-template-columns: var(--tabs-w) 1fr; }
+  #shell[data-v="2"], #shell[data-v="3"] { grid-template-columns: 1fr; }
+  #shell[data-v="2"] #stage, #shell[data-v="3"] #stage { grid-column: 1 / -1; }
+  #focusbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  #focusbar .spacer { flex: 1; }
+  #banner { grid-column: 1 / -1; display: none; padding: 4px 12px; background: var(--warn-bg); color: var(--warn); border-bottom: 1px solid var(--line); font-size: 13px; }
+  #banner.on { display: flex; gap: 12px; align-items: center; }
+  #tabs { display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; border-right: 1px solid var(--line); background: var(--panel); overflow: hidden; }
+  #shell[data-v="2"] #tabs, #shell[data-v="3"] #tabs { display: none; }
+  #tabs button { writing-mode: vertical-rl; transform: rotate(180deg); padding: 10px 4px; border: 1px solid transparent; }
+  #tabs button[aria-pressed="true"] { border-color: var(--accent); }
+  #tabs button[data-docked="true"]::after { content: " ⧉ docked"; }
+  #stage { position: relative; display: grid; grid-template-columns: 1fr; min-height: 0; }
+  #stage.docked { grid-template-columns: 1fr 6px minmax(280px, var(--dock-w, 400px)); }
+  #stage.tiles { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; padding: 6px; background: var(--bg); }
+  #stage.tiles.zoomed { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  #stage.tiles.zoomed .view:not(.zoom) { display: none; }
+  .splitter { background: var(--line); cursor: col-resize; }
+  .view { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--panel); border: 1px solid var(--line); }
+  .view header { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .view header .spacer { flex: 1; }
+  .view .body { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px; }
+  .view.map .body { padding: 0; display: flex; flex-direction: column; }
+  .view.fullscreen { position: fixed; inset: var(--focusbar-h) 0 var(--rail-h) 0; z-index: 20; }
+  #shell[data-v="2"] .view.fullscreen { inset: var(--focusbar-h) 0 0 0; }
+  svg.map { flex: 1; width: 100%; height: 100%; background: #dbe7f0; }
+  :root[data-theme="dark"] svg.map { background: #1c2733; }
+  .strip { display: flex; gap: 8px; align-items: center; padding: 3px 10px; font-size: 12px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 85%, transparent); }
+  .strip.overlay { position: absolute; left: 0; right: 0; bottom: 0; }
+  #globalstrip { grid-column: 1 / -1; display: none; }
+  #shell[data-v="3"] #globalstrip { display: flex; }
+  #rail { grid-column: 1 / -1; height: var(--rail-h); background: var(--panel); border-top: 1px solid var(--line); padding: 6px 12px 4px; display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
+  #shell[data-v="2"] #rail { display: none; }
+  .scrubber { position: relative; display: grid; grid-template-rows: 10px 18px 14px; gap: 2px; user-select: none; }
+  .scrubber .tiers { position: relative; height: 10px; border-radius: 3px; overflow: hidden; }
+  .scrubber .tiers span { position: absolute; top: 0; bottom: 0; }
+  .scrubber .coverage { position: relative; height: 18px; display: flex; }
+  .scrubber .coverage i { flex: 1; align-self: flex-end; background: var(--accent); opacity: .35; }
+  .scrubber .marks { position: relative; height: 14px; font-size: 11px; color: var(--muted); }
+  .scrubber .marks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .scrubber .boundary { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--warn); }
+  .scrubber .boundary label { position: absolute; top: -2px; left: 4px; font-size: 11px; color: var(--warn); white-space: nowrap; }
+  .scrubber .now { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--now); }
+  .scrubber .head { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 3px solid var(--ink); }
+  .scrubber input[type=range] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+  .transport { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+  dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; max-width: min(720px, 90vw); }
+  dialog::backdrop { background: rgb(0 0 0 / .45); }
+  [popover] { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; max-width: 520px; max-height: 70vh; overflow: auto; margin: 0; }
+  #statuspop { position: fixed; inset: auto 12px auto auto; top: calc(var(--focusbar-h) + 4px); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .field { display: grid; grid-template-columns: 1.1em 1fr auto; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--line); cursor: pointer; }
+  .field .src { font-size: 12px; color: var(--muted); }
+  pre { max-height: 50vh; overflow: auto; font-size: 11px; background: var(--bg); padding: 8px; border-radius: 6px; }
+  #variantbar { position: fixed; left: 50%; bottom: calc(var(--rail-h) + 10px); transform: translateX(-50%); z-index: 50; display: flex; gap: 6px; align-items: center; padding: 6px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 4px 16px rgb(0 0 0 / .25); font-size: 12px; }
+  :root[data-v="2"] #variantbar { bottom: 10px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .inspector { font-size: 12px; }
+  .inspector dt { color: var(--muted); float: left; clear: left; width: 90px; }
+  .inspector dd { margin: 0 0 4px 96px; }
+  .placeholder { color: var(--muted); font-style: italic; }
+  .viewrow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div id="shell" data-v="1">
+  <div id="focusbar" role="region" aria-label="Focus">
+    <strong>Astraeus</strong>
+    <button id="placebtn" title="Focus point">📍 <span id="placelabel">…</span></button>
+    <span id="instant" class="mono" aria-live="polite">…</span>
+    <span id="tierchip" class="chip core">core</span>
+    <span class="spacer"></span>
+    <span id="viewrow" class="viewrow"></span>
+    <span class="spacer"></span>
+    <button id="statusbtn" popovertarget="statuspop" class="chip" aria-label="Provenance status">…</button>
+    <select id="theme" aria-label="Theme"><option value="light">light</option><option value="dark">dark</option><option value="night">night</option></select>
+    <button id="inspectbtn" class="ghost" aria-pressed="false" title="Show the Focus state">{ }</button>
+  </div>
+  <div id="banner" role="status"></div>
+  <nav id="tabs" aria-label="Views"></nav>
+  <div id="stage"></div>
+  <div id="globalstrip" class="strip"></div>
+  <div id="rail" role="region" aria-label="Time">
+    <div class="transport">
+      <span id="railtitle"><strong>Instant</strong> <span class="muted">shared by every open view</span></span>
+      <span class="spacer" style="flex:1"></span>
+      <button id="jumpnow">Now</button>
+      <button id="stepback" aria-label="Back one hour">◀</button>
+      <button id="play" aria-pressed="false">▶ play</button>
+      <button id="stepfwd" aria-label="Forward one hour">▶</button>
+      <span id="speed" class="muted">1 h per step</span>
+    </div>
+    <div id="scrubber" class="scrubber"></div>
+    <div id="raillegend" class="muted" style="font-size:11px"></div>
+  </div>
+</div>
+
+<div id="statuspop" popover>
+  <h3 style="margin:0 0 6px">Provenance status</h3>
+  <div id="statusbody">loading…</div>
+</div>
+
+<dialog id="placedlg" aria-labelledby="placeh">
+  <h3 id="placeh" style="margin-top:0">Focus point</h3>
+  <p class="muted" style="margin-top:0">A site is a registered preferred location, never a limit. Any point inside the evidence box (45.0 to 50.5 N, 58.0 to 46.0 W) is served.</p>
+  <div id="sitelist"></div>
+  <fieldset style="margin-top:10px;border:1px solid var(--line);border-radius:6px">
+    <legend>Any point</legend>
+    <label>lat <input id="lat" type="number" step="0.0001" style="width:110px"></label>
+    <label>lon <input id="lon" type="number" step="0.0001" style="width:110px"></label>
+    <button id="usepoint">Use point</button>
+    <span id="pointerr" class="muted"></span>
+  </fieldset>
+  <p class="muted" style="font-size:12px">No <code>/sites</code> route exists; the three sites are copied from <code>registry/sites/*.yaml</code>.</p>
+  <button id="placeclose" style="margin-top:8px">Close</button>
+</dialog>
+
+<dialog id="detaildlg"><h3 id="detailh" style="margin-top:0"></h3><div id="detailbody"></div><button id="detailclose">Close</button></dialog>
+
+<div id="variantbar">
+  <span class="muted">Shell variant</span>
+  <button data-v="1">1 Bench</button>
+  <button data-v="2">2 Time per view</button>
+  <button data-v="3">3 Canvas</button>
+  <span class="muted" id="variantnote"></span>
+</div>
+
+<script>
+// ---------- constants ----------
+const API = '/api/experiments/weather/v0';
+const SITES = [
+  { id: 'signal-hill', name: 'Signal Hill (Cabot Tower)', lat: 47.5704, lon: -52.6816, elev: 140 },
+  { id: 'cape-spear', name: 'Cape Spear (lighthouse headland)', lat: 47.5233, lon: -52.6224, elev: 75 },
+  { id: 'quidi-vidi', name: 'Quidi Vidi Lake (boathouses)', lat: 47.5806, lon: -52.6867, elev: 5 },
+];
+const BOX = { n: 50.5, s: 45.0, w: -58.0, e: -46.0 };
+const VIEWS = ['map', 'series', 'sky', 'activity', 'sources'];
+const VIEW_NAME = { map: 'Map', series: 'Series', sky: 'Sky', activity: 'Activity', sources: 'Sources' };
+const GLYPH = { retrieved: '●', reprocessed: '◐', derived_here: '◆', intermediary_derived: '◇', generated_display: '○', uncalibrated_observation: '▲' };
+const VARIANT_NOTES = { // decided 2026-09-03: variant 1 is the shell; 2 and 3 kept as the rejected alternatives
+
+  1: 'THE SHELL (decided 2026-09-03): one global instant on the rail; vertical view tabs; one view on stage, a second docked right; disclosure strip on the map edge; data mode as a full-width banner; Focus in the URL, theme not',
+  2: 'no shared instant: each view owns a scrubber, with an optional link; views are top tabs; fullscreen per view; data mode is a full-width banner',
+  3: 'all five views as tiles at one global instant; click a title to zoom; disclosure is a global strip under the Focus bar; banner always on',
+};
+
+// ---------- state (the Focus) ----------
+const focus = { v: '1', site: 'signal-hill', lat: null, lon: null, t: null, view: 'map', dock: null, theme: 'light', link: true, zoom: null, full: null };
+let timeline = null, ready = null, status = null, layersInfo = null, point = null, astro = null;
+let playing = false, playTimer = null;
+const perViewT = {};  // variant 2 only
+
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  for (const k of ['v', 'site', 'lat', 'lon', 't', 'view', 'dock', 'theme', 'zoom', 'full']) if (p.has(k)) focus[k] = p.get(k);
+  if (p.has('link')) focus.link = p.get('link') !== '0';
+  if (focus.lat != null) { focus.lat = +focus.lat; focus.lon = +focus.lon; focus.site = null; }
+  if (!VARIANT_NOTES[focus.v]) focus.v = '1';
+}
+function writeUrl() {
+  const p = new URLSearchParams();
+  p.set('v', focus.v);
+  if (focus.site) p.set('site', focus.site); else { p.set('lat', focus.lat.toFixed(4)); p.set('lon', focus.lon.toFixed(4)); }
+  if (focus.t && Date.parse(focus.t) !== snapHour(Date.now())) p.set('t', focus.t);
+  p.set('view', focus.view);
+  if (focus.dock) p.set('dock', focus.dock);
+  if (focus.zoom) p.set('zoom', focus.zoom);
+  if (focus.full) p.set('full', focus.full);
+  if (focus.v === '2') p.set('link', focus.link ? '1' : '0');
+  history.replaceState(null, '', '?' + p.toString());
+}
+function nearestSite(lat, lon) { let best = null; for (const s of SITES) { const dx = (lon - s.lon) * 111.32 * Math.cos(lat * Math.PI / 180), dy = (lat - s.lat) * 110.57; const km = Math.hypot(dx, dy); if (!best || km < best.km) best = { site: s, km }; } return best; }
+function focusPoint() { const s = SITES.find(x => x.id === focus.site); return s ? { lat: s.lat, lon: s.lon, name: s.name, site: s } : { lat: focus.lat, lon: focus.lon, name: `${focus.lat.toFixed(4)}, ${focus.lon.toFixed(4)} (any point)`, site: null }; }
+
+// ---------- time helpers ----------
+const hour = 3600e3;
+const iso = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+const nlOffset = -2.5 * hour;
+function nlTime(ms) { const d = new Date(ms + nlOffset); return d.toISOString().slice(0, 16).replace('T', ' ') + ' NDT'; }
+function windowOf() { if (!timeline) { const n = Date.now(); return { start: n - 24 * hour, end: n + 14 * 24 * hour, boundary: n + 24 * hour }; } return { start: Date.parse(timeline.start), end: Date.parse(timeline.end), boundary: timeline.boundary ? Date.parse(timeline.boundary) : null }; }
+function snapHour(ms) { return Math.round(ms / hour) * hour; }
+function tierAt(ms) { const w = windowOf(); if (w.boundary == null) return 'unknown'; return ms < w.boundary ? 'core' : 'planning'; }
+function currentT() { return focus.t ? Date.parse(focus.t) : snapHour(Date.now()); }
+function setT(ms, view) {
+  const w = windowOf(); ms = Math.min(Math.max(snapHour(ms), w.start), w.end);
+  if (focus.v === '2' && !focus.link && view) { perViewT[view] = iso(ms); renderViews(); return; }
+  focus.t = iso(ms); writeUrl(); renderFocusbar(); renderScrubber(); renderViews(); loadPoint();
+}
+
+// ---------- data ----------
+async function getJson(path) { const r = await fetch(API + path); if (!r.ok) throw new Error(`${path} ${r.status}`); return r.json(); }
+async function loadAll() {
+  const results = await Promise.allSettled([getJson('/timeline'), getJson('/ready'), getJson('/sources/status'), getJson('/layers'), ]);
+  [timeline, ready, status, layersInfo] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+  const failed = results.filter(r => r.status === 'rejected').map(r => r.reason.message);
+  if (!focus.t) focus.t = iso(snapHour(Date.now()));
+  renderAll();
+  if (failed.length) document.getElementById('banner').textContent = 'API unreachable: ' + failed.join('; ');
+  loadPoint();
+}
+let pointSeq = 0;
+async function loadPoint() {
+  const seq = ++pointSeq; const fp = focusPoint();
+  point = null; astro = null; renderViews();
+  const q = `latitude=${fp.lat}&longitude=${fp.lon}&valid_time=${encodeURIComponent(focus.t)}`;
+  const [p, a] = await Promise.allSettled([getJson('/point?' + q), getJson('/astronomy?' + q)]);
+  if (seq !== pointSeq) return;
+  point = p.status === 'fulfilled' ? p.value : { error: p.reason.message };
+  astro = a.status === 'fulfilled' ? a.value : { error: a.reason.message };
+  renderViews();
+}
+
+// ---------- render ----------
+function renderAll() { document.documentElement.dataset.theme = focus.theme; document.getElementById('theme').value = focus.theme; document.getElementById('shell').dataset.v = focus.v; document.documentElement.dataset.v = focus.v; document.getElementById('variantnote').textContent = VARIANT_NOTES[focus.v]; for (const b of document.querySelectorAll('#variantbar button')) b.setAttribute('aria-pressed', b.dataset.v === focus.v); renderFocusbar(); renderStatus(); renderTabs(); renderScrubber(); renderViews(); writeUrl(); }
+
+function renderFocusbar() {
+  const fp = focusPoint();
+  document.getElementById('placelabel').innerHTML = fp.site ? fp.site.name : (() => { const n = nearestSite(fp.lat, fp.lon); return `${fp.name} <span class="muted">· nearest site ${n.site.id} ${n.km.toFixed(1)} km, horizon not borrowed</span>`; })();
+  const t = currentT();
+  document.getElementById('instant').textContent = focus.v === '2' && !focus.link ? 'instants per view' : `${nlTime(t)}  ·  ${iso(t)}`;
+  const tier = tierAt(t); const tc = document.getElementById('tierchip'); tc.textContent = tier === 'core' ? 'core tier' : tier === 'planning' ? 'planning tier' : 'tier unknown'; tc.className = 'chip ' + tier;
+  tc.title = tier === 'core' ? 'core window: full-fidelity products, 24 h ahead' : 'planning window: global products only, to 14 days';
+  const vr = document.getElementById('viewrow'); vr.innerHTML = '';
+  if (focus.v === '2') for (const v of VIEWS) { const b = document.createElement('button'); b.textContent = VIEW_NAME[v]; b.setAttribute('aria-pressed', focus.view === v); b.onclick = () => { focus.view = v; focus.full = null; renderAll(); }; vr.appendChild(b); }
+}
+
+function renderStatus() {
+  const b = document.getElementById('statusbtn'); const body = document.getElementById('statusbody');
+  if (!ready) { b.textContent = 'status unknown'; b.className = 'chip bad'; body.textContent = '/ready did not answer.'; return; }
+  const live = status ? status.statuses.filter(s => s.last_retrieval) : [];
+  const stale = live.filter(s => s.freshness && s.freshness.status === 'stale');
+  const aged = Object.keys(ready.aged_out_sources || {});
+  const notices = (ready.notices || []).length + (layersInfo ? layersInfo.notices.length : 0);
+  const problems = stale.length + aged.length + (ready.notices || []).length;
+  b.className = 'chip ' + (ready.data_mode !== 'live' ? 'bad' : problems ? 'warn' : '');
+  b.innerHTML = `<span>${ready.data_mode}</span> · <span>${live.length} retrieved</span> · <span>${stale.length} stale</span>` + (aged.length ? ` · <span>${aged.length} aged out</span>` : '') + ` · <span>${notices} notices</span>`;
+  body.innerHTML = `
+    <p><b>data mode</b> ${ready.data_mode}, operational ${ready.operational}. ${live.length} of ${status ? status.statuses.length : '?'} catalogued sources have a retrieval.</p>
+    <p><b>Stale</b> (${stale.length}): ${stale.map(s => `<code>${s.source_id}</code> ${Math.round(s.freshness.age_seconds / 3600)} h against ${Math.round(s.freshness.threshold_seconds / 3600)} h`).join('; ') || 'none'}</p>
+    <p><b>Aged out</b>: ${aged.length ? aged.join(', ') : 'none'}</p>
+    <p><b>Service notices</b>: ${(ready.notices || []).join('<br>') || 'none'}</p>
+    <details><summary>Layer notices (${layersInfo ? layersInfo.notices.length : 0})</summary><ul>${(layersInfo ? layersInfo.notices : []).map(n => `<li>${n}</li>`).join('')}</ul></details>`;
+  const banner = document.getElementById('banner');
+  { banner.className = 'on'; banner.innerHTML = `<b>${ready.data_mode}</b> · ${live.length} sources retrieved, ${stale.length} stale, ${aged.length} aged out · ${notices} notices <button popovertarget="statuspop" class="ghost" style="font-size:12px">details</button>`; }
+}
+
+function renderTabs() {
+  const n = document.getElementById('tabs'); n.innerHTML = '';
+  for (const v of VIEWS) {
+    const b = document.createElement('button'); b.textContent = VIEW_NAME[v]; b.setAttribute('aria-pressed', focus.view === v); b.dataset.docked = focus.dock === v;
+    b.title = 'open on stage';
+    b.onclick = () => { if (focus.dock === v) focus.dock = null; focus.view = v; renderAll(); };
+    n.appendChild(b);
+  }
+}
+
+function viewEl(v, opts = {}) {
+  const el = document.createElement('section'); el.className = 'view ' + v; el.setAttribute('aria-label', VIEW_NAME[v] + ' view');
+  const h = document.createElement('header'); h.innerHTML = `<span>${VIEW_NAME[v]}</span>`;
+  if (opts.zoomable) { const z = document.createElement('button'); z.className = 'ghost'; z.textContent = focus.zoom === v ? '⤡ back to tiles' : '⤢ zoom'; z.onclick = () => { focus.zoom = focus.zoom === v ? null : v; renderAll(); }; h.appendChild(z); }
+  const sp = document.createElement('span'); sp.className = 'spacer'; h.appendChild(sp);
+  if (opts.dockable) { const d = document.createElement('button'); d.className = 'ghost'; d.textContent = focus.dock === v ? 'undock' : 'dock →'; d.onclick = () => { if (focus.dock === v) focus.dock = null; else { focus.dock = v; if (focus.view === v) focus.view = VIEWS.find(x => x !== v); } renderAll(); }; h.appendChild(d); }
+  if (opts.fullscreen) { const f = document.createElement('button'); f.className = 'ghost'; f.textContent = focus.full === v ? '⤡ exit full screen' : '⤢ full screen'; f.onclick = () => { focus.full = focus.full === v ? null : v; renderAll(); }; h.appendChild(f); }
+  if (focus.full === v) el.classList.add('fullscreen');
+  const body = document.createElement('div'); body.className = 'body';
+  const tAt = focus.v === '2' && !focus.link && perViewT[v] ? Date.parse(perViewT[v]) : currentT();
+  body.innerHTML = viewBody(v, tAt);
+  el.appendChild(h); el.appendChild(body);
+  if (v === 'map') { body.prepend(mapSvg()); if (focus.v !== '3') { const s = document.createElement('div'); s.className = 'strip'; s.innerHTML = disclosureStrip(); body.appendChild(s); } }
+  if (focus.v === '2') { const r = document.createElement('div'); r.className = 'rail-inline'; r.style.cssText = 'border-top:1px solid var(--line);padding:6px 10px'; r.innerHTML = `<div class="transport"><span><b>${VIEW_NAME[v]} instant</b> <span class="mono">${iso(tAt)}</span></span><span style="flex:1"></span><label style="font-size:12px"><input type="checkbox" ${focus.link ? 'checked' : ''} data-link> link to other views</label></div><div class="scrubber" data-view="${v}"></div>`; el.appendChild(r); r.querySelector('[data-link]').onchange = e => { focus.link = e.target.checked; if (focus.link) for (const k in perViewT) delete perViewT[k]; renderAll(); }; buildScrubber(r.querySelector('.scrubber'), tAt, v); }
+  for (const f of body.querySelectorAll('.field[data-i]')) f.onclick = () => showDetail(point.fields[+f.dataset.i]);
+  return el;
+}
+
+function viewBody(v, t) {
+  const fp = focusPoint();
+  if (v === 'map') return '';
+  if (v === 'series') return `<p class="placeholder">Series placeholder. Reads the Focus: ${fp.name}. No time-series route exists; the API serves one instant per /point call (about 205 KB). The scrubber head would be a cursor on every chart here.</p>` + pointFields(['temperature', 'wind_speed', 'relative_humidity', 'total_cloud_opacity', 'visibility']);
+  if (v === 'sky') return `<p class="placeholder">Sky placeholder. Reads the Focus at ${nlTime(t)}.</p>` + astroBlock() + (fp.site ? `<p class="muted">Site horizon: registered, ${fp.site.elev} m, hand-read, terrain check not run.</p>` : `<p class="muted">Any point: no registered horizon, horizon-dependent fields shown blocked, not borrowed from a site.</p>`);
+  if (v === 'activity') return `<p class="placeholder">Activity placeholder. Reads the Focus. No verdict route exists; the four profiles (running, astronomy, aurora, landscape photography) are registered files with no API.</p><p class="muted">A verdict here would be a derived-here score with its hard stops, grades and limiting field one click away, beside the raw evidence, never in place of it.</p>`;
+  if (v === 'sources') { if (!status) return '<p class="placeholder">/sources/status did not answer.</p>'; const live = status.statuses.filter(s => s.last_retrieval); return `<p class="placeholder">Sources placeholder: the ${live.length} sources with a retrieval, from /sources/status.</p><table><tr><th>source</th><th>state</th><th>freshness</th><th>last retrieval</th></tr>${live.map(s => `<tr><td><code>${s.source_id}</code></td><td>${s.state}</td><td>${s.freshness.status}${s.freshness.age_seconds != null ? ' ' + Math.round(s.freshness.age_seconds / 3600) + ' h' : ''}</td><td class="mono">${s.last_retrieval}</td></tr>`).join('')}</table>`; }
+}
+
+function pointFields(names) {
+  if (!point) return '<p class="muted">loading /point…</p>';
+  if (point.error) return `<p class="muted">/point failed: ${point.error}</p>`;
+  const rows = point.fields.map((f, i) => ({ f, i })).filter(x => names.includes(x.f.field));
+  if (!rows.length) return `<p class="muted">no values at this focus: selection <b>${point.selection.badge}</b>, mode ${point.selection.mode}${point.selection.reason ? ', ' + point.selection.reason : ''}.</p>`;
+  return `<p class="muted" style="font-size:12px">selection: ${point.selection.badge} (${point.selection.mode}); glyph and source tag beside every value; click a row for the full provenance.</p>` + rows.map(({ f, i }) => {
+    const p = f.provenance; const cls = GLYPH[p.evidence_class] ? p.evidence_class : 'unrecognised';
+    const val = f.value == null ? `<span class="muted">Unknown (${f.absence_state || 'null'})</span>` : `${typeof f.value === 'number' ? +f.value.toFixed(1) : f.value} <span class="muted">${p.normalized_units}</span>`;
+    return `<div class="field" data-i="${i}" title="${p.evidence_class}"><span class="glyph ${cls}">${GLYPH[cls] || '?'}</span><span>${f.field} ${val}</span><span class="src">${p.source_id} · run ${p.run_time ? p.run_time.slice(5, 16).replace('T', ' ') : 'unknown'} · ${p.freshness.status}</span></div>`;
+  }).join('');
+}
+function astroBlock() {
+  if (!astro) return '<p class="muted">loading /astronomy…</p>'; if (astro.error) return `<p class="muted">/astronomy failed: ${astro.error}</p>`;
+  const g = astro.provenance || {};
+  return `<div class="field"><span class="glyph derived_here">◆</span><span>sun altitude ${astro.sun_altitude_deg?.toFixed(1)}°, moon ${astro.moon_altitude_deg?.toFixed(1)}° (${Math.round((astro.moon?.illuminated_fraction ?? 0) * 100)} % lit), core ${astro.core_altitude_deg?.toFixed(1)}°</span><span class="src">${g.source_id} · ${g.derivation_version}</span></div>`;
+}
+function disclosureStrip() {
+  const t = currentT(); const item = timeline ? timeline.items.find(i => Date.parse(i.valid_time_utc) === t) : null;
+  const n = item ? item.available_products.length : 0;
+  return `<span class="glyph retrieved">●</span><span>drawn: nothing yet (placeholder map)</span><span class="muted">·</span><span>${n} sources have a frame at ${iso(t)}${item && item.coverage_notice ? ' · ' + item.coverage_notice : ''}</span><span class="muted">·</span><span>no generated display active</span><span style="flex:1"></span><button class="ghost" style="font-size:12px" onclick="alert('one click away: the full disclosure sentence, method, inputs')">why?</button>`;
+}
+function mapSvg() {
+  const ns = 'http://www.w3.org/2000/svg'; const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'map'); svg.setAttribute('viewBox', '0 0 1200 550');
+  const D = { n: 47.75, s: 47.35, w: -53.05, e: -52.45 }; const X = lon => (lon - D.w) / (D.e - D.w) * 1200, Y = lat => (D.n - lat) / (D.n - D.s) * 550;
+  svg.innerHTML = `<rect x="0" y="0" width="1200" height="550" fill="none" stroke="var(--line)" stroke-dasharray="6 4"/><text x="8" y="16" font-size="12" fill="var(--muted)">placeholder map, St. John\'s area (47.35 to 47.75 N, 53.05 to 52.45 W); click to set an any-point focus; the real Map is ticket #46</text>
+   
+   ${SITES.map((s, k) => `<g data-site="${s.id}" style="cursor:pointer"><circle cx="${X(s.lon)}" cy="${Y(s.lat)}" r="${focus.site === s.id ? 8 : 5}" fill="${focus.site === s.id ? 'var(--accent)' : 'var(--panel)'}" stroke="var(--ink)"/><text x="${X(s.lon) + 10}" y="${Y(s.lat) + 4 + (k === 2 ? -14 : 0)}" font-size="11" fill="var(--ink)">${s.id}</text></g>`).join('')}
+   ${focus.site ? '' : `<g><circle cx="${X(focus.lon)}" cy="${Y(focus.lat)}" r="7" fill="none" stroke="var(--now)" stroke-width="2"/><text x="${X(focus.lon) + 10}" y="${Y(focus.lat) + 4}" font-size="11" fill="var(--now)">any point</text></g>`}`;
+  svg.onclick = e => { const g = e.target.closest('[data-site]'); const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const p = pt.matrixTransform(svg.getScreenCTM().inverse()); if (g) { focus.site = g.dataset.site; focus.lat = focus.lon = null; } else { focus.site = null; focus.lon = +(D.w + p.x / 1200 * (D.e - D.w)).toFixed(4); focus.lat = +(D.n - p.y / 550 * (D.n - D.s)).toFixed(4); } renderAll(); loadPoint(); };
+  return svg;
+}
+
+function renderViews() {
+  const st = document.getElementById('stage'); st.innerHTML = ''; st.className = '';
+  if (focus.v === '3') {
+    st.className = 'tiles' + (focus.zoom ? ' zoomed' : '');
+    for (const v of VIEWS) { const el = viewEl(v, { zoomable: true }); if (focus.zoom === v) el.classList.add('zoom'); st.appendChild(el); }
+    if (!focus.zoom) { st.style.gridTemplateColumns = '2fr 1fr 1fr'; st.style.gridTemplateRows = '1fr 1fr'; st.children[0].style.gridRow = '1 / span 2'; } else st.style.cssText = '';
+    document.getElementById('globalstrip').innerHTML = disclosureStrip();
+  } else if (focus.v === '2') {
+    st.appendChild(viewEl(focus.view, { fullscreen: true }));
+  } else {
+    if (focus.dock && focus.dock !== focus.view) st.className = 'docked';
+    st.appendChild(viewEl(focus.view, { dockable: true, fullscreen: true }));
+    if (focus.dock && focus.dock !== focus.view) { const sp = document.createElement('div'); sp.className = 'splitter'; st.appendChild(sp); st.appendChild(viewEl(focus.dock, { dockable: true })); sp.onpointerdown = ev => { sp.setPointerCapture(ev.pointerId); const move = e => { const w = st.getBoundingClientRect().right - e.clientX; st.style.setProperty('--dock-w', Math.max(280, w) + 'px'); }; sp.onpointermove = move; sp.onpointerup = () => { sp.onpointermove = null; }; }; }
+  }
+  document.getElementById('inspectbtn').onclick = e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', on); let box = document.getElementById('inspector'); if (!on) { box && box.remove(); return; } box = box || document.createElement('div'); box.id = 'inspector'; box.style.cssText = 'position:fixed;right:12px;top:calc(var(--focusbar-h) + 8px);z-index:30;width:360px'; box.setAttribute('popover', 'manual'); document.body.appendChild(box); box.innerHTML = `<b>Focus state</b> (what the URL carries)<dl class="inspector">${Object.entries(focus).map(([k, v]) => `<dt>${k}</dt><dd class="mono">${JSON.stringify(v)}</dd>`).join('')}</dl><div class="mono" style="word-break:break-all">${location.search}</div>`; box.showPopover(); };
+}
+
+// ---------- scrubber ----------
+function renderScrubber() { buildScrubber(document.getElementById('scrubber'), currentT(), null); const w = windowOf(); const planning = timeline ? timeline.items.some(i => i.tier === 'planning' && i.available_products.length) : false; document.getElementById('raillegend').textContent = `window ${iso(w.start)} to ${iso(w.end)} from /timeline · bars are the count of sources with a frame at each hour · dashed line is the tier boundary${planning ? '' : ' · planning tier holds no published frames'} · axis in Newfoundland time (UTC-2:30), stamps in UTC`; }
+function buildScrubber(root, t, view) {
+  const w = windowOf(); const span = w.end - w.start; const pct = ms => ((ms - w.start) / span * 100).toFixed(3) + '%';
+  const items = timeline ? timeline.items : []; const max = Math.max(1, ...items.map(i => i.available_products.length));
+  let marks = ''; let lastX = -1e9; const railW = root.clientWidth || 1200;
+  for (let ms = Math.ceil(w.start / hour) * hour; ms <= w.end; ms += hour) {
+    const d = new Date(ms + nlOffset); const h = d.getUTCHours(), m = d.getUTCMinutes(); const inCore = ms < (w.boundary ?? Infinity);
+    let label = null;
+    if (inCore && m === 30 && (h % 12 === 0)) label = `${h}:30`;
+    if (h === 0 && m === 30) label = d.toISOString().slice(5, 10);
+    if (!inCore && !(h === 0 && m === 30)) label = null;
+    if (!label) continue; const x = (ms - w.start) / span * railW; if (x - lastX < 44) continue; lastX = x;
+    marks += `<span style="left:${pct(ms)}">${label}</span>`;
+  }
+  root.innerHTML = `
+    <div class="tiers" aria-hidden="true"><span style="left:0;width:${w.boundary ? pct(w.boundary) : '100%'};background:var(--core)"></span>${w.boundary ? `<span style="left:${pct(w.boundary)};right:0;background:var(--planning)"></span>` : ''}</div>
+    <div class="coverage" aria-hidden="true">${items.map(i => `<i style="height:${Math.round(i.available_products.length / max * 100)}%" title="${i.valid_time_utc}: ${i.available_products.join(', ') || 'nothing'}"></i>`).join('')}</div>
+    <div class="marks" aria-hidden="true">${marks}</div>
+    ${w.boundary ? `<div class="boundary" style="left:${pct(w.boundary)}"><label>+24 h · planning</label></div>` : ''}
+    <div class="now" style="left:${pct(snapHour(Date.now()))}" title="now"></div>
+    <div class="head" style="left:${pct(t)}"></div>
+    <span class="sr" id="tierdesc">Core tier ${iso(w.start)} to ${w.boundary ? iso(w.boundary) : 'unknown'}, planning tier to ${iso(w.end)}.</span>
+    <input type="range" min="${w.start}" max="${w.end}" step="${hour}" value="${t}" aria-label="${view ? VIEW_NAME[view] + ' instant' : 'Focus instant'}" aria-valuetext="${nlTime(t)}, ${tierAt(t)} tier" aria-describedby="tierdesc">`;
+  root.querySelector('input').oninput = e => setT(+e.target.value, view);
+}
+
+// ---------- wiring ----------
+document.getElementById('theme').onchange = e => { focus.theme = e.target.value; try { localStorage.setItem('astraeus-weather-theme', focus.theme); } catch {} renderAll(); };
+document.getElementById('jumpnow').onclick = () => setT(Date.now());
+document.getElementById('stepback').onclick = () => setT(currentT() - hour);
+document.getElementById('stepfwd').onclick = () => setT(currentT() + hour);
+document.getElementById('play').onclick = e => { playing = !playing; e.currentTarget.setAttribute('aria-pressed', playing); e.currentTarget.textContent = playing ? '❚❚ pause' : '▶ play'; clearInterval(playTimer); if (playing) playTimer = setInterval(() => { const n = currentT() + hour; if (n > windowOf().end) setT(windowOf().start); else setT(n); }, 700); };
+document.getElementById('placebtn').onclick = () => { const dlg = document.getElementById('placedlg'); const sl = document.getElementById('sitelist'); sl.innerHTML = SITES.map(s => `<button data-site="${s.id}" aria-pressed="${focus.site === s.id}" style="display:block;width:100%;text-align:left;margin:3px 0">${s.name} <span class="muted">${s.lat}, ${s.lon}, ${s.elev} m, horizon registered</span></button>`).join(''); for (const b of sl.querySelectorAll('button')) b.onclick = () => { focus.site = b.dataset.site; focus.lat = focus.lon = null; dlg.close(); renderAll(); loadPoint(); }; const fp = focusPoint(); document.getElementById('lat').value = fp.lat; document.getElementById('lon').value = fp.lon; dlg.showModal(); };
+document.getElementById('usepoint').onclick = () => { const la = +document.getElementById('lat').value, lo = +document.getElementById('lon').value; const err = document.getElementById('pointerr'); if (!(la <= BOX.n && la >= BOX.s && lo >= BOX.w && lo <= BOX.e)) { err.textContent = 'outside the evidence box; refused'; return; } err.textContent = ''; focus.site = null; focus.lat = la; focus.lon = lo; document.getElementById('placedlg').close(); renderAll(); loadPoint(); };
+document.getElementById('placeclose').onclick = () => document.getElementById('placedlg').close();
+document.getElementById('detailclose').onclick = () => document.getElementById('detaildlg').close();
+for (const b of document.querySelectorAll('#variantbar button')) b.onclick = () => { focus.v = b.dataset.v; focus.zoom = focus.full = null; renderAll(); };
+function showDetail(f) { document.getElementById('detailh').textContent = `${f.field} from ${f.provenance.source_id}`; const p = f.provenance; document.getElementById('detailbody').innerHTML = `<p><span class="glyph ${p.evidence_class}">${GLYPH[p.evidence_class] || '?'}</span> <b>${p.evidence_class}</b>${p.derivation ? ` by <code>${p.derivation}</code> (${p.derivation_version}) from ${p.derivation_inputs.map(i => i.field + ' [' + i.source_id + ']').join(', ')}` : ''}. Run ${p.run_time || 'unknown'}, valid ${p.valid_time}, retrieved ${p.retrieval_time}. Quality ${p.quality.status}; freshness ${p.freshness.status} (${p.freshness.age_seconds} s against ${p.freshness.threshold_seconds} s). Licence: ${p.licence}.</p>${f.comparability ? `<p class="muted">${f.comparability}</p>` : ''}<details><summary>raw provenance</summary><pre>${JSON.stringify(f, null, 1)}</pre></details>`; document.getElementById('detaildlg').showModal(); }
+document.addEventListener('keydown', e => { if (e.target.matches('input,select,textarea')) return; if (e.key === 'ArrowLeft') setT(currentT() - hour); if (e.key === 'ArrowRight') setT(currentT() + hour); if (e.key === ' ') { e.preventDefault(); document.getElementById('play').click(); } if (e.key === 'Escape' && (focus.full || focus.zoom)) { focus.full = focus.zoom = null; renderAll(); } });
+
+try { const th = localStorage.getItem('astraeus-weather-theme'); if (th) focus.theme = th; } catch {}
+readUrl(); renderAll(); loadAll();
+</script>
+</body>
+</html>
