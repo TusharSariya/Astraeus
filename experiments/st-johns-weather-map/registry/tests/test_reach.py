@@ -275,7 +275,10 @@ class ReachSchemaTests(unittest.TestCase):
         report = audit.summary(registry())
         self.assertEqual(24, report["reach_declared"])
         self.assertEqual([], report["latency_measured"])
-        self.assertEqual(17, len(report["adapter_source_ids"]))
+        # 17 adapters after horizon-tiers, plus the four ensemble adapters
+        # (eccc-reps, ecmwf-aifs-ens, ecmwf-ens, noaa-gefs) registered by
+        # ensemble-families-and-member-statistics, none schedulable.
+        self.assertEqual(21, len(report["adapter_source_ids"]))
 
 
 if __name__ == "__main__":
