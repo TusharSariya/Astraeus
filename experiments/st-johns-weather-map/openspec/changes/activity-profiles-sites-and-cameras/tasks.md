@@ -120,7 +120,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   Owns: `ingest/cameras/geometry.py` (new).
   Verify: `cd api && uv run pytest tests/test_camera_geometry.py -k
   "reprojection_failed or skyline_mismatch or camera_moved"`
-- [ ] 4.3 Catalogue the Coast Guard, City of St. John's and NTV cameras as
+- [x] 4.3 Catalogue the Coast Guard, City of St. John's and NTV cameras as
   `partnership-only` with their terms quoted from
   `docs/research/wayfinder/camera-inventory.md`, record Fort Amherst as the
   first permission request, and refuse retrieval for any of them.
