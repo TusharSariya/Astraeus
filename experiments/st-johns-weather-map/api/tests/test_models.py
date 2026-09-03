@@ -16,12 +16,18 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
+from registry import fields as catalogue
 from weather_api.models import (
+    ABSENCE_STATES,
+    AGED_OUT_FLAG,
+    BLOCKED_FLAG,
+    CONTRACT_INCOMPLETE_FLAG,
     EVIDENCE_CLASSES,
     PARTIAL_MEMBER_SET_FLAG,
     STATISTIC_REFUSED_FLAG,
     THRESHOLD_COMPARISONS,
     ArtifactManifest,
+    BlockedReason,
     Coverage,
     DataMode,
     EnsembleMemberSet,
@@ -345,3 +351,171 @@ def test_the_member_fields_are_carried_into_the_served_document():
     assert document["ensemble"]["member_set"]["members_used"] == 21
     assert document["ensemble"]["member_set"]["control_included"] is True
     assert document["member"] is None and document["member_control"] is None
+
+
+# The output contract and the three disjoint absence states.
+#
+# Spec-Refs: openspec/changes/activity-profiles-sites-and-cameras/specs/activity-profile/spec.md
+# Spec-Refs: openspec/changes/activity-profiles-sites-and-cameras/specs/point-evidence-sampling/spec.md
+
+
+LICENCE_BLOCK = BlockedReason(
+    kind="licence",
+    source_id="falchi-light-pollution-atlas",
+    terms="non-commercial use only; no redistribution of derived rasters",
+    request=None,
+)
+
+
+def blocked_provenance(**overrides: object) -> Provenance:
+    quality = Quality(status="unknown", flags=[BLOCKED_FLAG, "blocked:licence"])
+    return Provenance(**provenance_kwargs(quality=quality, **overrides))
+
+
+def test_the_absence_states_are_three_and_disjoint():
+    assert ABSENCE_STATES == ("null", "blocked", "aged_out")
+    assert len(set(ABSENCE_STATES)) == len(ABSENCE_STATES)
+    assert BLOCKED_FLAG == "blocked"
+    assert CONTRACT_INCOMPLETE_FLAG == "contract_incomplete"
+    assert AGED_OUT_FLAG not in {"null", "blocked"}
+
+
+def test_a_present_value_carries_the_output_contract_and_no_absence_state():
+    served = EvidenceField(field="temperature", value=4.0, provenance=Provenance(**provenance_kwargs()))
+    assert served.absence_state is None and served.blocked is None
+    assert served.key == "temperature_2m" and served.family == "temperature"
+    assert served.comparability == catalogue.family("temperature").note
+    assert served.provenance.evidence_class == "retrieved"
+    assert served.provenance.freshness.status == "fresh"
+    assert served.provenance.source_id == "eccc-hrdps"
+
+
+def test_no_output_contract_element_is_omitted_from_the_wire():
+    document = EvidenceField(field="temperature", value=4.0, provenance=Provenance(**provenance_kwargs())).model_dump()
+    for element in ("value", "absence_state", "comparability", "blocked"):
+        assert element in document
+    assert document["provenance"]["evidence_class"] == "retrieved"
+    assert document["provenance"]["quality"]["status"] == "passed"
+    assert document["provenance"]["freshness"]["status"] == "fresh"
+    assert document["provenance"]["source_id"] == "eccc-hrdps"
+
+
+def test_an_unflagged_absence_takes_the_null_absence_state():
+    absent = EvidenceField(field="temperature", value=None, provenance=Provenance(**provenance_kwargs()))
+    assert absent.absence_state == "null" and absent.blocked is None
+    assert absent.comparability == catalogue.family("temperature").note
+
+
+def test_a_reason_flag_stays_a_reason_on_a_null_absence_state():
+    for reason in ("retrieval_failed", "no_retrieval"):
+        absent = EvidenceField(
+            field="temperature", value=None,
+            provenance=Provenance(**provenance_kwargs(quality=Quality(status="unknown", flags=[reason]))),
+        )
+        assert absent.absence_state == "null"
+        assert reason in absent.provenance.quality.flags
+
+
+def test_a_storage_value_is_never_read_as_an_absence_state():
+    for storage in ("available-not-stored", "not-published"):
+        assert storage not in ABSENCE_STATES
+        absent = EvidenceField(
+            field="temperature", value=None, storage=storage,
+            provenance=Provenance(**provenance_kwargs()),
+        )
+        assert absent.storage == storage and absent.absence_state == "null"
+
+
+def test_a_blocked_absence_state_carries_its_reason_and_the_flag_carrier():
+    field = EvidenceField(field="temperature", value=None, blocked=LICENCE_BLOCK, provenance=blocked_provenance())
+    assert field.absence_state == "blocked"
+    assert field.blocked is not None and field.blocked.kind == "licence"
+    document = field.model_dump()
+    assert document["value"] is None
+    assert document["absence_state"] == "blocked"
+    assert document["blocked"]["source_id"] == "falchi-light-pollution-atlas"
+    assert "blocked" in document["provenance"]["quality"]["flags"]
+    assert "blocked:licence" in document["provenance"]["quality"]["flags"]
+
+
+def test_blocked_and_null_absence_states_are_told_apart_without_reading_text():
+    blocked = EvidenceField(field="temperature", value=None, blocked=LICENCE_BLOCK, provenance=blocked_provenance())
+    plain = EvidenceField(
+        field="temperature", value=None,
+        provenance=Provenance(**provenance_kwargs(quality=Quality(status="unknown", flags=["no_retrieval"]))),
+    )
+    assert blocked.absence_state != plain.absence_state
+    assert (blocked.absence_state, plain.absence_state) == ("blocked", "null")
+
+
+def test_a_blocked_absence_state_without_a_reason_or_a_flag_is_refused():
+    with pytest.raises(ValidationError, match="blocked_without_reason"):
+        EvidenceField(field="temperature", value=None, provenance=blocked_provenance())
+    with pytest.raises(ValidationError, match="blocked_without_flag"):
+        EvidenceField(
+            field="temperature", value=None, absence_state="blocked", blocked=LICENCE_BLOCK,
+            provenance=Provenance(**provenance_kwargs()),
+        )
+
+
+def test_an_aged_out_absence_state_keeps_the_flag_and_the_last_valid_time():
+    aged = EvidenceField(
+        field="temperature", value=None,
+        provenance=Provenance(**provenance_kwargs(
+            quality=Quality(status="passed", flags=[AGED_OUT_FLAG]), last_valid_time=VALID_TIME,
+        )),
+    )
+    assert aged.absence_state == "aged_out"
+    with pytest.raises(ValidationError, match="aged_out_without_flag"):
+        EvidenceField(
+            field="temperature", value=None, absence_state="aged_out",
+            provenance=Provenance(**provenance_kwargs()),
+        )
+    with pytest.raises(ValidationError, match="last_valid_time"):
+        Provenance(**provenance_kwargs(quality=Quality(status="passed", flags=[AGED_OUT_FLAG])))
+
+
+def test_the_aged_out_absence_state_is_derived_before_blocked():
+    field = EvidenceField(
+        field="temperature", value=None,
+        provenance=Provenance(**provenance_kwargs(
+            quality=Quality(status="passed", flags=[AGED_OUT_FLAG, BLOCKED_FLAG]), last_valid_time=VALID_TIME,
+        )),
+    )
+    assert field.absence_state == "aged_out" and field.blocked is None
+
+
+def test_an_absence_state_beside_a_value_is_refused():
+    with pytest.raises(ValidationError, match="absence_with_value"):
+        EvidenceField(field="temperature", value=4.0, absence_state="null", provenance=Provenance(**provenance_kwargs()))
+    with pytest.raises(ValidationError, match="absence_with_value"):
+        EvidenceField(field="temperature", value=4.0, blocked=LICENCE_BLOCK, provenance=blocked_provenance())
+
+
+def test_a_block_reason_without_the_blocked_absence_state_is_refused():
+    with pytest.raises(ValidationError, match="blocked_without_state"):
+        EvidenceField(
+            field="temperature", value=None, absence_state="null", blocked=LICENCE_BLOCK,
+            provenance=blocked_provenance(),
+        )
+
+
+def test_an_uncatalogued_field_carries_no_comparability_in_its_output_contract():
+    field = EvidenceField(field="road_state", value=None, provenance=Provenance(**provenance_kwargs()))
+    assert field.key is None and field.family is None and field.comparability is None
+    assert field.absence_state == "null"
+
+
+def test_a_stated_comparability_is_left_alone_by_the_output_contract():
+    field = EvidenceField(
+        field="temperature", value=4.0, comparability="stated by the caller",
+        provenance=Provenance(**provenance_kwargs()),
+    )
+    assert field.comparability == "stated by the caller"
+
+
+def test_a_blocked_absence_state_names_one_of_the_three_kinds():
+    for kind in ("licence", "credential", "partnership"):
+        assert BlockedReason(kind=kind, source_id="nl-511", terms="terms").kind == kind
+    with pytest.raises(ValidationError):
+        BlockedReason(kind="paywall", source_id="nl-511", terms="terms")
