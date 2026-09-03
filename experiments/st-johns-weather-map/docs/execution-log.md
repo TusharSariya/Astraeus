@@ -327,3 +327,32 @@ For the owner: approve the `SourceState` enum edit; decide whether
 `open-meteo-weathernext-2` moves to `implemented-unverified` with restricted
 terms; read and record the CWOP, CelesTrak and NL 511 terms.
 
+### Step 9: activity-profiles-sites-and-cameras
+
+Branch `execution/activity-profiles`, stacked on step 8. One fresh Fable
+change lead, eighteen task agents (thirteen Opus, five Sonnet), one per task
+or small batch, none resumed, at most three at once. One merge conflict
+(`api/pyproject.toml` and `uv.lock`, two agents adding jsonschema) resolved
+by the lead. Registered: four profiles (`running`, `astronomy`, `aurora`,
+`landscape_photography`) validated in CI; three sites (`signal-hill`,
+`cape-spear`, `quidi-vidi`) with the terrain check `not_run` because no DEM
+is in the repo; `sector_sampling_along_bearing` enabled on a spherical
+approximation; five camera derivations registered disabled pending the
+30-day METAR validation; 17 camera records under `registry/cameras/`, all
+`partnership-only`, geometry null, none retrieved, the three ledger records
+carrying an unsatisfied permission condition with Fort Amherst first. The
+response carries the three absence states on `absence_state`. Sixteen
+deviations are recorded in the change's design.md, the notable ones being
+the missing DEM, placeholder reprojection tolerances and provisional
+camera health-flag thresholds.
+
+Gate in the main checkout, 2026-09-03: API 1552 passed, 25 skipped; web
+410 passed in 22 files; registry 235 passed; SQL publication and retention
+invariants PASS; strict validate valid; specctl 0 errors, 0 warnings.
+
+This completes the nine-step apply order of the data-foundation charter.
+
+For the owner: choose the DEM and the reprojection tolerances; the camera
+schema's `terms.redistribution: const false` needs a conditional when a
+permission arrives; owner gate 6.4 of step 7 is still open.
+

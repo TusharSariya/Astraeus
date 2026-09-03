@@ -1,0 +1,115 @@
+id: aurora
+version: 1
+title: Aurora
+families:
+- space_weather
+- astronomy_geometry
+- cloud_cover
+- visibility
+thresholds:
+  kp_high:
+    field: kp_index
+    default: 5.0
+    units: '1'
+    comparison: ge
+  hp30_high:
+    field: hp30_index
+    default: 5.0
+    units: '1'
+    comparison: ge
+  solar_wind_fast:
+    field: solar_wind_speed
+    default: 500.0
+    units: km s-1
+    comparison: ge
+  solar_wind_dense:
+    field: solar_wind_density
+    default: 10.0
+    units: cm-3
+    comparison: ge
+  bz_south:
+    field: bz_gsm
+    default: -5.0
+    units: nT
+    comparison: le
+  moon_bright:
+    field: moon_illuminated_fraction
+    default: 0.5
+    units: '1'
+    comparison: ge
+  cloud_north_thresh:
+    field: cloud_high
+    default: 50.0
+    units: percent
+    comparison: ge
+  fog_present:
+    field: fog_closure
+    default: 0.5
+    units: '1'
+    comparison: ge
+weights:
+  kp: 0.2
+  hp30: 0.1
+  solar_wind_speed: 0.15
+  solar_wind_density: 0.1
+  bz: 0.2
+  moon: 0.1
+  cloud: 0.1
+  fog: 0.05
+hard_stops: []
+graded_criteria:
+- name: kp_activity
+  field: kp_index
+  threshold: kp_high
+  weight: kp
+- name: hp30_activity
+  field: hp30_index
+  threshold: hp30_high
+  weight: hp30
+- name: solar_wind_speed_load
+  field: solar_wind_speed
+  threshold: solar_wind_fast
+  weight: solar_wind_speed
+- name: solar_wind_density_load
+  field: solar_wind_density
+  threshold: solar_wind_dense
+  weight: solar_wind_density
+- name: bz_southward
+  field: bz_gsm
+  threshold: bz_south
+  weight: bz
+- name: moon_brightness
+  field: moon_illuminated_fraction
+  threshold: moon_bright
+  weight: moon
+- name: cloud_north
+  field: cloud_high
+  threshold: cloud_north_thresh
+  weight: cloud
+- name: fog_risk
+  field: fog_closure
+  threshold: fog_present
+  weight: fog
+window:
+  rule: dark_hours
+  geometry_entry: de442_sun_moon_geometry
+  geometry_fields:
+  - sun_altitude
+  - moon_altitude
+  - moon_illuminated_fraction
+  params: {}
+site_needs:
+  horizon_required: false
+  sectors:
+  - name: north_cloud
+    field: cloud_high
+    bearing_deg: 0.0
+    width_deg: 60.0
+    max_range_km: 150.0
+blocked_fields:
+- field: magnetometer_local_disturbance
+  reason: partnership
+  source_id: nrcan-stj-magnetometer
+  terms: NRCan forbids redistribution without written permission
+  request: Written permission requested from NRCan for the STJ magnetometer, 2026-09-02
+wanted_not_catalogued: []

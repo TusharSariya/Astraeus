@@ -214,6 +214,7 @@ def _source(
     restricted_terms: dict[str, Any] | None = None,
     admission_condition: dict[str, Any] | None = None,
     superseded_by: dict[str, Any] | None = None,
+    cameras: list[str] | None = None,
 ) -> dict[str, Any]:
     """``delivery_kind`` is keyword-only and has no default, deliberately.
 
@@ -246,15 +247,17 @@ def _source(
     record that states its own fixture status keeps it: a blocked or
     not-applicable suite is a fact about the record, not about the adapter set.
 
-    The four admission blocks (``credential``, ``restricted_terms``,
-    ``admission_condition``, ``superseded_by``) are keyword-only and default to
-    ``None``, which emits nothing, on the same rule as the horizon fields:
-    absent means absent. Each is emitted verbatim when given. ``credential``
-    names the environment variable and the registration page and never a value;
-    ``restricted_terms`` carries the verbatim clause that admits the source for
-    research use only; ``admission_condition`` says what is outstanding before
-    the record may be scheduled; ``superseded_by`` names the record a reader
-    should look at instead.
+    The five admission blocks (``credential``, ``restricted_terms``,
+    ``admission_condition``, ``superseded_by``, ``cameras``) are keyword-only
+    and default to ``None``, which emits nothing, on the same rule as the
+    horizon fields: absent means absent. Each is emitted verbatim when given.
+    ``credential`` names the environment variable and the registration page
+    and never a value; ``restricted_terms`` carries the verbatim clause that
+    admits the source for research use only; ``admission_condition`` says what
+    is outstanding before the record may be scheduled; ``superseded_by``
+    names the record a reader should look at instead; ``cameras`` lists the
+    camera ids under ``registry/cameras/`` this record's terms and
+    admission_condition govern.
     """
     record: dict[str, Any] = {
         "id": id,
@@ -311,6 +314,8 @@ def _source(
         record["admission_condition"] = admission_condition
     if superseded_by is not None:
         record["superseded_by"] = superseded_by
+    if cameras is not None:
+        record["cameras"] = cameras
     return record
 
 
@@ -1584,6 +1589,19 @@ def registry() -> dict[str, Any]:
             "Harbour camera evidence pending written permission; never fetched until granted",
             (False, None, "Cameras are not blended."),
             "not_applicable", "not_applicable", delivery_kind="published_cell",
+            cameras=["ccg-fort-amherst", "ccg-st-johns-base", "ccg-sir-humphrey-gilbert"],
+            admission_condition={
+                "condition": (
+                    "Written permission from the Canadian Coast Guard is outstanding for the three "
+                    "harbour cameras; Fort Amherst is the first request, sent 2026-09-02."
+                ),
+                "satisfied_by": (
+                    "The permission document and date recorded in terms.permission of the camera "
+                    "records under registry/cameras/, and a passing geometry validation"
+                ),
+                "satisfied": False,
+                "recorded_on": "2026-09-02",
+            },
         ),
         _source(
             "city-st-johns-road-cameras", "camera", "partnership-only",
@@ -1606,6 +1624,26 @@ def registry() -> dict[str, Any]:
             "Road camera evidence pending written permission; never fetched until granted",
             (False, None, "Cameras are not blended."),
             "not_applicable", "not_applicable", delivery_kind="published_cell",
+            cameras=[
+                "city-new-gower-street",
+                "city-middle-pond",
+                "city-shea-heights",
+                "city-thorburn-road",
+                "city-windsor-lake",
+                "city-kenmount-road",
+            ],
+            admission_condition={
+                "condition": (
+                    "Written permission from the City of St. John's is outstanding for the six road "
+                    "cameras; no request has been sent yet."
+                ),
+                "satisfied_by": (
+                    "The permission document and date recorded in terms.permission of the camera "
+                    "records under registry/cameras/, and a passing geometry validation"
+                ),
+                "satisfied": False,
+                "recorded_on": "2026-09-02",
+            },
         ),
         _source(
             "ntv-cameras", "camera", "partnership-only",
@@ -1628,6 +1666,28 @@ def registry() -> dict[str, Any]:
             "Sky-dome and street camera evidence pending written permission; never fetched until granted",
             (False, None, "Cameras are not blended."),
             "not_applicable", "not_applicable", delivery_kind="published_cell",
+            cameras=[
+                "ntv-st-johns-sky",
+                "ntv-quidi-vidi-lake",
+                "ntv-downtown",
+                "ntv-george-street",
+                "ntv-admirals-green",
+                "ntv-logy-bay-road",
+                "ntv-st-philips-bell-island",
+                "ntv-port-de-grave",
+            ],
+            admission_condition={
+                "condition": (
+                    "Written permission from NTV is outstanding for the eight cameras; no request has "
+                    "been sent yet."
+                ),
+                "satisfied_by": (
+                    "The permission document and date recorded in terms.permission of the camera "
+                    "records under registry/cameras/, and a passing geometry validation"
+                ),
+                "satisfied": False,
+                "recorded_on": "2026-09-02",
+            },
         ),
     ])
 

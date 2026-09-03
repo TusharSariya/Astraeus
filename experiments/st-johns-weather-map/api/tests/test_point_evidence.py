@@ -1169,3 +1169,167 @@ def test_an_ensemble_value_whose_family_is_unknown_is_refused_service():
     unavailable = next(item for item in fields if item.field == "temperature")
     assert unavailable.value is None
     assert "ensemble_family_unknown" in unavailable.provenance.quality.flags
+
+
+# --- blocked, and the output contract --------------------------------------
+# A field no admitted source may redistribute is not missing: it is known and
+# refused, and the reason is on the field where a reader can check the clause.
+# These assert the two states stay tellable apart by ``absence_state`` alone -
+# a reader must never have to parse a flag list to learn that nothing is
+# wrong with the weather - and that a field short of any element of the
+# output contract is emptied rather than served in part.
+#
+# Spec-Refs: openspec/changes/activity-profiles-sites-and-cameras/specs/point-evidence-sampling/spec.md
+
+from weather_api.models import BLOCKED_FLAG, CONTRACT_INCOMPLETE_FLAG, EvidenceField  # noqa: E402
+from weather_api.store import (  # noqa: E402
+    blocked_field,
+    blocked_reason_for,
+    enforce_output_contract,
+    missing_contract_element,
+    unavailable_provenance,
+)
+
+
+def registry_record(source_id: str) -> dict[str, Any]:
+    from registry.source_data import registry  # noqa: PLC0415
+
+    return next(record for record in registry()["sources"] if record["id"] == source_id)
+
+
+def licence_reason() -> Any:
+    return blocked_reason_for(registry_record("google-weathernext-2"))
+
+
+def test_a_blocked_reason_is_read_from_the_record_not_from_a_list_of_ids():
+    """Each kind comes off the record, so a licence that changes changes the block."""
+    assert blocked_reason_for(registry_record("google-weathernext-2")).kind == "licence"
+    assert blocked_reason_for(registry_record("nl-511")).kind == "credential"
+    assert blocked_reason_for(registry_record("nrcan-stj-magnetometer")).kind == "partnership"
+    # An admitted record is not blocked at all; a block nobody can chase would
+    # be indistinguishable from a source this deployment simply never fetched.
+    assert blocked_reason_for(registry_record("eccc-hrdps")) is None
+
+
+def test_a_blocked_reason_quotes_the_clause_and_names_the_source():
+    reason = licence_reason()
+
+    assert reason.source_id == "google-weathernext-2"
+    assert "Real-Time Experimental Data" in reason.terms
+    assert reason.request is None
+
+
+def test_restricted_terms_are_blocked_as_licence_even_where_a_credential_is_also_named():
+    """The credential would not unlock it, so the terms are the refusal."""
+    record = registry_record("google-weathernext-2")
+
+    assert record["status"] == "credential-required"
+    assert record["restricted_terms"]["redistribution"] is False
+    assert blocked_reason_for(record).kind == "licence"
+
+
+def test_a_blocked_reason_carries_an_outstanding_request_where_the_record_records_one():
+    reason = blocked_reason_for(
+        {
+            "id": "fort-amherst-camera",
+            "status": "partnership-only",
+            "licence": {"name": "No published terms; use is by arrangement with the operator."},
+            "admission_condition": {"condition": "A redistribution request is with the operator.", "satisfied": False},
+        }
+    )
+
+    assert reason.kind == "partnership"
+    assert reason.request == "A redistribution request is with the operator."
+
+
+def test_a_blocked_reason_says_so_where_the_record_states_no_clause():
+    """A refusal with an invented reason is worse than one a reader can chase."""
+    reason = blocked_reason_for({"id": "unstated-source", "status": "partnership-only"})
+
+    assert "not recorded" in reason.terms
+
+
+def test_a_licence_blocked_field_is_never_null_and_never_a_value():
+    field = blocked_field("road_state", valid_time=VALID_TIME, reason=licence_reason(), units="category")
+
+    assert field.value is None
+    assert field.absence_state == "blocked"
+    assert field.blocked is not None and field.blocked.kind == "licence"
+    flags = field.provenance.quality.flags
+    assert BLOCKED_FLAG in flags and "blocked:licence" in flags
+    # The field was refused, not merely unretrieved: claiming a retrieval that
+    # produced nothing would fold the refusal back into the null absence.
+    assert "no_retrieval" not in flags
+    assert field.provenance.source_id == "google-weathernext-2"
+
+
+def test_blocked_and_null_are_distinguishable_by_the_absence_state_alone():
+    refused = blocked_field("road_state", valid_time=VALID_TIME, reason=licence_reason(), units="category")
+    unretrieved = EvidenceField(
+        field="temperature",
+        value=None,
+        provenance=unavailable_provenance(VALID_TIME, units="degC", flags=[]),
+    )
+
+    assert {refused.absence_state, unretrieved.absence_state} == {"blocked", "null"}
+    assert unretrieved.blocked is None
+
+
+def test_a_blocked_field_reaches_the_wire_with_its_reason():
+    payload = blocked_field("road_state", valid_time=VALID_TIME, reason=licence_reason(), units="category").model_dump(mode="json")
+
+    assert payload["value"] is None
+    assert payload["absence_state"] == "blocked"
+    assert {"blocked", "blocked:licence"} <= set(payload["provenance"]["quality"]["flags"])
+    assert payload["blocked"]["kind"] == "licence"
+    assert payload["blocked"]["source_id"] == "google-weathernext-2"
+    assert payload["blocked"]["terms"]
+
+
+def test_a_blocked_field_the_catalogue_carries_keeps_its_comparability():
+    field = blocked_field("temperature", valid_time=VALID_TIME, reason=licence_reason(), units="degC")
+
+    assert field.key == "temperature_2m"
+    assert field.comparability
+    assert enforce_output_contract(field) is field
+
+
+def test_a_whole_field_is_never_contract_incomplete():
+    store = StubStore([(artifact(), dataset())])
+    fields, _consensus, _sources = live_point_fields(store, *ST_JOHNS, VALID_TIME)
+
+    assert fields
+    for item in fields:
+        assert missing_contract_element(item) is None
+        assert item.provenance.evidence_class and item.provenance.source_id
+        assert item.absence_state is not None or item.value is not None
+        assert item.comparability or item.key is None
+
+
+def test_contract_incomplete_serves_null_naming_the_missing_element():
+    whole = blocked_field("temperature", valid_time=VALID_TIME, reason=licence_reason(), units="degC")
+    # ``model_copy`` skips the validators, which is exactly how a field could
+    # reach the response short of an element in the first place.
+    served = enforce_output_contract(whole.model_copy(update={"comparability": None}))
+
+    assert served.value is None
+    assert served.absence_state == "null"
+    assert served.blocked is None, "an incomplete field states no refusal it cannot support"
+    assert f"{CONTRACT_INCOMPLETE_FLAG}:comparability" in served.provenance.quality.flags
+
+
+def test_contract_incomplete_names_a_missing_source_id_too():
+    field = EvidenceField(field="temperature", value=None, provenance=unavailable_provenance(VALID_TIME, units="degC", flags=[], source_id=""))
+
+    assert missing_contract_element(field) == "source_id"
+    assert f"{CONTRACT_INCOMPLETE_FLAG}:source_id" in enforce_output_contract(field).provenance.quality.flags
+
+
+def test_a_contract_incomplete_field_costs_the_other_fields_nothing():
+    """One field's incompleteness is not evidence about any other."""
+    whole = blocked_field("temperature", valid_time=VALID_TIME, reason=licence_reason(), units="degC")
+    broken = whole.model_copy(update={"comparability": None})
+    served = [enforce_output_contract(item) for item in (broken, whole)]
+
+    assert served[0].absence_state == "null"
+    assert served[1].absence_state == "blocked" and served[1].blocked is not None

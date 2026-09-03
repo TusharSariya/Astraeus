@@ -133,6 +133,26 @@ THRESHOLD_COMPARISONS: tuple[str, ...] = ("ge", "gt", "le", "lt")
 #: not a verdict on the value, and the QC status a frame carried is not
 #: retroactively changed by its removal.
 AGED_OUT_FLAG = "aged_out"
+#: Set where the field is known and refused under current terms: a licence
+#: that forbids redistribution, a credential this deployment does not hold, or
+#: a partnership that has not been granted. A refusal is not an absence of
+#: data, so it must never be reported as ``null``; the reason travels beside
+#: the flag on ``EvidenceField.blocked``.
+BLOCKED_FLAG = "blocked"
+#: Set where a field would have been served with an element of the output
+#: contract missing. The field is served ``null`` with this flag naming the
+#: absent element rather than served partially, because a caller cannot tell a
+#: silently missing evidence class from one that was never required.
+CONTRACT_INCOMPLETE_FLAG = "contract_incomplete"
+
+#: The three disjoint absence states. ``null`` is not retrieved this cycle,
+#: ``blocked`` is refused for a stated reason, ``aged_out`` is retrieved once
+#: and now outside the retention window. They are disjoint so a caller can
+#: tell a refusal from a gap without reading text: ``retrieval_failed`` and
+#: ``no_retrieval`` stay reason flags on a ``null`` absence, and
+#: ``available-not-stored`` and ``not-published`` stay ``storage`` values.
+AbsenceState = Literal["null", "blocked", "aged_out"]
+ABSENCE_STATES: tuple[str, ...] = ("null", "blocked", "aged_out")
 
 #: Worst-first ordering of the four statuses. A derived value takes the worst
 #: status among its inputs: it is the only rule that cannot launder a suspect
@@ -597,6 +617,21 @@ def catalogue_key_for(field_name: str) -> str | None:
         return None
 
 
+class BlockedReason(StrictModel):
+    """Why a known field is refused under current terms.
+
+    ``terms`` names or quotes the clause doing the refusing, so a reader can
+    check it rather than take the refusal on trust. ``request`` records an
+    outstanding permission or credential request where one has been made, so a
+    block that is being worked on reads differently from one that is not.
+    """
+
+    kind: Literal["licence", "credential", "partnership"]
+    source_id: str
+    terms: str
+    request: str | None = None
+
+
 class EvidenceField(StrictModel):
     """One served value, and where the catalogue files it.
 
@@ -620,6 +655,16 @@ class EvidenceField(StrictModel):
     family: str | None = None
     phase: Phase | None = None
     storage: Storage = "stored"
+    #: Which of the three disjoint absences this is, or None where a value was
+    #: served. Derived from the flags where it is not stated, so no caller has
+    #: to read the flag list to tell a refusal from a gap.
+    absence_state: AbsenceState | None = None
+    #: Set exactly where ``absence_state`` is ``blocked``.
+    blocked: BlockedReason | None = None
+    #: The catalogue family note: what may and may not be compared with this
+    #: field inside its family. Filled from the catalogue, never carried
+    #: independently, for the same reason ``family`` is derived.
+    comparability: str | None = None
 
     @model_validator(mode="after")
     def resolve_against_the_catalogue(self) -> EvidenceField:
@@ -638,6 +683,53 @@ class EvidenceField(StrictModel):
         self.family = entry.family
         if self.phase is not None and not entry.phase_attribute:
             raise ValueError(f"{self.key} is not a phase-bearing field and must not carry phase={self.phase!r}")
+        return self
+
+    @model_validator(mode="after")
+    def complete_the_output_contract(self) -> EvidenceField:
+        """Fill comparability and the absence state, and keep the three disjoint.
+
+        The derivation is additive: a field built with a value and no absence
+        state, or with ``value=None`` and the flags it already carried, keeps
+        validating and gains the state the flags already implied. What is
+        refused is a contradiction - an absence state beside a value, a
+        ``blocked`` state with no reason or no flag - because a caller that
+        switched on the state would then be told two different things.
+        """
+        if self.comparability is None and self.key is not None and self.family is not None:
+            try:
+                self.comparability = catalogue.family(self.family).note
+            except catalogue.UnknownFamily:  # pragma: no cover - family comes from the catalogue
+                self.comparability = None
+
+        flags = self.provenance.quality.flags
+        if self.value is not None:
+            if self.absence_state is not None or self.blocked is not None:
+                raise ValueError(
+                    f"absence_with_value: {self.field} carries a value and must not carry an absence state or a block reason"
+                )
+            return self
+
+        if self.absence_state is None:
+            if AGED_OUT_FLAG in flags:
+                self.absence_state = "aged_out"
+            elif BLOCKED_FLAG in flags:
+                self.absence_state = "blocked"
+            else:
+                self.absence_state = "null"
+
+        if self.absence_state == "blocked":
+            if self.blocked is None:
+                raise ValueError(f"blocked_without_reason: {self.field} is blocked and must name its reason")
+            if BLOCKED_FLAG not in flags:
+                raise ValueError(f"blocked_without_flag: {self.field} is blocked and must carry the {BLOCKED_FLAG!r} flag")
+        elif self.blocked is not None:
+            raise ValueError(
+                f"blocked_without_state: {self.field} carries a block reason under absence state {self.absence_state!r}"
+            )
+
+        if self.absence_state == "aged_out" and AGED_OUT_FLAG not in flags:
+            raise ValueError(f"aged_out_without_flag: {self.field} is aged out and must carry the {AGED_OUT_FLAG!r} flag")
         return self
 
     @model_validator(mode="after")

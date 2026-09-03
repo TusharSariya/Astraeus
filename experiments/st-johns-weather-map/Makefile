@@ -24,6 +24,7 @@ test-web:
 	cd web && npm test -- --run && npm run build
 
 test-registry:
+	python3 registry/profile_audit.py --strict
 	uv run --with-requirements registry/requirements.txt --with pytest python -m pytest registry/tests
 
 # Storage-integrity invariants against a real PostgreSQL. Mocked tests assert

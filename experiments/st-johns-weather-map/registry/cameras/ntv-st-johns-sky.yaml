@@ -1,0 +1,46 @@
+id: ntv-st-johns-sky
+name: St. John's Sky
+source_id: ntv-cameras
+operator: NTV (Newfoundland Broadcasting)
+status: partnership-only
+terms:
+  text: No terms, copyright or privacy page found anywhere on ntv.ca; all rights presumed
+    reserved.
+  url: https://ntv.ca/
+  read_date: '2026-09-02'
+  redistribution: false
+  permission:
+    requested_on: null
+    requested_from: NTV (Newfoundland Broadcasting)
+    granted_on: null
+    document: null
+endpoint:
+  url: https://ntv.ca/cams/thumb_st-johns-sky-cam.jpg
+  format: jpeg
+  cadence_seconds: 780
+  cadence_measured_on: '2026-09-02'
+position:
+  latitude: null
+  longitude: null
+  elevation:
+    metres: null
+    datum: CGVD2013
+  surveyed: false
+orientation:
+  bearing_deg: null
+  hfov_deg: null
+  vfov_deg: null
+  roll_deg: null
+image:
+  width_px: null
+  height_px: null
+landmarks: []
+privacy_masks: []
+registered:
+  date: '2026-09-03'
+  by: Tushar Sariya
+geometry_validation:
+  reprojection_tolerance_px: 5
+  skyline_tolerance_deg: 0.5
+  status: not_run
+  dem: null
