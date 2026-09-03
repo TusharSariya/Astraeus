@@ -150,7 +150,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   `ingest/cameras/derive.py` (new).
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k
   "camera_disabled or numeric_visibility_refused"`
-- [ ] 5.4 Flag night frames from the registered DE442 daylight boundaries,
+- [x] 5.4 Flag night frames from the registered DE442 daylight boundaries,
   refuse every daytime derivation on a darkness or `darkness_unknown` frame,
   and require a 30-day METAR validation record spanning day, night, fog, rain
   and snow before any camera method may be enabled.
