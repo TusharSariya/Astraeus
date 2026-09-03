@@ -103,11 +103,18 @@ Decision reference: wayfinder ticket
   Owned files: `ingest/manifest.py`, `api/tests/test_manifest.py`.
   Verify: `cd api && uv run pytest tests/test_manifest.py -k "scope or available_not_stored"`.
 
-- [ ] 3.3 Set the control flag on the member axis, including the two-file
+- [x] 3.3 Set the control flag on the member axis, including the two-file
   AIFS-ENS case, and store the averaging window on a time-averaged field.
   Owned files: `ingest/grib.py`, `ingest/manifest.py`,
   `api/tests/test_ingest_grib.py`, `api/tests/test_ingest_manifest.py`.
   Verify: `cd api && uv run pytest tests/test_ingest_grib.py tests/test_ingest_manifest.py -k "control or averaging_window or member"`.
+  Verify result: `cd api && uv run pytest tests/test_ingest_grib.py tests/test_ingest_manifest.py -k "control or averaging_window or member"` -> 40 passed, 56 deselected. Full `cd api && uv run pytest` -> 1009 passed, 36 skipped.
+  Live smoke remains: no member feed is scheduled (every family's `schedulable`
+  is false until 2.1 lands and owner gate 6.1 is decided), so nothing has yet
+  stacked a real REPS coverage set or a real AIFS-ENS `cf` plus `pf` pair, and
+  no real GEFS `.idx` `N-M hour ave fcst` label has been read end to end. The
+  fixture tests are the whole of the evidence here; the first scheduled member
+  run is the smoke.
 
 ## 4. Serving and reading (API owner 4.1 to 4.3, web owner 4.4, implementation pass, NOT in this change)
 
