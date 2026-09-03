@@ -71,12 +71,21 @@ Decision reference: wayfinder ticket
   Owned file: `registry/audit.py`.
   Verify: `python3 -m unittest discover -s registry/tests`.
 
-- [ ] 2.3 Record the REPS direction gap and the GEFS six-hour-mean cloud key
+- [x] 2.3 Record the REPS direction gap and the GEFS six-hour-mean cloud key
   in `registry/fields.py`, against the catalogue that
   `field-catalogue-and-families` creates.
   Owned file: `registry/fields.py`.
   Verify: `python3 registry/audit.py` reports the catalogue valid with the
   averaged-cloud key present and no REPS direction key.
+  Verify result: `python3 registry/audit.py` -> `catalogue valid: 135 fields
+  in 20 families, version 1.0.0, as of 2026-09-02`; `grep -n '"noaa-gefs",
+  "total_cloud_mean_6h"' registry/fields.py` -> present (upstream
+  `TCDC:entire atmosphere (n-n+6 hour ave fcst)`, matching
+  docs/research/wayfinder/ensemble-access.md); `grep -n '"eccc-reps".*wind_'
+  registry/fields.py` -> only `wind_direction_10m` marked `not-published`,
+  no stored or derived REPS direction key. `api && uv run pytest` -> 968
+  passed, 36 skipped. `python3 -m unittest discover -s registry/tests` ->
+  88 passed.
 
 ## 3. Ingest (ingest owner, implementation pass, NOT in this change)
 
