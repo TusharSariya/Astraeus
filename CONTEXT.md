@@ -116,6 +116,19 @@ weight declared, with the weight reachable at all (declared minus blocked)
 stated apart. A verdict under the profile's floor is unscorable, not low.
 _Avoid_: confidence, completeness
 
+**Grading curve**:
+A profile's declared mapping from one field's value to the share of a
+criterion's weight that is lost, named from a registered set (step, linear,
+exponential, band) with its anchors declared as thresholds. Tunable in the
+profile file, never in code.
+_Avoid_: scoring function, formula, penalty
+
+**Source precedence**:
+The per-tier order in which admitted sources are asked to supply one field
+to a verdict. Exactly one source answers for a field in one verdict, and a
+fall to the next source is disclosed on the value.
+_Avoid_: fallback chain, best source, blend
+
 **Verdict strip**:
 One profile's verdicts laid along the horizon at the cadence the driving
 sources issue, hourly in the core window and coarser beyond. A picker for the
