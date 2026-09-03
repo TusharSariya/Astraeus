@@ -257,10 +257,10 @@ Verification commands used below, run from
 
 ## 9. API ceiling and schedulability (API owner)
 
-- [ ] 9.1 Extend the ceiling table to the ten states, map `operational` and
+- [x] 9.1 Extend the ceiling table to the ten states, map `operational` and
   every unknown state to `unavailable`, and keep `active` unemittable.
   Verify: `python3 -m unittest discover -s registry/tests -v -k ceiling`.
-- [ ] 9.2 Refuse `POST /refresh` for every non-schedulable state and for any
+- [x] 9.2 Refuse `POST /refresh` for every non-schedulable state and for any
   record with an outstanding admission condition, naming the ids and their
   states; emit no access endpoint for `link-only` or `partnership-only`
   records.
