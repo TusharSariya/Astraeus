@@ -233,6 +233,12 @@
             "source_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
             "detail": {"$ref": "#/$defs/nonempty"}
           }
+        },
+        "cameras": {
+          "description": "The camera ids this record's terms and admission_condition govern, each a registry/cameras/<id>.yaml record.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
         }
       },
       "allOf": [

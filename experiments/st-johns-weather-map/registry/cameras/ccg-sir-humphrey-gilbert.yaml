@@ -1,0 +1,46 @@
+id: ccg-sir-humphrey-gilbert
+name: Sir Humphrey Gilbert Building
+source_id: ccg-harbour-cameras
+operator: Canadian Coast Guard
+status: partnership-only
+terms:
+  text: these cameras are intented for operational use for the CCG. The images are
+    offered to the public as a courtesy and are for information only.
+  url: https://e-navigation.canada.ca/topics/cameras/camera-en?camfile=SirHumphreyGilbertBuilding
+  read_date: '2026-09-02'
+  redistribution: false
+  permission:
+    requested_on: null
+    requested_from: Canadian Coast Guard; the request covers Fort Amherst first
+    granted_on: null
+    document: null
+endpoint:
+  url: https://e-nav.ccg-gcc.gc.ca/nvss-svsn/sequences/SirHumphreyGilbertBuilding.mp4
+  format: mp4_sequence
+  cadence_seconds: 1200
+  cadence_measured_on: '2026-09-02'
+position:
+  latitude: 47.584
+  longitude: -52.683
+  elevation:
+    metres: null
+    datum: CGVD2013
+  surveyed: false
+orientation:
+  bearing_deg: null
+  hfov_deg: null
+  vfov_deg: null
+  roll_deg: null
+image:
+  width_px: null
+  height_px: null
+landmarks: []
+privacy_masks: []
+registered:
+  date: '2026-09-03'
+  by: Tushar Sariya
+geometry_validation:
+  reprojection_tolerance_px: 5
+  skyline_tolerance_deg: 0.5
+  status: not_run
+  dem: null

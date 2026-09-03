@@ -876,6 +876,25 @@ def condition_errors(source: dict[str, Any]) -> list[str]:
     return errors
 
 
+def camera_id_errors(source: dict[str, Any]) -> list[str]:
+    """Every camera id a source lists has to have a registry/cameras/<id>.yaml file.
+
+    A ledger record naming a camera that was never registered would read as
+    catalogued evidence that does not exist; this check keeps the two lists
+    from silently drifting apart.
+    """
+    cameras = source.get("cameras")
+    if not cameras:
+        return []
+    sid = source["id"]
+    cameras_root = HERE / "cameras"
+    errors: list[str] = []
+    for camera_id in cameras:
+        if not (cameras_root / f"{camera_id}.yaml").is_file():
+            errors.append(f"{sid}: cameras entry {camera_id!r} has no registry/cameras/{camera_id}.yaml")
+    return errors
+
+
 def no_endpoint_errors(source: dict[str, Any]) -> list[str]:
     """A source cited but never fetched has to look that way in both places.
 
@@ -1063,6 +1082,7 @@ def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]
         errors.extend(restricted_terms_errors(source))
         errors.extend(condition_errors(source))
         errors.extend(no_endpoint_errors(source))
+        errors.extend(camera_id_errors(source))
         if auth["required"] and not auth["registration_url"]:
             errors.append(f"{sid}: authenticated source needs an official registration URL")
         if source["consensus"]["eligible"]:
