@@ -256,5 +256,80 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertEqual([], errors)
 
 
+    def test_openmeteo_cams_aod_is_reprocessed(self) -> None:
+        sources = _by_id()
+        aod = sources["openmeteo-cams-aod"]
+
+        # No adapter claims the id, so the ledger's implemented-unverified is
+        # written catalogued and the reason says why.
+        self.assertEqual("catalogued", aod["status"])
+        self.assertIn("Catalogued until a registered adapter claims the id", aod["reason"])
+        self.assertEqual("reprocessed", aod["delivery_kind"])
+        self.assertFalse(aod["display_primary"])
+        self.assertEqual("Open-Meteo", aod["intermediary"]["name"])
+        self.assertIn("CAMS", aod["producer"])
+
+        # The six documented transformations plus the upsampling trap.
+        transformations = aod["intermediary"]["transformations"]
+        self.assertEqual(7, len(transformations))
+        self.assertTrue(any("0.4 degree CAMS global grid is served at 0.1 degree" in item for item in transformations))
+
+        # What the record must say out loud, because each is a way a reader
+        # would otherwise misread the value.
+        for phrase in ("no speciation", "sea-salt AOD", "T+10 h 16 m", "0.1 versus 0.4 degree", "credential-gated", "best_match"):
+            self.assertIn(phrase, aod["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_openmeteo_lsa_saf_radiation_is_conditional(self) -> None:
+        sources = _by_id()
+        radiation = sources["openmeteo-lsa-saf-radiation"]
+
+        self.assertEqual("catalogued", radiation["status"])
+        self.assertEqual("reprocessed", radiation["delivery_kind"])
+        self.assertEqual("Open-Meteo", radiation["intermediary"]["name"])
+        self.assertIn("LSA SAF", radiation["producer"])
+        self.assertEqual(["https://satellite-api.open-meteo.com/v1/archive"], radiation["access_endpoints"])
+
+        condition = radiation["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("limb-geometry", condition["condition"])
+        self.assertIn("view-angle mask", condition["satisfied_by"])
+        self.assertEqual("2026-09-02", condition["recorded_on"])
+
+        # An outstanding condition keeps the record unschedulable whatever else
+        # the declaration says.
+        self.assertTrue(admission.condition_outstanding(radiation))
+        self.assertFalse(admission.declaration_schedulable(radiation, audit.adapter_source_ids()))
+
+        for phrase in ("Direct, diffuse and DNI", "wet-bulb globe", "1 h latency", "Archive endpoint only"):
+            self.assertIn(phrase, radiation["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_openmeteo_gfs_wave_requires_sea_cell_selection(self) -> None:
+        sources = _by_id()
+        wave = sources["openmeteo-gfs-wave"]
+
+        self.assertEqual("catalogued", wave["status"])
+        self.assertEqual("reprocessed", wave["delivery_kind"])
+        self.assertEqual("wave", wave["category"])
+        self.assertEqual("Open-Meteo", wave["intermediary"]["name"])
+        self.assertIn("NCEP", wave["producer"])
+        self.assertFalse(wave["display_primary"])
+
+        self.assertIn(
+            "cell_selection=sea is mandatory; the default nearest cell over a coastal point is land and returns null",
+            wave["intermediary"]["transformations"],
+        )
+        for phrase in ("ncep_gfswave016", "ecmwf_wam", "T+5 h 21 m", "16-day", "0.16 degree", "retrieval failure, not calm"):
+            self.assertIn(phrase, wave["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
 if __name__ == "__main__":  # pragma: no cover - convenience entry point
     unittest.main()

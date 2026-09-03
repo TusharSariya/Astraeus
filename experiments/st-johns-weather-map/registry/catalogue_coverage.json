@@ -181,6 +181,11 @@
     "Space weather citations": [
       "space-weather-canada-regional",
       "nasa-soho-sdo-goes-suvi-imagery"
+    ],
+    "Open-Meteo reprocessed admissions": [
+      "openmeteo-cams-aod",
+      "openmeteo-lsa-saf-radiation",
+      "openmeteo-gfs-wave"
     ]
   }
 }

@@ -670,6 +670,91 @@ def ensemble_families() -> list[dict[str, Any]]:
     ]
 
 
+#: The six transformations Open-Meteo documents applying to every value it
+#: serves (`docs/research/wayfinder/aggregator-models.md` section 4, read
+#: 2026-09-02). Any record that declares an Open-Meteo delivery `reprocessed`
+#: has to name all six, so they are written once here rather than transcribed
+#: onto each record, where one of them would eventually go missing.
+OPEN_METEO_TRANSFORMATIONS: tuple[str, ...] = (
+    "Regridding off the producer's native grid onto Open-Meteo's own grid.",
+    "Statistical elevation downscaling against a 90 m digital elevation model, on by default.",
+    "Grid-cell selection by Open-Meteo's own policy (cell_selection=land|sea|nearest).",
+    "Temporal interpolation to the finest step Open-Meteo offers, finer than the producer's own output step.",
+    "Derivation of fields the producer never published, including every cloud field and relative humidity.",
+    "Accumulation redistribution of 6-hourly totals across finer steps.",
+)
+
+#: The refusal that applies to every Open-Meteo record, appended to each reason
+#: so a reader of one record alone knows the aggregator's default routing is not
+#: admissible here.
+OPEN_METEO_BEST_MATCH_REFUSAL = (
+    " Anything reachable only through best_match is refused: it names no producer."
+)
+
+OPEN_METEO_TERMS = "https://open-meteo.com/en/terms"
+
+#: Where the Open-Meteo findings below were measured. Cited by path in the
+#: reasons, because the research is non-normative and a reason that cannot be
+#: traced back to a measurement is an assertion.
+AGGREGATOR_RESEARCH = "docs/research/wayfinder/aggregator-models.md"
+ENDPOINT_RESEARCH = "docs/research/wayfinder/open-meteo-endpoints.md"
+
+
+def _open_meteo_intermediary(method: str, extra: tuple[str, ...] = ()) -> dict[str, Any]:
+    """The intermediary block every Open-Meteo `reprocessed` record carries.
+
+    ``method`` is the one sentence that says what Open-Meteo did to this
+    particular product; ``extra`` adds the record-specific transformations that
+    the six documented ones do not cover, such as the CAMS upsample or the
+    mandatory sea cell selection.
+    """
+    return {
+        "name": "Open-Meteo",
+        "method": method,
+        "transformations": list(OPEN_METEO_TRANSFORMATIONS) + list(extra),
+    }
+
+
+def _open_meteo_policy(
+    producer_attribution: str,
+    *,
+    licence_name: str | None = None,
+    licence_url: str = OPEN_METEO_TERMS,
+    review_state: str = "verified",
+    redistribution: str | None = None,
+) -> dict[str, Any]:
+    """CC BY 4.0 from Open-Meteo, with the producer's own terms still upstream.
+
+    Open-Meteo's licence page states the API data is CC BY 4.0 and requires the
+    attribution link beside any displayed value, and it also records that the
+    upstream licences are not uniform (UK Met Office is CC BY-SA). So the
+    producer's attribution is carried in addition, never instead.
+    """
+    return {
+        "licence": {
+            "name": licence_name
+            or "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "url": licence_url,
+            "review_state": review_state,
+        },
+        "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; "
+        + producer_attribution,
+        "caching": "Cache point series only, inside the 25 GiB experiment cap, with the run stamp read from data/<domain>/static/meta.json beside every call.",
+        "archival": "Retain the immutable JSON response and its meta.json run stamp for the experiment retention window only.",
+        "redistribution": redistribution
+        or "Redistribution under CC BY 4.0 with the Open-Meteo link and the producer's own attribution preserved; the free tier is non-commercial use only.",
+    }
+
+
+BRIGHT_SKY_POLICY = {
+    "licence": {"name": "DWD open data (GeoNutzV) upstream; Bright Sky serves it from MIT-licensed code and adds no terms of its own", "url": "https://brightsky.dev/", "review_state": "verified"},
+    "attribution": "Credit Deutscher Wetterdienst as the producer of MOSMIX and Bright Sky as the intermediary on every value.",
+    "caching": "Cache the station 71801 point series only, inside the 25 GiB experiment cap.",
+    "archival": "Retain the immutable JSON response for the experiment retention window only.",
+    "redistribution": "Permitted under the DWD open-data terms with attribution to Deutscher Wetterdienst preserved.",
+}
+
+
 def registry() -> dict[str, Any]:
     s: list[dict[str, Any]] = []
     # Canadian NWP, analyses, nowcasting, land and ocean systems.
@@ -787,14 +872,7 @@ def registry() -> dict[str, Any]:
     # The status is `credential-required` and stays there: every forward-looking
     # WeatherNext value sits in the revocable GDM Real-Time Experimental Data
     # tier, and an intermediary proxying it does not move it into CC BY.
-    open_meteo_transformations = [
-        "Regridding off the producer's native grid onto Open-Meteo's own grid.",
-        "Statistical elevation downscaling against a 90 m digital elevation model, on by default.",
-        "Grid-cell selection by Open-Meteo's own policy (cell_selection=land|sea|nearest).",
-        "Temporal interpolation to the finest step Open-Meteo offers, finer than the producer's 6-hourly output.",
-        "Derivation of fields the producer never published, including every cloud field and relative humidity.",
-        "Accumulation redistribution of 6-hourly totals across finer steps.",
-    ]
+    open_meteo_transformations = list(OPEN_METEO_TRANSFORMATIONS)
     s.append(_source(
         "open-meteo-weathernext-2", "research_comparison", "credential-required",
         "Open-Meteo serves Google WeatherNext 2 (google_weathernext2_ensemble, 64 members) with total, low, mid and high cloud cover that the producer does not publish; Open-Meteo's own documentation states the cloud layers are an estimate from the vertical humidity profile and 'not a native cloud fraction forecast from WeatherNext', and the humidity is itself its conversion of the producer's specific humidity. Admitted 2026-09-02 as intermediary_derived rather than refused, under the reprocessed limits. Status stays credential-required because every forward-looking WeatherNext value is in the revocable GDM Real-Time Experimental Data tier and must be accepted with Google before retrieval, whatever route it arrives by. Never the display primary and never a derivation input.",
@@ -1277,6 +1355,120 @@ def registry() -> dict[str, Any]:
         _source("provincial-hydrometric", "hydrology", "catalogued", "No stable authoritative provincial machine endpoint has yet been verified for the selected Avalon stations. Licence review closed as catalogued only.", "Government of Newfoundland and Labrador", "Provincial hydrometric network", ["https://www.gov.nl.ca/ecc/waterres/flooding/hydrometric/"], ["https://www.gov.nl.ca/ecc/waterres/flooding/hydrometric/"], ("link_only", "Link-only pending a stable machine endpoint"), ["water_level", "discharge", "station_metadata", "quality_flags"], ["gauging station"], "Newfoundland and Labrador", "unknown", "observations only", (False, "Unknown", None), {**optional_policy, "licence": {"name": "Government of Newfoundland and Labrador site/data terms", "url": "https://www.gov.nl.ca/disclaimer/", "review_state": "pending"}}, "unknown", "unknown", "Candidate supplemental hydrology", (False, None, "Not active and not blended."), "blocked", "blocked", delivery_kind="published_cell"),
         _source("municipal-hydrometric", "hydrology", "unavailable", "No stable authoritative municipal machine endpoint or named network was supplied or discovered for this POC audit.", "Applicable Avalon municipalities", "Municipal hydrometric networks", ["https://www.stjohns.ca/en/water-and-wastewater/water-and-wastewater.aspx"], ["https://www.stjohns.ca/en/water-and-wastewater/water-and-wastewater.aspx"], ("link_only", "No adapter until a real endpoint and provider are identified"), ["water_level", "flow", "quality_flags"], ["municipal station"], "Avalon municipalities", "unknown", "observations only", (False, "No endpoint", None), {**optional_policy, "licence": {"name": "Unknown", "url": "https://www.stjohns.ca/en/city-hall/terms-of-use.aspx", "review_state": "unknown"}}, "none", "not applicable", "Registry placeholder with explicit unavailable status", (False, None, "Unavailable source cannot contribute."), "not_applicable", "not_applicable", delivery_kind="published_cell"),
     ])
+    # The Open-Meteo and Bright Sky admissions of the 2026-09-02 ledger. Every
+    # one of them is `reprocessed`: the producer is a national centre or a
+    # research centre, the intermediary is the aggregator, and the six
+    # documented transformations are named on each record because a
+    # `reprocessed` declaration is only honest if the intermediary documents
+    # what it did. None of these ids has a registered adapter, so each is
+    # written `catalogued` by the Decision 1 rule with the admission recorded in
+    # its reason.
+    s.extend([
+        _source(
+            "openmeteo-cams-aod", "air_quality",
+            *_admission(
+                "openmeteo-cams-aod",
+                "The only aerosol optical depth reachable over the box without a credential: GeoMet publishes no AOD at all and every direct CAMS path is credential-gated (the ADS execute call and the NASA MAIAC and VIIRS granule GETs all return HTTP 401 anonymously), so this delivery closes a gap nothing else closes ("
+                + ENDPOINT_RESEARCH
+                + " section 2.4). Total AOD at 550 nm only, with no speciation, so sea-salt AOD, the term that matters most in a maritime box, is not served. Two runs a day (00Z and 12Z) published at T+10 h 16 m, hourly steps, about 4 days of usable forward reach. The record declares the 0.1 versus 0.4 degree upsampling trap rather than leaving it to be discovered: CAMS global publishes a 0.4 degree grid and Open-Meteo returns cell centres stepping in 0.1 degree, so a stored value looks like a 0.1 degree field and is not one; the native 0.4 degree grid is what this record claims. Reprocessed, so never the display primary and never a derivation input."
+                + OPEN_METEO_BEST_MATCH_REFUSAL,
+            ),
+            "ECMWF Copernicus Atmosphere Monitoring Service (CAMS)",
+            "CAMS global atmospheric composition forecast delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/air-quality-api", "https://atmosphere.copernicus.eu/"],
+            ["https://air-quality-api.open-meteo.com/v1/air-quality"],
+            ("typed_adapter", "httpx + Pydantic adapter reading data/cams_global/static/meta.json beside every call; no adapter is registered yet"),
+            ["aerosol_optical_depth"], ["total column"],
+            "CAMS global 0.4 degree grid served at 0.1 degree cell centres; queried per point over the evidence box",
+            "two runs a day (00Z and 12Z), hourly steps, published at about T+10 h 16 m",
+            "about 4 days of non-null forward reach; the trailing hours of a 7-day request return null with no marker",
+            (False, "none", None),
+            _open_meteo_policy(
+                "credit ECMWF CAMS as the producer of the composition forecast. The upstream ADS licence dispute recorded on copernicus-cams is inherited here: if it reaches this delivery the record is re-read.",
+            ),
+            "Open-Meteo air-quality JSON as served; the CAMS cycle version is not exposed",
+            "run initialisation time read from meta.json, no older than two 12 h cycles",
+            "Aerosol optical depth evidence for sky transparency; never the display primary and never a derivation input",
+            (False, None, "A reprocessed composition field is not a centre vote."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests the CAMS global composition forecast and re-serves it as point time series on its own grid.",
+                (
+                    "The 0.4 degree CAMS global grid is served at 0.1 degree cell centres, an upsample; whether it interpolates or repeats the nearest cell is undocumented.",
+                ),
+            ),
+        ),
+        _source(
+            "openmeteo-lsa-saf-radiation", "analysis",
+            *_admission(
+                "openmeteo-lsa-saf-radiation",
+                "Direct, diffuse and DNI irradiance with a real instantaneous split, which no native source over the box publishes: every model on GeoMet publishes accumulated or averaged shortwave only, so the wet-bulb globe temperature input is missing and this is the only route to it ("
+                + ENDPOINT_RESEARCH
+                + " section 3.3). The hour-mean and _instant series genuinely differ (159.0 against 185.9 W/m2 at the same hour), so the distinction is carried rather than cosmetic. About 1 h latency, hourly, 0.05 degree. Archive endpoint only: satellite-api /v1/archive has no forward reach, and the beam split served by api.open-meteo.com /v1/forecast is a different quantity, an intermediary's decomposition of a producer's total with no method named, which is refused separately and must never be merged with these values (section 3.4). Admission is conditional on the unmeasured Meteosat limb-geometry cost at 52.7 W. Reprocessed, so never the display primary and never a derivation input."
+                + OPEN_METEO_BEST_MATCH_REFUSAL,
+            ),
+            "EUMETSAT LSA SAF",
+            "LSA SAF surface radiation from Meteosat MSG/SEVIRI (eumetsat_lsa_saf_msg) delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/satellite-radiation-api", "https://landsaf.ipma.pt/en/"],
+            ["https://satellite-api.open-meteo.com/v1/archive"],
+            ("typed_adapter", "httpx + Pydantic adapter against the satellite archive endpoint; no adapter is registered yet"),
+            ["shortwave_radiation", "direct_radiation", "diffuse_radiation", "direct_normal_irradiance", "global_tilted_irradiance", "terrestrial_radiation"],
+            ["surface", "hour mean and instantaneous series"],
+            "Meteosat 0 degree disc at 0.05 degree; the evidence box sits near the western limb",
+            "hourly, at about 1 h latency behind the observation",
+            "archive only; the endpoint has no forward reach",
+            (False, "none", None),
+            _open_meteo_policy("credit EUMETSAT LSA SAF as the producer of the surface radiation retrieval."),
+            "Open-Meteo satellite archive JSON as served",
+            "latest hour no older than 3 h",
+            "Instantaneous direct-beam irradiance for the running profile; never the display primary and never a derivation input",
+            (False, None, "A satellite radiation retrieval is not a forecast centre vote."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests the LSA SAF MSG surface radiation retrieval and re-serves it as hourly point time series, carrying both the hour-mean and the instantaneous convention.",
+            ),
+            admission_condition={
+                "condition": "Meteosat limb-geometry cost at 52.7 W over the evidence box is unmeasured",
+                "satisfied_by": "a recorded comparison of the LSA SAF direct, diffuse and DNI values against a surface radiation reference or a documented view-angle mask over the box",
+                "satisfied": False,
+                "recorded_on": "2026-09-02",
+            },
+        ),
+        _source(
+            "openmeteo-gfs-wave", "wave",
+            *_admission(
+                "openmeteo-gfs-wave",
+                "The only wave field reachable over the box: no native path publishes significant wave height, period, direction or a swell partition, and no marine SWOB station exists inside the box, so sea state today is the SmartAtlantic buoy or nothing ("
+                + ENDPOINT_RESEARCH
+                + " section 1.6). Model ncep_gfswave016, the NOAA/NCEP GFS-Wave Atlantic and Arctic 0.16 degree grid, admitted over the alternatives because it carries the swell and wind-wave partition that ecmwf_wam lacks and combines T+5 h 21 m latency, hourly steps, a 16-day reach and the finest grid of the wave set. cell_selection=sea is mandatory: the default land-preferring cell over a coastal point returns a silent column of nulls, and an all-null column is a retrieval failure, not calm. Reprocessed, so never the display primary and never a derivation input."
+                + OPEN_METEO_BEST_MATCH_REFUSAL,
+            ),
+            "NOAA NCEP",
+            "GFS-Wave Atlantic and Arctic 0.16 degree (ncep_gfswave016) delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/marine-weather-api", "https://polar.ncep.noaa.gov/waves/"],
+            ["https://marine-api.open-meteo.com/v1/marine"],
+            ("typed_adapter", "httpx + Pydantic adapter sending cell_selection=sea and reading meta.json beside every call; no adapter is registered yet"),
+            ["wave_height", "wave_period", "wave_direction", "swell_wave_height", "swell_wave_period", "swell_wave_direction", "wind_wave_height", "wind_wave_period", "wind_wave_direction"],
+            ["sea surface"],
+            "0.16 degree Atlantic and Arctic wave grid; the evidence box is inside its latitude bound, just",
+            "four runs a day, hourly steps, published at about T+5 h 21 m",
+            "16 days",
+            (False, "none", None),
+            _open_meteo_policy("credit NOAA NCEP as the producer of the GFS-Wave forecast."),
+            "Open-Meteo marine JSON as served",
+            "run initialisation time read from meta.json, no older than two 6 h cycles",
+            "Sea state evidence for the marine sectors; never the display primary and never a derivation input",
+            (False, None, "A wave model is not a comparable deterministic centre vote for the atmospheric fields."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests the NCEP GFS-Wave 0.16 degree grid and re-serves it as hourly point time series.",
+                (
+                    "cell_selection=sea is mandatory; the default nearest cell over a coastal point is land and returns null",
+                ),
+            ),
+        ),
+    ])
+
     # The ensemble family declaration is attached here rather than threaded
     # through every constructor call, so the six blocks stay readable side by
     # side in one table above and no record can acquire one by inheriting a
