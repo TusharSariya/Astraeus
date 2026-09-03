@@ -831,10 +831,23 @@ ENTRIES: tuple[DerivationMethod, ...] = (
             ),
         ),
         approval=_OWNER_APPROVAL,
-        enabled=False,
+        conventions=(
+            "Reduction: the mean of the sampled cell values, every in-sector cell weighted equally; a "
+            "far cell counts the same as a near one, because the question is about the whole sector.",
+            "Parameters: the origin latitude and longitude, the bearing, the sector width, the maximum "
+            "range and the elevation-angle band. The band is carried in provenance and is not applied to "
+            "a 2-D surface grid, which has no elevation axis to select on.",
+            "A cell is in the sector when its great-circle bearing from the origin is within half the "
+            "width of the bearing and its great-circle distance is at most the maximum range.",
+            "Minimum covered fraction 0.8: below it the sample is null naming the uncovered fraction, "
+            "never a mean over the covered part alone.",
+            "Inputs are retrieved gridded fields from one source; a non-retrieved class is refused "
+            "naming the class, and one field or family from two sources is refused as a blend.",
+        ),
         summary=(
             "Sampling one gridded field over a sector along a bearing from a registered site, for the "
-            "sunrise-sector cloud question. Registered and disabled until the sector sampler exists."
+            "sunrise-sector cloud question. Implemented in `ingest.derive.sector`: the mean of the "
+            "retrieved cells inside the sector, null below a covered fraction of 0.8."
         ),
     ),
     DerivationMethod(
