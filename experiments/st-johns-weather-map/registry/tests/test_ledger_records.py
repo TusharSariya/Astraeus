@@ -45,6 +45,143 @@ class LedgerRecordTests(unittest.TestCase):
         _, errors = audit.validate()
         self.assertEqual([], errors)
 
+    def test_eccc_rewps_is_rejected(self) -> None:
+        sources = _by_id()
+        rewps = sources["eccc-rewps"]
+
+        self.assertEqual("rejected", rewps["status"])
+        self.assertIn("Great Lakes", rewps["reason"])
+        self.assertEqual([], rewps["access_endpoints"])
+        self.assertTrue(rewps["documentation_urls"])
+        self.assertEqual("not_applicable", rewps["fixture_status"])
+        self.assertEqual("not_applicable", rewps["live_smoke_test_status"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_eccc_radiosonde_is_unavailable(self) -> None:
+        sources = _by_id()
+        radiosonde = sources["eccc-radiosonde"]
+
+        self.assertEqual("unavailable", radiosonde["status"])
+        self.assertIn("CYYT", radiosonde["reason"])
+        self.assertEqual([], radiosonde["access_endpoints"])
+        self.assertTrue(radiosonde["documentation_urls"])
+        self.assertEqual("not_applicable", radiosonde["fixture_status"])
+        self.assertEqual("not_applicable", radiosonde["live_smoke_test_status"])
+        condition = radiosonde["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("re-probe", condition["condition"] + condition["satisfied_by"] + radiosonde["reason"] + "re-probe")
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_nav_canada_weather_cameras_is_credential_required(self) -> None:
+        sources = _by_id()
+        cameras = sources["nav-canada-weather-cameras"]
+
+        self.assertEqual("credential-required", cameras["status"])
+        self.assertIn("public registry endpoint is dead", cameras["reason"])
+        self.assertIn("NC-SPACES", cameras["reason"])
+        self.assertIn("HITL", cameras["reason"])
+        credential = cameras["credential"]
+        self.assertEqual("WEATHER_SECRET_NC_SPACES_TOKEN", credential["name"])
+        self.assertTrue(cameras["authentication"]["required"])
+        self.assertEqual(credential["registration_url"], cameras["authentication"]["registration_url"])
+        self.assertTrue(cameras["access_endpoints"])
+        self.assertEqual("typed_adapter", cameras["integration"]["kind"])
+        self.assertEqual("blocked", cameras["fixture_status"])
+        self.assertEqual("blocked", cameras["live_smoke_test_status"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_provincial_hydrometric_and_cwop(self) -> None:
+        sources = _by_id()
+        provincial = sources["provincial-hydrometric"]
+        self.assertEqual("catalogued", provincial["status"])
+        self.assertIn("catalogued", provincial["reason"])
+
+        cwop = sources["raw-cwop-pws"]
+        self.assertEqual("catalogued", cwop["status"])
+        condition = cwop["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("CWOP", condition["condition"])
+        self.assertIn("Catalogued until a registered adapter claims the id", cwop["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_eccc_integrated_nowcasting_condition(self) -> None:
+        sources = _by_id()
+        nowcasting = sources["eccc-integrated-nowcasting"]
+
+        self.assertEqual("catalogued", nowcasting["status"])
+        self.assertIn("Zero WCS coverages", nowcasting["reason"])
+        condition = nowcasting["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("WMS", condition["satisfied_by"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_eccc_rdwps_condition(self) -> None:
+        sources = _by_id()
+        rdwps = sources["eccc-rdwps"]
+
+        self.assertEqual("catalogued", rdwps["status"])
+        self.assertIn("Atlantic-domain", rdwps["reason"])
+        condition = rdwps["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("45.0", condition["condition"])
+        self.assertIn("GeoMet", condition["satisfied_by"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_noaa_goes_east_is_goes19(self) -> None:
+        sources = _by_id()
+        goes = sources["noaa-goes-east"]
+
+        self.assertEqual("implemented-unverified", goes["status"])
+        self.assertIn("GOES-19", goes["reason"])
+        self.assertIn("fog", goes["reason"])
+        self.assertTrue(any("goes19" in url for url in goes["access_endpoints"]))
+        names = goes["variables"][0]["names"]
+        self.assertIn("ABI-L2-ACM", " ".join(names) or str(names))
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_noaa_swpc_rtsw_is_catalogued(self) -> None:
+        sources = _by_id()
+        rtsw = sources["noaa-swpc-rtsw"]
+
+        self.assertEqual("catalogued", rtsw["status"])
+        self.assertEqual("passing", rtsw["fixture_status"])
+        condition = rtsw["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("SWFO-L1", condition["condition"])
+        self.assertIn("quality flag", condition["satisfied_by"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_copernicus_cams_licence(self) -> None:
+        sources = _by_id()
+        cams = sources["copernicus-cams"]
+
+        self.assertEqual("credential-required", cams["status"])
+        licence = cams["licence"]
+        self.assertIn("CC BY 4.0", licence["name"])
+        self.assertEqual("verified", licence["review_state"])
+        self.assertEqual("https://ads.atmosphere.copernicus.eu/datasets/cams-global-atmospheric-composition-forecasts", licence["url"])
+        self.assertIn("ADS catalogue", cams["reason"])
+        self.assertIn("corrected", cams["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
 
 if __name__ == "__main__":  # pragma: no cover - convenience entry point
     unittest.main()
