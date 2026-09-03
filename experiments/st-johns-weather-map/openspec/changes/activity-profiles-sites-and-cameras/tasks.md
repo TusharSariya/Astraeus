@@ -29,12 +29,12 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
 
 ## 1. Profile registry and validation (profiles owner)
 
-- [ ] 1.1 Create `registry/profiles/schema.json` and the profile file shape:
+- [x] 1.1 Create `registry/profiles/schema.json` and the profile file shape:
   id, version, title, families, thresholds with defaults, weights, hard
   stops, graded criteria, window rule, site needs, blocked fields.
   Owns: `registry/profiles/schema.json`.
   Verify: `cd api && uv run pytest tests/test_profile_registry.py -k schema`
-- [ ] 1.2 Write `registry/profile_audit.py`: resolve every family, field key,
+- [x] 1.2 Write `registry/profile_audit.py`: resolve every family, field key,
   level and unit against the field catalogue; refuse an unknown family, a
   unit mismatch, a weight out of range, a threshold with no default, and a
   field named in both the hard stops and the graded criteria.
