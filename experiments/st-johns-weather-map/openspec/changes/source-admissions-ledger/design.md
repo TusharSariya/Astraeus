@@ -300,3 +300,199 @@ producer, so no record can declare one.
 - **CAMS licence.** The correction is to CC BY 4.0 per the ADS catalogue. If
   the ADS licence dispute noted in ticket 10 reaches the Open-Meteo delivery
   as well, `openmeteo-cams-aod` inherits it and the record must be re-read.
+
+## Seam
+
+Pinned by the change lead on 2026-09-02 before any task was dispatched. Every
+task agent implements against this section verbatim; a disagreement between a
+task's prose and this section is resolved in favour of this section, and any
+departure is recorded under Deviations below.
+
+### S1. The ten states
+
+`registry/schema.json` `$defs/status` is exactly this list, in this order:
+
+```
+"operational", "implemented-unverified", "catalogued", "credential-required",
+"licence-blocked", "link-only", "partnership-only", "unavailable",
+"rejected", "superseded"
+```
+
+Hyphens, never underscores. The old nine values are gone from the schema; the
+audit reports `invalid status 'implementing'` (and so on) for any record still
+carrying one. The audit refuses `operational` on any record with the error
+text `declares operational, which no source may claim`.
+
+### S2. A dependency-free admission module
+
+`registry/admission.py` is new and imports nothing but the standard library.
+It is the single definition the audit, the API and the ingest registry all
+read, so no two of them can disagree:
+
+- `STATES: tuple[str, ...]` is the S1 list.
+- `SCHEDULABLE_STATES = frozenset({"implemented-unverified"})`.
+- `NO_ACCESS_PATH_STATES = frozenset({"link-only", "partnership-only", "rejected"})`:
+  `access_endpoints` must be `[]` on these.
+- `TERMINAL_STATES = frozenset({"unavailable", "rejected", "superseded", "link-only", "partnership-only"})`:
+  `fixture_status` and `live_smoke_test_status` must both be `not_applicable`.
+- `CEILING: dict[str, str]` maps each state to itself except
+  `"operational" -> "unavailable"`.
+- `ceiling_state(status: str) -> str` returns `CEILING.get(status, "unavailable")`.
+- `condition_outstanding(record) -> bool` is true when the record carries an
+  `admission_condition` block whose `satisfied` is false.
+- `implemented_unverified_ok(record, adapter_ids) -> bool` is the objective
+  test of Decision 1: `record["id"] in adapter_ids` and
+  `record["integration"]["kind"] != "link_only"` and
+  `record["fixture_status"] == "passing"`.
+- `declaration_schedulable(record, adapter_ids) -> bool` is
+  `record["status"] in SCHEDULABLE_STATES and implemented_unverified_ok(record, adapter_ids) and not condition_outstanding(record)`.
+  It is the registry half of schedulability; the ingest half (freshness,
+  reach, cadence, ensemble flag) stays in `ingest/registry.py`.
+- `access_path_of(record) -> str | None` returns the first access endpoint or
+  `None`.
+
+### S3. Record blocks
+
+All four are optional keys on `$defs/source` with `additionalProperties: false`.
+
+`credential`, required when and only when status is `credential-required`:
+
+```json
+{"name": "WEATHER_SECRET_NC_SPACES_TOKEN", "registration_url": "https://..."}
+```
+
+`name` matches `^WEATHER_SECRET_[A-Z0-9_]+$` and is the environment variable
+`ingest/secrets.py` `SECRET_ENV_BY_SOURCE` maps for the id; the block has no
+other key, so no value can be written into it. `authentication.required` must
+be true and `authentication.registration_url` must equal the block's URL.
+Names: `copernicus-cams` WEATHER_SECRET_COPERNICUS_ADS_TOKEN,
+`nasa-earthdata-aerosol` and `viirs-dnb-night-lights`
+WEATHER_SECRET_NASA_EARTHDATA_TOKEN, `noaa-madis` WEATHER_SECRET_MADIS_TOKEN,
+`purpleair` WEATHER_SECRET_PURPLEAIR_API_KEY, `openaq`
+WEATHER_SECRET_OPENAQ_API_KEY, `nl-511` WEATHER_SECRET_NL511_API_KEY,
+`google-weathernext-2` and `open-meteo-weathernext-2`
+WEATHER_SECRET_GOOGLE_WEATHERNEXT_TOKEN, `nav-canada-weather-cameras`
+WEATHER_SECRET_NC_SPACES_TOKEN.
+
+`restricted_terms`, optional on any non-terminal state:
+
+```json
+{"terms_text": "...verbatim clause...", "terms_source_url": "https://...",
+ "redistribution": false, "read_date": "2026-09-02"}
+```
+
+`redistribution` is `const false`. The audit refuses a block whose
+`terms_text` is empty or whitespace, and requires `licence.review_state` to
+be `restricted` and `consensus.eligible` to be false on the record. The
+top-level prose `redistribution` string stays as it is.
+
+`admission_condition`, optional on any state:
+
+```json
+{"condition": "what is outstanding", "satisfied_by": "what would satisfy it",
+ "satisfied": false, "recorded_on": "2026-09-02"}
+```
+
+`satisfied: false` makes the record unschedulable (S2). Nothing in the running
+system flips it.
+
+`superseded_by`, required when and only when status is `superseded`:
+
+```json
+{"source_id": "eccc-raqdps", "detail": "RAQDPS smoke-plume layers"}
+```
+
+`source_id` must be an existing record id; the audit refuses `superseded`
+without it.
+
+`access_endpoints` becomes `minItems: 0`. On `NO_ACCESS_PATH_STATES` it must
+be `[]`; `documentation_urls` carries the citation. The API keeps emitting the
+literal `"unavailable"` for `access_endpoint` when the list is empty.
+
+### S4. Audit functions and summary
+
+New functions in `registry/audit.py`, each `(source) -> list[str]` unless
+stated, all called from `semantic_errors`:
+
+- `state_errors(source, adapter_ids)`: S1 membership, `operational`
+  refused, `implemented-unverified` requires `implemented_unverified_ok`
+  (error text `claims implemented-unverified with no registered adapter,
+  a link_only integration or a fixture that is not passing`), terminal
+  states require `not_applicable` fixture and smoke, `NO_ACCESS_PATH_STATES`
+  require empty endpoints, `credential-required` requires the `credential`
+  block and vice versa, `superseded` requires `superseded_by` and vice versa.
+- `credential_errors(source)`: block shape, name pattern, no key material,
+  `authentication` agreement.
+- `restricted_terms_errors(source)`: S3 rules.
+- `condition_errors(source)`: `condition` and `satisfied_by` non-blank.
+- `no_endpoint_errors(source)`: `link-only` and `partnership-only` carry no
+  endpoint and `integration.kind == "link_only"`.
+- `glossary_state_errors(path=None) -> list[str]`: reads the repo-root
+  `CONTEXT.md` (`HERE.parents[2] / "CONTEXT.md"`), extracts the ten names
+  from the "Registry state" entry, maps `credential-blocked` to
+  `credential-required`, and compares the set against `admission.STATES`.
+  A missing file is an error.
+- `ledger_errors(data) -> list[str]`: every id in `LEDGER_SOURCE_IDS`
+  (a frozenset in `audit.py` transcribed from the ledger table, minus
+  `openmeteo-weathernext-2-cloud`, see Deviations) has a record; every record
+  has a non-blank `reason`. Added by task 2.3, which runs after section 7.
+
+`--summary-json` keeps every existing key. `status_counts` is keyed by the
+S1 states. New keys, each a sorted list of ids unless stated:
+`schedulable_by_registry` (S2 `declaration_schedulable` against
+`adapter_source_ids()`), `admission_conditions_outstanding`,
+`research_use_only` (records carrying `restricted_terms`),
+`credential_required`, `no_access_path` (empty endpoints), and
+`migration_split: {"implemented-unverified": n, "catalogued": n}`.
+
+### S5. The migration of the 65 existing records
+
+The registry holds 65 records today, not 63: `dwd-icon-eps` (`unavailable`)
+and `open-meteo-weathernext-2` (`credential_required`) were added by steps 3
+and 7. All 50 `implementing` records carry `fixture_status: "planned"`. The
+21 ids `adapter_source_ids()` returns all have passing fixture suites under
+`api/tests/test_adapter_*.py` (207 passed on 2026-09-02), so task 3.1 sets
+`fixture_status: "passing"` on exactly those 21 and applies the Decision 1
+rule: those 21 become `implemented-unverified`, the other 29 become
+`catalogued`. `live_smoke_test_status` is untouched. A record the ledger
+marks "Confirm implemented-unverified" that has no registered adapter lands
+on `catalogued` with its reason prose extended by one sentence saying it is
+admitted by its ticket and catalogued until an adapter claims the id. New
+records the ledger marks `implemented-unverified` follow the same rule: with
+no adapter they are written `catalogued`, and their reason says so.
+
+### S6. API ceiling and schedulability
+
+`api/weather_api/sources.py` does not exist. The ceiling table is
+`_REGISTRY_STATE_CEILING` in `api/weather_api/store.py`; task 9.1 replaces it
+with `admission.ceiling_state`. The emitted enum `SourceState` in
+`api/weather_api/models.py` is replaced by the ten S1 values
+(`OPERATIONAL`, `IMPLEMENTED_UNVERIFIED`, `CATALOGUED`,
+`CREDENTIAL_REQUIRED = "credential-required"`, `LICENCE_BLOCKED`,
+`LINK_ONLY`, `PARTNERSHIP_ONLY`, `UNAVAILABLE`, `REJECTED`, `SUPERSEDED`);
+this is the one edit to `models.py` and it is recorded under Deviations.
+`api/weather_api/fixtures.py` moves its six fixture records to
+`IMPLEMENTED_UNVERIFIED`. `ingest/registry.py` `IngestConfig` gains
+`admission_condition_outstanding: bool` (read through
+`admission.condition_outstanding`) and `ingestible` tests
+`registry_status == "implemented-unverified"` and
+`not admission_condition_outstanding`. `ingest/secrets.py` gains the two rows
+S3 names for `nav-canada-weather-cameras` and `viirs-dnb-night-lights`.
+`POST /refresh` keeps the detail prefix `source ids are not schedulable:` and
+appends each id as `id (state)` or `id (state; condition outstanding: ...)`.
+Tests for 9.x live in new files `registry/tests/test_ceiling.py` and
+`registry/tests/test_schedulable.py`, which exercise `registry/admission.py`
+under plain `python3`, plus pytest cases in `api/tests/test_api.py` and
+`api/tests/test_astronomy.py` updated to the new strings.
+
+### S7. Verification commands
+
+From `experiments/st-johns-weather-map/`: `python3 registry/audit.py`,
+`python3 registry/audit.py --summary-json`,
+`python3 -m unittest discover -s registry/tests -v`. API tests run from
+`api/` with `uv sync` once, then bare `uv run pytest` (`addopts = "-q"`).
+Between the schema landing (section 1) and the migration landing (task 3.1)
+the audit is expected red on the old status values; the unit tests named in
+each task are the verify signal for sections 1 and 2. Every new record must
+also be listed under a candidate in `registry/catalogue_coverage.json`, or
+the audit reports it absent from catalogue coverage.
