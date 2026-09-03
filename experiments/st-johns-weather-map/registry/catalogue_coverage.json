@@ -156,7 +156,31 @@
     "NOAA SWPC space weather (Kp, solar wind, OVATION aurora)": [
       "noaa-swpc-kp",
       "noaa-swpc-rtsw",
-      "noaa-swpc-ovation"
+      "noaa-swpc-ovation",
+      "noaa-swpc-plasma",
+      "noaa-swpc-propagated-solar-wind",
+      "noaa-swpc-kp-1m",
+      "noaa-swpc-alerts",
+      "noaa-swpc-scales",
+      "noaa-goes-magnetometer",
+      "noaa-goes-xray",
+      "noaa-swpc-kyoto-dst",
+      "noaa-swpc-stereo-a",
+      "noaa-swpc-kp-hourly-prediction"
+    ],
+    "GFZ Hp30": [
+      "gfz-hp30"
+    ],
+    "CelesTrak GP and Space-Track": [
+      "celestrak-gp",
+      "space-track"
+    ],
+    "NRCan STJ magnetometer": [
+      "nrcan-stj-magnetometer"
+    ],
+    "Space weather citations": [
+      "space-weather-canada-regional",
+      "nasa-soho-sdo-goes-suvi-imagery"
     ]
   }
 }

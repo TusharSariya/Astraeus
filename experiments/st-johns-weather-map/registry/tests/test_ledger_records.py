@@ -15,6 +15,7 @@ from pathlib import Path
 REGISTRY_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REGISTRY_DIR))
 
+import admission  # noqa: E402
 import audit  # noqa: E402
 from source_data import registry  # noqa: E402
 
@@ -179,6 +180,77 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertEqual("https://ads.atmosphere.copernicus.eu/datasets/cams-global-atmospheric-composition-forecasts", licence["url"])
         self.assertIn("ADS catalogue", cams["reason"])
         self.assertIn("corrected", cams["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_celestrak_gp_is_catalogued_with_outstanding_condition(self) -> None:
+        sources = _by_id()
+        celestrak = sources["celestrak-gp"]
+
+        self.assertEqual("catalogued", celestrak["status"])
+        self.assertIn("Catalogued until a registered adapter claims the id", celestrak["reason"])
+        self.assertIn("derived-here", celestrak["reason"])
+        self.assertIn("never fetched as passes", celestrak["reason"])
+        condition = celestrak["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("usage policy", condition["condition"])
+        adapter_ids = audit.adapter_source_ids()
+        self.assertFalse(admission.declaration_schedulable(celestrak, adapter_ids))
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_space_track_is_rejected(self) -> None:
+        sources = _by_id()
+        space_track = sources["space-track"]
+
+        self.assertEqual("rejected", space_track["status"])
+        self.assertIn("CelesTrak", space_track["reason"])
+        self.assertEqual([], space_track["access_endpoints"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_noaa_swpc_kyoto_dst_is_reprocessed(self) -> None:
+        sources = _by_id()
+        dst = sources["noaa-swpc-kyoto-dst"]
+
+        self.assertEqual("catalogued", dst["status"])
+        self.assertEqual("reprocessed", dst["delivery_kind"])
+        intermediary = dst["intermediary"]
+        self.assertEqual("NOAA SWPC", intermediary["name"])
+        self.assertIn("Kyoto", dst["producer"])
+        self.assertFalse(dst["display_primary"])
+        self.assertIn("Never the display primary", dst["reason"])
+        self.assertIn("never a derivation input", dst["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_nrcan_stj_magnetometer_is_partnership_only(self) -> None:
+        sources = _by_id()
+        magnetometer = sources["nrcan-stj-magnetometer"]
+
+        self.assertEqual("partnership-only", magnetometer["status"])
+        self.assertEqual([], magnetometer["access_endpoints"])
+        self.assertEqual("link_only", magnetometer["integration"]["kind"])
+        adapter_ids = audit.adapter_source_ids()
+        self.assertFalse(admission.declaration_schedulable(magnetometer, adapter_ids))
+        self.assertIn("written permission", magnetometer["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_link_only_space_weather_records(self) -> None:
+        sources = _by_id()
+        regional = sources["space-weather-canada-regional"]
+        imagery = sources["nasa-soho-sdo-goes-suvi-imagery"]
+
+        for record in (regional, imagery):
+            self.assertEqual("link-only", record["status"])
+            self.assertEqual([], record["access_endpoints"])
+            self.assertEqual("link_only", record["integration"]["kind"])
 
         _, errors = audit.validate()
         self.assertEqual([], errors)
