@@ -96,3 +96,28 @@ _Avoid_: spot, location, station (a station is an instrument)
 **Camera geometry**:
 The registered position, bearing, field of view and horizon landmarks of a
 camera, which make its frames usable as an input to cloud and fog derivation.
+
+**Verdict**:
+A profile's derived-here score at a focus: its hard stops, its grades, the
+window rule that applied, and the fields that drove it. Shown beside the raw
+evidence, never in place of it.
+_Avoid_: rating, recommendation, forecast
+
+### Reading
+
+**Focus**:
+The point and instant every view reads at once, with the site named when the
+point is a registered one. One focus is shared by every open view.
+_Avoid_: selection, cursor, context
+
+**View**:
+One way of reading the evidence at the focus: Map, Series, Sky, Activity or
+Sources. Views do not own data; they read the focus.
+_Avoid_: mode, dashboard, panel, tab
+
+**Layer stack**:
+The ordered set of layers the Map view draws at once, with each layer's
+opacity and the compare arrangement (stacked, swiped, side by side, small
+multiples) they are drawn in. Layers in one stack keep their own frames and
+their own evidence classes; a stack never blends them.
+_Avoid_: overlay set, active layers
