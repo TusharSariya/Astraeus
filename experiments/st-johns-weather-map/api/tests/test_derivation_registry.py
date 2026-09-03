@@ -3,12 +3,14 @@
 Spec-Refs: openspec/changes/evidence-classes-and-derived-here/specs/derivation-method-registry/spec.md
 Spec-Refs: openspec/changes/ensemble-families-and-member-statistics/specs/derivation-method-registry/spec.md
 Spec-Refs: openspec/changes/activity-profiles-sites-and-cameras/specs/camera-evidence/spec.md
+Spec-Refs: openspec/changes/activity-profiles-sites-and-cameras/specs/site-registry/spec.md
 """
 
 from __future__ import annotations
 
 import dataclasses
 from datetime import datetime, timezone
+from typing import Sequence
 
 import pytest
 
@@ -53,6 +55,13 @@ from ingest.derive.registry import (
     UnregisteredMethod,
     derive_ensemble_statistic,
     validation_errors,
+)
+from ingest.derive.sector import (
+    MINIMUM_COVERED_FRACTION,
+    REDUCTION,
+    SectorInput,
+    SectorParameters,
+    sample_sector,
 )
 
 APPROVAL = Approval(approver="@TusharSariya", decided_on="2026-09-02", record="ADR 0001", note="test entry")
@@ -211,14 +220,16 @@ def test_different_fields_from_different_sources_are_derivation_not_blending() -
 
 
 def test_disabled_entry_produces_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`ensemble_statistics_within_run` was the disabled entry here until
-    `ensemble-families-and-member-statistics` enabled it as the umbrella every
-    member statistic goes through; sector sampling is still registered and
-    disabled, so it carries the case now."""
+    """The registered-and-disabled example has moved twice. It was
+    `ensemble_statistics_within_run` until that change enabled it as the
+    umbrella every member statistic goes through, then sector sampling until
+    `activity-profiles-sites-and-cameras` gave it a sampler; the camera
+    entries carry the case now, and unlike the other two they stay disabled
+    until a validation record exists."""
     monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
-    refusal = derive_registry.resolve(SECTOR_SAMPLING)
+    refusal = derive_registry.resolve(CAMERA_FOG_VISIBILITY_CLASS)
     assert refusal is not None and refusal.code == "method_disabled"
-    assert derive_registry.get(SECTOR_SAMPLING).enabled is False
+    assert derive_registry.get(CAMERA_FOG_VISIBILITY_CLASS).enabled is False
     assert derive_registry.get(ENSEMBLE_STATISTICS).enabled is True
     assert derive_registry.resolve(ENSEMBLE_STATISTICS) is None
 
@@ -267,7 +278,8 @@ def test_the_catalogue_is_the_reader_switch_contract(monkeypatch: pytest.MonkeyP
     assert humidity["refusal"] is None
     assert humidity["reader_switchable"] is True and humidity["reader_default_on"] is True
     assert rows[WIND_SPEED_AND_DIRECTION]["refusal"]["code"] == "reader_disabled"
-    assert rows[SECTOR_SAMPLING]["refusal"]["code"] == "method_disabled"
+    assert rows[CAMERA_FOG_VISIBILITY_CLASS]["refusal"]["code"] == "method_disabled"
+    assert rows[SECTOR_SAMPLING]["available"] is True
     assert rows[ENSEMBLE_STATISTICS]["available"] is True
 
 
@@ -697,3 +709,235 @@ def test_the_numeric_visibility_refused_rule_leaves_the_bound_an_interval() -> N
     assert not any(item.field == "visibility_m" for item in entry.outputs)
     for item in entry.outputs:
         assert "landmark" in item.note
+
+
+# --- Requirement: sector sampling along a bearing ---
+# Spec-Refs: openspec/changes/activity-profiles-sites-and-cameras/specs/site-registry/spec.md
+
+#: Signal Hill, near enough. Every sector case below points north from here.
+SECTOR_ORIGIN = (47.5615, -52.7126)
+
+SECTOR_PARAMS = SectorParameters(
+    origin_latitude=SECTOR_ORIGIN[0],
+    origin_longitude=SECTOR_ORIGIN[1],
+    bearing_deg=0.0,
+    width_deg=60.0,
+    max_range_km=20.0,
+    elevation_band_deg=(0.0, 10.0),
+)
+
+#: Five cells due north of the origin, from 2.2 km to 11.1 km out, plus two
+#: the sector does not contain: one due south (outside the width) and one far
+#: north (outside the range). A reduction that took either would show it.
+SECTOR_CELLS: tuple[tuple[float, float, float | None], ...] = (
+    (47.5815, -52.7126, 10.0),
+    (47.6015, -52.7126, 20.0),
+    (47.6215, -52.7126, 30.0),
+    (47.6415, -52.7126, 40.0),
+    (47.6615, -52.7126, 50.0),
+    (47.5115, -52.7126, 1000.0),
+    (47.9615, -52.7126, 1000.0),
+)
+
+
+def _sector_input(
+    cells: Sequence[tuple[float, float, float | None]] = SECTOR_CELLS,
+    *,
+    field: str = "total_cloud_cover",
+    family: str = "total_cloud",
+    source_id: str = "eccc-hrdps",
+    evidence_class: str = "retrieved",
+    quality_status: str = "passed",
+) -> SectorInput:
+    return SectorInput(
+        field=field,
+        family=family,
+        source_id=source_id,
+        evidence_class=evidence_class,
+        quality_status=quality_status,
+        cells=tuple(cells),
+    )
+
+
+def test_sector_sampling_is_registered_and_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The entry now has a sampler, so it is enabled and resolves. Its name,
+    version and citation are unchanged; what changed is that the summary no
+    longer says the sampler does not exist, and the conventions name the
+    reduction, the parameters and the minimum covered fraction."""
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    entry = derive_registry.get(SECTOR_SAMPLING)
+    assert entry.enabled is True
+    assert derive_registry.resolve(SECTOR_SAMPLING) is None
+    assert entry.version == "geodesic-sector-v1"
+    assert "Karney" in entry.citation
+    assert "disabled until" not in entry.summary
+    conventions = " ".join(entry.conventions)
+    assert "mean" in conventions
+    assert "0.8" in conventions
+    for parameter in ("origin", "bearing", "width", "range", "elevation"):
+        assert parameter in conventions
+    assert "retrieved" in conventions
+    assert [item.field for item in entry.inputs] == ["gridded_field", "site_geometry"]
+    assert entry.output.field == "sector_statistic"
+
+
+def test_sector_sampling_serves_a_sample_with_its_sector_and_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The served scenario: the value carries the entry name and version, the
+    origin, bearing, width and range, and every input source."""
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    result = sample_sector([_sector_input()], SECTOR_PARAMS)
+    assert result.refusal is None
+    assert result.available is True
+    # The mean of the five in-sector cells, not of all seven: the southern
+    # cell and the far northern one are outside the sector.
+    assert result.value == pytest.approx(30.0)
+    assert result.covered_fraction == pytest.approx(1.0)
+    assert result.quality_status == "passed"
+    record = result.provenance
+    assert record["derivation"] == SECTOR_SAMPLING
+    assert record["derivation_version"] == "geodesic-sector-v1"
+    assert record["origin"] == SECTOR_ORIGIN
+    assert record["bearing_deg"] == 0.0
+    assert record["width_deg"] == 60.0
+    assert record["max_range_km"] == 20.0
+    assert record["elevation_band_deg"] == (0.0, 10.0)
+    assert record["reduction"] == REDUCTION == "mean"
+    assert [item["source_id"] for item in record["inputs"]] == ["eccc-hrdps"]
+    assert record["inputs"][0]["evidence_class"] == "retrieved"
+    assert record["inputs"][0]["field"] == "total_cloud_cover"
+
+
+@pytest.mark.parametrize("evidence_class", ["reprocessed", "intermediary_derived"])
+def test_sector_sampling_refuses_an_input_that_is_not_retrieved(
+    evidence_class: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A sector sample is a statement about what a centre published on its own
+    grid, so an input of any other class is refused naming the class, and no
+    sample is produced from it."""
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    result = sample_sector([_sector_input(evidence_class=evidence_class)], SECTOR_PARAMS)
+    assert result.value is None
+    assert result.refusal == f"input_class_refused:{evidence_class}"
+    assert evidence_class in result.refusal
+    assert result.provenance["inputs"][0]["evidence_class"] == evidence_class
+
+
+def test_sector_sampling_carries_the_worst_input_quality(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Worst-first, mirroring ``api.weather_api.models.QUALITY_SEVERITY``:
+    passed < suspect < unknown < failed. Nothing here may raise a status."""
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    assert sample_sector([_sector_input()], SECTOR_PARAMS).quality_status == "passed"
+    for status in ("suspect", "unknown", "failed"):
+        result = sample_sector([_sector_input(quality_status=status)], SECTOR_PARAMS)
+        assert result.quality_status == status
+        assert result.value == pytest.approx(30.0)
+    worst = sample_sector(
+        [
+            _sector_input(quality_status="passed"),
+            _sector_input(
+                field="site_geometry", family="site_geometry", quality_status="suspect"
+            ),
+        ],
+        SECTOR_PARAMS,
+    )
+    assert worst.quality_status == "suspect"
+    assert derive_registry.QUALITY_SEVERITY == {"passed": 0, "suspect": 1, "unknown": 2, "failed": 3}
+
+
+def test_sector_sampling_is_null_when_the_sector_is_not_covered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Part of the sector falling outside the grid, or over missing cells, is
+    null naming the uncovered fraction. At exactly the declared minimum the
+    sample is served; below it nothing is computed from the covered part."""
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    assert MINIMUM_COVERED_FRACTION == 0.8
+    four_of_five = [
+        (latitude, longitude, None if value == 50.0 else value)
+        for latitude, longitude, value in SECTOR_CELLS
+    ]
+    met = sample_sector([_sector_input(four_of_five)], SECTOR_PARAMS)
+    assert met.covered_fraction == pytest.approx(0.8)
+    assert met.refusal is None and met.value == pytest.approx(25.0)
+
+    three_of_five = [
+        (latitude, longitude, None if value in {40.0, 50.0} else value)
+        for latitude, longitude, value in SECTOR_CELLS
+    ]
+    short = sample_sector([_sector_input(three_of_five)], SECTOR_PARAMS)
+    assert short.value is None
+    assert short.covered_fraction == pytest.approx(0.6)
+    assert short.refusal.startswith("uncovered_fraction:")
+    assert "0.6" in short.refusal
+
+    # A sector with no cells in it at all is never a mean over nothing.
+    away = dataclasses.replace(SECTOR_PARAMS, bearing_deg=180.0, width_deg=10.0, max_range_km=1.0)
+    empty = sample_sector([_sector_input()], away)
+    assert empty.value is None
+    assert empty.refusal == "uncovered_fraction:0.0"
+
+
+def test_sector_sampling_refuses_one_field_from_two_sources_as_a_blend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The same catalogue field, or two members of one family, from two
+    centres is the same field averaged across centres by another name."""
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    same_field = sample_sector(
+        [_sector_input(source_id="eccc-hrdps"), _sector_input(source_id="noaa-gfs")],
+        SECTOR_PARAMS,
+    )
+    assert same_field.value is None
+    assert same_field.refusal == "blend_refused"
+
+    same_family = sample_sector(
+        [
+            _sector_input(field="total_cloud_opacity_weighted", source_id="eccc-hrdps"),
+            _sector_input(field="total_cloud_geometric", source_id="noaa-gfs"),
+        ],
+        SECTOR_PARAMS,
+    )
+    assert same_family.value is None
+    assert same_family.refusal == "blend_refused"
+
+    # Two different families from two sources is not a blend: a grid from one
+    # centre with the site's own geometry is exactly the intended shape.
+    allowed = sample_sector(
+        [
+            _sector_input(source_id="eccc-hrdps"),
+            _sector_input(field="site_geometry", family="site_geometry", source_id="registered-site"),
+        ],
+        SECTOR_PARAMS,
+    )
+    assert allowed.refusal is None
+
+
+def test_sector_sampling_refused_at_each_of_the_three_switch_levels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Disabled at any of the three levels, every sector field is null with a
+    notice naming the level, and no unsectored substitute is served."""
+    monkeypatch.setenv(derive_registry.DERIVED_HERE_ENV, "off")
+    deployment = sample_sector([_sector_input()], SECTOR_PARAMS)
+    assert deployment.value is None and deployment.refusal == "deployment_refused"
+
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    reader = sample_sector([_sector_input()], SECTOR_PARAMS, reader_disabled=[SECTOR_SAMPLING])
+    assert reader.value is None and reader.refusal == "reader_disabled"
+    # Another reader's switch is not this reader's.
+    assert sample_sector([_sector_input()], SECTOR_PARAMS, reader_disabled=[FOG_STATE]).refusal is None
+
+    switched_off = DerivationRegistry(
+        tuple(
+            dataclasses.replace(entry, enabled=False) if entry.name == SECTOR_SAMPLING else entry
+            for entry in ENTRIES
+        )
+    )
+    monkeypatch.setattr(derive_registry, "REGISTRY", switched_off)
+    entry_level = sample_sector([_sector_input()], SECTOR_PARAMS)
+    assert entry_level.value is None and entry_level.refusal == "method_disabled"
+    # The provenance still says what was asked for, refused or not.
+    assert entry_level.provenance["derivation"] == SECTOR_SAMPLING
+    assert entry_level.provenance["bearing_deg"] == 0.0
