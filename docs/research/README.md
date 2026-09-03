@@ -14,6 +14,18 @@ The central product question is:
 
 ## Documents
 
+- [Google WeatherNext 3 validation](google-weathernext-3-validation.md):
+  hourly satellite-informed initialization, 64-member global forecasts, direct
+  cloud fields, access surfaces, latency, terms, costs, limitations, and
+  provider-admission gates.
+- [North Atlantic forecast-model viability](north-atlantic-forecast-model-viability.md):
+  live RAP/NAM coverage probes, independent global-centre options, excluded
+  regional domains, source-family accounting, and admission priorities for the
+  Newfoundland evidence box.
+- [NVIDIA Earth-2 and CPU feasibility](nvidia-earth2-cpu-feasibility.md):
+  Earth2Studio versus forecast evidence, FourCastNet 1/3 variables, licences,
+  checkpoint sizes, CPU/GPU support evidence, hosted access, and an incremental
+  benchmark plan.
 - [Newfoundland operational-data coverage audit](newfoundland-operational-data-improvements.md):
   verified NL 511 contract, local/marine/aviation gaps, camera-CV boundaries,
   and prioritized source-adapter backlog.
