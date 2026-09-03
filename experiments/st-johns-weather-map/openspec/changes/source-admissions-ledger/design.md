@@ -496,3 +496,49 @@ the audit is expected red on the old status values; the unit tests named in
 each task are the verify signal for sections 1 and 2. Every new record must
 also be listed under a candidate in `registry/catalogue_coverage.json`, or
 the audit reports it absent from catalogue coverage.
+
+## Deviations
+
+Recorded by the change lead as each was decided. Each is a departure from the
+ledger table or from `tasks.md` as written, with the reason.
+
+1. **`openmeteo-weathernext-2-cloud` is not created (task 6.9).** The
+   registry already carries `open-meteo-weathernext-2`, added by the
+   ensemble-members change with delivery kind `intermediary_derived`, producer
+   Google DeepMind, intermediary Open-Meteo, `display_primary: false`, and the
+   producer's real-time terms gating it by every route (see the record and
+   `ingest/secrets.py`). A second record for the same product would be a
+   duplicate declaration. Task 6.9 is satisfied on the existing record: its
+   state is `credential-required` (the ledger's `implemented-unverified` would
+   have overridden the earlier terms decision without an owner ruling), and
+   its reason states that it is never the display primary and never a
+   derivation input. The owner may move it to `implemented-unverified` with a
+   `restricted_terms` block if the terms decision is revisited.
+2. **`implemented-unverified` is an invariant, not only a migration rule.**
+   The audit refuses the state on any record without a registered adapter, a
+   non-`link_only` integration and a passing fixture. Ledger rows marked
+   `implemented-unverified` whose id no adapter claims are written
+   `catalogued` with a reason sentence saying they are admitted by their
+   ticket and catalogued until an adapter claims the id. This follows the
+   ADDED requirement's scenario "A declared but unwired source migrates to
+   catalogued" and the glossary's meaning of implemented; the ledger's state
+   column records the admission decision. The affected ids are listed in
+   the execution notes at the end of this section once the record tasks land.
+3. **`fixture_status` set to `passing` on the 21 adapter-backed records
+   (task 3.1).** All 21 have passing fixture suites under
+   `api/tests/test_adapter_*.py` (207 passed, 2026-09-02). Leaving `planned`
+   would have sent every record to `catalogued` and left the worker with
+   nothing schedulable, which is not what the registry says is true.
+4. **`api/weather_api/sources.py` does not exist (section 9).** The ceiling
+   table is `_REGISTRY_STATE_CEILING` in `api/weather_api/store.py`, and the
+   pure table now lives in `registry/admission.py` so the audit, the API and
+   the ingest registry read one definition.
+5. **One edit to `api/weather_api/models.py` (task 9.1).** `SourceState` is
+   the emitted enum and `SourceRecord.state` and `SourceStatus.state` are
+   typed on it, so the API cannot emit `implemented-unverified` without the
+   enum carrying it. The edit is confined to the members of `SourceState`;
+   nothing else in the file changes. The instruction not to touch the file
+   came from the evidence-classes change's ownership, which has landed.
+6. **The registry holds 65 records, not 63.** `dwd-icon-eps` and
+   `open-meteo-weathernext-2` were added by steps 3 and 7 after the ledger
+   was written. Both migrate by the Decision 1 rule.
