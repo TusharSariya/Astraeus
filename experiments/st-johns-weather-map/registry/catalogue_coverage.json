@@ -212,6 +212,36 @@
       "openmeteo-beam-split",
       "openmeteo-climate-cmip6",
       "openmeteo-seasonal-seas5"
+    ],
+    "RIOPS and GDWPS": [
+      "eccc-riops",
+      "eccc-gdwps"
+    ],
+    "Coast Guard NAVWARN": [
+      "ccg-navwarn"
+    ],
+    "NL provincial air quality CSV": [
+      "nl-air-quality-csv"
+    ],
+    "Light pollution: Falchi atlas and VIIRS DNB": [
+      "falchi-night-sky-atlas",
+      "viirs-dnb-night-lights"
+    ],
+    "Astronomy tools and paid providers": [
+      "7timer",
+      "meteosource",
+      "noaa-rap",
+      "noaa-nam",
+      "globe-at-night"
+    ],
+    "Citizen weather networks": [
+      "netatmo",
+      "weather-underground"
+    ],
+    "Partnership-only cameras": [
+      "ccg-harbour-cameras",
+      "city-st-johns-road-cameras",
+      "ntv-cameras"
     ]
   }
 }

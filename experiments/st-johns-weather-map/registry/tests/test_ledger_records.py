@@ -490,6 +490,97 @@ class LedgerRecordTests(unittest.TestCase):
         _, errors = audit.validate()
         self.assertEqual([], errors)
 
+    def test_eccc_gdwps_condition(self) -> None:
+        sources = _by_id()
+        gdwps = sources["eccc-gdwps"]
+
+        # No adapter claims eccc-gdwps, so the ledger's implemented-unverified
+        # is written catalogued and the reason says so.
+        self.assertEqual("catalogued", gdwps["status"])
+        self.assertIn("Catalogued until a registered adapter claims the id", gdwps["reason"])
+        self.assertIn("Atlantic-domain", gdwps["reason"])
+
+        condition = gdwps["admission_condition"]
+        self.assertFalse(condition["satisfied"])
+        self.assertIn("45.0", condition["condition"])
+        self.assertIn("GeoMet", condition["satisfied_by"])
+
+        adapter_ids = audit.adapter_source_ids()
+        self.assertTrue(admission.condition_outstanding(gdwps))
+        self.assertFalse(admission.declaration_schedulable(gdwps, adapter_ids))
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_nl_air_quality_csv_is_uncalibrated_and_restricted(self) -> None:
+        sources = _by_id()
+        nl_air = sources["nl-air-quality-csv"]
+
+        self.assertEqual("catalogued", nl_air["status"])
+        self.assertIn("Catalogued until a registered adapter claims the id", nl_air["reason"])
+        self.assertIn("uncalibrated observation", nl_air["poc_role"])
+
+        terms = nl_air["restricted_terms"]
+        self.assertIn("Government of Newfoundland and Labrador", terms["terms_text"])
+        self.assertIn("PROVISIONAL", terms["terms_text"])
+        self.assertFalse(terms["redistribution"])
+        self.assertEqual("restricted", nl_air["licence"]["review_state"])
+        self.assertFalse(nl_air["consensus"]["eligible"])
+        self.assertFalse(nl_air["display_primary"])
+
+        data, errors = audit.validate()
+        self.assertEqual([], errors)
+        self.assertIn("nl-air-quality-csv", audit.summary(data)["research_use_only"])
+
+    def test_falchi_night_sky_atlas_is_research_use_only(self) -> None:
+        sources = _by_id()
+        falchi = sources["falchi-night-sky-atlas"]
+
+        self.assertEqual("catalogued", falchi["status"])
+        self.assertIn("Catalogued until a registered adapter claims the id", falchi["reason"])
+
+        terms = falchi["restricted_terms"]
+        self.assertIn("CC BY-NC 4.0", terms["terms_text"])
+        self.assertFalse(terms["redistribution"])
+        self.assertEqual("restricted", falchi["licence"]["review_state"])
+        self.assertFalse(falchi["consensus"]["eligible"])
+        self.assertFalse(falchi["display_primary"])
+
+        data, errors = audit.validate()
+        self.assertEqual([], errors)
+        self.assertIn("falchi-night-sky-atlas", audit.summary(data)["research_use_only"])
+
+    def test_viirs_dnb_night_lights_is_credential_required(self) -> None:
+        sources = _by_id()
+        viirs = sources["viirs-dnb-night-lights"]
+
+        self.assertEqual("credential-required", viirs["status"])
+        credential = viirs["credential"]
+        self.assertEqual("WEATHER_SECRET_NASA_EARTHDATA_TOKEN", credential["name"])
+        self.assertTrue(viirs["authentication"]["required"])
+        self.assertEqual(credential["registration_url"], viirs["authentication"]["registration_url"])
+        self.assertEqual("blocked", viirs["fixture_status"])
+        self.assertEqual("blocked", viirs["live_smoke_test_status"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_partnership_only_cameras(self) -> None:
+        sources = _by_id()
+        adapter_ids = audit.adapter_source_ids()
+        for source_id in ("ccg-harbour-cameras", "city-st-johns-road-cameras", "ntv-cameras"):
+            record = sources[source_id]
+            self.assertEqual("partnership-only", record["status"], source_id)
+            self.assertEqual([], record["access_endpoints"], source_id)
+            self.assertEqual("link_only", record["integration"]["kind"], source_id)
+            self.assertEqual("not_applicable", record["fixture_status"], source_id)
+            self.assertEqual("not_applicable", record["live_smoke_test_status"], source_id)
+            self.assertFalse(admission.declaration_schedulable(record, adapter_ids), source_id)
+            self.assertIn("written permission", record["reason"], source_id)
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
 
 if __name__ == "__main__":  # pragma: no cover - convenience entry point
     unittest.main()
