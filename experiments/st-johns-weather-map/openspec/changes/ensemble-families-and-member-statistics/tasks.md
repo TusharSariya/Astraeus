@@ -112,10 +112,25 @@ Decision reference: wayfinder ticket
   `ingest/adapters/__init__.py`, `api/tests/test_adapter_ensemble.py`.
   Verify: `cd api && uv run pytest tests/ -k "ensemble and adapter"`.
 
-- [ ] 3.2 Apply the per-family storage scope and write the
+- [x] 3.2 Apply the per-family storage scope and write the
   `available-not-stored` list into the manifest.
   Owned files: `ingest/manifest.py`, `api/tests/test_manifest.py`.
   Verify: `cd api && uv run pytest tests/test_manifest.py -k "scope or available_not_stored"`.
+  Verify result: `cd api && uv run pytest tests/test_manifest.py -k "scope or
+  available_not_stored"` -> 10 passed, 20 deselected. Full `cd api && uv run
+  pytest` -> 1070 passed, 36 skipped. Public names task 3.1 calls:
+  `ingest.manifest.apply_storage_scope(source_id, *, scope, published,
+  retrieved)`, the frozen `StorageScopeReport(applied, available_not_stored,
+  not_retrieved)` with `as_provenance()`, `RunManifest.storage_scope`,
+  `validate_run(..., retrieved_fields=...)` (the producer's own names for what
+  arrived; `upstream_fields` stays what the producer publishes),
+  `ValidationResult.as_storage_scope()` beside `as_members()`, and the QC flag
+  `storage_scope_unstated`. The scope is applied against the field catalogue's
+  own `SOURCE_SCOPE` and `SOURCE_FIELDS`, never re-derived.
+  Live smoke remains: no family is schedulable, so no real REPS coverage list
+  and no real GEFS `.idx` record list has been run through the scope end to
+  end; the fixture tests are the whole of the evidence, and the first scheduled
+  member run is the smoke.
 
 - [x] 3.3 Set the control flag on the member axis, including the two-file
   AIFS-ENS case, and store the averaging window on a time-averaged field.

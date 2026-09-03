@@ -48,6 +48,17 @@ _CONTROL_COORD = "control"
 TIME_MEAN_CELL_METHODS = "time: mean"
 AVERAGING_WINDOW_ATTRIBUTE = "averaging_window_hours"
 
+#: The two storage scopes, spelled exactly as ``registry/fields.py``
+#: ``SOURCE_SCOPE`` spells them, because the registry's ensemble declaration
+#: copies those values and the two must never drift into synonyms.
+SCOPE_EVERY_PUBLISHED_FIELD = "every_published_field"
+SCOPE_FAMILY_FIELDS_ONLY = "family_fields_only"
+STORAGE_SCOPES: tuple[str, ...] = (SCOPE_EVERY_PUBLISHED_FIELD, SCOPE_FAMILY_FIELDS_ONLY)
+
+#: Failure names the storage-scope rules raise on a run.
+SCOPE_UNSTATED = "storage_scope_unstated"
+SCOPE_INCOMPLETE = "scope_incomplete"
+
 
 #: The six evidence classes, mirrored from ``api.weather_api.models`` so the
 #: worker image - which does not ship the API package - can validate against
@@ -145,8 +156,19 @@ class RunManifest:
     #: the family publishes no control. The control is a flagged member on the
     #: same axis, never a field beside the members and never a second artifact.
     control: str | None = None
+    #: The storage scope the registry declares for this family, one of
+    #: :data:`STORAGE_SCOPES`, or ``None`` for a source whose scope nobody has
+    #: declared. ``None`` on an ensemble family is itself the defect
+    #: :data:`SCOPE_UNSTATED` names: a family whose subsettability is undeclared
+    #: retrieves nothing rather than defaulting to either scope.
+    storage_scope: str | None = None
 
     def __post_init__(self) -> None:
+        if self.storage_scope is not None and self.storage_scope not in STORAGE_SCOPES:
+            raise ManifestError(
+                f"{self.source_id}: storage scope {self.storage_scope!r} is not one of "
+                f"{', '.join(STORAGE_SCOPES)}"
+            )
         if self.member_count is not None and self.member_count < 1:
             raise ManifestError(f"{self.source_id}: a declared member count must be at least 1")
         if self.control is not None and not str(self.control).strip():
@@ -245,6 +267,118 @@ class MemberReport:
 
 
 @dataclass(frozen=True)
+class StorageScopeReport:
+    """Which storage scope one run applied, and what the scope left behind.
+
+    The difference between the two scopes is the whole storage story, so it is
+    recorded rather than inferred at read time. ``available_not_stored`` holds
+    the producer's own upstream names - a WCS coverage id, a GRIB record label -
+    because that is what a reader would have to go and fetch to get the field,
+    and a catalogue key would not name the thing that exists upstream. It is a
+    deliberate exclusion: the field is published, this deployment does not keep
+    it, nobody is missing anything they were promised.
+
+    ``not_retrieved`` holds **catalogue keys**, because these are fields inside
+    the applied scope that should have arrived and did not. That is a gap, not
+    an exclusion, and the two are kept in separate lists precisely so a reader
+    is never asked to tell them apart by eye.
+    """
+
+    applied: str
+    available_not_stored: tuple[str, ...] = ()
+    not_retrieved: tuple[str, ...] = ()
+
+    def as_provenance(self) -> dict[str, Any]:
+        """The storage-scope block an artifact records in its own provenance."""
+        return {
+            "applied": self.applied,
+            "available_not_stored": list(self.available_not_stored),
+            "not_retrieved": list(self.not_retrieved),
+        }
+
+
+def apply_storage_scope(
+    source_id: str,
+    *,
+    scope: str,
+    published: Sequence[str] = (),
+    retrieved: Sequence[str] = (),
+) -> StorageScopeReport:
+    """Apply one family's declared storage scope to one retrieval.
+
+    ``published`` and ``retrieved`` are the producer's own upstream names: what
+    the producer advertises for this product, and what the retrieval actually
+    brought back. They are resolved to catalogue keys through
+    ``registry.fields.key_for_upstream``, which is the one place that mapping
+    lives; nothing here re-derives which fields a source stores.
+
+    Under ``every_published_field`` there is nothing to leave behind: the source
+    subsets server side, so wire and stored are the same set. A published name
+    that was not retrieved is therefore the adapter contradicting its own scope,
+    and is refused here rather than published as a thin run - the adapter, not
+    the data, is wrong.
+
+    Under ``family_fields_only`` the catalogue's ``stored`` mapping decides.
+    Every other published name is listed as ``available-not-stored``, and every
+    key the catalogue maps ``stored`` for this source that the retrieval did not
+    bring is listed as ``not_retrieved`` for :func:`validate_run` to publish the
+    run incomplete against.
+
+    A scope value outside :data:`STORAGE_SCOPES`, and a source the catalogue
+    declares no scope for at all, are both refused: where the subsettability
+    declaration is absent nothing is retrieved for that family, which is not the
+    same as quietly picking one of the two scopes.
+    """
+    if scope not in STORAGE_SCOPES:
+        raise ManifestError(
+            f"{source_id}: storage scope {scope!r} is not one of {', '.join(STORAGE_SCOPES)}"
+        )
+    declared = catalogue.source_scope(source_id)
+    if declared is None:
+        raise ManifestError(
+            f"{source_id}: the field catalogue declares no storage scope for this source, so the "
+            f"{scope!r} scope cannot be applied and nothing is retrieved for it"
+        )
+    if declared.policy != scope:
+        raise ManifestError(
+            f"{source_id}: the manifest applies {scope!r} and the field catalogue declares "
+            f"{declared.policy!r}; a scope is declared once and copied, never chosen twice"
+        )
+
+    published_names = tuple(dict.fromkeys(str(name) for name in published))
+    retrieved_names = tuple(dict.fromkeys(str(name) for name in retrieved))
+
+    if scope == SCOPE_EVERY_PUBLISHED_FIELD:
+        absent = tuple(name for name in published_names if name not in retrieved_names)
+        if absent:
+            raise ManifestError(
+                f"{source_id}: {scope} stores every published field and "
+                f"{', '.join(absent)} was published and not retrieved; a subsetting source has no "
+                "available-not-stored list to put it on"
+            )
+        return StorageScopeReport(applied=scope)
+
+    stored_keys = tuple(
+        item.key for item in catalogue.source_mapping(source_id) if item.storage == "stored"
+    )
+    arrived = {
+        key
+        for key in (catalogue.key_for_upstream(source_id, name) for name in retrieved_names)
+        if key is not None
+    }
+    available = tuple(
+        name
+        for name in published_names
+        if catalogue.key_for_upstream(source_id, name) not in set(stored_keys)
+    )
+    return StorageScopeReport(
+        applied=scope,
+        available_not_stored=available,
+        not_retrieved=tuple(key for key in stored_keys if key not in arrived),
+    )
+
+
+@dataclass(frozen=True)
 class ValidationResult:
     """The verdict on one assembled run. Never constructed by hand in adapters."""
 
@@ -263,6 +397,9 @@ class ValidationResult:
     #: What the run's member axis held, or ``None`` for a deterministic run that
     #: has no member axis and declared no members.
     members: MemberReport | None = None
+    #: Which storage scope was applied and what it left behind, or ``None`` for
+    #: a run whose manifest declared no scope.
+    storage_scope: StorageScopeReport | None = None
 
     @property
     def publishable(self) -> bool:
@@ -312,6 +449,17 @@ class ValidationResult:
             "control": self.members.control,
             "control_retrieval": self.members.control_retrieval,
         }
+
+    def as_storage_scope(self) -> dict[str, Any] | None:
+        """The storage-scope provenance block, beside ``as_members``.
+
+        ``None`` where the manifest declared no scope, which for a deterministic
+        source is simply the question not arising and for an ensemble family is
+        the QC failure :data:`SCOPE_UNSTATED` already recorded on the flags.
+        """
+        if self.storage_scope is None:
+            return None
+        return self.storage_scope.as_provenance()
 
     def as_coverage(self) -> dict[str, Any]:
         if self.coverage_fraction <= 0.0:
@@ -494,6 +642,62 @@ def _judge_members(
     )
 
 
+def _judge_storage_scope(
+    result: ValidationResult,
+    manifest: RunManifest,
+    dataset: Any,
+    *,
+    published: Sequence[str] = (),
+    retrieved: Sequence[str] = (),
+) -> ValidationResult:
+    """Apply the manifest's declared scope and record what it left behind.
+
+    An ensemble family that states no scope fails QC rather than publishing:
+    the scope is what tells a reader whether a field they cannot find was
+    deliberately excluded or silently lost, and a member artifact with neither
+    answer is the silent gap this module exists to rule out. A deterministic
+    source that states no scope is not judged here at all, which is what keeps
+    every existing adapter validating exactly as before.
+
+    "An ensemble family" is read as: this run carries a member axis or declares
+    members, **and** the field catalogue declares a scope for its source. Every
+    one of the six families is in ``SOURCE_SCOPE``, so the gate covers all of
+    them; a member-shaped fixture over a source the catalogue has never heard of
+    is not a family whose scope anyone could have declared, and is left alone
+    rather than failed for a declaration that has no home.
+    """
+    if manifest.storage_scope is None:
+        ensemble = (
+            manifest.member_count is not None
+            or manifest.control is not None
+            or _member_identifiers(dataset) is not None
+        )
+        if ensemble and catalogue.source_scope(manifest.source_id) is not None:
+            result = result.failing(
+                SCOPE_UNSTATED,
+                f"{manifest.source_id} carries a member axis and declares no storage scope; "
+                "without one a field that is absent cannot be told from a field that was "
+                "deliberately not stored",
+                qc=True,
+            )
+        return result
+
+    report = apply_storage_scope(
+        manifest.source_id,
+        scope=manifest.storage_scope,
+        published=published,
+        retrieved=retrieved,
+    )
+    if report.not_retrieved:
+        result = result.failing(
+            f"{SCOPE_INCOMPLETE}:{','.join(report.not_retrieved)}",
+            f"{manifest.source_id} applies the {report.applied} scope and did not retrieve "
+            f"{', '.join(report.not_retrieved)}, which the scope requires; this is distinct from "
+            "the fields the scope excluded on purpose",
+        )
+    return replace(result, storage_scope=report)
+
+
 def _judge_averaging_windows(result: ValidationResult, dataset: Any) -> ValidationResult:
     """Refuse any time-averaged field that does not state its own window.
 
@@ -525,6 +729,7 @@ def validate_run(
     upstream_fields: Iterable[str] = (),
     declared_members: Sequence[str] = (),
     control_retrieval: str | None = None,
+    retrieved_fields: Sequence[str] = (),
 ) -> ValidationResult:
     """Judge one assembled run against its manifest.
 
@@ -548,10 +753,22 @@ def validate_run(
     the adapter knows whether the control arrived in the member file, in a
     separate file or as a separate coverage; it is carried into provenance and
     changes nothing about the axis itself.
+
+    ``retrieved_fields`` is what the retrieval actually brought back, again by
+    the producer's own name. Together with ``upstream_fields`` - which is what
+    the producer *publishes* - it is what the declared storage scope is applied
+    to, so ``available-not-stored`` names a deliberate exclusion and
+    ``scope_incomplete`` names a field inside the scope that did not arrive.
+    Both lists are the producer's names, never the adapter's request, for the
+    same reason the member axis is read off the dataset.
     """
     result = ValidationResult(complete=True, qc_passed=True, coverage_fraction=0.0, flags=(), detail="")
 
-    for name in uncatalogued_upstream(upstream_fields, source_id=manifest.source_id):
+    # Materialised once: the same list is read again by the storage-scope rules
+    # below, and a generator would arrive there already exhausted.
+    published_fields = tuple(upstream_fields)
+
+    for name in uncatalogued_upstream(published_fields, source_id=manifest.source_id):
         result = result.noting(f"{UNCATALOGUED_UPSTREAM}:{name}")
 
     data_vars = dict(getattr(dataset, "data_vars", {}))
@@ -649,14 +866,18 @@ def validate_run(
     for item in decode_errors:
         result = result.failing(f"decode_error:{item}", f"could not decode {item}")
 
-    # --- the member axis and the averaging window (Seam B) -----------------
+    # --- the member axis, the averaging window and the storage scope (Seam B)
     #
-    # Deliberately one self-contained block, because the storage-scope rules
-    # land on this same function next and the two must stay separable.
+    # Deliberately three self-contained blocks: the member axis is judged from
+    # the dataset, the scope from the producer's own name lists, and neither
+    # reads the other's verdict.
     result = _judge_members(
         result, manifest, dataset, declared_members=declared_members, control_retrieval=control_retrieval
     )
     result = _judge_averaging_windows(result, dataset)
+    result = _judge_storage_scope(
+        result, manifest, dataset, published=published_fields, retrieved=retrieved_fields
+    )
 
     time_name = _coordinate_name(dataset, _TIME_NAMES)
 

@@ -222,6 +222,20 @@ is false for an ensemble record whose `ensemble` is absent or whose
   raises `ManifestError` on any other value and nulls it where the family
   declares no control; an adapter passes it from the family's declaration
   (added by task 3.3 on 2026-09-02; 3.1 and 3.2 build to it).
+- Task 3.2 built the storage-scope half on 2026-09-02 and narrowed two clauses.
+  `validate_run` takes the keyword `retrieved_fields` (the producer's own names
+  for what arrived) while the existing `upstream_fields` keeps its meaning as
+  what the producer *publishes*, so the pure function's `published` and
+  `retrieved` both reach it without a third list; `ValidationResult` gains
+  `storage_scope: StorageScopeReport | None` and `as_storage_scope()` beside
+  `as_members()`. `apply_storage_scope` also refuses a scope that contradicts
+  the policy `registry/fields.py` `SOURCE_SCOPE` declares for that source,
+  because Seam A already says the registry copies those exact values, so a
+  disagreement is a defect rather than a choice. `storage_scope_unstated` fires
+  on a member-bearing manifest whose source the field catalogue declares a scope
+  for; all six families are in `SOURCE_SCOPE`, so the gate covers every one of
+  them, while a member-shaped fixture over a source the catalogue has never
+  heard of is left alone rather than failed for a declaration with no home.
 - The store samples a member-bearing dataset only when the request named a
   member (`member=<id>` or `member=all`) or a statistic; otherwise the
   artifact yields no value and a skip notice
