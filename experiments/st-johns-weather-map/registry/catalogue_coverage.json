@@ -203,6 +203,15 @@
       "openmeteo-marine-currents-sealevel",
       "openmeteo-glofas",
       "openmeteo-elevation"
+    ],
+    "Open-Meteo refused endpoints": [
+      "openmeteo-marine-sst",
+      "openmeteo-uv-index",
+      "openmeteo-pollen-ammonia",
+      "openmeteo-aqi-indices",
+      "openmeteo-beam-split",
+      "openmeteo-climate-cmip6",
+      "openmeteo-seasonal-seas5"
     ]
   }
 }

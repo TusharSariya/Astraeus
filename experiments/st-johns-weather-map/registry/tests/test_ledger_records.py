@@ -422,5 +422,72 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertEqual([], errors)
 
 
+    def test_openmeteo_rejected_endpoints(self) -> None:
+        sources = _by_id()
+        rejected_ids = [
+            "openmeteo-marine-sst",
+            "openmeteo-uv-index",
+            "openmeteo-pollen-ammonia",
+            "openmeteo-aqi-indices",
+            "openmeteo-beam-split",
+            "openmeteo-climate-cmip6",
+            "openmeteo-seasonal-seas5",
+        ]
+
+        for source_id in rejected_ids:
+            record = sources[source_id]
+            self.assertEqual("rejected", record["status"], source_id)
+            self.assertEqual([], record["access_endpoints"], source_id)
+            self.assertEqual("not_applicable", record["fixture_status"], source_id)
+            self.assertEqual("not_applicable", record["live_smoke_test_status"], source_id)
+            self.assertEqual("Open-Meteo", record["intermediary"]["name"], source_id)
+            self.assertFalse(record["display_primary"], source_id)
+            self.assertIn("best_match", record["reason"], source_id)
+
+        # The class a refused value would have had is part of the reason it is
+        # refused, so the two the intermediary constructed itself say so.
+        for source_id in ("openmeteo-aqi-indices", "openmeteo-beam-split"):
+            record = sources[source_id]
+            self.assertEqual("intermediary_derived", record["delivery_kind"], source_id)
+            self.assertIn("intermediary_derived", record["field_delivery_kinds"].values(), source_id)
+        for source_id in ("openmeteo-marine-sst", "openmeteo-uv-index", "openmeteo-pollen-ammonia", "openmeteo-climate-cmip6", "openmeteo-seasonal-seas5"):
+            self.assertEqual("reprocessed", sources[source_id]["delivery_kind"], source_id)
+
+        self.assertIn("four different quantities", sources["openmeteo-marine-sst"]["reason"])
+        self.assertIn("producer output on GeoMet", sources["openmeteo-uv-index"]["reason"])
+        self.assertIn("0 of 216 non-null", sources["openmeteo-pollen-ammonia"]["reason"])
+        self.assertIn("index constructions", sources["openmeteo-aqi-indices"]["reason"])
+        self.assertIn("no method named", sources["openmeteo-beam-split"]["reason"])
+        self.assertIn("no marker distinguishing them from a forecast", sources["openmeteo-climate-cmip6"]["reason"])
+        self.assertIn("monthly run published at T+4.4 days", sources["openmeteo-seasonal-seas5"]["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_openmeteo_catalogued_endpoints(self) -> None:
+        sources = _by_id()
+        for source_id in (
+            "openmeteo-air-quality-particulates",
+            "openmeteo-marine-currents-sealevel",
+            "openmeteo-glofas",
+            "openmeteo-elevation",
+        ):
+            record = sources[source_id]
+            self.assertEqual("catalogued", record["status"], source_id)
+            self.assertEqual("reprocessed", record["delivery_kind"], source_id)
+            self.assertEqual("Open-Meteo", record["intermediary"]["name"], source_id)
+            self.assertFalse(record["display_primary"], source_id)
+            # These are catalogued by the owner's decision, not by the migration
+            # rule, so nothing here is waiting for an adapter.
+            self.assertNotIn("Catalogued until a registered adapter", record["reason"], source_id)
+
+        currents = sources["openmeteo-marine-currents-sealevel"]
+        self.assertIn("undeclarable", currents["producer"])
+        self.assertIn("meta.json carries no producer string", currents["producer"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
 if __name__ == "__main__":  # pragma: no cover - convenience entry point
     unittest.main()

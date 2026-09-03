@@ -1790,6 +1790,198 @@ def registry() -> dict[str, Any]:
         ),
     ])
 
+    # The Open-Meteo endpoints ticket 28 refused. A refusal is recorded with
+    # its reason for the same purpose as an admission: so nobody re-probes the
+    # endpoint and reaches the opposite conclusion from the same evidence. Five
+    # of the seven are refused transformations of a producer's field and carry
+    # `reprocessed`; the two the intermediary constructed itself (the AQI
+    # indices and the forecast-endpoint beam split) carry
+    # `intermediary_derived`, which is what makes the refusal legible: the
+    # reason a value is refused is the class it would have had.
+    s.extend([
+        _source(
+            "openmeteo-marine-sst", "ocean", "rejected",
+            "Four native SST paths already exist over this box (CIOPS-East 2 km, RIOPS 5 km, anonymous OSTIA Zarr and GOES-19 ABI-L2-SSTF skin SST), and they are four different quantities. A fifth from a producer that cannot be named makes the air-sea dew point depression derivation harder to write honestly, not easier ("
+            + ENDPOINT_RESEARCH
+            + " sections 1.5 and 2 of the SST discussion). Refused on evidence value, not on access: the 16.0 degrees C value returned live on 2026-09-02 and sat about 0.3 degrees C below the SmartAtlantic buoy, which is a plausible agreement and not a verification."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "undeclarable: the same meteofrance_currents domain whose producer Open-Meteo labels Meteo-France while the field set reads as a Mercator or Copernicus analysis",
+            "Marine sea surface temperature (meteofrance_currents) delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/marine-weather-api"], [],
+            ("link_only", "Refused: four native SST paths already exist and the producer here cannot be named"),
+            ["sea_surface_temperature"], ["sea surface"],
+            "1/12 degree global ocean grid; not retrieved",
+            "not applicable: the source is refused",
+            "not applicable: the source is refused",
+            (False, "none", None),
+            _open_meteo_policy("the producer cannot be named, which is part of the refusal."),
+            "Open-Meteo marine JSON as served", "not applicable: the source is refused",
+            "Refused: a fifth SST quantity from an unnameable producer is not evidence",
+            (False, None, "A refused source cannot contribute."),
+            "not_applicable", "not_applicable",
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo would re-serve an ocean analysis SST as hourly point time series; it is refused before that.",
+            ),
+        ),
+        _source(
+            "openmeteo-uv-index", "air_quality", "rejected",
+            "UV index is producer output on GeoMet, verified live on HRDPS, RDPS and GDPS and on Datamart, and a retrieved producer field beats a reprocessed delivery of one every time ("
+            + ENDPOINT_RESEARCH
+            + " section 2.4). Refused so the map never carries an aggregator's UV beside the producer's own."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "ECMWF Copernicus Atmosphere Monitoring Service (CAMS)",
+            "CAMS UV index and clear-sky UV index delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/air-quality-api"], [],
+            ("link_only", "Refused: the same field is retrieved from the producer on GeoMet"),
+            ["uv_index", "uv_index_clear_sky"], ["surface"],
+            "CAMS global grid; not retrieved",
+            "not applicable: the source is refused",
+            "not applicable: the source is refused",
+            (False, "none", None),
+            _open_meteo_policy("credit ECMWF CAMS, were the field ever taken by this route, which it is not."),
+            "Open-Meteo air-quality JSON as served", "not applicable: the source is refused",
+            "Refused: retrieved beats reprocessed for a field the producer publishes here",
+            (False, None, "A refused source cannot contribute."),
+            "not_applicable", "not_applicable",
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo would re-serve the CAMS UV index as hourly point time series; it is refused before that.",
+            ),
+        ),
+        _source(
+            "openmeteo-pollen-ammonia", "air_quality", "rejected",
+            "Nothing is served over this box: alder, grass and ragweed pollen returned 0 of 216 non-null over nine days and ammonia 0 of 72, because all four live only on the cams_europe domain, and cams_europe answers HTTP 400 'No data is available for this location' here ("
+            + ENDPOINT_RESEARCH
+            + " sections 2.1 and 2.3, re-confirmed 2026-09-02). Refused rather than catalogued because there is no value to catalogue: the domain does not reach the box at all."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "ECMWF Copernicus Atmosphere Monitoring Service (CAMS) European domain",
+            "CAMS Europe pollen and ammonia delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/air-quality-api"], [],
+            ("link_only", "Refused: the European domain returns HTTP 400 over this box"),
+            ["alder_pollen", "grass_pollen", "ragweed_pollen", "ammonia"], ["surface"],
+            "CAMS Europe domain, which does not reach the evidence box",
+            "not applicable: the source is refused",
+            "not applicable: the source is refused",
+            (False, "none", None),
+            _open_meteo_policy("credit ECMWF CAMS, were the European domain ever to reach this box, which it does not."),
+            "Open-Meteo air-quality JSON as served", "not applicable: the source is refused",
+            "Refused: the European domain does not reach the box",
+            (False, None, "A refused source cannot contribute."),
+            "not_applicable", "not_applicable",
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo would re-serve the CAMS Europe composition fields as hourly point time series; over this box it serves nulls or HTTP 400.",
+            ),
+        ),
+        _source(
+            "openmeteo-aqi-indices", "air_quality", "rejected",
+            "european_aqi and us_aqi are index constructions over other fields, not fields in the CONTEXT.md sense, and importing a foreign index would put a fifth incompatible encoding beside the four transparency encodings already flagged ("
+            + ENDPOINT_RESEARCH
+            + " section 2.4). They are the intermediary's own computation over a producer's composition fields, so the class they would carry is intermediary_derived, which is exactly why they are refused: the index is not a quantity anyone can weigh against another source's."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "ECMWF Copernicus Atmosphere Monitoring Service (CAMS) supplies the underlying composition fields; the indices themselves are Open-Meteo's construction",
+            "European and US air quality indices computed by Open-Meteo",
+            ["https://open-meteo.com/en/docs/air-quality-api"], [],
+            ("link_only", "Refused: an index construction is not a field"),
+            ["european_aqi", "us_aqi"], ["surface"],
+            "CAMS global grid; not retrieved",
+            "not applicable: the source is refused",
+            "not applicable: the source is refused",
+            (False, "none", None),
+            _open_meteo_policy("credit ECMWF CAMS for the composition fields; the index is the intermediary's own."),
+            "Open-Meteo air-quality JSON as served", "not applicable: the source is refused",
+            "Refused: an index construction, and a fifth incompatible encoding",
+            (False, None, "A refused source cannot contribute."),
+            "not_applicable", "not_applicable",
+            delivery_kind="intermediary_derived",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo computes the European and US AQI from CAMS composition fields by each index's published banding; the producer publishes no such index.",
+            ),
+            field_delivery_kinds={"european_aqi": "intermediary_derived", "us_aqi": "intermediary_derived"},
+        ),
+        _source(
+            "openmeteo-beam-split", "analysis", "rejected",
+            "The forecast endpoint's direct_radiation, diffuse_radiation and direct_normal_irradiance are an intermediary's decomposition of a producer's total shortwave, for producers that publish no such split, with no method named ("
+            + ENDPOINT_RESEARCH
+            + " section 3.4). That is the WeatherNext 2 cloud refusal reasoning exactly, without the intermediary-derived declaration that saved WeatherNext: this deployment cannot cite the method's inputs and the producer never published the field. Refused, and it must never be catalogued as the same field as the satellite endpoint's LSA SAF split, which is a retrieval from measured radiance."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "ECMWF and the other Open-Meteo forecast producers, none of which publishes a beam split",
+            "Direct, diffuse and DNI split computed by Open-Meteo from a producer's total shortwave",
+            ["https://open-meteo.com/en/docs"], [],
+            ("link_only", "Refused: an undocumented decomposition of a producer's total"),
+            ["direct_radiation", "diffuse_radiation", "direct_normal_irradiance"], ["surface"],
+            "Global, per forecast domain; not retrieved",
+            "not applicable: the source is refused",
+            "not applicable: the source is refused",
+            (False, "none", None),
+            _open_meteo_policy("the split is the intermediary's own and names no method, which is the refusal."),
+            "Open-Meteo forecast JSON as served", "not applicable: the source is refused",
+            "Refused: a model of a model, never to be merged with the satellite radiation split",
+            (False, None, "A refused source cannot contribute."),
+            "not_applicable", "not_applicable",
+            delivery_kind="intermediary_derived",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo splits a producer's total shortwave into direct, diffuse and DNI by its own decomposition, which it does not name per model.",
+            ),
+            field_delivery_kinds={
+                "direct_radiation": "intermediary_derived",
+                "diffuse_radiation": "intermediary_derived",
+                "direct_normal_irradiance": "intermediary_derived",
+            },
+        ),
+        _source(
+            "openmeteo-climate-cmip6", "analysis", "rejected",
+            "CMIP6 HighResMIP downscaled projections answer for dates inside the 14-day horizon with no marker distinguishing them from a forecast: EC_Earth3P_HR returned daily maxima for 2026-09-01 to 2026-09-10 at St. John's on a call that looks like any other ("
+            + ENDPOINT_RESEARCH
+            + " section 4.2). That is exactly the confusion the evidence classes exist to prevent, and the projections add nothing inside 14 days. Refused."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "CMIP6 HighResMIP modelling centres (EC_Earth3P_HR and the other models Open-Meteo serves)",
+            "CMIP6 downscaled climate projections delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/climate-api"], [],
+            ("link_only", "Refused: projections that answer for forecast dates unmarked"),
+            ["air_temperature", "precipitation"], ["surface", "2 m"],
+            "Global downscaled projection grid; not retrieved",
+            "not applicable: the source is refused",
+            "not applicable: the source is refused",
+            (False, "none", None),
+            _open_meteo_policy("credit the CMIP6 modelling centres, were the projections ever taken, which they are not."),
+            "Open-Meteo climate JSON as served", "not applicable: the source is refused",
+            "Refused: a projection that is confusable with a forecast inside the horizon",
+            (False, None, "A refused source cannot contribute."),
+            "not_applicable", "not_applicable",
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo downscales CMIP6 HighResMIP projections onto its own grid and serves them as daily point series.",
+            ),
+        ),
+        _source(
+            "openmeteo-seasonal-seas5", "analysis", "rejected",
+            "ECMWF SEAS5 through this endpoint is a monthly run published at T+4.4 days, 6-hourly, on an O320 (about 36 km) mesh; the run read on 2026-09-02 initialised 2026-08-01 ("
+            + ENDPOINT_RESEARCH
+            + " section 4.3). Inside a 14-day horizon that is a month-old climate signal and it adds nothing. Refused."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "ECMWF",
+            "SEAS5 seasonal forecast (ecmwf_seas5) delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/seasonal-forecast-api"], [],
+            ("link_only", "Refused: a monthly run adds nothing inside 14 days"),
+            ["air_temperature", "precipitation"], ["surface", "2 m"],
+            "Global O320 reduced Gaussian mesh; not retrieved",
+            "not applicable: the source is refused",
+            "not applicable: the source is refused",
+            (False, "none", None),
+            _open_meteo_policy("credit ECMWF as the producer of SEAS5, were it ever taken, which it is not."),
+            "Open-Meteo seasonal JSON as served", "not applicable: the source is refused",
+            "Refused: a monthly seasonal run inside a 14-day horizon",
+            (False, None, "A refused source cannot contribute."),
+            "not_applicable", "not_applicable",
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests ECMWF SEAS5 and re-serves it as 6-hourly point series on its own grid.",
+            ),
+        ),
+    ])
+
     # The ensemble family declaration is attached here rather than threaded
     # through every constructor call, so the six blocks stay readable side by
     # side in one table above and no record can acquire one by inheriting a
