@@ -2,6 +2,7 @@
 
 Spec-Refs: openspec/changes/evidence-classes-and-derived-here/specs/derivation-method-registry/spec.md
 Spec-Refs: openspec/changes/ensemble-families-and-member-statistics/specs/derivation-method-registry/spec.md
+Spec-Refs: openspec/changes/activity-profiles-sites-and-cameras/specs/camera-evidence/spec.md
 """
 
 from __future__ import annotations
@@ -12,7 +13,21 @@ from datetime import datetime, timezone
 import pytest
 
 from ingest.derive import registry as derive_registry
+from ingest.cameras.derive import (
+    AWAITING_VALIDATION,
+    NUMERIC_VISIBILITY_REFUSED,
+    RefusedClaim,
+    derive as derive_from_camera,
+    request_numeric_visibility,
+)
 from ingest.derive.registry import (
+    CAMERA_ENABLED_WITHOUT_VALIDATION,
+    CAMERA_FOG_VISIBILITY_CLASS,
+    CAMERA_HORIZON_FOG_BANK,
+    CAMERA_METHODS,
+    CAMERA_SECTOR_CLOUD_FRACTION,
+    CAMERA_SKYDOME_NIGHT_CLOUD,
+    CAMERA_VISIBILITY_BOUND,
     DE442_GEOMETRY,
     ENSEMBLE_ENTRY_BY_STATISTIC,
     ENSEMBLE_MEAN,
@@ -572,3 +587,112 @@ def test_an_ensemble_statistic_is_no_better_than_its_worst_member(_derivations_o
     assert result.value == 2.0
     assert result.quality_status == "suspect"
     assert "derived" in result.flags
+
+
+# --- Camera methods: registered, disabled, and refusing a number ---
+
+_CAMERA_VERSIONS = {
+    CAMERA_FOG_VISIBILITY_CLASS: "camera-class-v0",
+    CAMERA_VISIBILITY_BOUND: "camera-landmark-bound-v0",
+    CAMERA_SECTOR_CLOUD_FRACTION: "camera-sector-cloud-v0",
+    CAMERA_HORIZON_FOG_BANK: "camera-fog-bank-v0",
+    CAMERA_SKYDOME_NIGHT_CLOUD: "camera-starfield-v0",
+}
+
+_CAMERA_OUTPUTS = {
+    CAMERA_FOG_VISIBILITY_CLASS: {
+        "camera_fog_class",
+        "camera_visibility_class",
+        "camera_class_confidence",
+    },
+    CAMERA_VISIBILITY_BOUND: {"visibility_bound_lower_m", "visibility_bound_upper_m"},
+    CAMERA_SECTOR_CLOUD_FRACTION: {"camera_sector_cloud_fraction"},
+    CAMERA_HORIZON_FOG_BANK: {"horizon_fog_bank_present"},
+    CAMERA_SKYDOME_NIGHT_CLOUD: {"skydome_night_cloud_fraction"},
+}
+
+
+def test_the_five_camera_methods_are_registered_camera_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """All five enter the registry disabled: four permitted claims plus the
+    sky-dome night cloud, none of them enabled by this change."""
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    assert len(CAMERA_METHODS) == 5
+    assert set(CAMERA_METHODS) == set(_CAMERA_VERSIONS)
+    for name in CAMERA_METHODS:
+        entry = derive_registry.get(name)
+        assert entry is not None, name
+        assert entry.enabled is False, name
+        assert entry.version == _CAMERA_VERSIONS[name]
+        assert {item.field for item in entry.outputs} == _CAMERA_OUTPUTS[name]
+        assert entry.approval.approver
+        refusal = derive_registry.resolve(name)
+        assert refusal is not None and refusal.code == "method_disabled"
+    # Every camera method reads one frame from one registered camera, and the
+    # bound also reads the registered landmarks. Nothing else.
+    for name in CAMERA_METHODS:
+        entry = derive_registry.get(name)
+        sources = {item.source for item in entry.inputs}
+        assert sources == {"registered-camera"}, name
+        assert "camera_frame" in {item.field for item in entry.inputs}, name
+    bound = derive_registry.get(CAMERA_VISIBILITY_BOUND)
+    assert {item.field for item in bound.inputs} == {"camera_frame", "camera_landmarks"}
+    for item in bound.outputs:
+        assert item.units == "m" and (item.minimum, item.maximum) == (0.0, 100000.0)
+        assert item.range_rule == "clamp"
+
+
+def test_a_camera_entry_enabled_without_validation_is_camera_disabled_at_registration() -> None:
+    """Flipping `enabled` is not a validation record, so the registry refuses
+    to load and the deployment does not start."""
+    entry = derive_registry.get(CAMERA_FOG_VISIBILITY_CLASS)
+    enabled = dataclasses.replace(entry, enabled=True)
+    with pytest.raises(RegistryError) as raised:
+        DerivationRegistry((enabled,))
+    message = str(raised.value)
+    assert CAMERA_ENABLED_WITHOUT_VALIDATION in message
+    assert CAMERA_FOG_VISIBILITY_CLASS in message
+    assert "30-day CYYT METAR" in message
+    assert validation_errors((enabled,))
+    assert validation_errors((entry,)) == []
+
+
+def test_every_camera_disabled_method_derives_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(derive_registry.DERIVED_HERE_ENV, raising=False)
+    for name in CAMERA_METHODS:
+        result = derive_from_camera(name, "cam-ntv-signal-hill", datetime(2026, 9, 3, 12, tzinfo=timezone.utc))
+        assert result.value is None, name
+        assert result.refusal == AWAITING_VALIDATION, name
+        assert result.available is False
+        assert name in result.detail
+        assert AWAITING_VALIDATION in result.detail
+
+
+def test_an_unregistered_camera_disabled_method_names_the_registry() -> None:
+    result = derive_from_camera("camera_black_ice_detected", "cam-x", "2026-09-03T12:00:00Z")
+    assert result.value is None
+    assert result.refusal == "unregistered_method"
+    assert "camera_black_ice_detected" in result.detail
+
+
+def test_a_numeric_visibility_refused_by_name() -> None:
+    """A visibility in metres from the image alone is refused before any
+    computation, and the refusal names the interval that is served instead."""
+    with pytest.raises(RefusedClaim) as raised:
+        request_numeric_visibility("cam-ntv-signal-hill", datetime(2026, 9, 3, 12, tzinfo=timezone.utc))
+    assert raised.value.rule == NUMERIC_VISIBILITY_REFUSED
+    assert "cam-ntv-signal-hill" in raised.value.detail
+    assert CAMERA_VISIBILITY_BOUND in raised.value.detail
+    assert NUMERIC_VISIBILITY_REFUSED in str(raised.value)
+
+
+def test_the_numeric_visibility_refused_rule_leaves_the_bound_an_interval() -> None:
+    """The permitted claim is an interval between two named landmarks; the
+    entry says so in its conventions, and there is no single-number output."""
+    entry = derive_registry.get(CAMERA_VISIBILITY_BOUND)
+    conventions = " ".join(entry.conventions)
+    assert "interval" in conventions
+    assert "named" in conventions
+    assert len(entry.outputs) == 2
+    assert not any(item.field == "visibility_m" for item in entry.outputs)
+    for item in entry.outputs:
+        assert "landmark" in item.note
