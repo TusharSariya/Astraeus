@@ -27,30 +27,6 @@ sys.path.insert(0, str(REGISTRY_DIR))
 import audit  # noqa: E402
 from source_data import registry  # noqa: E402
 
-#: The ledger ids section 7 of ``tasks.md`` has still to write as records. This
-#: constant is scaffolding for exactly one commit: once section 7 merges, the
-#: change lead deletes it and asserts ``[]`` instead, and the assertion below
-#: becomes the standing statement that the ledger is complete.
-SECTION_7_IDS = [
-    "7timer",
-    "ccg-harbour-cameras",
-    "ccg-navwarn",
-    "city-st-johns-road-cameras",
-    "eccc-gdwps",
-    "eccc-riops",
-    "falchi-night-sky-atlas",
-    "globe-at-night",
-    "meteosource",
-    "netatmo",
-    "nl-air-quality-csv",
-    "noaa-nam",
-    "noaa-rap",
-    "ntv-cameras",
-    "viirs-dnb-night-lights",
-    "weather-underground",
-]
-
-
 def ledger_registry() -> dict:
     """A deep copy of the real registry, safe to break one field at a time."""
     return copy.deepcopy(registry())
@@ -93,10 +69,9 @@ class LedgerCompletenessTest(unittest.TestCase):
             f"a removed ledger record was not reported: {errors}",
         )
 
-    def test_ledger_missing_ids_are_the_records_section_seven_still_owes(self):
-        # When section 7 merges, the change lead deletes SECTION_7_IDS and
-        # asserts audit.ledger_missing_ids(registry()) == [].
-        self.assertEqual(sorted(SECTION_7_IDS), audit.ledger_missing_ids(registry()))
+    def test_ledger_is_complete(self):
+        # Every source the 2026-09-02 resolutions named has a record.
+        self.assertEqual([], audit.ledger_missing_ids(registry()))
 
     def test_ledger_missing_ids_are_sorted_and_absent_from_the_registry(self):
         data = ledger_registry()

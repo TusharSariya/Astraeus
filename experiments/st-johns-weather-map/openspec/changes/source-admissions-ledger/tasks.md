@@ -66,7 +66,7 @@ Verification commands used below, run from
   `link_only` and `fixture_status` is `passing`; `catalogued` otherwise.
   Verify: `python3 registry/audit.py --summary-json` shows the two counts and
   no record left on a retired status value.
-- [ ] 2.3 Add ledger completeness: every source id named in the resolutions of
+- [x] 2.3 Add ledger completeness: every source id named in the resolutions of
   tickets 24, 25, 26 and 28 has a record, and every record has a state, an
   access path or an explicit none, and a reason.
   Verify: `python3 -m unittest discover -s registry/tests -v -k ledger`.
@@ -213,29 +213,29 @@ Verification commands used below, run from
 
 ## 7. New local, marine and transparency records (Registry owner)
 
-- [ ] 7.1 `eccc-riops`, `implemented-unverified`, GeoMet every field, reason:
+- [x] 7.1 `eccc-riops`, `implemented-unverified`, GeoMet every field, reason:
   the Datamart root path is 404 and GeoMet is the path.
   Verify: `python3 registry/audit.py`.
-- [ ] 7.2 `eccc-gdwps`, `implemented-unverified` with the Atlantic-domain check
+- [x] 7.2 `eccc-gdwps`, `implemented-unverified` with the Atlantic-domain check
   as an outstanding admission condition.
   Verify: `python3 -m unittest discover -s registry/tests -v -k gdwps`.
-- [ ] 7.3 `ccg-navwarn`, `implemented-unverified`, Coast Guard NAVWARN hazard
+- [x] 7.3 `ccg-navwarn`, `implemented-unverified`, Coast Guard NAVWARN hazard
   feed.
   Verify: `python3 registry/audit.py`.
-- [ ] 7.4 `nl-air-quality-csv`, `implemented-unverified`, uncalibrated
+- [x] 7.4 `nl-air-quality-csv`, `implemented-unverified`, uncalibrated
   observation, NL provincial hourly PM2.5 and ozone CSV, provisional.
   Verify: `python3 -m unittest discover -s registry/tests -v -k nl_air_quality`.
-- [ ] 7.5 `falchi-night-sky-atlas`, `implemented-unverified`, restricted terms
+- [x] 7.5 `falchi-night-sky-atlas`, `implemented-unverified`, restricted terms
   CC BY-NC 4.0 recorded, `redistribution: false`.
   Verify: `python3 -m unittest discover -s registry/tests -v -k falchi`.
-- [ ] 7.6 `viirs-dnb-night-lights`, `credential-required`, Earthdata
+- [x] 7.6 `viirs-dnb-night-lights`, `credential-required`, Earthdata
   credential, fails closed.
   Verify: `python3 registry/audit.py`.
-- [ ] 7.7 `7timer`, `link-only`; `meteosource`, `noaa-rap`, `noaa-nam`,
+- [x] 7.7 `7timer`, `link-only`; `meteosource`, `noaa-rap`, `noaa-nam`,
   `globe-at-night`, `netatmo`, `weather-underground`, `catalogued` with their
   reasons.
   Verify: `python3 registry/audit.py`.
-- [ ] 7.8 `ccg-harbour-cameras`, `city-st-johns-road-cameras`, `ntv-cameras`,
+- [x] 7.8 `ccg-harbour-cameras`, `city-st-johns-road-cameras`, `ntv-cameras`,
   `partnership-only`, no endpoints, permission requests recorded.
   Verify: `python3 -m unittest discover -s registry/tests -v -k partnership`.
 
