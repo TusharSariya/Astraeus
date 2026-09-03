@@ -197,6 +197,12 @@
     ],
     "Bright Sky DWD MOSMIX": [
       "brightsky-dwd-mosmix-71801"
+    ],
+    "Open-Meteo catalogued endpoints": [
+      "openmeteo-air-quality-particulates",
+      "openmeteo-marine-currents-sealevel",
+      "openmeteo-glofas",
+      "openmeteo-elevation"
     ]
   }
 }

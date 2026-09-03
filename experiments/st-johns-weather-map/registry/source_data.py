@@ -1672,6 +1672,124 @@ def registry() -> dict[str, Any]:
             ),
         ))
 
+    # The Open-Meteo endpoints ticket 28 catalogued: each works, each was
+    # measured live on 2026-09-02, and none of them fills a gap a research file
+    # names. They are declared so the decision is a registry fact and the next
+    # reader does not re-probe them. `catalogued` here is the owner's decision,
+    # not the migration rule, so no sentence about a waiting adapter is
+    # appended: nothing is waiting.
+    s.extend([
+        _source(
+            "openmeteo-air-quality-particulates", "air_quality", "catalogued",
+            "Works and is not needed: PM2.5, PM10, ozone, NO2, SO2, CO and dust all returned 72 of 72 non-null over the box on 2026-09-02, but RAQDPS is native and stays the primary for every one of them, so this is a cross-centre comparison rather than a gap ("
+            + ENDPOINT_RESEARCH
+            + " sections 2.3 and 2.4). Catalogued with the resolution caveat recorded: CAMS global publishes 0.4 degree and Open-Meteo returns 0.1 degree cell centres, so neighbouring stored cells may be four copies of one value. Ingest only if the running profile later asks for a second opinion on PM."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "ECMWF Copernicus Atmosphere Monitoring Service (CAMS)",
+            "CAMS global particulate, gas and dust fields delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/air-quality-api", "https://atmosphere.copernicus.eu/"],
+            ["https://air-quality-api.open-meteo.com/v1/air-quality"],
+            ("link_only", "Catalogued only: no adapter and no client until a profile asks for a second opinion on PM"),
+            ["pm2_5", "pm10", "ozone", "nitrogen_dioxide", "sulphur_dioxide", "carbon_monoxide", "dust"],
+            ["surface"],
+            "CAMS global 0.4 degree grid served at 0.1 degree cell centres; queried per point over the evidence box",
+            "two runs a day (00Z and 12Z), hourly steps",
+            "about 4 days of non-null forward reach",
+            (False, "none", None),
+            _open_meteo_policy("credit ECMWF CAMS as the producer of the composition forecast."),
+            "Open-Meteo air-quality JSON as served",
+            "not applicable while the record is catalogued only",
+            "Catalogued cross-centre comparison for air quality; RAQDPS remains the primary",
+            (False, None, "A reprocessed composition field is not a centre vote."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests the CAMS global composition forecast and re-serves it as point time series on its own grid.",
+                (
+                    "The 0.4 degree CAMS global grid is served at 0.1 degree cell centres, an upsample; whether it interpolates or repeats the nearest cell is undocumented.",
+                ),
+            ),
+        ),
+        _source(
+            "openmeteo-marine-currents-sealevel", "ocean", "catalogued",
+            "Catalogued because the producer cannot be declared truthfully, which is what a reprocessed record must do before anything else. The values work (SST 16.0 degrees C, current 1.0 km/h toward 158 degrees, sea level -0.14 m at 47.6 N 52.6 W, 72 of 72 non-null on 2026-09-02) and this is the only domain on the marine endpoint carrying SST, currents and sea level at all; but Open-Meteo labels meteofrance_currents Meteo-France while the field set reads as a Mercator Ocean or Copernicus Marine global analysis, and its meta.json carries no producer string ("
+            + ENDPOINT_RESEARCH
+            + " sections 1.2 and 1.5). The same reasoning refused Meteosource: if the declaration cannot be written truthfully, the class does not apply. Reading Open-Meteo's marine attribution and the upstream licence would resolve it. No admitted activity profile scores currents or sea level today either."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "undeclarable: Open-Meteo labels meteofrance_currents Meteo-France, the field set reads as a Mercator or Copernicus analysis, meta.json carries no producer string",
+            "Ocean surface currents, sea level and SST (meteofrance_currents) delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/marine-weather-api"],
+            ["https://marine-api.open-meteo.com/v1/marine"],
+            ("link_only", "Catalogued only: no adapter until the producer question is answered"),
+            ["sea_surface_temperature", "ocean_current_velocity", "ocean_current_direction", "sea_level_height_msl"],
+            ["sea surface"],
+            "1/12 degree global ocean grid; queried per point over the evidence box",
+            "one run a day, hourly steps, published at about T+12 h 06 m",
+            "about 10 days",
+            (False, "none", None),
+            _open_meteo_policy("the producer cannot be named, which is why this record is catalogued and not admitted."),
+            "Open-Meteo marine JSON as served",
+            "not applicable while the record is catalogued only",
+            "Catalogued pending the producer question; the only SST, current and sea-level fields on the marine endpoint",
+            (False, None, "An ocean analysis is not a deterministic centre vote, and its producer is not named."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests an ocean analysis it labels meteofrance_currents and re-serves it as hourly point time series.",
+            ),
+        ),
+        _source(
+            "openmeteo-glofas", "hydrology", "catalogued",
+            "Works and no profile scores it: river discharge returned 35 of 35 non-null at all three points probed on 2026-09-02, with sane magnitudes on the large Newfoundland rivers (Exploits 243 m3/s, Humber 187 m3/s), and none of the admitted activity profiles (running, astronomy, aurora, landscape photography) asks for river discharge ("
+            + ENDPOINT_RESEARCH
+            + " section 4.1). The Waterford is the warning that keeps it catalogued even if a profile appears: a 0.05 degree cell is about 5 km and does not resolve an urban catchment that size, so the 0.21 to 0.69 m3/s values there are a global routing model's guess and not a gauge."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "Copernicus Emergency Management Service GloFAS, run by ECMWF",
+            "GloFAS river discharge delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/flood-api", "https://global-flood.emergency.copernicus.eu/"],
+            ["https://flood-api.open-meteo.com/v1/flood"],
+            ("link_only", "Catalogued only: no adapter until a profile scores river discharge"),
+            ["river_discharge"], ["river reach on a 0.05 degree routing grid"],
+            "Global 0.05 degree routing grid; the two large Newfoundland rivers resolve, the Waterford does not",
+            "daily",
+            "30 days",
+            (False, "none", None),
+            _open_meteo_policy("credit the Copernicus Emergency Management Service and ECMWF as the producers of GloFAS."),
+            "Open-Meteo flood JSON as served",
+            "not applicable while the record is catalogued only",
+            "Catalogued hydrology comparison; no profile scores river discharge",
+            (False, None, "River discharge is not a comparable atmospheric field."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests the GloFAS river discharge forecast and re-serves it as daily point series on the routing grid cell nearest the request.",
+            ),
+        ),
+        _source(
+            "openmeteo-elevation", "terrain", "catalogued",
+            "Not a forecast field and not evidence in the CONTEXT.md sense, so it is catalogued for one reason: it is the same Copernicus DEM GLO-90 that Open-Meteo's statistical downscaling acts against, and the client rule says to switch that downscaling off with elevation=nan ("
+            + ENDPOINT_RESEARCH
+            + " section 4.4). Having the DEM addressable separately means a site elevation can be recorded once, deliberately, rather than leaking into every temperature value invisibly. Verified live on 2026-09-02: 46 m at St. John's, matching the elevation the air-quality response echoed, 0 m over open ocean and 222 m at Notre Dame Bay. The downscaling switch is what matters here, not the DEM as a field."
+            + OPEN_METEO_BEST_MATCH_REFUSAL,
+            "European Space Agency Copernicus DEM GLO-90",
+            "Copernicus GLO-90 elevation lookup delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/elevation-api", "https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model"],
+            ["https://api.open-meteo.com/v1/elevation"],
+            ("link_only", "Catalogued only: a provenance vocabulary entry, not a data path"),
+            ["elevation"], ["ground surface"],
+            "Global 90 m digital elevation model; queried per point",
+            "static between DEM releases",
+            "not applicable: a static field has no forecast horizon",
+            (False, "none", None),
+            _open_meteo_policy("credit the Copernicus programme and ESA as the producers of the GLO-90 DEM."),
+            "Open-Meteo elevation JSON as served",
+            "not applicable: the DEM is static",
+            "Catalogued as the documented counterpart of elevation=nan, not as an evidence field",
+            (False, None, "A static elevation lookup is not a forecast vote."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo serves the Copernicus GLO-90 DEM as a point lookup, the same DEM its statistical downscaling acts against.",
+            ),
+        ),
+    ])
+
     # The ensemble family declaration is attached here rather than threaded
     # through every constructor call, so the six blocks stay readable side by
     # side in one table above and no record can acquire one by inheriting a
