@@ -166,7 +166,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   render `blocked`, `null` and `aged_out` as three distinguishable states.
   Owns: `web/src/profiles/`.
   Verify: `cd web && npm test -- --run profile-contract`
-- [ ] 6.2 Show sites as preferred locations with their horizons, keep
+- [x] 6.2 Show sites as preferred locations with their horizons, keep
   arbitrary points selectable, and state `no_registered_horizon` where a
   horizon-dependent field is unavailable off-site.
   Owns: `web/src/sites/`.
