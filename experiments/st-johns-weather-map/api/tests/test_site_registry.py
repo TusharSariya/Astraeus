@@ -85,7 +85,7 @@ def test_a_site_with_no_horizon_is_refused(tmp_path: Path) -> None:
     assert "test-no-horizon" in errors[0]
 
 
-def test_a_record_missing_the_horizon_key_is_refused_by_the_schema(tmp_path: Path) -> None:
+def test_a_record_with_no_horizon_key_is_refused_by_the_schema(tmp_path: Path) -> None:
     record = _complete(id="test-no-horizon-key")
     del record["horizon"]
     with pytest.raises(SiteError) as raised:
@@ -103,7 +103,7 @@ def test_a_horizon_gap_names_every_missing_bearing(tmp_path: Path) -> None:
     assert errors[1].startswith("site_horizon_gap:200:")
 
 
-def test_a_short_horizon_is_a_gap_at_every_uncovered_bearing(tmp_path: Path) -> None:
+def test_a_short_horizon_is_a_horizon_gap_at_every_uncovered_bearing(tmp_path: Path) -> None:
     record = _complete(id="test-horizon-gap-short")
     record["horizon"]["elevation_deg"] = record["horizon"]["elevation_deg"][:34]
     errors = audit_site(load_site(_write(tmp_path / "sites", record)))
@@ -111,7 +111,7 @@ def test_a_short_horizon_is_a_gap_at_every_uncovered_bearing(tmp_path: Path) -> 
     assert all(error.startswith("site_horizon_gap:") for error in errors)
 
 
-def test_a_long_horizon_is_a_gap_naming_the_count(tmp_path: Path) -> None:
+def test_a_long_horizon_is_a_horizon_gap_naming_the_count(tmp_path: Path) -> None:
     record = _complete(id="test-horizon-gap-long")
     record["horizon"]["elevation_deg"] = record["horizon"]["elevation_deg"] + [1.0, 1.0]
     errors = audit_site(load_site(_write(tmp_path / "sites", record)))
