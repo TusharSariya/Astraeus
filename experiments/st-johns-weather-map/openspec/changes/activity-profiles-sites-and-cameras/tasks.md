@@ -41,13 +41,13 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   Owns: `registry/profile_audit.py`.
   Verify: `cd api && uv run pytest tests/test_profile_registry.py -k
   "unknown_family or unit_mismatch or no_default or both_lists"`
-- [ ] 1.3 Add the four first profile files with the family lists the owner
+- [x] 1.3 Add the four first profile files with the family lists the owner
   adopted on wayfinder ticket 19, each listing its blocked fields (road
   state; light-pollution baseline; local magnetometer).
   Owns: `registry/profiles/running.yaml`, `astronomy.yaml`, `aurora.yaml`,
   `landscape_photography.yaml`.
   Verify: `python3 registry/profile_audit.py --all`
-- [ ] 1.4 Wire profile validation into CI so an unknown family fails the
+- [x] 1.4 Wire profile validation into CI so an unknown family fails the
   build, and make it unskippable by any profile file flag.
   Owns: the profile step of the registry CI target.
   Verify: `make spec-validate && python3 registry/profile_audit.py --strict`

@@ -112,7 +112,4 @@ blocked_fields:
   source_id: nrcan-stj-magnetometer
   terms: NRCan forbids redistribution without written permission
   request: Written permission requested from NRCan for the STJ magnetometer, 2026-09-02
-wanted_not_catalogued:
-- field: ovation_probability
-  note: the owner's list names OVATION aurora probability; the catalogue has no key
-    spelled ovation_probability
+wanted_not_catalogued: []

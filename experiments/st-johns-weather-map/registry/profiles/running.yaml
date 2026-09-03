@@ -3,6 +3,7 @@ version: 1
 title: Running
 families:
 - temperature
+- astronomy_geometry
 - humidity
 - wind
 - precipitation
@@ -133,8 +134,3 @@ wanted_not_catalogued:
   note: the owner's list names wind chill; the catalogue has no key for it
 - field: uv_index
   note: the owner's list names UV; the catalogue has no key for it
-- field: aqhi
-  note: the owner's list names AQHI by that name; the catalogue has no key spelled
-    aqhi
-- field: daylight
-  note: the owner's list names a daylight field; the catalogue has no key for it
