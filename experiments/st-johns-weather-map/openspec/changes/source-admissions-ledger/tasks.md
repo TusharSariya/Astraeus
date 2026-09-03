@@ -241,16 +241,16 @@ Verification commands used below, run from
 
 ## 8. Field-level admissions on existing records (Registry owner)
 
-- [ ] 8.1 Add the ECCC seeing index and sky-transparency index to `eccc-rdps`
+- [x] 8.1 Add the ECCC seeing index and sky-transparency index to `eccc-rdps`
   as class-index fields with their family comparability note (unlabelled
   integer classes, a fourth incompatible transparency encoding).
   Verify: `python3 -m unittest discover -s registry/tests -v -k seeing`.
-- [ ] 8.2 Record on `eccc-marine-buoys-synop` that no ECCC buoy in the box
+- [x] 8.2 Record on `eccc-marine-buoys-synop` that no ECCC buoy in the box
   carries dew point or visibility and no ship reports were observed, and on
   `smartatlantic-other-validated` that state is per buoy: in-box
   `implemented-unverified`, out-of-box `catalogued`.
   Verify: `python3 registry/audit.py`.
-- [ ] 8.3 Record the `dwd-icon-global` two-path declaration: retrieved
+- [x] 8.3 Record the `dwd-icon-global` two-path declaration: retrieved
   nearest-cell point samples on the published CLAT/CLON mesh, derived-here
   regridded rasters through the registered CDO-weights method.
   Verify: `python3 -m unittest discover -s registry/tests -v -k icon`.
