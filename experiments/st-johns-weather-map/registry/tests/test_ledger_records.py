@@ -81,7 +81,7 @@ class LedgerRecordTests(unittest.TestCase):
         cameras = sources["nav-canada-weather-cameras"]
 
         self.assertEqual("credential-required", cameras["status"])
-        self.assertIn("public registry endpoint is dead", cameras["reason"])
+        self.assertIn("registry endpoint at weathercams.navcanada.ca is dead", cameras["reason"])
         self.assertIn("NC-SPACES", cameras["reason"])
         self.assertIn("HITL", cameras["reason"])
         credential = cameras["credential"]
