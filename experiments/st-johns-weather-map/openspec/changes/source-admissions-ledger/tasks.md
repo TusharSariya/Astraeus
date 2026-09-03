@@ -93,40 +93,40 @@ Verification commands used below, run from
 
 ## 4. State changes on existing records (Registry owner)
 
-- [ ] 4.1 `eccc-rewps` to `rejected`, reason: Great Lakes domain only, verified
+- [x] 4.1 `eccc-rewps` to `rejected`, reason: Great Lakes domain only, verified
   on GeoMet 2026-09-02; no access path.
   Verify: `python3 -m unittest discover -s registry/tests -v -k rewps`.
-- [ ] 4.2 `eccc-radiosonde` to `unavailable`, reason: the CYYT sounding is gone
+- [x] 4.2 `eccc-radiosonde` to `unavailable`, reason: the CYYT sounding is gone
   from Datamart and absent from GeoMet, the served vertical profile is HRDPS
   and RDPS pressure levels, with a standing re-probe recorded.
   Verify: `python3 -m unittest discover -s registry/tests -v -k radiosonde`.
 - [x] 4.3 `eccc-raqdps-firework` from `retired` to `superseded`, with
   `superseded_by` naming the RAQDPS smoke-plume layers.
   Verify: `python3 -m unittest discover -s registry/tests -v -k firework`.
-- [ ] 4.4 `nav-canada-weather-cameras` from `licence_review` to
+- [x] 4.4 `nav-canada-weather-cameras` from `licence_review` to
   `credential-required`, credential NC-SPACES account, reason: the public
   registry endpoint is dead and the owner holds NC-SPACES credentials.
   Verify: `python3 -m unittest discover -s registry/tests -v -k nav_canada`.
-- [ ] 4.5 `provincial-hydrometric` from `licence_review` to `catalogued`, and
+- [x] 4.5 `provincial-hydrometric` from `licence_review` to `catalogued`, and
   `raw-cwop-pws` from `licence_review` to `implemented-unverified` carrying the
   unread-terms admission condition until the CWOP licence text is recorded.
   Verify: `python3 registry/audit.py`.
-- [ ] 4.6 `eccc-integrated-nowcasting` to `catalogued` with the WMS re-probe as
+- [x] 4.6 `eccc-integrated-nowcasting` to `catalogued` with the WMS re-probe as
   its admission condition (zero WCS coverages on 2026-09-02).
   Verify: `python3 -m unittest discover -s registry/tests -v -k nowcasting`.
-- [ ] 4.7 `eccc-rdwps` to `implemented-unverified` with the Atlantic-domain
+- [x] 4.7 `eccc-rdwps` to `implemented-unverified` with the Atlantic-domain
   check over the evidence box as an outstanding admission condition.
   Verify: `python3 -m unittest discover -s registry/tests -v -k rdwps`.
-- [ ] 4.8 `noaa-goes-east` re-pointed at GOES-19 with the admitted product set
+- [x] 4.8 `noaa-goes-east` re-pointed at GOES-19 with the admitted product set
   (Enterprise Cloud Mask, ABI-L2-CCLF five-layer cloud fraction, cloud-top
   height at 2 km, cloud-top phase and temperature) and the recorded fact that
   no fog product exists.
   Verify: `python3 -m unittest discover -s registry/tests -v -k goes`.
-- [ ] 4.9 `noaa-swpc-rtsw` to `catalogued` with the re-implementation condition:
+- [x] 4.9 `noaa-swpc-rtsw` to `catalogued` with the re-implementation condition:
   the feed now interleaves SWFO-L1, ACE and IMAP and every quality flag must be
   stored.
   Verify: `python3 -m unittest discover -s registry/tests -v -k rtsw`.
-- [ ] 4.10 Correct the `copernicus-cams` licence text to the ADS catalogue's
+- [x] 4.10 Correct the `copernicus-cams` licence text to the ADS catalogue's
   CC BY 4.0, with the catalogue URL and read date.
   Verify: `python3 -m unittest discover -s registry/tests -v -k cams_licence`.
 
