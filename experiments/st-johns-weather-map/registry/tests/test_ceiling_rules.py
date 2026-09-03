@@ -258,7 +258,7 @@ class NoEndpointTests(unittest.TestCase):
                 source = self.cited(data, "raw-cwop-pws", status)
                 self.assertEqual([], audit.no_endpoint_errors(source))
 
-    def test_a_citation_record_may_not_carry_an_access_endpoint(self) -> None:
+    def test_a_no_endpoint_state_may_not_carry_an_access_endpoint(self) -> None:
         for status in ("link-only", "partnership-only"):
             with self.subTest(status):
                 data = rewritten_registry()
@@ -269,7 +269,7 @@ class NoEndpointTests(unittest.TestCase):
                     any("may not carry an access endpoint" in error for error in errors), errors
                 )
 
-    def test_a_citation_record_must_declare_a_link_only_integration(self) -> None:
+    def test_a_no_endpoint_state_must_declare_a_link_only_integration(self) -> None:
         for status in ("link-only", "partnership-only"):
             with self.subTest(status):
                 data = rewritten_registry()
