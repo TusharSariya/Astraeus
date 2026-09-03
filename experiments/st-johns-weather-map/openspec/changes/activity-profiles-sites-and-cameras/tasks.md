@@ -179,7 +179,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
 
 ## 7. Gate
 
-- [ ] 7.1 Run the full suite and both spec validators.
+- [x] 7.1 Run the full suite and both spec validators.
   Verify: `make test`, `openspec validate
   activity-profiles-sites-and-cameras --strict`, and `uv run --project
   ../../tools/specs python ../../tools/specs/specctl.py validate`
