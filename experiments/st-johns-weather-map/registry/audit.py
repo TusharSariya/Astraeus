@@ -15,7 +15,7 @@ import jsonschema
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import fields as field_catalogue  # noqa: E402
-from source_data import registry  # noqa: E402
+from source_data import ENSEMBLE_BUILD_ORDER, registry  # noqa: E402
 
 ALLOWED_STATUSES = {
     "active", "implementing", "credential_required", "licence_review",
@@ -336,6 +336,283 @@ def delivery_kind_errors(source: dict[str, Any]) -> list[str]:
     return errors
 
 
+#: The storage scope each subsettability declaration forces. A record does not
+#: get to pick the pair: a path that subsets before the bytes leave the
+#: producer stores everything it publishes, and a path that cannot subset pays
+#: its whole file per record and so fetches only the catalogue's family fields.
+_ENSEMBLE_SCOPE_FOR_SUBSETTING = {
+    "server_side": "every_published_field",
+    "none": "family_fields_only",
+}
+
+
+def ensemble_presence_errors(source: dict[str, Any]) -> list[str]:
+    """The ``ensemble`` block is on every ensemble record and on no other.
+
+    Both directions are refusals. A record categorised ``ensemble`` with no
+    block declares a family whose member axis, control rule and storage scope
+    nothing can check; a block on a record of any other category would put a
+    member count and a control rule on a product that has neither, and would
+    let a deterministic record be read as a family.
+    """
+    errors: list[str] = []
+    sid = source["id"]
+    block = source.get("ensemble")
+    if source.get("category") == "ensemble" and block is None:
+        errors.append(
+            f"{sid}: category is ensemble and the record carries no ensemble block, so its "
+            "member axis, control rule and storage scope are undeclared and uncheckable"
+        )
+    if block is not None and source.get("category") != "ensemble":
+        errors.append(
+            f"{sid}: carries an ensemble block but its category is {source.get('category')!r}; "
+            "only an ensemble record declares a family"
+        )
+    return errors
+
+
+def ensemble_scope_errors(sid: str, block: dict[str, Any]) -> list[str]:
+    """No subsettability, no schedule: the storage scope has to follow from it.
+
+    A record that will not say whether its access path subsets server side has
+    a storage scope nobody can audit, so an undeclared or unrecognised
+    ``subsetting`` is refused outright. Where it is declared, the scope is not
+    a second judgement: ``server_side`` stores every published field and
+    ``none`` stores the catalogue's family fields only. The pair is then
+    checked against ``registry/fields.py`` ``SOURCE_SCOPE`` for the same id,
+    because the catalogue's per-source policy and the family's declaration are
+    two statements about one access path and a disagreement between them means
+    one of the two is describing a path that does not exist.
+    """
+    errors: list[str] = []
+    subsetting = block.get("subsetting")
+    scope = block.get("storage_scope")
+    if subsetting not in _ENSEMBLE_SCOPE_FOR_SUBSETTING:
+        errors.append(
+            f"{sid}: ensemble declares subsetting {subsetting!r}, which is neither 'server_side' "
+            "nor 'none', so it is not schedulable and its storage scope cannot be checked"
+        )
+        return errors
+    expected = _ENSEMBLE_SCOPE_FOR_SUBSETTING[subsetting]
+    if scope != expected:
+        errors.append(
+            f"{sid}: ensemble subsetting {subsetting!r} forces storage_scope {expected!r}, "
+            f"and the record declares {scope!r}"
+        )
+    catalogue_scope = field_catalogue.source_scope(sid)
+    if catalogue_scope is None:
+        errors.append(
+            f"{sid}: ensemble declares a storage scope and the field catalogue records no "
+            "SOURCE_SCOPE for the id, so the declaration stands against nothing"
+        )
+        return errors
+    if catalogue_scope.subsetting != subsetting or catalogue_scope.policy != scope:
+        errors.append(
+            f"{sid}: ensemble declares subsetting {subsetting!r}/{scope!r} and the field "
+            f"catalogue records {catalogue_scope.subsetting!r}/{catalogue_scope.policy!r}; "
+            "the two describe one access path and may not disagree"
+        )
+    return errors
+
+
+def ensemble_shape_errors(sid: str, block: dict[str, Any]) -> list[str]:
+    """A member-shaped family declares its control; a reduction declares none.
+
+    The control is a flag on the member axis, so a family that publishes
+    members always declares the block and the rule by which the control is
+    identified. The rule is what is required, not a non-null identifier:
+    neither REPS nor ICON-EPS has a located control token, and a null
+    ``control`` block would say those families publish no control, which is
+    false and is what a reduction-only family declares. The prose then carries
+    the honest statement that the control has not been located, and the
+    verification fields keep the family unschedulable.
+
+    A reduction-shaped family is the mirror image: no members, so no control,
+    no member count, and a non-empty list of the provider statistics it
+    publishes instead. A member-shaped family lists no reductions at all,
+    because its provider's own reductions are a different product and are
+    never mixed with a statistic over its member set.
+    """
+    errors: list[str] = []
+    shape = block.get("shape")
+    control = block.get("control")
+    reductions = block.get("reductions")
+    member_count = block.get("member_count")
+    evidence = (block.get("verification") or {}).get("evidence")
+
+    if shape == "members":
+        if not isinstance(control, dict):
+            errors.append(
+                f"{sid}: ensemble declares members and no control block; a member-publishing "
+                "family declares how its control is identified, and a null block says the "
+                "family publishes no control"
+            )
+        elif not (control.get("rule") or "").strip():
+            errors.append(
+                f"{sid}: ensemble declares members and its control block states no rule; a "
+                "null identifier is allowed where no measurement locates the control, but the "
+                "rule that says so is not optional"
+            )
+        if reductions:
+            errors.append(
+                f"{sid}: ensemble declares members and lists provider reductions {reductions!r}; "
+                "a member family's provider reductions are a different product"
+            )
+        # ``member_count`` is null exactly where nothing was measured at all
+        # (design.md Seam A, widened by task 2.1). A family with an evidence
+        # path states its count; ICON-EPS, measured nowhere, declares none
+        # rather than inheriting another centre's EPS size.
+        if evidence == "none" and member_count is not None:
+            errors.append(
+                f"{sid}: ensemble measured nothing (verification.evidence 'none') and declares "
+                f"member_count {member_count!r}; a count that was assumed cannot be used to "
+                "check completeness"
+            )
+        if evidence != "none" and member_count is None:
+            errors.append(
+                f"{sid}: ensemble declares members with an evidence path and no member_count, "
+                "so completeness cannot be checked against anything"
+            )
+    elif shape == "reduction":
+        if control is not None:
+            errors.append(f"{sid}: ensemble declares reduction shape and a control; it publishes no members")
+        if member_count is not None:
+            errors.append(
+                f"{sid}: ensemble declares reduction shape and member_count {member_count!r}; "
+                "a reduction-only family publishes no member axis to count"
+            )
+        if not reductions:
+            errors.append(
+                f"{sid}: ensemble declares reduction shape and lists no reductions, so it "
+                "declares neither members nor the statistics it publishes instead"
+            )
+    else:
+        errors.append(f"{sid}: ensemble declares shape {shape!r}, which is neither 'members' nor 'reduction'")
+    return errors
+
+
+def ensemble_gap_errors(sid: str, block: dict[str, Any]) -> list[str]:
+    """A declared gap may not also be declared published.
+
+    A gap says the producer does not publish the field for this family, so the
+    field is null with that reason and is never derived, borrowed or filled
+    from the family's own provider reduction. If the field catalogue maps the
+    same key for the same source as ``stored``, then one of the two records is
+    wrong and a served value would not match any declaration, which the
+    governing requirement refuses. ``available-not-stored`` is not the same
+    claim and passes: GEFS declares ``total_cloud_geometric`` a gap for the
+    column quantity while the catalogue records the single-level records it
+    does publish as available and not fetched.
+    """
+    errors: list[str] = []
+    for gap in block.get("gaps") or []:
+        key = gap.get("field")
+        if not key:
+            errors.append(f"{sid}: ensemble declares a gap with no field name")
+            continue
+        if not (gap.get("reason") or "").strip():
+            errors.append(f"{sid}: ensemble declares a gap on {key!r} with no reason")
+        try:
+            storage = field_catalogue.storage_of(sid, key)
+        except field_catalogue.UnknownFieldKey:
+            errors.append(f"{sid}: ensemble declares a gap on {key!r}, which is not a catalogue key")
+            continue
+        if storage == "stored":
+            errors.append(
+                f"{sid}: ensemble declares {key!r} a gap and the field catalogue maps it stored "
+                "for the same source; a declared gap may not also be declared published"
+            )
+    return errors
+
+
+def ensemble_verification_errors(sid: str, block: dict[str, Any]) -> list[str]:
+    """Nothing unverified is schedulable, and nothing unmeasured is counted.
+
+    A family carrying any ``unverified`` field, or naming no evidence at all,
+    is not schedulable: a member count that was assumed cannot check
+    completeness and an access path that was assumed cannot be run. The count
+    clause is enforced in ``ensemble_shape_errors`` against the seam's
+    biconditional (null iff reduction-shaped or nothing measured), because a
+    count measured short of its control - IFS ENS observed 50 perturbed
+    members and a documented control nobody located - is declared with its
+    verification marked unverified rather than dropped; what that unverified
+    mark forbids is scheduling the family, which is refused here.
+    """
+    errors: list[str] = []
+    verification = block.get("verification") or {}
+    unverified = sorted(
+        name for name in ("member_count", "access_path", "cadence")
+        if verification.get(name) != "verified"
+    )
+    evidence = verification.get("evidence")
+    if block.get("schedulable"):
+        if unverified:
+            errors.append(
+                f"{sid}: ensemble is schedulable with {', '.join(unverified)} unverified; a "
+                "family is not schedulable beyond its own measured evidence"
+            )
+        if not evidence or evidence == "none":
+            errors.append(
+                f"{sid}: ensemble is schedulable and names no evidence, so nothing stands "
+                "behind its member count, access path or cadence"
+            )
+        if verification.get("member_count") == "unverified" and block.get("member_count") is not None:
+            errors.append(
+                f"{sid}: ensemble is schedulable and its declared member_count is unverified, "
+                "so completeness would be checked against an assumption"
+            )
+    if not (block.get("schedulable_reason") or "").strip():
+        errors.append(f"{sid}: ensemble states no schedulable_reason")
+    return errors
+
+
+def ensemble_build_order_errors(data: dict[str, Any]) -> list[str]:
+    """Six families, one declared order, and the registry constant agrees.
+
+    The order is a registry fact so that a partial build is a prefix of the
+    list rather than an implementation convention. That only holds if the
+    ``build_order`` values are exactly 1 to 6 with no duplicate and no gap, and
+    if reading them back gives the same sequence as
+    ``source_data.ENSEMBLE_BUILD_ORDER``, which is what every other module
+    reads.
+    """
+    errors: list[str] = []
+    declared = {
+        source["id"]: source["ensemble"]["build_order"]
+        for source in data["sources"]
+        if isinstance(source.get("ensemble"), dict) and "build_order" in source["ensemble"]
+    }
+    if sorted(declared.values()) != list(range(1, len(ENSEMBLE_BUILD_ORDER) + 1)):
+        errors.append(
+            f"ensemble build order values are {sorted(declared.values())}; the admitted families "
+            f"take 1 to {len(ENSEMBLE_BUILD_ORDER)} exactly once each"
+        )
+    ordered = tuple(sorted(declared, key=lambda sid: (declared[sid], sid)))
+    if ordered != tuple(ENSEMBLE_BUILD_ORDER):
+        errors.append(
+            f"ensemble build order reads {list(ordered)} and source_data.ENSEMBLE_BUILD_ORDER is "
+            f"{list(ENSEMBLE_BUILD_ORDER)}; the declared order is one fact, not two"
+        )
+    return errors
+
+
+def ensemble_errors(data: dict[str, Any]) -> list[str]:
+    """Every refusal an ensemble declaration owes the rest of the stack."""
+    errors: list[str] = []
+    for source in data["sources"]:
+        errors.extend(ensemble_presence_errors(source))
+        block = source.get("ensemble")
+        if not isinstance(block, dict):
+            continue
+        sid = source["id"]
+        errors.extend(ensemble_scope_errors(sid, block))
+        errors.extend(ensemble_shape_errors(sid, block))
+        errors.extend(ensemble_gap_errors(sid, block))
+        errors.extend(ensemble_verification_errors(sid, block))
+    errors.extend(ensemble_build_order_errors(data))
+    return errors
+
+
 def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     sources = data["sources"]
@@ -383,6 +660,7 @@ def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]
             if marker in serialized:
                 errors.append(f"{sid}: possible credential material in registry")
     errors.extend(horizon_errors(data))
+    errors.extend(ensemble_errors(data))
     return errors
 
 
