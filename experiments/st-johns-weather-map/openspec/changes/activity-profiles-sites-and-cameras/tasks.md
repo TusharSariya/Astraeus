@@ -59,7 +59,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   naming the absent geometry field.
   Owns: `api/weather_api/profiles/windows.py` (new).
   Verify: `cd api && uv run pytest tests/test_profile_windows.py`
-- [ ] 2.2 Add the disjoint absence states `null`, `blocked` and `aged_out`
+- [x] 2.2 Add the disjoint absence states `null`, `blocked` and `aged_out`
   and the per-field output contract (value, evidence class, quality,
   freshness, source, comparability, absence state) to the models.
   Owns: `api/weather_api/models.py`.
