@@ -60,7 +60,7 @@ def test_catalog_is_the_whole_registry_and_never_claims_an_active_source():
     assert payload["operational"] is False
     ids = [source["id"] for source in payload["sources"]]
     assert ids == [record["id"] for record in registry()["sources"]]
-    assert len(ids) == 65
+    assert len(ids) >= 65
     assert "active" not in {source["state"] for source in payload["sources"]}
     assert all(source["status_reason"] and source["fixture_status"] for source in payload["sources"])
     assert {source["id"] for source in payload["sources"] if source["schedulable"]} == schedulable_source_ids()

@@ -101,7 +101,6 @@ def test_every_mapped_variable_follows_the_naming_convention() -> None:
         assert variable.startswith("WEATHER_SECRET_"), f"{source_id} maps to {variable}"
 
 
-@pytest.mark.xfail(strict=False, reason="viirs-dnb-night-lights record lands in task 7.6")
 def test_every_mapped_source_exists_in_the_registry() -> None:
     """A mapping for a source id that does not exist is a silent dead letter."""
     from ingest.registry import ingest_configs
@@ -112,13 +111,22 @@ def test_every_mapped_source_exists_in_the_registry() -> None:
 
 
 def test_every_credential_required_registry_source_has_a_mapping() -> None:
-    """A credential-gated source with no variable could never be enabled."""
+    """A credential-gated source with no variable could never be enabled.
+
+    Scoped to the admitted state ``credential-required``: a catalogued paid or
+    keyed provider (Meteosource, Netatmo, Weather Underground) is not admitted,
+    so nothing will ever try to enable it and no variable is owed.
+    """
     from ingest.registry import _load_registry
 
     gated = {
         record["id"]
         for record in _load_registry()["sources"]
-        if record["authentication"]["required"]
+        if record["status"] == "credential-required"
     }
+    for record in _load_registry()["sources"]:
+        if record["status"] == "credential-required":
+            assert record["authentication"]["required"], record["id"]
+            assert record["credential"]["name"] == SECRET_ENV_BY_SOURCE.get(record["id"]), record["id"]
     missing = gated - set(SECRET_ENV_BY_SOURCE)
     assert not missing, f"credential-required sources with no env var mapped: {sorted(missing)}"

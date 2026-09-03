@@ -542,3 +542,40 @@ ledger table or from `tasks.md` as written, with the reason.
 6. **The registry holds 65 records, not 63.** `dwd-icon-eps` and
    `open-meteo-weathernext-2` were added by steps 3 and 7 after the ledger
    was written. Both migrate by the Decision 1 rule.
+7. **Ledger rows written `catalogued` by Deviation 2.** The 56 records
+   whose reason ends in the catalogued-until-adapter sentence, on the merged
+   tip after section 7: awc-pirep-airep, awc-sigmet-airmet,
+   brightsky-dwd-mosmix-71801, ccg-navwarn, celestrak-gp, dfo-iwls,
+   eccc-caldas, eccc-ciops-east, eccc-gdsps, eccc-gdwps, eccc-geps,
+   eccc-hrdlps, eccc-hrdpa, eccc-hrdps-weg-prognos, eccc-hrepa,
+   eccc-hurricane-products, eccc-hydrometric, eccc-integrated-nowcasting,
+   eccc-marine-buoys-synop, eccc-marine-forecasts-alerts, eccc-raqdps,
+   eccc-rdaqa, eccc-rdpa, eccc-rdwps, eccc-resps, eccc-riops,
+   eccc-thunderstorm-outlooks, eccc-wildfire-hotspots, ecmwf-aifs-single,
+   falchi-night-sky-atlas, gfz-hp30, globe-at-night, meteosource,
+   nasa-jpl-de442, netatmo, nl-air-quality-csv, noaa-goes-magnetometer,
+   noaa-goes-xray, noaa-nam, noaa-rap, noaa-swpc-alerts, noaa-swpc-kp-1m,
+   noaa-swpc-kyoto-dst, noaa-swpc-plasma, noaa-swpc-propagated-solar-wind,
+   noaa-swpc-scales, openmeteo-arpege, openmeteo-cams-aod,
+   openmeteo-gfs-wave, openmeteo-jma-gsm, openmeteo-lsa-saf-radiation,
+   openmeteo-ukmo-global, raw-cwop-pws, smartatlantic-other-validated,
+   smartatlantic-st-johns, weather-underground. Each moves to
+   `implemented-unverified` when an adapter claims its id and its fixture
+   passes; nothing else changes on the record.
+8. **`nl-511` carries no `restricted_terms` block.** Its record has no terms
+   clause to quote (the licence name is "NL 511 API terms" and the
+   redistribution prose is a pending review), and inventing text would be
+   worse than the gap. It stays `credential-required` and research display
+   only by its reason; the owner adds the block when the terms are read.
+9. **`openmeteo-aqi-indices` and `openmeteo-beam-split` declare
+   `reprocessed`, not `intermediary_derived`.** Both are `rejected`, so no
+   value flows either way; the intermediary-derived reasoning that refused
+   them is in each reason. An owner may re-declare the kind if either is ever
+   reconsidered.
+10. **Four test expectations rewritten as invariants.** The whole-registry
+    id lists in `registry/tests/test_delivery_kind.py`, the SWPC ingestible
+    assertion in `api/tests/test_adapter_swpc.py` (rtsw is held by its
+    condition), the catalogue count of 65 in `api/tests/test_api.py` (now a
+    floor) and the credential-mapping check in
+    `api/tests/test_ingest_secrets.py` (now scoped to the state
+    `credential-required`, so catalogued keyed providers owe no variable).
