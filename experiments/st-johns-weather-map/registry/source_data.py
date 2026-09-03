@@ -1469,6 +1469,151 @@ def registry() -> dict[str, Any]:
         ),
     ])
 
+    # Three foreign global models that this stack has no other route to, plus
+    # the DWD MOSMIX station point. They add spread rather than detail, and the
+    # UKMO row is admitted for research use only because its upstream licence is
+    # CC BY-SA and a share-alike obligation is not something this deployment can
+    # grant onward.
+    s.extend([
+        _source(
+            "openmeteo-jma-gsm", "deterministic_forecast",
+            *_admission(
+                "openmeteo-jma-gsm",
+                "A third independent global model over the box, reachable here only through an aggregator: JMA publishes no open path this deployment can read, and the 2026-09-02 probe returned live values (62, 62, 63 percent cloud, run 2026-09-01 18z at a 9.54 h lag) through Open-Meteo's jma_gsm domain ("
+                + AGGREGATOR_RESEARCH
+                + " section 5). Admitted for spread, not for detail. The six documented Open-Meteo transformations are named on this record, and the run stamp comes from data/jma_gsm/static/meta.json beside every call, because the forecast response body carries no run reference at all. Reprocessed, so never the display primary and never a derivation input."
+                + OPEN_METEO_BEST_MATCH_REFUSAL,
+            ),
+            "Japan Meteorological Agency",
+            "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/jma-api", "https://www.jma.go.jp/jma/en/Activities/nwp.html"],
+            ["https://api.open-meteo.com/v1/forecast"],
+            ("typed_adapter", "httpx + Pydantic adapter sending elevation=nan and an explicit cell_selection, reading meta.json beside every call; no adapter is registered yet"),
+            ["air_temperature", "dew_point", "relative_humidity", "total_cloud", "low_cloud", "middle_cloud", "high_cloud", "wind_speed", "wind_direction", "mean_sea_level_pressure", "precipitation"],
+            ["surface", "2 m", "10 m"],
+            "Global; queried per point over the evidence box",
+            "producer run cycles as Open-Meteo exposes them in meta.json; measured once at a 9.54 h lag",
+            "as published by the domain; not enumerated for this deployment",
+            (False, "none", None),
+            _open_meteo_policy("credit the Japan Meteorological Agency as the producer of GSM."),
+            "Open-Meteo forecast JSON as served; the producer's cycle version is not exposed",
+            "run initialisation time read from meta.json, no older than two producer cycles",
+            "Independent foreign global model for spread; never the display primary and never a derivation input",
+            (False, None, "A reprocessed delivery cannot stand as a centre's vote: the value is not the producer's own cell."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            ),
+        ),
+        _source(
+            "openmeteo-arpege", "deterministic_forecast",
+            *_admission(
+                "openmeteo-arpege",
+                "A fourth independent global model over the box on the same terms as JMA GSM: reachable here only through Open-Meteo's meteofrance_arpege_world025 domain, which returned live values (25, 31, 19 percent cloud, run 2026-09-02 00z at a 4.20 h lag) on 2026-09-02 ("
+                + AGGREGATOR_RESEARCH
+                + " section 5). Admitted for spread, not for detail. The six documented Open-Meteo transformations are named on this record, and the run stamp comes from data/meteofrance_arpege_world025/static/meta.json beside every call. Reprocessed, so never the display primary and never a derivation input."
+                + OPEN_METEO_BEST_MATCH_REFUSAL,
+            ),
+            "Meteo-France",
+            "ARPEGE world 0.25 degree (meteofrance_arpege_world025) delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/meteofrance-api", "https://meteofrance.com/"],
+            ["https://api.open-meteo.com/v1/forecast"],
+            ("typed_adapter", "httpx + Pydantic adapter sending elevation=nan and an explicit cell_selection, reading meta.json beside every call; no adapter is registered yet"),
+            ["air_temperature", "dew_point", "relative_humidity", "total_cloud", "low_cloud", "middle_cloud", "high_cloud", "wind_speed", "wind_direction", "mean_sea_level_pressure", "precipitation"],
+            ["surface", "2 m", "10 m"],
+            "Global 0.25 degree; queried per point over the evidence box",
+            "producer run cycles as Open-Meteo exposes them in meta.json; measured once at a 4.20 h lag",
+            "as published by the domain; not enumerated for this deployment",
+            (False, "none", None),
+            _open_meteo_policy("credit Meteo-France as the producer of ARPEGE."),
+            "Open-Meteo forecast JSON as served; the producer's cycle version is not exposed",
+            "run initialisation time read from meta.json, no older than two producer cycles",
+            "Independent foreign global model for spread; never the display primary and never a derivation input",
+            (False, None, "A reprocessed delivery cannot stand as a centre's vote: the value is not the producer's own cell."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests the Meteo-France ARPEGE world 0.25 degree model and re-serves it as point time series on its own grid.",
+            ),
+        ),
+        _source(
+            "openmeteo-ukmo-global", "deterministic_forecast",
+            *_admission(
+                "openmeteo-ukmo-global",
+                "A fifth independent global model over the box, live through Open-Meteo's ukmo_global_deterministic_10km domain (20, 19, 36 percent cloud, run 2026-09-01 18z at a 7.43 h lag, 2026-09-02) and reachable no other way here ("
+                + AGGREGATOR_RESEARCH
+                + " sections 3 and 5). Admitted for research use only: Open-Meteo's own licence page records UK Met Office data as CC BY-SA 4.0, a share-alike obligation this deployment cannot grant onward, so the terms are recorded verbatim, redistribution is refused, and the values are served only to the owner's own reader. The six documented Open-Meteo transformations are named on this record. Reprocessed, so never the display primary and never a derivation input."
+                + OPEN_METEO_BEST_MATCH_REFUSAL,
+            ),
+            "UK Met Office",
+            "UKMO global deterministic 10 km (ukmo_global_deterministic_10km) delivered by Open-Meteo",
+            ["https://open-meteo.com/en/docs/ukmo-api", "https://www.metoffice.gov.uk/"],
+            ["https://api.open-meteo.com/v1/forecast"],
+            ("typed_adapter", "httpx + Pydantic adapter sending elevation=nan and an explicit cell_selection, reading meta.json beside every call; no adapter is registered yet"),
+            ["air_temperature", "dew_point", "relative_humidity", "total_cloud", "low_cloud", "middle_cloud", "high_cloud", "wind_speed", "wind_direction", "mean_sea_level_pressure", "precipitation"],
+            ["surface", "2 m", "10 m"],
+            "Global 10 km; queried per point over the evidence box",
+            "producer run cycles as Open-Meteo exposes them in meta.json; measured once at a 7.43 h lag",
+            "as published by the domain; not enumerated for this deployment",
+            (False, "none", None),
+            _open_meteo_policy(
+                "credit the UK Met Office as the producer and carry the CC BY-SA 4.0 notice with every stored value.",
+                licence_name="UK Met Office data delivered by Open-Meteo under CC BY-SA 4.0; the share-alike clause is not granted onward by this deployment",
+                licence_url="https://open-meteo.com/en/docs/ukmo-api",
+                review_state="restricted",
+                redistribution="Not redistributed. CC BY-SA 4.0 would oblige this deployment to share any derived product under the same licence, which it does not grant, so the values are served only to the owner's own reader.",
+            ),
+            "Open-Meteo forecast JSON as served; the producer's cycle version is not exposed",
+            "run initialisation time read from meta.json, no older than two producer cycles",
+            "Independent foreign global model for spread, research use only; never the display primary and never a derivation input",
+            (False, None, "Research-use-only values may not stand as a centre's vote, and a reprocessed delivery could not in any case."),
+            delivery_kind="reprocessed",
+            intermediary=_open_meteo_intermediary(
+                "Open-Meteo ingests the UKMO global deterministic 10 km model and re-serves it as point time series on its own grid.",
+            ),
+            restricted_terms={
+                "terms_text": "UK Met Office data on Open-Meteo is licensed CC BY-SA 4.0: derived products must be shared under the same licence, which this deployment does not grant onward",
+                "terms_source_url": "https://open-meteo.com/en/docs/ukmo-api",
+                "redistribution": False,
+                "read_date": "2026-09-02",
+            },
+        ),
+        _source(
+            "brightsky-dwd-mosmix-71801", "postprocessed_forecast",
+            *_admission(
+                "brightsky-dwd-mosmix-71801",
+                "The best value per declaration in the aggregator ticket: DWD MOSMIX station 71801 (ST.JOHNS NEUFUNDL., 47.62 N 52.73 W, 134 m, 6 642 m from the box's reference point) is the only new source carrying visibility and dew point at a St. John's point out to ten days, and the in-situ fog evidence gap is the hardest one in the box ("
+                + AGGREGATOR_RESEARCH
+                + " sections 3 and 7). Producer DWD, intermediary Bright Sky, which parses the MOSMIX KMZ into JSON and returns the station it chose with its distance, so the selection is inspectable per response. MOSMIX's own statistical post-processing is DWD's, which is why the producer is DWD and not Bright Sky. Several elements (relative humidity, sunshine, solar, gusts, probabilities) came back null at this station, so the element set is narrower than the API schema and a null is the station's, not a failure. Being a station point rather than a grid it does not compete with HRDPS for the map surface. Reprocessed, so never the display primary and never a derivation input.",
+            ),
+            "Deutscher Wetterdienst",
+            "MOSMIX_L station point forecast for WMO station 71801, delivered by Bright Sky",
+            ["https://brightsky.dev/docs/", "https://www.dwd.de/EN/ourservices/met_application_mosmix/met_application_mosmix.html"],
+            ["https://api.brightsky.dev/weather"],
+            ("typed_adapter", "httpx + Pydantic adapter reading the returned sources block for the station id and its distance; no adapter is registered yet"),
+            ["air_temperature", "dew_point", "relative_humidity", "total_cloud", "visibility", "mean_sea_level_pressure", "wind_speed", "wind_direction", "wind_gust_speed", "precipitation", "precipitation_probability", "sunshine", "solar", "condition"],
+            ["station surface"],
+            "WMO station 71801 at 47.62 N 52.73 W; a point, not a grid",
+            "hourly records; the MOSMIX cycle and its latency were not measured for this deployment",
+            "about ten days from the issue time",
+            (False, "none", None),
+            BRIGHT_SKY_POLICY,
+            "Bright Sky JSON as served, with the MOSMIX element set for this station narrower than the schema",
+            "latest record no older than 6 h",
+            "Station visibility and dew point to ten days; never the display primary and never a derivation input",
+            (False, None, "A station post-processing product delivered by an intermediary is not a centre's raw-model vote."),
+            delivery_kind="reprocessed",
+            intermediary={
+                "name": "Bright Sky",
+                "method": "parse of DWD MOSMIX KMZ into JSON and nearest-station selection",
+                "transformations": [
+                    "KMZ to JSON parse of the MOSMIX_L product",
+                    "station 71801 selected by id; no spatial interpolation",
+                    "DWD's own MOSMIX statistical post-processing precedes the intermediary and is the producer's, not Bright Sky's",
+                ],
+            },
+        ),
+    ])
+
     # The ensemble family declaration is attached here rather than threaded
     # through every constructor call, so the six blocks stay readable side by
     # side in one table above and no record can acquire one by inheriting a

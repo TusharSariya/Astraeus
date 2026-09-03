@@ -331,5 +331,45 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertEqual([], errors)
 
 
+    def test_openmeteo_ukmo_global_is_research_use_only(self) -> None:
+        sources = _by_id()
+        ukmo = sources["openmeteo-ukmo-global"]
+
+        self.assertEqual("catalogued", ukmo["status"])
+        self.assertEqual("reprocessed", ukmo["delivery_kind"])
+        self.assertEqual("Open-Meteo", ukmo["intermediary"]["name"])
+        self.assertEqual("UK Met Office", ukmo["producer"])
+
+        terms = ukmo["restricted_terms"]
+        self.assertIn("CC BY-SA 4.0", terms["terms_text"])
+        self.assertFalse(terms["redistribution"])
+        self.assertEqual("https://open-meteo.com/en/docs/ukmo-api", terms["terms_source_url"])
+        self.assertEqual("restricted", ukmo["licence"]["review_state"])
+        self.assertFalse(ukmo["consensus"]["eligible"])
+
+        # A share-alike clause this deployment cannot grant onward closes both
+        # export paths: the display primary and the consensus vote.
+        self.assertFalse(ukmo["display_primary"])
+        data, errors = audit.validate()
+        self.assertEqual([], errors)
+        self.assertIn("openmeteo-ukmo-global", audit.summary(data)["research_use_only"])
+
+    def test_brightsky_mosmix_names_dwd_as_producer(self) -> None:
+        sources = _by_id()
+        mosmix = sources["brightsky-dwd-mosmix-71801"]
+
+        self.assertEqual("catalogued", mosmix["status"])
+        self.assertEqual("reprocessed", mosmix["delivery_kind"])
+        self.assertEqual("Deutscher Wetterdienst", mosmix["producer"])
+        intermediary = mosmix["intermediary"]
+        self.assertEqual("Bright Sky", intermediary["name"])
+        self.assertIn("station 71801 selected by id; no spatial interpolation", intermediary["transformations"])
+        self.assertTrue(any("post-processing precedes the intermediary" in item for item in intermediary["transformations"]))
+        self.assertIn("visibility", [name for group in mosmix["variables"] for name in group["names"]])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
 if __name__ == "__main__":  # pragma: no cover - convenience entry point
     unittest.main()

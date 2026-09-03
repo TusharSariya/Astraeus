@@ -186,6 +186,14 @@
       "openmeteo-cams-aod",
       "openmeteo-lsa-saf-radiation",
       "openmeteo-gfs-wave"
+    ],
+    "Aggregator foreign models": [
+      "openmeteo-jma-gsm",
+      "openmeteo-arpege",
+      "openmeteo-ukmo-global"
+    ],
+    "Bright Sky DWD MOSMIX": [
+      "brightsky-dwd-mosmix-71801"
     ]
   }
 }
