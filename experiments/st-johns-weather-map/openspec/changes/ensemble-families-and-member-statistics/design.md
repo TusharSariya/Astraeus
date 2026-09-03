@@ -197,7 +197,11 @@ is false for an ensemble record whose `ensemble` is absent or whose
   than declared are present, fails `no_members` when none are, and fails QC
   `averaging_window_unstated:<field>` on a `cell_methods: "time: mean"`
   field with no `averaging_window_hours`. `ValidationResult.as_members()`
-  returns the `members` block above.
+  returns the `members` block above. `validate_run` takes the keyword
+  `control_retrieval` (`same_file`, `separate_file`, `separate_coverage`),
+  raises `ManifestError` on any other value and nulls it where the family
+  declares no control; an adapter passes it from the family's declaration
+  (added by task 3.3 on 2026-09-02; 3.1 and 3.2 build to it).
 - The store samples a member-bearing dataset only when the request named a
   member (`member=<id>` or `member=all`) or a statistic; otherwise the
   artifact yields no value and a skip notice
