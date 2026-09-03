@@ -17,6 +17,7 @@ sys.path.insert(0, str(REGISTRY_DIR))
 
 import admission  # noqa: E402
 import audit  # noqa: E402
+import fields  # noqa: E402
 from source_data import registry  # noqa: E402
 
 
@@ -577,6 +578,67 @@ class LedgerRecordTests(unittest.TestCase):
             self.assertEqual("not_applicable", record["live_smoke_test_status"], source_id)
             self.assertFalse(admission.declaration_schedulable(record, adapter_ids), source_id)
             self.assertIn("written permission", record["reason"], source_id)
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+
+    def test_eccc_rdps_carries_seeing_and_transparency_class_indices(self) -> None:
+        sources = _by_id()
+        rdps = sources["eccc-rdps"]
+
+        rdps_names = [name for group in rdps["variables"] for name in group["names"]]
+        self.assertIn("seeing_class_index", rdps_names)
+        self.assertIn("sky_transparency_class_index", rdps_names)
+        self.assertIn("RDPS_10km_SeeingIndex", rdps["reason"])
+        self.assertIn("RDPS_10km_SkyTransparencyIndex", rdps["reason"])
+
+        self.assertEqual("stored", fields.storage_of("eccc-rdps", "seeing_class_eccc"))
+        self.assertEqual("stored", fields.storage_of("eccc-rdps", "transparency_class_eccc"))
+        self.assertEqual("transparency", fields.family_of("transparency_class_eccc"))
+
+        transparency_family = next(
+            family for family in fields.catalogue()["families"] if family["name"] == "transparency"
+        )
+        note = transparency_family["note"]
+        self.assertTrue("incompatible" in note or "encodings" in note)
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_eccc_marine_buoys_synop_records_the_2026_09_02_verification(self) -> None:
+        sources = _by_id()
+        buoys = sources["eccc-marine-buoys-synop"]
+
+        self.assertIn(
+            "no ECCC buoy inside the evidence box carries dew point or visibility",
+            buoys["reason"],
+        )
+        self.assertIn("no ship reports were observed", buoys["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_smartatlantic_other_validated_state_is_per_buoy_marine_buoys(self) -> None:
+        sources = _by_id()
+        smartatlantic = sources["smartatlantic-other-validated"]
+
+        self.assertIn("State is per buoy", smartatlantic["reason"])
+        self.assertIn("implemented-unverified once an adapter claims the id", smartatlantic["reason"])
+        self.assertIn("catalogued only", smartatlantic["reason"])
+
+        _, errors = audit.validate()
+        self.assertEqual([], errors)
+
+    def test_dwd_icon_global_declares_two_paths(self) -> None:
+        sources = _by_id()
+        icon = sources["dwd-icon-global"]
+
+        self.assertIn("CLAT/CLON", icon["reason"])
+        self.assertIn("CDO", icon["reason"])
+        self.assertIn("derived-here", icon["reason"])
+        self.assertEqual("implemented-unverified", icon["status"])
+        self.assertEqual("published_cell", icon["delivery_kind"])
 
         _, errors = audit.validate()
         self.assertEqual([], errors)
