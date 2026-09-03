@@ -140,13 +140,39 @@ Decision reference: wayfinder ticket
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k ensemble`.
   Verify result: `cd api && uv run pytest tests/test_derivation_registry.py -k ensemble` -> 21 passed, 18 deselected.
 
-- [ ] 4.2 Serve statistics beside members with the family, run, statistic and
+- [x] 4.2 Serve statistics beside members with the family, run, statistic and
   member set on every value, and refuse a cross-family, cross-run or
   reduction-mixing request at derive time.
   Owned files: `api/weather_api/store.py`, `api/weather_api/science.py`,
   `api/weather_api/app.py` (passing the Seam D request parameters through),
   `api/tests/test_point_evidence.py`.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k "ensemble and (refus or member_set)"`.
+  Verify result: `cd api && uv run pytest tests/test_point_evidence.py -k
+  "ensemble and (refus or member_set)"` -> 10 passed, 55 deselected. Full
+  `cd api && uv run pytest` -> 1116 passed, 36 skipped (the 36 skips are the
+  pre-existing ones; the new tests need numpy and xarray exactly as the rest
+  of `test_point_evidence.py` does, and run wherever that file runs).
+  `science.py` was not edited: the cross-family comparability rule lives in
+  `registry/fields.py` (`catalogue.comparability`, surfaced by
+  `models.FieldComparability`), not in `science.py`, and nothing there needed
+  to learn that a member row and a statistic row of one family are comparable.
+  The request-to-store path is `get_point` -> `_live_point` ->
+  `live_point_fields(member, statistic, quantile, threshold, comparison,
+  reader_disabled)` -> `LiveStore.sample_point(member, statistic)` ->
+  `_sample_dataset` -> `_member_samples`, with the statistic built in
+  `_ensemble_point_fields` from `derive_ensemble_statistic`. The four derive
+  parameters sit on `live_point_fields`, the sibling Seam B allows, rather
+  than on `sample_point`, which needs only the two that decide whether a
+  member axis is sampled at all; `sample_point` is also called with its extra
+  keywords only where the request set one, so an existing caller's double
+  keeps the signature it had.
+  Live smoke remains: no ensemble family is schedulable (Seam A, owner gate
+  6.1), so nothing has stacked a real REPS coverage set behind `/point`. A
+  live smoke needs one scheduled member run, then
+  `GET /point?member=all&statistic=ensemble_mean` against it, checking that
+  the 21 member rows and the one `derived_here` row all name family, run,
+  statistic and member set, and that a second family in the same window turns
+  the statistic into a `one_family:` refusal without removing any member row.
 
 - [x] 4.3 Add the member request parameter and the statistic, member set,
   partial and run-stale fields to the response models.

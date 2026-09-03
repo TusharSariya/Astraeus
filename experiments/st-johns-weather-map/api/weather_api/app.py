@@ -1039,12 +1039,34 @@ def _aged_out_absence(store: object, source_ids: Sequence[str]) -> tuple[datetim
     return latest, flags, [*notices, f"held here and purged when it left the evidence window: {stated}"]
 
 
-def _live_point(latitude: float, longitude: float, time: datetime, product: str | None) -> PointResponse:
+def _live_point(
+    latitude: float,
+    longitude: float,
+    time: datetime,
+    product: str | None,
+    *,
+    member: str | None = None,
+    statistic: str | None = None,
+    quantile: float | None = None,
+    threshold: float | None = None,
+    comparison: str | None = None,
+) -> PointResponse:
+    """Live evidence at one point, optionally addressing an ensemble's members.
+
+    The five ensemble parameters are passed through to the sampler rather than
+    interpreted here: which artifacts carry a member axis, which family they
+    belong to and whether a statistic over them is answerable are all facts
+    the store and the derivation registry hold.
+    """
     store = live_store()
     if store is None:
         return _unavailable_point(latitude, longitude, time, reason="no live artifact store is reachable", flags=["live_store_unreachable"], notices=["no live artifact store is reachable"])
     try:
-        fields, consensus, sources = live_point_fields(store, latitude, longitude, time)
+        fields, consensus, sources = live_point_fields(
+            store, latitude, longitude, time,
+            member=member, statistic=statistic,
+            quantile=quantile, threshold=threshold, comparison=comparison,
+        )
     except Exception:
         LOGGER.exception("live point sampling failed at %s,%s for %s", latitude, longitude, time.isoformat())
         return _unavailable_point(latitude, longitude, time, reason="the live artifact store raised while sampling", flags=["live_store_error"], notices=["the live artifact store raised while sampling published artifacts"])
@@ -1785,7 +1807,11 @@ def get_point(
             member=member, statistic=statistic,
         )
     if mode == LIVE_MODE:
-        return _live_point(latitude, longitude, time, product)
+        return _live_point(
+            latitude, longitude, time, product,
+            member=member, statistic=statistic,
+            quantile=quantile, threshold=threshold, comparison=comparison,
+        )
     return _unavailable_point(latitude, longitude, time, reason="WEATHER_DATA_MODE is not set to live or fixture", flags=["data_mode_unconfigured"], notices=["WEATHER_DATA_MODE is missing or malformed; this deployment fails closed"])
 
 
