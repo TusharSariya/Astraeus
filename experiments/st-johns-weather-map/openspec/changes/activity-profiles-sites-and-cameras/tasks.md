@@ -143,7 +143,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   camera-only safe-wave and safe-road).
   Owns: `ingest/cameras/privacy.py` (new).
   Verify: `cd api && uv run pytest tests/test_camera_privacy.py`
-- [ ] 5.3 Register the four permitted derivations plus sky-dome night cloud
+- [x] 5.3 Register the four permitted derivations plus sky-dome night cloud
   as registry entries with `enabled: false`, and refuse numeric visibility in
   metres from an image by name.
   Owns: the camera entries in `ingest/derive/registry.py`,
