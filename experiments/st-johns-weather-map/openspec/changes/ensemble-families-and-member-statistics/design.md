@@ -180,6 +180,12 @@ the spec delta this change owns disagreed about a family nobody measured:
   requires exactly this ("a member count that was assumed cannot be used to
   check completeness"), so it declares none rather than inheriting another
   centre's EPS size.
+- A measured count may sit beside an `unverified` verification: `ecmwf-ens`
+  declares 51 members (50 `pf` plus a control) while its control file was
+  never located, so `verification.member_count` is `unverified`. The audit
+  (task 2.2) therefore refuses a non-null count only where the record also
+  claims `schedulable`; the biconditional above is what it enforces
+  unconditionally.
 
 `registry/source_data.py` exports `ENSEMBLE_BUILD_ORDER: tuple[str, ...]` in
 the owner's order and `ensemble_families() -> list[dict]` returning the six
