@@ -2,7 +2,7 @@ import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
 import { declaredEvidenceClass, resolveEvidenceClass } from './evidenceClass'
 import { resolveDeliveryKind } from './deliveryKind'
 import { groupByFamily, resolveFamily, resolveFieldKey, resolvePhase, resolveStorage, type FamilyGroup } from './fieldFamily'
-import type { CatalogResult, CatalogSource, CloudLayerReading, ComparabilityPair, DerivationInput, DerivationMethod, EvidenceSnapshot, FieldAlternative, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedEvidenceClass, ResolvedFrame, ServedFieldValue, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
+import type { CatalogResult, CatalogSource, CloudLayerReading, ComparabilityPair, DerivationInput, DerivationMethod, EnsembleMemberSet, EnsembleProvenance, EvidenceSnapshot, FieldAlternative, FieldAttribution, FieldDataMode, GeoJsonFeature, LayerFeatureCollection, LayerItem, LayersResult, LocationPoint, ProvenanceRow, ResolvedEvidenceClass, ResolvedFrame, ServedFieldValue, SourceStatusItem, SourceStatusResult, StoryStep, TimelineResponse, TimelineResult, AstronomyResponse, AstronomyResult, SpaceWeatherResponse, SpaceWeatherResult,
 } from './types'
 
 const prefix = '/api/experiments/weather/v0'
@@ -191,6 +191,51 @@ function displayPrimaryEligibleOf(provenance: Record<string, unknown>, evidenceC
   return !NON_PRIMARY_CLASSES.includes(evidenceClass)
 }
 
+/** `provenance.ensemble.member_set`, as Seam D declares it. Null when the
+ *  entry is missing a family or source id — the two identities a member set
+ *  cannot be read without. */
+function ensembleMemberSetOf(raw: unknown): EnsembleMemberSet | null {
+  if (!raw || typeof raw !== 'object') return null
+  const record = raw as Record<string, unknown>
+  const family = text(record.family)
+  const sourceId = text(record.source_id)
+  if (!family || !sourceId) return null
+  const membersMissing = Array.isArray(record.members_missing)
+    ? record.members_missing.filter((entry): entry is string => typeof entry === 'string')
+    : []
+  return {
+    family,
+    sourceId,
+    runTime: text(record.run_time),
+    membersDeclared: typeof record.members_declared === 'number' ? record.members_declared : 0,
+    membersUsed: typeof record.members_used === 'number' ? record.members_used : 0,
+    membersMissing,
+    controlIncluded: typeof record.control_included === 'boolean' ? record.control_included : null,
+    partial: record.partial === true,
+  }
+}
+
+/** `provenance.ensemble`, as Seam D declares it. Null when the entry is
+ *  missing a family — the identity every ensemble number is named by. */
+function ensembleProvenanceOf(raw: unknown): EnsembleProvenance | null {
+  if (!raw || typeof raw !== 'object') return null
+  const record = raw as Record<string, unknown>
+  const family = text(record.family)
+  if (!family) return null
+  return {
+    family,
+    statistic: text(record.statistic),
+    computedHere: record.computed_here === true,
+    memberSet: ensembleMemberSetOf(record.member_set),
+    refusal: text(record.refusal),
+    quantile: typeof record.quantile === 'number' ? record.quantile : null,
+    threshold: typeof record.threshold === 'number' ? record.threshold : null,
+    thresholdUnits: text(record.threshold_units),
+    comparison: text(record.comparison),
+    averagingWindowHours: typeof record.averaging_window_hours === 'number' ? record.averaging_window_hours : null,
+  }
+}
+
 function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | null {
   if (!field) return null
   const provenance = field.provenance ?? {}
@@ -228,6 +273,9 @@ function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | 
     intermediary: text(provenance.intermediary),
     intermediaryMethod: text(provenance.intermediary_method),
     displayPrimaryEligible: displayPrimaryEligibleOf(provenance, evidenceClass),
+    member: provenance.member === null || provenance.member === undefined ? null : String(provenance.member),
+    memberControl: typeof provenance.member_control === 'boolean' ? provenance.member_control : null,
+    ensemble: ensembleProvenanceOf(provenance.ensemble),
     derivationRefused: quality.flags.includes(DERIVATION_REFUSED),
     provenanceUnmodelled: quality.flags.includes(PROVENANCE_UNMODELLED),
     // Filled in by `normalizePoint`, which is where the field name and the
@@ -382,6 +430,16 @@ function cloudLayersOf(fields: ApiEvidenceField[], preferredSourceId: string | n
  *  the provenance gate alone and re-normalises when the catalogue lands. */
 export interface NormalizeOptions {
   nonPrimarySources?: ReadonlySet<string>
+  /** Seam D request parameters. Read only by `loadPoint`, which puts them on
+   *  the query string; `normalizePoint` ignores them, because the response is
+   *  self-describing and does not need to be told what was asked for. A
+   *  member of `null` or `undefined` requests nothing narrower than the
+   *  default; `'all'` is a provider identifier value like any other. */
+  member?: string | null
+  statistic?: string | null
+  quantile?: number | null
+  threshold?: number | null
+  comparison?: string | null
 }
 
 /** The comparability list as the response served it.
@@ -566,6 +624,14 @@ export async function loadPoint(location: LocationPoint, validTime?: string, pro
     const params = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude) })
     if (validTime) params.set('valid_time', validTime)
     if (product && product !== 'consensus') params.set('product', product)
+    // Seam D: member and statistic are request parameters, sent only when the
+    // caller named one, so a request that narrows nothing looks exactly like
+    // it did before this axis existed.
+    if (options.member) params.set('member', options.member)
+    if (options.statistic) params.set('statistic', options.statistic)
+    if (typeof options.quantile === 'number') params.set('quantile', String(options.quantile))
+    if (typeof options.threshold === 'number') params.set('threshold', String(options.threshold))
+    if (options.comparison) params.set('comparison', options.comparison)
     const response = await fetch(`${prefix}/point?${params}`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) throw new Error(`weather API returned ${response.status}`)
     const body: unknown = await response.json()

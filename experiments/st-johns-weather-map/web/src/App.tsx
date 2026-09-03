@@ -8,6 +8,7 @@ import { DeliveryKindLabel, DerivedEvidenceDetails, EvidenceClassBadge, Evidence
 import { EVIDENCE_CLASS_LABELS, unrecognisedClassReason } from './evidenceClass'
 import { deliveryKindLabel, resolveDeliveryKind } from './deliveryKind'
 import { AbsenceStateLegend, DifferenceView, FieldFamilyGroups, SourceFieldCatalogue } from './FieldFamilyPanel'
+import { EnsemblePanel, ensembleMemberOptions, ensembleTextRows } from './Ensemble'
 import { StoryFlyout } from './StoryFlyout'
 import { TimelineDock } from './TimelineDock'
 import { windowFromTimeline } from './tierBoundary'
@@ -405,6 +406,11 @@ export default function App() {
   const [spaceWeatherNotice, setSpaceWeatherNotice] = useState<string | null>(null)
   const [story, setStory] = useState<StoryStep[]>([])
   const [provider, setProvider] = useState('')
+  // Seam D: null requests nothing narrower than the default (every member the
+  // response would otherwise serve); 'all' is sent as its own value, exactly
+  // as the endpoint accepts it. Reset whenever the point response stops
+  // carrying it below, rather than left pointed at a member that vanished.
+  const [selectedMember, setSelectedMember] = useState<string | null>(null)
   const [sourceStatuses, setSourceStatuses] = useState<SourceStatusItem[] | null>(null)
   const [sourceStatusError, setSourceStatusError] = useState<string | null>(null)
   // All three bands on = the full as-reported list. Local view state only; it
@@ -661,7 +667,7 @@ export default function App() {
     setSourceError('')
     setSnapshot(unavailableSnapshot)
 
-    loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources }).then((result) => {
+    loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources, member: selectedMember }).then((result) => {
       setSnapshot(result.snapshot)
       setDataSource(result.source)
       setSourceError(result.error ?? '')
@@ -674,7 +680,7 @@ export default function App() {
     }
 
     return () => controller.abort()
-  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources])
+  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources, selectedMember])
 
   // The story is assembled from the hours the timeline says are published, one
   // real /point response per card. Hours that return nothing are simply absent;
@@ -724,7 +730,11 @@ export default function App() {
   const runs = useMemo(() => unique(snapshot.provenance.map((row) => row.run)), [snapshot])
   const members = useMemo(() => unique(snapshot.provenance.map((row) => row.member ?? '')), [snapshot])
   const levels = useMemo(() => unique(snapshot.provenance.map((row) => row.level)), [snapshot])
-  const mapEvidence = useMemo(() => evidenceRows(snapshot, humidityGap), [snapshot, humidityGap])
+  // The operable member selector's own options: the members the response
+  // actually served, distinct from `members` above (a provenance readout that
+  // stays read-only for run and level, which have no request parameter).
+  const memberOptions = useMemo(() => ensembleMemberOptions(snapshot), [snapshot])
+  const mapEvidence = useMemo(() => [...evidenceRows(snapshot, humidityGap), ...ensembleTextRows(snapshot)], [snapshot, humidityGap])
   const shownCloudLayers = useMemo(() => filterCloudLayers(snapshot.cloudLayers, cloudBands), [snapshot.cloudLayers, cloudBands])
   const anyBandOff = !cloudBands.low || !cloudBands.middle || !cloudBands.high
   const stationOptions = useMemo(() => stations.map((station) => ({ station, coverage: stationCoverage(station, sourceStatuses) })), [sourceStatuses])
@@ -1071,6 +1081,10 @@ export default function App() {
                   activity profile asks for it, before the metric grid shows
                   the one member the interface picked as each reading. */}
               <FieldFamilyGroups snapshot={snapshot} />
+              {/* Statistic and member layers on the map itself are an open
+                  follow-up (`/layers` carries no member axis yet); rows of
+                  this panel are where an ensemble number is reachable today. */}
+              <EnsemblePanel snapshot={snapshot} />
               <DifferenceView snapshot={snapshot} />
               <AlternativeReadings alternatives={snapshot.fieldAlternatives} />
               <div className="metric-grid">
@@ -1283,7 +1297,12 @@ export default function App() {
           <div className="expert-layout">
             <aside className="expert-controls" aria-label="Evidence controls">
               <div className="section-head"><span>EX</span><div><small>Native evidence</small><h2>Field selector</h2></div></div>
-              <p className="unwired-notice">Every option below comes from a response. A selector with no returned options stays disabled and says why. Provider, product and variable change what is requested; run, member and level are read-only, because the point request has no parameter for them.</p>
+              <p className="unwired-notice">
+                Every option below comes from a response. A selector with no returned options stays disabled and says why.
+                Provider, product and variable change what is requested; run and level are read-only, because the point
+                request has no parameter for either. Member is a real selector when the source is an ensemble family
+                that publishes members, and read-only otherwise.
+              </p>
               <FieldControl label="Provider">
                 <EvidenceSelect
                   label="Provider"
@@ -1320,7 +1339,19 @@ export default function App() {
               </FieldControl>
               <div className="control-pair">
                 <FieldControl label="Member">
-                  <ProvenanceReadout label="Member" values={members} emptyReason="No ensemble member in returned provenance" />
+                  {memberOptions.length > 0 ? (
+                    <EvidenceSelect
+                      label="Member"
+                      value={selectedMember ?? 'all'}
+                      onChange={(value) => setSelectedMember(value === 'all' ? null : value)}
+                      emptyReason="No ensemble member in returned provenance"
+                      options={[{ value: 'all', label: 'All members' }, ...memberOptions.map((option) => ({
+                        value: option.value, label: option.label, title: option.control ? 'Control member' : undefined,
+                      }))]}
+                    />
+                  ) : (
+                    <ProvenanceReadout label="Member" values={members} emptyReason="No ensemble member in returned provenance" />
+                  )}
                 </FieldControl>
                 <FieldControl label="Level">
                   <ProvenanceReadout label="Level" values={levels} emptyReason="No vertical level in returned provenance" />
