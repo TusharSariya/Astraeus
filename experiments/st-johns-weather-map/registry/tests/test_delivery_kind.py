@@ -60,8 +60,15 @@ class EveryRecordDeclaresDeliveryTests(unittest.TestCase):
         self.assertTrue(any("states no transformation" in error or "too short" in error for error in errors))
 
     def test_only_a_published_cell_record_may_be_the_display_primary(self) -> None:
+        # A record that is not the producer's own cell is never the display
+        # primary. The converse holds only where no restricted terms are
+        # declared: a research-use-only record keeps its published cell and
+        # still may not be what the map shows first (audit.export_errors).
         for record in registry()["sources"]:
-            self.assertEqual(record["delivery_kind"] == "published_cell", record["display_primary"], record["id"])
+            if record["display_primary"]:
+                self.assertEqual("published_cell", record["delivery_kind"], record["id"])
+            if "restricted_terms" not in record:
+                self.assertEqual(record["delivery_kind"] == "published_cell", record["display_primary"], record["id"])
 
     def test_the_audit_refuses_a_reprocessed_record_as_a_display_primary(self) -> None:
         for source_id in ("openaq", RECORD_ID):
@@ -75,7 +82,7 @@ class EveryRecordDeclaresDeliveryTests(unittest.TestCase):
         data, errors = audit.validate()
         self.assertEqual([], errors)
         self.assertEqual(
-            ["noaa-madis", "open-meteo-weathernext-2", "openaq", "raw-cwop-pws"],
+            ["google-weathernext-2", "noaa-madis", "open-meteo-weathernext-2", "openaq", "raw-cwop-pws"],
             audit.summary(data)["not_display_primary"],
         )
 

@@ -61,7 +61,7 @@ Verification commands used below, run from
 - [x] 2.1 Refuse `operational` on any record, and map every unknown state to
   `unavailable` in the exported ceiling rather than guessing.
   Verify: `python3 -m unittest discover -s registry/tests -v -k operational`.
-- [ ] 2.2 Implement the `implementing` split rule: `implemented-unverified`
+- [x] 2.2 Implement the `implementing` split rule: `implemented-unverified`
   only when a registered adapter claims the id, `integration.kind` is not
   `link_only` and `fixture_status` is `passing`; `catalogued` otherwise.
   Verify: `python3 registry/audit.py --summary-json` shows the two counts and
@@ -79,15 +79,15 @@ Verification commands used below, run from
 
 ## 3. Migrate the 63 existing records (Registry owner)
 
-- [ ] 3.1 Migrate every `implementing` record by the 2.2 rule, writing the
+- [x] 3.1 Migrate every `implementing` record by the 2.2 rule, writing the
   resulting state and keeping each record's existing status reason.
   Verify: `python3 registry/audit.py`.
-- [ ] 3.2 Rename the seven `credential_required` records to
+- [x] 3.2 Rename the seven `credential_required` records to
   `credential-required` and give each its `credential` block:
   `google-weathernext-2`, `copernicus-cams`, `nasa-earthdata-aerosol`,
   `nl-511`, `noaa-madis`, `purpleair`, `openaq`.
   Verify: `python3 registry/audit.py`.
-- [ ] 3.3 Migrate the two `unavailable` records unchanged (`nl-511-rwis`,
+- [x] 3.3 Migrate the two `unavailable` records unchanged (`nl-511-rwis`,
   `municipal-hydrometric`) and confirm each states why.
   Verify: `python3 registry/audit.py`.
 
@@ -100,7 +100,7 @@ Verification commands used below, run from
   from Datamart and absent from GeoMet, the served vertical profile is HRDPS
   and RDPS pressure levels, with a standing re-probe recorded.
   Verify: `python3 -m unittest discover -s registry/tests -v -k radiosonde`.
-- [ ] 4.3 `eccc-raqdps-firework` from `retired` to `superseded`, with
+- [x] 4.3 `eccc-raqdps-firework` from `retired` to `superseded`, with
   `superseded_by` naming the RAQDPS smoke-plume layers.
   Verify: `python3 -m unittest discover -s registry/tests -v -k firework`.
 - [ ] 4.4 `nav-canada-weather-cameras` from `licence_review` to
