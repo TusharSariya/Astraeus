@@ -41,6 +41,10 @@ derive = [
 [dependency-groups]
 dev = [
   "pytest==8.4.1",
+  # The registry audits validate their files against JSON Schema, and the api
+  # tests exercise those audits, so the test env needs the same validator the
+  # registry requirements pin.
+  "jsonschema==4.25.1",
 ]
 
 [tool.pytest.ini_options]
