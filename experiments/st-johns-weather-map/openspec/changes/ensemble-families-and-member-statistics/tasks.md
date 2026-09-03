@@ -55,7 +55,7 @@ Decision reference: wayfinder ticket
 
 ## 2. Registry (registry owner, implementation pass, NOT in this change)
 
-- [ ] 2.1 Add the six family declarations to `registry/source_data.py`:
+- [x] 2.1 Add the six family declarations to `registry/source_data.py`:
   build order, subsettability, storage scope, expected member count, control
   identification rule, declared gaps. ICON-EPS is declared unverified and not
   schedulable.
@@ -64,6 +64,20 @@ Decision reference: wayfinder ticket
   block on `IngestConfig` and the `ingestible` gate, Seam A),
   `api/tests/test_ingest_ensemble_declaration.py`.
   Verify: `python3 registry/audit.py && cd api && uv run pytest tests/test_ingest_ensemble_declaration.py`.
+  Verify result: `python3 registry/audit.py` -> `registry valid: 65 sources,
+  version 0.1.0, as of 2026-08-29`, `catalogue valid: 135 fields in 20
+  families`; `cd api && uv run pytest tests/test_ingest_ensemble_declaration.py`
+  -> 28 passed. `python3 -m unittest discover -s registry/tests` -> 88 passed.
+  `cd api && uv run pytest` -> 996 passed, 36 skipped. Two Seam A clauses were
+  widened and are recorded in `design.md` Seam A: `control.identifier` may be
+  null where a member-publishing family's control was never located (REPS,
+  ICON-EPS), and `member_count` is null where nothing was measured at all
+  (ICON-EPS, `verification.evidence` `none`). `dwd-icon-eps` carries status
+  `unavailable`, not `implementing`: the enum `registry/audit.py` enforces has
+  no value meaning "admitted, catalogued, never probed", and `implementing`
+  would claim work that has not started. One line outside the owned set changed:
+  `api/tests/test_api.py` asserted the registry holds 64 sources and now asserts
+  65.
 
 - [ ] 2.2 Add the audit rules: an ensemble record with no subsettability, no
   control rule where it declares members, or a declared gap that is also

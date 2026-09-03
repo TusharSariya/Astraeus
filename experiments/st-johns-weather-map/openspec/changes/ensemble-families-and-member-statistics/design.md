@@ -161,6 +161,26 @@ type), perturbed `1`..`50`. `schedulable` is false on all six in this change:
 a family with any `unverified` field is not schedulable by the spec, and the
 non-subsettable families additionally wait on owner gate 6.1.
 
+Two clauses were widened by task 2.1 on 2026-09-02, because the pinned text and
+the spec delta this change owns disagreed about a family nobody measured:
+
+- `control.identifier` may be `null`. The seam typed it as the provider's own
+  id, and `control` itself as null only where a family publishes no control.
+  Neither REPS nor ICON-EPS fits: GeoMet publishes `REPS.MEM.<VAR>.01` to `.21`
+  and distinguishes no coverage as the control, and nothing about ICON-EPS was
+  measured at all. A null `control` block would say those families publish no
+  control, which is false and is what the spec reserves for GEPS; an invented
+  token would be worse. So a member-publishing family always declares the
+  block, with `identifier: null` and a rule saying the control has not been
+  located, which keeps the spec's "declare how the control is identified"
+  satisfied and keeps the family unschedulable.
+- `member_count` is null iff `shape == "reduction"` **or**
+  `verification.evidence == "none"`, meaning nothing about the family was
+  measured. ICON-EPS is member-shaped and has no measured count; the spec
+  requires exactly this ("a member count that was assumed cannot be used to
+  check completeness"), so it declares none rather than inheriting another
+  centre's EPS size.
+
 `registry/source_data.py` exports `ENSEMBLE_BUILD_ORDER: tuple[str, ...]` in
 the owner's order and `ensemble_families() -> list[dict]` returning the six
 records' `ensemble` blocks sorted by `build_order`. `ingest/registry.py`
