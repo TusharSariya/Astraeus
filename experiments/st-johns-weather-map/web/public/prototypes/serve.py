@@ -26,5 +26,5 @@ class H(http.server.SimpleHTTPRequestHandler):
             self.send_error(502, str(e))
     def log_message(self, *a): pass
 
-print(f"prototype at http://localhost:{PORT}/shell.html  (api -> {API})", flush=True)
+print(f"prototype at http://localhost:{PORT}/shell.html and /map.html  (api -> {API})", flush=True)
 http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()

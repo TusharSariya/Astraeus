@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE Map view and layer stack (ticket #46)</title>
+<!--
+  PROTOTYPE, throwaway. Answers wayfinder ticket #46: what the Map view is.
+  Sits inside the shell decided in #39 (one global instant on the bottom rail,
+  vertical view tabs, Focus in the URL) and replaces its placeholder map with a
+  real MapLibre map drawing the live /layers, /raster and /legend endpoints.
+
+  Three variants of the LAYER STACK, switchable via ?mv=A|B|C and the floating
+  bar (the shell itself is fixed):
+    A  the legend IS the stack: a left panel inside the Map, one row per drawn
+       layer (glyph, short name, source, run, frame drawn, opacity, legend),
+       drag to reorder, tree picker in a popover        (AWIPS CAVE pattern)
+    B  the tree is always open on the left; the stack is a compact card on the
+       map; coverage is a matrix strip on the map's bottom edge, one cell per
+       layer coloured by how its frame aligns to the instant
+    C  layer cards across the top of the map, each with a mini frame timeline
+       showing exactly which frame is drawn against the instant; picker is a
+       search palette
+  Served by serve.py (static + /api proxy forwarding X-Weather-* headers):
+    python3 serve.py   then   http://localhost:5199/map.html
+  Nothing here is production code.
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.7.1/maplibre-gl.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.7.1/maplibre-gl.min.css">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f7; --panel: #ffffff; --ink: #14171c; --muted: #5b6470; --line: #d5d9e0;
+    --accent: #1d5fd6; --accent-ink: #ffffff; --warn: #a15c00; --warn-bg: #fff3dd;
+    --bad: #b3261e; --bad-bg: #fde8e6; --good-bg: #e3f5e8; --core: #dfe9ff; --planning: #efe9dc; --now: #d6336c;
+    --cls-retrieved: #1a7f37; --cls-derived: #7a4bd6; --cls-reprocessed: #b0741a; --cls-inter: #8a8a8a; --cls-gen: #c2410c; --cls-uncal: #6b7280;
+    --al-exact: #1a7f37; --al-within: #8fbf3f; --al-beyond: #e0a100; --al-none: #b3261e; --al-untimed: #7a4bd6;
+    --rail-h: 108px; --focusbar-h: 52px; --tabs-w: 56px;
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1216; --panel: #171b21; --ink: #e8ebf0; --muted: #98a2b3; --line: #2b323c;
+    --accent: #6ea0ff; --accent-ink: #0b1220; --warn: #f3b352; --warn-bg: #3a2a0c;
+    --bad: #ff7b72; --bad-bg: #3d1513; --good-bg: #12301c; --core: #1b2a48; --planning: #2d2a22; --now: #ff5c8a;
+    --cls-retrieved: #4ade80; --cls-derived: #c4a7ff; --cls-reprocessed: #f5c26b; --cls-inter: #a3a3a3; --cls-gen: #fb923c; --cls-uncal: #9ca3af;
+    --al-exact: #4ade80; --al-within: #a3d977; --al-beyond: #f3b352; --al-none: #ff7b72; --al-untimed: #c4a7ff;
+  }
+  :root[data-theme="night"] {
+    color-scheme: dark;
+    --bg: #000000; --panel: #120000; --ink: #ff3b30; --muted: #a32a22; --line: #3a0d0a;
+    --accent: #ff3b30; --accent-ink: #000000; --warn: #ff6a5e; --warn-bg: #2a0806;
+    --bad: #ff8a80; --bad-bg: #3d0f0c; --good-bg: #200404; --core: #240604; --planning: #170302; --now: #ff3b30;
+    --cls-retrieved: #ff3b30; --cls-derived: #ff3b30; --cls-reprocessed: #ff3b30; --cls-inter: #ff3b30; --cls-gen: #ff3b30; --cls-uncal: #ff3b30;
+    --al-exact: #ff3b30; --al-within: #c9302a; --al-beyond: #8a1f1a; --al-none: #4a0e0b; --al-untimed: #ff3b30;
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+  button, input, select { font: inherit; color: inherit; }
+  button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  button[aria-pressed="true"], button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.ghost { background: transparent; border-color: transparent; }
+  button.ghost:hover { border-color: var(--line); }
+  button.tiny { padding: 0 5px; font-size: 11px; line-height: 18px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); font-size: 12px; white-space: nowrap; }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+  .chip.bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+  .chip.core { background: var(--core); border-color: transparent; }
+  .chip.planning { background: var(--planning); border-color: transparent; }
+  .muted { color: var(--muted); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .glyph { display: inline-block; width: 1em; text-align: center; font-weight: 700; }
+  .glyph.retrieved { color: var(--cls-retrieved); } .glyph.derived_here { color: var(--cls-derived); } .glyph.reprocessed { color: var(--cls-reprocessed); }
+  .glyph.intermediary_derived { color: var(--cls-inter); } .glyph.generated_display { color: var(--cls-gen); } .glyph.uncalibrated_observation { color: var(--cls-uncal); } .glyph.unrecognised { color: var(--bad); }
+  .al { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: middle; }
+  .al.exact { background: var(--al-exact); } .al.within { background: var(--al-within); } .al.beyond { background: var(--al-beyond); } .al.none { background: var(--al-none); } .al.untimed { background: var(--al-untimed); }
+  .al.blank { background: transparent; border: 1px dashed var(--muted); }
+
+  /* ---------- shell grid (fixed, from #39) ---------- */
+  #shell { height: 100%; display: grid; grid-template-rows: var(--focusbar-h) auto 1fr auto; grid-template-columns: var(--tabs-w) 1fr; }
+  #focusbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  #focusbar .spacer { flex: 1; }
+  #banner { grid-column: 1 / -1; display: none; padding: 4px 12px; background: var(--warn-bg); color: var(--warn); border-bottom: 1px solid var(--line); font-size: 13px; }
+  #banner.on { display: flex; gap: 12px; align-items: center; }
+  #tabs { display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; border-right: 1px solid var(--line); background: var(--panel); overflow: hidden; }
+  #tabs button { writing-mode: vertical-rl; transform: rotate(180deg); padding: 10px 4px; border: 1px solid transparent; }
+  #tabs button[aria-pressed="true"] { border-color: var(--accent); }
+  #tabs button[data-docked="true"]::after { content: " ⧉ docked"; }
+  #stage { position: relative; display: grid; grid-template-columns: 1fr; min-height: 0; }
+  #stage.docked { grid-template-columns: 1fr 6px minmax(280px, var(--dock-w, 400px)); }
+  .splitter { background: var(--line); cursor: col-resize; }
+  .view { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--panel); border: 1px solid var(--line); }
+  .view header { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .view header .spacer { flex: 1; }
+  .view .body { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px; }
+  .view.fullscreen { position: fixed; inset: var(--focusbar-h) 0 var(--rail-h) 0; z-index: 20; }
+  #rail { grid-column: 1 / -1; height: var(--rail-h); background: var(--panel); border-top: 1px solid var(--line); padding: 6px 12px 4px; display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
+  .scrubber { position: relative; display: grid; grid-template-rows: 10px 18px 14px; gap: 2px; user-select: none; }
+  .scrubber .tiers { position: relative; height: 10px; border-radius: 3px; overflow: hidden; }
+  .scrubber .tiers span { position: absolute; top: 0; bottom: 0; }
+  .scrubber .coverage { position: relative; height: 18px; display: flex; }
+  .scrubber .coverage i { flex: 1; align-self: flex-end; background: var(--accent); opacity: .35; }
+  .scrubber .marks { position: relative; height: 14px; font-size: 11px; color: var(--muted); }
+  .scrubber .marks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .scrubber .boundary { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--warn); }
+  .scrubber .boundary label { position: absolute; top: -2px; left: 4px; font-size: 11px; color: var(--warn); white-space: nowrap; }
+  .scrubber .now { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--now); }
+  .scrubber .head { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 3px solid var(--ink); }
+  .scrubber .frames { position: absolute; left: 0; right: 0; top: 10px; height: 18px; pointer-events: none; }
+  .scrubber .frames i { position: absolute; top: 0; width: 2px; height: 6px; background: var(--ink); opacity: .7; }
+  .scrubber input[type=range] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+  .transport { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+  dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; max-width: min(820px, 92vw); }
+  dialog::backdrop { background: rgb(0 0 0 / .45); }
+  [popover] { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; max-width: 560px; max-height: 75vh; overflow: auto; margin: 0; }
+  #statuspop { position: fixed; inset: auto 12px auto auto; top: calc(var(--focusbar-h) + 4px); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  pre { max-height: 50vh; overflow: auto; font-size: 11px; background: var(--bg); padding: 8px; border-radius: 6px; white-space: pre-wrap; }
+  #variantbar { position: fixed; right: 12px; bottom: calc(var(--rail-h) + 40px); z-index: 50; display: flex; gap: 6px; align-items: center; padding: 6px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 4px 16px rgb(0 0 0 / .25); font-size: 12px; max-width: 96vw; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .placeholder { color: var(--muted); font-style: italic; }
+
+  /* ---------- Map view ---------- */
+  .view.map .body { padding: 0; display: grid; grid-template-rows: 1fr auto; grid-template-columns: 1fr; overflow: hidden; }
+  .view.map[data-mv="A"] .body { grid-template-columns: minmax(300px, 340px) 1fr; }
+  .view.map[data-mv="B"] .body { grid-template-columns: minmax(240px, 270px) 1fr; }
+  .view.map[data-mv="C"] .body { grid-template-rows: auto 1fr auto; }
+  #stackpanel { grid-row: 1; grid-column: 1; overflow: auto; border-right: 1px solid var(--line); background: var(--panel); font-size: 12px; min-height: 0; }
+  #mapwrap { position: relative; grid-row: 1; min-height: 0; overflow: hidden; }
+  .view.map[data-mv="A"] #mapwrap, .view.map[data-mv="B"] #mapwrap { grid-column: 2; }
+  .view.map[data-mv="C"] #cards { grid-row: 1; grid-column: 1; }
+  .view.map[data-mv="C"] #mapwrap { grid-row: 2; grid-column: 1; }
+  .view.map[data-mv="C"] .strip { grid-row: 3; }
+  .view.map[data-mv="C"] #stackpanel { display: none; }
+  #mapa, #mapb { position: absolute; inset: 0; }
+  #mapb { display: none; clip-path: inset(0 0 0 50%); }
+  #mapwrap.compare #mapb { display: block; }
+  #swipe { position: absolute; top: 0; bottom: 0; left: 50%; width: 0; border-left: 2px solid var(--ink); display: none; z-index: 5; }
+  #mapwrap.compare #swipe { display: block; }
+  #swipe .knob { position: absolute; top: 50%; left: -14px; width: 26px; height: 26px; border-radius: 50%; background: var(--panel); border: 1px solid var(--ink); text-align: center; line-height: 24px; cursor: ew-resize; transform: translateY(-50%); }
+  #swipe .lab { position: absolute; top: 8px; font-size: 11px; background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+  #swipe .lab.l { right: 6px; } #swipe .lab.r { left: 6px; }
+  .strip { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; padding: 3px 10px; font-size: 12px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 92%, transparent); white-space: nowrap; overflow: hidden; }
+  .strip > span { overflow: hidden; text-overflow: ellipsis; }
+  .maplibregl-ctrl-attrib { font-size: 10px; }
+  .overlay { position: absolute; z-index: 4; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
+  #stackcard { left: 10px; bottom: 10px; width: 300px; max-height: 60%; overflow: auto; padding: 6px 8px; }
+  #coveragebar { left: 10px; right: 10px; top: 8px; padding: 4px 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  #legendcard { right: 10px; bottom: 10px; width: 210px; max-height: 60%; overflow: auto; padding: 6px 8px; }
+  .fam { margin: 6px 0 2px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .row { display: grid; grid-template-columns: 14px 1.1em 1fr auto; gap: 6px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .row.drag { opacity: .4; }
+  .row.hidden .name { text-decoration: line-through; opacity: .6; }
+  .row .handle { cursor: grab; color: var(--muted); user-select: none; }
+  .row .name { font-weight: 600; }
+  .row .sub { grid-column: 3 / -1; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row .ctl { grid-column: 3 / -1; display: flex; gap: 6px; align-items: center; }
+  .row input[type=range] { flex: 1; min-width: 60px; accent-color: var(--accent); }
+  .row .legend { grid-column: 3 / -1; }
+  .row .legend img, .legendcard img, .card img { max-width: 100%; max-height: 90px; display: block; border-radius: 3px; background: #fff; }
+  .row .legend.noimg { color: var(--muted); font-style: italic; }
+  .tree details { margin: 2px 0; }
+  .tree summary { cursor: pointer; font-weight: 600; font-size: 12px; }
+  .tree label { display: grid; grid-template-columns: auto 1.1em 1fr auto; gap: 6px; align-items: baseline; padding: 2px 0 2px 14px; font-size: 12px; cursor: pointer; }
+  .tree label .src { color: var(--muted); font-size: 11px; }
+  .tree label.norast { color: var(--muted); cursor: not-allowed; }
+  #cards { display: flex; gap: 6px; padding: 6px 8px; overflow-x: auto; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .card { flex: 0 0 200px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 12px; display: grid; gap: 4px; background: var(--panel); }
+  .card.hidden { opacity: .5; }
+  .card .head { display: flex; gap: 6px; align-items: center; }
+  .card .head .name { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mini { position: relative; height: 22px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .mini i { position: absolute; top: 6px; width: 2px; height: 10px; background: var(--muted); }
+  .mini i.used { background: var(--al-exact); width: 3px; }
+  .mini i.used.within { background: var(--al-within); } .mini i.used.beyond { background: var(--al-beyond); }
+  .mini b { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--ink); }
+  .mini .tol { position: absolute; top: 0; bottom: 0; background: var(--accent); opacity: .15; }
+  .mini .lab { position: absolute; bottom: 0; font-size: 9px; color: var(--muted); }
+  .matrix { display: flex; gap: 4px; align-items: center; }
+  .matrix .cell { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); cursor: pointer; }
+  .kv dt { color: var(--muted); float: left; clear: left; width: 180px; font-size: 12px; }
+  .kv dd { margin: 0 0 3px 188px; font-size: 12px; word-break: break-word; }
+  .palette { position: fixed; top: 14vh; left: 50%; transform: translateX(-50%); width: min(620px, 92vw); z-index: 60; }
+  .palette input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+  .palette .hit { display: grid; grid-template-columns: 1.1em 1fr auto; gap: 8px; padding: 5px 6px; border-bottom: 1px dashed var(--line); cursor: pointer; font-size: 13px; }
+  .palette .hit:hover, .palette .hit.sel { background: var(--core); }
+  .palette .hit .src { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="shell">
+  <div id="focusbar" role="region" aria-label="Focus">
+    <strong>Astraeus</strong>
+    <button id="placebtn" title="Focus point">📍 <span id="placelabel">…</span></button>
+    <span id="instant" class="mono" aria-live="polite">…</span>
+    <span id="tierchip" class="chip core">core</span>
+    <span class="spacer"></span>
+    <button id="statusbtn" popovertarget="statuspop" class="chip" aria-label="Provenance status">…</button>
+    <select id="theme" aria-label="Theme"><option value="light">light</option><option value="dark">dark</option><option value="night">night</option></select>
+  </div>
+  <div id="banner" role="status"></div>
+  <nav id="tabs" aria-label="Views"></nav>
+  <div id="stage"></div>
+  <div id="rail" role="region" aria-label="Time">
+    <div class="transport">
+      <span id="railtitle"><strong>Instant</strong> <span class="muted">shared by every open view</span></span>
+      <span class="spacer" style="flex:1"></span>
+      <label class="muted">step by <select id="basis" aria-label="Time-match basis"><option value="">1 h (clock)</option></select></label>
+      <label class="muted" title="What to do when no frame of a layer lies within its tolerance of the instant"><select id="policy" aria-label="Out-of-tolerance policy"><option value="blank">beyond tolerance: draw nothing</option><option value="hold">beyond tolerance: hold nearest, disclosed</option></select></label>
+      <button id="jumpnow">Now</button>
+      <button id="stepback" aria-label="Back one step">◀</button>
+      <button id="play" aria-pressed="false">▶ play</button>
+      <button id="stepfwd" aria-label="Forward one step">▶</button>
+    </div>
+    <div id="scrubber" class="scrubber"></div>
+    <div id="raillegend" class="muted" style="font-size:11px"></div>
+  </div>
+</div>
+
+<div id="statuspop" popover>
+  <h3 style="margin:0 0 6px">Provenance status</h3>
+  <div id="statusbody">loading…</div>
+</div>
+
+<div id="treepop" popover>
+  <h3 style="margin:0 0 4px">Add layers</h3>
+  <p class="muted" style="margin:0 0 6px;font-size:12px">Grouped by field family, then source. Family and short names are derived here from <code>field</code> and <code>product</code>; <code>/layers</code> serves neither. Greyed rows have no raster.</p>
+  <div id="treebody" class="tree"></div>
+</div>
+
+<dialog id="placedlg" aria-labelledby="placeh">
+  <h3 id="placeh" style="margin-top:0">Focus point</h3>
+  <div id="sitelist"></div>
+  <fieldset style="margin-top:10px;border:1px solid var(--line);border-radius:6px">
+    <legend>Any point</legend>
+    <label>lat <input id="lat" type="number" step="0.0001" style="width:110px"></label>
+    <label>lon <input id="lon" type="number" step="0.0001" style="width:110px"></label>
+    <button id="usepoint">Use point</button>
+    <span id="pointerr" class="muted"></span>
+  </fieldset>
+  <button id="placeclose" style="margin-top:8px">Close</button>
+</dialog>
+
+<dialog id="detaildlg"><h3 id="detailh" style="margin-top:0"></h3><div id="detailbody"></div><button id="detailclose" style="margin-top:8px">Close</button></dialog>
+
+<dialog id="palette" class="palette" aria-label="Find a layer">
+  <input id="palq" placeholder="type a field, family or source: cloud, HRDPS, radar…" autocomplete="off">
+  <div id="palhits" style="max-height:50vh;overflow:auto;margin-top:6px"></div>
+  <p class="muted" style="font-size:11px;margin:6px 0 0">Enter adds the highlighted layer to the top of the stack; Esc closes.</p>
+</dialog>
+
+<div id="variantbar">
+  <span class="muted">Stack variant</span>
+  <button data-mv="A">A legend is the stack</button>
+  <button data-mv="B">B tree + on-map card</button>
+  <button data-mv="C">C cards with frame timelines</button>
+  <span class="muted" id="variantnote" style="display:none"></span>
+</div>
+
+<script>
+// Test hook: a background tab pauses requestAnimationFrame and MapLibre never paints; ?bg=1 drives it from a timer instead.
+if (new URLSearchParams(location.search).get('bg') === '1') { window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 16); window.cancelAnimationFrame = id => clearTimeout(id); }
+// ---------- constants ----------
+const API = '/api/experiments/weather/v0';
+const SITES = [
+  { id: 'signal-hill', name: 'Signal Hill (Cabot Tower)', lat: 47.5704, lon: -52.6816, elev: 140 },
+  { id: 'cape-spear', name: 'Cape Spear (lighthouse headland)', lat: 47.5233, lon: -52.6224, elev: 75 },
+  { id: 'quidi-vidi', name: 'Quidi Vidi Lake (boathouses)', lat: 47.5806, lon: -52.6867, elev: 5 },
+];
+const BOX = { n: 50.5, s: 45.0, w: -58.0, e: -46.0 };
+const VIEWS = ['map', 'series', 'sky', 'activity', 'sources'];
+const VIEW_NAME = { map: 'Map', series: 'Series', sky: 'Sky', activity: 'Activity', sources: 'Sources' };
+const GLYPH = { retrieved: '●', reprocessed: '◐', derived_here: '◆', intermediary_derived: '◇', generated_display: '○', uncalibrated_observation: '▲', unrecognised: '?' };
+const VARIANT_NOTES = {
+  A: 'the legend IS the stack: one row per drawn layer with glyph, short name, source, run, the frame actually drawn, opacity and legend; drag to reorder; add from a family tree popover',
+  B: 'family tree always open on the left; the stack is a compact card on the map, legends in a second card; coverage is a matrix strip across the top of the map, one cell per layer',
+  C: 'layer cards across the top, each with a mini timeline of its frames around the instant so the alignment is visible; add layers from a search palette (press /)',
+};
+// The five the ticket asks for, bottom to top. z from /layers where it exists.
+const DEFAULT_STACK = ['geomet-live-goes-east-naturalcolor', 'eccc-hrdps-surface-total-cloud', 'eccc-cap-alerts-alerts_features', 'eccc-radar-radar', 'eccc-lightning-lightning'];
+const MAX_PX = 2048;
+const AL_LABEL = { probe: 'asking the server', exact: 'exact frame', within: 'nearest frame within tolerance', beyond: 'nearest frame beyond tolerance', none: 'no frame', untimed: 'current image, not time-indexed' };
+
+// ---------- state (the Focus, plus the stack) ----------
+const focus = { mv: 'A', site: 'signal-hill', lat: null, lon: null, t: null, view: 'map', dock: null, theme: 'light', full: null };
+let stack = [];            // [{id, opacity, on}], bottom -> top
+let basisId = '';          // time-match basis layer id, '' = clock hours
+let policy = 'blank';      // 'blank' | 'hold'
+let compare = null;        // {left: id, right: id, x: 0..1}
+let timeline = null, ready = null, status = null, layersInfo = null;
+const byId = {};
+let playing = false, playTimer = null;
+const drawn = {};          // layer id -> {frame, status, delta, headers, error, url, bbox}
+const legends = {};        // layer id -> {url, headers} | {error}
+let mapA = null, mapB = null, mapReady = false;
+
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  for (const k of ['mv', 'site', 'lat', 'lon', 't', 'view', 'dock', 'full']) if (p.has(k)) focus[k] = p.get(k);
+  if (focus.lat != null) { focus.lat = +focus.lat; focus.lon = +focus.lon; focus.site = null; }
+  if (!VARIANT_NOTES[focus.mv]) focus.mv = 'A';
+  if (p.has('stack')) stack = p.get('stack').split(',').filter(Boolean).map(s => { const [id, op, on] = s.split(':'); return { id, opacity: op != null ? +op : null, on: on !== '0' }; });
+  if (p.has('basis')) basisId = p.get('basis');
+  if (p.has('policy')) policy = p.get('policy');
+  if (p.has('cmp')) { const [l, r, x] = p.get('cmp').split(':'); compare = { left: l, right: r, x: +x || 0.5 }; }
+}
+function writeUrl() {
+  const p = new URLSearchParams();
+  p.set('mv', focus.mv);
+  if (focus.site) p.set('site', focus.site); else { p.set('lat', focus.lat.toFixed(4)); p.set('lon', focus.lon.toFixed(4)); }
+  if (focus.t && Date.parse(focus.t) !== snapHour(Date.now())) p.set('t', focus.t);
+  p.set('view', focus.view);
+  if (focus.dock) p.set('dock', focus.dock);
+  if (focus.full) p.set('full', focus.full);
+  p.set('stack', stack.map(s => `${s.id}:${s.opacity}${s.on ? '' : ':0'}`).join(','));
+  if (basisId) p.set('basis', basisId);
+  if (policy !== 'blank') p.set('policy', policy);
+  if (compare) p.set('cmp', `${compare.left}:${compare.right}:${compare.x.toFixed(2)}`);
+  history.replaceState(null, '', '?' + p.toString());
+}
+function nearestSite(lat, lon) { let best = null; for (const s of SITES) { const dx = (lon - s.lon) * 111.32 * Math.cos(lat * Math.PI / 180), dy = (lat - s.lat) * 110.57; const km = Math.hypot(dx, dy); if (!best || km < best.km) best = { site: s, km }; } return best; }
+function focusPoint() { const s = SITES.find(x => x.id === focus.site); return s ? { lat: s.lat, lon: s.lon, name: s.name, site: s } : { lat: focus.lat, lon: focus.lon, name: `${focus.lat.toFixed(4)}, ${focus.lon.toFixed(4)} (any point)`, site: null }; }
+
+// ---------- time helpers ----------
+const hour = 3600e3;
+const iso = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+const hm = ms => new Date(ms).toISOString().slice(11, 16) + 'Z';
+const dhm = ms => new Date(ms).toISOString().slice(5, 16).replace('T', ' ') + 'Z';
+const nlOffset = -2.5 * hour;
+function nlTime(ms) { const d = new Date(ms + nlOffset); return d.toISOString().slice(0, 16).replace('T', ' ') + ' NDT'; }
+function windowOf() { if (!timeline) { const n = Date.now(); return { start: n - 24 * hour, end: n + 14 * 24 * hour, boundary: n + 24 * hour }; } return { start: Date.parse(timeline.start), end: Date.parse(timeline.end), boundary: timeline.boundary ? Date.parse(timeline.boundary) : null }; }
+function snapHour(ms) { return Math.round(ms / hour) * hour; }
+function tierAt(ms) { const w = windowOf(); if (w.boundary == null) return 'unknown'; return ms < w.boundary ? 'core' : 'planning'; }
+function currentT() { return focus.t ? Date.parse(focus.t) : snapHour(Date.now()); }
+function ago(sec) { const a = Math.abs(sec); const s = a < 90 ? `${Math.round(a)} s` : a < 5400 ? `${Math.round(a / 60)} min` : a < 172800 ? `${(a / 3600).toFixed(a < 36000 ? 1 : 0)} h` : `${(a / 86400).toFixed(1)} d`; return sec < 0 ? `${s} before` : sec > 0 ? `${s} after` : 'at'; }
+function setT(ms) {
+  const w = windowOf(); ms = Math.min(Math.max(ms, w.start), w.end);
+  focus.t = iso(ms); writeUrl(); renderFocusbar(); renderScrubber(); alignAndDraw();
+}
+function step(dir) {
+  const t = currentT();
+  const b = byId[basisId];
+  if (b && b.times.length) { const ts = b.times.map(Date.parse); const next = dir > 0 ? ts.find(x => x > t) : [...ts].reverse().find(x => x < t); if (next != null) return setT(next); return; }
+  setT(snapHour(t) + dir * hour);
+}
+
+// ---------- layer vocabulary derived here (the API serves none of it) ----------
+const FAMILY_RULES = [
+  [/^satellite_/, 'satellite imagery'], [/cloud/, 'cloud cover'], [/visibility|fog/, 'visibility and fog'],
+  [/relative_humidity|dew_point/, 'humidity'], [/^temperature/, 'temperature'], [/^wind/, 'wind'],
+  [/pressure/, 'pressure'], [/precip|^radar$/, 'precipitation'], [/lightning/, 'lightning'], [/alert/, 'hazard'],
+  [/aqhi/, 'air quality'], [/^surface$|^upper_air$/, 'bundles (not drawable)'],
+];
+function familyOf(l) { for (const [re, f] of FAMILY_RULES) if (re.test(l.field)) return f; return 'other'; }
+function sourceTag(l) {
+  const p = l.product || '';
+  if (/GOES/.test(p)) return 'GOES-East';
+  if (/HRDPS-WEonG/.test(p)) return 'HRDPS WEonG'; if (/RDPS-WEonG/.test(p)) return 'RDPS WEonG';
+  if (/HRDPS/.test(p)) return 'HRDPS'; if (/RDPS/.test(p)) return 'RDPS'; if (/GFS/.test(p)) return 'GFS';
+  if (/radar/i.test(p)) return 'radar composite'; if (/Lightning/i.test(p)) return 'lightning'; if (/alerts/i.test(p)) return 'MSC alerts';
+  if (/METAR/.test(p)) return 'CYYT METAR'; if (/TAF/.test(p)) return 'CYYT TAF'; if (/Air Quality/.test(p)) return 'AQHI';
+  return p.slice(0, 18);
+}
+const SHORT = {
+  satellite_day_visible_night_ir: 'day vis / night IR', satellite_natural_color: 'natural colour', satellite_night_ir: 'night IR 2 km', satellite_snow_fog_night_microphysics: 'snow-fog / night microphysics',
+  relative_humidity: 'relative humidity', total_cloud_opacity: 'total cloud (opacity)', total_cloud_weong: 'low cloud, WEonG repair', mean_sea_level_pressure: 'MSL pressure', precipitation_accumulation: 'precip accumulation',
+  dew_point: 'dew point', temperature: 'temperature', wind_u: 'wind u', wind_direction: 'wind direction', wind_speed: 'wind speed',
+  visibility_through_ice_fog: 'vis through ice fog', visibility_through_liquid_fog: 'vis through liquid fog', cloud_high: 'high cloud', cloud_low: 'low cloud', cloud_middle: 'middle cloud',
+  surface: 'surface bundle', upper_air: 'upper-air bundle', alerts_features: 'alerts in force', alerts: 'alerts (points)', aqhi: 'AQHI', lightning: 'flash density', radar: 'precip rate',
+};
+function shortTitle(l) { return SHORT[l.field] || l.field; }
+function evidenceOf(l) {
+  if (/generated, display only/.test(l.product || '') || /WEonG repair/.test(l.title)) return { cls: 'generated_display', tag: 'generated, display only' };
+  if (l.evidence_basis === 'live_proxy') return { cls: 'retrieved', tag: 'live proxy, not a published artifact' };
+  if (l.group === 'rendered_grid') return { cls: 'retrieved', tag: 'published grid, rendered here (nearest cell)' };
+  if (l.evidence_basis === 'published_artifact') return { cls: 'retrieved', tag: 'published artifact' };
+  return { cls: 'unrecognised', tag: 'no evidence basis declared' };
+}
+function untimed(l) { return l.kind === 'alert' || (l.cadence_seconds == null && l.times.length <= 1); }
+// Provider-rendered imagery (a WMS layer behind /raster) has its own time extent that /layers does not
+// carry: /layers.times for radar and lightning are the ingested point artifact's sample times, which
+// stop hours before the imagery does. So those layers ask the server for its frame at the instant and
+// read the valid time it served back, instead of trusting /layers.times.
+function isLiveImagery(l) { return !!l.upstream_wms_layer && !untimed(l); }
+function judge(l, servedMs, t) { const delta = (servedMs - t) / 1000; const tol = l.staleness_tolerance_seconds ?? l.cadence_seconds ?? 3600; return { frame: iso(servedMs), status: delta === 0 ? 'exact' : Math.abs(delta) <= tol ? 'within' : 'beyond', delta, tol, served: true }; }
+
+// Which frame of a layer stands for the instant, and how honestly.
+function align(l, t) {
+  if (untimed(l)) return { frame: null, status: 'untimed', delta: null };
+  const ts = l.times.map(Date.parse); if (!ts.length) return { frame: null, status: 'none', delta: null };
+  let best = ts[0]; for (const x of ts) if (Math.abs(x - t) < Math.abs(best - t)) best = x;
+  const delta = (best - t) / 1000; const tol = l.staleness_tolerance_seconds ?? l.cadence_seconds ?? 3600;
+  const status = delta === 0 ? 'exact' : Math.abs(delta) <= tol ? 'within' : 'beyond';
+  return { frame: iso(best), status, delta, tol };
+}
+function willDraw(a) { return a.status === 'probe' || a.status === 'exact' || a.status === 'within' || a.status === 'untimed' || (a.status === 'beyond' && policy === 'hold'); }
+
+// ---------- data ----------
+async function getJson(path) { const r = await fetch(API + path); if (!r.ok) throw new Error(`${path} ${r.status}`); return r.json(); }
+async function loadAll() {
+  const results = await Promise.allSettled([getJson('/timeline'), getJson('/ready'), getJson('/sources/status'), getJson('/layers')]);
+  [timeline, ready, status, layersInfo] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+  const failed = results.filter(r => r.status === 'rejected').map(r => r.reason.message);
+  if (layersInfo) for (const l of layersInfo.layers) byId[l.id] = l;
+  if (!stack.length) stack = DEFAULT_STACK.filter(id => byId[id]).map(id => ({ id, opacity: null, on: true }));
+  for (const s of stack) if (s.opacity == null) s.opacity = byId[s.id]?.default_opacity ?? 0.85;
+  stack = stack.filter(s => byId[s.id]);
+  if (!focus.t) focus.t = iso(snapHour(Date.now()));
+  const bs = document.getElementById('basis');
+  for (const l of Object.values(byId)) if (l.raster_available && !untimed(l)) { const o = document.createElement('option'); o.value = l.id; o.textContent = `frames of ${sourceTag(l)} ${shortTitle(l)}`; bs.appendChild(o); }
+  bs.value = byId[basisId] ? basisId : ''; document.getElementById('policy').value = policy;
+  renderAll();
+  if (failed.length) document.getElementById('banner').textContent = 'API unreachable: ' + failed.join('; ');
+}
+
+// ---------- map engine ----------
+const REF_ANCHOR = 'reference-water-casing';
+function baseStyle(theme) {
+  const dark = theme !== 'light';
+  const c = dark ? { land: '#527267', ocean: '#071D2A', park: '#476A5C', urban: '#5D746D', casing: '#07151C', core: '#F7FBFA', road: '#F2B85B', label: '#F7FBFA', labelHalo: '#07151C', boundary: '#D6E5E3', waterLabel: '#A9E1EA' }
+                 : { land: '#F2E8D5', ocean: '#4B899A', park: '#D7E4CE', urban: '#E5D8C5', casing: '#183039', core: '#FFFFFF', road: '#8A5200', label: '#15282F', labelHalo: '#FBFAF5', boundary: '#38565E', waterLabel: '#123E4A' };
+  if (theme === 'night') Object.assign(c, { land: '#1a0000', ocean: '#000000', park: '#200000', urban: '#240000', casing: '#000', core: '#7a1a14', road: '#8a1f1a', label: '#ff3b30', labelHalo: '#000', boundary: '#6a1510', waterLabel: '#b3261e' });
+  const S = 'openfreemap';
+  return { version: 8, glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+    sources: { [S]: { type: 'vector', url: 'https://tiles.openfreemap.org/planet', attribution: '© OpenMapTiles © OpenStreetMap contributors' } },
+    layers: [
+      { id: 'base-land', type: 'background', paint: { 'background-color': c.land } },
+      { id: 'base-landcover', type: 'fill', source: S, 'source-layer': 'landcover', minzoom: 5, paint: { 'fill-color': c.park, 'fill-opacity': 0.3 } },
+      { id: 'base-park', type: 'fill', source: S, 'source-layer': 'park', minzoom: 6, paint: { 'fill-color': c.park, 'fill-opacity': 0.48 } },
+      { id: 'base-urban', type: 'fill', source: S, 'source-layer': 'landuse', minzoom: 7, filter: ['==', ['get', 'class'], 'residential'], paint: { 'fill-color': c.urban, 'fill-opacity': 0.42 } },
+      { id: 'base-water', type: 'fill', source: S, 'source-layer': 'water', paint: { 'fill-color': c.ocean } },
+      { id: REF_ANCHOR, type: 'line', source: S, 'source-layer': 'water', paint: { 'line-color': c.casing, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.8, 10, 4], 'line-opacity': 0.9 } },
+      { id: 'reference-water-core', type: 'line', source: S, 'source-layer': 'water', paint: { 'line-color': c.core, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.75, 10, 1.6], 'line-opacity': 0.9 } },
+      { id: 'reference-road-casing', type: 'line', source: S, 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']]], paint: { 'line-color': c.casing, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.2, 13, 5.5], 'line-opacity': 0.88 } },
+      { id: 'reference-road-core', type: 'line', source: S, 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']]], paint: { 'line-color': c.road, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.45, 13, 2.2], 'line-opacity': 0.92 } },
+      { id: 'reference-boundary', type: 'line', source: S, 'source-layer': 'boundary', minzoom: 3, filter: ['<=', ['get', 'admin_level'], 4], paint: { 'line-color': c.boundary, 'line-width': 1, 'line-dasharray': [4, 3], 'line-opacity': 0.72 } },
+      { id: 'reference-water-label', type: 'symbol', source: S, 'source-layer': 'water_name', minzoom: 5, layout: { 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': ['Noto Sans Italic'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 11, 14], 'symbol-placement': 'point' }, paint: { 'text-color': c.waterLabel, 'text-halo-color': c.labelHalo, 'text-halo-width': 1.7 } },
+      { id: 'reference-place-label', type: 'symbol', source: S, 'source-layer': 'place', minzoom: 4, layout: { 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 11, 15], 'text-padding': 4 }, paint: { 'text-color': c.label, 'text-halo-color': c.labelHalo, 'text-halo-width': 2 } },
+    ] };
+}
+function makeMap(el) {
+  const m = new maplibregl.Map({ container: el, style: baseStyle(focus.theme), center: [-52.9, 47.5], zoom: 7.2, attributionControl: { compact: true }, fadeDuration: 0 });
+  m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+  return m;
+}
+let syncing = false;
+function syncMaps(a, b) { a.on('move', () => { if (syncing) return; syncing = true; b.jumpTo({ center: a.getCenter(), zoom: a.getZoom(), bearing: a.getBearing(), pitch: a.getPitch() }); syncing = false; }); }
+function mountMaps() {
+  if (mapA) return;
+  mapA = makeMap(document.getElementById('mapa')); mapB = makeMap(document.getElementById('mapb'));
+  syncMaps(mapA, mapB); syncMaps(mapB, mapA);
+  mapA.on('load', () => { mapReady = true; drawSites(mapA); alignAndDraw(); });
+  mapA.on('moveend', () => alignAndDraw({ keepFrames: true }));
+  mapA.on('click', e => { const f = mapA.queryRenderedFeatures(e.point, { layers: ['sites'] })[0]; if (f) { focus.site = f.properties.id; focus.lat = focus.lon = null; } else { focus.site = null; focus.lon = +e.lngLat.lng.toFixed(4); focus.lat = +e.lngLat.lat.toFixed(4); } writeUrl(); renderFocusbar(); drawSites(mapA); });
+}
+function drawSites(m) {
+  const fp = focusPoint();
+  const gj = { type: 'FeatureCollection', features: [...SITES.map(s => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [s.lon, s.lat] }, properties: { id: s.id, name: s.id, sel: focus.site === s.id ? 1 : 0 } })), ...(fp.site ? [] : [{ type: 'Feature', geometry: { type: 'Point', coordinates: [fp.lon, fp.lat] }, properties: { id: 'any', name: 'focus', sel: 2 } }])] };
+  if (m.getSource('sites')) { m.getSource('sites').setData(gj); return; }
+  m.addSource('sites', { type: 'geojson', data: gj });
+  m.addLayer({ id: 'sites', type: 'circle', source: 'sites', paint: { 'circle-radius': ['case', ['>', ['get', 'sel'], 0], 8, 5], 'circle-color': ['match', ['get', 'sel'], 1, '#1d5fd6', 2, '#d6336c', '#ffffff'], 'circle-stroke-color': '#14171c', 'circle-stroke-width': 1.5 } });
+  m.addLayer({ id: 'sites-label', type: 'symbol', source: 'sites', layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-offset': [0.9, 0], 'text-anchor': 'left' }, paint: { 'text-color': '#14171c', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 } });
+}
+function viewBbox(m) {
+  const b = m.getBounds(); const c = m.getCanvas();
+  return { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast(), w: Math.min(MAX_PX, c.width), h: Math.min(MAX_PX, c.height) };
+}
+function rasterUrl(l, bb, frame) {
+  const p = new URLSearchParams({ south: bb.south.toFixed(5), west: bb.west.toFixed(5), north: bb.north.toFixed(5), east: bb.east.toFixed(5), width: String(Math.round(bb.w)), height: String(Math.round(bb.h)), crs: 'EPSG:3857' });
+  if (frame) p.set('valid_time', frame);
+  return `${API}/layers/${encodeURIComponent(l.id)}/raster?${p}`;
+}
+const rasterCache = new Map(); // url -> {blobUrl, headers}
+async function fetchRaster(l, bb, frame) {
+  const url = rasterUrl(l, bb, frame);
+  if (rasterCache.has(url)) return rasterCache.get(url);
+  const r = await fetch(url, { headers: { Accept: 'image/png,image/*' } });
+  const headers = {}; r.headers.forEach((v, k) => { if (k.startsWith('x-weather-')) headers[k.slice(10)] = v; });
+  if (!r.ok) { let detail = null; try { detail = (await r.json()).detail; } catch {} throw new Error(`${r.status}${detail ? ': ' + detail : ''}`); }
+  if (!(r.headers.get('content-type') || '').startsWith('image/')) throw new Error('not an image');
+  if (!headers['retrieval-status'] || (!headers['wms-layer'] && !(headers['image-basis'] === 'rendered_grid' && headers['source-id']))) throw new Error('no retrieval provenance on the image; bytes not drawn');
+  const out = { blobUrl: URL.createObjectURL(await r.blob()), headers, bytes: +headers['byte-size'] || 0 };
+  if (rasterCache.size > 60) { const k = rasterCache.keys().next().value; URL.revokeObjectURL(rasterCache.get(k).blobUrl); rasterCache.delete(k); }
+  rasterCache.set(url, out); return out;
+}
+function placeRaster(m, id, blobUrl, bb, opacity) {
+  const coords = [[bb.west, bb.north], [bb.east, bb.north], [bb.east, bb.south], [bb.west, bb.south]];
+  const sid = 'ras-' + id, lid = 'rl-' + id;
+  if (m.getSource(sid)) { m.getSource(sid).updateImage({ url: blobUrl, coordinates: coords }); }
+  else { m.addSource(sid, { type: 'image', url: blobUrl, coordinates: coords }); m.addLayer({ id: lid, type: 'raster', source: sid, paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0, 'raster-resampling': 'nearest' } }, REF_ANCHOR); }
+  m.setPaintProperty(lid, 'raster-opacity', opacity); m.setLayoutProperty(lid, 'visibility', 'visible');
+}
+function hideRaster(m, id) { const lid = 'rl-' + id; if (m.getLayer(lid)) m.setLayoutProperty(lid, 'visibility', 'none'); }
+function orderRasters(m) { // bottom -> top, all below the reference anchor
+  for (const s of stack) { const lid = 'rl-' + s.id; if (m.getLayer(lid)) m.moveLayer(lid, REF_ANCHOR); }
+}
+let drawSeq = 0;
+async function alignAndDraw(opts = {}) {
+  if (!mapReady) return;
+  const seq = ++drawSeq; const t = currentT(); const bb = viewBbox(mapA);
+  const jobs = [];
+  for (const s of stack) {
+    const l = byId[s.id]; const live = isLiveImagery(l); const a = live ? { frame: null, status: 'probe', delta: null } : align(l, t);
+    const prev = drawn[s.id] || {};
+    drawn[s.id] = { ...a, headers: prev.headers, error: null, loading: false, bytes: prev.bytes, extent: prev.extent };
+    if (!s.on || !l.raster_available || !willDraw(a)) { hideRaster(mapA, s.id); if (!l.raster_available) drawn[s.id].error = 'no raster for this layer'; continue; }
+    drawn[s.id].loading = true;
+    jobs.push(fetchRaster(l, bb, a.status === 'untimed' ? null : live ? iso(t) : a.frame).then(r => {
+      if (seq !== drawSeq) return;
+      drawn[s.id].headers = r.headers; drawn[s.id].bytes = r.bytes; drawn[s.id].loading = false;
+      if (live) { const vt = r.headers['valid-time']; if (!vt || vt === 'none') Object.assign(drawn[s.id], { status: 'untimed', frame: null }); else Object.assign(drawn[s.id], judge(l, Date.parse(vt), t)); }
+      if (!willDraw(drawn[s.id])) { hideRaster(mapA, s.id); return; }
+      placeRaster(mapA, s.id, r.blobUrl, bb, s.opacity);
+    }).catch(e => {
+      if (seq !== drawSeq) return; hideRaster(mapA, s.id); drawn[s.id].loading = false;
+      const m = /outside the advertised extent (\S+)\.\.(\S+)/.exec(e.message);
+      if (m) { drawn[s.id].status = 'none'; drawn[s.id].frame = null; drawn[s.id].extent = [m[1], m[2]]; drawn[s.id].error = `the server's own extent is ${m[1].slice(5, 16)} to ${m[2].slice(5, 16)}`; }
+      else drawn[s.id].error = e.message;
+    }).finally(() => { if (seq === drawSeq) renderStack(); }));
+  }
+  orderRasters(mapA);
+  for (const id in drawn) if (!stack.some(s => s.id === id)) { hideRaster(mapA, id); delete drawn[id]; }
+  renderStack();
+  if (compare) drawCompare(bb, t);
+  await Promise.allSettled(jobs);
+  if (seq === drawSeq) { renderStack(); }
+}
+async function drawCompare(bb, t) {
+  const wrap = document.getElementById('mapwrap'); wrap.classList.add('compare');
+  document.getElementById('swipe').style.left = (compare.x * 100) + '%';
+  mapB.resize();
+  const l = byId[compare.right]; const live = isLiveImagery(l); let a = live ? { frame: iso(t), status: 'probe' } : align(l, t); const s = stack.find(x => x.id === compare.left) || { opacity: l.default_opacity };
+  if (!mapB.loaded()) await new Promise(res => mapB.once('load', res));
+  for (const id of Object.keys(drawn)) if (id !== compare.right) hideRaster(mapB, id);
+  document.querySelector('#swipe .lab.l').innerHTML = rowLine(byId[compare.left], drawn[compare.left] || align(byId[compare.left], t));
+  if (!willDraw(a)) { hideRaster(mapB, compare.right); document.querySelector('#swipe .lab.r').innerHTML = rowLine(l, a) + ' <b>not drawn</b>'; return; }
+  try { const r = await fetchRaster(l, bb, a.frame); if (live) { const vt = r.headers['valid-time']; a = !vt || vt === 'none' ? { status: 'untimed' } : judge(l, Date.parse(vt), t); } if (!willDraw(a)) { hideRaster(mapB, compare.right); document.querySelector('#swipe .lab.r').innerHTML = rowLine(l, a) + ' <b>not drawn</b>'; return; } placeRaster(mapB, compare.right, r.blobUrl, bb, s.opacity); document.querySelector('#swipe .lab.r').innerHTML = rowLine(l, { ...a, headers: r.headers }); }
+  catch (e) { document.querySelector('#swipe .lab.r').textContent = `${sourceTag(l)}: ${e.message}`; }
+}
+function endCompare() { compare = null; document.getElementById('mapwrap').classList.remove('compare'); writeUrl(); renderStack(); }
+async function loadLegend(id) {
+  if (legends[id]) return legends[id];
+  const l = byId[id]; if (!l.legend_available) return (legends[id] = { error: 'no legend served' });
+  try { const r = await fetch(`${API}/layers/${encodeURIComponent(id)}/legend`); if (!r.ok) throw new Error(`legend ${r.status}`); const h = {}; r.headers.forEach((v, k) => { if (k.startsWith('x-weather-')) h[k.slice(10)] = v; }); legends[id] = { url: URL.createObjectURL(await r.blob()), headers: h }; }
+  catch (e) { legends[id] = { error: e.message }; }
+  renderStack(); return legends[id];
+}
+
+// ---------- render: shell ----------
+function renderAll() { document.documentElement.dataset.theme = focus.theme; document.getElementById('theme').value = focus.theme; document.getElementById('variantnote').textContent = VARIANT_NOTES[focus.mv]; for (const b of document.querySelectorAll('#variantbar button')) b.title = VARIANT_NOTES[b.dataset.mv]; for (const b of document.querySelectorAll('#variantbar button')) b.setAttribute('aria-pressed', b.dataset.mv === focus.mv); renderFocusbar(); renderStatus(); renderTabs(); renderScrubber(); renderViews(); writeUrl(); }
+function renderFocusbar() {
+  const fp = focusPoint();
+  document.getElementById('placelabel').innerHTML = fp.site ? fp.site.name : (() => { const n = nearestSite(fp.lat, fp.lon); return `${fp.name} <span class="muted">· nearest site ${n.site.id} ${n.km.toFixed(1)} km</span>`; })();
+  const t = currentT();
+  document.getElementById('instant').textContent = `${nlTime(t)}  ·  ${iso(t)}`;
+  const tier = tierAt(t); const tc = document.getElementById('tierchip'); tc.textContent = tier === 'core' ? 'core tier' : tier === 'planning' ? 'planning tier' : 'tier unknown'; tc.className = 'chip ' + tier;
+}
+function renderStatus() {
+  const b = document.getElementById('statusbtn'); const body = document.getElementById('statusbody');
+  if (!ready) { b.textContent = 'status unknown'; b.className = 'chip bad'; body.textContent = '/ready did not answer.'; return; }
+  const live = status ? status.statuses.filter(s => s.last_retrieval) : []; const stale = live.filter(s => s.freshness && s.freshness.status === 'stale'); const aged = Object.keys(ready.aged_out_sources || {});
+  const notices = (ready.notices || []).length + (layersInfo ? layersInfo.notices.length : 0);
+  b.className = 'chip ' + (ready.data_mode !== 'live' ? 'bad' : (stale.length + aged.length) ? 'warn' : '');
+  b.innerHTML = `<span>${ready.data_mode}</span> · <span>${live.length} retrieved</span> · <span>${stale.length} stale</span>` + (aged.length ? ` · <span>${aged.length} aged out</span>` : '') + ` · <span>${notices} notices</span>`;
+  body.innerHTML = `<p><b>data mode</b> ${ready.data_mode}, operational ${ready.operational}. ${live.length} of ${status ? status.statuses.length : '?'} catalogued sources have a retrieval.</p><p><b>Stale</b> (${stale.length}): ${stale.map(s => `<code>${s.source_id}</code> ${Math.round(s.freshness.age_seconds / 3600)} h`).join('; ') || 'none'}</p><details><summary>Layer notices (${layersInfo ? layersInfo.notices.length : 0})</summary><ul>${(layersInfo ? layersInfo.notices : []).map(n => `<li>${n}</li>`).join('')}</ul></details>`;
+  const banner = document.getElementById('banner'); banner.className = 'on'; banner.innerHTML = `<b>${ready.data_mode}</b> · ${live.length} sources retrieved, ${stale.length} stale, ${aged.length} aged out · ${notices} notices <button popovertarget="statuspop" class="ghost" style="font-size:12px">details</button>`;
+}
+function renderTabs() { const n = document.getElementById('tabs'); n.innerHTML = ''; for (const v of VIEWS) { const b = document.createElement('button'); b.textContent = VIEW_NAME[v]; b.setAttribute('aria-pressed', focus.view === v); b.dataset.docked = focus.dock === v; b.onclick = () => { if (focus.dock === v) focus.dock = null; focus.view = v; renderAll(); }; n.appendChild(b); } }
+function viewEl(v, opts = {}) {
+  const el = document.createElement('section'); el.className = 'view ' + v; el.setAttribute('aria-label', VIEW_NAME[v] + ' view'); if (v === 'map') el.dataset.mv = focus.mv;
+  const h = document.createElement('header'); h.innerHTML = `<span>${VIEW_NAME[v]}</span>`;
+  if (v === 'map') { const n = document.createElement('span'); n.className = 'muted'; n.style.fontWeight = '400'; n.id = 'mapsummary'; h.appendChild(n); }
+  const sp = document.createElement('span'); sp.className = 'spacer'; h.appendChild(sp);
+  if (v === 'map') { const a = document.createElement('button'); a.className = 'ghost'; a.textContent = focus.mv === 'C' ? '+ find layer  /' : '+ add layers'; if (focus.mv === 'C') a.onclick = openPalette; else a.setAttribute('popovertarget', 'treepop'); h.appendChild(a); }
+  if (opts.dockable) { const d = document.createElement('button'); d.className = 'ghost'; d.textContent = focus.dock === v ? 'undock' : 'dock →'; d.onclick = () => { if (focus.dock === v) focus.dock = null; else { focus.dock = v; if (focus.view === v) focus.view = VIEWS.find(x => x !== v); } renderAll(); }; h.appendChild(d); }
+  if (opts.fullscreen) { const f = document.createElement('button'); f.className = 'ghost'; f.textContent = focus.full === v ? '⤡ exit full screen' : '⤢ full screen'; f.onclick = () => { focus.full = focus.full === v ? null : v; renderAll(); }; h.appendChild(f); }
+  if (focus.full === v) el.classList.add('fullscreen');
+  const body = document.createElement('div'); body.className = 'body';
+  if (v === 'map') body.innerHTML = mapBody(); else body.innerHTML = `<p class="placeholder">${VIEW_NAME[v]} placeholder (its own ticket). Reads the Focus: ${focusPoint().name} at ${iso(currentT())}.</p>`;
+  el.appendChild(h); el.appendChild(body); return el;
+}
+function renderViews() {
+  const st = document.getElementById('stage'); const mapHost = document.getElementById('mapwrap');
+  if (mapHost) mapHost.remove(); // keep the map DOM (and its WebGL context) alive across re-renders
+  st.innerHTML = ''; st.className = '';
+  if (focus.dock && focus.dock !== focus.view) st.className = 'docked';
+  st.appendChild(viewEl(focus.view, { dockable: true, fullscreen: true }));
+  if (focus.dock && focus.dock !== focus.view) { const sp = document.createElement('div'); sp.className = 'splitter'; st.appendChild(sp); st.appendChild(viewEl(focus.dock, { dockable: true })); sp.onpointerdown = ev => { sp.setPointerCapture(ev.pointerId); sp.onpointermove = e => { const w = st.getBoundingClientRect().right - e.clientX; st.style.setProperty('--dock-w', Math.max(280, w) + 'px'); if (mapA) mapA.resize(); }; sp.onpointerup = () => { sp.onpointermove = null; }; }; }
+  const slot = document.getElementById('mapslot');
+  if (slot) { if (mapHost) slot.replaceWith(mapHost); else { slot.id = 'mapwrap'; slot.innerHTML = '<div id="mapa"></div><div id="mapb"></div><div id="swipe"><span class="lab l"></span><span class="lab r"></span><div class="knob">⇔</div></div>'; mountMaps(); wireSwipe(); } requestAnimationFrame(() => { mapA.resize(); mapB.resize(); }); }
+  renderStack();
+}
+function mapBody() {
+  if (focus.mv === 'C') return `<div id="cards"></div><div id="mapslot"></div><div class="strip" id="strip"></div>`;
+  return `<div id="stackpanel"></div><div id="mapslot"></div><div class="strip" id="strip"></div>`;
+}
+function wireSwipe() {
+  const sw = document.getElementById('swipe'); const wrap = document.getElementById('mapwrap');
+  sw.querySelector('.knob').onpointerdown = ev => { ev.preventDefault(); sw.setPointerCapture(ev.pointerId); const move = e => { const r = wrap.getBoundingClientRect(); const x = Math.min(0.98, Math.max(0.02, (e.clientX - r.left) / r.width)); compare.x = x; sw.style.left = (x * 100) + '%'; document.getElementById('mapb').style.clipPath = `inset(0 0 0 ${x * 100}%)`; }; sw.onpointermove = move; sw.onpointerup = () => { sw.onpointermove = null; writeUrl(); }; };
+}
+
+// ---------- render: the layer stack (three variants) ----------
+function rowLine(l, d) {
+  const run = d.headers?.['reference-time'] && d.headers['reference-time'] !== 'none' ? ` · run ${dhm(Date.parse(d.headers['reference-time']))}` : (l.group === 'rendered_grid' || l.group === 'forecast_proxy' ? ' · run unknown' : '');
+  return `<b>${sourceTag(l)}</b> ${shortTitle(l)}${run} · ${frameLine(d)}`;
+}
+function frameLine(d) {
+  if (d.status === 'untimed') return `<span class="al untimed"></span> current image, not time-indexed`;
+  if (d.status === 'probe') return `<span class="al blank"></span> asking the server for its frame…`;
+  if (d.status === 'none') return `<span class="al none"></span> no frame${d.extent ? ` (server extent ${d.extent[0].slice(5, 16)} to ${d.extent[1].slice(5, 16)})` : 's'}`;
+  const by = d.served ? 'server frame' : 'frame';
+  if (d.status === 'exact') return `<span class="al exact"></span> ${by} ${hm(Date.parse(d.frame))} exact`;
+  const s = `${by} ${dhm(Date.parse(d.frame))}, ${ago(d.delta)}`;
+  if (d.status === 'within') return `<span class="al within"></span> ${s} (within ${Math.round(d.tol / 60)} min)`;
+  return `<span class="al beyond"></span> ${s}${policy === 'hold' ? ', HELD beyond tolerance' : ', not drawn'}`;
+}
+function stateBadge(s, l, d) {
+  if (!s.on) return '<span class="chip">hidden</span>';
+  if (d.error) return `<span class="chip bad" title="${d.error.replace(/"/g, '&quot;')}">${/no raster/.test(d.error) ? 'no raster' : 'not retrieved'}</span>`;
+  if (d.loading) return '<span class="chip">loading…</span>';
+  if (!willDraw(d)) return '<span class="chip warn">not drawn</span>';
+  const ev = evidenceOf(l); return `<span class="chip" style="background:var(--good-bg)">drawn${ev.cls === 'generated_display' ? ' · GENERATED' : ''}</span>`;
+}
+function coverageSummary() {
+  const t = currentT(); const rows = stack.map(s => ({ s, l: byId[s.id], d: drawn[s.id] || align(byId[s.id], t) }));
+  const on = rows.filter(r => r.s.on); const drawnN = on.filter(r => willDraw(r.d) && !r.d.error).length;
+  const c = { probe: 0, exact: 0, within: 0, beyond: 0, none: 0, untimed: 0 }; for (const r of on) c[r.d.status]++;
+  return { rows, on, drawnN, c };
+}
+function renderStack() {
+  const sum = document.getElementById('mapsummary'); if (!sum) return;
+  const cs = coverageSummary(); const t = currentT();
+  sum.textContent = `${cs.drawnN} of ${cs.on.length} drawn at ${hm(t)} · ${cs.c.exact} exact, ${cs.c.within} within tolerance, ${cs.c.beyond} beyond, ${cs.c.none} none, ${cs.c.untimed} untimed${cs.c.probe ? `, ${cs.c.probe} pending` : ''}`;
+  if (focus.mv === 'A') renderStackA(cs); else if (focus.mv === 'B') renderStackB(cs); else renderStackC(cs);
+  renderStrip(cs);
+  if (mapReady) orderRasters(mapA);
+}
+function familyGroups(rows) { const g = new Map(); for (const r of rows) { const f = familyOf(r.l); if (!g.has(f)) g.set(f, []); g.get(f).push(r); } return g; }
+function legendHtml(id) {
+  const lg = legends[id]; if (!lg) { loadLegend(id); return '<div class="legend noimg">legend loading…</div>'; }
+  if (lg.error) return `<div class="legend noimg">${lg.error}</div>`;
+  const cm = lg.headers['colormap'] ? `<div class="muted" style="font-size:11px">${lg.headers['colormap'].split(';')[0]}</div>` : '';
+  return `<div class="legend"><img src="${lg.url}" alt="legend for ${shortTitle(byId[id])}">${cm}</div>`;
+}
+function separateScalesNote(members) {
+  if (members.length < 2) return '';
+  const keys = new Set(members.map(r => r.d.headers?.colormap || r.d.headers?.['wms-layer'] || r.l.field));
+  return keys.size > 1 ? `<span class="chip warn" title="two members of one family drawn against different definitions; never one shared scale">separate scales</span>` : `<span class="chip" title="same colormap">shared scale</span>`;
+}
+function rowActions(s, l, d) {
+  const same = Object.values(byId).filter(x => x.id !== l.id && x.raster_available && familyOf(x) === familyOf(l));
+  return `<button class="tiny" data-act="toggle" data-id="${s.id}" aria-pressed="${s.on}" title="show or hide">${s.on ? '👁' : '—'}</button>` +
+    `<button class="tiny" data-act="up" data-id="${s.id}" title="move up (toward the top of the stack)">▲</button><button class="tiny" data-act="down" data-id="${s.id}" title="move down">▼</button>` +
+    (same.length ? `<button class="tiny" data-act="compare" data-id="${s.id}" title="swipe against another ${familyOf(l)} layer">⇔</button>` : '') +
+    `<button class="tiny" data-act="detail" data-id="${s.id}" title="full provenance">why?</button><button class="tiny" data-act="remove" data-id="${s.id}" title="remove from the stack">✕</button>`;
+}
+function wireRows(root) {
+  root.querySelectorAll('[data-act]').forEach(b => b.onclick = e => { e.stopPropagation(); act(b.dataset.act, b.dataset.id); });
+  root.querySelectorAll('input[data-op]').forEach(i => { i.oninput = () => { const s = stack.find(x => x.id === i.dataset.op); s.opacity = +i.value; i.nextElementSibling && (i.nextElementSibling.textContent = Math.round(s.opacity * 100) + '%'); if (mapReady && mapA.getLayer('rl-' + s.id)) mapA.setPaintProperty('rl-' + s.id, 'raster-opacity', s.opacity); if (compare && mapB.getLayer('rl-' + s.id)) mapB.setPaintProperty('rl-' + s.id, 'raster-opacity', s.opacity); }; i.onchange = () => writeUrl(); });
+  // drag reorder (pointer-based; the ▲▼ buttons are the keyboard route)
+  let dragId = null;
+  root.querySelectorAll('[data-row]').forEach(r => {
+    const h = r.querySelector('.handle'); if (!h) return;
+    h.onpointerdown = ev => { dragId = r.dataset.row; r.classList.add('drag'); h.setPointerCapture(ev.pointerId); };
+    h.onpointerup = ev => { r.classList.remove('drag'); if (!dragId) return; const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-row]'); if (el && el.dataset.row !== dragId) moveTo(dragId, el.dataset.row); dragId = null; };
+  });
+}
+function moveTo(id, targetId) { const from = stack.findIndex(s => s.id === id), to = stack.findIndex(s => s.id === targetId); if (from < 0 || to < 0) return; const [it] = stack.splice(from, 1); stack.splice(to, 0, it); writeUrl(); renderStack(); }
+function act(a, id) {
+  const i = stack.findIndex(s => s.id === id); const s = stack[i];
+  if (a === 'toggle') { s.on = !s.on; writeUrl(); alignAndDraw(); }
+  if (a === 'up' && i < stack.length - 1) { stack.splice(i, 1); stack.splice(i + 1, 0, s); writeUrl(); renderStack(); }
+  if (a === 'down' && i > 0) { stack.splice(i, 1); stack.splice(i - 1, 0, s); writeUrl(); renderStack(); }
+  if (a === 'remove') { stack.splice(i, 1); if (compare && (compare.left === id || compare.right === id)) endCompare(); writeUrl(); alignAndDraw(); }
+  if (a === 'detail') showLayerDetail(id);
+  if (a === 'compare') pickCompare(id);
+}
+function addLayer(id, toTop = true) { if (stack.some(s => s.id === id)) return; const l = byId[id]; const it = { id, opacity: l.default_opacity ?? 0.85, on: true }; if (toTop) stack.push(it); else stack.unshift(it); writeUrl(); alignAndDraw(); }
+function removeLayer(id) { const i = stack.findIndex(s => s.id === id); if (i >= 0) act('remove', id); }
+
+// Variant A: the legend is the stack. Top of the panel is the top of the stack.
+function renderStackA(cs) {
+  const panel = document.getElementById('stackpanel'); if (!panel) return;
+  const rows = [...cs.rows].reverse(); const groups = familyGroups(rows);
+  let html = `<div style="padding:6px 8px;border-bottom:1px solid var(--line)" class="muted">Layer stack, top first · ${stack.length} layers · drag ⋮ or use ▲▼ · legends once per family</div>`;
+  for (const [fam, members] of groups) {
+    html += `<div class="fam" style="padding:0 8px">${fam} ${separateScalesNote(members)}</div>`;
+    for (const r of members) {
+      const ev = evidenceOf(r.l);
+      html += `<div class="row ${r.s.on ? '' : 'hidden'}" data-row="${r.s.id}">
+        <span class="handle" title="drag to reorder">⋮</span><span class="glyph ${ev.cls}" title="${ev.cls}: ${ev.tag}">${GLYPH[ev.cls]}</span>
+        <span class="name">${shortTitle(r.l)} <span class="muted" style="font-weight:400">· ${sourceTag(r.l)}</span></span><span>${stateBadge(r.s, r.l, r.d)}</span>
+        <span class="sub">${frameLine(r.d)}${r.d.headers?.['reference-time'] && r.d.headers['reference-time'] !== 'none' ? ` · run ${dhm(Date.parse(r.d.headers['reference-time']))} (${ago((Date.parse(r.d.headers['reference-time']) - Date.now()) / 1000).replace(' before', ' old')})` : ''}${r.d.error ? ` · <span style="color:var(--bad)">${r.d.error}</span>` : ''}</span>
+        <span class="ctl"><input type="range" min="0" max="1" step="0.05" value="${r.s.opacity}" data-op="${r.s.id}" aria-label="opacity of ${shortTitle(r.l)}"><span class="mono" style="width:34px">${Math.round(r.s.opacity * 100)}%</span>${rowActions(r.s, r.l, r.d)}</span>
+        ${r.s.on ? legendHtml(r.s.id) : ''}
+      </div>`;
+    }
+  }
+  if (!stack.length) html += '<p class="placeholder" style="padding:10px">empty stack: add layers from the tree</p>';
+  panel.innerHTML = html; wireRows(panel); renderTree();
+}
+// Variant B: tree left, stack card + legend card on the map, coverage matrix strip on top.
+function renderStackB(cs) {
+  const panel = document.getElementById('stackpanel'); const wrap = document.getElementById('mapwrap'); if (!panel || !wrap) return;
+  panel.innerHTML = `<div style="padding:6px 8px;border-bottom:1px solid var(--line)" class="muted">Layers by family, then source. Tick to stack.</div><div class="tree" id="treeinline"></div>`; renderTree(document.getElementById('treeinline'));
+  let card = document.getElementById('stackcard'); if (!card) { card = document.createElement('div'); card.id = 'stackcard'; card.className = 'overlay'; wrap.appendChild(card); }
+  let lg = document.getElementById('legendcard'); if (!lg) { lg = document.createElement('div'); lg.id = 'legendcard'; lg.className = 'overlay legendcard'; wrap.appendChild(lg); }
+  let cov = document.getElementById('coveragebar'); if (!cov) { cov = document.createElement('div'); cov.id = 'coveragebar'; cov.className = 'overlay'; wrap.appendChild(cov); }
+  const rows = [...cs.rows].reverse();
+  card.innerHTML = `<div class="muted" style="margin-bottom:4px">Stack, top first</div>` + rows.map(r => { const ev = evidenceOf(r.l); return `<div class="row ${r.s.on ? '' : 'hidden'}" data-row="${r.s.id}" style="padding:4px 0"><span class="handle">⋮</span><span class="glyph ${ev.cls}" title="${ev.tag}">${GLYPH[ev.cls]}</span><span class="name">${shortTitle(r.l)} <span class="muted" style="font-weight:400">${sourceTag(r.l)}</span></span><span>${stateBadge(r.s, r.l, r.d)}</span><span class="ctl"><input type="range" min="0" max="1" step="0.05" value="${r.s.opacity}" data-op="${r.s.id}" aria-label="opacity"><span class="mono" style="width:34px">${Math.round(r.s.opacity * 100)}%</span>${rowActions(r.s, r.l, r.d)}</span></div>`; }).join('') || '<p class="placeholder">empty stack</p>';
+  wireRows(card);
+  const groups = familyGroups(rows.filter(r => r.s.on));
+  lg.innerHTML = `<div class="muted" style="margin-bottom:4px">Legends, once per family</div>` + [...groups].map(([fam, members]) => `<div class="fam">${fam} ${separateScalesNote(members)}</div>` + members.map(r => `<div style="margin-bottom:6px"><div class="muted">${sourceTag(r.l)} ${shortTitle(r.l)}</div>${legendHtml(r.s.id)}</div>`).join('')).join('') || '<span class="placeholder">nothing drawn</span>';
+  cov.innerHTML = `<span class="muted">at ${hm(currentT())}:</span><span class="matrix">` + rows.map(r => `<span class="cell" data-act="detail" data-id="${r.s.id}" title="${AL_LABEL[r.d.status]}${r.d.frame ? ' ' + r.d.frame : ''}"><span class="al ${r.s.on ? r.d.status : 'blank'}"></span>${sourceTag(r.l)} ${shortTitle(r.l)}${r.d.status === 'exact' || r.d.status === 'untimed' || r.d.status === 'none' ? '' : ` <span class="mono">${hm(Date.parse(r.d.frame))}</span>`}</span>`).join('') + `</span><span class="spacer" style="flex:1"></span><span class="muted"><span class="al exact"></span> exact <span class="al within"></span> within tol. <span class="al beyond"></span> beyond <span class="al untimed"></span> untimed <span class="al none"></span> none</span>`;
+  cov.querySelectorAll('[data-act]').forEach(b => b.onclick = () => act('detail', b.dataset.id));
+}
+// Variant C: cards across the top with a mini frame timeline each.
+function renderStackC(cs) {
+  const cards = document.getElementById('cards'); if (!cards) return;
+  const rows = [...cs.rows].reverse(); const t = currentT(); const span = 6 * hour; // ±6 h window in the mini timeline
+  cards.innerHTML = rows.map(r => {
+    const ev = evidenceOf(r.l); const ts = r.l.times.map(Date.parse).filter(x => Math.abs(x - t) <= span); const X = x => ((x - (t - span)) / (2 * span) * 100).toFixed(2) + '%';
+    const tol = r.d.tol ? `<span class="tol" style="left:${X(t - r.d.tol * 1000)};width:${(r.d.tol * 1000 / (2 * span) * 100).toFixed(2)}%"></span>` : '';
+    const mini = `<div class="mini" title="frames of this layer within ±6 h of the instant; the highlighted one is drawn">${tol}${ts.map(x => `<i class="${r.d.frame && Date.parse(r.d.frame) === x ? 'used ' + r.d.status : ''}" style="left:${X(x)}"></i>`).join('')}<b style="left:50%"></b><span class="lab" style="left:2px">-6 h</span><span class="lab" style="right:2px">+6 h</span>${!ts.length ? `<span class="lab" style="left:30%">${r.d.status === 'untimed' ? 'no time axis' : 'no frames in ±6 h'}</span>` : ''}</div>`;
+    return `<div class="card ${r.s.on ? '' : 'hidden'}" data-row="${r.s.id}"><div class="head"><span class="handle">⋮</span><span class="glyph ${ev.cls}" title="${ev.tag}">${GLYPH[ev.cls]}</span><span class="name" title="${r.l.title}">${shortTitle(r.l)}</span>${stateBadge(r.s, r.l, r.d)}</div><div class="muted">${sourceTag(r.l)}${r.d.headers?.['reference-time'] && r.d.headers['reference-time'] !== 'none' ? ` · run ${dhm(Date.parse(r.d.headers['reference-time']))}` : ''}</div>${mini}<div style="font-size:11px">${frameLine(r.d)}</div><div class="ctl" style="display:flex;gap:4px;align-items:center"><input type="range" min="0" max="1" step="0.05" value="${r.s.opacity}" data-op="${r.s.id}" aria-label="opacity" style="flex:1;min-width:40px"><span class="mono" style="width:30px">${Math.round(r.s.opacity * 100)}%</span></div><div style="display:flex;gap:3px;flex-wrap:wrap">${rowActions(r.s, r.l, r.d)}</div>${r.s.on ? `<details><summary class="muted" style="font-size:11px;cursor:pointer">legend</summary>${legendHtml(r.s.id)}</details>` : ''}</div>`;
+  }).join('') || '<p class="placeholder">empty stack: press / to find a layer</p>';
+  wireRows(cards);
+}
+function renderTree(root) {
+  root = root || document.getElementById('treebody'); if (!root) return;
+  const fams = new Map();
+  for (const l of Object.values(byId)) { const f = familyOf(l); if (!fams.has(f)) fams.set(f, []); fams.get(f).push(l); }
+  root.innerHTML = [...fams].sort((a, b) => a[0].localeCompare(b[0])).map(([f, ls]) => `<details ${ls.some(l => stack.some(s => s.id === l.id)) ? 'open' : ''}><summary>${f} <span class="muted" style="font-weight:400">${ls.length}</span></summary>${ls.sort((a, b) => sourceTag(a).localeCompare(sourceTag(b))).map(l => { const ev = evidenceOf(l); const inStack = stack.some(s => s.id === l.id); return `<label class="${l.raster_available ? '' : 'norast'}" title="${l.title}"><input type="checkbox" data-tree="${l.id}" ${inStack ? 'checked' : ''} ${l.raster_available ? '' : 'disabled'}><span class="glyph ${ev.cls}">${GLYPH[ev.cls]}</span><span>${shortTitle(l)} <span class="src">${sourceTag(l)} · ${l.times.length} frames${l.cadence_seconds ? ' · ' + Math.round(l.cadence_seconds / 60) + ' min' : ''}${l.raster_available ? '' : ' · no raster'}</span></span><span class="muted">${l.kind}</span></label>`; }).join('')}</details>`).join('');
+  root.querySelectorAll('input[data-tree]').forEach(i => i.onchange = () => i.checked ? addLayer(i.dataset.tree) : removeLayer(i.dataset.tree));
+}
+function renderStrip(cs) {
+  const strip = document.getElementById('strip'); if (!strip) return;
+  const t = currentT(); const on = cs.on;
+  const gen = on.filter(r => evidenceOf(r.l).cls === 'generated_display' && willDraw(r.d));
+  const held = on.filter(r => r.d.status === 'beyond' && policy === 'hold');
+  const notDrawn = on.filter(r => !willDraw(r.d) || r.d.error);
+  const untimedN = on.filter(r => r.d.status === 'untimed' && willDraw(r.d));
+  const parts = [`<span class="glyph retrieved">●</span><span><b>${cs.drawnN} of ${on.length}</b> layers drawn at ${hm(t)}</span>`];
+  if (notDrawn.length) parts.push(`<span class="muted">·</span><span>not drawn: ${notDrawn.map(r => `${sourceTag(r.l)} ${shortTitle(r.l)} (${r.d.status === 'none' && r.d.extent ? 'server extent ends ' + r.d.extent[1].slice(5, 16) : r.d.error ? r.d.error.split(':')[0] : r.d.status === 'none' ? 'no frames' : 'nearest ' + ago(r.d.delta)})`).join(', ')}</span>`);
+  if (held.length) parts.push(`<span class="muted">·</span><span style="color:var(--warn)">held beyond tolerance: ${held.map(r => `${sourceTag(r.l)} ${shortTitle(r.l)} ${ago(r.d.delta)}`).join(', ')}</span>`);
+  if (untimedN.length) parts.push(`<span class="muted">·</span><span>${untimedN.map(r => shortTitle(r.l)).join(', ')}: current image, not the instant</span>`);
+  parts.push(`<span class="muted">·</span><span style="color:${gen.length ? 'var(--cls-gen)' : 'inherit'}">${gen.length ? `<span class="glyph generated_display">○</span> GENERATED display: ${gen.map(r => shortTitle(r.l)).join(', ')}` : 'no generated display'}</span>`);
+  if (compare) parts.push(`<span class="muted">·</span><span>swipe: ${sourceTag(byId[compare.left])} | ${sourceTag(byId[compare.right])}</span>`);
+  strip.innerHTML = parts.join('') + `<span style="flex:1"></span><button class="ghost tiny" id="stripwhy">why?</button>`;
+  document.getElementById('stripwhy').onclick = showStackDetail;
+}
+
+// ---------- detail dialogs ----------
+function showLayerDetail(id) {
+  const l = byId[id]; const d = drawn[id] || align(l, currentT()); const ev = evidenceOf(l);
+  document.getElementById('detailh').innerHTML = `<span class="glyph ${ev.cls}">${GLYPH[ev.cls]}</span> ${sourceTag(l)} ${shortTitle(l)}`;
+  const H = d.headers || {};
+  document.getElementById('detailbody').innerHTML = `
+    <p><b>${ev.cls.replace('_', ' ')}</b>: ${ev.tag}. ${frameLine(d)}${d.status !== 'untimed' && d.status !== 'none' ? ` (layer cadence ${l.cadence_seconds ? Math.round(l.cadence_seconds / 60) + ' min' : 'undeclared'}, tolerance ${Math.round((l.staleness_tolerance_seconds ?? 0) / 60)} min, ${l.times.length} frames ${l.times[0]?.slice(5, 16)} to ${l.times.at(-1)?.slice(5, 16)})` : ''}.</p>
+    ${isLiveImagery(l) ? `<p class="muted" style="font-size:12px"><b>Two time axes.</b> <code>/layers</code> advertises ${l.times.length} frames, ${l.times[0]?.slice(5, 16)} to ${l.times.at(-1)?.slice(5, 16)}; the image behind <code>/raster</code> is provider-rendered with its own extent${d.extent ? ` (${d.extent[0].slice(5, 16)} to ${d.extent[1].slice(5, 16)})` : ', learned only by asking'}. This Map asks the server for its frame at the instant and reads the served valid time back.</p>` : ''}
+    <p class="muted" style="font-size:12px">${l.semantics}</p>
+    ${l.run_stale_reason ? `<p class="muted" style="font-size:12px">Run: ${l.run_time || 'none declared'}. ${l.run_stale_reason}</p>` : ''}
+    <h4 style="margin:8px 0 4px">What the image said about itself <span class="muted" style="font-weight:400">(X-Weather headers on the last /raster fetch)</span></h4>
+    ${Object.keys(H).length ? `<dl class="kv">${Object.entries(H).map(([k, v]) => `<dt>${k}</dt><dd>${/^https?:/.test(v) ? `<a href="${v}" target="_blank" rel="noopener">${v.slice(0, 90)}…</a>` : v}</dd>`).join('')}</dl>` : `<p class="muted">no image fetched${d.error ? ': ' + d.error : ''}</p>`}
+    <details><summary>raw /layers record</summary><pre>${JSON.stringify({ ...l, times: `${l.times.length} times`, frames: `${l.frames.length} frames` }, null, 1)}</pre></details>`;
+  document.getElementById('detaildlg').showModal();
+}
+function showStackDetail() {
+  const cs = coverageSummary(); const t = currentT();
+  document.getElementById('detailh').textContent = `Everything drawn at ${iso(t)}`;
+  document.getElementById('detailbody').innerHTML = `<p class="muted" style="font-size:12px">Policy: ${policy === 'blank' ? 'a layer with no frame within its tolerance of the instant draws nothing' : 'a layer with no frame within tolerance holds its nearest frame and says so'}. Basis: ${basisId ? 'the instant steps through the frames of ' + shortTitle(byId[basisId]) : 'clock hours'}.</p><table><tr><th></th><th>layer</th><th>source</th><th>run</th><th>frame drawn</th><th>alignment</th><th>bytes</th><th>state</th></tr>${[...cs.rows].reverse().map(r => { const ev = evidenceOf(r.l); const H = r.d.headers || {}; return `<tr><td><span class="glyph ${ev.cls}">${GLYPH[ev.cls]}</span></td><td>${shortTitle(r.l)}</td><td>${sourceTag(r.l)}</td><td class="mono">${H['reference-time'] && H['reference-time'] !== 'none' ? dhm(Date.parse(H['reference-time'])) : '—'}</td><td class="mono">${r.d.frame ? dhm(Date.parse(r.d.frame)) : H['valid-time'] === 'none' ? 'current' : '—'}</td><td>${frameLine(r.d)}</td><td class="mono">${r.d.bytes ? r.d.bytes.toLocaleString() : ''}</td><td>${stateBadge(r.s, r.l, r.d)}</td></tr>`; }).join('')}</table>
+  <p class="muted" style="font-size:12px;margin-top:8px">Licences: ${[...new Set(cs.rows.map(r => r.d.headers?.licence).filter(Boolean))].join('; ') || 'none read yet'}.</p>`;
+  document.getElementById('detaildlg').showModal();
+}
+function pickCompare(id) {
+  const l = byId[id]; const same = Object.values(byId).filter(x => x.id !== id && x.raster_available && familyOf(x) === familyOf(l));
+  document.getElementById('detailh').textContent = `Swipe ${sourceTag(l)} ${shortTitle(l)} against`;
+  document.getElementById('detailbody').innerHTML = `<p class="muted" style="font-size:12px">Same family, another source or definition. Left of the handle is the stack as drawn; right of it the chosen layer alone. Both maps move together.</p>` + same.map(x => `<button data-cmp="${x.id}" style="display:block;width:100%;text-align:left;margin:3px 0"><span class="glyph ${evidenceOf(x).cls}">${GLYPH[evidenceOf(x).cls]}</span> ${sourceTag(x)} ${shortTitle(x)} <span class="muted">${x.times.length} frames</span></button>`).join('') + (compare ? `<button id="endcmp" style="margin-top:8px">end swipe</button>` : '');
+  document.getElementById('detaildlg').showModal();
+  document.querySelectorAll('[data-cmp]').forEach(b => b.onclick = () => { compare = { left: id, right: b.dataset.cmp, x: 0.5 }; document.getElementById('detaildlg').close(); writeUrl(); alignAndDraw(); });
+  const e = document.getElementById('endcmp'); if (e) e.onclick = () => { document.getElementById('detaildlg').close(); endCompare(); };
+}
+// ---------- palette (variant C) ----------
+let palSel = 0;
+function openPalette() { const d = document.getElementById('palette'); d.showModal(); const q = document.getElementById('palq'); q.value = ''; palSel = 0; renderPalette(''); q.focus(); }
+function renderPalette(q) {
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = Object.values(byId).filter(l => l.raster_available).filter(l => { const hay = `${shortTitle(l)} ${sourceTag(l)} ${familyOf(l)} ${l.field} ${l.product} ${l.group}`.toLowerCase(); return terms.every(t => hay.includes(t)); }).slice(0, 14);
+  document.getElementById('palhits').innerHTML = hits.map((l, i) => `<div class="hit ${i === palSel ? 'sel' : ''}" data-id="${l.id}"><span class="glyph ${evidenceOf(l).cls}">${GLYPH[evidenceOf(l).cls]}</span><span>${shortTitle(l)} <span class="muted">· ${familyOf(l)}</span></span><span class="src">${sourceTag(l)} · ${l.times.length} frames${stack.some(s => s.id === l.id) ? ' · in stack' : ''}</span></div>`).join('') || '<p class="placeholder">no drawable layer matches</p>';
+  document.querySelectorAll('#palhits .hit').forEach(h => h.onclick = () => { addLayer(h.dataset.id); document.getElementById('palette').close(); });
+}
+document.getElementById('palq').oninput = e => { palSel = 0; renderPalette(e.target.value); };
+document.getElementById('palq').onkeydown = e => { const hits = document.querySelectorAll('#palhits .hit'); if (e.key === 'ArrowDown') { palSel = Math.min(hits.length - 1, palSel + 1); renderPalette(e.target.value); e.preventDefault(); } if (e.key === 'ArrowUp') { palSel = Math.max(0, palSel - 1); renderPalette(e.target.value); e.preventDefault(); } if (e.key === 'Enter') { const h = hits[palSel]; if (h) { addLayer(h.dataset.id); document.getElementById('palette').close(); } } };
+
+// ---------- scrubber ----------
+function renderScrubber() {
+  buildScrubber(document.getElementById('scrubber'), currentT());
+  const w = windowOf(); const b = byId[basisId];
+  document.getElementById('raillegend').textContent = `window ${iso(w.start)} to ${iso(w.end)} from /timeline · bars: sources with a frame per hour · ticks above the bars: frames of ${b ? shortTitle(b) + ' (the basis)' : 'the top drawable layer'} · dashed line: tier boundary · axis in Newfoundland time, stamps in UTC`;
+}
+function buildScrubber(root, t) {
+  const w = windowOf(); const span = w.end - w.start; const pct = ms => ((ms - w.start) / span * 100).toFixed(3) + '%';
+  const items = timeline ? timeline.items : []; const max = Math.max(1, ...items.map(i => i.available_products.length));
+  let marks = ''; let lastX = -1e9; const railW = root.clientWidth || 1200;
+  for (let ms = Math.ceil(w.start / hour) * hour; ms <= w.end; ms += hour) {
+    const d = new Date(ms + nlOffset); const h = d.getUTCHours(), m = d.getUTCMinutes(); const inCore = ms < (w.boundary ?? Infinity);
+    let label = null; if (inCore && m === 30 && (h % 12 === 0)) label = `${h}:30`; if (h === 0 && m === 30) label = d.toISOString().slice(5, 10); if (!inCore && !(h === 0 && m === 30)) label = null;
+    if (!label) continue; const x = (ms - w.start) / span * railW; if (x - lastX < 44) continue; lastX = x; marks += `<span style="left:${pct(ms)}">${label}</span>`;
+  }
+  const fl = byId[basisId] || [...stack].reverse().map(s => byId[s.id]).find(l => l && l.raster_available && !untimed(l));
+  const frames = fl ? fl.times.map(Date.parse).filter(x => x >= w.start && x <= w.end).map(x => `<i style="left:${pct(x)}"></i>`).join('') : '';
+  root.innerHTML = `
+    <div class="tiers" aria-hidden="true"><span style="left:0;width:${w.boundary ? pct(w.boundary) : '100%'};background:var(--core)"></span>${w.boundary ? `<span style="left:${pct(w.boundary)};right:0;background:var(--planning)"></span>` : ''}</div>
+    <div class="coverage" aria-hidden="true">${items.map(i => `<i style="height:${Math.round(i.available_products.length / max * 100)}%" title="${i.valid_time_utc}: ${i.available_products.join(', ') || 'nothing'}"></i>`).join('')}</div>
+    <div class="frames" aria-hidden="true">${frames}</div>
+    <div class="marks" aria-hidden="true">${marks}</div>
+    ${w.boundary ? `<div class="boundary" style="left:${pct(w.boundary)}"><label>+24 h · planning</label></div>` : ''}
+    <div class="now" style="left:${pct(snapHour(Date.now()))}" title="now"></div>
+    <div class="head" style="left:${pct(t)}"></div>
+    <input type="range" min="${w.start}" max="${w.end}" step="${basisId ? 60e3 : hour}" value="${t}" aria-label="Focus instant" aria-valuetext="${nlTime(t)}, ${tierAt(t)} tier">`;
+  root.querySelector('input').oninput = e => setT(basisId ? +e.target.value : snapHour(+e.target.value));
+}
+
+// ---------- wiring ----------
+document.getElementById('theme').onchange = e => { focus.theme = e.target.value; try { localStorage.setItem('astraeus-weather-theme', focus.theme); } catch {} document.documentElement.dataset.theme = focus.theme; if (mapA) { for (const m of [mapA, mapB]) { m.setStyle(baseStyle(focus.theme)); } mapA.once('styledata', () => { mapReady = false; mapA.once('idle', () => { mapReady = true; drawSites(mapA); for (const id in drawn) delete drawn[id].headers; alignAndDraw(); }); }); } };
+document.getElementById('basis').onchange = e => { basisId = e.target.value; writeUrl(); renderScrubber(); };
+document.getElementById('policy').onchange = e => { policy = e.target.value; writeUrl(); alignAndDraw(); };
+document.getElementById('jumpnow').onclick = () => setT(snapHour(Date.now()));
+document.getElementById('stepback').onclick = () => step(-1);
+document.getElementById('stepfwd').onclick = () => step(1);
+document.getElementById('play').onclick = e => { playing = !playing; e.currentTarget.setAttribute('aria-pressed', playing); e.currentTarget.textContent = playing ? '❚❚ pause' : '▶ play'; clearInterval(playTimer); if (playing) playTimer = setInterval(() => { const before = currentT(); step(1); if (currentT() === before) setT(windowOf().start); }, 900); };
+document.getElementById('placebtn').onclick = () => { const dlg = document.getElementById('placedlg'); const sl = document.getElementById('sitelist'); sl.innerHTML = SITES.map(s => `<button data-site="${s.id}" aria-pressed="${focus.site === s.id}" style="display:block;width:100%;text-align:left;margin:3px 0">${s.name} <span class="muted">${s.lat}, ${s.lon}, ${s.elev} m</span></button>`).join(''); for (const b of sl.querySelectorAll('button')) b.onclick = () => { focus.site = b.dataset.site; focus.lat = focus.lon = null; dlg.close(); renderAll(); if (mapA) drawSites(mapA); }; const fp = focusPoint(); document.getElementById('lat').value = fp.lat; document.getElementById('lon').value = fp.lon; dlg.showModal(); };
+document.getElementById('usepoint').onclick = () => { const la = +document.getElementById('lat').value, lo = +document.getElementById('lon').value; const err = document.getElementById('pointerr'); if (!(la <= BOX.n && la >= BOX.s && lo >= BOX.w && lo <= BOX.e)) { err.textContent = 'outside the evidence box; refused'; return; } err.textContent = ''; focus.site = null; focus.lat = la; focus.lon = lo; document.getElementById('placedlg').close(); renderAll(); if (mapA) drawSites(mapA); };
+document.getElementById('placeclose').onclick = () => document.getElementById('placedlg').close();
+document.getElementById('detailclose').onclick = () => document.getElementById('detaildlg').close();
+for (const b of document.querySelectorAll('#variantbar button')) b.onclick = () => { focus.mv = b.dataset.mv; renderAll(); };
+document.addEventListener('keydown', e => { if (e.target.matches('input,select,textarea')) return; if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); if (e.key === ' ') { e.preventDefault(); document.getElementById('play').click(); } if (e.key === '/' && focus.mv === 'C') { e.preventDefault(); openPalette(); } if (e.key === 'Escape' && focus.full) { focus.full = null; renderAll(); } });
+
+try { const th = localStorage.getItem('astraeus-weather-theme'); if (th) focus.theme = th; } catch {}
+readUrl(); document.documentElement.dataset.theme = focus.theme; loadAll();
+</script>
+</body>
+</html>
