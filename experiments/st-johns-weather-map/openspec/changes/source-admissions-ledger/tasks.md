@@ -50,7 +50,7 @@ Verification commands used below, run from
   Verify: `python3 -m unittest discover -s registry/tests -v` with
   `test_superseded_requires_successor` and
   `test_condition_blocks_schedulability`.
-- [ ] 1.4 Update `CONTEXT.md`'s registry-state glossary line to note that the
+- [x] 1.4 Update `CONTEXT.md`'s registry-state glossary line to note that the
   state the glossary calls credential-blocked is written
   `credential-required`.
   Verify: `python3 registry/audit.py` cross-checks the glossary state list
@@ -58,7 +58,7 @@ Verification commands used below, run from
 
 ## 2. Audit rules (Schema owner)
 
-- [ ] 2.1 Refuse `operational` on any record, and map every unknown state to
+- [x] 2.1 Refuse `operational` on any record, and map every unknown state to
   `unavailable` in the exported ceiling rather than guessing.
   Verify: `python3 -m unittest discover -s registry/tests -v -k operational`.
 - [ ] 2.2 Implement the `implementing` split rule: `implemented-unverified`
@@ -70,10 +70,10 @@ Verification commands used below, run from
   tickets 24, 25, 26 and 28 has a record, and every record has a state, an
   access path or an explicit none, and a reason.
   Verify: `python3 -m unittest discover -s registry/tests -v -k ledger`.
-- [ ] 2.4 Refuse a record that declares restricted terms without terms text or
+- [x] 2.4 Refuse a record that declares restricted terms without terms text or
   source URL, and refuse an export path carrying such values.
   Verify: `python3 -m unittest discover -s registry/tests -v -k restricted`.
-- [ ] 2.5 Refuse an access endpoint on any `link-only` or `partnership-only`
+- [x] 2.5 Refuse an access endpoint on any `link-only` or `partnership-only`
   record.
   Verify: `python3 -m unittest discover -s registry/tests -v -k no_endpoint`.
 
