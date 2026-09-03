@@ -28,16 +28,23 @@ class RegistryAuditTests(unittest.TestCase):
     def test_credential_required_cannot_claim_anonymous_access(self) -> None:
         data = registry()
         source = next(item for item in data["sources"] if item["id"] == "nl-511")
+        source["status"] = "credential-required"
+        source["credential"] = {
+            "name": "WEATHER_SECRET_NL511_API_KEY",
+            "registration_url": source["authentication"]["registration_url"],
+        }
         source["authentication"]["required"] = False
         _, errors = audit.validate(data)
-        self.assertTrue(any("credential_required" in error for error in errors))
+        self.assertTrue(any("authentication.required=true" in error for error in errors))
 
-    def test_active_requires_fixture_and_live_evidence(self) -> None:
+    def test_operational_may_never_be_declared(self) -> None:
         data = registry()
         source = data["sources"][0]
-        source["status"] = "active"
+        source["status"] = "operational"
         _, errors = audit.validate(data)
-        self.assertTrue(any("active requires passing" in error for error in errors))
+        self.assertTrue(
+            any("declares operational, which no source may claim" in error for error in errors)
+        )
 
     def test_all_registry_ids_are_covered_by_plan_catalogue(self) -> None:
         data = registry()

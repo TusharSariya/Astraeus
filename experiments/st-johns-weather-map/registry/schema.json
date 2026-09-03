@@ -19,7 +19,8 @@
     "nonempty": {"type": "string", "minLength": 1},
     "url": {"type": "string", "pattern": "^https://"},
     "status": {
-      "enum": ["active", "implementing", "credential_required", "licence_review", "unavailable", "duplicate_evidence", "unsupported_field", "retired", "rejected"]
+      "description": "The ten admission states. 'operational' is listed so the vocabulary is complete and so the ceiling table has a value to map, but no record may declare it: the audit refuses it on every record.",
+      "enum": ["operational", "implemented-unverified", "catalogued", "credential-required", "licence-blocked", "link-only", "partnership-only", "unavailable", "rejected", "superseded"]
     },
     "delivery_kind": {
       "description": "How this source's values reach the deployment. 'published_cell' is the producer's own grid or observation; 'reprocessed' is an intermediary's transformation of the producer's field; 'intermediary_derived' is a value the intermediary computed from the producer's fields by the intermediary's own method, which the producer never published.",
@@ -128,7 +129,7 @@
         "producer": {"$ref": "#/$defs/nonempty"},
         "product": {"$ref": "#/$defs/nonempty"},
         "documentation_urls": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/url"}},
-        "access_endpoints": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/url"}},
+        "access_endpoints": {"type": "array", "minItems": 0, "items": {"$ref": "#/$defs/url"}},
         "integration": {
           "type": "object", "additionalProperties": false,
           "required": ["kind", "client", "metadata_contract"],
@@ -196,13 +197,57 @@
         },
         "fixture_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
         "live_smoke_test_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
-        "ensemble": {"$ref": "#/$defs/ensemble"}
+        "ensemble": {"$ref": "#/$defs/ensemble"},
+        "credential": {
+          "description": "Names the credential a credential-required source needs and where to register for it. There is deliberately no value field: the registry says which secret is needed, never what it is.",
+          "type": "object", "additionalProperties": false, "required": ["name", "registration_url"],
+          "properties": {
+            "name": {"type": "string", "pattern": "^WEATHER_SECRET_[A-Z0-9_]+$"},
+            "registration_url": {"$ref": "#/$defs/url"}
+          }
+        },
+        "restricted_terms": {
+          "description": "The verbatim clause that admits this source for research use only, with where it was read and when. 'redistribution' is const false because a record carrying this block is one whose terms forbid passing the values on.",
+          "type": "object", "additionalProperties": false, "required": ["terms_text", "terms_source_url", "redistribution", "read_date"],
+          "properties": {
+            "terms_text": {"$ref": "#/$defs/nonempty"},
+            "terms_source_url": {"$ref": "#/$defs/url"},
+            "redistribution": {"const": false},
+            "read_date": {"type": "string", "format": "date"}
+          }
+        },
+        "admission_condition": {
+          "description": "What is outstanding before this record may be scheduled, and what would satisfy it. Nothing in the running system flips 'satisfied'; a person records it after doing the work.",
+          "type": "object", "additionalProperties": false, "required": ["condition", "satisfied_by", "satisfied", "recorded_on"],
+          "properties": {
+            "condition": {"$ref": "#/$defs/nonempty"},
+            "satisfied_by": {"$ref": "#/$defs/nonempty"},
+            "satisfied": {"type": "boolean"},
+            "recorded_on": {"type": "string", "format": "date"}
+          }
+        },
+        "superseded_by": {
+          "description": "The record that replaced this one. Required on status 'superseded' so that no record can be retired without naming where a reader should look instead.",
+          "type": "object", "additionalProperties": false, "required": ["source_id", "detail"],
+          "properties": {
+            "source_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+            "detail": {"$ref": "#/$defs/nonempty"}
+          }
+        }
       },
       "allOf": [
         {
           "if": {"properties": {"category": {"const": "ensemble"}}, "required": ["category"]},
           "then": {"required": ["ensemble"]},
           "else": {"not": {"required": ["ensemble"]}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "credential-required"}}, "required": ["status"]},
+          "then": {"required": ["credential"]}
+        },
+        {
+          "if": {"properties": {"status": {"const": "superseded"}}, "required": ["status"]},
+          "then": {"required": ["superseded_by"]}
         }
       ]
     }

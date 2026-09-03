@@ -92,15 +92,20 @@ class DataMode(StrEnum):
 
 
 class SourceState(StrEnum):
-    ACTIVE = "active"
-    IMPLEMENTING = "implementing"
-    CREDENTIAL_REQUIRED = "credential_required"
-    LICENCE_REVIEW = "licence_review"
+    #: ``OPERATIONAL`` is a member so that the ceiling in
+    #: ``registry.admission`` has something to refuse. No record may declare it
+    #: and no response ever emits it: the ceiling maps it to ``UNAVAILABLE``
+    #: before a state reaches this enum, and ``active`` is not a state at all.
+    OPERATIONAL = "operational"
+    IMPLEMENTED_UNVERIFIED = "implemented-unverified"
+    CATALOGUED = "catalogued"
+    CREDENTIAL_REQUIRED = "credential-required"
+    LICENCE_BLOCKED = "licence-blocked"
+    LINK_ONLY = "link-only"
+    PARTNERSHIP_ONLY = "partnership-only"
     UNAVAILABLE = "unavailable"
-    DUPLICATE_EVIDENCE = "duplicate_evidence"
-    UNSUPPORTED_FIELD = "unsupported_field"
-    RETIRED = "retired"
     REJECTED = "rejected"
+    SUPERSEDED = "superseded"
 
 
 #: ``derived`` is a flag, never a fifth status: a fifth status would break

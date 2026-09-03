@@ -156,7 +156,92 @@
     "NOAA SWPC space weather (Kp, solar wind, OVATION aurora)": [
       "noaa-swpc-kp",
       "noaa-swpc-rtsw",
-      "noaa-swpc-ovation"
+      "noaa-swpc-ovation",
+      "noaa-swpc-plasma",
+      "noaa-swpc-propagated-solar-wind",
+      "noaa-swpc-kp-1m",
+      "noaa-swpc-alerts",
+      "noaa-swpc-scales",
+      "noaa-goes-magnetometer",
+      "noaa-goes-xray",
+      "noaa-swpc-kyoto-dst",
+      "noaa-swpc-stereo-a",
+      "noaa-swpc-kp-hourly-prediction"
+    ],
+    "GFZ Hp30": [
+      "gfz-hp30"
+    ],
+    "CelesTrak GP and Space-Track": [
+      "celestrak-gp",
+      "space-track"
+    ],
+    "NRCan STJ magnetometer": [
+      "nrcan-stj-magnetometer"
+    ],
+    "Space weather citations": [
+      "space-weather-canada-regional",
+      "nasa-soho-sdo-goes-suvi-imagery"
+    ],
+    "Open-Meteo reprocessed admissions": [
+      "openmeteo-cams-aod",
+      "openmeteo-lsa-saf-radiation",
+      "openmeteo-gfs-wave"
+    ],
+    "Aggregator foreign models": [
+      "openmeteo-jma-gsm",
+      "openmeteo-arpege",
+      "openmeteo-ukmo-global",
+      "openmeteo-kma-gdps",
+      "openmeteo-cma-grapes",
+      "openmeteo-graphcast"
+    ],
+    "Bright Sky DWD MOSMIX": [
+      "brightsky-dwd-mosmix-71801"
+    ],
+    "Open-Meteo catalogued endpoints": [
+      "openmeteo-air-quality-particulates",
+      "openmeteo-marine-currents-sealevel",
+      "openmeteo-glofas",
+      "openmeteo-elevation"
+    ],
+    "Open-Meteo refused endpoints": [
+      "openmeteo-marine-sst",
+      "openmeteo-uv-index",
+      "openmeteo-pollen-ammonia",
+      "openmeteo-aqi-indices",
+      "openmeteo-beam-split",
+      "openmeteo-climate-cmip6",
+      "openmeteo-seasonal-seas5"
+    ],
+    "RIOPS and GDWPS": [
+      "eccc-riops",
+      "eccc-gdwps"
+    ],
+    "Coast Guard NAVWARN": [
+      "ccg-navwarn"
+    ],
+    "NL provincial air quality CSV": [
+      "nl-air-quality-csv"
+    ],
+    "Light pollution: Falchi atlas and VIIRS DNB": [
+      "falchi-night-sky-atlas",
+      "viirs-dnb-night-lights"
+    ],
+    "Astronomy tools and paid providers": [
+      "7timer",
+      "meteosource",
+      "noaa-rap",
+      "noaa-nam",
+      "globe-at-night"
+    ],
+    "Citizen weather networks": [
+      "netatmo",
+      "weather-underground"
+    ],
+    "Partnership-only cameras": [
+      "ccg-harbour-cameras",
+      "city-st-johns-road-cameras",
+      "ntv-cameras"
     ]
   }
 }

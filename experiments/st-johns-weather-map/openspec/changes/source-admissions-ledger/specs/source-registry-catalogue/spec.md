@@ -108,10 +108,10 @@ The registry SHALL carry one record for every source named in the owner resoluti
 
 #### Scenario: A reprocessed aggregator record
 - **WHEN** `openmeteo-cams-aod` is declared
-- **THEN** it carries state `implemented-unverified`, delivery kind `reprocessed`, CAMS as producer and Open-Meteo as intermediary, every documented transformation including the 0.1 degree upsampling of a 0.4 degree producer grid, and it is refused as a display primary
+- **THEN** it carries state `catalogued` until a registered adapter claims the id, delivery kind `reprocessed`, CAMS as producer and Open-Meteo as intermediary, every documented transformation including the 0.1 degree upsampling of a 0.4 degree producer grid, and it is refused as a display primary
 
 #### Scenario: An intermediary-derived record
-- **WHEN** `openmeteo-weathernext-2-cloud` is declared
+- **WHEN** `open-meteo-weathernext-2` is declared
 - **THEN** it carries delivery kind `intermediary_derived`, names Google WeatherNext 2 as producer and Open-Meteo as intermediary, and its values are never the display primary and never a derivation input
 
 #### Scenario: A resolved source with no record

@@ -68,8 +68,11 @@ full fidelity) and the planning window (to 14 days ahead from global products).
 
 **Registry state**:
 The ceiling a source may reach: operational, implemented-unverified,
-catalogued, credential-blocked, licence-blocked, link-only, partnership-only,
+catalogued, credential-required, licence-blocked, link-only, partnership-only,
 unavailable, rejected, superseded. A live retrieval never promotes a state.
+The state this glossary once called credential-blocked is written
+`credential-required` in the registry, because the name should say the source
+is admitted and waiting on a key, not that it was refused.
 
 ### Activities
 

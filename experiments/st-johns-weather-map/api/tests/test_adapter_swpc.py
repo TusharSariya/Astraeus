@@ -218,7 +218,13 @@ def test_registry_cadences_parse_and_no_lead_hours_category():
         config = get_config(source_id)
         assert config.cycle_seconds == cadence_seconds, source_id
         assert config.freshness_threshold_seconds is not None, source_id
-        assert config.ingestible is True, source_id
+        # The real-time solar wind feed is catalogued with a re-implementation
+        # condition outstanding (DSCOVR left the feed; every quality flag must
+        # be stored), so the owner's declaration keeps it off the schedule
+        # until the adapter is rewritten and its condition is recorded.
+        expected = source_id != "noaa-swpc-rtsw"
+        assert config.ingestible is expected, source_id
+        assert config.admission_condition_outstanding is (not expected), source_id
         assert config.category == "space_weather"
     assert "space_weather" not in FORECAST_CATEGORIES
 

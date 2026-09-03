@@ -298,3 +298,32 @@ Owner gates 6.1 to 6.3 ticked against ticket 22; 6.4 (minimum member count
 per statistic) is open for the owner.
 
 Landed as PR #35, 2026-09-02.
+
+### Step 8: source-admissions-ledger
+
+Branch `execution/source-admissions`, stacked on step 7. One Fable change
+lead, killed once by a rate limit after merging section 6 and resumed with
+its context intact; nine task agents, one per task or small batch, none
+resumed, at most three at once, sections 3 to 8 serialised on
+`registry/source_data.py`. Schema gains the ten admission states and the
+credential, restricted-terms, admission-condition and superseded-by blocks;
+the ceiling table moved to a new `registry/admission.py` read by the store,
+the ingest registry and the audit; `models.py` changed only in the
+`SourceState` members. The registry now holds 118 records: catalogued 62,
+implemented-unverified 20, credential-required 10, unavailable 9, rejected
+9, partnership-only 4, link-only 3, superseded 1, operational 0. Ten records
+are held by an outstanding admission condition and are not schedulable.
+Ten deviations are recorded in the change's design.md, the largest being
+that `implemented-unverified` is an audit invariant (adapter, non-link-only
+integration, passing fixture), so 56 ledger rows landed `catalogued` until
+an adapter claims their id, and that `openmeteo-weathernext-2-cloud` is
+satisfied on the existing `open-meteo-weathernext-2` record.
+
+Gate in the main checkout, 2026-09-03: API 1315 passed, 25 skipped; web
+383 passed in 19 files; registry 227 passed; SQL publication and retention
+invariants PASS; strict validate valid; specctl 0 errors, 0 warnings.
+
+For the owner: approve the `SourceState` enum edit; decide whether
+`open-meteo-weathernext-2` moves to `implemented-unverified` with restricted
+terms; read and record the CWOP, CelesTrak and NL 511 terms.
+

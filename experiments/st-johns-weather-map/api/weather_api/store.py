@@ -3138,16 +3138,9 @@ def live_profile_levels(store: LiveStore, latitude: float, longitude: float, val
 # serving it is honest in every mode; what it must never do is claim a source is
 # ``active`` or fresh on the strength of being declared.
 
-_REGISTRY_STATE_CEILING = {
-    "implementing": "implementing",
-    "credential_required": "credential_required",
-    "licence_review": "licence_review",
-    "unavailable": "unavailable",
-    "duplicate_evidence": "duplicate_evidence",
-    "unsupported_field": "unsupported_field",
-    "retired": "retired",
-    "rejected": "rejected",
-}
+# The ceiling table itself lives in ``registry/admission.py``, which the audit
+# and the ingest registry read too, so no two of them can disagree about what a
+# state means or about which state is unreachable.
 
 
 def _registry_records() -> list[dict[str, Any]]:
@@ -3158,6 +3151,8 @@ def _registry_records() -> list[dict[str, Any]]:
 
 def registry_source_records() -> list[Any]:
     """Every registry record as a catalogue entry, in registry order."""
+    from registry.admission import ceiling_state  # noqa: PLC0415
+
     from .models import SourceFieldEntry, SourceRecord, SourceState  # noqa: PLC0415
 
     import ingest.adapters  # noqa: F401, PLC0415 - register present families
@@ -3176,7 +3171,7 @@ def registry_source_records() -> list[Any]:
                 category=str(record["category"]),
                 producer=str(record["producer"]),
                 product=str(record["product"]),
-                state=SourceState(_REGISTRY_STATE_CEILING.get(str(record["status"]), "unavailable")),
+                state=SourceState(ceiling_state(str(record["status"]))),
                 status_reason=str(record["reason"]),
                 role=str(record["poc_role"]),
                 # Copied from the record, never inferred: the registry is the
@@ -3238,6 +3233,34 @@ def schedulable_source_ids() -> set[str]:
         for source_id, config in ingest_configs().items()
         if config.ingestible and source_id in adapter_ids
     }
+
+
+def unschedulable_detail(source_ids: Sequence[str]) -> str:
+    """Why each named id cannot be scheduled, in the order it was given.
+
+    A refusal that only said "not schedulable" would leave the caller guessing
+    whether the id is credential-gated, merely catalogued, or admitted subject
+    to a check nobody has recorded yet. Each entry names the record's own
+    declared state, and where an admission condition stands against the record
+    it names the condition text as well, because that is the sentence the owner
+    wrote about what is outstanding.
+    """
+    from registry.admission import condition_outstanding  # noqa: PLC0415
+
+    records = {str(record["id"]): record for record in _registry_records()}
+    entries: list[str] = []
+    for source_id in source_ids:
+        record = records.get(source_id)
+        if record is None:
+            entries.append(f"{source_id} (unknown)")
+            continue
+        state = str(record["status"])
+        if condition_outstanding(record):
+            condition = str((record.get("admission_condition") or {}).get("condition", "unstated"))
+            entries.append(f"{source_id} ({state}; condition outstanding: {condition})")
+        else:
+            entries.append(f"{source_id} ({state})")
+    return "source ids are not schedulable: " + ", ".join(entries)
 
 
 def known_source_ids() -> set[str]:

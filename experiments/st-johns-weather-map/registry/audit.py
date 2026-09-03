@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -14,18 +15,163 @@ import jsonschema
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import admission  # noqa: E402
 import fields as field_catalogue  # noqa: E402
 from source_data import ENSEMBLE_BUILD_ORDER, registry  # noqa: E402
 
-ALLOWED_STATUSES = {
-    "active", "implementing", "credential_required", "licence_review",
-    "unavailable", "duplicate_evidence", "unsupported_field", "retired", "rejected",
-}
+#: The state vocabulary is defined once, in ``registry/admission.py``, so that
+#: the audit, the API ceiling and the ingest registry cannot drift apart.
+ALLOWED_STATUSES = set(admission.STATES)
 
 #: Where adapter manifests live. Read statically rather than imported: the audit
 #: must run in CI without numpy, xarray or a network stack, and an adapter that
 #: cannot be imported must still have its declared keys checked.
 INGEST_ROOT = HERE.parent / "ingest"
+
+#: The environment variable name shape a credential block may carry.
+_CREDENTIAL_NAME = re.compile(r"^WEATHER_SECRET_[A-Z0-9_]+$")
+
+#: Every source id the 2026-09-02 resolutions name in the admissions ledger of
+#: ``openspec/changes/source-admissions-ledger/design.md``, grouped by the
+#: ledger's own sections so a reader can check this literal against the table
+#: row by row. 112 distinct ids appear in the table; the one omitted here is
+#: ``openmeteo-weathernext-2-cloud``, which Deviation 1 folds into the existing
+#: ``open-meteo-weathernext-2`` record rather than creating a second
+#: declaration for the same product. ``eccc-rdps`` is listed once although the
+#: table names it twice, the second time for its field-level seeing and
+#: sky-transparency admission.
+#:
+#: Ids the table does not name are deliberately absent even where the registry
+#: carries them: the ensemble families, ``dwd-icon-eps`` and
+#: ``open-meteo-weathernext-2`` are governed by other changes, and a ledger
+#: that claimed them would assert a decision these resolutions did not make.
+LEDGER_SOURCE_IDS: frozenset[str] = frozenset({
+    # ECCC models, analyses and nowcasting (ticket 24)
+    "eccc-hrdps",
+    "eccc-rdps",
+    "eccc-gdps",
+    "eccc-hrdps-weg-prognos",
+    "eccc-hrdpa",
+    "eccc-rdpa",
+    "eccc-hrepa",
+    "eccc-hrdlps",
+    "eccc-caldas",
+    "eccc-integrated-nowcasting",
+    "eccc-radiosonde",
+    # Foreign models (tickets 24 and 14)
+    "noaa-gfs",
+    "ecmwf-ifs",
+    "ecmwf-aifs-single",
+    "dwd-icon-global",
+    "openmeteo-jma-gsm",
+    "openmeteo-arpege",
+    "openmeteo-ukmo-global",
+    "brightsky-dwd-mosmix-71801",
+    "openmeteo-kma-gdps",
+    "openmeteo-cma-grapes",
+    "openmeteo-graphcast",
+    # Astronomy geometry (ticket 25)
+    "nasa-jpl-de442",
+    "celestrak-gp",
+    "space-track",
+    # Space weather (tickets 25 and 8)
+    "noaa-swpc-rtsw",
+    "noaa-swpc-kp",
+    "noaa-swpc-ovation",
+    "noaa-swpc-plasma",
+    "noaa-swpc-propagated-solar-wind",
+    "noaa-swpc-kp-1m",
+    "noaa-swpc-alerts",
+    "noaa-swpc-scales",
+    "gfz-hp30",
+    "noaa-goes-magnetometer",
+    "noaa-goes-xray",
+    "noaa-swpc-kyoto-dst",
+    "noaa-swpc-stereo-a",
+    "noaa-swpc-kp-hourly-prediction",
+    "nrcan-stj-magnetometer",
+    "space-weather-canada-regional",
+    "nasa-soho-sdo-goes-suvi-imagery",
+    # Transparency, seeing, aerosol, light pollution (tickets 25, 10 and 28).
+    # The section's first row is ``eccc-rdps``, listed above with ticket 24.
+    "openmeteo-cams-aod",
+    "openmeteo-lsa-saf-radiation",
+    "eccc-raqdps",
+    "eccc-rdaqa",
+    "eccc-wildfire-hotspots",
+    "eccc-raqdps-firework",
+    "copernicus-cams",
+    "nasa-earthdata-aerosol",
+    "viirs-dnb-night-lights",
+    "falchi-night-sky-atlas",
+    "7timer",
+    "meteosource",
+    "noaa-rap",
+    "noaa-nam",
+    "globe-at-night",
+    # Satellite and research comparison (tickets 25 and 9). The section's
+    # third row is ``openmeteo-weathernext-2-cloud``, omitted by Deviation 1.
+    "noaa-goes-east",
+    "google-weathernext-2",
+    # Surface, aviation, hazard and nowcast (ticket 26)
+    "eccc-swob",
+    "awc-metar-speci",
+    "awc-taf",
+    "awc-sigmet-airmet",
+    "awc-pirep-airep",
+    "eccc-radar",
+    "eccc-lightning",
+    "eccc-cap-alerts",
+    "eccc-thunderstorm-outlooks",
+    "eccc-hurricane-products",
+    # Fog, marine and ocean (tickets 26, 9 and 28)
+    "smartatlantic-st-johns",
+    "smartatlantic-other-validated",
+    "eccc-marine-buoys-synop",
+    "ccg-navwarn",
+    "eccc-ciops-east",
+    "eccc-riops",
+    "eccc-rdwps",
+    "eccc-gdwps",
+    "eccc-rewps",
+    "eccc-gdsps",
+    "eccc-resps",
+    "dfo-iwls",
+    "openmeteo-gfs-wave",
+    "eccc-marine-forecasts-alerts",
+    # Hydrology and air quality (tickets 26 and 11)
+    "eccc-hydrometric",
+    "provincial-hydrometric",
+    "municipal-hydrometric",
+    "nl-air-quality-csv",
+    "eccc-aqhi",
+    # Transport and cameras (tickets 26, 12 and 21)
+    "nl-511",
+    "nl-511-rwis",
+    "nav-canada-weather-cameras",
+    "ccg-harbour-cameras",
+    "city-st-johns-road-cameras",
+    "ntv-cameras",
+    # Citizen observations (tickets 26 and 25)
+    "noaa-madis",
+    "raw-cwop-pws",
+    "purpleair",
+    "openaq",
+    "netatmo",
+    "weather-underground",
+    # Open-Meteo endpoints not admitted (ticket 28)
+    "openmeteo-air-quality-particulates",
+    "openmeteo-marine-currents-sealevel",
+    "openmeteo-glofas",
+    "openmeteo-elevation",
+    "openmeteo-marine-sst",
+    "openmeteo-uv-index",
+    "openmeteo-pollen-ammonia",
+    "openmeteo-aqi-indices",
+    "openmeteo-beam-split",
+    "openmeteo-climate-cmip6",
+    "openmeteo-seasonal-seas5",
+})
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -613,6 +759,279 @@ def ensemble_errors(data: dict[str, Any]) -> list[str]:
     return errors
 
 
+def state_errors(
+    source: dict[str, Any],
+    adapter_ids: set[str],
+    known_ids: set[str] | None = None,
+) -> list[str]:
+    """Everything the declared state itself promises about the rest of the record.
+
+    One state is refused outright: ``operational`` is the vocabulary's top and
+    no source may claim it, so a record declaring it is an error rather than a
+    record the ceiling quietly lowers. The rest are consistency checks. A
+    record cannot claim to be implemented without an adapter, a passing fixture
+    and a real integration; a terminal record cannot carry tests that will
+    never run; a record with no data path cannot list one; and the two states
+    that require a block (``credential-required``, ``superseded``) may not be
+    declared without it, nor may the block appear without the state.
+    """
+    sid = source["id"]
+    status = source["status"]
+    errors: list[str] = []
+    if status not in ALLOWED_STATUSES:
+        errors.append(f"{sid}: invalid status {status!r}")
+        return errors
+    if status == "operational":
+        errors.append(f"{sid}: declares operational, which no source may claim")
+    if status == "implemented-unverified" and not admission.implemented_unverified_ok(source, adapter_ids):
+        errors.append(
+            f"{sid}: claims implemented-unverified with no registered adapter, "
+            "a link_only integration or a fixture that is not passing"
+        )
+    if status in admission.TERMINAL_STATES:
+        if source["fixture_status"] != "not_applicable" or source["live_smoke_test_status"] != "not_applicable":
+            errors.append(f"{sid}: terminal status must mark fixture and live tests not_applicable")
+    if status in admission.NO_ACCESS_PATH_STATES and source["access_endpoints"]:
+        errors.append(f"{sid}: status {status!r} declares no data path, so access_endpoints must be empty")
+    has_credential = source.get("credential") is not None
+    if status == "credential-required" and not has_credential:
+        errors.append(f"{sid}: credential-required needs a credential block")
+    if has_credential and status != "credential-required":
+        errors.append(f"{sid}: carries a credential block without status credential-required")
+    successor = source.get("superseded_by")
+    if status == "superseded" and successor is None:
+        errors.append(f"{sid}: superseded must name its successor in superseded_by")
+    if successor is not None:
+        if status != "superseded":
+            errors.append(f"{sid}: carries superseded_by without status superseded")
+        if known_ids is not None and successor["source_id"] not in known_ids:
+            errors.append(f"{sid}: superseded_by names unknown source id {successor['source_id']!r}")
+    return errors
+
+
+def credential_errors(source: dict[str, Any]) -> list[str]:
+    """The credential block names a secret; it must never carry one.
+
+    The schema already forbids any key but the name and the registration URL,
+    which is what keeps key material out of the record. What is checked here is
+    that the name is one ``ingest/secrets.py`` could map, and that the record's
+    own ``authentication`` block agrees with it: a source that needs a
+    credential says so in both places, and points at the same registration
+    page from both.
+    """
+    block = source.get("credential")
+    if block is None:
+        return []
+    sid = source["id"]
+    errors: list[str] = []
+    name = block["name"]
+    if not _CREDENTIAL_NAME.match(name):
+        errors.append(f"{sid}: credential name {name!r} is not a WEATHER_SECRET_* environment variable name")
+    auth = source["authentication"]
+    if not auth["required"]:
+        errors.append(f"{sid}: credential-required must set authentication.required=true")
+    if auth["registration_url"] != block["registration_url"]:
+        errors.append(f"{sid}: authentication.registration_url must equal the credential block's registration_url")
+    return errors
+
+
+def restricted_terms_errors(source: dict[str, Any]) -> list[str]:
+    """Research-use admission is recorded, not assumed.
+
+    A record admitted under terms that forbid redistribution carries the clause
+    verbatim, so a later reader can check the admission against the words
+    rather than against someone's summary of them. Whitespace is not a clause.
+    The rest of the record has to agree: the licence is under restriction, and
+    the values may not stand as a centre's vote in a consensus.
+    """
+    block = source.get("restricted_terms")
+    if block is None:
+        return []
+    sid = source["id"]
+    errors: list[str] = []
+    if not block["terms_text"].strip():
+        errors.append(f"{sid}: restricted_terms needs the verbatim clause, not blank text")
+    if source["licence"]["review_state"] != "restricted":
+        errors.append(f"{sid}: restricted_terms requires licence.review_state 'restricted'")
+    if source["consensus"]["eligible"]:
+        errors.append(f"{sid}: a research-use-only source may not be consensus-eligible")
+    return errors
+
+
+def condition_errors(source: dict[str, Any]) -> list[str]:
+    """An outstanding condition has to say what it is and what would end it.
+
+    A condition nobody can act on is a permanent block dressed as a temporary
+    one, so both halves are required to be real text.
+    """
+    block = source.get("admission_condition")
+    if block is None:
+        return []
+    sid = source["id"]
+    errors: list[str] = []
+    if not block["condition"].strip():
+        errors.append(f"{sid}: admission_condition needs a condition, not blank text")
+    if not block["satisfied_by"].strip():
+        errors.append(f"{sid}: admission_condition needs to say what would satisfy it")
+    return errors
+
+
+def no_endpoint_errors(source: dict[str, Any]) -> list[str]:
+    """A source cited but never fetched has to look that way in both places.
+
+    ``state_errors`` already refuses an endpoint on the three no-path states.
+    What is added here is the other half for the two citation states: a
+    ``link-only`` or ``partnership-only`` record whose integration still claims
+    a typed adapter reads as a source something could fetch, and the next
+    person to wire the worker would believe it. The integration kind has to say
+    ``link_only`` too, so the declaration is unambiguous from either end.
+    """
+    status = source["status"]
+    if status not in ("link-only", "partnership-only"):
+        return []
+    sid = source["id"]
+    errors: list[str] = []
+    if source["access_endpoints"]:
+        errors.append(f"{sid}: status {status!r} may not carry an access endpoint")
+    if source["integration"]["kind"] != "link_only":
+        errors.append(f"{sid}: status {status!r} requires integration.kind 'link_only'")
+    return errors
+
+
+def export_errors(data: dict[str, Any]) -> list[str]:
+    """No export path may carry the values of a research-use-only record.
+
+    Decision 3 admits a restricted source on the promise that its values are
+    served only to the owner's own reader. There are exactly two ways a value
+    leaves a record in this registry: it is shown as the display primary, or it
+    stands as a centre's vote in a consensus. Both are refused on a record
+    carrying ``restricted_terms``, so the promise is checked here rather than
+    remembered at each call site.
+    """
+    errors: list[str] = []
+    for source in data["sources"]:
+        if source.get("restricted_terms") is None:
+            continue
+        sid = source["id"]
+        if source.get("display_primary"):
+            errors.append(
+                f"{sid}: research-use-only terms forbid an export path, so it may not be display_primary"
+            )
+        if source["consensus"]["eligible"]:
+            errors.append(
+                f"{sid}: research-use-only terms forbid an export path, so it may not be consensus-eligible"
+            )
+    return errors
+
+
+#: The sentence the glossary entry opens with. The ten names follow it, comma
+#: separated, and the entry's next sentence ends the list.
+_GLOSSARY_LEAD = "The ceiling a source may reach:"
+
+#: The one name the glossary and the registry spell differently. The glossary
+#: called this state credential-blocked; the resolutions call it
+#: credential-required and that name wins, because it says the source is
+#: admitted rather than refused.
+_GLOSSARY_ALIASES = {"credential-blocked": "credential-required"}
+
+
+def glossary_state_errors(path: Path | None = None) -> list[str]:
+    """The glossary and the schema enum name the same ten states.
+
+    The glossary at the repo root is the domain model a reader consults; the
+    enum is what the audit enforces. If they drift, one of them is lying and
+    there is no way to tell which from inside either file, so they are compared
+    here on every run. A missing glossary is an error rather than a skip: the
+    check that silently passes when its input disappears is the check nobody
+    notices has stopped working.
+    """
+    path = path or HERE.parents[2] / "CONTEXT.md"
+    if not path.exists():
+        return [f"glossary: {path} is missing, so the state list cannot be cross-checked"]
+    text = path.read_text(encoding="utf-8")
+    marker = text.find(_GLOSSARY_LEAD)
+    if marker < 0:
+        return [f"glossary: no 'Registry state' entry found in {path.name}"]
+    start = marker + len(_GLOSSARY_LEAD)
+    end = text.find(".", start)
+    if end < 0:
+        return [f"glossary: the 'Registry state' list in {path.name} does not end in a sentence"]
+    listed = {
+        _GLOSSARY_ALIASES.get(name, name)
+        for name in (part.strip() for part in text[start:end].replace("\n", " ").split(","))
+        if name
+    }
+    expected = set(admission.STATES)
+    errors: list[str] = []
+    missing = sorted(expected - listed)
+    if missing:
+        errors.append(f"glossary: 'Registry state' omits {', '.join(missing)}")
+    extra = sorted(listed - expected)
+    if extra:
+        errors.append(f"glossary: 'Registry state' names states the schema does not have: {', '.join(extra)}")
+    return errors
+
+
+def ledger_missing_ids(data: dict[str, Any]) -> list[str]:
+    """Ledger ids with no registry record yet, sorted.
+
+    Separated from ``ledger_errors`` because the list is worth reading on its
+    own: it is exactly the work still outstanding against the resolutions, and
+    ``summary`` reports it so a run says how far the ledger has been written
+    rather than only that it is incomplete.
+    """
+    declared = {source["id"] for source in data["sources"]}
+    return sorted(LEDGER_SOURCE_IDS - declared)
+
+
+def ledger_errors(data: dict[str, Any]) -> list[str]:
+    """Ledger completeness: every decided source is declared, and declared fully.
+
+    The resolutions of tickets 24, 25, 26 and 28 decided a state, a path or an
+    explicit absence of one, and a reason for every source they name. This
+    checks that the registry says the same thing, in four ways.
+
+    An id the resolutions name with no record at all is the first and worst:
+    an undeclared source is one nobody decided, whatever the design document
+    says, because nothing in the running system can be asked about it.
+
+    The other three are per record. A blank ``reason`` is a decision with no
+    grounds, which cannot be reviewed. A ``status`` outside the vocabulary is
+    a state nobody agreed to; ``state_errors`` refuses it too, and it is
+    repeated here so the ledger check stands on its own for a caller that runs
+    it alone.
+
+    The path check runs the opposite way from ``state_errors``. That function
+    already refuses an endpoint on the three ``NO_ACCESS_PATH_STATES``, so
+    duplicating it would add nothing. What is not covered anywhere else is the
+    other direction: a record admitted as ``implemented-unverified`` with an
+    empty ``access_endpoints`` claims to be a retrievable source with nothing
+    to retrieve it from, and the ledger's "access path or an explicit none"
+    means the two halves have to agree.
+    """
+    errors: list[str] = []
+    for source_id in ledger_missing_ids(data):
+        errors.append(
+            f"{source_id}: named in the 2026-09-02 resolutions and has no "
+            "registry record; an undeclared source is one nobody decided"
+        )
+    for source in data["sources"]:
+        sid = source["id"]
+        if sid not in LEDGER_SOURCE_IDS:
+            continue
+        if not (source.get("reason") or "").strip():
+            errors.append(f"{sid}: ledger record needs a reason, not blank text")
+        status = source["status"]
+        if status not in ALLOWED_STATUSES:
+            errors.append(f"{sid}: ledger record declares state {status!r}, which is not an admission state")
+        elif status == "implemented-unverified" and not source.get("access_endpoints"):
+            errors.append(
+                f"{sid}: admitted implemented-unverified with no access endpoint; "
+                "a retrievable source with no path is a contradiction"
+            )
+    return errors
+
+
 def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     sources = data["sources"]
@@ -634,21 +1053,18 @@ def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]
     if unreferenced:
         errors.append(f"registry sources absent from catalogue coverage: {', '.join(unreferenced)}")
 
+    adapter_ids = adapter_source_ids()
+
     for source in sources:
         sid = source["id"]
-        status = source["status"]
-        if status not in ALLOWED_STATUSES:
-            errors.append(f"{sid}: invalid status {status!r}")
         auth = source["authentication"]
-        if status == "credential_required" and not auth["required"]:
-            errors.append(f"{sid}: credential_required must set authentication.required=true")
+        errors.extend(state_errors(source, adapter_ids, known))
+        errors.extend(credential_errors(source))
+        errors.extend(restricted_terms_errors(source))
+        errors.extend(condition_errors(source))
+        errors.extend(no_endpoint_errors(source))
         if auth["required"] and not auth["registration_url"]:
             errors.append(f"{sid}: authenticated source needs an official registration URL")
-        if status in {"retired", "unavailable", "rejected"}:
-            if source["fixture_status"] != "not_applicable" or source["live_smoke_test_status"] != "not_applicable":
-                errors.append(f"{sid}: terminal status must mark fixture and live tests not_applicable")
-        if status == "active" and (source["fixture_status"] != "passing" or source["live_smoke_test_status"] != "passing"):
-            errors.append(f"{sid}: active requires passing fixture and live smoke tests")
         if source["consensus"]["eligible"]:
             if not source["consensus"]["family"]:
                 errors.append(f"{sid}: consensus-eligible source needs an independent-centre family")
@@ -664,13 +1080,27 @@ def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]
     return errors
 
 
-def validate(data: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[str]]:
+def validate(
+    data: dict[str, Any] | None = None, *, require_ledger: bool = True
+) -> tuple[dict[str, Any], list[str]]:
+    """The whole audit. ``require_ledger`` false drops the completeness check.
+
+    The keyword exists so a caller checking one record's shape can say so,
+    rather than being told about every source the resolutions named that
+    nobody has written down yet. It defaults to true because the ledger being
+    incomplete is a real finding about the registry, not a mode: the audit
+    stays red until the last resolution is declared.
+    """
     data = data or registry()
     schema = load_json(HERE / "schema.json")
     coverage = load_json(HERE / "catalogue_coverage.json")
     validator = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
     errors = [f"schema {'.'.join(str(p) for p in error.absolute_path) or '<root>'}: {error.message}" for error in sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path))]
     errors.extend(semantic_errors(data, coverage))
+    if require_ledger:
+        errors.extend(ledger_errors(data))
+    errors.extend(export_errors(data))
+    errors.extend(glossary_state_errors())
     errors.extend(catalogue_errors())
     return data, errors
 
@@ -679,6 +1109,7 @@ def summary(data: dict[str, Any]) -> dict[str, Any]:
     statuses: dict[str, int] = {}
     categories: dict[str, int] = {}
     delivery_kinds: dict[str, int] = {}
+    adapter_ids = adapter_source_ids()
     for source in data["sources"]:
         statuses[source["status"]] = statuses.get(source["status"], 0) + 1
         categories[source["category"]] = categories.get(source["category"], 0) + 1
@@ -721,7 +1152,42 @@ def summary(data: dict[str, Any]) -> dict[str, Any]:
             if (source.get("publication_latency") or {}).get("estimate_seconds") is not None
             and not (source.get("publication_latency") or {}).get("measured")
         ),
-        "adapter_source_ids": sorted(adapter_source_ids()),
+        "adapter_source_ids": sorted(adapter_ids),
+        # The admission ledger, in the shape a reader can check against the
+        # design. Lists rather than counts wherever naming the records is the
+        # point: which declarations the worker may fetch, which are held back
+        # by a condition nobody has closed, and which carry terms that keep
+        # their values off every export path.
+        "ceiling": {state: admission.ceiling_state(state) for state in admission.STATES},
+        "schedulable_by_registry": sorted(
+            source["id"] for source in data["sources"]
+            if admission.declaration_schedulable(source, adapter_ids)
+        ),
+        "admission_conditions_outstanding": sorted(
+            source["id"] for source in data["sources"] if admission.condition_outstanding(source)
+        ),
+        "research_use_only": sorted(
+            source["id"] for source in data["sources"] if source.get("restricted_terms") is not None
+        ),
+        "credential_required": sorted(
+            source["id"] for source in data["sources"] if source["status"] == "credential-required"
+        ),
+        "no_access_path": sorted(
+            source["id"] for source in data["sources"] if not source["access_endpoints"]
+        ),
+        # How much of the 2026-09-02 ledger the registry actually carries. The
+        # missing ids are listed rather than counted because the list is the
+        # remaining work, and a reader who can name it can close it.
+        "ledger_declared": sum(
+            1 for source in data["sources"] if source["id"] in LEDGER_SOURCE_IDS
+        ),
+        "ledger_missing": ledger_missing_ids(data),
+        # The two halves of the Decision 1 split, so that a run can be compared
+        # against the 21/29 the migration was expected to produce.
+        "migration_split": {
+            "implemented-unverified": statuses.get("implemented-unverified", 0),
+            "catalogued": statuses.get("catalogued", 0),
+        },
         "catalogue": catalogue_summary(),
     }
 
@@ -761,7 +1227,7 @@ def main(argv: list[str] | None = None) -> int:
         json.dump(field_catalogue.catalogue(), sys.stdout, indent=2, sort_keys=True)
         print()
         return 0
-    data, errors = validate()
+    data, errors = validate(require_ledger=True)
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
@@ -776,6 +1242,16 @@ def main(argv: list[str] | None = None) -> int:
         report = summary(data)
         print(f"registry valid: {report['source_count']} sources, version {report['registry_version']}, as of {report['as_of']}")
         print("statuses: " + ", ".join(f"{key}={value}" for key, value in report["status_counts"].items()))
+        split = report["migration_split"]
+        print(
+            f"admission: {split['implemented-unverified']} implemented-unverified, "
+            f"{split['catalogued']} catalogued, "
+            f"{len(report['schedulable_by_registry'])} schedulable by the registry "
+            f"({len(report['admission_conditions_outstanding'])} held by an outstanding condition, "
+            f"{len(report['research_use_only'])} research use only, "
+            f"{len(report['credential_required'])} credential-required, "
+            f"{len(report['no_access_path'])} with no access path)"
+        )
         print(
             f"horizon: {report['reach_declared']} records declare a reach "
             f"({report['run_cadence_declared']} run cadence, {report['native_cadence_declared']} native cadence) "

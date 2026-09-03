@@ -120,6 +120,7 @@ from .store import (
     source_run_staleness,
     unavailable_point_fields,
     unavailable_profile_levels,
+    unschedulable_detail,
 )
 from .models import AGED_OUT_FLAG, ENSEMBLE_STATISTIC_ENTRIES, THRESHOLD_COMPARISONS
 
@@ -2147,11 +2148,15 @@ def refresh(request: RefreshRequest) -> Job:
     if unknown:
         raise HTTPException(status_code=422, detail=f"unknown source ids: {', '.join(sorted(unknown))}")
     schedulable = schedulable_source_ids()
-    # A credential-required, retired or licence-review source cannot be
-    # scheduled; accepting a job for one would promise work that cannot happen.
+    # Only an implemented-unverified record with a registered adapter and no
+    # outstanding admission condition is schedulable. Everything else is
+    # refused by name and by state, because accepting a job for a catalogued,
+    # credential-required, licence-blocked, link-only, partnership-only,
+    # unavailable, rejected or superseded source would promise work that
+    # cannot happen.
     rejected = set(request.source_ids) - schedulable
     if rejected:
-        raise HTTPException(status_code=422, detail=f"source ids are not schedulable: {', '.join(sorted(rejected))}")
+        raise HTTPException(status_code=422, detail=unschedulable_detail(sorted(rejected)))
     source_ids = request.source_ids or sorted(schedulable)
     if not source_ids:
         raise HTTPException(status_code=422, detail="no schedulable source ids are available")

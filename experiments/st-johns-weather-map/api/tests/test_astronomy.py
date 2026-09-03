@@ -181,7 +181,7 @@ def test_registry_entry_exists_and_is_never_scheduled():
     from ingest.registry import get_config, ingest_configs, parse_cadence_seconds
 
     config = get_config("nasa-jpl-de442")
-    assert config.registry_status == "implementing"
+    assert config.registry_status == "catalogued"
     # The cadence prose must not parse and the freshness is "not applicable":
     # either alone keeps ``ingestible`` false, so the worker never schedules
     # the kernel as though it were a feed.

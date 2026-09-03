@@ -41,7 +41,9 @@ class EveryRecordDeclaresDeliveryTests(unittest.TestCase):
 
     def test_a_reprocessed_record_names_its_intermediary_and_transformations(self) -> None:
         reprocessed = [item for item in registry()["sources"] if item["delivery_kind"] == "reprocessed"]
-        self.assertEqual(["noaa-madis", "openaq", "raw-cwop-pws"], sorted(item["id"] for item in reprocessed))
+        # The three original aggregator records are still here; the ledger
+        # adds more, so the set is a floor rather than an exhaustive list.
+        self.assertTrue({"noaa-madis", "openaq", "raw-cwop-pws"} <= {item["id"] for item in reprocessed})
         for record in reprocessed:
             self.assertTrue(record["intermediary"]["name"], record["id"])
             self.assertNotEqual(record["intermediary"]["name"].lower(), record["producer"].lower())
@@ -60,8 +62,15 @@ class EveryRecordDeclaresDeliveryTests(unittest.TestCase):
         self.assertTrue(any("states no transformation" in error or "too short" in error for error in errors))
 
     def test_only_a_published_cell_record_may_be_the_display_primary(self) -> None:
+        # A record that is not the producer's own cell is never the display
+        # primary. The converse holds only where no restricted terms are
+        # declared: a research-use-only record keeps its published cell and
+        # still may not be what the map shows first (audit.export_errors).
         for record in registry()["sources"]:
-            self.assertEqual(record["delivery_kind"] == "published_cell", record["display_primary"], record["id"])
+            if record["display_primary"]:
+                self.assertEqual("published_cell", record["delivery_kind"], record["id"])
+            if "restricted_terms" not in record:
+                self.assertEqual(record["delivery_kind"] == "published_cell", record["display_primary"], record["id"])
 
     def test_the_audit_refuses_a_reprocessed_record_as_a_display_primary(self) -> None:
         for source_id in ("openaq", RECORD_ID):
@@ -74,10 +83,14 @@ class EveryRecordDeclaresDeliveryTests(unittest.TestCase):
     def test_the_summary_names_what_may_not_be_the_display_primary(self) -> None:
         data, errors = audit.validate()
         self.assertEqual([], errors)
-        self.assertEqual(
-            ["noaa-madis", "open-meteo-weathernext-2", "openaq", "raw-cwop-pws"],
-            audit.summary(data)["not_display_primary"],
+        # Every record that is not the producer's own cell, and every record
+        # under restricted terms, is named; nothing else is.
+        expected = sorted(
+            record["id"] for record in data["sources"]
+            if record["delivery_kind"] != "published_cell" or "restricted_terms" in record
         )
+        self.assertTrue({"noaa-madis", "open-meteo-weathernext-2", "openaq", "raw-cwop-pws"} <= set(expected))
+        self.assertEqual(expected, audit.summary(data)["not_display_primary"])
 
 
 class DeliveryKindTests(unittest.TestCase):
@@ -86,7 +99,7 @@ class DeliveryKindTests(unittest.TestCase):
         self.assertEqual([], errors)
         record = _record(data)
         self.assertEqual("intermediary_derived", record["delivery_kind"])
-        self.assertEqual("credential_required", record["status"])
+        self.assertEqual("credential-required", record["status"])
         self.assertEqual("Google DeepMind", record["producer"])
         self.assertEqual("Open-Meteo", record["intermediary"]["name"])
         self.assertIn("relative humidity", record["intermediary"]["method"])
@@ -104,7 +117,12 @@ class DeliveryKindTests(unittest.TestCase):
         self.assertEqual([], errors)
         report = audit.summary(data)
         self.assertIn(RECORD_ID, report["intermediary_derived_sources"])
-        self.assertEqual(1, report["delivery_kind_counts"]["intermediary_derived"])
+        # The count is the number of records declaring the kind, whatever the
+        # ledger admits later; the list and the count may never disagree.
+        self.assertEqual(
+            len(report["intermediary_derived_sources"]),
+            report["delivery_kind_counts"]["intermediary_derived"],
+        )
 
     def test_a_record_naming_no_intermediary_fails_the_audit(self) -> None:
         data = registry()
