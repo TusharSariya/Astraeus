@@ -126,6 +126,7 @@ def test_the_first_entries_are_registered() -> None:
         *ENSEMBLE_STATISTIC_ENTRIES,
         SECTOR_SAMPLING,
         DE442_GEOMETRY,
+        *CAMERA_METHODS,
     ]
 
 
