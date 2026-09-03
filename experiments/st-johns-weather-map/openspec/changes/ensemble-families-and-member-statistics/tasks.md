@@ -139,12 +139,18 @@ Decision reference: wayfinder ticket
   `api/tests/test_api.py`, `api/tests/test_models.py`.
   Verify: `cd api && uv run pytest tests/test_api.py tests/test_models.py -k member`.
 
-- [ ] 4.4 Add the member selector, the statistic layers, the labelling rule in
+- [x] 4.4 Add the member selector, the statistic layers, the labelling rule in
   the text alternative and the averaged-versus-instantaneous fence.
   Owned files: `web/src/App.tsx`, `web/src/api.ts`, `web/src/types.ts`,
   `web/src/ensemble.test.tsx` and any new `web/src/Ensemble*.tsx` component
   (`web/src/components/` does not exist; components sit flat under `web/src/`).
   Verify: `cd web && npm test -- --run ensemble`.
+  Verify result: `cd web && npm test -- --run ensemble` -> 12 passed. Full
+  `cd web && npm test -- --run` -> 383 passed. `npx tsc --noEmit` -> clean.
+  Statistic and member layers on the map itself are deferred: `/layers`
+  carries no member axis (design.md's deviation list), so members and
+  statistics are rendered as rows of the evidence panel (`Ensemble.tsx`,
+  `EnsemblePanel`) and in the text alternative, not as map layers.
 
 ## 5. Gate (specs owner)
 
