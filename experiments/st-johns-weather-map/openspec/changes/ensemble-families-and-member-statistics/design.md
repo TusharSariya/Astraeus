@@ -205,12 +205,19 @@ is false for an ensemble record whose `ensemble` is absent or whose
 
 ### Seam C: the derivation registry entries (4.1 writes, 4.2 calls)
 
-Five entries replace the disabled placeholder `ensemble_statistics_within_run`
-(recorded as a deviation below): `ensemble_mean`, `ensemble_spread`,
+The placeholder `ensemble_statistics_within_run` is NOT replaced. It is
+enabled in this change (owner's standing rule: every member statistic goes
+through that entry) and becomes the umbrella entry: the family-level switch
+the spec's "the statistics are switched off" scenario names, resolved first
+by `derive_ensemble_statistic`, so disabling it at any of the three levels
+nulls all five statistics with a notice naming the level. Beside it the five
+entries the spec requires are added: `ensemble_mean`, `ensemble_spread`,
 `ensemble_quantile`, `ensemble_threshold_probability`,
 `ensemble_member_count`, all version `within-run-v1`, all enabled, all citing
-Wilks (2019) chapter 8. `ENSEMBLE_STATISTICS` becomes the tuple of the five
-names; `ENSEMBLE_ENTRY_BY_STATISTIC: dict[str, str]` maps `"mean"`,
+Wilks (2019) chapter 8; a value's `derivation` names the specific entry.
+`ENSEMBLE_STATISTICS` stays the umbrella's name string;
+`ENSEMBLE_STATISTIC_ENTRIES` is the tuple of the five names;
+`ENSEMBLE_ENTRY_BY_STATISTIC: dict[str, str]` maps `"mean"`,
 `"spread"`, `"quantile"`, `"threshold_probability"`, `"member_count"` to
 them. Each entry's single input is
 `Input(field="ensemble_member_field", family="ensemble_member_field",
@@ -303,9 +310,13 @@ alternative.
   `ingest/derive/registry.py`, web components sit flat under `web/src/`, and
   the tests are `tests/test_ingest_grib.py`, `tests/test_manifest.py` and
   `tests/test_derivation_registry.py`. `tasks.md` names the real files.
-- The disabled placeholder entry `ensemble_statistics_within_run` is
-  replaced by the five entries the spec requires (Seam C). The constant
-  `ENSEMBLE_STATISTICS` survives as the tuple of their names.
+- The placeholder entry `ensemble_statistics_within_run`, which
+  `ensemble-members-and-source-plurality` registered disabled, is enabled
+  here as the umbrella entry, and the five per-statistic entries the spec
+  requires are added beside it (Seam C). The first pin of this seam said the
+  five would replace it; the change lead corrected that on 2026-09-02 before
+  task 4.1 started, because the owner's rule names that entry as the path
+  every statistic takes.
 - Statistic and member layers on the map itself need `/layers` to carry a
   member axis, which no task here owns; task 4.4 renders members and
   statistics as rows of the evidence panel and the map layer is an open
