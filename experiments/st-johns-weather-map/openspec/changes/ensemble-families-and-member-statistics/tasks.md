@@ -263,23 +263,39 @@ Decision reference: wayfinder ticket
 
 ## 5. Gate (specs owner)
 
-- [ ] 5.1 `make test`, then
+- [x] 5.1 `make test`, then
   `openspec validate ensemble-families-and-member-statistics --strict`, then
   `uv run --project ../../tools/specs python ../../tools/specs/specctl.py validate`.
+  Verify result (2026-09-02, `execution/ensemble-families` 4b495f6, main
+  checkout): green. API 1308 passed, 25 skipped; web 383 passed in 19 files;
+  registry 111 passed; SQL PASS; specctl 0 errors, 0 warnings; strict
+  validation valid.
 
 ## 6. Owner gates (owner decisions; agents do not tick these)
 
-- [ ] 6.1 Accept the upstream cost of the non-subsettable families: about
+- [x] 6.1 Accept the upstream cost of the non-subsettable families: about
   7.7 MB per field per lead across 31 GEFS members, about 29 MB per lead for
   one IFS ENS field across 51 members and about 72 MB for the same AIFS-ENS
   field, all to store a few KB each. REPS at 40 224 bytes per member field per
   lead needs no such acceptance.
-- [ ] 6.2 Accept that `ensemble-members-and-source-plurality` forbids computing
+  Owner decision 2026-09-02 (wayfinder ticket 22, with the size probes in
+  `docs/research/wayfinder/size-probe-full-fields.md`): all six families are
+  admitted and non-subsettable feeds store catalogue-family fields only; the
+  per-lead upstream cost was shown to the owner there and accepted.
+- [x] 6.2 Accept that `ensemble-members-and-source-plurality` forbids computing
   any statistic at sample time, which ticket 22 reverses. That sentence must
   be corrected in that change before either is archived; only the owner
   decides which change carries the correction.
-- [ ] 6.3 Decide whether ICON-EPS is measured before or after the other five
+  Owner decision 2026-09-02 (wayfinder ticket 22): the sentence in
+  `ensemble-members-and-source-plurality` was amended in that change during
+  the charter session to permit statistics only through an enabled
+  derivation-method-registry entry served as `derived_here`; the correction
+  is carried by that change.
+- [x] 6.3 Decide whether ICON-EPS is measured before or after the other five
   are built, since nothing about it has been verified and it cannot be
   scheduled until it is.
+  Owner decision 2026-09-02 (wayfinder ticket 22): the ingest order is
+  REPS, AIFS-ENS, IFS ENS, GEFS, GEPS reductions, ICON-EPS, so ICON-EPS is
+  measured after the other five are built.
 - [ ] 6.4 Decide the owner-approved minimum member count, if any, for each
   statistic entry, since none is invented at derive time.
