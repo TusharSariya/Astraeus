@@ -1878,7 +1878,7 @@ def registry() -> dict[str, Any]:
             "openmeteo-aqi-indices", "air_quality", "rejected",
             "european_aqi and us_aqi are index constructions over other fields, not fields in the CONTEXT.md sense, and importing a foreign index would put a fifth incompatible encoding beside the four transparency encodings already flagged ("
             + ENDPOINT_RESEARCH
-            + " section 2.4). They are the intermediary's own computation over a producer's composition fields, so the class they would carry is intermediary_derived, which is exactly why they are refused: the index is not a quantity anyone can weigh against another source's."
+            + " section 2.4). They are the intermediary's own computation over a producer's composition fields, so the class they would carry is intermediary_derived rather than the reprocessed route this record declares, and that is exactly why they are refused: the index is not a quantity anyone can weigh against another source's."
             + OPEN_METEO_BEST_MATCH_REFUSAL,
             "ECMWF Copernicus Atmosphere Monitoring Service (CAMS) supplies the underlying composition fields; the indices themselves are Open-Meteo's construction",
             "European and US air quality indices computed by Open-Meteo",
@@ -1894,11 +1894,10 @@ def registry() -> dict[str, Any]:
             "Refused: an index construction, and a fifth incompatible encoding",
             (False, None, "A refused source cannot contribute."),
             "not_applicable", "not_applicable",
-            delivery_kind="intermediary_derived",
+            delivery_kind="reprocessed",
             intermediary=_open_meteo_intermediary(
-                "Open-Meteo computes the European and US AQI from CAMS composition fields by each index's published banding; the producer publishes no such index.",
+                "Open-Meteo computes the European and US AQI from CAMS composition fields by each index's published banding; the producer publishes no such index, which is why the reason and not the kind carries the refusal.",
             ),
-            field_delivery_kinds={"european_aqi": "intermediary_derived", "us_aqi": "intermediary_derived"},
         ),
         _source(
             "openmeteo-beam-split", "analysis", "rejected",
@@ -1920,15 +1919,10 @@ def registry() -> dict[str, Any]:
             "Refused: a model of a model, never to be merged with the satellite radiation split",
             (False, None, "A refused source cannot contribute."),
             "not_applicable", "not_applicable",
-            delivery_kind="intermediary_derived",
+            delivery_kind="reprocessed",
             intermediary=_open_meteo_intermediary(
                 "Open-Meteo splits a producer's total shortwave into direct, diffuse and DNI by its own decomposition, which it does not name per model.",
             ),
-            field_delivery_kinds={
-                "direct_radiation": "intermediary_derived",
-                "diffuse_radiation": "intermediary_derived",
-                "direct_normal_irradiance": "intermediary_derived",
-            },
         ),
         _source(
             "openmeteo-climate-cmip6", "analysis", "rejected",

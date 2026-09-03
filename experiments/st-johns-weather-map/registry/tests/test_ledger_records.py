@@ -444,14 +444,16 @@ class LedgerRecordTests(unittest.TestCase):
             self.assertFalse(record["display_primary"], source_id)
             self.assertIn("best_match", record["reason"], source_id)
 
-        # The class a refused value would have had is part of the reason it is
-        # refused, so the two the intermediary constructed itself say so.
-        for source_id in ("openmeteo-aqi-indices", "openmeteo-beam-split"):
-            record = sources[source_id]
-            self.assertEqual("intermediary_derived", record["delivery_kind"], source_id)
-            self.assertIn("intermediary_derived", record["field_delivery_kinds"].values(), source_id)
-        for source_id in ("openmeteo-marine-sst", "openmeteo-uv-index", "openmeteo-pollen-ammonia", "openmeteo-climate-cmip6", "openmeteo-seasonal-seas5"):
+        # All seven declare the reprocessed route they would have arrived by.
+        # The two the intermediary constructed itself say so in the reason
+        # rather than in the kind: `intermediary_derived` is an admission class
+        # (`open-meteo-weathernext-2` is its one member) and a refused record
+        # must not join it.
+        for source_id in rejected_ids:
             self.assertEqual("reprocessed", sources[source_id]["delivery_kind"], source_id)
+        for source_id in ("openmeteo-aqi-indices", "openmeteo-beam-split"):
+            self.assertNotIn("field_delivery_kinds", sources[source_id], source_id)
+        self.assertIn("intermediary_derived", sources["openmeteo-aqi-indices"]["reason"])
 
         self.assertIn("four different quantities", sources["openmeteo-marine-sst"]["reason"])
         self.assertIn("producer output on GeoMet", sources["openmeteo-uv-index"]["reason"])
