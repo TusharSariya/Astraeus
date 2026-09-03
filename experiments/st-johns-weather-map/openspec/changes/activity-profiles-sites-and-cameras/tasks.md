@@ -131,7 +131,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
 
 ## 5. Camera frames, derivations and refusals (cameras owner)
 
-- [ ] 5.1 Store frames with the image, capture and retrieval times and the
+- [x] 5.1 Store frames with the image, capture and retrieval times and the
   seven computed health flags under the general retention rule; refuse every
   derivation over a frame with a raised flag, naming it.
   Owns: `ingest/cameras/frames.py` (new).
