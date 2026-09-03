@@ -161,7 +161,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
 
 ## 6. Web (web owner)
 
-- [ ] 6.1 Show a profile's families, thresholds with any override, hard stops
+- [x] 6.1 Show a profile's families, thresholds with any override, hard stops
   separated from grades, its window and its blocked fields with reasons;
   render `blocked`, `null` and `aged_out` as three distinguishable states.
   Owns: `web/src/profiles/`.
