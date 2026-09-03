@@ -90,7 +90,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   registration that sits below terrain beyond tolerance.
   Owns: `registry/sites/*.yaml`.
   Verify: `python3 registry/site_audit.py --all`
-- [ ] 3.3 Enforce that sites are preferred and never limiting: serve every
+- [x] 3.3 Enforce that sites are preferred and never limiting: serve every
   catalogue field at any point in the evidence box, and return `null` with
   `no_registered_horizon` for a horizon-dependent field off-site without
   borrowing a nearby site's horizon.
