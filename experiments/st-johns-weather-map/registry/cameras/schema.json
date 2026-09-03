@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astraeus.invalid/experiments/st-johns-weather-map/camera-record.schema.json",
+  "title": "St. John's weather map camera registration record",
+  "description": "One record per camera, one file per record at registry/cameras/<id>.yaml. A record catalogues a camera; it never admits one. Geometry nobody has hand-registered is null rather than absent, so a partnership-only camera can be catalogued honestly and registry/camera_audit.py can name each missing element.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "source_id",
+    "operator",
+    "status",
+    "terms",
+    "endpoint",
+    "position",
+    "orientation",
+    "image",
+    "landmarks",
+    "privacy_masks",
+    "registered",
+    "geometry_validation"
+  ],
+  "properties": {
+    "id": {
+      "description": "The record id, equal to the file stem.",
+      "$ref": "#/$defs/slug"
+    },
+    "name": {"$ref": "#/$defs/nonempty"},
+    "source_id": {
+      "description": "The ledger record in registry/source_data.py this camera belongs to.",
+      "$ref": "#/$defs/slug"
+    },
+    "operator": {"$ref": "#/$defs/nonempty"},
+    "status": {
+      "description": "Only 'partnership-only' is in use. 'licensed' and 'permitted' are listed so the vocabulary is complete; neither is reachable until a licence or a written permission is recorded.",
+      "enum": ["partnership-only", "licensed", "permitted"]
+    },
+    "terms": {"$ref": "#/$defs/terms"},
+    "endpoint": {"$ref": "#/$defs/endpoint"},
+    "position": {"$ref": "#/$defs/position"},
+    "orientation": {"$ref": "#/$defs/orientation"},
+    "image": {"$ref": "#/$defs/image"},
+    "landmarks": {
+      "description": "Horizon landmarks, hand-registered. A complete record needs at least two; an empty list is allowed so an unregistered camera is catalogued rather than omitted.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/landmark"}
+    },
+    "privacy_masks": {
+      "description": "Regions masked before storage and before service. An empty list is allowed only while the record is incomplete.",
+      "type": "array",
+      "items": {"$ref": "#/$defs/privacy_mask"}
+    },
+    "registered": {"$ref": "#/$defs/registered"},
+    "geometry_validation": {"$ref": "#/$defs/geometry_validation"}
+  },
+  "$defs": {
+    "nonempty": {"type": "string", "minLength": 1},
+    "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "url": {"type": "string", "pattern": "^https?://"},
+    "date": {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "nullable_date": {"anyOf": [{"$ref": "#/$defs/date"}, {"type": "null"}]},
+    "nullable_string": {"anyOf": [{"$ref": "#/$defs/nonempty"}, {"type": "null"}]},
+    "nullable_number": {"anyOf": [{"type": "number"}, {"type": "null"}]},
+    "nullable_positive_integer": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+    "terms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "url", "read_date", "redistribution", "permission"],
+      "properties": {
+        "text": {
+          "description": "The operator's own words on redistribution, quoted. Where the terms page could not be read this states that the terms are unresolved; unresolved terms are never read as permission.",
+          "$ref": "#/$defs/nonempty"
+        },
+        "url": {"anyOf": [{"$ref": "#/$defs/url"}, {"type": "null"}]},
+        "read_date": {"$ref": "#/$defs/date"},
+        "redistribution": {
+          "description": "Held at false while no written permission is recorded, which for this change is every camera.",
+          "const": false
+        },
+        "permission": {"$ref": "#/$defs/permission"}
+      }
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_on", "requested_from", "granted_on", "document"],
+      "properties": {
+        "requested_on": {"$ref": "#/$defs/nullable_date"},
+        "requested_from": {"$ref": "#/$defs/nullable_string"},
+        "granted_on": {"$ref": "#/$defs/nullable_date"},
+        "document": {"$ref": "#/$defs/nullable_string"}
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "format", "cadence_seconds", "cadence_measured_on"],
+      "properties": {
+        "url": {
+          "description": "Recorded so the catalogue is honest about what exists. No frame is fetched from it by this change.",
+          "$ref": "#/$defs/url"
+        },
+        "format": {"enum": ["jpeg", "mp4_sequence", "youtube_live"]},
+        "cadence_seconds": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "cadence_measured_on": {"$ref": "#/$defs/nullable_date"}
+      }
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latitude", "longitude", "elevation", "surveyed"],
+      "properties": {
+        "latitude": {"anyOf": [{"type": "number", "minimum": -90, "maximum": 90}, {"type": "null"}]},
+        "longitude": {"anyOf": [{"type": "number", "minimum": -180, "maximum": 180}, {"type": "null"}]},
+        "elevation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["metres", "datum"],
+          "properties": {
+            "metres": {"$ref": "#/$defs/nullable_number"},
+            "datum": {"$ref": "#/$defs/nullable_string"}
+          }
+        },
+        "surveyed": {
+          "description": "False where the position is inferred from the operator's place name rather than surveyed.",
+          "type": "boolean"
+        }
+      }
+    },
+    "orientation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bearing_deg", "hfov_deg", "vfov_deg", "roll_deg"],
+      "properties": {
+        "bearing_deg": {"anyOf": [{"type": "number", "minimum": 0, "exclusiveMaximum": 360}, {"type": "null"}]},
+        "hfov_deg": {"anyOf": [{"type": "number", "exclusiveMinimum": 0, "maximum": 360}, {"type": "null"}]},
+        "vfov_deg": {"anyOf": [{"type": "number", "exclusiveMinimum": 0, "maximum": 180}, {"type": "null"}]},
+        "roll_deg": {"anyOf": [{"type": "number", "minimum": -180, "maximum": 180}, {"type": "null"}]}
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width_px", "height_px"],
+      "properties": {
+        "width_px": {"$ref": "#/$defs/nullable_positive_integer"},
+        "height_px": {"$ref": "#/$defs/nullable_positive_integer"}
+      }
+    },
+    "landmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "bearing_deg", "distance_m", "pixel"],
+      "properties": {
+        "name": {"$ref": "#/$defs/nonempty"},
+        "bearing_deg": {"anyOf": [{"type": "number", "minimum": 0, "exclusiveMaximum": 360}, {"type": "null"}]},
+        "distance_m": {"anyOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "null"}]},
+        "pixel": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y"],
+              "properties": {
+                "x": {"$ref": "#/$defs/nullable_number"},
+                "y": {"$ref": "#/$defs/nullable_number"}
+              }
+            },
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "privacy_mask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "polygon"],
+      "properties": {
+        "name": {"$ref": "#/$defs/nonempty"},
+        "polygon": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {"type": "number"}
+          }
+        }
+      }
+    },
+    "registered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "by"],
+      "properties": {
+        "date": {"$ref": "#/$defs/nullable_date"},
+        "by": {"$ref": "#/$defs/nullable_string"}
+      }
+    },
+    "geometry_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reprojection_tolerance_px", "skyline_tolerance_deg", "status", "dem"],
+      "properties": {
+        "reprojection_tolerance_px": {"type": "number", "exclusiveMinimum": 0},
+        "skyline_tolerance_deg": {"type": "number", "exclusiveMinimum": 0},
+        "status": {"enum": ["not_run", "passed", "failed", "unvalidated"]},
+        "dem": {"$ref": "#/$defs/nullable_string"}
+      }
+    }
+  }
+}
