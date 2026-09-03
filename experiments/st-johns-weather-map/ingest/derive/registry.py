@@ -310,6 +310,7 @@ def validation_errors(entries: Iterable[DerivationMethod]) -> list[str]:
                     errors.append(f"{name}: {item.field!r} declares an empty physical range")
         errors.extend(_blending_errors(entry))
         errors.extend(_member_statistic_errors(entry))
+        errors.extend(_camera_validation_errors(entry))
     return errors
 
 
@@ -352,6 +353,25 @@ def _member_statistic_errors(entry: DerivationMethod) -> list[str]:
             "two conventions differ visibly over 21 members"
         )
     return errors
+
+
+def _camera_validation_errors(entry: DerivationMethod) -> list[str]:
+    """Refuse a camera method that is enabled before its validation exists.
+
+    Every camera derivation enters this registry disabled and is enabled only
+    after a validation record comparing its output against CYYT METAR
+    visibility and cloud over at least 30 days spanning day, night, fog, rain
+    and snow is recorded with the entry and approved by the owner. Flipping
+    ``enabled`` here is not that record, so it is refused at registration and
+    the deployment refuses to start.
+    """
+    if entry.name in CAMERA_METHODS and entry.enabled:
+        return [
+            f"{entry.name}: {CAMERA_ENABLED_WITHOUT_VALIDATION} - a camera derivation method is enabled "
+            "only after a 30-day CYYT METAR validation spanning day, night, fog, rain and snow is "
+            "recorded with the entry and approved by the owner"
+        ]
+    return []
 
 
 def _blending_errors(entry: DerivationMethod) -> list[str]:
@@ -539,6 +559,43 @@ ENSEMBLE_ENTRY_BY_STATISTIC: dict[str, str] = {
 
 SECTOR_SAMPLING = "sector_sampling_along_bearing"
 DE442_GEOMETRY = "de442_sun_moon_geometry"
+
+CAMERA_FOG_VISIBILITY_CLASS = "camera_fog_and_visibility_class"
+CAMERA_VISIBILITY_BOUND = "camera_visibility_bound_from_landmarks"
+CAMERA_SECTOR_CLOUD_FRACTION = "camera_daytime_sector_cloud_fraction"
+CAMERA_HORIZON_FOG_BANK = "camera_horizon_fog_bank_presence"
+CAMERA_SKYDOME_NIGHT_CLOUD = "camera_skydome_night_cloud_from_starfield"
+
+#: The five camera methods. Every one of them enters this registry disabled
+#: and stays disabled until a validation record comparing its output against
+#: CYYT METAR visibility and cloud over at least 30 days spanning day, night,
+#: fog, rain and snow is recorded with the entry and approved by the owner
+#: (wayfinder ticket 21). Registration refuses any of these with
+#: ``enabled=True``, so the gate cannot be stepped over by an edit here.
+CAMERA_METHODS: tuple[str, ...] = (
+    CAMERA_FOG_VISIBILITY_CLASS,
+    CAMERA_VISIBILITY_BOUND,
+    CAMERA_SECTOR_CLOUD_FRACTION,
+    CAMERA_HORIZON_FOG_BANK,
+    CAMERA_SKYDOME_NIGHT_CLOUD,
+)
+
+#: The registration refusal a camera entry earns by being enabled before its
+#: validation exists.
+CAMERA_ENABLED_WITHOUT_VALIDATION = "camera_method_enabled_without_validation"
+
+#: What every camera method reads: one frame from one registered camera. A
+#: camera derivation never reads two cameras and never reads a frame beside a
+#: model field, so there is one input family and one source.
+_CAMERA_FRAME_INPUT = Input(field="camera_frame", family="camera_frame", source="registered-camera")
+_CAMERA_LANDMARK_INPUT = Input(field="camera_landmarks", family="camera_geometry", source="registered-camera")
+
+#: The sentence every camera summary ends with, named once so the gate reads
+#: the same on all five entries.
+_CAMERA_GATE = (
+    "Registered disabled (wayfinder ticket 21); enabled only after a 30-day CYYT METAR validation "
+    "spanning day, night, fog, rain and snow is recorded with this entry and approved by the owner."
+)
 
 #: What the five statistic entries and their umbrella cite, and the single
 #: input each declares: one catalogue field over the member axis of one
@@ -802,6 +859,161 @@ ENTRIES: tuple[DerivationMethod, ...] = (
         summary=(
             "Sun and Moon geometry for a point and instant from the checksum-pinned DE442 ephemeris. "
             "Deterministic geometry, never blended with weather evidence."
+        ),
+    ),
+    DerivationMethod(
+        name=CAMERA_FOG_VISIBILITY_CLASS,
+        version="camera-class-v0",
+        citation=(
+            "Classification of fog and of a visibility band from the contrast of registered landmarks in a "
+            "fixed camera frame, in the sense of the WMO Guide to Instruments and Methods of Observation "
+            "(WMO-No. 8) Part I Chapter 9, section on visual estimation of visibility by marks at known "
+            "distances. No published skill for this camera; the entry is a declaration pending validation."
+        ),
+        inputs=(_CAMERA_FRAME_INPUT,),
+        outputs=(
+            Output(
+                field="camera_fog_class", units="category", minimum=None, maximum=None,
+                range_rule="inherit_input_range",
+                note=(
+                    "Admissible values: no_fog, fog_patches, fog, dense_fog. A category carries no numeric "
+                    "range; the admissible set is the range."
+                ),
+            ),
+            Output(
+                field="camera_visibility_class", units="category", minimum=None, maximum=None,
+                range_rule="inherit_input_range",
+                note=(
+                    "Admissible values: good, moderate, poor, very_poor. A class, never a distance: a "
+                    "visibility in metres from the image alone is refused."
+                ),
+            ),
+            Output(
+                field="camera_class_confidence", units="fraction", minimum=0.0, maximum=1.0,
+                range_rule="clamp",
+                note="One confidence per class, reported with the class and never in place of it.",
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        enabled=False,
+        summary=(
+            "A fog class and a visibility class, each with a confidence, from one frame of a registered "
+            "camera with an accepted geometry. " + _CAMERA_GATE
+        ),
+    ),
+    DerivationMethod(
+        name=CAMERA_VISIBILITY_BOUND,
+        version="camera-landmark-bound-v0",
+        citation=(
+            "Landmark-contrast visibility bounding: the interval between the farthest visible and the "
+            "nearest invisible registered landmark, after the visibility-by-marks method of the WMO Guide "
+            "to Instruments and Methods of Observation (WMO-No. 8) Part I Chapter 9. Pending validation "
+            "against CYYT METAR visibility for this camera."
+        ),
+        inputs=(_CAMERA_FRAME_INPUT, _CAMERA_LANDMARK_INPUT),
+        outputs=(
+            Output(
+                field="visibility_bound_lower_m", units="m", minimum=0.0, maximum=100000.0,
+                range_rule="clamp",
+                note=(
+                    "The distance to the farthest visible registered landmark, which is named on every "
+                    "value along with the nearest invisible one. Half of an interval, never a numeric "
+                    "visibility derived from the image alone."
+                ),
+            ),
+            Output(
+                field="visibility_bound_upper_m", units="m", minimum=0.0, maximum=100000.0,
+                range_rule="clamp",
+                note=(
+                    "The distance to the nearest invisible registered landmark, which is named on every "
+                    "value along with the farthest visible one. Half of an interval, never a numeric "
+                    "visibility derived from the image alone."
+                ),
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        enabled=False,
+        conventions=(
+            "The claim is an interval between two named registered landmarks, never a single number.",
+            "Both landmarks are named on every value, with their distances and the geometry version.",
+            "Where the landmarks a bound needs are absent or flagged, the bound is null naming them.",
+        ),
+        summary=(
+            "A visibility interval bounded by the farthest visible and the nearest invisible registered "
+            "landmark, both named. " + _CAMERA_GATE
+        ),
+    ),
+    DerivationMethod(
+        name=CAMERA_SECTOR_CLOUD_FRACTION,
+        version="camera-sector-cloud-v0",
+        citation=(
+            "Region-of-interest sky fraction: the fraction of the registered sky region of a daytime frame "
+            "classified as cloud, within the camera's registered sector. A standard whole-sky-imager "
+            "approach in outline; unvalidated for this camera and pending the METAR comparison."
+        ),
+        inputs=(_CAMERA_FRAME_INPUT,),
+        outputs=(
+            Output(
+                field="camera_sector_cloud_fraction", units="fraction", minimum=0.0, maximum=1.0,
+                range_rule="clamp",
+                note="Cloud fraction within the camera's registered sector, from a daylight frame only.",
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        enabled=False,
+        summary=(
+            "Daytime cloud fraction within a registered camera's own sector. Refused on any frame carrying "
+            "the darkness or darkness_unknown flag. " + _CAMERA_GATE
+        ),
+    ),
+    DerivationMethod(
+        name=CAMERA_HORIZON_FOG_BANK,
+        version="camera-fog-bank-v0",
+        citation=(
+            "Presence of a fog bank on the horizon from the loss of the skyline against the registered "
+            "terrain horizon in a fixed camera frame. A presence statement, not an amount; unvalidated for "
+            "this camera and pending the METAR comparison."
+        ),
+        inputs=(_CAMERA_FRAME_INPUT,),
+        outputs=(
+            Output(
+                field="horizon_fog_bank_present", units="category", minimum=None, maximum=None,
+                range_rule="inherit_input_range",
+                note=(
+                    "Admissible values: present, absent, indeterminate. A presence statement only: no "
+                    "distance to the bank and no visibility is inferred from it."
+                ),
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        enabled=False,
+        summary=(
+            "Whether a fog bank is present on the horizon in one frame of a registered camera. "
+            + _CAMERA_GATE
+        ),
+    ),
+    DerivationMethod(
+        name=CAMERA_SKYDOME_NIGHT_CLOUD,
+        version="camera-starfield-v0",
+        citation=(
+            "Night cloud fraction from star-field visibility: the fraction of catalogue stars expected "
+            "above the horizon that are absent from a sky-dome frame, the star-count approach used by "
+            "night-sky camera cloud detection. Unvalidated for the NTV sky-dome camera and pending the "
+            "METAR comparison."
+        ),
+        inputs=(_CAMERA_FRAME_INPUT,),
+        outputs=(
+            Output(
+                field="skydome_night_cloud_fraction", units="fraction", minimum=0.0, maximum=1.0,
+                range_rule="clamp",
+                note="Night cloud fraction over the sky dome, from the absent fraction of expected stars.",
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        enabled=False,
+        summary=(
+            "Night cloud fraction from the star field of the NTV sky-dome camera, the one derivation that "
+            "runs on a dark frame. " + _CAMERA_GATE
         ),
     ),
 )
