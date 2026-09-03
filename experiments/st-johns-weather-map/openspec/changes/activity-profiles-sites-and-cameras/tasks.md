@@ -108,7 +108,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
 
 ## 4. Camera registration and geometry (cameras owner)
 
-- [ ] 4.1 Create the camera registration record shape covering every element
+- [x] 4.1 Create the camera registration record shape covering every element
   of wayfinder ticket 21 item 1, and refuse an incomplete record naming the
   missing elements.
   Owns: `registry/cameras/schema.json`, `registry/camera_audit.py` (new).
