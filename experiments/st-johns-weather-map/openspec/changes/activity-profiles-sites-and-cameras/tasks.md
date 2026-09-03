@@ -97,7 +97,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   Owns: `api/weather_api/sites.py` (new).
   Verify: `cd api && uv run pytest tests/test_site_registry.py -k
   "off_site or no_registered_horizon"`
-- [ ] 3.4 Register the sector-sampling derivation entry (name, version,
+- [x] 3.4 Register the sector-sampling derivation entry (name, version,
   citation, inputs, output, range, range rule, reduction rule, parameters);
   refuse any input whose evidence class is not `retrieved`; carry the worst
   input's quality.
