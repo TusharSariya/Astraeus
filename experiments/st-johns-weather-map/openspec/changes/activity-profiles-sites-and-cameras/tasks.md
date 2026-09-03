@@ -65,7 +65,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   Owns: `api/weather_api/models.py`.
   Verify: `cd api && uv run pytest tests/test_models.py -k
   "absence_state or output_contract"`
-- [ ] 2.3 Emit `blocked` with its reason for a field no admitted source may
+- [x] 2.3 Emit `blocked` with its reason for a field no admitted source may
   redistribute, and `contract_incomplete` as `null` for a field missing any
   contract element.
   Owns: `api/weather_api/store.py`.
