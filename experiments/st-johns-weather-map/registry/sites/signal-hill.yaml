@@ -1,0 +1,70 @@
+# Signal Hill, Cabot Tower area. High ground on the north side of the
+# Narrows, so the sea horizon runs from the north-east round to the south and
+# the only obstruction is the land behind: the Southside Hills across the
+# harbour to the south-west and the city to the west.
+id: signal-hill
+name: Signal Hill (Cabot Tower)
+note: >-
+  The horizon elevation angles were hand-registered from map reading on
+  2026-09-03 and await a field survey. They are read from contour and
+  shoreline geometry, not measured on site, so each angle is good to about a
+  degree and no better.
+position:
+  latitude: 47.5704
+  longitude: -52.6816
+elevation:
+  metres: 140.0
+  datum: CGVD2013
+horizon:
+  # 36 values, true north first, stepping 10 degrees clockwise. The open sea
+  # sits at -0.5 rather than 0 because the horizon dips about 0.66 degrees
+  # below level from 140 m.
+  bearing_resolution_deg: 10
+  elevation_deg:
+    - 0.5    # 0    North Head, the ground falling to the sea
+    - 0.5    # 10
+    - 0.0    # 20
+    - -0.5   # 30   open sea
+    - -0.5   # 40
+    - -0.5   # 50
+    - -0.5   # 60
+    - -0.5   # 70
+    - -0.5   # 80
+    - -0.5   # 90   due east, open Atlantic
+    - -0.5   # 100
+    - -0.5   # 110
+    - -0.5   # 120
+    - -0.5   # 130
+    - -0.5   # 140
+    - 0.0    # 150
+    - 0.5    # 160  the coast south toward Cape Spear
+    - 1.0    # 170
+    - 1.5    # 180
+    - 2.5    # 190
+    - 4.0    # 200  the Southside Hills across the Narrows
+    - 4.5    # 210
+    - 5.0    # 220
+    - 4.5    # 230
+    - 3.5    # 240
+    - 2.5    # 250
+    - 2.0    # 260
+    - 1.5    # 270  due west, the city low below the hill
+    - 1.5    # 280
+    - 1.5    # 290
+    - 2.0    # 300
+    - 2.5    # 310
+    - 3.0    # 320  the ridge running north-west off Signal Hill
+    - 3.0    # 330
+    - 2.5    # 340
+    - 1.5    # 350
+terrain_check:
+  status: not_run
+  dem: null
+  tolerance_deg: 1.0
+  terrain_elevation_deg: null
+  note: >-
+    No digital elevation model is available in the repository; the terrain
+    check was not run and the terrain horizon is not assumed to agree.
+registered:
+  date: "2026-09-03"
+  by: Tushar Sariya
