@@ -19,6 +19,14 @@ that admits them is worse than no registry:
 * **Unapproved entries.** An entry without an approval record naming the owner
   and the decision it came from fails validation, and importing this module
   raises, so the deployment refuses to start with it.
+* **Statistic entries that cannot stay inside one family and one run.** A
+  ``member_statistic`` entry whose inputs name more than one source, one that
+  mixes a time-averaged key with an instantaneous key of the same family, and
+  a quantile entry that declares no convention are all refused at
+  registration. The same conditions are checked again at derive time against
+  the artifacts that actually resolved, in
+  :func:`derive_ensemble_statistic`, because those are what carry the family
+  and the run.
 
 Three switches, mirroring the generated-display kill switch in
 ``ingest.derive.methods``: ``enabled`` per entry, ``WEATHER_DERIVED_HERE``
@@ -31,13 +39,17 @@ constructions) and nothing from ``api``. The API and the worker both import
 it as ``ingest.derive.registry``.
 
 Spec-Refs: openspec/changes/evidence-classes-and-derived-here/specs/derivation-method-registry/spec.md
+Spec-Refs: openspec/changes/ensemble-families-and-member-statistics/specs/derivation-method-registry/spec.md
 """
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass, field as dataclass_field
-from typing import Any, Iterable, Literal
+from datetime import datetime
+from statistics import fmean, stdev
+from typing import Any, Iterable, Literal, Sequence
 
 from ingest.meteorology import fog_state, relative_humidity_from_dewpoint, resolve_wind
 
@@ -61,6 +73,28 @@ RangeRule = Literal["clamp", "wrap", "null", "inherit_input_range"]
 
 _RANGE_RULES: frozenset[str] = frozenset({"clamp", "wrap", "null", "inherit_input_range"})
 _INPUT_KINDS: frozenset[str] = frozenset({"field", "provider_reduction", "member_statistic"})
+
+#: Catalogue keys that are an average over a window rather than an instant.
+#: A statistic entry may not mix one of these with another key of the same
+#: family: the inputs are two quantities and the output would carry no window.
+TIME_AVERAGED_FIELDS: frozenset[str] = frozenset({"total_cloud_mean_6h"})
+
+#: Field families that hold a provider's own reduction over its own member
+#: set rather than the members themselves. A member set of one of these is
+#: retrieved evidence and is never an input to a statistic computed here.
+PROVIDER_REDUCTION_FAMILIES: frozenset[str] = frozenset({"ensemble_reduction"})
+
+#: The comparison senses a threshold probability admits.
+THRESHOLD_COMPARISONS: frozenset[str] = frozenset({"ge", "gt", "le", "lt"})
+
+#: The flag a value carries when it was computed here, and the flag a
+#: statistic carries when the member set it covered was incomplete. Mirrors
+#: ``api.weather_api.models``; ``ingest`` never imports ``api``.
+DERIVED_FLAG = "derived"
+PARTIAL_MEMBER_SET_FLAG = "partial_member_set"
+
+#: How bad each QC status is. A statistic is no better than its worst member.
+QUALITY_SEVERITY: dict[str, int] = {"passed": 0, "suspect": 1, "unknown": 2, "failed": 3}
 
 
 class RegistryError(RuntimeError):
@@ -164,6 +198,20 @@ class DerivationMethod:
     #: evidence, so they start on; generated-display values do not.
     reader_default_on: bool = True
     summary: str = ""
+    #: The conventions this construction chose where more than one exists, as
+    #: sentences a reader can check the number against: which mean, which
+    #: denominator, which quantile definition. An entry that admits more than
+    #: one convention and declares none is refused at registration, because
+    #: two conventions differ visibly over 21 members.
+    conventions: tuple[str, ...] = ()
+    #: Whether the control member takes part in the computation. Declared on
+    #: every statistic entry, because a mean over 20 perturbed members and a
+    #: mean over 21 members including the control are different numbers.
+    include_control: bool = True
+    #: The owner-approved least number of members a value may cover. ``None``
+    #: means none is declared, and none is invented at derive time: the
+    #: shortfall rides on the value instead (owner gate 6.4).
+    minimum_members: int | None = None
 
     @property
     def output(self) -> Output:
@@ -193,6 +241,9 @@ class DerivationMethod:
             "reader_switchable": self.reader_switchable,
             "reader_default_on": self.reader_default_on,
             "summary": self.summary,
+            "conventions": list(self.conventions),
+            "include_control": self.include_control,
+            "minimum_members": self.minimum_members,
         }
 
 
@@ -258,6 +309,48 @@ def validation_errors(entries: Iterable[DerivationMethod]) -> list[str]:
                 elif item.minimum >= item.maximum:
                     errors.append(f"{name}: {item.field!r} declares an empty physical range")
         errors.extend(_blending_errors(entry))
+        errors.extend(_member_statistic_errors(entry))
+    return errors
+
+
+def _member_statistic_errors(entry: DerivationMethod) -> list[str]:
+    """Refuse a statistic entry that cannot stay inside one family and one run.
+
+    A statistic over an ensemble is a statement about one centre's own member
+    set. An entry whose inputs name two sources is a statistic over two member
+    sets by another name, and an entry that reads a six-hour-mean field beside
+    an instantaneous field of the same family is a statistic over two
+    quantities whose output carries no window. Both are refused here, before
+    anything is served; the same conditions are checked again at derive time
+    against the artifacts actually resolved, because those are what carry the
+    family and the run.
+    """
+    member_inputs = [item for item in entry.inputs if item.kind == "member_statistic"]
+    if not member_inputs:
+        return []
+    errors: list[str] = []
+    sources = {item.source for item in member_inputs}
+    if len(sources) > 1:
+        errors.append(
+            f"{entry.name}: one-family rule - a member statistic reads the members of one family from one "
+            f"source, and these inputs name {len(sources)} ({', '.join(sorted(sources))})"
+        )
+    by_family: dict[str, set[str]] = {}
+    for item in member_inputs:
+        by_family.setdefault(item.family, set()).add(item.field)
+    for family, fields in sorted(by_family.items()):
+        averaged = sorted(fields & TIME_AVERAGED_FIELDS)
+        if averaged and fields - TIME_AVERAGED_FIELDS:
+            errors.append(
+                f"{entry.name}: averaged-with-instantaneous refused - family {family!r} mixes the "
+                f"time-averaged key {averaged[0]!r} with {', '.join(sorted(fields - TIME_AVERAGED_FIELDS))}; "
+                "the inputs are two quantities and the output would have no meaningful window"
+            )
+    if "quantile" in entry.name and not entry.conventions:
+        errors.append(
+            f"{entry.name}: a quantile entry declares its quantile convention and interpolation rule; "
+            "two conventions differ visibly over 21 members"
+        )
     return errors
 
 
@@ -414,9 +507,50 @@ _OWNER_APPROVAL = Approval(
 RELATIVE_HUMIDITY = "relative_humidity_from_dewpoint_liquid"
 WIND_SPEED_AND_DIRECTION = "wind_speed_and_direction_from_components"
 FOG_STATE = "fog_state_from_present_weather"
+#: The umbrella entry. Every member statistic goes through it: it is the
+#: family-level switch, resolved before the specific entry, so disabling it at
+#: any of the three levels nulls all five statistics with a notice naming the
+#: level, and the per-member values are unaffected.
 ENSEMBLE_STATISTICS = "ensemble_statistics_within_run"
+ENSEMBLE_MEAN = "ensemble_mean"
+ENSEMBLE_SPREAD = "ensemble_spread"
+ENSEMBLE_QUANTILE = "ensemble_quantile"
+ENSEMBLE_THRESHOLD_PROBABILITY = "ensemble_threshold_probability"
+ENSEMBLE_MEMBER_COUNT = "ensemble_member_count"
+
+#: The five entries a served statistic may name. A value's ``derivation`` is
+#: one of these, never the umbrella.
+ENSEMBLE_STATISTIC_ENTRIES: tuple[str, ...] = (
+    ENSEMBLE_MEAN,
+    ENSEMBLE_SPREAD,
+    ENSEMBLE_QUANTILE,
+    ENSEMBLE_THRESHOLD_PROBABILITY,
+    ENSEMBLE_MEMBER_COUNT,
+)
+
+#: The statistic a caller asks for, and the entry that produces it.
+ENSEMBLE_ENTRY_BY_STATISTIC: dict[str, str] = {
+    "mean": ENSEMBLE_MEAN,
+    "spread": ENSEMBLE_SPREAD,
+    "quantile": ENSEMBLE_QUANTILE,
+    "threshold_probability": ENSEMBLE_THRESHOLD_PROBABILITY,
+    "member_count": ENSEMBLE_MEMBER_COUNT,
+}
+
 SECTOR_SAMPLING = "sector_sampling_along_bearing"
 DE442_GEOMETRY = "de442_sun_moon_geometry"
+
+#: What the five statistic entries and their umbrella cite, and the single
+#: input each declares: one catalogue field over the member axis of one
+#: source. The field is the family placeholder, not a particular key; the key
+#: a value actually covered rides on the member set the value carries.
+_ENSEMBLE_CITATION = (
+    "Sample statistics over an ensemble's own members within one run and one family, as in "
+    "Wilks (2019), Statistical Methods in the Atmospheric Sciences, 4th ed., chapter 8."
+)
+_ENSEMBLE_MEMBER_INPUT = Input(
+    field="ensemble_member_field", family="ensemble_member_field", kind="member_statistic"
+)
 
 #: The first entries: the derivations this deployment already serves or has
 #: already specified. Order is menu order.
@@ -495,13 +629,8 @@ ENTRIES: tuple[DerivationMethod, ...] = (
     DerivationMethod(
         name=ENSEMBLE_STATISTICS,
         version="within-run-v1",
-        citation=(
-            "Sample statistics over an ensemble's own members within one run and one family, as in "
-            "Wilks (2019), Statistical Methods in the Atmospheric Sciences, 4th ed., chapter 8."
-        ),
-        inputs=(
-            Input(field="ensemble_member_field", family="ensemble_member_field", kind="member_statistic"),
-        ),
+        citation=_ENSEMBLE_CITATION,
+        inputs=(_ENSEMBLE_MEMBER_INPUT,),
         outputs=(
             Output(
                 field="ensemble_statistic", units="input field units", minimum=None, maximum=None,
@@ -513,12 +642,118 @@ ENTRIES: tuple[DerivationMethod, ...] = (
             ),
         ),
         approval=_OWNER_APPROVAL,
-        enabled=False,
-        summary=(
-            "Mean, spread, quantiles, threshold probabilities and counts over the members of one ensemble "
-            "family within one run. Registered and disabled: `ensemble-members-and-source-plurality` "
-            "enables it when member retrieval exists."
+        conventions=(
+            "Every member statistic resolves this entry first, so switching it off at any of the three "
+            "levels switches off all five without switching off the members themselves.",
         ),
+        summary=(
+            "The umbrella entry for mean, spread, quantiles, threshold probabilities and counts over the "
+            "members of one ensemble family within one run. Enabled by "
+            "`ensemble-families-and-member-statistics`; a served value names the specific entry below, not "
+            "this one."
+        ),
+    ),
+    DerivationMethod(
+        name=ENSEMBLE_MEAN,
+        version="within-run-v1",
+        citation=_ENSEMBLE_CITATION,
+        inputs=(_ENSEMBLE_MEMBER_INPUT,),
+        outputs=(
+            Output(
+                field="ensemble_mean", units="input field units", minimum=None, maximum=None,
+                range_rule="inherit_input_range",
+                note="A mean of one field carries that field's own published unit and range.",
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        conventions=("The arithmetic mean of the resolved member values, each member weighted equally.",),
+        summary="The arithmetic mean over the members of one family, one run and one field.",
+    ),
+    DerivationMethod(
+        name=ENSEMBLE_SPREAD,
+        version="within-run-v1",
+        citation=_ENSEMBLE_CITATION,
+        inputs=(_ENSEMBLE_MEMBER_INPUT,),
+        outputs=(
+            Output(
+                field="ensemble_spread", units="input field units", minimum=None, maximum=None,
+                range_rule="inherit_input_range",
+                note=(
+                    "A spread is non-negative and is zero when every member agrees; its upper bound is the "
+                    "span of the input field's own published range, which this entry cannot state as a "
+                    "constant."
+                ),
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        conventions=(
+            "The sample standard deviation with an n-1 denominator, zero when every member agrees.",
+            "Fewer than two resolved members is no sample, so no spread is produced.",
+        ),
+        summary="The sample standard deviation over the members of one family, one run and one field.",
+    ),
+    DerivationMethod(
+        name=ENSEMBLE_QUANTILE,
+        version="within-run-v1",
+        citation=_ENSEMBLE_CITATION,
+        inputs=(_ENSEMBLE_MEMBER_INPUT,),
+        outputs=(
+            Output(
+                field="ensemble_quantile", units="input field units", minimum=None, maximum=None,
+                range_rule="inherit_input_range",
+                note="A quantile of one field carries that field's own published unit and range.",
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        conventions=(
+            "Hyndman and Fan (1996) type 7: linear interpolation between the order statistics at position "
+            "(n-1)q on the sorted resolved member values, which is the numpy default.",
+            "The requested quantile rides on every value the entry produces.",
+        ),
+        summary="A quantile over the members of one family, one run and one field.",
+    ),
+    DerivationMethod(
+        name=ENSEMBLE_THRESHOLD_PROBABILITY,
+        version="within-run-v1",
+        citation=_ENSEMBLE_CITATION,
+        inputs=(_ENSEMBLE_MEMBER_INPUT,),
+        outputs=(
+            Output(
+                field="ensemble_threshold_probability", units="fraction", minimum=0.0, maximum=1.0,
+                range_rule="clamp",
+                note="The fraction of resolved members satisfying the comparison, 0 to 1.",
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        conventions=(
+            "The fraction of resolved members satisfying the comparison, over the members resolved and not "
+            "over the members declared.",
+            "The threshold, its unit and its comparison sense (ge, gt, le or lt) ride on every value the "
+            "entry produces; a probability without all three is not served.",
+        ),
+        summary="The fraction of one family's members that cross a threshold, within one run.",
+    ),
+    DerivationMethod(
+        name=ENSEMBLE_MEMBER_COUNT,
+        version="within-run-v1",
+        citation=_ENSEMBLE_CITATION,
+        inputs=(_ENSEMBLE_MEMBER_INPUT,),
+        outputs=(
+            Output(
+                field="ensemble_members_used", units="count", minimum=0.0, maximum=1000.0, range_rule="clamp",
+                note="Members that resolved a value. Reported beside the declared count, never instead of it.",
+            ),
+            Output(
+                field="ensemble_members_declared", units="count", minimum=0.0, maximum=1000.0, range_rule="clamp",
+                note="Members the registry declares for the family, whether or not they resolved.",
+            ),
+        ),
+        approval=_OWNER_APPROVAL,
+        conventions=(
+            "Members used and members declared are two numbers; neither stands for both.",
+            "No member resolved is null with that reason, never a count of zero standing for agreement.",
+        ),
+        summary="How many of one family's declared members resolved for one run and one field.",
     ),
     DerivationMethod(
         name=SECTOR_SAMPLING,
@@ -760,3 +995,331 @@ def resolve_registered_fog_state(
     if derived.value is None or derived.method is None:
         return None, None, None
     return derived.value, derived.method.name, derived.method.version
+
+
+# --- Ensemble statistics over one family's own members within one run -------
+
+
+@dataclass(frozen=True, slots=True)
+class MemberValue:
+    """One member's value for one field, with its own QC verdict.
+
+    ``control`` marks the control run, which lands on the member axis as a
+    flagged member rather than beside it. A member that resolved no value
+    keeps its row with ``value=None``, because a named absence is what lets a
+    partial set name the members it is missing.
+    """
+
+    member: str
+    control: bool
+    value: float | None
+    quality_status: str = "unknown"
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "member": self.member,
+            "control": self.control,
+            "value": self.value,
+            "quality_status": self.quality_status,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class MemberSet:
+    """The members of one family, one run and one field, as they resolved.
+
+    ``declared`` is the member count the registry declares for the family, so
+    a statistic can say what it covered and what it did not. ``time_averaged``
+    marks a field that is a mean over a window (the GEFS six-hour-mean cloud);
+    such a set is never combined with an instantaneous set of the same
+    quantity.
+    """
+
+    family: str
+    source_id: str
+    run_time: datetime | None
+    field: str
+    declared: int
+    members: tuple[MemberValue, ...]
+    time_averaged: bool = False
+
+    @property
+    def used(self) -> tuple[MemberValue, ...]:
+        """The members that resolved a value."""
+        return tuple(item for item in self.members if item.value is not None)
+
+    @property
+    def missing(self) -> tuple[str, ...]:
+        """The declared members that are absent, named where they are known.
+
+        A member row with no value names itself. Where the family's declared
+        member ids are not known here - only the count is - the shortfall is
+        carried as :attr:`missing_count` instead, because inventing member ids
+        to fill it would be a fabricated member set.
+        """
+        return tuple(item.member for item in self.members if item.value is None)
+
+    @property
+    def missing_count(self) -> int:
+        """How many declared members did not resolve, named or not."""
+        return max(self.declared, len(self.members)) - len(self.used)
+
+    @property
+    def partial(self) -> bool:
+        return self.missing_count > 0
+
+    @property
+    def quality_status(self) -> str:
+        """The worst QC status among the members that resolved a value."""
+        statuses = [item.quality_status for item in self.used]
+        if not statuses:
+            return "unknown"
+        return max(statuses, key=lambda value: QUALITY_SEVERITY.get(value, 2))
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "family": self.family,
+            "source_id": self.source_id,
+            "run_time": self.run_time.isoformat() if self.run_time is not None else None,
+            "field": self.field,
+            "declared": self.declared,
+            "members_used": len(self.used),
+            "members_missing": list(self.missing),
+            "partial": self.partial,
+            "time_averaged": self.time_averaged,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class EnsembleStatistic:
+    """One statistic over one member set, or the reason there is no number.
+
+    Three ways to have no value, and they are not the same thing: ``refusal``
+    is a switch (the umbrella entry, the deployment or the reader),
+    ``condition_failed`` is a resolved input that broke the one-family,
+    one-run, one-quantity rule, and a ``value`` of ``None`` with neither is a
+    field that simply did not resolve. In every case the member set the
+    statistic would have covered is still carried, so a reader sees what was
+    refused rather than only that something was.
+    """
+
+    statistic: str
+    value: float | None
+    method: DerivationMethod | None
+    member_set: MemberSet | None
+    flags: tuple[str, ...]
+    refusal: Refusal | None
+    condition_failed: str | None
+    members_used: int
+    members_declared: int
+    members_missing: tuple[str, ...]
+    control_included: bool | None
+    quantile: float | None = None
+    threshold: float | None = None
+    threshold_units: str | None = None
+    comparison: str | None = None
+
+    @property
+    def available(self) -> bool:
+        return self.refusal is None and self.condition_failed is None
+
+    @property
+    def partial(self) -> bool:
+        return PARTIAL_MEMBER_SET_FLAG in self.flags
+
+    @property
+    def quality_status(self) -> str:
+        """No better than the worst member the statistic covered."""
+        return self.member_set.quality_status if self.member_set is not None else "unknown"
+
+
+def _statistic_entry_name(statistic: str) -> str:
+    """The registry entry that produces this statistic, by its short name.
+
+    An unknown statistic keeps the name it was asked for, so it resolves to
+    ``unregistered_method`` rather than to some nearest entry.
+    """
+    return ENSEMBLE_ENTRY_BY_STATISTIC.get(statistic, statistic)
+
+
+def _condition_failure(member_sets: Sequence[MemberSet]) -> str | None:
+    """The first condition these resolved member sets fail, or ``None``.
+
+    The conditions the registry refuses at registration, checked again against
+    what actually resolved, because the artifacts are what carry the family
+    and the run. Order matters: a provider's own reduction dragged in beside
+    members is reported as that, not as a second family.
+    """
+    if any(item.family in PROVIDER_REDUCTION_FAMILIES for item in member_sets):
+        return "provider_reduction_mixed"
+    families = sorted({item.family for item in member_sets})
+    if len(families) > 1:
+        return f"one_family:{families[0]},{families[1]}"
+    runs = sorted(
+        {item.run_time.isoformat() if item.run_time is not None else "unknown" for item in member_sets}
+    )
+    if len(runs) > 1:
+        return f"one_run:{runs[0]},{runs[1]}"
+    averaged = {item.time_averaged or item.field in TIME_AVERAGED_FIELDS for item in member_sets}
+    if len(averaged) > 1:
+        return "averaged_with_instantaneous"
+    return None
+
+
+def _quantile_type_7(values: Sequence[float], quantile: float) -> float:
+    """Hyndman and Fan type 7, in plain Python.
+
+    Linear interpolation between the order statistics at position ``(n-1)q``,
+    which is what numpy's default gives; written out here so the registry
+    computes without numpy installed.
+    """
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = (len(ordered) - 1) * quantile
+    lower = math.floor(position)
+    upper = math.ceil(position)
+    if lower == upper:
+        return ordered[int(position)]
+    return ordered[lower] + (position - lower) * (ordered[upper] - ordered[lower])
+
+
+def _satisfies(value: float, threshold: float, comparison: str) -> bool:
+    if comparison == "ge":
+        return value >= threshold
+    if comparison == "gt":
+        return value > threshold
+    if comparison == "le":
+        return value <= threshold
+    return value < threshold
+
+
+def derive_ensemble_statistic(
+    statistic: str,
+    member_sets: Sequence[MemberSet],
+    *,
+    quantile: float | None = None,
+    threshold: float | None = None,
+    threshold_units: str | None = None,
+    comparison: str | None = None,
+    reader_disabled: Iterable[str] = (),
+) -> EnsembleStatistic:
+    """One of the five statistics over the members that actually resolved.
+
+    The umbrella entry is resolved first, so switching
+    ``ensemble_statistics_within_run`` off at any of the three levels nulls
+    every statistic with a notice naming the level while the per-member values
+    go on being served. The specific entry is resolved next, so one statistic
+    can be switched off without the others.
+
+    A failed condition yields no value at all: nothing is computed over
+    whichever subset passes, because a mean over the members of one of two
+    runs is not the mean the reader asked for. A partial set does produce a
+    value, flagged ``partial_member_set`` and carrying the members it missed.
+    """
+    reader_off = set(reader_disabled)
+    sets = tuple(member_sets)
+    primary = sets[0] if sets else None
+    declared = sum(item.declared for item in sets)
+    resolved = [item for member_set in sets for item in member_set.used]
+    missing = tuple(name for member_set in sets for name in member_set.missing)
+
+    def _result(
+        *,
+        value: float | None,
+        method: DerivationMethod | None,
+        flags: tuple[str, ...] = (),
+        refusal: Refusal | None = None,
+        condition_failed: str | None = None,
+        control_included: bool | None = None,
+        members_used: int | None = None,
+    ) -> EnsembleStatistic:
+        return EnsembleStatistic(
+            statistic=statistic,
+            value=value,
+            method=method,
+            member_set=primary,
+            flags=flags,
+            refusal=refusal,
+            condition_failed=condition_failed,
+            members_used=len(resolved) if members_used is None else members_used,
+            members_declared=declared,
+            members_missing=missing,
+            control_included=control_included,
+            quantile=quantile,
+            threshold=threshold,
+            threshold_units=threshold_units,
+            comparison=comparison,
+        )
+
+    umbrella = resolve(ENSEMBLE_STATISTICS, reader_disabled=reader_off)
+    if umbrella is not None:
+        return _result(value=None, method=get(ENSEMBLE_STATISTICS), refusal=umbrella)
+    entry_name = _statistic_entry_name(statistic)
+    refusal = resolve(entry_name, reader_disabled=reader_off)
+    if refusal is not None:
+        return _result(value=None, method=get(entry_name), refusal=refusal)
+    entry = require(entry_name)
+
+    if not sets:
+        return _result(value=None, method=entry, condition_failed="no_member_resolved")
+    failed = _condition_failure(sets)
+    if failed is not None:
+        return _result(value=None, method=entry, condition_failed=failed)
+
+    declared_control = any(item.control for member_set in sets for item in member_set.members)
+    counted = resolved if entry.include_control else [item for item in resolved if not item.control]
+    control_included: bool | None = None
+    if declared_control:
+        control_included = bool(entry.include_control and any(item.control for item in counted))
+
+    flags: tuple[str, ...] = (DERIVED_FLAG,)
+    if any(member_set.partial for member_set in sets):
+        flags += (PARTIAL_MEMBER_SET_FLAG,)
+
+    values = [item.value for item in counted if item.value is not None]
+    if not values:
+        return _result(
+            value=None, method=entry, flags=flags, condition_failed="no_member_resolved",
+            control_included=control_included, members_used=0,
+        )
+    minimum = entry.minimum_members
+    if minimum is not None and len(values) < minimum:
+        return _result(
+            value=None, method=entry, flags=flags,
+            condition_failed=f"below_minimum:{len(values)}/{minimum}",
+            control_included=control_included, members_used=len(values),
+        )
+
+    if entry_name == ENSEMBLE_MEAN:
+        raw, output_field = fmean(values), "ensemble_mean"
+    elif entry_name == ENSEMBLE_SPREAD:
+        if len(values) < 2:
+            # A sample standard deviation with an n-1 denominator needs two
+            # members; one member is not a spread of zero.
+            return _result(
+                value=None, method=entry, flags=flags,
+                condition_failed=f"below_minimum:{len(values)}/2",
+                control_included=control_included, members_used=len(values),
+            )
+        raw, output_field = stdev(values), "ensemble_spread"
+    elif entry_name == ENSEMBLE_QUANTILE:
+        if quantile is None or not 0.0 <= quantile <= 1.0:
+            raise ValueError("ensemble_quantile needs a quantile in 0 to 1; none is assumed")
+        raw, output_field = _quantile_type_7(values, quantile), "ensemble_quantile"
+    elif entry_name == ENSEMBLE_THRESHOLD_PROBABILITY:
+        if threshold is None or comparison not in THRESHOLD_COMPARISONS:
+            raise ValueError(
+                "ensemble_threshold_probability needs a threshold and a comparison in "
+                f"{', '.join(sorted(THRESHOLD_COMPARISONS))}; neither is assumed"
+            )
+        crossing = sum(1 for value in values if _satisfies(value, threshold, comparison))
+        raw, output_field = crossing / len(values), "ensemble_threshold_probability"
+    else:
+        raw, output_field = float(len(values)), "ensemble_members_used"
+
+    value, bound_flags = bound(entry_name, output_field, raw)
+    return _result(
+        value=value, method=entry, flags=flags + bound_flags,
+        control_included=control_included, members_used=len(values),
+    )

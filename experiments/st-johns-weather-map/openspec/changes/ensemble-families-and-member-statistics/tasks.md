@@ -118,12 +118,13 @@ Decision reference: wayfinder ticket
 
 ## 4. Serving and reading (API owner 4.1 to 4.3, web owner 4.4, implementation pass, NOT in this change)
 
-- [ ] 4.1 Add the five derivation registry entries with inputs, ranges,
+- [x] 4.1 Add the five derivation registry entries with inputs, ranges,
   conventions, control treatment and the registration-time refusals.
   Owned files: `ingest/derive/registry.py`, `api/tests/test_derivation_registry.py`
   (the change's plan named `api/weather_api/derivations.py`, which does not
   exist; the registry is `ingest/derive/registry.py`).
   Verify: `cd api && uv run pytest tests/test_derivation_registry.py -k ensemble`.
+  Verify result: `cd api && uv run pytest tests/test_derivation_registry.py -k ensemble` -> 21 passed, 18 deselected.
 
 - [ ] 4.2 Serve statistics beside members with the family, run, statistic and
   member set on every value, and refuse a cross-family, cross-run or
