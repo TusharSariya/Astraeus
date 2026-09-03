@@ -30,7 +30,7 @@ Verification commands used below, run from
 
 ## 1. State vocabulary in the schema (Schema owner)
 
-- [ ] 1.1 Replace `$defs/status` in `registry/schema.json` with the ten states
+- [x] 1.1 Replace `$defs/status` in `registry/schema.json` with the ten states
   `operational`, `implemented-unverified`, `catalogued`, `credential-required`,
   `licence-blocked`, `link-only`, `partnership-only`, `unavailable`,
   `rejected`, `superseded`.
@@ -38,13 +38,13 @@ Verification commands used below, run from
   enum and fails on any record still carrying `implementing`,
   `credential_required`, `licence_review`, `retired`, `duplicate_evidence` or
   `unsupported_field`.
-- [ ] 1.2 Add the `credential` block (credential name, registration URL, no
+- [x] 1.2 Add the `credential` block (credential name, registration URL, no
   value field permitted) required for state `credential-required`, and the
   `restricted_terms` block (`terms_text`, `terms_source_url`,
   `redistribution: false`, read date).
   Verify: `python3 -m unittest discover -s registry/tests -v` with new cases
   `test_credential_block_required` and `test_restricted_terms_require_text`.
-- [ ] 1.3 Add the `admission_condition` block (condition text, what would
+- [x] 1.3 Add the `admission_condition` block (condition text, what would
   satisfy it, satisfied flag) and the `superseded_by` field required for state
   `superseded`.
   Verify: `python3 -m unittest discover -s registry/tests -v` with
