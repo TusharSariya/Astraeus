@@ -242,6 +242,20 @@ is false for an ensemble record whose `ensemble` is absent or whose
   for; all six families are in `SOURCE_SCOPE`, so the gate covers every one of
   them, while a member-shaped fixture over a source the catalogue has never
   heard of is left alone rather than failed for a declaration with no home.
+- Task 3.1 built the four adapters on 2026-09-02 and narrowed one clause.
+  `control_retrieval` is the adapter's own access shape and is **not** derived
+  from `EnsembleDeclaration.control.separate_retrieval`. The two record
+  different things: the registry's flag says whether the control needs a
+  retrieval step the perturbed members do not, while `control_retrieval` says
+  which file or coverage the control was in. GEFS separates them - it declares
+  `separate_retrieval: false`, because every GEFS member including `gec00` is
+  already its own S3 object, and its control is nevertheless in a
+  `separate_file`. So the GEFS adapter states `separate_file` directly;
+  mapping the flag would have written `same_file` into provenance, which is
+  false for that family. AIFS-ENS (`true` -> `separate_file`), IFS ENS
+  (`false` -> `same_file`) and REPS (no identifier -> `null`) are unaffected,
+  and no adapter reads a member count, a control identifier or a storage scope
+  from anywhere but the declaration.
 - The store samples a member-bearing dataset only when the request named a
   member (`member=<id>` or `member=all`) or a statistic; otherwise the
   artifact yields no value and a skip notice
