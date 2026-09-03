@@ -31,6 +31,148 @@ INGEST_ROOT = HERE.parent / "ingest"
 #: The environment variable name shape a credential block may carry.
 _CREDENTIAL_NAME = re.compile(r"^WEATHER_SECRET_[A-Z0-9_]+$")
 
+#: Every source id the 2026-09-02 resolutions name in the admissions ledger of
+#: ``openspec/changes/source-admissions-ledger/design.md``, grouped by the
+#: ledger's own sections so a reader can check this literal against the table
+#: row by row. 112 distinct ids appear in the table; the one omitted here is
+#: ``openmeteo-weathernext-2-cloud``, which Deviation 1 folds into the existing
+#: ``open-meteo-weathernext-2`` record rather than creating a second
+#: declaration for the same product. ``eccc-rdps`` is listed once although the
+#: table names it twice, the second time for its field-level seeing and
+#: sky-transparency admission.
+#:
+#: Ids the table does not name are deliberately absent even where the registry
+#: carries them: the ensemble families, ``dwd-icon-eps`` and
+#: ``open-meteo-weathernext-2`` are governed by other changes, and a ledger
+#: that claimed them would assert a decision these resolutions did not make.
+LEDGER_SOURCE_IDS: frozenset[str] = frozenset({
+    # ECCC models, analyses and nowcasting (ticket 24)
+    "eccc-hrdps",
+    "eccc-rdps",
+    "eccc-gdps",
+    "eccc-hrdps-weg-prognos",
+    "eccc-hrdpa",
+    "eccc-rdpa",
+    "eccc-hrepa",
+    "eccc-hrdlps",
+    "eccc-caldas",
+    "eccc-integrated-nowcasting",
+    "eccc-radiosonde",
+    # Foreign models (tickets 24 and 14)
+    "noaa-gfs",
+    "ecmwf-ifs",
+    "ecmwf-aifs-single",
+    "dwd-icon-global",
+    "openmeteo-jma-gsm",
+    "openmeteo-arpege",
+    "openmeteo-ukmo-global",
+    "brightsky-dwd-mosmix-71801",
+    "openmeteo-kma-gdps",
+    "openmeteo-cma-grapes",
+    "openmeteo-graphcast",
+    # Astronomy geometry (ticket 25)
+    "nasa-jpl-de442",
+    "celestrak-gp",
+    "space-track",
+    # Space weather (tickets 25 and 8)
+    "noaa-swpc-rtsw",
+    "noaa-swpc-kp",
+    "noaa-swpc-ovation",
+    "noaa-swpc-plasma",
+    "noaa-swpc-propagated-solar-wind",
+    "noaa-swpc-kp-1m",
+    "noaa-swpc-alerts",
+    "noaa-swpc-scales",
+    "gfz-hp30",
+    "noaa-goes-magnetometer",
+    "noaa-goes-xray",
+    "noaa-swpc-kyoto-dst",
+    "noaa-swpc-stereo-a",
+    "noaa-swpc-kp-hourly-prediction",
+    "nrcan-stj-magnetometer",
+    "space-weather-canada-regional",
+    "nasa-soho-sdo-goes-suvi-imagery",
+    # Transparency, seeing, aerosol, light pollution (tickets 25, 10 and 28).
+    # The section's first row is ``eccc-rdps``, listed above with ticket 24.
+    "openmeteo-cams-aod",
+    "openmeteo-lsa-saf-radiation",
+    "eccc-raqdps",
+    "eccc-rdaqa",
+    "eccc-wildfire-hotspots",
+    "eccc-raqdps-firework",
+    "copernicus-cams",
+    "nasa-earthdata-aerosol",
+    "viirs-dnb-night-lights",
+    "falchi-night-sky-atlas",
+    "7timer",
+    "meteosource",
+    "noaa-rap",
+    "noaa-nam",
+    "globe-at-night",
+    # Satellite and research comparison (tickets 25 and 9). The section's
+    # third row is ``openmeteo-weathernext-2-cloud``, omitted by Deviation 1.
+    "noaa-goes-east",
+    "google-weathernext-2",
+    # Surface, aviation, hazard and nowcast (ticket 26)
+    "eccc-swob",
+    "awc-metar-speci",
+    "awc-taf",
+    "awc-sigmet-airmet",
+    "awc-pirep-airep",
+    "eccc-radar",
+    "eccc-lightning",
+    "eccc-cap-alerts",
+    "eccc-thunderstorm-outlooks",
+    "eccc-hurricane-products",
+    # Fog, marine and ocean (tickets 26, 9 and 28)
+    "smartatlantic-st-johns",
+    "smartatlantic-other-validated",
+    "eccc-marine-buoys-synop",
+    "ccg-navwarn",
+    "eccc-ciops-east",
+    "eccc-riops",
+    "eccc-rdwps",
+    "eccc-gdwps",
+    "eccc-rewps",
+    "eccc-gdsps",
+    "eccc-resps",
+    "dfo-iwls",
+    "openmeteo-gfs-wave",
+    "eccc-marine-forecasts-alerts",
+    # Hydrology and air quality (tickets 26 and 11)
+    "eccc-hydrometric",
+    "provincial-hydrometric",
+    "municipal-hydrometric",
+    "nl-air-quality-csv",
+    "eccc-aqhi",
+    # Transport and cameras (tickets 26, 12 and 21)
+    "nl-511",
+    "nl-511-rwis",
+    "nav-canada-weather-cameras",
+    "ccg-harbour-cameras",
+    "city-st-johns-road-cameras",
+    "ntv-cameras",
+    # Citizen observations (tickets 26 and 25)
+    "noaa-madis",
+    "raw-cwop-pws",
+    "purpleair",
+    "openaq",
+    "netatmo",
+    "weather-underground",
+    # Open-Meteo endpoints not admitted (ticket 28)
+    "openmeteo-air-quality-particulates",
+    "openmeteo-marine-currents-sealevel",
+    "openmeteo-glofas",
+    "openmeteo-elevation",
+    "openmeteo-marine-sst",
+    "openmeteo-uv-index",
+    "openmeteo-pollen-ammonia",
+    "openmeteo-aqi-indices",
+    "openmeteo-beam-split",
+    "openmeteo-climate-cmip6",
+    "openmeteo-seasonal-seas5",
+})
+
 
 def load_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
@@ -830,6 +972,66 @@ def glossary_state_errors(path: Path | None = None) -> list[str]:
     return errors
 
 
+def ledger_missing_ids(data: dict[str, Any]) -> list[str]:
+    """Ledger ids with no registry record yet, sorted.
+
+    Separated from ``ledger_errors`` because the list is worth reading on its
+    own: it is exactly the work still outstanding against the resolutions, and
+    ``summary`` reports it so a run says how far the ledger has been written
+    rather than only that it is incomplete.
+    """
+    declared = {source["id"] for source in data["sources"]}
+    return sorted(LEDGER_SOURCE_IDS - declared)
+
+
+def ledger_errors(data: dict[str, Any]) -> list[str]:
+    """Ledger completeness: every decided source is declared, and declared fully.
+
+    The resolutions of tickets 24, 25, 26 and 28 decided a state, a path or an
+    explicit absence of one, and a reason for every source they name. This
+    checks that the registry says the same thing, in four ways.
+
+    An id the resolutions name with no record at all is the first and worst:
+    an undeclared source is one nobody decided, whatever the design document
+    says, because nothing in the running system can be asked about it.
+
+    The other three are per record. A blank ``reason`` is a decision with no
+    grounds, which cannot be reviewed. A ``status`` outside the vocabulary is
+    a state nobody agreed to; ``state_errors`` refuses it too, and it is
+    repeated here so the ledger check stands on its own for a caller that runs
+    it alone.
+
+    The path check runs the opposite way from ``state_errors``. That function
+    already refuses an endpoint on the three ``NO_ACCESS_PATH_STATES``, so
+    duplicating it would add nothing. What is not covered anywhere else is the
+    other direction: a record admitted as ``implemented-unverified`` with an
+    empty ``access_endpoints`` claims to be a retrievable source with nothing
+    to retrieve it from, and the ledger's "access path or an explicit none"
+    means the two halves have to agree.
+    """
+    errors: list[str] = []
+    for source_id in ledger_missing_ids(data):
+        errors.append(
+            f"{source_id}: named in the 2026-09-02 resolutions and has no "
+            "registry record; an undeclared source is one nobody decided"
+        )
+    for source in data["sources"]:
+        sid = source["id"]
+        if sid not in LEDGER_SOURCE_IDS:
+            continue
+        if not (source.get("reason") or "").strip():
+            errors.append(f"{sid}: ledger record needs a reason, not blank text")
+        status = source["status"]
+        if status not in ALLOWED_STATUSES:
+            errors.append(f"{sid}: ledger record declares state {status!r}, which is not an admission state")
+        elif status == "implemented-unverified" and not source.get("access_endpoints"):
+            errors.append(
+                f"{sid}: admitted implemented-unverified with no access endpoint; "
+                "a retrievable source with no path is a contradiction"
+            )
+    return errors
+
+
 def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     sources = data["sources"]
@@ -878,13 +1080,25 @@ def semantic_errors(data: dict[str, Any], coverage: dict[str, Any]) -> list[str]
     return errors
 
 
-def validate(data: dict[str, Any] | None = None) -> tuple[dict[str, Any], list[str]]:
+def validate(
+    data: dict[str, Any] | None = None, *, require_ledger: bool = True
+) -> tuple[dict[str, Any], list[str]]:
+    """The whole audit. ``require_ledger`` false drops the completeness check.
+
+    The keyword exists so a caller checking one record's shape can say so,
+    rather than being told about every source the resolutions named that
+    nobody has written down yet. It defaults to true because the ledger being
+    incomplete is a real finding about the registry, not a mode: the audit
+    stays red until the last resolution is declared.
+    """
     data = data or registry()
     schema = load_json(HERE / "schema.json")
     coverage = load_json(HERE / "catalogue_coverage.json")
     validator = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
     errors = [f"schema {'.'.join(str(p) for p in error.absolute_path) or '<root>'}: {error.message}" for error in sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path))]
     errors.extend(semantic_errors(data, coverage))
+    if require_ledger:
+        errors.extend(ledger_errors(data))
     errors.extend(export_errors(data))
     errors.extend(glossary_state_errors())
     errors.extend(catalogue_errors())
@@ -961,6 +1175,13 @@ def summary(data: dict[str, Any]) -> dict[str, Any]:
         "no_access_path": sorted(
             source["id"] for source in data["sources"] if not source["access_endpoints"]
         ),
+        # How much of the 2026-09-02 ledger the registry actually carries. The
+        # missing ids are listed rather than counted because the list is the
+        # remaining work, and a reader who can name it can close it.
+        "ledger_declared": sum(
+            1 for source in data["sources"] if source["id"] in LEDGER_SOURCE_IDS
+        ),
+        "ledger_missing": ledger_missing_ids(data),
         # The two halves of the Decision 1 split, so that a run can be compared
         # against the 21/29 the migration was expected to produce.
         "migration_split": {
@@ -1006,7 +1227,7 @@ def main(argv: list[str] | None = None) -> int:
         json.dump(field_catalogue.catalogue(), sys.stdout, indent=2, sort_keys=True)
         print()
         return 0
-    data, errors = validate()
+    data, errors = validate(require_ledger=True)
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
