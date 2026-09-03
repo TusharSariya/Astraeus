@@ -373,9 +373,64 @@ def test_a_complete_member_set_publishes_and_reports_its_members():
         "present": ["01", "02", "03"],
         "missing": [],
         "control": "01",
-        # The adapter knows the access shape; this module deliberately does not.
+        # The adapter knows the access shape and this one stated none, so the
+        # block says so rather than guessing a shape from the member count.
         "control_retrieval": None,
     }
+
+
+def test_the_adapter_states_how_the_control_was_retrieved():
+    """REPS fetches each member as its own coverage, the control included."""
+    result = validate_run(
+        member_manifest(),
+        make_member_dataset(),
+        window=window(),
+        control_retrieval="separate_coverage",
+    )
+
+    assert result.members.control_retrieval == "separate_coverage"
+    assert result.as_members()["control_retrieval"] == "separate_coverage"
+
+
+def test_the_two_file_aifs_ens_control_is_recorded_as_a_separate_retrieval():
+    """One axis, two retrievals: provenance says the control came from ``cf``."""
+    dataset = make_member_dataset(members=("0", "1", "2"), control="0")
+    result = validate_run(
+        member_manifest(control="0"),
+        dataset,
+        window=window(),
+        declared_members=("0", "1", "2"),
+        control_retrieval="separate_file",
+    )
+
+    assert result.publishable is True
+    assert result.as_members() == {
+        "declared": 3,
+        "present": ["0", "1", "2"],
+        "missing": [],
+        "control": "0",
+        "control_retrieval": "separate_file",
+    }
+
+
+def test_a_retrieval_shape_outside_the_declared_vocabulary_is_refused():
+    with pytest.raises(ManifestError):
+        validate_run(
+            member_manifest(),
+            make_member_dataset(),
+            window=window(),
+            control_retrieval="somehow",
+        )
+
+
+def test_a_family_with_no_control_records_no_retrieval_shape():
+    """No control means no retrieval to describe, whatever the adapter passed."""
+    dataset = make_member_dataset(control=None)
+    result = validate_run(
+        member_manifest(control=None), dataset, window=window(), control_retrieval="same_file"
+    )
+
+    assert result.as_members()["control_retrieval"] is None
 
 
 def test_a_member_axis_in_front_leaves_coverage_and_the_lat_lon_checks_working():

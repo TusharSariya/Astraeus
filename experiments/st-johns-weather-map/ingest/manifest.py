@@ -213,6 +213,16 @@ def declared_classes(classes: Sequence[str], *, by_variable: Mapping[str, str] |
     return {"evidence_classes": sorted(declared), "evidence_class_by_variable": dict(by_variable or {})}
 
 
+#: How the control member was retrieved, from the adapter's access shape.
+#: ``same_file`` is IFS ENS, whose control is message ``number=0`` in the member
+#: file; ``separate_file`` is AIFS-ENS, whose control is a whole separate ``cf``
+#: object; ``separate_coverage`` is a per-member WCS coverage such as REPS. The
+#: value never changes what lands on the axis - the control is one flagged
+#: member either way - it records what had to be fetched to put it there, so a
+#: run missing its control can be read against the retrieval that failed.
+CONTROL_RETRIEVALS = ("same_file", "separate_file", "separate_coverage")
+
+
 @dataclass(frozen=True)
 class MemberReport:
     """What the member axis of one run actually held, against what was declared.
@@ -222,13 +232,16 @@ class MemberReport:
     is read off the dataset's own ``member`` coordinate - never from the request
     that was issued - and ``missing`` names the identifiers that did not arrive,
     including the control when it did not. ``control`` is the declared control's
-    identifier, which stays named even when it is the thing that is missing.
+    identifier, which stays named even when it is the thing that is missing, and
+    ``control_retrieval`` is one of :data:`CONTROL_RETRIEVALS` or ``None`` where
+    the family publishes no control or the adapter stated no shape.
     """
 
     declared: int | None = None
     present: tuple[str, ...] = ()
     missing: tuple[str, ...] = ()
     control: str | None = None
+    control_retrieval: str | None = None
 
 
 @dataclass(frozen=True)
@@ -285,11 +298,10 @@ class ValidationResult:
     def as_members(self) -> dict[str, Any] | None:
         """The member provenance block, or ``None`` for a deterministic run.
 
-        ``control_retrieval`` is left null here because this module cannot know
-        it: whether the control came from the member file, a separate file or a
-        separate coverage is a fact about the adapter's access shape, so the
-        adapter overwrites it. What is recorded here is the identity and the
-        arithmetic, which is what completeness was judged on.
+        ``control_retrieval`` is the access shape the adapter stated when it
+        called :func:`validate_run`; this module cannot infer it, so an adapter
+        that states nothing gets ``None`` rather than a guess. Everything else
+        is the identity and the arithmetic completeness was judged on.
         """
         if self.members is None:
             return None
@@ -298,7 +310,7 @@ class ValidationResult:
             "present": list(self.members.present),
             "missing": list(self.members.missing),
             "control": self.members.control,
-            "control_retrieval": None,
+            "control_retrieval": self.members.control_retrieval,
         }
 
     def as_coverage(self) -> dict[str, Any]:
@@ -416,6 +428,7 @@ def _judge_members(
     dataset: Any,
     *,
     declared_members: Sequence[str] = (),
+    control_retrieval: str | None = None,
 ) -> ValidationResult:
     """Judge the run's member axis against what the registry declared.
 
@@ -432,6 +445,12 @@ def _judge_members(
     """
     present = _member_identifiers(dataset)
     declared = tuple(str(item) for item in declared_members)
+
+    if control_retrieval is not None and control_retrieval not in CONTROL_RETRIEVALS:
+        raise ManifestError(
+            f"{manifest.source_id}: control_retrieval {control_retrieval!r} is not one of "
+            f"{', '.join(CONTROL_RETRIEVALS)}"
+        )
 
     if present is None and manifest.member_count is None and manifest.control is None:
         return result  # a deterministic run; there is no member axis to judge
@@ -470,6 +489,7 @@ def _judge_members(
             present=identifiers,
             missing=missing,
             control=manifest.control,
+            control_retrieval=control_retrieval if manifest.control is not None else None,
         ),
     )
 
@@ -504,6 +524,7 @@ def validate_run(
     decode_errors: Iterable[str] = (),
     upstream_fields: Iterable[str] = (),
     declared_members: Sequence[str] = (),
+    control_retrieval: str | None = None,
 ) -> ValidationResult:
     """Judge one assembled run against its manifest.
 
@@ -521,6 +542,12 @@ def validate_run(
     family. The manifest carries only the count, so an adapter that can name the
     members it expected passes them here and the missing ones are named rather
     than counted; an adapter that cannot gets the shortfall as a ratio.
+
+    ``control_retrieval`` is the adapter's own access shape, one of
+    :data:`CONTROL_RETRIEVALS`. It is stated rather than inferred because only
+    the adapter knows whether the control arrived in the member file, in a
+    separate file or as a separate coverage; it is carried into provenance and
+    changes nothing about the axis itself.
     """
     result = ValidationResult(complete=True, qc_passed=True, coverage_fraction=0.0, flags=(), detail="")
 
@@ -626,7 +653,9 @@ def validate_run(
     #
     # Deliberately one self-contained block, because the storage-scope rules
     # land on this same function next and the two must stay separable.
-    result = _judge_members(result, manifest, dataset, declared_members=declared_members)
+    result = _judge_members(
+        result, manifest, dataset, declared_members=declared_members, control_retrieval=control_retrieval
+    )
     result = _judge_averaging_windows(result, dataset)
 
     time_name = _coordinate_name(dataset, _TIME_NAMES)
