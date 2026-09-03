@@ -112,7 +112,7 @@ Decision reference: wayfinder ticket
 
 ## 3. Ingest (ingest owner, implementation pass, NOT in this change)
 
-- [ ] 3.1 One adapter per access shape, built in the declared order: GeoMet
+- [x] 3.1 One adapter per access shape, built in the declared order: GeoMet
   WCS per-member coverages (REPS), ECMWF byte ranges with a separate control
   file (AIFS-ENS), ECMWF byte ranges with the control in the member file
   (IFS ENS), S3 byte ranges per member file (GEFS).
@@ -120,6 +120,36 @@ Decision reference: wayfinder ticket
   `ingest/adapters/ecmwf_opendata.py`, `ingest/adapters/noaa_s3.py`,
   `ingest/adapters/__init__.py`, `api/tests/test_adapter_ensemble.py`.
   Verify: `cd api && uv run pytest tests/ -k "ensemble and adapter"`.
+  Verify result: `cd api && uv run pytest tests/ -k "ensemble and adapter"` ->
+  25 passed, 6 skipped, 1143 deselected (the six skips are the unrelated `cv2`
+  motion-method modules). Full `cd api && uv run pytest` -> 1138 passed, 36
+  skipped. `python3 registry/audit.py` -> registry valid: 65 sources; catalogue
+  valid: 135 fields in 20 families; adapter keys 43/43 resolved across 21
+  registered adapters.
+  Adapters: `ECCCREPSEnsembleAdapter` (`eccc-reps`),
+  `ECMWFAIFSEnsembleAdapter` (`ecmwf-aifs-ens`), `ECMWFENSEnsembleAdapter`
+  (`ecmwf-ens`), `NOAAGEFSEnsembleAdapter` (`noaa-gefs`). Each reads its
+  family's `EnsembleDeclaration` and refuses in `discover` while
+  `schedulable` is false; `ingestible` stays false for all four and a test
+  asserts it. The retrieval path is a separate `assemble` method behind that
+  gate, which is what the fixture tests drive with fake clients and injected
+  readers.
+  One deviation from a literal reading of Seam A, recorded in `design.md`
+  Seam B: GEFS' `control_retrieval` is stated `separate_file` by the adapter
+  rather than mapped from `control.separate_retrieval`, which the registry
+  declares false. The two record different things - the flag says the control
+  needs no extra retrieval step (true, every GEFS member is its own object),
+  `control_retrieval` says which file it was in - and mapping the flag would
+  have written `same_file` into provenance, which is false for this family.
+  Live smoke remains, one per family, and none is schedulable: no real REPS
+  `GetCoverage` has been issued for the 21 member coverages of one field
+  (cadence unverified, control unlocated); no real AIFS-ENS `pf` plus `cf`
+  pair has been byte-ranged into one axis of 51 (owner gate 6.1); no real IFS
+  ENS `enfo-ef` file has been read to confirm whether a `cf` record exists at
+  any lead (the adapter reports the control missing either way); no real GEFS
+  member `.idx` has been selected down to the seven family fields with its
+  `N-M hour ave fcst` label stamped. The fixture tests are the whole of the
+  evidence; the first scheduled member run of each family is its smoke.
 
 - [x] 3.2 Apply the per-family storage scope and write the
   `available-not-stored` list into the manifest.

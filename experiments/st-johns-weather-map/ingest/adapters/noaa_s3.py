@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -31,19 +32,23 @@ from ingest.grib import (
     GFS_RH_PHASE_BASIS,
     RH_PHASE_MIXED_LINEAR_253K_273K,
     ByteRange,
+    GribError,
     byte_ranges,
     cap_open_range,
     crop_to_bbox,
     declare_rh_phase,
+    declare_time_average,
     normalize_units,
     open_grib,
     parse_idx,
+    stack_members,
     strip_message_scalars,
     write_zarr,
 )
 from ingest.http import PoliteClient
 from ingest.manifest import RequiredField, RunManifest, required_leads, validate_run
-from ingest.registry import register
+from ingest.registry import EnsembleDeclaration, get_config, register
+from registry import fields as catalogue
 
 UTC = timezone.utc
 _log = logging.getLogger(__name__)
@@ -611,3 +616,379 @@ class NOAAS3Adapter:
 
 
 GFS_ADAPTER = register(NOAAS3Adapter())
+
+
+# ---------------------------------------------------------------------------
+# GEFS: the fourth access shape - one file per member, byte ranges per member
+# ---------------------------------------------------------------------------
+#
+# The same .idx-and-Range mechanism as GFS above, repeated across 31 member
+# files: `gec00` (the control) and `gep01`..`gep30`, each with its own sidecar.
+# GEFS cannot subset server side, so a range buys a whole global record and the
+# evidence box is cut locally, exactly as for GFS - which is why the storage
+# scope is `family_fields_only` and only the seven catalogue-family fields are
+# ever requested. Every other record the sidecar advertises is recorded as
+# available-not-stored rather than silently dropped.
+
+NOAA_GEFS_S3_BASE = "https://noaa-gefs-pds.s3.amazonaws.com"
+
+#: The three product sets GEFS publishes, and only these three. The family
+#: fields all live in `pgrb2ap5`, the 0.5 degree primary set.
+GEFS_PRIMARY_SET = "pgrb2ap5"
+
+#: ``TCDC:entire atmosphere`` is a time average at every lead in every GEFS
+#: product set - `0-3 hour ave fcst` at f003, `18-24` at f024 - confirmed at
+#: the GRIB2 level, not only from the label. So it is stored under the
+#: six-hour-mean key and never under the instantaneous one, and the window is
+#: read from the producer's own record.
+GEFS_AVERAGED_CLOUD_PARAM = ("TCDC", "entire atmosphere")
+
+
+def _gefs_upstream_names(source_id: str = "noaa-gefs") -> dict[tuple[str, str], str]:
+    """``(param, level) -> the catalogue's own upstream name`` for stored fields.
+
+    The catalogue names GEFS records as ``PARAM:level``, with the averaged cloud
+    carrying its window in the name (``TCDC:entire atmosphere (n-n+6 hour ave
+    fcst)``). This maps a sidecar's own two tokens onto those names so the
+    storage scope is applied against the catalogue's vocabulary rather than
+    against a string this adapter invented.
+    """
+    names: dict[tuple[str, str], str] = {}
+    for item in catalogue.source_mapping(source_id):
+        if item.storage != "stored" or not item.upstream:
+            continue
+        param, _, level = item.upstream.partition(":")
+        # Strip a parenthesised window qualifier: the sidecar states the window
+        # in its forecast-hour token, not in the record's level.
+        level = level.split(" (")[0].strip()
+        names[(param.strip().upper(), level.lower())] = item.upstream
+    return names
+
+
+def _gefs_keys_by_upstream(source_id: str = "noaa-gefs") -> dict[str, str]:
+    return {
+        item.upstream: item.key
+        for item in catalogue.source_mapping(source_id)
+        if item.storage == "stored" and item.upstream
+    }
+
+
+@dataclass(frozen=True)
+class GEFSSelection:
+    """What one member's sidecar offered and what of it is wanted."""
+
+    #: ``(byte range, catalogue upstream name, the record's forecast label)``.
+    wanted: tuple[tuple[ByteRange, str, str], ...]
+    #: Every record the sidecar advertised, as ``PARAM:level``, deduplicated.
+    published: tuple[str, ...]
+
+
+def select_gefs_member_records(idx_text: str, *, source_id: str = "noaa-gefs") -> GEFSSelection:
+    """Restrict one member's sidecar to the catalogue-family fields.
+
+    Selection is by exact ``(param, level)`` pair, as for GFS: matching a
+    parameter alone would pull TCDC at every isobaric level and turn a
+    seven-record request into most of the file. Everything the sidecar
+    advertises is still reported, because the ``family_fields_only`` scope has
+    to name what it left behind.
+    """
+    upstream_by_pair = _gefs_upstream_names(source_id)
+    wanted: list[tuple[ByteRange, str, str]] = []
+    published: list[str] = []
+    records = parse_idx(idx_text)
+    for position, record in enumerate(records):
+        pair = (record.param.upper(), record.level.lower())
+        name = f"{record.param.upper()}:{record.level.lower()}"
+        if name not in published:
+            published.append(name)
+        upstream = upstream_by_pair.get(pair)
+        if upstream is None:
+            continue
+        ranges = byte_ranges([record], merge_gap_bytes=0)
+        if not ranges:
+            continue
+        wanted.append((ranges[0], upstream, record.forecast.strip()))
+    return GEFSSelection(wanted=tuple(wanted), published=tuple(published))
+
+
+def gefs_member_identifiers(declaration: "EnsembleDeclaration") -> tuple[str, ...]:
+    """``gec00`` then ``gep01``..``gep30`` - NOAA's own member file names.
+
+    Built from the declared count and the declared control identifier, never
+    from a literal 31: the count is a registry fact and an adapter that restated
+    it could disagree with the record completeness is judged against.
+    """
+    if declaration.member_count is None:
+        raise ValueError(
+            "noaa-gefs: the registry declares no member count, so the member set cannot be "
+            "enumerated and no member file is addressed"
+        )
+    control = None if declaration.control is None else declaration.control.identifier
+    perturbed = declaration.member_count - (1 if control else 0)
+    return ((control,) if control else ()) + tuple(f"gep{index:02d}" for index in range(1, perturbed + 1))
+
+
+def _gefs_refusing_reader(path: Path, *, upstream: str, member: str, bounds: Mapping[str, float]) -> Any:
+    """Decode one member's record, cropping the global field to the box locally."""
+    from ingest.grib import open_grib  # noqa: PLC0415
+
+    param = upstream.split(":", 1)[0].lower()
+    decoded = open_grib(path, filter_by_keys={"shortName": param})
+    normalized = normalize_units(crop_to_bbox(decoded, bounds))
+    names = [str(name) for name in normalized.data_vars]
+    if not names:
+        raise ValueError(f"no data variable decoded for {upstream} of member {member}")
+    return strip_message_scalars(normalized[names[0]].load())
+
+
+#: The one field a GEFS run is not worth publishing without. The averaged cloud
+#: is optional on purpose: a lead whose record states no window is not stored,
+#: and that must cost the field rather than the run.
+_GEFS_MANDATORY_KEY = "temperature_2m"
+
+#: Ceiling on one member's one-record range. The largest family record measured
+#: is ``RH:850 mb`` at 247 106 bytes and the averaged cloud at 174 309
+#: (2026-09-02); 4 MiB is far above either and far below the 15 MB member file.
+MAX_GEFS_MEMBER_BYTES = 4 * 1024 * 1024
+
+
+class NOAAGEFSEnsembleAdapter:
+    """GEFS members: one file per member, byte ranges from each member's .idx."""
+
+    source_id = "noaa-gefs"
+    adapter_version = "noaa-gefs-ensemble-v1"
+
+    def __init__(
+        self,
+        *,
+        base_url: str = NOAA_GEFS_S3_BASE,
+        bounds: Mapping[str, float] = ATLANTIC_CONTEXT_BOUNDS,
+        client: PoliteClient | None = None,
+        reader: Any = _gefs_refusing_reader,
+        product_set: str = GEFS_PRIMARY_SET,
+    ) -> None:
+        self._base_url = base_url
+        self._bounds = dict(bounds)
+        self._client = client
+        self._reader = reader
+        self._product_set = product_set
+
+    def _get_client(self) -> PoliteClient:
+        return self._client or PoliteClient()
+
+    def declaration(self) -> "EnsembleDeclaration":
+        declaration = get_config(self.source_id).ensemble
+        if declaration is None:
+            raise AdapterUnavailable(
+                f"{self.source_id}: the registry record declares no ensemble block, so the member "
+                "count, control rule and storage scope are unstated and nothing is retrieved"
+            )
+        return declaration
+
+    def manifest(self) -> RunManifest:
+        declaration = self.declaration()
+        control = declaration.control
+        return RunManifest(
+            source_id=self.source_id,
+            fields=tuple(
+                RequiredField(
+                    key,
+                    catalogue.resolve(key).field.units or "",
+                    optional=key != _GEFS_MANDATORY_KEY,
+                )
+                for key in _gefs_keys_by_upstream(self.source_id).values()
+            ),
+            member_count=declaration.member_count,
+            control=None if control is None else control.identifier,
+            storage_scope=declaration.storage_scope,
+        )
+
+    def _gate(self) -> "EnsembleDeclaration":
+        declaration = self.declaration()
+        if not declaration.schedulable:
+            raise AdapterUnavailable(
+                f"{self.source_id}: the registry declares {declaration.family} not schedulable. "
+                f"{declaration.schedulable_reason}"
+            )
+        return declaration
+
+    def discover(self, window: FetchWindow) -> list[RunCandidate]:
+        self._gate()
+        raise AdapterUnavailable(
+            f"{self.source_id}: nothing is scheduled for GEFS by this change; the member run "
+            "discovery lands with the owner's acceptance of the upstream cost"
+        )
+
+    def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+        self._gate()
+        return self.assemble(candidate, window, workdir)
+
+    def member_url(self, candidate: RunCandidate, member: str) -> str:
+        date_str = str(candidate.detail.get("date_str", ""))
+        cycle = str(candidate.detail.get("cycle", ""))
+        lead = int(candidate.detail.get("lead_hours", 0))
+        return (
+            f"{self._base_url}/gefs.{date_str}/{cycle}/atmos/{self._product_set}/"
+            f"{member}.t{cycle}z.{self._product_set}.f{lead:03d}"
+        )
+
+    def assemble(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+        declaration = self.declaration()
+        members = gefs_member_identifiers(declaration)
+        control = None if declaration.control is None else declaration.control.identifier
+        keys_by_upstream = _gefs_keys_by_upstream(self.source_id)
+        client = self._get_client()
+        retrieved_at = datetime.now(UTC)
+
+        fields: dict[str, dict[str, Any]] = {}
+        published_names: list[str] = []
+        retrieved_names: list[str] = []
+        decode_errors: list[str] = []
+        unstorable: list[str] = []
+
+        for member in members:
+            grib_url = self.member_url(candidate, member)
+            try:
+                idx_text = client.get_text(f"{grib_url}.idx")
+            except Exception as error:
+                decode_errors.append(f"idx:{member}")
+                _log.warning("GEFS member %s sidecar unavailable: %s", member, error)
+                continue
+
+            selection = select_gefs_member_records(idx_text, source_id=self.source_id)
+            for name in selection.published:
+                if name not in published_names:
+                    published_names.append(name)
+
+            for byte_range, upstream, label in selection.wanted:
+                local = workdir / f"{member}.{upstream.replace(':', '_').replace(' ', '_')}.grib2"
+                try:
+                    client.download_ranges(
+                        grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES
+                    )
+                    field = self._reader(local, upstream=upstream, member=member, bounds=self._bounds)
+                except Exception as error:
+                    decode_errors.append(f"member:{member}:{upstream}")
+                    _log.warning("GEFS member %s record %s failed: %s", member, upstream, error)
+                    continue
+                finally:
+                    local.unlink(missing_ok=True)
+
+                if keys_by_upstream.get(upstream) == "relative_humidity_2m":
+                    # GEFS divides by a mixed-phase saturation ramping from ice
+                    # at 253.16 K, so at -25 degC it reads about 24 % higher
+                    # than the liquid-basis ECCC humidity. An unstamped humidity
+                    # is a QC failure, not a gap: a threshold calibrated on one
+                    # convention is not valid on the other.
+                    field = declare_rh_phase(
+                        field,
+                        convention=RH_PHASE_MIXED_LINEAR_253K_273K,
+                        basis=GFS_RH_PHASE_BASIS,
+                    )
+
+                if keys_by_upstream.get(upstream) == "total_cloud_mean_6h":
+                    # The window is the producer's own record label, never the
+                    # lead. A record whose label states no window is not a mean
+                    # anyone can weigh, so it is not stored at all.
+                    try:
+                        field = declare_time_average(field, window_label=label)
+                    except GribError as error:
+                        unstorable.append(f"{member}:{upstream}:{label}")
+                        _log.warning("GEFS averaged cloud not stored for %s: %s", member, error)
+                        continue
+
+                fields.setdefault(member, {})[upstream] = field
+                if upstream not in retrieved_names:
+                    retrieved_names.append(upstream)
+
+        if not fields:
+            raise AdapterUnavailable(
+                f"{self.source_id}: no member decoded for {candidate.provider_run_id}; an ensemble "
+                "artifact with no members is an absent ensemble, not a thin one"
+            )
+
+        stacked: dict[str, Any] = {}
+        for upstream, key in keys_by_upstream.items():
+            by_member = {
+                member: by_name[upstream]
+                for member, by_name in sorted(fields.items())
+                if upstream in by_name
+            }
+            if by_member:
+                stacked[key] = stack_members(by_member, control=control)
+
+        dataset = xarray.Dataset(stacked)
+        manifest = self.manifest()
+        validation = validate_run(
+            manifest,
+            dataset,
+            window=window,
+            decode_errors=decode_errors,
+            upstream_fields=published_names,
+            retrieved_fields=retrieved_names,
+            declared_members=members,
+            control_retrieval=_gefs_control_retrieval(declaration),
+        )
+
+        provenance = {
+            "source_id": self.source_id,
+            "producer": "NOAA / NCEP",
+            "product": f"Global Ensemble Forecast System ({self._product_set})",
+            "family": declaration.family,
+            "adapter_version": self.adapter_version,
+            "subsetting": declaration.subsetting,
+            "bounds": dict(self._bounds),
+            "unstorable_fields": unstorable,
+            "quality": validation.as_quality(),
+            "coverage": validation.as_coverage(),
+            "members": validation.as_members(),
+            "storage_scope": validation.as_storage_scope(),
+            **manifest.as_manifest_block(),
+        }
+
+        payload_path = workdir / "noaa_gefs_members.zarr.zip"
+        write_zarr(dataset, payload_path)
+        return RunResult(
+            source_id=self.source_id,
+            provider_run_id=candidate.provider_run_id,
+            run_time=candidate.run_time,
+            retrieved_at=retrieved_at,
+            complete=validation.complete,
+            qc_passed=validation.qc_passed,
+            artifacts=[
+                Artifact(
+                    logical_name="members",
+                    media_type=MEDIA_ZARR,
+                    payload_path=payload_path,
+                    provenance=provenance,
+                )
+            ],
+            native_crs="EPSG:4326",
+            notes=f"GEFS members via per-member .idx byte ranges; {validation.detail}",
+        )
+
+
+def _gefs_control_retrieval(declaration: "EnsembleDeclaration") -> str | None:
+    """``separate_file``: GEFS' control is its own S3 object, ``gec00``.
+
+    Deliberately not read off ``control.separate_retrieval``, which the registry
+    declares **false** for GEFS. The two record different things and only one of
+    them is the access shape ``validate_run`` asks for. The registry's flag says
+    the control needs no retrieval step the perturbed members do not - true,
+    because every GEFS member is already its own file. ``control_retrieval``
+    says which file the control was in, and for GEFS that is emphatically not
+    the members' file: the declaration's own rule says ``gec00`` sits beside
+    ``gep01`` through ``gep30`` as a separate object. Mapping the flag straight
+    onto ``same_file`` would have written into provenance that the control rode
+    in the member file, which is false for this family.
+
+    ``None`` where no control identifier is declared, which is what nulls the
+    field for a family whose control was never located.
+    """
+    control = declaration.control
+    if control is None or control.identifier is None:
+        return None
+    return "separate_file"
+
+
+GEFS_ENSEMBLE_ADAPTER = register(NOAAGEFSEnsembleAdapter())
