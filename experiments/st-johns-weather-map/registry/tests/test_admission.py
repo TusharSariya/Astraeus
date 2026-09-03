@@ -198,6 +198,9 @@ class SupersededTests(unittest.TestCase):
         self.data = rewritten_registry()
         self.source = record(self.data, "eccc-raqdps-firework")
         self.source["status"] = "superseded"
+        # The migrated record names its successor. These tests are about what
+        # the audit says when it does not, so the block is taken back off.
+        self.source.pop("superseded_by", None)
 
     def test_superseded_requires_successor(self) -> None:
         _, errors = audit.validate(self.data)
