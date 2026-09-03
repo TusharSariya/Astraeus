@@ -78,14 +78,14 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
 
 ## 3. Site registry and sector sampling (sites owner)
 
-- [ ] 3.1 Create the site record shape and `registry/site_audit.py`: id,
+- [x] 3.1 Create the site record shape and `registry/site_audit.py`: id,
   name, position, elevation with datum, directional horizon at a declared
   bearing resolution, registration date and person; refuse a site with a
   missing or gapped horizon.
   Owns: `registry/sites/schema.json`, `registry/site_audit.py`.
   Verify: `cd api && uv run pytest tests/test_site_registry.py -k
   "no_horizon or horizon_gap"`
-- [ ] 3.2 Register Signal Hill, Cape Spear and Quidi Vidi, each with a
+- [x] 3.2 Register Signal Hill, Cape Spear and Quidi Vidi, each with a
   hand-registered horizon and a recorded DEM terrain-horizon check; fail a
   registration that sits below terrain beyond tolerance.
   Owns: `registry/sites/*.yaml`.
