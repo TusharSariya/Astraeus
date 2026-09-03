@@ -591,3 +591,10 @@ derivation.
     registry and camera validation, and the per-camera reprojection
     tolerance, remain as the design's open questions; nothing here chose
     them.
+15. **Tasks 5.4, 6.2 and 6.3** reported no deviation; `may_enable` also
+    refuses a non-camera method under the `incomplete_validation` prefix,
+    and `ValidationRecord.days` is a read-only convenience.
+16. **Gate.** Task 7.1 is left for the main session. On the lead's merged
+    tip (a fresh worktree): api 1397 passed and 36 skipped, web 410 passed
+    in 22 files, registry unittest 235 passed, registry audit clean, strict
+    validate valid.

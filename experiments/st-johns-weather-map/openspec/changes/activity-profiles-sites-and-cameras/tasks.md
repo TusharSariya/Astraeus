@@ -171,7 +171,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   horizon-dependent field is unavailable off-site.
   Owns: `web/src/sites/`.
   Verify: `cd web && npm test -- --run site-preferred`
-- [ ] 6.3 Show camera frames with their health flags and their
+- [x] 6.3 Show camera frames with their health flags and their
   `partnership-only` or `awaiting_validation` state, and never present a
   camera-derived claim from a disabled method.
   Owns: `web/src/cameras/` (new).
