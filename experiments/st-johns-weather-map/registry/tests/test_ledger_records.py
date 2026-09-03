@@ -148,7 +148,8 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertIn("fog", goes["reason"])
         self.assertTrue(any("goes19" in url for url in goes["access_endpoints"]))
         names = goes["variables"][0]["names"]
-        self.assertIn("ABI-L2-ACM", " ".join(names) or str(names))
+        self.assertIn("cloud_mask_ABI_L2_ACM", names)
+        self.assertTrue(any("goes19" in url for url in goes["access_endpoints"]))
 
         _, errors = audit.validate()
         self.assertEqual([], errors)
