@@ -329,6 +329,116 @@ def _reach_from_record(block: Mapping[str, Any] | None) -> Reach | None:
     )
 
 
+@dataclass(frozen=True)
+class EnsembleControl:
+    """How a family identifies its control member, as a flag on the member axis.
+
+    ``identifier`` is the provider's own token and is None where the family
+    publishes members and no measurement says which one is the control. That is
+    not the same as ``EnsembleDeclaration.control`` being None, which means the
+    family publishes no members at all: an unlocated control keeps the family
+    unschedulable, and never licenses a perturbed member to stand in for it.
+    """
+
+    identifier: str | None
+    rule: str
+    separate_retrieval: bool
+
+
+@dataclass(frozen=True)
+class EnsembleVerification:
+    """What was measured about a family, and where the measurement is written.
+
+    Any field that is ``unverified`` makes the family unschedulable, because a
+    member count that was assumed cannot check completeness and an access path
+    that was assumed cannot be retried. ``evidence`` is the research path, or
+    ``"none"`` where nothing was measured.
+    """
+
+    member_count: str
+    access_path: str
+    cadence: str
+    evidence: str
+
+    @property
+    def fully_verified(self) -> bool:
+        return "unverified" not in (self.member_count, self.access_path, self.cadence)
+
+
+@dataclass(frozen=True)
+class EnsembleGap:
+    """A field a family does not publish that its siblings do, and why.
+
+    A gap is never filled by derivation, by another family's value or by the
+    same family's provider reduction; it is a declared absence with a reason.
+    """
+
+    field: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class EnsembleDeclaration:
+    """One ensemble family, as its registry record declares it.
+
+    The scheduler-facing mirror of the ``ensemble`` block in
+    ``registry/source_data.py``, field for field. ``schedulable`` is the whole
+    point of carrying it here: registering an adapter for a family must not
+    schedule that family, and a family that has not been measured must not be
+    retrieved on an assumed access path.
+    """
+
+    family: str
+    build_order: int
+    shape: str
+    subsetting: str
+    storage_scope: str
+    member_count: int | None
+    control: EnsembleControl | None
+    reductions: tuple[str, ...]
+    gaps: tuple[EnsembleGap, ...]
+    verification: EnsembleVerification
+    schedulable: bool
+    schedulable_reason: str
+
+    @property
+    def publishes_members(self) -> bool:
+        return self.shape == "members"
+
+
+def _ensemble_from_record(block: Mapping[str, Any] | None) -> EnsembleDeclaration | None:
+    if not block:
+        return None
+    control = block.get("control")
+    verification = block.get("verification") or {}
+    return EnsembleDeclaration(
+        family=str(block["family"]),
+        build_order=int(block["build_order"]),
+        shape=str(block["shape"]),
+        subsetting=str(block["subsetting"]),
+        storage_scope=str(block["storage_scope"]),
+        member_count=None if block.get("member_count") is None else int(block["member_count"]),
+        control=None if control is None else EnsembleControl(
+            identifier=None if control.get("identifier") is None else str(control["identifier"]),
+            rule=str(control["rule"]),
+            separate_retrieval=bool(control["separate_retrieval"]),
+        ),
+        reductions=tuple(str(name) for name in block.get("reductions", ())),
+        gaps=tuple(
+            EnsembleGap(field=str(gap["field"]), reason=str(gap["reason"]))
+            for gap in block.get("gaps", ())
+        ),
+        verification=EnsembleVerification(
+            member_count=str(verification.get("member_count", "unverified")),
+            access_path=str(verification.get("access_path", "unverified")),
+            cadence=str(verification.get("cadence", "unverified")),
+            evidence=str(verification.get("evidence", "none")),
+        ),
+        schedulable=bool(block.get("schedulable", False)),
+        schedulable_reason=str(block.get("schedulable_reason", "")),
+    )
+
+
 def _latency_from_record(block: Mapping[str, Any] | None) -> PublicationLatency | None:
     if not block:
         return None
@@ -395,6 +505,11 @@ class IngestConfig:
     #: The dated WXO-DD path an ECCC model adapter falls back to, where the
     #: adapter documents one.
     datamart_fallback_path: str | None = None
+    #: The ensemble family this record declares, on an ensemble record. None on
+    #: every other category, and None on an ensemble record that declares no
+    #: block at all - which makes that record unschedulable rather than giving
+    #: it a member count, an access shape and a storage scope nobody stated.
+    ensemble: EnsembleDeclaration | None = None
 
     @property
     def ingestible(self) -> bool:
@@ -404,12 +519,20 @@ class IngestConfig:
         any instant, and one with neither a run cadence nor a native cadence
         cannot be scheduled against anything, so both are refused here rather
         than defaulted into existence further down.
+
+        An ensemble record is refused on top of that unless its own record
+        declares a family and declares it schedulable. Registering an adapter
+        for a family must not schedule that family: the member count, control
+        rule and access path an adapter would rely on are registry facts, and a
+        family whose facts are unverified, or whose upstream cost the owner has
+        not accepted, is not retrieved on an assumption.
         """
         return (
             self.registry_status == "implementing"
             and self.freshness_threshold_seconds is not None
             and self.reach is not None
             and (self.run_cadence_seconds is not None or self.native_cadence_seconds is not None)
+            and (self.category != "ensemble" or (self.ensemble is not None and self.ensemble.schedulable))
         )
 
 
@@ -462,6 +585,7 @@ def _config_from_record(record: Mapping[str, Any]) -> IngestConfig:
         native_cadence_seconds=record.get("native_cadence_seconds"),
         publication_latency=_latency_from_record(record.get("publication_latency")),
         datamart_fallback_path=record.get("datamart_fallback_path"),
+        ensemble=_ensemble_from_record(record.get("ensemble")),
     )
 
 

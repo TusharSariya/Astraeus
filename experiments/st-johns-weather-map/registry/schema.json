@@ -54,6 +54,68 @@
         "basis": {"$ref": "#/$defs/nonempty"}
       }
     },
+    "verification_state": {"enum": ["verified", "unverified"]},
+    "ensemble": {
+      "description": "How one admitted ensemble family is shaped, retrieved and stored. Present on every record whose category is 'ensemble' and on no other. build_order is the owner's declared admission order, so a partial build is a prefix of the list rather than an implementation convention. member_count is null where the family publishes reductions instead of members, and where nothing about the family was measured at all (verification.evidence 'none'), because a member count that was assumed cannot be used to check completeness. control is null only where the family publishes no members; a family that publishes members declares how its control is identified, with a null identifier where no measurement locates it, which is a reason not to schedule the family rather than a licence to promote a perturbed member into its place. A family carrying any 'unverified' verification field is not schedulable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "build_order", "shape", "subsetting", "storage_scope", "member_count", "control", "reductions", "gaps", "verification", "schedulable", "schedulable_reason"],
+      "properties": {
+        "family": {"enum": ["REPS", "AIFS-ENS", "IFS ENS", "GEFS", "GEPS reductions", "ICON-EPS"]},
+        "build_order": {"type": "integer", "minimum": 1, "maximum": 6},
+        "shape": {"enum": ["members", "reduction"]},
+        "subsetting": {"enum": ["server_side", "none"]},
+        "storage_scope": {"enum": ["every_published_field", "family_fields_only"]},
+        "member_count": {"type": ["integer", "null"], "exclusiveMinimum": 0},
+        "control": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["identifier", "rule", "separate_retrieval"],
+          "properties": {
+            "identifier": {"type": ["string", "null"], "minLength": 1},
+            "rule": {"$ref": "#/$defs/nonempty"},
+            "separate_retrieval": {"type": "boolean"}
+          }
+        },
+        "reductions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["mean", "spread", "percentile", "threshold_probability"]}
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "reason"],
+            "properties": {"field": {"$ref": "#/$defs/nonempty"}, "reason": {"$ref": "#/$defs/nonempty"}}
+          }
+        },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["member_count", "access_path", "cadence", "evidence"],
+          "properties": {
+            "member_count": {"$ref": "#/$defs/verification_state"},
+            "access_path": {"$ref": "#/$defs/verification_state"},
+            "cadence": {"$ref": "#/$defs/verification_state"},
+            "evidence": {"$ref": "#/$defs/nonempty"}
+          }
+        },
+        "schedulable": {"type": "boolean"},
+        "schedulable_reason": {"$ref": "#/$defs/nonempty"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"shape": {"const": "reduction"}}, "required": ["shape"]},
+          "then": {"properties": {"member_count": {"type": "null"}, "control": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"shape": {"const": "members"}}, "required": ["shape"]},
+          "then": {"properties": {"control": {"type": "object"}, "reductions": {"maxItems": 0}}}
+        }
+      ]
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -133,8 +195,16 @@
           "pattern": "^https://dd\\.weather\\.gc\\.ca/\\{YYYYMMDD\\}/WXO-DD/"
         },
         "fixture_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
-        "live_smoke_test_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]}
-      }
+        "live_smoke_test_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
+        "ensemble": {"$ref": "#/$defs/ensemble"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"category": {"const": "ensemble"}}, "required": ["category"]},
+          "then": {"required": ["ensemble"]},
+          "else": {"not": {"required": ["ensemble"]}}
+        }
+      ]
     }
   }
 }
