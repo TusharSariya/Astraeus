@@ -134,11 +134,25 @@ Decision reference: wayfinder ticket
   `api/tests/test_point_evidence.py`.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k "ensemble and (refus or member_set)"`.
 
-- [ ] 4.3 Add the member request parameter and the statistic, member set,
+- [x] 4.3 Add the member request parameter and the statistic, member set,
   partial and run-stale fields to the response models.
   Owned files: `api/weather_api/models.py`, `api/weather_api/fixtures.py`,
   `api/tests/test_api.py`, `api/tests/test_models.py`.
   Verify: `cd api && uv run pytest tests/test_api.py tests/test_models.py -k member`.
+  Verify result: `cd api && uv run pytest tests/test_api.py tests/test_models.py
+  -k member` -> 43 passed, 81 deselected. Full `cd api && uv run pytest` ->
+  1073 passed, 36 skipped.
+  Run staleness reuses `Provenance.run_stale` and `Provenance.run_stale_reason`
+  from the horizon-tiers change: `EnsembleProvenance` hangs off that same
+  `Provenance`, so the existing field is reachable and no second one was added.
+  `EnsembleMemberSet` deliberately carries no `run_stale`, and a test asserts
+  the absence so it is not added later by accident.
+  Ownership note (lead, 2026-09-02): 4.3 also edited `api/weather_api/app.py`
+  for exactly two things, because 4.2 starts from this merged result - the five
+  Seam D `Query` parameters on `get_point` (with `statistic` checked against
+  `ENSEMBLE_STATISTIC_ENTRIES` and `comparison` against `ge|gt|le|lt`, both 422
+  on a bad value) and the fixture-mode answer. `_live_point` and
+  `api/weather_api/store.py` were not touched; 4.2 wires live mode.
 
 - [ ] 4.4 Add the member selector, the statistic layers, the labelling rule in
   the text alternative and the averaged-versus-instantaneous fence.

@@ -34,6 +34,7 @@ from .fixtures import (
     LAYERS,
     NEWFOUNDLAND,
     SOURCES,
+    ensemble_notices,
     now,
     point_fields,
     profile_levels,
@@ -120,7 +121,7 @@ from .store import (
     unavailable_point_fields,
     unavailable_profile_levels,
 )
-from .models import AGED_OUT_FLAG
+from .models import AGED_OUT_FLAG, ENSEMBLE_STATISTIC_ENTRIES, THRESHOLD_COMPARISONS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1128,8 +1129,27 @@ def _live_point(latitude: float, longitude: float, time: datetime, product: str 
     )
 
 
-def _fixture_point(latitude: float, longitude: float, time: datetime, product: str | None, *, hrdps_fresh: bool, rdps_fresh: bool, consensus_evidence: bool) -> PointResponse:
+def _fixture_point(
+    latitude: float,
+    longitude: float,
+    time: datetime,
+    product: str | None,
+    *,
+    hrdps_fresh: bool,
+    rdps_fresh: bool,
+    consensus_evidence: bool,
+    member: str | None = None,
+    statistic: str | None = None,
+) -> PointResponse:
+    """The fixture snapshot, plus a notice where an ensemble was asked for.
+
+    A member or statistic request is answered with the ordinary fixture fields
+    and the notice that this deployment carries no members. Nothing is
+    fabricated: no field grows a ``member``, no statistic is invented over the
+    hand-built values, and the request is not silently ignored either.
+    """
     fields, consensus = point_fields(time)
+    notices = ensemble_notices(member, statistic)
     mode, badge, reason = select_fallback(consensus.available and consensus_evidence, hrdps_fresh=hrdps_fresh, rdps_fresh=rdps_fresh)
     observations = [item for item in fields if item.field in OBSERVATION_FIELDS]
 
@@ -1141,6 +1161,7 @@ def _fixture_point(latitude: float, longitude: float, time: datetime, product: s
             data_mode=DataMode.FIXTURE, latitude=latitude, longitude=longitude, valid_time=time,
             selection=Selection(mode="fallback", selected_source_id=f"model-{selected.lower()}", selected_product_id=selected.lower(), badge=f"{selected} selected model", reason=f"Selected model: {selected}"),
             fields=selected_forecast_fields(time, selected) + observations,
+            notices=notices,
         )
 
     if mode == "consensus":
@@ -1158,6 +1179,7 @@ def _fixture_point(latitude: float, longitude: float, time: datetime, product: s
         data_mode=DataMode.FIXTURE, latitude=latitude, longitude=longitude, valid_time=time,
         selection=Selection(mode=mode, selected_source_id=selected_source_id, selected_product_id=selected_product_id, badge=badge, reason=reason),
         fields=fields,
+        notices=notices,
     )
 
 
@@ -1735,12 +1757,33 @@ def get_point(
     hrdps_fresh: bool = True,
     rdps_fresh: bool = True,
     consensus_evidence: bool = True,
+    member: str | None = Query(default=None, description="A provider's own member identifier, or 'all' for every member the family publishes"),
+    statistic: str | None = Query(default=None, description=f"One of {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}; the derivation registry entry that produces it"),
+    quantile: float | None = Query(default=None, ge=0, le=1, description="For ensemble_quantile: the quantile in 0..1, Hyndman and Fan type 7"),
+    threshold: float | None = Query(default=None, description="For ensemble_threshold_probability: the threshold, in the field's normalized units"),
+    comparison: str | None = Query(default=None, description="For ensemble_threshold_probability: ge, gt, le or lt"),
 ) -> PointResponse:
+    """One point's evidence, optionally one ensemble family's members or a
+    statistic over them.
+
+    ``statistic`` and ``comparison`` are checked against the registered sets
+    here rather than passed through: an unregistered statistic name is a
+    request this API cannot answer, and answering it with the nearest entry -
+    or with a silent null - would hide which construction produced the number.
+    """
     require_core_coverage(latitude, longitude)
+    if statistic is not None and statistic not in ENSEMBLE_STATISTIC_ENTRIES:
+        raise HTTPException(status_code=422, detail=f"unknown statistic: {statistic}; the registered entries are {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
+    if comparison is not None and comparison not in THRESHOLD_COMPARISONS:
+        raise HTTPException(status_code=422, detail=f"unknown comparison: {comparison}; the accepted comparisons are {', '.join(THRESHOLD_COMPARISONS)}")
     time = requested_time(valid_time)
     mode = configured_mode()
     if mode == FIXTURE_MODE:
-        return _fixture_point(latitude, longitude, time, product, hrdps_fresh=hrdps_fresh, rdps_fresh=rdps_fresh, consensus_evidence=consensus_evidence)
+        return _fixture_point(
+            latitude, longitude, time, product,
+            hrdps_fresh=hrdps_fresh, rdps_fresh=rdps_fresh, consensus_evidence=consensus_evidence,
+            member=member, statistic=statistic,
+        )
     if mode == LIVE_MODE:
         return _live_point(latitude, longitude, time, product)
     return _unavailable_point(latitude, longitude, time, reason="WEATHER_DATA_MODE is not set to live or fixture", flags=["data_mode_unconfigured"], notices=["WEATHER_DATA_MODE is missing or malformed; this deployment fails closed"])

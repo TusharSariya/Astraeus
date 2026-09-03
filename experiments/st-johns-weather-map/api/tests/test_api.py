@@ -12,7 +12,8 @@ import sys as _sys
 import weather_api.app  # noqa: F401  (registers the module for monkeypatching)
 from registry.source_data import registry
 from weather_api.app import PREFIX, app
-from weather_api.fixtures import NEWFOUNDLAND, SOURCES, now, timeline, window_end, window_start
+from weather_api.fixtures import NO_ENSEMBLE_MEMBERS_NOTICE, NEWFOUNDLAND, SOURCES, now, timeline, window_end, window_start
+from weather_api.models import ENSEMBLE_STATISTIC_ENTRIES, THRESHOLD_COMPARISONS
 from weather_api.store import Sample, schedulable_source_ids
 
 UTC = timezone.utc
@@ -661,3 +662,79 @@ def test_a_refresh_cannot_be_faked_into_a_fixture_job_when_the_live_store_is_dow
     monkeypatch.setattr(api_module, "live_store", lambda: None)
     response = client.post(f"{PREFIX}/refresh", json={"source_ids": ["eccc-hrdps"]})
     assert response.status_code == 503
+
+
+# --- the member request parameters ----------------------------------------
+# ``/point`` takes a member or a statistic (Seam D). Fixture mode holds no
+# member axis, so it answers the request with the ordinary snapshot and a
+# notice, and fabricates nothing.
+
+def test_the_point_endpoint_declares_the_member_request_parameters():
+    parameters = {item["name"] for item in client.get("/openapi.json").json()["paths"][f"{PREFIX}/point"]["get"]["parameters"]}
+    assert {"member", "statistic", "quantile", "threshold", "comparison"} <= parameters
+
+
+def test_a_fixture_member_request_is_answered_with_a_notice_and_no_fabricated_member():
+    payload = client.get(f"{PREFIX}/point", params={"member": "01"}).json()
+    assert NO_ENSEMBLE_MEMBERS_NOTICE in payload["notices"]
+    assert payload["fields"], "the ordinary fixture fields are still served"
+    assert all(item["provenance"]["member"] is None for item in payload["fields"])
+    assert all(item["provenance"]["member_control"] is None for item in payload["fields"])
+    assert all(item["provenance"]["ensemble"] is None for item in payload["fields"])
+
+
+def test_a_fixture_request_for_every_member_fabricates_no_member_set():
+    payload = client.get(f"{PREFIX}/point", params={"member": "all"}).json()
+    assert payload["notices"] == [NO_ENSEMBLE_MEMBERS_NOTICE]
+    assert all(item["provenance"]["ensemble"] is None for item in payload["fields"])
+
+
+def test_a_fixture_statistic_request_computes_no_statistic_over_the_memberless_snapshot():
+    payload = client.get(f"{PREFIX}/point", params={"statistic": "ensemble_mean"}).json()
+    assert NO_ENSEMBLE_MEMBERS_NOTICE in payload["notices"]
+    assert all(item["provenance"]["derivation"] != "ensemble_mean" for item in payload["fields"])
+    assert all(item["provenance"]["ensemble"] is None for item in payload["fields"])
+
+
+def test_a_selected_product_still_answers_a_member_request_with_the_notice():
+    """The product branch returns early, so it has to carry the notice too."""
+    payload = client.get(f"{PREFIX}/point", params={"product": "REPS", "member": "01"}).json()
+    assert NO_ENSEMBLE_MEMBERS_NOTICE in payload["notices"]
+    assert all(item["provenance"]["member"] is None for item in payload["fields"])
+
+
+def test_a_point_request_naming_no_member_or_statistic_earns_no_ensemble_notice():
+    assert NO_ENSEMBLE_MEMBERS_NOTICE not in client.get(f"{PREFIX}/point").json()["notices"]
+
+
+@pytest.mark.parametrize("name", ["mean", "ensemble_statistics_within_run", "ensemble_median", ""])
+def test_an_unregistered_member_statistic_is_refused_rather_than_answered(name):
+    """The caller's short name and the umbrella entry are not statistics a
+    value may name, and neither is answered with the nearest entry."""
+    response = client.get(f"{PREFIX}/point", params={"statistic": name})
+    assert response.status_code == 422
+    assert "statistic" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("name", list(ENSEMBLE_STATISTIC_ENTRIES))
+def test_every_registered_member_statistic_name_is_accepted(name):
+    assert client.get(f"{PREFIX}/point", params={"statistic": name}).status_code == 200
+
+
+@pytest.mark.parametrize("name", ["above", "gte", "=", ""])
+def test_an_unknown_member_threshold_comparison_is_refused(name):
+    response = client.get(f"{PREFIX}/point", params={"statistic": "ensemble_threshold_probability", "threshold": 0.0, "comparison": name})
+    assert response.status_code == 422
+    assert "comparison" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("name", list(THRESHOLD_COMPARISONS))
+def test_every_declared_member_threshold_comparison_is_accepted(name):
+    params = {"statistic": "ensemble_threshold_probability", "threshold": 0.0, "comparison": name}
+    assert client.get(f"{PREFIX}/point", params=params).status_code == 200
+
+
+@pytest.mark.parametrize("value", [-0.1, 1.5])
+def test_a_member_quantile_outside_the_unit_interval_is_refused(value):
+    response = client.get(f"{PREFIX}/point", params={"statistic": "ensemble_quantile", "quantile": value})
+    assert response.status_code == 422

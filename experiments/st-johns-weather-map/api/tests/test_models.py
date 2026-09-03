@@ -18,9 +18,15 @@ from pydantic import ValidationError
 
 from weather_api.models import (
     EVIDENCE_CLASSES,
+    PARTIAL_MEMBER_SET_FLAG,
+    STATISTIC_REFUSED_FLAG,
+    THRESHOLD_COMPARISONS,
     ArtifactManifest,
     Coverage,
     DataMode,
+    EnsembleMemberSet,
+    EnsembleProvenance,
+    EvidenceField,
     Freshness,
     Provenance,
     Quality,
@@ -152,3 +158,190 @@ def test_a_mixed_artifact_that_says_nothing_about_a_value_cannot_resolve_it():
 def test_a_manifest_must_declare_at_least_one_class():
     with pytest.raises(ValidationError):
         ArtifactManifest(source_id="eccc-hrdps", logical_name="surface", evidence_classes=[])
+
+
+# --- ensemble members and the statistics over them ------------------------
+# Every ensemble number names its family, its run, which statistic it is, the
+# member set it covers and whether it was computed here (Seam D). These are the
+# invariants the model itself can see: the ones it cannot - one family, one run
+# - are enforced at derive time, where the artifacts are.
+
+def full_member_set(**overrides: object) -> EnsembleMemberSet:
+    base: dict[str, object] = {
+        "family": "REPS",
+        "source_id": "eccc-reps",
+        "run_time": VALID_TIME,
+        "members_declared": 21,
+        "members_used": 21,
+        "members_missing": [],
+        "control_included": True,
+        "partial": False,
+    }
+    base.update(overrides)
+    return EnsembleMemberSet(**base)
+
+
+def statistic_provenance(ensemble: EnsembleProvenance, **overrides: object) -> Provenance:
+    """A statistic's provenance, labelled the way a computed one must be."""
+    base: dict[str, object] = {
+        "source_id": "eccc-reps",
+        "product": "REPS",
+        "evidence_class": "derived_here",
+        "derivation": ensemble.statistic,
+        "quality": Quality(status="passed", flags=["derived"]),
+        "ensemble": ensemble,
+    }
+    base.update(overrides)
+    return Provenance(**provenance_kwargs(**base))
+
+
+def test_a_member_value_names_its_member_and_whether_it_is_the_control():
+    value = Provenance(**provenance_kwargs(source_id="eccc-reps", product="REPS", member="01", member_control=True))
+    assert value.member == "01" and value.member_control is True
+    assert value.ensemble is None
+
+
+def test_a_control_flag_without_a_member_identifier_names_nothing():
+    with pytest.raises(ValidationError, match="member_control requires member"):
+        Provenance(**provenance_kwargs(member=None, member_control=False))
+
+
+def test_a_member_statistic_computed_here_must_be_derived_here():
+    """The class and the ensemble block cannot disagree about who built the
+    number."""
+    ensemble = EnsembleProvenance(family="REPS", statistic="ensemble_mean", computed_here=True, member_set=full_member_set())
+    assert statistic_provenance(ensemble).evidence_class == "derived_here"
+    with pytest.raises(ValidationError, match="derived_here"):
+        Provenance(**provenance_kwargs(evidence_class="retrieved", derivation="ensemble_mean", ensemble=ensemble))
+
+
+def test_a_member_statistic_names_the_registry_entry_that_produced_it():
+    ensemble = EnsembleProvenance(family="REPS", statistic="ensemble_spread", computed_here=True, member_set=full_member_set())
+    with pytest.raises(ValidationError, match="derivation must name the statistic entry"):
+        statistic_provenance(ensemble, derivation="ensemble_mean")
+
+
+def test_a_member_statistic_cannot_name_an_unregistered_entry():
+    """``mean`` is the caller's short name, not an entry; the umbrella is not
+    an entry either."""
+    for name in ("mean", "ensemble_statistics_within_run", "ensemble_median"):
+        with pytest.raises(ValidationError, match="unregistered_method"):
+            EnsembleProvenance(family="REPS", statistic=name, computed_here=True, member_set=full_member_set())
+
+
+def test_a_provider_reduction_over_members_is_retrieved_and_not_computed_here():
+    """GEPS publishes its own mean. It is the provider's cell, so it is
+    ``retrieved`` and says the provider computed it."""
+    ensemble = EnsembleProvenance(
+        family="GEPS reductions", statistic="ensemble_mean", computed_here=False,
+        member_set=full_member_set(family="GEPS reductions", source_id="eccc-geps"),
+    )
+    served = Provenance(**provenance_kwargs(source_id="eccc-geps", product="GEPS", evidence_class="retrieved", ensemble=ensemble))
+    assert served.ensemble.computed_here is False and served.derivation is None
+    with pytest.raises(ValidationError, match="provider's own published reduction"):
+        Provenance(**provenance_kwargs(evidence_class="derived_here", derivation="ensemble_mean", ensemble=ensemble))
+
+
+def test_a_per_member_value_may_say_it_was_not_computed_here():
+    """``computed_here`` false with no statistic is a plain member reading, not
+    a reduction, so the retrieved-class rule does not bite it."""
+    ensemble = EnsembleProvenance(family="REPS", statistic=None, computed_here=False, member_set=None)
+    value = Provenance(**provenance_kwargs(evidence_class="reprocessed", member="01", ensemble=ensemble))
+    assert value.ensemble.statistic is None
+
+
+def test_a_partial_member_set_is_flagged_on_the_quality_not_only_counted():
+    partial = full_member_set(members_used=19, members_missing=["07", "12"], partial=True)
+    ensemble = EnsembleProvenance(family="REPS", statistic="ensemble_mean", computed_here=True, member_set=partial)
+    with pytest.raises(ValidationError, match=PARTIAL_MEMBER_SET_FLAG):
+        statistic_provenance(ensemble)
+    flagged = statistic_provenance(ensemble, quality=Quality(status="passed", flags=["derived", PARTIAL_MEMBER_SET_FLAG]))
+    assert flagged.ensemble.member_set.members_missing == ["07", "12"]
+
+
+def test_a_member_set_that_claims_more_members_than_declared_is_refused():
+    with pytest.raises(ValidationError, match="member_set_overcounts"):
+        full_member_set(members_used=22)
+
+
+def test_a_member_set_partial_verdict_must_match_its_own_counts():
+    with pytest.raises(ValidationError, match="member_set_partial_mismatch"):
+        full_member_set(members_used=19, partial=False)
+    with pytest.raises(ValidationError, match="member_set_partial_mismatch"):
+        full_member_set(members_used=21, partial=True)
+
+
+def test_a_member_statistic_is_judged_stale_by_the_run_stale_field_it_already_has():
+    """Staleness is ``Provenance.run_stale`` from the horizon-tiers change. The
+    member set deliberately carries no second one, so one value can never say
+    two things about one run."""
+    assert "run_stale" not in EnsembleMemberSet.model_fields
+    ensemble = EnsembleProvenance(family="REPS", statistic="ensemble_mean", computed_here=True, member_set=full_member_set())
+    stale = statistic_provenance(ensemble, run_stale=True, run_stale_reason="run is older than twice the declared cadence")
+    assert stale.run_stale is True and stale.ensemble.member_set.run_time == VALID_TIME
+
+
+def test_a_refused_member_statistic_names_the_condition_and_carries_no_number():
+    ensemble = EnsembleProvenance(
+        family="REPS", statistic="ensemble_mean", computed_here=True, member_set=full_member_set(),
+        refusal="one_family:GEFS,REPS",
+    )
+    refused = statistic_provenance(ensemble, quality=Quality(status="unknown", flags=["derived", STATISTIC_REFUSED_FLAG]))
+    assert EvidenceField(field="temperature", value=None, provenance=refused).value is None
+    with pytest.raises(ValidationError, match="statistic_refused"):
+        EvidenceField(field="temperature", value=15.2, provenance=refused)
+
+
+def test_a_refused_member_statistic_must_be_flagged_as_refused():
+    ensemble = EnsembleProvenance(
+        family="REPS", statistic="ensemble_mean", computed_here=True, member_set=full_member_set(),
+        refusal="provider_reduction_mixed",
+    )
+    with pytest.raises(ValidationError, match=STATISTIC_REFUSED_FLAG):
+        statistic_provenance(ensemble)
+
+
+def test_a_refusal_without_a_member_statistic_has_nothing_to_refuse():
+    with pytest.raises(ValidationError, match="statistic_refused requires the statistic"):
+        EnsembleProvenance(family="REPS", statistic=None, computed_here=True, member_set=None, refusal="no_member_resolved")
+
+
+def test_a_threshold_probability_over_members_states_a_known_comparison():
+    assert THRESHOLD_COMPARISONS == ("ge", "gt", "le", "lt")
+    for name in THRESHOLD_COMPARISONS:
+        block = EnsembleProvenance(
+            family="GEFS", statistic="ensemble_threshold_probability", computed_here=True,
+            member_set=full_member_set(family="GEFS", source_id="noaa-gefs", members_declared=31, members_used=31),
+            threshold=0.0, threshold_units="degC", comparison=name,
+        )
+        assert block.comparison == name
+    with pytest.raises(ValidationError):
+        EnsembleProvenance(family="GEFS", statistic="ensemble_threshold_probability", computed_here=True, member_set=None, comparison="above")
+
+
+def test_a_member_quantile_stays_inside_the_unit_interval():
+    for value in (-0.1, 1.5):
+        with pytest.raises(ValidationError):
+            EnsembleProvenance(family="REPS", statistic="ensemble_quantile", computed_here=True, member_set=None, quantile=value)
+
+
+def test_a_time_averaged_member_field_states_its_window():
+    block = EnsembleProvenance(
+        family="GEFS", statistic="ensemble_mean", computed_here=True,
+        member_set=full_member_set(family="GEFS", source_id="noaa-gefs", members_declared=31, members_used=31),
+        averaging_window_hours=6.0,
+    )
+    assert block.averaging_window_hours == 6.0
+    with pytest.raises(ValidationError):
+        EnsembleProvenance(family="GEFS", statistic="ensemble_mean", computed_here=True, member_set=None, averaging_window_hours=0.0)
+
+
+def test_the_member_fields_are_carried_into_the_served_document():
+    ensemble = EnsembleProvenance(family="REPS", statistic="ensemble_mean", computed_here=True, member_set=full_member_set())
+    document = statistic_provenance(ensemble).model_dump()
+    assert document["ensemble"]["family"] == "REPS"
+    assert document["ensemble"]["statistic"] == "ensemble_mean"
+    assert document["ensemble"]["computed_here"] is True
+    assert document["ensemble"]["member_set"]["members_used"] == 21
+    assert document["ensemble"]["member_set"]["control_included"] is True
+    assert document["member"] is None and document["member_control"] is None
