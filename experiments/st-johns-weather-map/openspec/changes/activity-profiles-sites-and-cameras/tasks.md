@@ -54,7 +54,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
 
 ## 2. Window rules and the output contract (API owner)
 
-- [ ] 2.1 Resolve window rules from the registered DE442 geometry entry only;
+- [x] 2.1 Resolve window rules from the registered DE442 geometry entry only;
   refuse a wall-clock window rule at validation; report an unresolved window
   naming the absent geometry field.
   Owns: `api/weather_api/profiles/windows.py` (new).
@@ -71,7 +71,7 @@ at `docs/research/wayfinder/camera-inventory.md` on branch
   Owns: `api/weather_api/store.py`.
   Verify: `cd api && uv run pytest tests/test_point_evidence.py -k
   "blocked or contract_incomplete"`
-- [ ] 2.4 Record any threshold override in the provenance of the score it
+- [x] 2.4 Record any threshold override in the provenance of the score it
   produced, and record explicitly when no override was in force.
   Owns: `api/weather_api/profiles/overrides.py` (new).
   Verify: `cd api && uv run pytest tests/test_profile_overrides.py`
