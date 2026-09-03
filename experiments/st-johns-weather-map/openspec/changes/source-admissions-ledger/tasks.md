@@ -132,39 +132,39 @@ Verification commands used below, run from
 
 ## 5. New space-weather and astronomy records (Registry owner)
 
-- [ ] 5.1 `celestrak-gp`, `implemented-unverified`, CelesTrak GP element sets,
+- [x] 5.1 `celestrak-gp`, `implemented-unverified`, CelesTrak GP element sets,
   with the unread-usage-policy admission condition; passes stay derived-here.
   Verify: `python3 -m unittest discover -s registry/tests -v -k celestrak`.
-- [ ] 5.2 `space-track`, `rejected`, no access path, reason: CelesTrak serves
+- [x] 5.2 `space-track`, `rejected`, no access path, reason: CelesTrak serves
   the same elements without the account terms.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.3 `noaa-swpc-plasma`, `implemented-unverified`, SWPC plasma product.
+- [x] 5.3 `noaa-swpc-plasma`, `implemented-unverified`, SWPC plasma product.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.4 `noaa-swpc-propagated-solar-wind`, `implemented-unverified`.
+- [x] 5.4 `noaa-swpc-propagated-solar-wind`, `implemented-unverified`.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.5 `noaa-swpc-kp-1m`, `implemented-unverified`, 1-minute Kp.
+- [x] 5.5 `noaa-swpc-kp-1m`, `implemented-unverified`, 1-minute Kp.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.6 `noaa-swpc-alerts`, `implemented-unverified`, alert text products.
+- [x] 5.6 `noaa-swpc-alerts`, `implemented-unverified`, alert text products.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.7 `noaa-swpc-scales`, `implemented-unverified`, NOAA scales.
+- [x] 5.7 `noaa-swpc-scales`, `implemented-unverified`, NOAA scales.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.8 `gfz-hp30`, `implemented-unverified`, GFZ Hp30 half-hour index.
+- [x] 5.8 `gfz-hp30`, `implemented-unverified`, GFZ Hp30 half-hour index.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.9 `noaa-goes-magnetometer`, `implemented-unverified`.
+- [x] 5.9 `noaa-goes-magnetometer`, `implemented-unverified`.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.10 `noaa-goes-xray`, `implemented-unverified`, X-ray flux.
+- [x] 5.10 `noaa-goes-xray`, `implemented-unverified`, X-ray flux.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.11 `noaa-swpc-kyoto-dst`, `implemented-unverified`, delivery kind
+- [x] 5.11 `noaa-swpc-kyoto-dst`, `implemented-unverified`, delivery kind
   `reprocessed`, producer Kyoto WDC, intermediary SWPC.
   Verify: `python3 -m unittest discover -s registry/tests -v -k dst`.
-- [ ] 5.12 `noaa-swpc-stereo-a` and `noaa-swpc-kp-hourly-prediction`,
+- [x] 5.12 `noaa-swpc-stereo-a` and `noaa-swpc-kp-hourly-prediction`,
   `unavailable`, reason: stale behind HTTP 200.
   Verify: `python3 registry/audit.py`.
-- [ ] 5.13 `nrcan-stj-magnetometer`, `partnership-only`, no access path,
+- [x] 5.13 `nrcan-stj-magnetometer`, `partnership-only`, no access path,
   reason: NRCan FDSN terms forbid redistribution without written permission;
   record the request sent with Fort Amherst.
   Verify: `python3 -m unittest discover -s registry/tests -v -k magnetometer`.
-- [ ] 5.14 `space-weather-canada-regional` and
+- [x] 5.14 `space-weather-canada-regional` and
   `nasa-soho-sdo-goes-suvi-imagery`, `link-only`, citation only, no endpoint.
   Verify: `python3 -m unittest discover -s registry/tests -v -k link_only`.
 

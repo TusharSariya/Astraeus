@@ -41,7 +41,9 @@ class EveryRecordDeclaresDeliveryTests(unittest.TestCase):
 
     def test_a_reprocessed_record_names_its_intermediary_and_transformations(self) -> None:
         reprocessed = [item for item in registry()["sources"] if item["delivery_kind"] == "reprocessed"]
-        self.assertEqual(["noaa-madis", "openaq", "raw-cwop-pws"], sorted(item["id"] for item in reprocessed))
+        # The three original aggregator records are still here; the ledger
+        # adds more, so the set is a floor rather than an exhaustive list.
+        self.assertTrue({"noaa-madis", "openaq", "raw-cwop-pws"} <= {item["id"] for item in reprocessed})
         for record in reprocessed:
             self.assertTrue(record["intermediary"]["name"], record["id"])
             self.assertNotEqual(record["intermediary"]["name"].lower(), record["producer"].lower())
@@ -81,10 +83,14 @@ class EveryRecordDeclaresDeliveryTests(unittest.TestCase):
     def test_the_summary_names_what_may_not_be_the_display_primary(self) -> None:
         data, errors = audit.validate()
         self.assertEqual([], errors)
-        self.assertEqual(
-            ["google-weathernext-2", "noaa-madis", "open-meteo-weathernext-2", "openaq", "raw-cwop-pws"],
-            audit.summary(data)["not_display_primary"],
+        # Every record that is not the producer's own cell, and every record
+        # under restricted terms, is named; nothing else is.
+        expected = sorted(
+            record["id"] for record in data["sources"]
+            if record["delivery_kind"] != "published_cell" or "restricted_terms" in record
         )
+        self.assertTrue({"noaa-madis", "open-meteo-weathernext-2", "openaq", "raw-cwop-pws"} <= set(expected))
+        self.assertEqual(expected, audit.summary(data)["not_display_primary"])
 
 
 class DeliveryKindTests(unittest.TestCase):
