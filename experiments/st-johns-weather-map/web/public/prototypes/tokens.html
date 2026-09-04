@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>PROTOTYPE · design tokens, three themes (#41)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:wght@500;600&family=Source+Sans+3:wght@400;500;600&family=Atkinson+Hyperlegible+Next:wght@400;500;700&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap">
+<style>
+  /* page chrome: deliberately plain and theme-neutral, so the three sample panels are the only coloured things */
+  :root { color-scheme: light; --pg: #e9e9e6; --pg-ink: #1b1b1b; --pg-muted: #5a5a58; --pg-line: #c9c9c4; --pg-panel: #f7f7f5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--pg); color: var(--pg-ink); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; padding-bottom: 88px; }
+  h1, h2, h3, p { margin: 0; }
+  .page { max-width: 1900px; margin: 0 auto; padding: 16px 20px; display: grid; gap: 22px; }
+  .banner { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; color: var(--pg-muted); }
+  .banner b { color: #b3261e; letter-spacing: .08em; font-size: 11px; }
+  .banner h1 { font-size: 16px; font-weight: 600; color: var(--pg-ink); }
+  section > h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--pg-muted); margin-bottom: 8px; }
+  .themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .themes[data-layout="one"] { grid-template-columns: 1fr; }
+  .themes[data-layout="one"] .theme:not(.solo) { display: none; }
+  .theme { border-radius: 6px; overflow: hidden; border: 1px solid var(--pg-line); min-width: 0; }
+  .theme header.tag { display: flex; justify-content: space-between; padding: 4px 8px; background: var(--pg-panel); color: var(--pg-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .theme header.tag button { border: 0; background: transparent; color: inherit; cursor: pointer; text-decoration: underline; font: inherit; }
+
+  /* ---------- the themed sample: every colour, size and face below comes from tokens ---------- */
+  .app { container-type: inline-size; background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: var(--fs-base); line-height: 1.45; display: grid; grid-template-rows: auto auto 1fr auto; min-height: 720px; }
+  .app .mono, .app code, .app .tag-src, .app .val, .app .time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .focusbar { display: grid; grid-template-columns: 1fr auto auto; gap: var(--sp-6); align-items: center; padding: var(--sp-4) var(--sp-6); border-bottom: 1px solid var(--line); background: var(--panel); }
+  .focusbar .place { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; letter-spacing: -.01em; }
+  .focusbar .sub { color: var(--muted); font-size: var(--fs-sm); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: var(--r-sm); font-size: var(--fs-xs); font-weight: 500; letter-spacing: .02em; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .chip.tier { background: var(--core); border-color: transparent; color: var(--ink); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+  .chip.bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+  .chip.good { background: var(--good-bg); color: var(--good); border-color: transparent; }
+  .datamode { display: flex; gap: var(--sp-5); padding: var(--sp-2) var(--sp-6); border-bottom: 1px solid var(--line); background: var(--sunken); color: var(--muted); font-size: var(--fs-sm); }
+  .datamode b { color: var(--ink); font-weight: 500; }
+  .stage { display: grid; grid-template-columns: var(--tabs-w) minmax(0, 1.25fr) minmax(0, 1fr); min-height: 0; }
+  @container (max-width: 980px) {
+    .stage { grid-template-columns: var(--tabs-w) minmax(0, 1fr); grid-template-rows: 300px auto; }
+    .tabs { grid-row: 1 / span 2; }
+    .map { border-right: 0; border-bottom: 1px solid var(--line); }
+  }
+  .tabs { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }
+  .tabs button { height: var(--control); border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
+  .tabs button[aria-selected="true"] { color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); background: var(--raised); }
+  .map { position: relative; display: grid; grid-template-rows: 1fr auto; border-right: 1px solid var(--line); background: var(--sunken); min-height: 300px; }
+  .map .fake { background:
+      linear-gradient(90deg, color-mix(in oklab, var(--line) 55%, transparent) 1px, transparent 1px) 0 0/48px 48px,
+      linear-gradient(color-mix(in oklab, var(--line) 55%, transparent) 1px, transparent 1px) 0 0/48px 48px,
+      radial-gradient(ellipse at 62% 40%, color-mix(in oklab, var(--ramp-cloud-5) 55%, transparent), transparent 42%),
+      radial-gradient(ellipse at 30% 70%, color-mix(in oklab, var(--ramp-cloud-3) 70%, transparent), transparent 35%),
+      var(--sunken); }
+  .map .stack { position: absolute; left: var(--sp-4); top: var(--sp-4); background: color-mix(in oklab, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-2) 0; min-width: 220px; font-size: var(--fs-sm); }
+  .map .stack .row { display: grid; grid-template-columns: var(--gutter) 1fr auto; align-items: center; gap: var(--sp-2); padding: 2px var(--sp-3); }
+  .map .corner { position: absolute; right: var(--sp-4); top: var(--sp-4); font-size: var(--fs-xs); color: var(--muted); text-align: right; display: grid; gap: 2px; }
+  .map .corner .row { display: flex; gap: var(--sp-2); justify-content: flex-end; align-items: center; }
+  .strip { display: flex; align-items: center; gap: var(--sp-3); padding: 3px var(--sp-4); border-top: 1px solid var(--line); background: color-mix(in oklab, var(--panel) 94%, transparent); font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; }
+  .strip .gen { color: var(--cls-generated_display); font-weight: 600; letter-spacing: .06em; }
+  .strip .exc { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+  .strip .why { margin-left: auto; color: var(--accent); }
+  .dock { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; background: var(--panel); }
+  .dock h3 { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; padding: var(--sp-3) var(--sp-5); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; }
+  .dock h3 small { font-family: var(--font-ui); font-weight: 400; color: var(--muted); font-size: var(--fs-xs); }
+  .ledger { display: grid; align-content: start; }
+  .lrow { display: grid; grid-template-columns: var(--gutter) 5.5em minmax(0, 1fr) auto auto; align-items: center; gap: var(--sp-2); padding: 3px var(--sp-4) 3px var(--sp-3); min-height: var(--control); border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent); font-size: var(--fs-md); }
+  .lrow[aria-selected="true"] { background: var(--raised); box-shadow: inset 3px 0 0 var(--accent); }
+  .lrow .tag-src { font-size: var(--fs-xs); letter-spacing: .06em; color: var(--muted); font-weight: 500; text-transform: uppercase; }
+  .lrow .label { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lrow .val { font-weight: 500; text-align: right; }
+  .lrow .val .u { color: var(--muted); font-weight: 400; margin-left: 2px; }
+  .lrow .val.absent { color: var(--absent); }
+  .glyph { width: var(--glyph); height: var(--glyph); display: inline-block; vertical-align: middle; }
+  .g-retrieved { color: var(--cls-retrieved); } .g-reprocessed { color: var(--cls-reprocessed); } .g-derived_here { color: var(--cls-derived_here); }
+  .g-intermediary_derived { color: var(--cls-intermediary_derived); } .g-generated_display { color: var(--cls-generated_display); } .g-uncalibrated_observation { color: var(--cls-uncalibrated_observation); }
+  .g-unrecognised, .g-absent { color: var(--absent); }
+  .lane { border-top: 1px solid var(--line); padding: var(--sp-4) var(--sp-5); display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-5); align-items: center; }
+  .lane .name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-lg); }
+  .lane .verdict { display: flex; gap: var(--sp-3); align-items: center; }
+  .lane .verdict .mark { width: 14px; height: 14px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--good); }
+  .lane .verdict b { font-weight: 600; }
+  .lane .limit { color: var(--muted); font-size: var(--fs-sm); }
+  .vstrip { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; height: 10px; align-self: center; }
+  .vstrip i { border-radius: 1px; background: var(--good); }
+  .vstrip i.w { background: var(--warn); } .vstrip i.b { background: var(--bad); } .vstrip i.n { background: transparent; border: 1px dashed var(--absent); } .vstrip i.p { opacity: .55; background-image: repeating-linear-gradient(135deg, transparent 0 2px, color-mix(in oklab, var(--panel) 60%, transparent) 2px 4px); }
+  .series { border-top: 1px solid var(--line); padding: var(--sp-3) var(--sp-4); }
+  .series svg { width: 100%; height: 140px; display: block; overflow: visible; }
+  .series .leg { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); font-size: var(--fs-xs); color: var(--muted); margin-top: var(--sp-2); }
+  .series .leg span { display: inline-flex; gap: 4px; align-items: center; }
+  .series .leg svg { width: 22px; height: 10px; }
+  .rail { display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-5); align-items: center; padding: var(--sp-3) var(--sp-6); border-top: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); }
+  .rail .track { position: relative; height: 18px; background: linear-gradient(90deg, var(--core) 0 62%, var(--planning) 62% 100%); border-radius: var(--r-sm); }
+  .rail .track .now { position: absolute; left: 31%; top: -3px; width: 2px; height: 24px; background: var(--now); }
+  .rail .track .tier { position: absolute; left: 62%; top: -3px; height: 24px; border-left: 1px dashed var(--boundary); }
+  .rail button { height: var(--control); min-width: var(--control); border: 1px solid var(--line); background: var(--raised); color: var(--ink); border-radius: var(--r-md); font: inherit; cursor: pointer; }
+  .rail button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+  .app :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* ---------- token sheets ---------- */
+  .sheet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .card { background: var(--pg-panel); border: 1px solid var(--pg-line); border-radius: 6px; padding: 12px; min-width: 0; }
+  .card h3 { font-size: 12px; font-weight: 600; margin-bottom: 8px; display: flex; justify-content: space-between; gap: 8px; }
+  .card h3 .v { font-weight: 500; font-size: 11px; padding: 1px 6px; border-radius: 3px; }
+  .v.pass { background: #dcefe0; color: #14532d; } .v.fail { background: #fbe3e1; color: #7f1d1d; } .v.relief { background: #fdf0d5; color: #78350f; } .v.expected { background: #e5e7eb; color: #374151; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+  .sw { display: grid; gap: 3px; font-size: 10.5px; color: var(--pg-muted); }
+  .sw i { display: block; height: 30px; border-radius: 4px; border: 1px solid rgb(0 0 0 / .08); }
+  .sw b { color: var(--pg-ink); font-weight: 500; }
+  .sw code { font-size: 10px; }
+  .rampbar { display: grid; grid-auto-flow: column; height: 22px; border-radius: 4px; overflow: hidden; border: 1px solid rgb(0 0 0 / .08); }
+  .rampbar i { display: block; }
+  .ramprow { display: grid; grid-template-columns: 9em 1fr 1fr auto; gap: 10px; align-items: center; padding: 4px 0; border-top: 1px solid var(--pg-line); font-size: 12px; }
+  .ramprow small { color: var(--pg-muted); display: block; font-size: 10.5px; }
+  .surfaces { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .surfaces .on { padding: 8px 10px; border-radius: 4px; display: grid; gap: 4px; font-size: 12px; }
+  table.rep { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.rep th, table.rep td { text-align: left; padding: 4px 6px; border-top: 1px solid var(--pg-line); vertical-align: top; }
+  table.rep td.d { color: var(--pg-muted); font-family: ui-monospace, monospace; font-size: 10.5px; }
+  .spec { display: grid; gap: 4px; }
+  .spec .line { display: grid; grid-template-columns: 4.5em 1fr auto; gap: 10px; align-items: baseline; border-top: 1px solid var(--pg-line); padding: 4px 0; }
+  .spec .line small { color: var(--pg-muted); font-size: 10.5px; }
+  .bars { display: grid; gap: 4px; font-size: 11px; color: var(--pg-muted); }
+  .bars div { display: grid; grid-template-columns: 3em 1fr; gap: 8px; align-items: center; }
+  .bars i { display: block; height: 10px; background: #5b7bd5; border-radius: 2px; }
+
+  /* ---------- floating variant bar ---------- */
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding: 8px 16px; background: #15171c; color: #d5d8de; font-size: 12px; border-top: 1px solid #2a2e36; z-index: 100; }
+  .bar .grp { display: flex; align-items: center; gap: 4px; }
+  .bar .grp > span { color: #8b929e; margin-right: 4px; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+  .bar button { border: 1px solid #3a4150; background: #1f232b; color: inherit; border-radius: 4px; padding: 3px 9px; cursor: pointer; font: inherit; }
+  .bar button[aria-pressed="true"] { background: #e3e6eb; color: #15171c; border-color: transparent; font-weight: 600; }
+  .bar .desc { color: #a3aab5; flex: 1 1 320px; }
+  .bar a { color: #9cc0ff; }
+  /* colour-vision filters */
+  [data-cv="deutan"] .theme .app { filter: url(#deutan); }
+  [data-cv="gray"] .theme .app { filter: grayscale(1); }
+  @media (max-width: 1200px) { .themes, .sheet { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="deutan"><feColorMatrix type="matrix" values="0.367322 0.860646 -0.227968 0 0  0.280085 0.672501 0.047413 0 0  -0.011820 0.042940 0.968881 0 0  0 0 0 1 0"/></filter>
+    <symbol id="g-retrieved" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor"/></symbol>
+    <symbol id="g-reprocessed" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></symbol>
+    <symbol id="g-derived_here" viewBox="0 0 16 16"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z" fill="currentColor"/></symbol>
+    <symbol id="g-intermediary_derived" viewBox="0 0 16 16"><path d="M8 2.2 13.8 8 8 13.8 2.2 8z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="g-generated_display" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.6 2.2"/></symbol>
+    <symbol id="g-uncalibrated_observation" viewBox="0 0 16 16"><path d="M8 2 14.5 14H1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="g-unrecognised" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="8" y="12" font-size="9" font-weight="700" text-anchor="middle" fill="currentColor">?</text></symbol>
+    <symbol id="g-absent" viewBox="0 0 16 16"><path d="M3 8h10" stroke="currentColor" stroke-width="2"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+  <div class="banner"><b>PROTOTYPE</b><h1 id="title">Design tokens, three themes</h1><span id="datanote">loading tokens.json…</span></div>
+
+  <section>
+    <h2>1 · One sample screen in the three themes (shell, Map strip, Series ledger, Activity lane, Series chart, rail)</h2>
+    <div class="themes" id="themes" data-layout="three"></div>
+  </section>
+
+  <section>
+    <h2>2 · Colour tokens for the selected variant, with the validator's verdicts</h2>
+    <div class="sheet" id="palettes"></div>
+  </section>
+
+  <section>
+    <h2>3 · Field ramps (client-rendered colour only: the band-math prototype, strips, the verdict strip; provider legends stay provider PNGs)</h2>
+    <div class="sheet" id="ramps" style="grid-template-columns: 1fr 1fr"></div>
+  </section>
+
+  <section>
+    <h2>4 · Type, space, size and motion for the selected variant</h2>
+    <div class="sheet" id="nonColour"></div>
+  </section>
+
+  <section>
+    <h2>5 · Validator log (every run the generator made, verbatim)</h2>
+    <div class="card"><table class="rep" id="report"></table></div>
+  </section>
+</div>
+
+<nav class="bar" aria-label="prototype variants">
+  <div class="grp" data-key="v"><span>Variant</span><button data-val="A">A · Instrument</button><button data-val="B">B · Almanac</button><button data-val="C">C · Hyperlegible</button></div>
+  <div class="grp" data-key="night"><span>Night</span><button data-val="red">red on black</button><button data-val="ember">ember</button></div>
+  <div class="grp" data-key="src"><span>Source colour</span><button data-val="provider">by provider + line style</button><button data-val="source">by source, cap 8</button></div>
+  <div class="grp" data-key="layout"><span>Layout</span><button data-val="three">three</button><button data-val="one">one</button></div>
+  <div class="grp" data-key="cv"><span>Vision</span><button data-val="normal">normal</button><button data-val="deutan">deuteranopia</button><button data-val="gray">grayscale</button></div>
+  <div class="desc" id="desc"></div>
+</nav>
+
+<script type="module">
+const q = new URLSearchParams(location.search);
+const state = { v: q.get("v") || "A", night: q.get("night") || "red", src: q.get("src") || "provider", layout: q.get("layout") || "three", cv: q.get("cv") || "normal", theme: q.get("theme") || "light" };
+const T = await (await fetch("./tokens.json")).json();
+
+// ---- live data: /point through the proxy, else the captures ----
+let live = null, captures = null, dataNote = "";
+try {
+  captures = await (await fetch("./provenance-captures.json")).json();
+} catch {}
+let instant = "2026-09-03T22:00:00Z";
+try {
+  const tl = await (await fetch("/api/experiments/weather/v0/timeline", { signal: AbortSignal.timeout(20000) })).json();
+  const first = (tl.items ?? []).find((i) => (i.available_products ?? []).length);
+  if (first) instant = first.valid_time_utc;
+  const r = await fetch(`/api/experiments/weather/v0/point?latitude=47.5615&longitude=-52.7126&valid_time=${instant}`, { signal: AbortSignal.timeout(30000) });
+  if (r.ok) { live = await r.json(); dataNote = `values: live /point at ${instant} (${live.fields.filter((f) => f.value != null).length} valued fields, all ${[...new Set(live.fields.filter((f) => f.value != null).map((f) => f.provenance.source_id))].join(", ")})`; }
+} catch {}
+if (!live && captures) dataNote = `values: captures from ${captures.captured_at} (API unreachable)`;
+const fieldsSrc = live ? Object.fromEntries(live.fields.map((f) => [f.field, f])) : {};
+const pick = (k) => fieldsSrc[k] ?? captures?.[k] ?? null;
+const temp = pick("temperature"), wind = pick("wind_speed"), cloud = pick("total_cloud_geometric"), vis = pick("visibility_taf") ?? pick("visibility");
+document.getElementById("datanote").textContent = dataNote + " · rows marked CONSTRUCTED use the contract's wire shape, not served data";
+
+// ---- resolve tokens for (variant, theme) into CSS custom properties ----
+function cssVars(vId, theme) {
+  const v = T.variants[vId];
+  const o = {};
+  o["--font-ui"] = v.fonts.ui; o["--font-display"] = v.fonts.display; o["--font-mono"] = v.fonts.mono;
+  const scale = v.base / 13;
+  for (const s of T.type.scale) o[`--fs-${s.key}`] = `${Math.round(s.px * scale * 10) / 10}px`;
+  for (const [k, px] of Object.entries(T.space)) o[`--sp-${k}`] = `${px}px`;
+  for (const [k, px] of Object.entries(T.radius)) o[`--r-${k}`] = `${px}px`;
+  o["--glyph"] = `${T.size.glyph}px`; o["--gutter"] = `${T.size.gutter}px`;
+  o["--control"] = `${T.size[`control-${v.density === "compact" ? "compact" : v.density === "comfortable" ? "comfortable" : "touch"}`]}px`;
+  o["--tabs-w"] = v.density === "spacious" ? "64px" : "52px";
+  if (theme === "night") {
+    const n = T.night[state.night];
+    Object.assign(o, { "--bg": n.bg, "--panel": n.panel, "--raised": n.raised, "--sunken": n.bg, "--line": n.line, "--ink": n.ink, "--muted": n.muted, "--faint": n.faint, "--absent": n.faint,
+      "--accent": n.accent, "--accent-ink": n.bg, "--focus": n.accent, "--good": n.ink, "--warn": n.warn, "--bad": n.bad, "--good-bg": n.panel, "--warn-bg": n.raised, "--bad-bg": n.raised,
+      "--core": n.raised, "--planning": n.panel, "--now": n.accent, "--boundary": n.muted });
+    for (const [k, hex] of Object.entries(n.evidence)) o[`--cls-${k}`] = hex;
+    for (let i = 1; i <= 7; i++) o[`--ramp-cloud-${i}`] = [n.bg, n.panel, n.panel, n.raised, n.raised, n.line, n.line][i - 1];
+    n.sourceLuminance.forEach((hex, i) => (o[`--src-${i + 1}`] = hex));
+    for (let i = 5; i <= 8; i++) o[`--src-${i}`] = n.sourceLuminance[(i - 1) % 4];
+    return o;
+  }
+  const t = v.themes[theme], P = T.palettes[theme][vId];
+  for (const [k, hex] of Object.entries(t)) o[`--${k}`] = hex;
+  o["--good"] = P.status.good; o["--warn"] = theme === "light" ? "#8a5a00" : P.status.warning; o["--bad"] = P.status.critical;
+  o["--good-bg"] = P.statusBg.good; o["--warn-bg"] = P.statusBg.warning; o["--bad-bg"] = P.statusBg.critical;
+  for (const [k, hex] of Object.entries(P.evidence)) o[`--cls-${k}`] = hex;
+  o["--absent"] = P.absent;
+  P.sources.forEach((s) => (o[`--src-${s.slot}`] = s.hex));
+  T.ramps[theme].sequential.find((r) => r.key === "cloud").steps.forEach((hex, i) => (o[`--ramp-cloud-${i + 1}`] = hex));
+  return o;
+}
+
+// ---- sample screen ----
+const glyph = (cls) => `<svg class="glyph g-${cls}" role="img" aria-label="${cls.replace(/_/g, " ")}"><use href="#g-${cls}"/></svg>`;
+const fmt = (n, d = 1) => (n == null ? "—" : Number(n).toFixed(d));
+const ageOf = (f) => { if (!f?.provenance?.run_time) return null; return Math.round((new Date(f.provenance.valid_time) - new Date(f.provenance.run_time)) / 36e5); };
+function ledgerRows() {
+  const rows = [];
+  const real = (f, label, unit, d = 1) => f && rows.push({ cls: f.provenance.evidence_class, src: "GFS", label, val: f.value == null ? null : fmt(f.value, d), unit, chip: f.value == null ? `<span class="chip">null</span>` : f.provenance.run_stale === true ? `<span class="chip warn">run stale</span>` : "" });
+  real(temp, "Air temperature 2 m", "°C");
+  real(wind, "Wind speed 10 m", "m/s", 2);
+  real(cloud, "Total cloud, geometric", "%", 0);
+  // constructed rows in the wire shape: no live path yields these classes (resolution #40, gaps 3 to 5)
+  rows.push({ cls: "retrieved", src: "HRDPS", label: "Total cloud, opacity-weighted", val: "38", unit: "%", chip: `<span class="chip warn">run stale</span>`, constructed: true });
+  rows.push({ cls: "reprocessed", src: "UKMO·OM", label: "Dew point 2 m", val: "9.4", unit: "°C", chip: "", constructed: true });
+  rows.push({ cls: "intermediary_derived", src: "7TIMER", label: "Seeing index", val: "3", unit: "", chip: "", constructed: true });
+  rows.push({ cls: "generated_display", src: "HRDPS", label: "Low cloud, between frames", val: "41", unit: "%", chip: "", constructed: true });
+  rows.push({ cls: "uncalibrated_observation", src: "CWOP", label: "Pressure, station", val: "1011.2", unit: "hPa", chip: "", constructed: true });
+  rows.push({ cls: "absent", src: "CYYT TAF", label: "Visibility", val: null, unit: "", chip: `<span class="chip">null · provenance_unmodelled</span>`, constructed: !vis });
+  rows.push({ cls: "absent", src: "WN2", label: "Temperature 2 m", val: "blocked", unit: "", chip: `<span class="chip bad">blocked</span>`, constructed: true });
+  rows.push({ cls: "absent", src: "GOES", label: "Cloud-top height", val: "aged out", unit: "", chip: `<span class="chip warn">held to 18:10Z</span>`, constructed: true });
+  return rows.map((r, i) => `<div class="lrow" role="row" tabindex="0" ${i === 3 ? 'aria-selected="true"' : ""}>${glyph(r.cls)}<span class="tag-src">${r.src}</span><span class="label">${r.label}${r.constructed ? ' <span class="chip" style="font-size:9px;padding:0 4px">constructed</span>' : ""}</span><span class="val ${r.val == null || /blocked|aged/.test(r.val) ? "absent" : ""}">${r.val ?? "—"}<span class="u">${r.unit}</span></span><span>${r.chip}</span></div>`).join("");
+}
+const SERIES_SOURCES = [
+  { tag: "HRDPS", slot: 1, style: "solid", pts: [12.9, 13.1, 13.4, 13.2, 12.6, 12.1, 11.4, 10.9] },
+  { tag: "RDPS", slot: 1, style: "dashed", pts: [12.4, 12.8, 13.0, 12.7, 12.2, 11.6, 11.0, 10.4] },
+  { tag: "GFS", slot: 2, style: "solid", pts: [13.4, 13.6, 13.7, 13.3, 12.7, 12.0, 11.3, 10.8] },
+  { tag: "IFS", slot: 3, style: "solid", pts: [12.6, 12.9, 13.2, 13.0, 12.5, 11.9, 11.2, 10.6] },
+  { tag: "ICON", slot: 4, style: "solid", pts: [12.1, 12.5, 12.9, 12.8, 12.3, 11.7, 11.1, 10.5] },
+];
+const dash = { solid: "", dashed: "6 3", dotted: "2 3", "dash-dot": "6 3 2 3" };
+function seriesSvg(theme) {
+  const W = 420, H = 100, x = (i) => 8 + (i * (W - 16)) / 7, y = (v) => H - 8 - ((v - 10) / 4.2) * (H - 16);
+  const bySource = state.src === "source";
+  const lines = SERIES_SOURCES.map((s, i) => {
+    const slot = bySource ? i + 1 : s.slot;
+    const style = theme === "night" ? Object.keys(dash)[i % 4] : bySource ? "solid" : s.style;
+    const stroke = theme === "night" ? `var(--src-${(i % 4) + 1})` : `var(--src-${slot})`;
+    return `<polyline fill="none" stroke="${stroke}" stroke-width="2" stroke-dasharray="${dash[style]}" stroke-linejoin="round" points="${s.pts.map((v, j) => `${x(j)},${y(v)}`).join(" ")}"/><text x="${W - 4}" y="${y(s.pts[7]) + 3}" font-size="9" fill="var(--muted)" text-anchor="start" style="font-family:var(--font-mono)">${s.tag}</text>`;
+  }).join("");
+  const grid = [10, 12, 14].map((v) => `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="2" y="${y(v) - 2}" font-size="8" fill="var(--faint)">${v}°</text>`).join("");
+  return `<svg viewBox="0 0 ${W + 34} ${H}" preserveAspectRatio="none">${grid}<line x1="${x(2)}" x2="${x(2)}" y1="0" y2="${H}" stroke="var(--now)" stroke-width="1.5"/>${lines}</svg>`;
+}
+function screen(theme) {
+  const v = T.variants[state.v];
+  const P = theme === "night" ? null : T.palettes[theme][state.v];
+  return `<div class="app" data-theme="${theme}" style="color-scheme:${theme === "light" ? "light" : "dark"}">
+    <div class="focusbar">
+      <div><div class="place">Signal Hill <span class="sub">· 1.9 km NE of CYYT</span></div><div class="sub"><span class="time">${new Date(instant).toLocaleString("en-CA", { timeZone: "America/St_Johns", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} NDT · ${instant.slice(11, 16)}Z</span> · horizon: not borrowed</div></div>
+      <span class="chip tier">core · 15 min</span>
+      <span class="chip good">${glyph("retrieved")} live</span>
+    </div>
+    <div class="datamode"><span><b>live</b> mode</span><span><b>1</b> source with values</span><span><b>0</b> stale</span><span><b>0</b> aged out</span><span><b>1</b> notice</span><span style="margin-left:auto">details</span></div>
+    <div class="stage">
+      <div class="tabs" role="tablist">${["Map", "Series", "Sky", "Activity", "Sources"].map((t, i) => `<button role="tab" aria-selected="${i === 0}">${t}</button>`).join("")}</div>
+      <div class="map"><div class="fake"></div>
+        <div class="stack">
+          <div class="row">${glyph("retrieved")}<span>GOES natural colour</span><span class="tag-src" style="font-size:var(--fs-xs);color:var(--muted)">GOES</span></div>
+          <div class="row">${glyph("generated_display")}<span>Total cloud, opacity</span><span class="tag-src" style="font-size:var(--fs-xs);color:var(--muted)">HRDPS</span></div>
+          <div class="row">${glyph("retrieved")}<span>Alerts in force</span><span class="tag-src" style="font-size:var(--fs-xs);color:var(--muted)">MSC</span></div>
+          <div class="row">${glyph("retrieved")}<span>Radar composite</span><span class="tag-src" style="font-size:var(--fs-xs);color:var(--muted)">ECCC</span></div>
+        </div>
+        <div class="corner"><div class="row">${glyph("retrieved")}<span>GOES</span><span class="time">20:50Z</span><span>10 min</span></div><div class="row">${glyph("generated_display")}<span>HRDPS</span><span class="time">21:00Z</span><span>between</span></div><div class="row">${glyph("retrieved")}<span>MSC</span><span>current</span></div><div class="row">${glyph("absent")}<span>ECCC radar</span><span>not drawn</span></div></div>
+        <div class="strip">${glyph("generated_display")}<span class="gen">GENERATED</span><span>Total cloud between frames</span><span>·</span><span><b>3 of 4</b> drawn at 21:00Z</span><span class="exc">· radar: newest scan 2.4 h old, beyond tolerance</span><span class="why">why?</span></div>
+      </div>
+      <div class="dock">
+        <h3>Series <small>at the Focus · 54 fields</small></h3>
+        <div class="ledger" role="grid">${ledgerRows()}</div>
+        <div class="series">${seriesSvg(theme)}<div class="leg">${(state.src === "source" ? SERIES_SOURCES.map((s, i) => ({ t: s.tag, c: theme === "night" ? (i % 4) + 1 : i + 1, d: theme === "night" ? Object.keys(dash)[i % 4] : "solid" })) : [{ t: "ECCC models", c: 1, d: "solid" }, { t: "RDPS as dashed", c: 1, d: "dashed" }, { t: "NOAA NCEP", c: 2, d: "solid" }, { t: "ECMWF", c: 3, d: "solid" }, { t: "DWD", c: 4, d: "solid" }]).map((l, i) => `<span><svg viewBox="0 0 22 10"><line x1="1" x2="21" y1="5" y2="5" stroke="var(--src-${theme === "night" ? (i % 4) + 1 : l.c})" stroke-width="2" stroke-dasharray="${dash[theme === "night" ? Object.keys(dash)[i % 4] : l.d]}"/></svg>${l.t}</span>`).join("")}</div></div>
+        <div class="lane"><div><div class="name">Astronomy</div><div class="limit">limited by cloud, opacity-weighted</div></div><div class="vstrip">${"gggggwwwbbnnpppp".split("").map((c) => `<i class="${c === "g" ? "" : c}"></i>`).join("")}</div><div class="verdict"><i class="mark"></i><b>Go · 78</b><span class="chip">coverage 0.81</span></div></div>
+      </div>
+    </div>
+    <div class="rail"><button class="primary">▶</button><div class="track"><i class="now"></i><i class="tier"></i></div><span class="time">−15 d ··· <b>now</b> ··· +15 d</span></div>
+  </div>`;
+}
+
+// ---- token sheets ----
+const verdictOf = (label) => {
+  const r = T.$validation.find((x) => x.label.startsWith(label));
+  if (!r) return "";
+  const cls = r.expected ? "expected" : r.ok ? (r.report.some((c) => c.pass === "relief") ? "relief" : "pass") : "fail";
+  return `<span class="v ${cls}" title="${r.label}">${cls === "expected" ? "expected" : cls === "relief" ? "pass · relief" : cls}</span>`;
+};
+const sw = (hex, name, sub = "") => `<div class="sw"><i style="background:${hex}"></i><b>${name}</b><code>${hex}</code>${sub ? `<span>${sub}</span>` : ""}</div>`;
+function paletteSheets() {
+  const out = [];
+  for (const mode of ["light", "dark"]) {
+    const P = T.palettes[mode][state.v], v = T.variants[state.v], t = v.themes[mode];
+    out.push(`<div class="card"><h3>${mode} · evidence classes ${verdictOf(`evidence classes, ${mode}, variant ${state.v}`)}</h3>
+      <div class="swatches">${Object.entries(P.evidence).map(([k, h]) => `<div class="sw"><i style="background:${t.panel};display:grid;place-items:center;border-color:${t.line}"><svg class="glyph" style="color:${h};width:20px;height:20px"><use href="#g-${k}"/></svg></i><b>${k.replace(/_/g, " ")}</b><code>${h}</code></div>`).join("")}${sw(P.absent, "absent")}${sw(P.unrecognised, "unrecognised")}</div>
+      <p style="margin-top:8px;font-size:11px;color:var(--pg-muted)">All-pairs colour-vision separation fails for six hues, as the dataviz palette itself does past three slots. Shape and fill carry the class; adjacent-in-legend order ${verdictOf(`evidence classes, ${mode}, variant ${state.v} surface ${t.panel}, adjacent`)}.</p></div>`);
+    out.push(`<div class="card"><h3>${mode} · source slots ${verdictOf(`source slots, ${mode}, variant ${state.v}`)} first three all-pairs ${verdictOf(`source slots first three, ${mode}, variant ${state.v}`)}</h3>
+      <div class="swatches">${P.sources.map((s) => sw(s.hex, `${s.slot} · ${s.hue}`, s.provider)).join("")}</div></div>`);
+    out.push(`<div class="card"><h3>${mode} · surfaces, ink, status</h3>
+      <div class="surfaces">
+        <div class="on" style="background:${t.bg};color:${t.ink};border:1px solid ${t.line}"><b>bg</b> ${t.bg}<span style="color:${t.muted}">muted ${t.muted} · ${T.$textContrast[`${state.v}.${mode}`].mutedOnPanel}:1</span><span style="color:${t.faint}">faint ${t.faint} · ${T.$textContrast[`${state.v}.${mode}`].faintOnPanel}:1</span></div>
+        <div class="on" style="background:${t.panel};color:${t.ink};border:1px solid ${t.line}"><b>panel</b> ${t.panel}<span style="color:${t.accent}">accent ${t.accent} · ${T.$textContrast[`${state.v}.${mode}`].accentOnPanel}:1</span><span><i style="display:inline-block;width:40px;height:10px;background:${t.raised};border:1px solid ${t.line};vertical-align:middle"></i> raised · <i style="display:inline-block;width:40px;height:10px;background:${t.core};vertical-align:middle"></i> core · <i style="display:inline-block;width:40px;height:10px;background:${t.planning};vertical-align:middle"></i> planning</span></div>
+      </div>
+      <div class="swatches" style="margin-top:8px">${Object.entries(P.status).filter(([k]) => k !== "contrast").map(([k, h]) => sw(h, k, `${P.status.contrast[k]}:1 on panel`)).join("")}${sw(t.now, "now marker")}${sw(t.focus, "focus ring")}</div>
+      <p style="margin-top:8px;font-size:11px;color:var(--pg-muted)">Status is the dataviz fixed scale; warning and serious sit under 3:1 on light by design and never appear without a glyph and a word. Ink on panel ${T.$textContrast[`${state.v}.${mode}`].inkOnPanel}:1.</p></div>`);
+  }
+  for (const [id, n] of Object.entries(T.night)) {
+    out.push(`<div class="card" style="background:${n.bg};border-color:${n.line};color:${n.ink}"><h3 style="color:${n.ink}">night · ${n.name} ${id === state.night ? '<span class="v pass">selected</span>' : ""}</h3>
+      <div class="swatches">${[["bg", n.bg], ["panel", n.panel], ["raised", n.raised], ["line", n.line], ["ink", n.ink], ["muted", n.muted], ["faint", n.faint], ["accent", n.accent], ["warn", n.warn], ["bad", n.bad]].map(([k, h]) => `<div class="sw" style="color:${n.muted}"><i style="background:${h};border-color:${n.line}"></i><b style="color:${n.ink}">${k}</b><code>${h}</code></div>`).join("")}</div>
+      <p style="margin-top:8px;font-size:11px;color:${n.muted}">${n.blurb} Ink on bg ${n.contrast.inkOnBg}:1, muted ${n.contrast.mutedOnBg}:1, faint ${n.contrast.faintOnBg}:1. Every evidence class is ink; sources take four luminances plus line style.</p></div>`);
+  }
+  return out.join("");
+}
+function rampSheets() {
+  const out = [];
+  for (const mode of ["light", "dark"]) {
+    const R = T.ramps[mode], surface = T.variants[state.v].themes[mode].panel;
+    const bar = (steps) => `<div class="rampbar" style="border-color:${surface}">${steps.map((h) => `<i style="background:${h}" title="${h}"></i>`).join("")}</div>`;
+    out.push(`<div class="card" style="background:${surface}"><h3 style="color:${T.variants[state.v].themes[mode].ink}">${mode} · sequential (one hue per family group), diverging (two hues, neutral zero), ordinal (validated discrete steps)</h3>
+      ${R.sequential.map((r) => `<div class="ramprow" style="color:${T.variants[state.v].themes[mode].ink}"><div>${r.key}<small style="color:${T.variants[state.v].themes[mode].muted}">${r.families.join(", ")}</small></div>${bar(r.steps)}<small style="color:${T.variants[state.v].themes[mode].muted}">${r.note}</small>${verdictOf(`sequential ${r.key} ramp check, ${mode}`)}</div>`).join("")}
+      ${R.diverging.map((r) => `<div class="ramprow" style="color:${T.variants[state.v].themes[mode].ink}"><div>${r.key}<small style="color:${T.variants[state.v].themes[mode].muted}">${r.family} · about ${r.about}</small></div>${bar(r.steps)}<small style="color:${T.variants[state.v].themes[mode].muted}">${r.note}</small><span class="v expected">monotone arms</span></div>`).join("")}
+      ${R.ordinal.map((r) => `<div class="ramprow" style="color:${T.variants[state.v].themes[mode].ink}"><div>${r.key}<small style="color:${T.variants[state.v].themes[mode].muted}">${r.family} · ${r.classes.length} classes</small></div>${bar(r.steps)}<small style="color:${T.variants[state.v].themes[mode].muted}">${r.note}</small>${verdictOf(`ordinal ${r.key}, ${mode}`)}</div>`).join("")}
+    </div>`);
+  }
+  return out.join("");
+}
+function nonColourSheets() {
+  const v = T.variants[state.v], scale = v.base / 13;
+  return `<div class="card"><h3>type · ${v.name}</h3><div class="spec" style="font-family:${v.fonts.ui}">
+    ${T.type.scale.map((s) => `<div class="line"><small>${s.key} · ${Math.round(s.px * scale * 10) / 10}px</small><span style="font-size:${s.px * scale}px;line-height:${s.lh};font-family:${/xl|3xl|lg/.test(s.key) ? v.fonts.display : v.fonts.ui};font-weight:${/xl|lg/.test(s.key) ? 600 : 400}">Fog at Cape Spear, 2.4 km</span><small>${s.use}</small></div>`).join("")}
+    <div class="line"><small>mono</small><span style="font-family:${v.fonts.mono};font-size:${13 * scale}px;font-variant-numeric:tabular-nums">HRDPS 21:00Z 13.36 °C 1011.2 hPa</span><small>values, tags, times · tabular</small></div>
+    <div class="line"><small>tag</small><span style="font-family:${v.fonts.mono};font-size:${11 * scale}px;letter-spacing:.06em;text-transform:uppercase">GFS · HRDPS · CYYT TAF · UKMO·OM</span><small>source tags, upper-case, .06em</small></div>
+    </div><p style="margin-top:8px;font-size:11px;color:var(--pg-muted)">${v.blurb}</p></div>
+    <div class="card"><h3>space · radius · stroke · size</h3><div class="bars">
+      ${Object.entries(T.space).map(([k, px]) => `<div><span>sp-${k}</span><i style="width:${px * 3}px"></i><span></span></div>`).join("")}
+    </div><div class="swatches" style="margin-top:10px">${Object.entries(T.radius).map(([k, px]) => `<div class="sw"><i style="border-radius:${Math.min(px, 15)}px;background:#5b7bd5"></i><b>r-${k}</b><code>${px}px</code></div>`).join("")}</div>
+    <div class="swatches" style="margin-top:10px">${Object.entries(T.size).map(([k, px]) => `<div class="sw"><i style="height:${Math.min(px, 44)}px;background:#c9d3ef"></i><b>${k}</b><code>${px}px</code></div>`).join("")}${Object.entries(T.stroke).map(([k, px]) => `<div class="sw"><i style="height:30px;background:transparent;border:0;border-bottom:${px}px solid #1b1b1b;border-radius:0"></i><b>stroke-${k}</b><code>${px}px</code></div>`).join("")}</div></div>
+    <div class="card"><h3>motion · z · density</h3><table class="rep">${Object.entries(T.motion).map(([k, v]) => `<tr><td>motion-${k}</td><td class="d">${v}</td></tr>`).join("")}${Object.entries(T.z).map(([k, v]) => `<tr><td>z-${k}</td><td class="d">${v}</td></tr>`).join("")}<tr><td>density</td><td class="d">${v.density} · control ${T.size[`control-${v.density === "compact" ? "compact" : v.density === "comfortable" ? "comfortable" : "touch"}`]}px</td></tr><tr><td>base</td><td class="d">${v.base}px (scale ×${scale.toFixed(3)})</td></tr></table>
+    <p style="margin-top:8px;font-size:11px;color:var(--pg-muted)">Reduced motion collapses every duration to 0. The phone brief takes the touch control height whatever the variant.</p></div>`;
+}
+function reportTable() {
+  return `<tr><th>run</th><th>ok</th><th>checks</th></tr>` + T.$validation.map((r) => `<tr><td>${r.label}${r.expected ? `<br><small style="color:var(--pg-muted)">${r.expected}</small>` : ""}</td><td>${r.ok ? "✓" : "✗"}</td><td class="d">${r.report.map((c) => `${c.pass === true || c.pass === "pass" ? "✓" : c.pass === "relief" ? "relief" : "✗"} ${c.check}: ${c.detail}`).join("<br>")}</td></tr>`).join("");
+}
+
+// ---- render ----
+function render() {
+  document.body.dataset.cv = state.cv;
+  const themes = document.getElementById("themes");
+  themes.dataset.layout = state.layout;
+  themes.innerHTML = ["light", "dark", "night"].map((th) => `<div class="theme ${th === state.theme ? "solo" : ""}" data-theme="${th}"><header class="tag"><span>${th}${th === "night" ? ` · ${T.night[state.night].name}` : ""} · variant ${state.v}</span><button data-solo="${th}">${state.layout === "one" ? "show all three" : "only this"}</button></header>${screen(th)}</div>`).join("");
+  for (const el of themes.querySelectorAll(".theme")) {
+    const vars = cssVars(state.v, el.dataset.theme);
+    const app = el.querySelector(".app");
+    for (const [k, v] of Object.entries(vars)) app.style.setProperty(k, v);
+  }
+  document.getElementById("palettes").innerHTML = paletteSheets();
+  document.getElementById("ramps").innerHTML = rampSheets();
+  document.getElementById("nonColour").innerHTML = nonColourSheets();
+  document.getElementById("report").innerHTML = reportTable();
+  document.getElementById("title").textContent = `Design tokens, three themes · variant ${state.v} ${T.variants[state.v].name}`;
+  document.getElementById("desc").innerHTML = `${T.variants[state.v].blurb} Night: ${T.night[state.night].blurb} Source colour: ${state.src === "provider" ? "one slot per provider, models of one provider by line style" : "one slot per source in fixed order, ninth and beyond fold into Other"}. <a href="./tokens.json">tokens.json</a>`;
+  for (const g of document.querySelectorAll(".bar .grp")) for (const b of g.querySelectorAll("button")) b.setAttribute("aria-pressed", String(state[g.dataset.key] === b.dataset.val));
+  const u = new URL(location); for (const [k, v] of Object.entries(state)) u.searchParams.set(k, v); history.replaceState(null, "", u);
+}
+document.querySelector(".bar").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; state[b.closest(".grp").dataset.key] = b.dataset.val; render(); });
+document.getElementById("themes").addEventListener("click", (e) => { const b = e.target.closest("[data-solo]"); if (!b) return; state.theme = b.dataset.solo; state.layout = state.layout === "one" ? "three" : "one"; render(); });
+render();
+</script>
+</body>
+</html>

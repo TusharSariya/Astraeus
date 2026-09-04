@@ -1,0 +1,64 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "Light · Instrument",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "file": "Dark.dc.html",
+      "title": "Dark · Instrument",
+      "x": 1540,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "file": "Night.dc.html",
+      "title": "Night · Red on black",
+      "x": 3080,
+      "y": 0,
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "file": "Tokens.dc.html",
+      "title": "Colour tokens",
+      "x": 0,
+      "y": 1060,
+      "w": 1440,
+      "h": 1500
+    },
+    {
+      "file": "DirectionB.dc.html",
+      "title": "Direction B · Almanac (light)",
+      "x": 1540,
+      "y": 1060,
+      "w": 1440,
+      "h": 900
+    },
+    {
+      "file": "DirectionC.dc.html",
+      "title": "Direction C · Hyperlegible (light)",
+      "x": 3080,
+      "y": 1060,
+      "w": 1440,
+      "h": 900
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -160,
+      "w": 720,
+      "text": "Ticket #41 prototype. Top row: variant A in the three themes. Bottom row: the colour tokens with hex, then variants B and C in light. live GFS values at 2026-09-03T22:00:00Z; rows marked constructed use the contract's wire shape. Live switching lives in tokens.html on branch prototype/tokens."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
