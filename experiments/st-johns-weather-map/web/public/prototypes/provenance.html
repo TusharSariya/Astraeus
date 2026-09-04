@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>PROTOTYPE provenance component and disclosure strip (ticket #40)</title>
+<!--
+  PROTOTYPE, throwaway. Answers wayfinder ticket #40: the one provenance
+  component every view reuses. Three structurally different variants on one
+  page via ?v=A|B|C, switchable from the floating bar (arrow keys too):
+    A  Chip and popover: glyph + source tag trail every value; one click opens
+       an anchored sheet beside the value.
+    B  Ledger and inspector: glyph and source in a fixed gutter column so the
+       marks align; one click fills a docked inspector that stays open.
+    C  Sentence under the value: the short provenance sentence is always
+       printed; one click unfolds the full sheet inline.
+  Independent axes, also in the URL: glyph=svg|shapes|letters (the glyph set),
+  theme=light|dark|night, vision=none|deutan|gray (colour-vision pass), and
+  strip=drawn|generated|nothing (the Map disclosure strip state).
+  Data: provenance-captures.json holds real /point, /layers, /flow and /catalog
+  responses captured 2026-09-04 21:50Z. Each example says whether it is a live
+  capture or CONSTRUCTED to the API contract (models.py rules and registry
+  records) because the live store carried no such value. Run: python3 serve.py
+  then http://localhost:5199/provenance.html . Nothing here is production code.
+-->
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f7; --panel: #ffffff; --ink: #14171c; --muted: #5b6470; --line: #d5d9e0;
+    --accent: #1d5fd6; --accent-ink: #ffffff; --warn: #a15c00; --warn-bg: #fff3dd;
+    --bad: #b3261e; --bad-bg: #fde8e6; --good-bg: #e3f5e8; --core: #dfe9ff; --planning: #efe9dc; --now: #d6336c;
+    --cls-retrieved: #1a7f37; --cls-derived: #7a4bd6; --cls-reprocessed: #b0741a; --cls-inter: #8a8a8a; --cls-gen: #c2410c; --cls-uncal: #6b7280;
+    --absent: #8a94a3;
+    --rail-h: 64px; --focusbar-h: 52px; --tabs-w: 56px;
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1216; --panel: #171b21; --ink: #e8ebf0; --muted: #98a2b3; --line: #2b323c;
+    --accent: #6ea0ff; --accent-ink: #0b1220; --warn: #f3b352; --warn-bg: #3a2a0c;
+    --bad: #ff7b72; --bad-bg: #3d1513; --good-bg: #12301c; --core: #1b2a48; --planning: #2d2a22; --now: #ff5c8a;
+    --cls-retrieved: #4ade80; --cls-derived: #c4a7ff; --cls-reprocessed: #f5c26b; --cls-inter: #a3a3a3; --cls-gen: #fb923c; --cls-uncal: #9ca3af;
+    --absent: #6b7583;
+  }
+  /* Red night: one hue. Every class shares the ink colour, so the class must
+     survive on shape alone; brightness only separates ink from muted. */
+  :root[data-theme="night"] {
+    color-scheme: dark;
+    --bg: #000000; --panel: #120000; --ink: #ff3b30; --muted: #a32a22; --line: #3a0d0a;
+    --accent: #ff3b30; --accent-ink: #000000; --warn: #ff6a5e; --warn-bg: #2a0806;
+    --bad: #ff8a80; --bad-bg: #3d0f0c; --good-bg: #200404; --core: #240604; --planning: #170302; --now: #ff3b30;
+    --cls-retrieved: #ff3b30; --cls-derived: #ff3b30; --cls-reprocessed: #ff3b30; --cls-inter: #ff3b30; --cls-gen: #ff3b30; --cls-uncal: #ff3b30;
+    --absent: #7a1f1a;
+  }
+  :root[data-vision="gray"] body { filter: grayscale(1); }
+  :root[data-vision="deutan"] body { filter: url(#deutan); }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+  button { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  .muted { color: var(--muted); }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  h2 { font-size: 15px; margin: 0 0 6px; }
+  h3 { font-size: 13px; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  /* shell chrome, borrowed from the decided Bench (#39) for context */
+  #shell { height: 100%; display: grid; grid-template-rows: var(--focusbar-h) 1fr var(--rail-h); grid-template-columns: var(--tabs-w) 1fr; }
+  #focusbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  #focusbar .spacer { flex: 1; }
+  #tabs { display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; border-right: 1px solid var(--line); background: var(--panel); }
+  #tabs button { writing-mode: vertical-rl; transform: rotate(180deg); padding: 10px 4px; border-color: transparent; }
+  #tabs button[aria-pressed="true"] { border-color: var(--accent); }
+  #stage { display: grid; grid-template-columns: 1fr 440px; min-height: 0; }
+  #rail { grid-column: 1 / -1; background: var(--panel); border-top: 1px solid var(--line); padding: 6px 12px; display: flex; gap: 14px; align-items: center; font-size: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
+  .chip.core { background: var(--core); }
+
+  /* the Map stage with the strip on its bottom edge */
+  #map { position: relative; overflow: hidden; background:
+      radial-gradient(ellipse at 30% 40%, color-mix(in oklab, var(--panel) 70%, var(--accent) 30%) 0 18%, transparent 40%),
+      radial-gradient(ellipse at 70% 65%, color-mix(in oklab, var(--panel) 80%, var(--muted) 20%) 0 22%, transparent 45%),
+      linear-gradient(var(--bg), color-mix(in oklab, var(--bg) 85%, var(--muted) 15%)); }
+  #map .coast { position: absolute; inset: 0; pointer-events: none; opacity: .5; }
+  #stack { position: absolute; left: 10px; top: 10px; width: 300px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  #stack .row { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: center; padding: 3px 0; border-top: 1px solid var(--line); }
+  #stack .row:first-of-type { border-top: 0; }
+  #corner { position: absolute; right: 10px; top: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; display: grid; gap: 2px; }
+  #corner .fr { display: grid; grid-template-columns: 18px 1fr auto; gap: 6px; }
+  #strip { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 4px 12px; background: color-mix(in oklab, var(--panel) 92%, transparent); border-top: 1px solid var(--line); font-size: 13px; white-space: nowrap; overflow: hidden; }
+  #strip .seg { display: inline-flex; align-items: center; gap: 5px; }
+  #strip .gen { color: var(--cls-gen); font-weight: 700; letter-spacing: .04em; }
+  #strip .why { margin-left: auto; flex: 0 0 auto; }
+  #strip .exc { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #stripctl { position: absolute; left: 10px; bottom: 40px; font-size: 12px; display: flex; gap: 6px; align-items: center; background: var(--panel); border: 1px dashed var(--line); border-radius: 6px; padding: 3px 8px; }
+
+  /* the docked view (Series-like readings) where the component is judged */
+  #dock { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 10px 12px 60px; }
+  #dock header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .capture { font-size: 11px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+  .capture.live { border-color: var(--cls-retrieved); color: var(--cls-retrieved); }
+  .capture.constructed { border-color: var(--warn); color: var(--warn); }
+
+  /* glyphs: one class, one mark. Colour is redundant to shape everywhere. */
+  .g { display: inline-flex; align-items: center; justify-content: center; width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: 0 0 auto; }
+  .g svg { width: 100%; height: 100%; overflow: visible; }
+  .g.retrieved { color: var(--cls-retrieved); } .g.derived_here { color: var(--cls-derived); } .g.reprocessed { color: var(--cls-reprocessed); }
+  .g.intermediary_derived { color: var(--cls-inter); } .g.generated_display { color: var(--cls-gen); } .g.uncalibrated_observation { color: var(--cls-uncal); } .g.unrecognised, .g.absent { color: var(--absent); }
+  .g.letters { font: 700 10px/1 ui-monospace, Menlo, monospace; border: 1.5px solid currentColor; border-radius: 3px; width: 1.3em; height: 1.3em; }
+  .g.letters.generated_display { border-style: dashed; } .g.letters.intermediary_derived, .g.letters.uncalibrated_observation { border-style: dotted; }
+  .g.shapes { font-weight: 700; font-size: 1.05em; line-height: 1; }
+  .src { font-size: 11px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
+  .state { font-size: 11px; padding: 0 5px; border-radius: 4px; border: 1px solid currentColor; }
+  .state.stale, .state.warn { color: var(--warn); background: var(--warn-bg); }
+  .state.absent { color: var(--absent); }
+  .state.bad { color: var(--bad); background: var(--bad-bg); }
+  .absentv { color: var(--absent); font-style: italic; }
+  .val { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* ---- Variant A: chip and popover ---- */
+  .vA .reading { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .vA .reading:first-of-type { border-top: 0; }
+  .vA .reading .name { flex: 1; }
+  .vA .reading .val { font-size: 17px; }
+  .vA .pchip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 6px 1px 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font-size: 11px; anchor-name: --none; }
+  .vA .pchip[aria-expanded="true"] { border-color: var(--accent); }
+  .sheet { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); padding: 10px 12px; width: 400px; max-width: 95vw; font-size: 13px; box-shadow: 0 8px 28px rgb(0 0 0 / .25); overflow-wrap: anywhere; }
+  [popover].sheet { max-height: 78vh; overflow: auto; }
+  [popover].sheet { margin: 0; inset: auto; position: fixed; }
+  [popover].sheet::backdrop { background: transparent; }
+
+  /* ---- Variant B: ledger and inspector ---- */
+  .vB table { width: 100%; border-collapse: collapse; }
+  .vB td, .vB th { padding: 4px 6px; border-top: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  .vB th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; border-top: 0; }
+  .vB td.gut { width: 28px; text-align: center; padding-left: 0; }
+  .vB td.srccol { width: 74px; }
+  .vB tr.row { cursor: pointer; }
+  .vB tr.row:hover td { background: color-mix(in oklab, var(--panel) 85%, var(--accent) 15%); }
+  .vB tr.row[aria-selected="true"] td { background: color-mix(in oklab, var(--panel) 75%, var(--accent) 25%); }
+  .vB tr.row[aria-selected="true"] td.gut { box-shadow: inset 3px 0 0 var(--accent); }
+  #inspector { position: fixed; right: 452px; top: calc(var(--focusbar-h) + 10px); bottom: calc(var(--rail-h) + 10px); width: 380px; overflow: auto; z-index: 30; }
+  #inspector .close { float: right; }
+
+  /* ---- Variant C: sentence under the value ---- */
+  .vC .entry { padding: 7px 0; border-top: 1px solid var(--line); }
+  .vC .entry:first-of-type { border-top: 0; }
+  .vC .head { display: flex; align-items: baseline; gap: 8px; }
+  .vC .head .val { font-size: 17px; }
+  .vC .sent { display: flex; gap: 6px; align-items: baseline; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .vC details > summary { list-style: none; cursor: pointer; display: inline; }
+  .vC details > summary::-webkit-details-marker { display: none; }
+  .vC details[open] > summary .more::after { content: " less"; }
+  .vC details > summary .more { color: var(--accent); text-decoration: underline dotted; }
+  .vC .sheet { width: auto; box-shadow: none; margin-top: 6px; }
+
+  /* shared sheet content */
+  .sheet h4 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .sheet p.full { margin: 0 0 8px; }
+  .sheet dl { display: grid; grid-template-columns: 96px 1fr; gap: 2px 10px; margin: 0; }
+  .sheet dt { color: var(--muted); font-size: 12px; }
+  .sheet dd { margin: 0; }
+  .sheet .inputs li { margin: 2px 0; }
+  .sheet .inputs { margin: 2px 0 0; padding-left: 16px; }
+  .sheet .foot { margin-top: 8px; font-size: 11px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sheet .foot button { font-size: 11px; padding: 1px 6px; }
+
+  /* legend table for the theme/vision pass */
+  #legendpop { width: 560px; max-width: 95vw; }
+  #legendpop table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  #legendpop td, #legendpop th { padding: 3px 6px; border-top: 1px solid var(--line); text-align: left; }
+  #legendpop th { border-top: 0; color: var(--muted); font-weight: 600; }
+
+  /* the floating prototype switcher: deliberately not part of the design */
+  #variantbar { position: fixed; left: 50%; bottom: calc(var(--rail-h) + 48px); transform: translateX(-50%); z-index: 60; display: flex; gap: 6px; align-items: center; padding: 6px 10px; background: #111; color: #fff; border: 1px solid #555; border-radius: 999px; box-shadow: 0 4px 16px rgb(0 0 0 / .4); font-size: 12px; }
+  #variantbar select, #variantbar button { background: #222; color: #fff; border: 1px solid #555; font-size: 12px; }
+  #variantbar b { min-width: 190px; text-align: center; }
+  #whypop { width: 720px; max-width: 95vw; }
+  #whypop table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  #whypop td, #whypop th { padding: 3px 6px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="deutan"><feColorMatrix type="matrix" values="0.367322 0.860646 -0.227968 0 0  0.280085 0.672501 0.047413 0 0  -0.011820 0.042940 0.968881 0 0  0 0 0 1 0"/></filter>
+  <defs id="glyphdefs">
+    <!-- SVG glyph set: shape and fill encode the class; colour is redundant. -->
+    <symbol id="g-retrieved" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor"/></symbol>
+    <symbol id="g-reprocessed" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></symbol>
+    <symbol id="g-derived_here" viewBox="0 0 16 16"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z" fill="currentColor"/></symbol>
+    <symbol id="g-intermediary_derived" viewBox="0 0 16 16"><path d="M8 2.2 13.8 8 8 13.8 2.2 8z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="g-generated_display" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.6 2.2"/></symbol>
+    <symbol id="g-uncalibrated_observation" viewBox="0 0 16 16"><path d="M8 2 14.5 14H1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="g-unrecognised" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="8" y="12" font-size="9" font-weight="700" text-anchor="middle" fill="currentColor">?</text></symbol>
+    <symbol id="g-absent" viewBox="0 0 16 16"><path d="M3 8h10" stroke="currentColor" stroke-width="2"/></symbol>
+  </defs>
+</svg>
+
+<div id="shell">
+  <div id="focusbar" role="region" aria-label="Focus">
+    <strong>Astraeus</strong>
+    <button title="Focus point">📍 St. John's, 47.5615 N 52.7126 W</button>
+    <span id="instant" class="mono">2026-09-03T21:00Z</span>
+    <span class="chip core">core</span>
+    <span class="spacer"></span>
+    <button popovertarget="legendpop" class="chip" id="legendbtn">evidence class legend</button>
+    <span id="livestate" class="capture">captures 2026-09-04 21:50Z</span>
+  </div>
+  <nav id="tabs" aria-label="Views">
+    <button aria-pressed="true">Map</button><button>Series</button><button>Sky</button><button>Activity</button><button>Sources</button>
+  </nav>
+  <div id="stage">
+    <div id="map" aria-label="Map view (stand-in for the stage)">
+      <svg class="coast" viewBox="0 0 800 500" preserveAspectRatio="none"><path d="M520 0 C 480 80, 560 140, 500 220 S 560 380, 620 500 L 800 500 L 800 0 Z" fill="currentColor" opacity=".08"/><path d="M0 380 C 120 350, 180 420, 260 400 S 380 470, 470 500 L 0 500Z" fill="currentColor" opacity=".08"/></svg>
+      <div id="stack" role="region" aria-label="Layer stack"><div class="muted" style="font-size:11px;margin-bottom:4px">Stack, top first</div><div id="stackrows"></div></div>
+      <div id="corner" role="region" aria-label="Frames drawn"></div>
+      <div id="stripctl"><span class="muted">strip state (prototype control):</span><select id="stripstate" aria-label="Strip state"><option value="drawn">all drawn</option><option value="generated">generated + exceptions</option><option value="nothing">nothing drawn</option></select></div>
+      <div id="strip" role="status" aria-live="polite"></div>
+    </div>
+    <aside id="dock" aria-label="Docked view: readings at the Focus">
+      <header><h2 style="margin:0">Readings at the Focus</h2><span class="muted" style="font-size:12px">Series dock, one instant</span></header>
+      <div id="readings"></div>
+    </aside>
+  </div>
+  <div id="rail" role="region" aria-label="Time"><strong>Instant</strong><span class="mono">2026-09-03T21:00Z</span><span class="muted">shared by every open view · the rail is a stand-in here</span></div>
+</div>
+
+<div id="whypop" popover class="sheet"><h4>Why: everything drawn at this instant</h4><div id="whybody"></div></div>
+<div id="legendpop" popover class="sheet"><h4>Evidence class legend</h4><div id="legendbody"></div></div>
+<div id="apop" popover class="sheet" aria-label="Provenance"></div>
+<div id="inspector" popover="manual" class="sheet" aria-label="Provenance inspector"></div>
+
+<div id="variantbar" role="toolbar" aria-label="Prototype controls">
+  <button id="prev" aria-label="Previous variant">←</button>
+  <b id="vlabel"></b>
+  <button id="next" aria-label="Next variant">→</button>
+  <label>glyphs <select id="glyphsel"><option value="svg">SVG shapes</option><option value="shapes">text shapes</option><option value="letters">boxed letters</option></select></label>
+  <label>theme <select id="themesel"><option value="light">light</option><option value="dark">dark</option><option value="night">red night</option></select></label>
+  <label>vision <select id="visionsel"><option value="none">typical</option><option value="deutan">deuteranopia</option><option value="gray">grayscale</option></select></label>
+</div>
+
+<script>
+// ------------------------------------------------------------------ params
+const url = new URL(location.href);
+const P = { v: (url.searchParams.get('v') || 'A').toUpperCase(), glyph: url.searchParams.get('glyph') || 'svg', theme: url.searchParams.get('theme') || 'light', vision: url.searchParams.get('vision') || 'none', strip: url.searchParams.get('strip') || 'generated' };
+const VARIANTS = ['A', 'B', 'C'];
+const VNAME = { A: 'A · chip and popover', B: 'B · ledger and inspector', C: 'C · sentence, unfold inline' };
+function writeUrl() { for (const k in P) url.searchParams.set(k, P[k]); history.replaceState(null, '', url); }
+
+// ------------------------------------------------------------------ vocabulary (CONTEXT.md, evidenceClass.ts)
+const CLASSES = ['retrieved', 'reprocessed', 'derived_here', 'intermediary_derived', 'generated_display', 'uncalibrated_observation'];
+const LABEL = { retrieved: 'retrieved', reprocessed: 'reprocessed', derived_here: 'derived here', intermediary_derived: 'intermediary derived', generated_display: 'generated display', uncalibrated_observation: 'uncalibrated observation', unrecognised: 'unrecognised class', absent: 'absent' };
+const DESC = {
+  retrieved: 'This deployment fetched the value as the producer issued it.',
+  reprocessed: 'An intermediary transformed the producer’s value before delivery; producer and intermediary are named. Never the display primary, never a derivation input.',
+  derived_here: 'This deployment computed the value from retrieved inputs by a registered, cited method. Inputs and method one click away.',
+  intermediary_derived: 'An intermediary computed the value from the producer’s fields by its own method. Never the display primary, never a derivation input.',
+  generated_display: 'A display-only interpolation between retrieved frames. Never on a data path; marked GENERATED wherever drawn.',
+  uncalibrated_observation: 'A citizen or personal instrument. Never used for verification.',
+  unrecognised: 'The response declared no class, or one this client does not know. Nothing is drawn for it: an undeclared class is never read as retrieved.',
+  absent: 'No value: null (never held), blocked (refused for a stated reason) or aged out (held once, now outside the window).',
+};
+const LETTER = { retrieved: 'R', reprocessed: 'P', derived_here: 'D', intermediary_derived: 'I', generated_display: 'G', uncalibrated_observation: 'U', unrecognised: '?', absent: '–' };
+const SHAPE = { retrieved: '●', reprocessed: '◐', derived_here: '◆', intermediary_derived: '◇', generated_display: '○', uncalibrated_observation: '△', unrecognised: '▢', absent: '–' };
+
+function glyph(cls, opts = {}) {
+  const c = CLASSES.includes(cls) ? cls : (cls === 'absent' ? 'absent' : 'unrecognised');
+  const label = opts.label || LABEL[c];
+  if (P.glyph === 'letters') return `<span class="g letters ${c}" role="img" aria-label="${label}">${LETTER[c]}</span>`;
+  if (P.glyph === 'shapes') return `<span class="g shapes ${c}" role="img" aria-label="${label}">${SHAPE[c]}</span>`;
+  return `<span class="g ${c}" role="img" aria-label="${label}"><svg><use href="#g-${c}"/></svg></span>`;
+}
+
+// ------------------------------------------------------------------ data: captures plus constructed cases
+let CAP = null;
+const SRC_TAG = { 'noaa-gfs': 'GFS', 'eccc-hrdps': 'HRDPS', 'eccc-rdps': 'RDPS', 'awc-taf': 'CYYT TAF', 'awc-metar-speci': 'CYYT METAR', 'openmeteo-ukmo-global': 'UKMO·OM', 'open-meteo-weathernext-2': 'WN2·OM', 'raw-cwop-pws': 'CWOP', 'nrcan-stj-magnetometer': 'NRCAN STJ', 'eccc-reps': 'REPS', 'noaa-gefs': 'GEFS', 'geomet-live-goes-east-naturalcolor': 'GOES', 'eccc-cap-alerts': 'MSC alerts' };
+const tag = id => SRC_TAG[id] || id;
+const hm = iso => iso ? iso.slice(11, 16) + 'Z' : '—';
+const dhm = iso => iso ? iso.slice(5, 10).replace('-', '/') + ' ' + iso.slice(11, 16) + 'Z' : '—';
+function age(s) { if (s == null) return 'unknown age'; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h} h ${m} m` : `${m} min`; }
+
+// One reading = { id, name, value(text or null), unit, field(API EvidenceField), capture: 'live'|'constructed', note }
+function buildExamples(cap) {
+  const T = cap.temperature, W = cap.wind_speed, C = cap.total_cloud_geometric, V = cap.visibility_taf;
+  const reg = cap.registry;
+  const base = f => JSON.parse(JSON.stringify(f));
+  // constructed cases, each from a real registry record and the models.py rules
+  const ukmo = base(T); Object.assign(ukmo.provenance, { evidence_class: 'reprocessed', source_id: 'openmeteo-ukmo-global', provider: reg['openmeteo-ukmo-global'].producer, product: reg['openmeteo-ukmo-global'].product, delivery_kind: 'reprocessed', intermediary: 'Open-Meteo', intermediary_method: null, source_display_primary: false, display_primary_eligible: false, licence: reg['openmeteo-ukmo-global'].licence, attribution: reg['openmeteo-ukmo-global'].attribution, native_resolution: '10 km, regridded by the intermediary', run_time: '2026-09-03T06:00:00Z', freshness: { status: 'fresh', age_seconds: 54000 - 43200 + 1200, threshold_seconds: 43200 }, adapter_version: 'constructed' }); ukmo.value = 12.9;
+  const wn2 = base(C); Object.assign(wn2.provenance, { evidence_class: 'intermediary_derived', source_id: 'open-meteo-weathernext-2', provider: reg['open-meteo-weathernext-2'].producer, product: reg['open-meteo-weathernext-2'].product, delivery_kind: 'intermediary_derived', intermediary: 'Open-Meteo', intermediary_method: 'cloud layers estimated from the vertical humidity profile (Open-Meteo documentation); not a native cloud fraction forecast from WeatherNext', source_display_primary: false, display_primary_eligible: false, licence: reg['open-meteo-weathernext-2'].licence, attribution: 'Google DeepMind WeatherNext 2, delivered by Open-Meteo', run_time: '2026-09-03T06:00:00Z', freshness: { status: 'fresh', age_seconds: 12000, threshold_seconds: 43200 }, adapter_version: 'constructed' }); wn2.value = 61;
+  const cwop = base(T); Object.assign(cwop.provenance, { evidence_class: 'uncalibrated_observation', source_id: 'raw-cwop-pws', provider: reg['raw-cwop-pws'].producer, product: reg['raw-cwop-pws'].product, delivery_kind: 'reprocessed', intermediary: 'findu.com', source_display_primary: false, display_primary_eligible: false, licence: reg['raw-cwop-pws'].licence, attribution: 'Citizen Weather Observer Program station EW1234 (constructed id)', run_time: null, run_stale_reason: 'an observation has no run', vertical_level: 'station sensor, height undeclared', native_resolution: 'point', sample_distance_km: 2.1, sample_method: 'nearest station', freshness: { status: 'fresh', age_seconds: 420, threshold_seconds: 3600 }, adapter_version: 'constructed' }); cwop.value = 14.8;
+  const mag = base(T); mag.field = 'geomagnetic_h'; mag.key = 'geomagnetic_h_component'; mag.family = 'space_weather'; mag.value = null; mag.absence_state = 'blocked'; mag.blocked = { kind: 'partnership', source_id: 'nrcan-stj-magnetometer', terms: reg['nrcan-stj-magnetometer'].licence, request: 'partnership request drafted 2026-09-02; not yet sent' }; Object.assign(mag.provenance, { evidence_class: 'retrieved', source_id: 'nrcan-stj-magnetometer', provider: reg['nrcan-stj-magnetometer'].producer, product: reg['nrcan-stj-magnetometer'].product, run_time: null, run_stale_reason: null, quality: { status: 'unknown', flags: ['blocked'] }, freshness: { status: 'unknown', age_seconds: null, threshold_seconds: null }, coverage: { status: 'unknown', fraction: null }, original_units: 'nT', normalized_units: 'nT', licence: reg['nrcan-stj-magnetometer'].licence, attribution: 'Natural Resources Canada', sampled_latitude: null, sampled_longitude: null, sample_distance_km: null, sample_method: null, delivery_kind: 'published_cell', adapter_version: 'constructed' }); mag.comparability = null;
+  const aged = base(T); aged.value = null; aged.absence_state = 'aged_out'; Object.assign(aged.provenance, { source_id: 'eccc-hrdps', provider: 'Environment and Climate Change Canada', product: 'HRDPS raw', run_time: null, quality: { status: 'passed', flags: ['aged_out', 'aged_out:eccc-hrdps'] }, freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 43200 }, coverage: { status: 'unknown', fraction: null }, last_valid_time: '2026-09-03T18:00:00Z', native_resolution: '2.5 km', licence: 'MSC Open Data licence', attribution: reg['eccc-hrdps'].attribution, sampled_latitude: null, sampled_longitude: null, sample_distance_km: null, adapter_version: 'constructed' });
+  const runstale = base(T); runstale.value = 12.6; Object.assign(runstale.provenance, { source_id: 'eccc-hrdps', provider: 'Environment and Climate Change Canada', product: 'HRDPS raw', run_time: '2026-09-02T18:00:00Z', run_stale: true, run_stale_reason: 'run 2026-09-02T18:00Z is 27 h old against a 6 h run cadence; three later runs were due and none was retrieved', freshness: { status: 'stale', age_seconds: 97200, threshold_seconds: 43200 }, native_resolution: '2.5 km', licence: 'MSC Open Data licence', attribution: reg['eccc-hrdps'].attribution, adapter_version: 'constructed' });
+  const refused = base(T); refused.field = 'temperature'; refused.value = null; refused.absence_state = 'null'; Object.assign(refused.provenance, { evidence_class: 'derived_here', source_id: 'noaa-gefs', provider: 'NOAA/NCEP', product: 'Global Ensemble Forecast System', run_time: '2026-09-03T00:00:00Z', quality: { status: 'unknown', flags: ['statistic_refused'] }, freshness: { status: 'unknown', age_seconds: null, threshold_seconds: null }, coverage: { status: 'unknown', fraction: null }, derivation: 'ensemble_mean', derivation_version: 'ensemble-stats-v1', derivation_citation: 'arithmetic mean over the resolved members of one family and one run', derivation_inputs: [], ensemble: { family: 'GEFS,REPS', statistic: 'ensemble_mean', computed_here: true, member_set: null, refusal: 'one_family:GEFS,REPS', quantile: null, threshold: null, threshold_units: null, comparison: null, averaging_window_hours: null }, adapter_version: 'constructed' });
+  return [
+    { id: 't2m', name: 'Air temperature, 2 m', unit: '°C', field: T, capture: 'live', decimals: 1 },
+    { id: 'wind', name: 'Wind speed, 10 m', unit: 'm/s', field: W, capture: 'live', decimals: 1 },
+    { id: 'cloud', name: 'Total cloud, geometric', unit: '%', field: C, capture: 'live', decimals: 0 },
+    { id: 'runstale', name: 'Air temperature, 2 m', unit: '°C', field: runstale, capture: 'constructed', decimals: 1, note: 'run_stale: true with a reason; built from the HRDPS registry record. The live API serves run_stale null everywhere today (audit #43).' },
+    { id: 'ukmo', name: 'Air temperature, 2 m', unit: '°C', field: ukmo, capture: 'constructed', decimals: 1, note: 'reprocessed: registry record openmeteo-ukmo-global (delivery_kind reprocessed, intermediary Open-Meteo, display_primary false). Not ingested; no live value exists.' },
+    { id: 'wn2', name: 'Total cloud, geometric', unit: '%', field: wn2, capture: 'constructed', decimals: 0, note: 'intermediary_derived: registry record open-meteo-weathernext-2 (credential-required; admitted 2026-09-02 as intermediary_derived). Not ingested.' },
+    { id: 'cwop', name: 'Air temperature (personal station)', unit: '°C', field: cwop, capture: 'constructed', decimals: 1, note: 'uncalibrated_observation: registry record raw-cwop-pws (catalogued). Not ingested.' },
+    { id: 'taf', name: 'Visibility (TAF)', unit: 'km', field: V, capture: 'live', note: 'absence null: no_retrieval plus provenance_unmodelled; the notice says awc-taf/surface declares no evidence_classes.' },
+    { id: 'mag', name: 'Geomagnetic H component', unit: 'nT', field: mag, capture: 'constructed', note: 'absence blocked: BlockedReason shape from models.py on the partnership-only NRCan record.' },
+    { id: 'aged', name: 'Air temperature, 2 m', unit: '°C', field: aged, capture: 'constructed', note: 'absence aged_out: flags aged_out and aged_out:eccc-hrdps plus last_valid_time, the wire shape test_point_evidence asserts.' },
+    { id: 'refused', name: 'Ensemble mean temperature', unit: '°C', field: refused, capture: 'constructed', note: 'refused derivation: statistic_refused with ensemble.refusal one_family:GEFS,REPS, the shape the API tests assert.' },
+  ];
+}
+
+// ------------------------------------------------------------------ provenance reading (the one component's logic)
+function classOf(f) { const c = f.provenance?.evidence_class; return CLASSES.includes(c) ? c : 'unrecognised'; }
+function absence(f) { return f.value == null ? (f.absence_state || 'null') : null; }
+function fmt(ex) { const f = ex.field; if (f.value == null) return null; return typeof f.value === 'number' ? f.value.toFixed(ex.decimals ?? 1) : String(f.value); }
+function freshnessState(f) {
+  const p = f.provenance; const fr = p.freshness || {};
+  if (p.run_stale === true) return { k: 'warn', t: 'run stale' };
+  if (fr.status === 'stale') return { k: 'stale', t: `stale ${age(fr.age_seconds)}` };
+  if (fr.status === 'fresh') return { k: 'ok', t: `fresh ${age(fr.age_seconds)}` };
+  return null;
+}
+function absenceState(f) {
+  const a = absence(f); if (!a) return null;
+  if (a === 'blocked') return { k: 'bad', t: 'blocked' };
+  if (a === 'aged_out') return { k: 'absent', t: `aged out · held to ${hm(f.provenance.last_valid_time)}` };
+  if ((f.provenance.quality?.flags || []).includes('statistic_refused')) return { k: 'bad', t: 'refused' };
+  return { k: 'absent', t: 'null' };
+}
+// The full provenance sentence: one sentence, the same words in every variant.
+function sentence(ex) {
+  const f = ex.field, p = f.provenance, cls = classOf(f), a = absence(f);
+  const who = `${p.provider} ${p.product}`;
+  const run = p.run_time ? `run ${dhm(p.run_time)}` : (p.run_stale_reason ? 'no run time declared' : 'no run');
+  const where = p.sample_distance_km != null ? `, sampled ${p.sample_distance_km} km from the Focus at the nearest ${p.native_resolution || ''} cell` : '';
+  if (a === 'blocked') return `${ex.name} is known at ${tag(p.source_id)} (${who}) and refused under current terms: ${f.blocked.kind} (${f.blocked.terms}).${f.blocked.request ? ' ' + f.blocked.request + '.' : ''}`;
+  if (a === 'aged_out') return `${ex.name} from ${who} was held here until ${dhm(p.last_valid_time)} and has left the retention window; nothing later was retrieved, so no value is shown.`;
+  if (a && (p.quality?.flags || []).includes('statistic_refused')) return `${p.ensemble.statistic} over ${p.ensemble.family} was refused: ${p.ensemble.refusal.replace('one_family:', 'a statistic runs over one family and one run, and the request spanned ')}. Members stay available; no number is invented.`;
+  if (a) return `${ex.name} from ${tag(p.source_id)} has no value at this instant: ${(p.quality?.flags || []).join(', ') || 'nothing retrieved'}.`;
+  const fr = p.freshness || {};
+  const fresh = fr.status === 'stale' ? `${age(fr.age_seconds)} old, beyond the ${age(fr.threshold_seconds)} freshness threshold, so stale` : fr.status === 'fresh' ? `${age(fr.age_seconds)} old, fresh` : 'freshness unknown';
+  const rs = p.run_stale === true ? `; the run is stale (${p.run_stale_reason})` : '';
+  const val = `${fmt(ex)} ${ex.unit}`;
+  if (cls === 'retrieved') return `${val} ${ex.name.toLowerCase()}, retrieved as issued from ${who}, ${run}, valid ${dhm(p.valid_time)}${where}; quality ${p.quality.status}; ${fresh}${rs}.`;
+  if (cls === 'derived_here') return `${val} ${ex.name.toLowerCase()}, derived here by ${p.derivation} (${p.derivation_version}) from ${p.derivation_inputs.length} retrieved ${who} input${p.derivation_inputs.length === 1 ? '' : 's'} (${p.derivation_inputs.map(i => i.field).join(', ')}), ${run}, valid ${dhm(p.valid_time)}; quality ${p.quality.status}, worst of its inputs; ${fresh}.`;
+  if (cls === 'reprocessed') return `${val} ${ex.name.toLowerCase()}, produced by ${who} and reprocessed by ${p.intermediary} before delivery${p.intermediary_method ? ` (${p.intermediary_method})` : ' (the intermediary documents no method)'}, ${run}; shown beside the reading, never as it, and never a derivation input; ${fresh}.`;
+  if (cls === 'intermediary_derived') return `${val} ${ex.name.toLowerCase()}, computed by ${p.intermediary} from ${who} fields by the intermediary's own method (${p.intermediary_method || 'undocumented'}), ${run}; never the display primary, never a derivation input; ${fresh}.`;
+  if (cls === 'uncalibrated_observation') return `${val} ${ex.name.toLowerCase()}, an uncalibrated observation from ${p.attribution}, ${p.sample_distance_km} km from the Focus, relayed by ${p.intermediary}; never used for verification; ${fresh}.`;
+  return `${val}: the response declared no evidence class this client knows; nothing is shown for it.`;
+}
+function shortSentence(ex) {
+  const f = ex.field, p = f.provenance, cls = classOf(f), a = absence(f);
+  if (a === 'blocked') return `blocked · ${f.blocked.kind} terms · ${tag(p.source_id)}`;
+  if (a === 'aged_out') return `aged out · held to ${hm(p.last_valid_time)} · ${tag(p.source_id)}`;
+  if (a && (p.quality?.flags || []).includes('statistic_refused')) return `refused · ${p.ensemble.refusal} · ${tag(p.source_id)}`;
+  if (a) return `null · ${(p.quality?.flags || []).join(', ')} · ${tag(p.source_id)}`;
+  const fr = p.freshness || {}; const fresh = fr.status === 'stale' ? `stale ${age(fr.age_seconds)}` : fr.status === 'fresh' ? `fresh` : 'freshness unknown';
+  const run = p.run_time ? `run ${hm(p.run_time).replace(':00Z', 'Z')}` : 'no run';
+  const how = { retrieved: 'as issued', derived_here: `derived here: ${p.derivation}`, reprocessed: `reprocessed by ${p.intermediary}`, intermediary_derived: `computed by ${p.intermediary}`, uncalibrated_observation: `uncalibrated, ${p.attribution.split('(')[0].trim()}` }[cls] || 'class unrecognised';
+  return `${tag(p.source_id)} · ${LABEL[cls]} · ${how} · ${run} · ${p.run_stale === true ? 'RUN STALE · ' : ''}${fresh} · quality ${p.quality.status}`;
+}
+
+// the full sheet: identical content in all three variants; only where it opens differs
+function sheet(ex, opts = {}) {
+  const f = ex.field, p = f.provenance, cls = classOf(f), a = absence(f);
+  const q = p.quality || {}, fr = p.freshness || {}, cov = p.coverage || {};
+  const rows = [];
+  rows.push(['Class', `${glyph(cls)} <b>${LABEL[cls]}</b> <span class="muted">${DESC[cls]}</span>`]);
+  rows.push(['Source', `<b>${tag(p.source_id)}</b> · ${p.provider} · ${p.product}${p.delivery_kind ? ` · <span class="muted">${p.delivery_kind === 'published_cell' ? "producer's own cell" : p.delivery_kind + ' by ' + (p.intermediary || 'an unnamed intermediary')}</span>` : ''}`]);
+  rows.push(['Absence', a ? `<b>${a}</b>${a === 'blocked' ? ` · ${f.blocked.kind}: ${f.blocked.terms}${f.blocked.request ? `<br><span class="muted">request: ${f.blocked.request}</span>` : ''}` : ''}${a === 'aged_out' ? ` · last valid time held ${dhm(p.last_valid_time)}` : ''}${a === 'null' ? ` · ${(q.flags || []).join(', ') || 'no reason flag'}` : ''}` : '<span class="muted">none: a value was served</span>']);
+  rows.push(['Method', cls === 'derived_here' ? `<b>${p.derivation || 'not named'}</b> ${p.derivation_version ? `· ${p.derivation_version}` : '· version not named'}<br><span class="muted">${p.derivation_citation || 'citation not named'}</span>${p.ensemble?.refusal ? `<br><span class="state bad">refused: ${p.ensemble.refusal}</span>` : ''}` : (cls === 'reprocessed' || cls === 'intermediary_derived') ? `<span class="muted">${p.intermediary}: ${p.intermediary_method || 'the intermediary documents no method for this field, so the transformation is undocumented rather than absent'}</span>` : `<span class="muted">none: ${cls === 'retrieved' ? 'served as issued' : cls === 'uncalibrated_observation' ? 'an instrument reading, uncalibrated' : 'n/a'}</span>`]);
+  rows.push(['Inputs', cls === 'derived_here' ? (p.derivation_inputs?.length ? `<ul class="inputs">${p.derivation_inputs.map(i => `<li>${glyph(i.evidence_class)} <b>${i.field}</b> · ${tag(i.source_id)} · valid ${hm(i.valid_time)} · run ${hm(i.run_time)} · quality ${i.quality?.status}</li>`).join('')}</ul>` : '<span class="state bad">the response listed no inputs for this derived value</span>') : '<span class="muted">none</span>']);
+  rows.push(['Quality', `<b>${q.status || 'not named'}</b>${q.flags?.length ? ` · flags ${q.flags.join(', ')}` : ' · no flags'}${cov.status ? ` · coverage ${cov.status}${cov.fraction != null ? ` (${cov.fraction})` : ''}` : ''}`]);
+  rows.push(['Freshness', `${fr.status ? `<b>${fr.status}</b>` : 'not named'}${fr.age_seconds != null ? ` · ${age(fr.age_seconds)} since run` : ''}${fr.threshold_seconds != null ? ` · threshold ${age(fr.threshold_seconds)}` : ''}<br><span class="muted">run ${p.run_time ? dhm(p.run_time) : 'not declared'} · valid ${dhm(p.valid_time)} · retrieved ${p.retrieval_time ? dhm(p.retrieval_time) : '—'}${p.run_stale === true ? `<br><span class="state warn">run stale</span> ${p.run_stale_reason}` : p.run_stale_reason ? `<br>run age: ${p.run_stale_reason}` : ''}</span>`]);
+  rows.push(['Sample', p.sample_distance_km != null ? `${p.sample_method} · ${p.sample_distance_km} km from the Focus (${p.sampled_latitude}, ${p.sampled_longitude}) · native ${p.native_resolution} · level ${p.vertical_level}` : `<span class="muted">${p.vertical_level && p.vertical_level !== 'unavailable' ? 'level ' + p.vertical_level : 'no sample: nothing was read'}</span>`]);
+  rows.push(['Comparable', f.comparability ? `<span class="muted">${String(f.comparability).slice(0, 220)}${String(f.comparability).length > 220 ? '…' : ''}</span>` : '<span class="muted">no family note</span>']);
+  rows.push(['Terms', `<span class="muted">${p.licence} · ${p.attribution}</span>`]);
+  return `<h4>${glyph(cls)} ${ex.name} <span class="src">${tag(p.source_id)}</span>${opts.close ? '<button class="close" aria-label="Close" data-close>×</button>' : ''}</h4>
+    <p class="full">${sentence(ex)}</p>
+    <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+    <div class="foot"><span class="capture ${ex.capture}">${ex.capture === 'live' ? `live capture · ${CAP.captured_at}` : 'CONSTRUCTED to the contract'}</span>${ex.note ? `<span>${ex.note}</span>` : `<span>${CAP.request}</span>`}<button data-json="${ex.id}">raw JSON</button><button>open in Series</button></div>`;
+}
+
+// ------------------------------------------------------------------ variants
+function valueCell(ex) { const v = fmt(ex); return v == null ? `<span class="absentv">${absence(ex.field) === 'blocked' ? 'blocked' : absence(ex.field) === 'aged_out' ? 'aged out' : '—'}</span>` : `<span class="val">${v}</span> <span class="muted">${ex.unit}</span>`; }
+function stateChip(ex) { const s = absenceState(ex.field) || freshnessState(ex.field); return s && s.k !== 'ok' ? `<span class="state ${s.k}">${s.t}</span>` : ''; }
+
+function renderA(exs) {
+  return `<div class="vA">${exs.map(ex => { const f = ex.field, cls = f.value == null && absence(f) !== 'null' ? classOf(f) : classOf(f); return `
+    <div class="reading" data-id="${ex.id}">
+      <span class="name">${ex.name}</span>
+      ${valueCell(ex)}
+      <button class="pchip" data-open="${ex.id}" aria-expanded="false" aria-label="Provenance of ${ex.name}: ${LABEL[cls]} from ${tag(f.provenance.source_id)}">${glyph(cls)}<span class="src">${tag(f.provenance.source_id)}</span>${stateChip(ex)}</button>
+    </div>`; }).join('')}
+    <p class="muted" style="font-size:11px;margin-top:10px">A: the glyph and source tag ride in one chip after the value. Click or press Enter to open the sheet anchored to the chip; Escape or a click elsewhere closes it. Only one sheet at a time.</p></div>`;
+}
+function renderB(exs) {
+  return `<div class="vB"><table><thead><tr><th></th><th>source</th><th>reading</th><th style="text-align:right">value</th><th>state</th></tr></thead><tbody>
+    ${exs.map(ex => { const f = ex.field, cls = classOf(f); return `<tr class="row" data-open="${ex.id}" tabindex="0" role="button" aria-selected="false" aria-label="Provenance of ${ex.name}">
+      <td class="gut">${glyph(cls)}</td><td class="srccol src">${tag(f.provenance.source_id)}</td><td>${ex.name}</td><td style="text-align:right">${valueCell(ex)}</td><td>${stateChip(ex)}</td></tr>`; }).join('')}
+    </tbody></table>
+    <p class="muted" style="font-size:11px;margin-top:10px">B: the glyph sits in a fixed gutter so the marks line up like a ledger (the AWIPS legend-as-stack pattern). Clicking a row fills the inspector, which stays open and follows the selection; ↑↓ move it.</p></div>`;
+}
+function renderC(exs) {
+  return `<div class="vC">${exs.map(ex => { const f = ex.field, cls = classOf(f); return `
+    <div class="entry" data-id="${ex.id}">
+      <div class="head"><span style="flex:1">${ex.name}</span>${valueCell(ex)}</div>
+      <details>
+        <summary><span class="sent">${glyph(cls)}<span>${shortSentence(ex)} <span class="more">more</span></span></span></summary>
+        <div class="sheet">${sheet(ex)}</div>
+      </details>
+    </div>`; }).join('')}
+    <p class="muted" style="font-size:11px;margin-top:10px">C: the short provenance line is always printed under the value (source, class, how, run, freshness, quality). "more" unfolds the full sheet in place; several can be open at once.</p></div>`;
+}
+
+let EX = [];
+function renderReadings() {
+  const root = document.getElementById('readings');
+  root.innerHTML = P.v === 'A' ? renderA(EX) : P.v === 'B' ? renderB(EX) : renderC(EX);
+  const apop = document.getElementById('apop'), insp = document.getElementById('inspector');
+  if (P.v !== 'A') { try { apop.hidePopover(); } catch {} }
+  if (P.v !== 'B') { try { insp.hidePopover(); } catch {} }
+  root.querySelectorAll('[data-open]').forEach(el => {
+    const open = () => {
+      const ex = EX.find(e => e.id === el.dataset.open);
+      if (P.v === 'A') {
+        if (apop.dataset.for === ex.id && apop.matches(':popover-open')) { apop.hidePopover(); return; }
+        apop.dataset.for = ex.id; apop.innerHTML = sheet(ex);
+        const r = el.getBoundingClientRect(); apop.style.top = Math.max(8, Math.min(r.top, innerHeight * 0.22 - 8 + 0)) + 'px'; apop.style.left = (r.right + 408 < innerWidth ? r.right + 8 : Math.max(8, r.left - 408)) + 'px';
+        apop.showPopover(); root.querySelectorAll('.pchip').forEach(c => c.setAttribute('aria-expanded', String(c === el))); wireSheet(apop);
+      } else if (P.v === 'B') {
+        root.querySelectorAll('tr.row').forEach(r => r.setAttribute('aria-selected', String(r === el)));
+        insp.innerHTML = sheet(ex, { close: true }); if (!insp.matches(':popover-open')) insp.showPopover(); wireSheet(insp);
+        insp.querySelector('[data-close]').onclick = () => { insp.hidePopover(); root.querySelectorAll('tr.row').forEach(r => r.setAttribute('aria-selected', 'false')); };
+      }
+    };
+    el.addEventListener('click', open);
+    if (el.tagName === 'TR') el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const rows = [...root.querySelectorAll('tr.row')]; const i = rows.indexOf(el); const n = rows[(i + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length]; n.focus(); n.click(); } });
+  });
+  apop.addEventListener('toggle', e => { if (e.newState === 'closed') root.querySelectorAll('.pchip').forEach(c => c.setAttribute('aria-expanded', 'false')); });
+  root.querySelectorAll('.vC .sheet').forEach(wireSheet);
+}
+function wireSheet(el) { el.querySelectorAll('[data-json]').forEach(b => b.onclick = () => { const ex = EX.find(e => e.id === b.dataset.json); const w = open('', '_blank'); w.document.write(`<pre>${JSON.stringify(ex.field, null, 1).replace(/</g, '&lt;')}</pre>`); }); }
+
+// ------------------------------------------------------------------ the Map: stack rows, corner, strip
+function renderMap() {
+  const L = CAP.layers; const state = P.strip; document.getElementById('stripstate').value = state;
+  const goes = { l: L['geomet-live-goes-east-naturalcolor'], cls: 'retrieved', name: 'natural colour', frame: '2026-09-03T20:50:00Z', age: '10 min', drawn: true, tagn: 'GOES' };
+  const hrdps = { l: L['eccc-hrdps-surface-total-cloud'], cls: 'retrieved', name: 'total cloud', frame: '2026-09-03T21:00:00Z', age: 'exact', drawn: true, tagn: 'HRDPS' };
+  const weong = { l: L['eccc-hrdps-low-cloud-weong'], cls: state === 'generated' ? 'generated_display' : 'retrieved', name: 'low cloud, WEonG repair', frame: state === 'generated' ? '2026-09-03T21:20:00Z' : '2026-09-03T21:00:00Z', age: state === 'generated' ? 'generated between 21:00Z and 22:00Z' : 'exact', drawn: true, tagn: 'HRDPS' };
+  const alerts = { l: L['eccc-cap-alerts-alerts_features'], cls: 'retrieved', name: 'alerts', frame: null, age: 'current only, not drawn', drawn: false, tagn: 'MSC' };
+  const goesmask = { cls: 'retrieved', name: 'cloud mask', frame: null, age: 'not drawn: newest scan 43 h old, beyond 10 min tolerance', drawn: false, tagn: 'GOES-19' };
+  let rows = [weong, hrdps, alerts, goes, goesmask];
+  if (state === 'drawn') rows = [weong, hrdps, goes];
+  if (state === 'nothing') rows = rows.map(r => ({ ...r, drawn: false, cls: 'retrieved', age: r === alerts ? r.age : 'not drawn: no frame within an hour before the instant' }));
+  document.getElementById('stackrows').innerHTML = rows.map(r => `<div class="row" style="${r.drawn ? '' : 'opacity:.6'}">${glyph(r.cls)}<span><b>${r.name}</b> <span class="src">${r.tagn}</span><br><span class="muted" style="font-size:11px">${r.frame ? `frame ${hm(r.frame)} · ${r.age}` : r.age}</span></span><span class="mono">${r.drawn ? '85%' : ''}</span></div>`).join('');
+  document.getElementById('corner').innerHTML = `<div class="muted">frames at ${hm('2026-09-03T21:00:00Z')}</div>` + rows.map(r => `<div class="fr" style="${r.drawn ? '' : 'opacity:.6'}">${glyph(r.cls)}<span>${r.tagn} ${r.name}</span><span class="mono">${r.frame ? hm(r.frame) : '—'}</span></div>`).join('');
+  const drawn = rows.filter(r => r.drawn); const gen = rows.filter(r => r.cls === 'generated_display'); const exc = rows.filter(r => !r.drawn);
+  const parts = [];
+  if (gen.length) parts.push(`<span class="seg">${glyph('generated_display', { label: 'generated display' })}<span class="gen">GENERATED</span><span>${gen.map(r => `${r.tagn} ${r.name}`).join(', ')} between frames</span></span>`);
+  parts.push(`<span class="seg">${glyph(drawn.length ? 'retrieved' : 'absent')}<span><b>${drawn.length} of ${rows.length}</b> layers drawn at ${hm('2026-09-03T21:00:00Z')}</span></span>`);
+  if (exc.length) parts.push(`<span class="seg muted">·</span><span class="seg exc">${exc.map(r => `<span>${r.tagn} ${r.name}: ${r.age.replace('not drawn: ', '')}</span>`).join('<span class="muted"> · </span>')}</span>`);
+  parts.push(`<button class="why" popovertarget="whypop">why?</button>`);
+  document.getElementById('strip').innerHTML = parts.join('');
+  document.getElementById('whybody').innerHTML = `<p class="muted" style="font-size:12px;margin:0 0 6px">Rule: every layer draws its latest frame at or before the instant while that frame is under an hour old, else nothing. GENERATED marks a science-backed display between two retrieved frames (opt-in continuous mode); it never enters a data path.</p><table><tr><th></th><th>layer</th><th>source</th><th>run</th><th>frame</th><th>state</th><th>terms</th></tr>${rows.map(r => `<tr><td>${glyph(r.cls)}</td><td>${r.name}</td><td>${r.tagn}</td><td class="mono">${r.l?.run_time ? hm(r.l.run_time) : 'not on /layers'}</td><td class="mono">${r.frame ? hm(r.frame) : '—'}</td><td>${r.age}</td><td class="muted">${r.l ? (r.l.evidence_basis === 'live_proxy' ? 'GeoMet live proxy, not stored here' : 'published artifact, rendered here') : 'NOAA'}</td></tr>`).join('')}</table>
+  ${gen.length ? `<h3>Generated display provenance (real /flow headers, ${CAP.captured_at})</h3><dl style="display:grid;grid-template-columns:150px 1fr;gap:2px 8px;font-size:12px">${Object.entries(CAP.flow_headers).filter(([k]) => /method|derivation|image-basis|frame-from|frame-to|source-id|shader/.test(k)).map(([k, v]) => `<dt class="muted">${k.replace('x-weather-', '')}</dt><dd style="margin:0">${String(v).slice(0, 260)}${String(v).length > 260 ? '…' : ''}</dd>`).join('')}</dl>` : ''}
+  <h3>A frame-stale refusal, verbatim from the API</h3><p class="mono" style="font-size:11px">${CAP.raster_422}</p>`;
+}
+
+// ------------------------------------------------------------------ legend for the theme and vision pass
+function renderLegend() {
+  const all = [...CLASSES, 'unrecognised', 'absent'];
+  document.getElementById('legendbody').innerHTML = `<table><tr><th>glyph</th><th>class</th><th>letter</th><th>meaning</th></tr>${all.map(c => `<tr><td>${glyph(c)}</td><td><b>${LABEL[c]}</b></td><td class="mono">${LETTER[c]}</td><td class="muted">${DESC[c]}</td></tr>`).join('')}</table>
+  <p class="muted" style="font-size:12px;margin:8px 0 0">The set is judged on shape alone: switch the theme to red night (one hue) or the vision pass to grayscale and every class must still read. Filled = a producer's value as issued or computed here from such values; outline = someone else's construction (intermediary) or an instrument nobody calibrated; dashed = display only.</p>`;
+}
+
+// ------------------------------------------------------------------ controls
+function applyAxes() {
+  document.documentElement.dataset.theme = P.theme; document.documentElement.dataset.vision = P.vision;
+  document.querySelector('meta[name="color-scheme"]').content = P.theme === 'light' ? 'light' : 'dark';
+  document.getElementById('themesel').value = P.theme; document.getElementById('visionsel').value = P.vision; document.getElementById('glyphsel').value = P.glyph;
+  document.getElementById('vlabel').textContent = VNAME[P.v];
+  document.title = `PROTOTYPE provenance ${P.v} · ${P.glyph} · ${P.theme}`;
+}
+function renderAll() { applyAxes(); renderReadings(); renderMap(); renderLegend(); writeUrl(); }
+function step(d) { const i = VARIANTS.indexOf(P.v); P.v = VARIANTS[(i + d + VARIANTS.length) % VARIANTS.length]; renderAll(); }
+document.getElementById('prev').onclick = () => step(-1); document.getElementById('next').onclick = () => step(1);
+document.getElementById('glyphsel').onchange = e => { P.glyph = e.target.value; renderAll(); };
+document.getElementById('themesel').onchange = e => { P.theme = e.target.value; renderAll(); };
+document.getElementById('visionsel').onchange = e => { P.vision = e.target.value; renderAll(); };
+document.getElementById('stripstate').onchange = e => { P.strip = e.target.value; renderAll(); };
+addEventListener('keydown', e => { if (e.target.matches('input, textarea, select, [contenteditable]')) return; if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); });
+
+// ------------------------------------------------------------------ boot: captures first, then try the live API for the three live readings
+async function boot() {
+  CAP = await (await fetch('provenance-captures.json')).json();
+  EX = buildExamples(CAP); renderAll();
+  try {
+    const tl = await (await fetch('/api/experiments/weather/v0/timeline')).json();
+    const inst = tl.items.find(i => i.available_products.includes('noaa-gfs'))?.valid_time_utc;
+    if (!inst) throw new Error('no GFS instant in /timeline');
+    const p = await (await fetch(`/api/experiments/weather/v0/point?latitude=47.5615&longitude=-52.7126&valid_time=${inst}`)).json();
+    const pick = (n, valued) => p.fields.find(x => x.field === n && ((x.value != null) === valued));
+    const t = pick('temperature', true), w = pick('wind_speed', true), c = pick('total_cloud_geometric', true), v = pick('visibility', false);
+    if (!t || !w || !c) throw new Error('live /point carried no valued GFS fields');
+    CAP.temperature = t; CAP.wind_speed = w; CAP.total_cloud_geometric = c; if (v) CAP.visibility_taf = v; CAP.captured_at = `live ${new Date().toISOString().slice(11, 16)}Z at ${inst}`; CAP.request = `/point?valid_time=${inst} (live)`;
+    document.getElementById('instant').textContent = inst; EX = buildExamples(CAP); renderAll();
+    const ls = document.getElementById('livestate'); ls.textContent = `live API · ${inst}`; ls.className = 'capture live';
+  } catch (e) { const ls = document.getElementById('livestate'); ls.textContent = `captures 2026-09-04 21:50Z (live API: ${e.message})`; ls.title = String(e); }
+}
+boot();
+</script>
+</body>
+</html>
