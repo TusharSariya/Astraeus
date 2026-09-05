@@ -50,6 +50,13 @@ real-time terms constrain raw or retrievable redistribution, anonymous bucket
 probes were denied, and no authenticated Avalon read or local skill result
 exists.
 
+Execution preparation on 2026-09-05 added a bounded manifest validator for the
+non-requester-paid statistics surface and observed an anonymous HTTP 401 control
+for object listing. Authenticated access, exact grants, live schema, historical
+run availability and a data sample remain unverified because the repository's
+mandatory `aws-secrets-manager` skill is unavailable. This does not advance any
+admission or operational state.
+
 This change makes the validated families optional evidence. It does not replace
 HRDPS, change a score, make any source operational, or admit an unverified
 regional grid.

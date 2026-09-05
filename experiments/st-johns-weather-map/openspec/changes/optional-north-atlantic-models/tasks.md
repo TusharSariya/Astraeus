@@ -93,11 +93,19 @@
 - [ ] 6.2 Establish allowlisted access through the approved secret workflow;
       do not embed credentials or assume anonymous access.
       Verify: credential handling passes repository secret-safety checks.
+      Pending 2026-09-05: the required `aws-secrets-manager` skill is not
+      installed, so no identity, grant or credential was inspected. The
+      prepared manifest tool deliberately contains no authentication transport.
 - [ ] 6.3 Probe the selected GCS, BigQuery or Earth Engine surface for a full
       evidence-box sample and pin dimensions, coordinates, members, units,
       missing values, product version and exact cloud variables.
       Verify: an authenticated live fixture covers every corner and upstream
       sector without treating statistics as ensemble members.
+      Partial preparation 2026-09-05: the bounded statistics-surface manifest
+      enumerates all 126 documented surface/statistic combinations and rejects
+      partial or over-budget success claims. One anonymous list control returned
+      HTTP 401 with a 742-byte body; no authenticated sample has run, so this
+      task remains unchecked.
 - [ ] 6.4 Measure publication latency, completeness and retrieval cost across at
       least seven days, separating initialization, publication and retrieval.
       Verify: main and interim cycles are reported separately with failures.

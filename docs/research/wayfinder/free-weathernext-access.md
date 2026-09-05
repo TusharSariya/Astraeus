@@ -97,7 +97,37 @@ experiment below, choose an entire run whose last forecast valid time is
 already at least one hour in the past, so even decoded source chunks cannot
 silently include future forecast values.
 
-## Proposed bounded experiment (not executed)
+## Execution preparation and anonymous control
+
+Issue [Verify the approved WeatherNext account with a bounded sample](https://github.com/TusharSariya/Astraeus/issues/76)
+prepared an executable manifest generator and validator at
+`experiments/st-johns-weather-map/scripts/weathernext_probe_manifest.py`. It
+enumerates 126 documented statistic arrays across all 21 one-hour surface and
+station fields published on the statistics surface, not only the six cloud
+fields selected for the first sample, and requires every field to remain
+explicitly `retrieved`, `missing`, `unsupported`, or `deferred`. A successful
+six-field sample therefore cannot be mistaken for whole-source or all-field
+implementation proof.
+
+An anonymous control request on 2026-09-05 used the JSON API object-list route
+for the exact statistics prefix, `maxResults=1`, and a response-field mask. It
+sent no authorization or requester-billing identity. The response was HTTP 401,
+742 bytes, with `storage.objects.list` denied to the anonymous caller. This
+confirms that anonymous listing is unavailable; it says nothing about the
+owner's allowlisted identity, known-object reads, bucket billing configuration,
+or historical-run existence.
+
+Authenticated execution is blocked because the repository-mandated
+`aws-secrets-manager` skill is not installed in the available user, Codex,
+Claude, plugin-cache, or repository skill paths. No account identity,
+credential, ADC profile, grant, token, or authenticated object was inspected.
+The tool declares and validates caps; it does not execute or meter network
+requests. The approved resolution must either provide that exact skill or explicitly
+authorize a replacement runtime-only workflow that prevents token logging and
+requester-billing propagation. Until then the executable produces and validates
+the manifest but deliberately implements no authentication transport.
+
+## Proposed bounded experiment (authenticated sample not executed)
 
 These are experimental limits, not accepted ingestion requirements.
 
@@ -182,6 +212,10 @@ implementation gates.
 ## Verification
 
 - Read current primary pages linked above on 2026-09-05; no live dataset claims.
+- Anonymous control: one JSON API list request, HTTP 401, 742-byte body, no
+  authorization or requester-billing identity.
+- `python3 -m pytest experiments/st-johns-weather-map/scripts/tests/test_weathernext_bounded_probe.py -q`
+- `python3 experiments/st-johns-weather-map/scripts/weathernext_probe_manifest.py template`
 - `uv run --project tools/specs python tools/specs/specctl.py validate`
 - `git diff --check`
 
