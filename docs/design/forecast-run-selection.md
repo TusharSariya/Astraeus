@@ -1,6 +1,6 @@
 # Forecast-run selection across Map and Series
 
-Discussion draft for [Settle forecast-run selection across Map and Series](https://github.com/TusharSariya/Astraeus/issues/68). The owner selected the automatic default and explicit previous-run behavior; shared scope, Activity independence and URL persistence are also selected; removed-run and temporary same-source comparison behavior are also selected; snapshot retention remains pending. No API behavior, retention rule or normative status is changed.
+Owner decision record for [Settle forecast-run selection across Map and Series](https://github.com/TusharSariya/Astraeus/issues/68). The owner selected the automatic default and explicit previous-run behavior; shared scope, Activity independence and URL persistence are also selected; removed-run and temporary same-source comparison behavior are also selected; the bounded snapshot-retention exception is also selected. No API behavior, retention rule or normative status is changed.
 
 ## Existing decisions and evidence
 
@@ -39,7 +39,7 @@ The owner confirmed all three choices in live review:
 2. Keep Activity verdicts on the previously selected server-side source/run evaluation policy. A Map/Series browsing override does not silently alter a verdict or its score. Its input provenance still identifies the evidence it used; make a mismatch visible when relevant.
 3. Store source/run browsing choices alongside Focus in the URL, using explicit run identity for pinned selections and an explicit automatic mode for Latest available. This does not persist the temporary Compare workspace's selected fields/layout, and a URL cannot promise retention of an old run.
 
-Expiry behavior and simultaneous same-source run comparison remain separate decisions. The committed two-run ceiling and proposed short-lived Series snapshot pins also need an explicit retention/capacity reconciliation before implementation; neither should silently override the other.
+Expiry behavior and simultaneous same-source run comparison remain separate decisions. The owner-selected bounded snapshot exception below reconciles ordinary two-run inventory with temporary snapshot pins; specification changes and capacity validation remain prerequisites to implementation.
 
 
 ## Owner decisions: removed runs and comparing runs
@@ -49,13 +49,24 @@ The owner answered “yes yes” to both choices:
 1. If a pinned run is removed from the readable inventory, keep its identity selected and show “Selected run no longer available.” Keep Focus and instant unchanged. Offer an explicit “Use Latest available” action; never automatically replace the pinned run. A stale link behaves the same way. Distinguish removal from a frame gap in a still-readable run and from a temporary service failure. Snapshot retention conflicts remain separately unresolved.
 2. Permit the two retained, readable runs of one source to be overlaid in the temporary Series Compare workspace. Each trace names its run and source with distinct line treatment; preserve native timestamps, gaps and per-reading provenance. This comparison does not alter the shared source/run choice for Map or Activity, adds no Map comparison, and is not saved/shared. No run-difference calculation or new statistic is implied.
 
-A short-lived snapshot's retention promises and the hard two-run retention ceiling still require owner resolution before a final API contract can be implemented.
+The bounded retention exception selected below resolves this policy conflict; it has not been implemented.
 
 
-## Final scope question: snapshot retention exception
+## Owner decision: bounded snapshot retention exception
 
-Proposed, not selected: retain the normal latest-plus-previous run inventory, but allow already-created, unexpired Series snapshots to pin the exact older revisions they need until their fixed advertised expiry. When a third run arrives, the displaced run leaves the new-query/selectable inventory, while existing snapshot pages can still read their pinned revisions until expiry. These transient pins can make physical retention exceed two runs temporarily, so this is an explicit exception to the current hard two-run retention rule, requiring owner approval and subsequent spec changes.
+The owner answered “yes”: retain the normal latest-plus-previous run inventory, but allow already-created, unexpired Series snapshots to pin the exact older revisions they need until their fixed advertised expiry. When a third run arrives, the displaced run leaves the new-query/selectable inventory, while existing snapshot pages can still read their pinned revisions until expiry. These transient pins can make physical retention exceed two runs temporarily, so this is an explicit exception to the current hard two-run retention rule, explicitly selected by the owner for subsequent specification changes.
 
 Pins cannot renew themselves on page reads or change checks. Once a run is outside the normal selectable inventory, new reads cannot pin it again. Keep the existing storage quota; snapshot admission must fit declared retention/capacity budgets, refusing additional snapshots when they cannot be supported. Do not evict promised live pins silently, expand storage, or weaken the existing ingestion quota failure behavior. Expiry releases pins and allows purge; failures caused by unreadable pinned objects remain explicit.
 
-The alternative is to enforce the physical two-run ceiling strictly and invalidate affected snapshots at publication, making their advertised expiry only an upper bound. That would revise the earlier snapshot retention promise and require an explicit restart-required response. Neither policy is selected yet.
+The alternative is to enforce the physical two-run ceiling strictly and invalidate affected snapshots at publication, making their advertised expiry only an upper bound. That would revise the earlier snapshot retention promise and require an explicit restart-required response. The owner selected the bounded retention exception, not early invalidation solely because a third run arrives.
+
+
+## Resolution and implementation handoff
+
+All eight owner choices are recorded above. The normal selector lists the latest and previous readable runs per actual source/run family. Explicit pinning does not create indefinite retention; an expired link retains its unavailable identity and requires explicit reselection. A still-valid snapshot may read a displaced revision through its existing cursor only until the fixed expiry.
+
+Carry the decision into the API and front-end proposals. Required implementation work includes a true selectable-run inventory, run-aware reads/cache keys for each supported delivery path, explicit unavailable paths, correct current-versus-retained attribution, snapshot pin lifecycle/capacity, and independent Activity provenance. Do not infer capabilities from run headers or retained metadata alone.
+
+Proposed verification: automatic mixed-run segments identify every actual run; pinned-run filtering precedes Map frame matching; selected-run gaps never fall through; Previous does not drift on publication; URL restoration retains exact identity or explicit absence; Compare traces remain independent from Map/Activity; a third publication removes an old run from new-query inventory but preserves an existing pinned snapshot until expiry; page/check calls cannot renew expiry; pins are released and purged afterwards; quota refusal does not silently evict live pins.
+
+Spec-Impact: none for this decision record. Owner approval of the design exception is not a normative document status transition. Accepted contract/spec changes and mapped verification are required before implementation. Documentation checks passed; the proposed implementation cases have not run.

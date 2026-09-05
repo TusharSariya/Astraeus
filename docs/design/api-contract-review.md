@@ -97,3 +97,8 @@ The owner answered “yes for both” to these two behavior choices:
 - Show a new-data notice only when data relevant to the current selection changes. A deployment-wide token that changes for unrelated sources is not sufficient. The check compares the fixed snapshot's selection with current relevant evidence without mutating or renewing the snapshot. Refresh remains explicit.
 
 The proposed wire draft now describes a selection-specific check. Its transport, numeric limits and exact error/schema definitions remain reviewable implementation-proposal details. No backend behavior or normative status has changed.
+
+
+## Follow-on forecast-run decision
+
+[Forecast-run selection](forecast-run-selection.md) now records the owner's bounded retention exception: the normal new-read inventory stays at two runs, while existing unexpired snapshots can retain displaced revisions until fixed expiry within the existing quota. No renewal by paging/checking and no new snapshot for an already-displaced run. This reconciles the earlier snapshot promise with the ordinary two-run policy, and requires subsequent specification changes and capacity verification before implementation. No normative status changed.
