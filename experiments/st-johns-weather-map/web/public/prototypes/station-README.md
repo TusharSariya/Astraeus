@@ -35,3 +35,16 @@ Browser checks cover all three alternatives, state continuity, reference-pin sel
 No physical-device, screen-reader, outdoor red-night, positive station geometry, or combined raster/station composition claim is made. API follow-up needs report-to-station association, report validity (including TAF intervals), coverage semantics, and consistent freshness provenance before positive station rendering can be judged.
 
 Classification: Experiment. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-005. No normative specification status changed; owner feedback on this artifact feeds the later API and implementation proposals.
+
+
+## Keyboard accessibility repair study
+
+The owner selected the shared interaction contract from the evidence-accessibility audit. This isolated repair branch implements explicit nonmodal inspector entry, actual-opener restoration on Close/scoped Escape, visible heading fallback if the opener disappears, and retained logical focus after layer selection, toggle and reorder (including the disabled edge action). Repeated Inspect names identify their layer; selected layers expose pressed state. Arrow navigation uses native controls rather than global prototype shortcuts.
+
+A labelled coordinate form provides a keyboard counterpart to choosing a map point. It preserves entered query precision and uses the existing prototype input bounds; the documented API coverage mismatch is not repaired by this form. Exact uncaptured points still show absence. Existing semantic reading buttons provide model values, class/source, units, time and freshness without relying on the map canvas. Status updates are concise and identical banner text is not replaced on unrelated rerenders.
+
+Run the repair server with `PORT=5213 python3 experiments/st-johns-weather-map/web/public/prototypes/serve.py`, then open <http://localhost:5213/map.html?stationStudy=1&variant=A>.
+
+With Playwright installed/resolvable, run `node experiments/st-johns-weather-map/web/public/prototypes/check-station-accessibility.cjs`; `PLAYWRIGHT_MODULE` can point to another installed Playwright module. Checks exercise Enter/Space, opener/fallback focus, reorder edge, zero/absence, keyboard point entry, native arrow/Escape scope and night/narrow layout. Syntax, specctl and diff checks passed.
+
+Experiment only. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-005. Actual screen-reader speech, full sequential navigation, contrast/zoom, physical-device and assembled raster/Activity coverage remain unverified. This is not an accessibility-conformance claim.
