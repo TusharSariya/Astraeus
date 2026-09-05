@@ -9,8 +9,8 @@
           "blocked": null,
           "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
           "family": "wind",
-          "field": "wind_direction_pressure",
-          "key": "wind_direction_pressure",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
           "phase": null,
           "provenance": {
             "adapter_version": "openmeteo-named-point-v1",
@@ -19,7 +19,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -44,16 +44,18 @@
             "member_control": null,
             "native_crs": "EPSG:4326",
             "native_resolution": "unknown",
-            "normalized_units": "degree",
+            "normalized_units": "m s-1",
             "operational": false,
-            "original_units": "degree",
+            "original_units": "m s-1",
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -67,7 +69,7 @@
             "vertical_level": "1000 hPa"
           },
           "storage": "stored",
-          "value": 100.0
+          "value": 9.63
         },
         {
           "absence_state": null,
@@ -84,7 +86,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -115,10 +117,12 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -139,76 +143,6 @@
           "blocked": null,
           "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
           "family": "wind",
-          "field": "wind_speed_pressure",
-          "key": "wind_speed_pressure",
-          "phase": null,
-          "provenance": {
-            "adapter_version": "openmeteo-named-point-v1",
-            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
-            "contributing_evidence": [],
-            "contributors": [],
-            "coverage": {
-              "fraction": 0.75,
-              "status": "complete"
-            },
-            "data_mode": "live",
-            "delivery_kind": "reprocessed",
-            "derivation": null,
-            "derivation_citation": null,
-            "derivation_inputs": [],
-            "derivation_version": null,
-            "display_primary_eligible": false,
-            "ensemble": null,
-            "evidence_class": "reprocessed",
-            "forecast_centre": "Japan Meteorological Agency",
-            "freshness": {
-              "age_seconds": 0,
-              "status": "fresh",
-              "threshold_seconds": 68688
-            },
-            "intermediary": "Open-Meteo",
-            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
-            "last_valid_time": null,
-            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
-            "member": null,
-            "member_control": null,
-            "native_crs": "EPSG:4326",
-            "native_resolution": "unknown",
-            "normalized_units": "m s-1",
-            "operational": false,
-            "original_units": "m s-1",
-            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
-            "provider": "Japan Meteorological Agency",
-            "quality": {
-              "flags": [],
-              "status": "passed"
-            },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
-            "run_stale": null,
-            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
-            "run_time": null,
-            "sample_distance_km": 0.0,
-            "sample_method": "rectilinear",
-            "sampled_latitude": 47.5,
-            "sampled_longitude": -52.5,
-            "source_display_primary": false,
-            "source_id": "openmeteo-jma-gsm",
-            "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "1000 hPa"
-          },
-          "storage": "stored",
-          "value": 9.63
-        }
-      ],
-      "pressure_hpa": 1000
-    },
-    {
-      "fields": [
-        {
-          "absence_state": null,
-          "blocked": null,
-          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
-          "family": "wind",
           "field": "wind_direction_pressure",
           "key": "wind_direction_pressure",
           "phase": null,
@@ -219,7 +153,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -250,10 +184,12 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -264,13 +200,85 @@
             "source_display_primary": false,
             "source_id": "openmeteo-jma-gsm",
             "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "850 hPa"
+            "vertical_level": "1000 hPa"
           },
           "storage": "stored",
-          "value": 105.0
+          "value": 100.0
+        }
+      ],
+      "pressure_hpa": 1000
+    },
+    {
+      "fields": [
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "975 hPa"
+          },
+          "storage": "stored",
+          "value": null
         },
         {
-          "absence_state": null,
+          "absence_state": "null",
           "blocked": null,
           "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
           "family": "temperature",
@@ -284,7 +292,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -315,10 +323,836 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "975 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        },
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "975 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        }
+      ],
+      "pressure_hpa": 975
+    },
+    {
+      "fields": [
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "950 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        },
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "950 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        },
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "950 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        }
+      ],
+      "pressure_hpa": 950
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "925 hPa"
+          },
+          "storage": "stored",
+          "value": 10.32
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "925 hPa"
+          },
+          "storage": "stored",
+          "value": 8.3
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "925 hPa"
+          },
+          "storage": "stored",
+          "value": 100.0
+        }
+      ],
+      "pressure_hpa": 925
+    },
+    {
+      "fields": [
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "900 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        },
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "900 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        },
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "900 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        }
+      ],
+      "pressure_hpa": 900
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "850 hPa"
+          },
+          "storage": "stored",
+          "value": 9.55
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -339,76 +1173,6 @@
           "blocked": null,
           "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
           "family": "wind",
-          "field": "wind_speed_pressure",
-          "key": "wind_speed_pressure",
-          "phase": null,
-          "provenance": {
-            "adapter_version": "openmeteo-named-point-v1",
-            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
-            "contributing_evidence": [],
-            "contributors": [],
-            "coverage": {
-              "fraction": 0.75,
-              "status": "complete"
-            },
-            "data_mode": "live",
-            "delivery_kind": "reprocessed",
-            "derivation": null,
-            "derivation_citation": null,
-            "derivation_inputs": [],
-            "derivation_version": null,
-            "display_primary_eligible": false,
-            "ensemble": null,
-            "evidence_class": "reprocessed",
-            "forecast_centre": "Japan Meteorological Agency",
-            "freshness": {
-              "age_seconds": 0,
-              "status": "fresh",
-              "threshold_seconds": 68688
-            },
-            "intermediary": "Open-Meteo",
-            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
-            "last_valid_time": null,
-            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
-            "member": null,
-            "member_control": null,
-            "native_crs": "EPSG:4326",
-            "native_resolution": "unknown",
-            "normalized_units": "m s-1",
-            "operational": false,
-            "original_units": "m s-1",
-            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
-            "provider": "Japan Meteorological Agency",
-            "quality": {
-              "flags": [],
-              "status": "passed"
-            },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
-            "run_stale": null,
-            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
-            "run_time": null,
-            "sample_distance_km": 0.0,
-            "sample_method": "rectilinear",
-            "sampled_latitude": 47.5,
-            "sampled_longitude": -52.5,
-            "source_display_primary": false,
-            "source_id": "openmeteo-jma-gsm",
-            "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "850 hPa"
-          },
-          "storage": "stored",
-          "value": 9.55
-        }
-      ],
-      "pressure_hpa": 850
-    },
-    {
-      "fields": [
-        {
-          "absence_state": null,
-          "blocked": null,
-          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
-          "family": "wind",
           "field": "wind_direction_pressure",
           "key": "wind_direction_pressure",
           "phase": null,
@@ -419,7 +1183,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -450,10 +1214,12 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -464,13 +1230,85 @@
             "source_display_primary": false,
             "source_id": "openmeteo-jma-gsm",
             "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "700 hPa"
+            "vertical_level": "850 hPa"
           },
           "storage": "stored",
-          "value": 175.0
+          "value": 105.0
+        }
+      ],
+      "pressure_hpa": 850
+    },
+    {
+      "fields": [
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "800 hPa"
+          },
+          "storage": "stored",
+          "value": null
         },
         {
-          "absence_state": null,
+          "absence_state": "null",
           "blocked": null,
           "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
           "family": "temperature",
@@ -484,7 +1322,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -515,10 +1353,218 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "800 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        },
+        {
+          "absence_state": "null",
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "800 hPa"
+          },
+          "storage": "stored",
+          "value": null
+        }
+      ],
+      "pressure_hpa": 800
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "700 hPa"
+          },
+          "storage": "stored",
+          "value": 3.64
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -539,76 +1585,6 @@
           "blocked": null,
           "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
           "family": "wind",
-          "field": "wind_speed_pressure",
-          "key": "wind_speed_pressure",
-          "phase": null,
-          "provenance": {
-            "adapter_version": "openmeteo-named-point-v1",
-            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
-            "contributing_evidence": [],
-            "contributors": [],
-            "coverage": {
-              "fraction": 0.75,
-              "status": "complete"
-            },
-            "data_mode": "live",
-            "delivery_kind": "reprocessed",
-            "derivation": null,
-            "derivation_citation": null,
-            "derivation_inputs": [],
-            "derivation_version": null,
-            "display_primary_eligible": false,
-            "ensemble": null,
-            "evidence_class": "reprocessed",
-            "forecast_centre": "Japan Meteorological Agency",
-            "freshness": {
-              "age_seconds": 0,
-              "status": "fresh",
-              "threshold_seconds": 68688
-            },
-            "intermediary": "Open-Meteo",
-            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
-            "last_valid_time": null,
-            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
-            "member": null,
-            "member_control": null,
-            "native_crs": "EPSG:4326",
-            "native_resolution": "unknown",
-            "normalized_units": "m s-1",
-            "operational": false,
-            "original_units": "m s-1",
-            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
-            "provider": "Japan Meteorological Agency",
-            "quality": {
-              "flags": [],
-              "status": "passed"
-            },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
-            "run_stale": null,
-            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
-            "run_time": null,
-            "sample_distance_km": 0.0,
-            "sample_method": "rectilinear",
-            "sampled_latitude": 47.5,
-            "sampled_longitude": -52.5,
-            "source_display_primary": false,
-            "source_id": "openmeteo-jma-gsm",
-            "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "700 hPa"
-          },
-          "storage": "stored",
-          "value": 3.64
-        }
-      ],
-      "pressure_hpa": 700
-    },
-    {
-      "fields": [
-        {
-          "absence_state": null,
-          "blocked": null,
-          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
-          "family": "wind",
           "field": "wind_direction_pressure",
           "key": "wind_direction_pressure",
           "phase": null,
@@ -619,7 +1595,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -650,10 +1626,12 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -664,10 +1642,82 @@
             "source_display_primary": false,
             "source_id": "openmeteo-jma-gsm",
             "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "500 hPa"
+            "vertical_level": "700 hPa"
           },
           "storage": "stored",
-          "value": 203.0
+          "value": 175.0
+        }
+      ],
+      "pressure_hpa": 700
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "600 hPa"
+          },
+          "storage": "stored",
+          "value": 6.9
         },
         {
           "absence_state": null,
@@ -684,7 +1734,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -715,10 +1765,218 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "600 hPa"
+          },
+          "storage": "stored",
+          "value": -4.2
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "600 hPa"
+          },
+          "storage": "stored",
+          "value": 197.0
+        }
+      ],
+      "pressure_hpa": 600
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "500 hPa"
+          },
+          "storage": "stored",
+          "value": 8.67
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -739,76 +1997,6 @@
           "blocked": null,
           "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
           "family": "wind",
-          "field": "wind_speed_pressure",
-          "key": "wind_speed_pressure",
-          "phase": null,
-          "provenance": {
-            "adapter_version": "openmeteo-named-point-v1",
-            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
-            "contributing_evidence": [],
-            "contributors": [],
-            "coverage": {
-              "fraction": 0.75,
-              "status": "complete"
-            },
-            "data_mode": "live",
-            "delivery_kind": "reprocessed",
-            "derivation": null,
-            "derivation_citation": null,
-            "derivation_inputs": [],
-            "derivation_version": null,
-            "display_primary_eligible": false,
-            "ensemble": null,
-            "evidence_class": "reprocessed",
-            "forecast_centre": "Japan Meteorological Agency",
-            "freshness": {
-              "age_seconds": 0,
-              "status": "fresh",
-              "threshold_seconds": 68688
-            },
-            "intermediary": "Open-Meteo",
-            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
-            "last_valid_time": null,
-            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
-            "member": null,
-            "member_control": null,
-            "native_crs": "EPSG:4326",
-            "native_resolution": "unknown",
-            "normalized_units": "m s-1",
-            "operational": false,
-            "original_units": "m s-1",
-            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
-            "provider": "Japan Meteorological Agency",
-            "quality": {
-              "flags": [],
-              "status": "passed"
-            },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
-            "run_stale": null,
-            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
-            "run_time": null,
-            "sample_distance_km": 0.0,
-            "sample_method": "rectilinear",
-            "sampled_latitude": 47.5,
-            "sampled_longitude": -52.5,
-            "source_display_primary": false,
-            "source_id": "openmeteo-jma-gsm",
-            "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "500 hPa"
-          },
-          "storage": "stored",
-          "value": 8.67
-        }
-      ],
-      "pressure_hpa": 500
-    },
-    {
-      "fields": [
-        {
-          "absence_state": null,
-          "blocked": null,
-          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
-          "family": "wind",
           "field": "wind_direction_pressure",
           "key": "wind_direction_pressure",
           "phase": null,
@@ -819,7 +2007,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -850,10 +2038,12 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -864,76 +2054,16 @@
             "source_display_primary": false,
             "source_id": "openmeteo-jma-gsm",
             "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "300 hPa"
+            "vertical_level": "500 hPa"
           },
           "storage": "stored",
-          "value": 215.0
-        },
-        {
-          "absence_state": null,
-          "blocked": null,
-          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
-          "family": "temperature",
-          "field": "temperature_pressure",
-          "key": "temperature_pressure",
-          "phase": null,
-          "provenance": {
-            "adapter_version": "openmeteo-named-point-v1",
-            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
-            "contributing_evidence": [],
-            "contributors": [],
-            "coverage": {
-              "fraction": 0.75,
-              "status": "complete"
-            },
-            "data_mode": "live",
-            "delivery_kind": "reprocessed",
-            "derivation": null,
-            "derivation_citation": null,
-            "derivation_inputs": [],
-            "derivation_version": null,
-            "display_primary_eligible": false,
-            "ensemble": null,
-            "evidence_class": "reprocessed",
-            "forecast_centre": "Japan Meteorological Agency",
-            "freshness": {
-              "age_seconds": 0,
-              "status": "fresh",
-              "threshold_seconds": 68688
-            },
-            "intermediary": "Open-Meteo",
-            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
-            "last_valid_time": null,
-            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
-            "member": null,
-            "member_control": null,
-            "native_crs": "EPSG:4326",
-            "native_resolution": "unknown",
-            "normalized_units": "degC",
-            "operational": false,
-            "original_units": "degC",
-            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
-            "provider": "Japan Meteorological Agency",
-            "quality": {
-              "flags": [],
-              "status": "passed"
-            },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
-            "run_stale": null,
-            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
-            "run_time": null,
-            "sample_distance_km": 0.0,
-            "sample_method": "rectilinear",
-            "sampled_latitude": 47.5,
-            "sampled_longitude": -52.5,
-            "source_display_primary": false,
-            "source_id": "openmeteo-jma-gsm",
-            "valid_time": "2026-09-05T15:00:00Z",
-            "vertical_level": "300 hPa"
-          },
-          "storage": "stored",
-          "value": -39.5
-        },
+          "value": 203.0
+        }
+      ],
+      "pressure_hpa": 500
+    },
+    {
+      "fields": [
         {
           "absence_state": null,
           "blocked": null,
@@ -949,7 +2079,7 @@
             "contributors": [],
             "coverage": {
               "fraction": 0.75,
-              "status": "complete"
+              "status": "partial"
             },
             "data_mode": "live",
             "delivery_kind": "reprocessed",
@@ -980,10 +2110,218 @@
             "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
             "provider": "Japan Meteorological Agency",
             "quality": {
-              "flags": [],
-              "status": "passed"
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
             },
-            "retrieval_time": "2026-09-05T15:17:54.909696Z",
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "400 hPa"
+          },
+          "storage": "stored",
+          "value": 8.36
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "400 hPa"
+          },
+          "storage": "stored",
+          "value": -23.9
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "400 hPa"
+          },
+          "storage": "stored",
+          "value": 203.0
+        }
+      ],
+      "pressure_hpa": 400
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
             "run_stale": null,
             "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
             "run_time": null,
@@ -998,9 +2336,967 @@
           },
           "storage": "stored",
           "value": 20.81
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "300 hPa"
+          },
+          "storage": "stored",
+          "value": -39.5
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "300 hPa"
+          },
+          "storage": "stored",
+          "value": 215.0
         }
       ],
       "pressure_hpa": 300
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "250 hPa"
+          },
+          "storage": "stored",
+          "value": 19.8
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "250 hPa"
+          },
+          "storage": "stored",
+          "value": -51.0
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "250 hPa"
+          },
+          "storage": "stored",
+          "value": 224.0
+        }
+      ],
+      "pressure_hpa": 250
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "200 hPa"
+          },
+          "storage": "stored",
+          "value": 18.8
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "200 hPa"
+          },
+          "storage": "stored",
+          "value": -59.0
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "200 hPa"
+          },
+          "storage": "stored",
+          "value": 233.0
+        }
+      ],
+      "pressure_hpa": 200
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "150 hPa"
+          },
+          "storage": "stored",
+          "value": 20.38
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "150 hPa"
+          },
+          "storage": "stored",
+          "value": -54.5
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "150 hPa"
+          },
+          "storage": "stored",
+          "value": 255.0
+        }
+      ],
+      "pressure_hpa": 150
+    },
+    {
+      "fields": [
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_speed_pressure",
+          "key": "wind_speed_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "m s-1",
+            "operational": false,
+            "original_units": "m s-1",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "100 hPa"
+          },
+          "storage": "stored",
+          "value": 13.54
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+          "family": "temperature",
+          "field": "temperature_pressure",
+          "key": "temperature_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degC",
+            "operational": false,
+            "original_units": "degC",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "100 hPa"
+          },
+          "storage": "stored",
+          "value": -53.0
+        },
+        {
+          "absence_state": null,
+          "blocked": null,
+          "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+          "family": "wind",
+          "field": "wind_direction_pressure",
+          "key": "wind_direction_pressure",
+          "phase": null,
+          "provenance": {
+            "adapter_version": "openmeteo-named-point-v1",
+            "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit the Japan Meteorological Agency as the producer of GSM.",
+            "contributing_evidence": [],
+            "contributors": [],
+            "coverage": {
+              "fraction": 0.75,
+              "status": "partial"
+            },
+            "data_mode": "live",
+            "delivery_kind": "reprocessed",
+            "derivation": null,
+            "derivation_citation": null,
+            "derivation_inputs": [],
+            "derivation_version": null,
+            "display_primary_eligible": false,
+            "ensemble": null,
+            "evidence_class": "reprocessed",
+            "forecast_centre": "Japan Meteorological Agency",
+            "freshness": {
+              "age_seconds": 0,
+              "status": "fresh",
+              "threshold_seconds": 68688
+            },
+            "intermediary": "Open-Meteo",
+            "intermediary_method": "Open-Meteo ingests the JMA GSM global model and re-serves it as point time series on its own regular grid.",
+            "last_valid_time": null,
+            "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+            "member": null,
+            "member_control": null,
+            "native_crs": "EPSG:4326",
+            "native_resolution": "unknown",
+            "normalized_units": "degree",
+            "operational": false,
+            "original_units": "degree",
+            "product": "JMA GSM global model (jma_gsm) delivered by Open-Meteo",
+            "provider": "Japan Meteorological Agency",
+            "quality": {
+              "flags": [
+                "coverage_below_threshold:0.7500<1.0000"
+              ],
+              "status": "suspect"
+            },
+            "retrieval_time": "2026-09-05T15:32:24.855958Z",
+            "run_stale": null,
+            "run_stale_reason": "the adapter declared no run time, so the age of this run cannot be computed",
+            "run_time": null,
+            "sample_distance_km": 0.0,
+            "sample_method": "rectilinear",
+            "sampled_latitude": 47.5,
+            "sampled_longitude": -52.5,
+            "source_display_primary": false,
+            "source_id": "openmeteo-jma-gsm",
+            "valid_time": "2026-09-05T15:00:00Z",
+            "vertical_level": "100 hPa"
+          },
+          "storage": "stored",
+          "value": 260.0
+        }
+      ],
+      "pressure_hpa": 100
     }
   ],
   "longitude": -52.5,

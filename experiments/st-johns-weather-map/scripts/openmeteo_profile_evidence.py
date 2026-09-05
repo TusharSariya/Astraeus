@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from ingest.contract import FetchWindow, RunCandidate
 from ingest.experimental.openmeteo import MODEL_SOURCES, OPEN_METEO_PROFILE_FIELDS, OPEN_METEO_PROFILE_LEVELS, OpenMeteoAdapter
 from weather_api.app import PREFIX, app
+from weather_api.storage import ArtifactRevision, FixtureArtifactStore
 from weather_api.store import LiveStore
 
 UTC = timezone.utc
@@ -30,10 +31,20 @@ def main() -> None:
     parser.add_argument("output_dir", type=Path)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    summary: dict[str, object] = {"captured_at": datetime.now(UTC).isoformat(), "sources": {}}
+    prior_summary_path = args.output_dir / "summary.json"
+    prior_summary = json.loads(prior_summary_path.read_text()) if prior_summary_path.exists() else {}
+    summary: dict[str, object] = {
+        "captured_at": prior_summary.get("captured_at"),
+        "reprocessed_at": datetime.now(UTC).isoformat(),
+        "provider_request_count": 0,
+        "derivation": "corrected adapter replay of retained provider responses; no new retrieval",
+        "sources": {},
+    }
 
     for source_id, (model, _producer, _product) in MODEL_SOURCES.items():
         response_path = args.response_dir / f"{source_id}-profile.json"
+        if not response_path.exists():
+            response_path = args.response_dir / f"{source_id}.response.json"
         body = response_path.read_bytes()
         payload = json.loads(body)
         first = datetime.fromisoformat(payload["hourly"]["time"][0]).replace(tzinfo=UTC)
@@ -54,7 +65,8 @@ def main() -> None:
             retained_response = args.output_dir / f"{source_id}.response.json"
             retained_artifact = args.output_dir / f"{source_id}.zarr.zip"
             retained_provenance = args.output_dir / f"{source_id}.provenance.json"
-            shutil.copy2(response_path, retained_response)
+            if response_path.resolve() != retained_response.resolve():
+                shutil.copy2(response_path, retained_response)
             shutil.copy2(profile.payload_path, retained_artifact)
             retained_provenance.write_text(json.dumps(profile.provenance, indent=2, sort_keys=True) + "\n")
 
@@ -80,24 +92,50 @@ def main() -> None:
             with tempfile.TemporaryDirectory() as cache:
                 api_module = sys.modules["weather_api.app"]
                 prior_mode, prior_store = os.environ.get("WEATHER_DATA_MODE"), api_module.live_store
+                prior_pressures = api_module.PROFILE_PRESSURES
                 try:
                     os.environ["WEATHER_DATA_MODE"] = "live"
                     api_module.live_store = lambda: LiveStore(Store(), Path(cache))
+                    api_module.PROFILE_PRESSURES = OPEN_METEO_PROFILE_LEVELS[source_id]
                     response = TestClient(app).get(f"{PREFIX}/profile", params={
                         "latitude": payload["latitude"], "longitude": payload["longitude"],
                         "valid_time": first.isoformat(),
                     })
                 finally:
                     api_module.live_store = prior_store
+                    api_module.PROFILE_PRESSURES = prior_pressures
                     if prior_mode is None: os.environ.pop("WEATHER_DATA_MODE", None)
                     else: os.environ["WEATHER_DATA_MODE"] = prior_mode
             response.raise_for_status()
             api_payload = response.json()
             (args.output_dir / f"{source_id}.profile-api.json").write_text(json.dumps(api_payload, indent=2, sort_keys=True) + "\n")
+            returned_levels = [item["pressure_hpa"] for item in api_payload["levels"]]
+            expected_levels = list(OPEN_METEO_PROFILE_LEVELS[source_id])
+            unavailable_levels = sorted(set(expected_levels) - set(returned_levels), reverse=True)
+            publication = FixtureArtifactStore()
+            prior = ArtifactRevision("prior-visible", 100, True, True)
+            publication.stage(source_id, prior)
+            publication.publish(source_id)
+            publication.stage(
+                source_id,
+                ArtifactRevision(f"retained-{source_id}", profile.byte_size, result.complete, result.qc_passed),
+            )
+            publication_blocked = False
+            publication_reason = None
+            try:
+                publication.publish(source_id)
+            except ValueError as error:
+                publication_blocked = True
+                publication_reason = str(error)
             summary["sources"][source_id] = {
                 "http_status": 200, "response_sha256": hashlib.sha256(body).hexdigest(),
                 "artifact_sha256": profile.provenance["sha256"], "artifact_complete": result.complete,
-                "api_status": response.status_code, "api_levels": [item["pressure_hpa"] for item in api_payload["levels"]],
+                "artifact_qc_passed": result.qc_passed,
+                "api_status": response.status_code, "api_levels": returned_levels,
+                "advertised_levels": expected_levels, "unavailable_api_levels": unavailable_levels,
+                "publication_blocked": publication_blocked, "publication_reason": publication_reason,
+                "visible_revision_after_publication_attempt": publication.visible[source_id].revision,
+                "missing_required_canonical_levels": profile.provenance["missing_required_canonical_levels"],
                 "field_disposition": profile.provenance["field_disposition"],
             }
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")

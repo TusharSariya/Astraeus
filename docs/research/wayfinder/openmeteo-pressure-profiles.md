@@ -43,8 +43,20 @@ the response. No interpolation or replacement was applied.
 The retained bundle is under
 [`evidence/openmeteo-profiles-20260905`](evidence/openmeteo-profiles-20260905/summary.json).
 It contains the three response bodies, deterministic zipped-Zarr profile
-artifacts, provenance, and real `LiveStore` `/profile` readbacks at 1000, 850,
-700, 500 and 300 hPa. `summary.json` records response/artifact SHA-256 values,
-every field-level disposition, successful artifact validation and HTTP 200 API
-readback. The artifacts are experimental and do not register or schedule any
-source.
+artifacts, provenance, and real `LiveStore` `/profile` readbacks at all 16 JMA,
+29 ARPEGE and 33 UKMO advertised levels. The corrected artifacts were derived
+from the retained response bodies with zero new provider requests; the original
+capture time and response hashes remain unchanged, while regenerated artifact
+hashes and the reprocessing time are explicit in `summary.json`.
+
+Canonical completeness is assessed for temperature, wind speed and wind
+direction at every advertised level and retained valid time. JMA's canonical
+arrays are null at 975, 950, 900 and 800 hPa, so its corrected result is
+`complete=false`, `qc_passed=true` and cannot advance the prior visible
+revision. ARPEGE and UKMO are complete for their canonical arrays. Raw/deferred
+fields remain available for inspection even when null; each provenance entry
+keeps its own values, missing mask, literal response unit, delivery class,
+pressure and valid times. The Zarr pressure coordinate itself carries `hPa`,
+`positive=down` and `standard_name=air_pressure`, verified after reopening the
+stored artifact. These artifacts remain experimental and do not register or
+schedule any source.

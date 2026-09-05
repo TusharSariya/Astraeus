@@ -85,10 +85,14 @@ while the prior visible revision remains `prior-visible`.
 
 A separate three-request pressure-profile proof under
 `evidence/openmeteo-profiles-20260905/` retains the source-specific live
-responses and profile artifacts and replays each through the real `LiveStore`
-and `/profile` endpoint. It retrieves all documented profile field/level keys,
-including expected null masks, while publishing only mappings whose semantics
-fit the existing catalogue.
+responses. A zero-request corrected reprocessing pass regenerates the profile
+artifacts and replays every advertised level through the real `LiveStore` and
+`/profile` endpoint. Raw fields retain their literal units and null masks;
+pressure-coordinate metadata survives artifact reopen. JMA is explicitly
+incomplete because its required canonical temperature and wind arrays are null
+at four advertised levels, and the publication proof preserves the prior
+visible revision. ARPEGE and UKMO are canonically complete. None is registered
+or scheduled.
 
 Verification commands:
 
@@ -97,7 +101,7 @@ cd experiments/st-johns-weather-map
 uv run --project api python scripts/openmeteo_brightsky_live_smoke.py ../../docs/research/wayfinder/evidence/openmeteo-brightsky-20260905-corrective
 uv run --project api python scripts/openmeteo_brightsky_retained_http.py ../../docs/research/wayfinder/evidence/openmeteo-brightsky-20260905-corrective
 uv run --project api pytest api/tests/test_adapter_openmeteo.py -q
-PYTHONPATH=. uv run --project api python scripts/openmeteo_profile_evidence.py /tmp ../../docs/research/wayfinder/evidence/openmeteo-profiles-20260905
+PYTHONPATH=api:. uv run --project api python scripts/openmeteo_profile_evidence.py ../../docs/research/wayfinder/evidence/openmeteo-profiles-20260905 ../../docs/research/wayfinder/evidence/openmeteo-profiles-20260905
 cd ../..
 uv run --project tools/specs python tools/specs/specctl.py validate
 ```

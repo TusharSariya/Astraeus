@@ -288,17 +288,11 @@ class OpenMeteoAdapter:
             "request_url": candidate.urls[0], "response_sha256": candidate.detail["sha256"],
             "licence": "CC BY-SA 4.0 research-only" if self.source_id == "openmeteo-ukmo-global" else "Open-Meteo CC BY 4.0 plus upstream terms",
         }
-        artifacts: list[Artifact] = []
-        if not profile_only:
-            path = workdir / f"{self.source_id}.zarr.zip"; write_zarr(dataset, path)
-            provenance = {**common_provenance, "field_disposition": disposition, "quality": validation.as_quality(), "coverage": validation.as_coverage(), **manifest.as_manifest_block()}
-            provenance["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
-            artifacts.append(Artifact("surface", MEDIA_ZARR, path, provenance))
-
         levels = OPEN_METEO_PROFILE_LEVELS[self.source_id]
         profile_vars: dict[str, Any] = {}
         profile_disposition: dict[str, str] = {}
-        raw_profile_fields: dict[str, list[float | None]] = {}
+        raw_profile_fields: dict[str, dict[str, Any]] = {}
+        canonical_level_completeness: dict[str, dict[str, bool]] = {}
         profile_manifest_fields: list[RequiredField] = []
         for kind, (canonical, canonical_units, expected_units, delivery) in OPEN_METEO_PROFILE_FIELDS.items():
             rows = []
@@ -315,26 +309,70 @@ class OpenMeteoAdapter:
                     raise AdapterUnavailable(f"unexpected_units:{key}:{original!r}; expected {expected_units!r}")
                 row = _numbers(hourly[key], count, key)[:, 0, 0]
                 rows.append(row)
-                raw_profile_fields[upstream] = [None if not math.isfinite(value) else float(value) for value in row]
+                values = [None if not math.isfinite(value) else float(value) for value in row]
+                raw_profile_fields[upstream] = {
+                    "values": values,
+                    "missing_mask": [value is None for value in values],
+                    "original_units": original,
+                    "delivery": delivery,
+                    "pressure_hpa": level,
+                    "valid_times": [time.isoformat() for time in times],
+                }
                 status = "retrieved" if numpy.isfinite(row).any() else "missing: all values null"
                 profile_disposition[upstream] = f"{status}; {delivery}"
             if canonical is not None:
                 values = numpy.stack(rows, axis=1)[:, :, None, None]
                 profile_vars[canonical] = (("valid_time", "pressure", "latitude", "longitude"), values, {"units": canonical_units, "original_units": expected_units})
                 profile_manifest_fields.append(RequiredField(canonical, canonical_units, level="pressure levels", evidence_class="reprocessed"))
+                canonical_level_completeness[canonical] = {
+                    str(level): bool(numpy.isfinite(values[:, index, :, :]).all())
+                    for index, level in enumerate(levels)
+                }
 
         profile_dataset = xarray.Dataset(profile_vars, coords={
             "valid_time": numpy.array([numpy.datetime64(t.replace(tzinfo=None), "ns") for t in times]),
-            "pressure": list(levels), "latitude": [float(payload["latitude"])], "longitude": [float(payload["longitude"])],
+            "pressure": ("pressure", list(levels), {"units": "hPa", "positive": "down", "standard_name": "air_pressure"}),
+            "latitude": [float(payload["latitude"])], "longitude": [float(payload["longitude"])],
         })
-        profile_manifest = RunManifest(self.source_id, tuple(profile_manifest_fields), min_coverage_fraction=0.01)
+        # Every advertised canonical field must cover every advertised pressure
+        # level and valid time. An average across the whole profile can hide an
+        # entirely absent level, which would make a partial profile publishable.
+        profile_manifest = RunManifest(self.source_id, tuple(profile_manifest_fields), min_coverage_fraction=1.0)
         profile_validation = validate_run(profile_manifest, profile_dataset, window=window)
-        profile_path = workdir / f"{self.source_id}-pressure-profile.zarr.zip"; write_zarr(profile_dataset, profile_path)
+        missing_canonical_levels = sorted(
+            f"{field}@{level}hPa"
+            for field, by_level in canonical_level_completeness.items()
+            for level, complete in by_level.items()
+            if not complete
+        )
         profile_provenance = {
             **common_provenance, "vertical_coordinate": {"name": "pressure", "units": "hPa", "interpolation": "none"},
             "field_disposition": profile_disposition, "raw_deferred_profile_fields": raw_profile_fields,
+            "canonical_level_completeness": canonical_level_completeness,
+            "missing_required_canonical_levels": missing_canonical_levels,
             "quality": profile_validation.as_quality(), "coverage": profile_validation.as_coverage(), **profile_manifest.as_manifest_block(),
         }
+
+        # Decode and validate every artifact before writing any of them. If a
+        # later write fails, remove this run's files so callers cannot mistake
+        # a partial work directory for a complete result.
+        surface_path = workdir / f"{self.source_id}.zarr.zip"
+        profile_path = workdir / f"{self.source_id}-pressure-profile.zarr.zip"
+        paths = [profile_path] if profile_only else [surface_path, profile_path]
+        try:
+            if not profile_only:
+                write_zarr(dataset, surface_path)
+            write_zarr(profile_dataset, profile_path)
+        except BaseException:
+            for path in paths:
+                path.unlink(missing_ok=True)
+            raise
+
+        artifacts: list[Artifact] = []
+        if not profile_only:
+            provenance = {**common_provenance, "field_disposition": disposition, "quality": validation.as_quality(), "coverage": validation.as_coverage(), **manifest.as_manifest_block()}
+            provenance["sha256"] = hashlib.sha256(surface_path.read_bytes()).hexdigest()
+            artifacts.append(Artifact("surface", MEDIA_ZARR, surface_path, provenance))
         profile_provenance["sha256"] = hashlib.sha256(profile_path.read_bytes()).hexdigest()
         artifacts.append(Artifact("pressure-profile", MEDIA_ZARR, profile_path, profile_provenance))
         surface_complete = True if validation is None else validation.complete

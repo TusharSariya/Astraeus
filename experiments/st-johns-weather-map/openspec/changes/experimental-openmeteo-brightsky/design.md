@@ -24,7 +24,16 @@ pressure-level cloud, geometric vertical speed and geopotential metres are
 retained raw with their response masks because phase, intermediary derivation,
 or catalogue-unit semantics prevent a truthful canonical mapping. No vertical
 or temporal interpolation is performed. A documented field-level array that
-is all null is recorded as missing with its returned unit; the other profile
-fields and levels remain usable. Exact 2026-09-05 availability and the ARPEGE
-all-null vertical-velocity exception are recorded in the non-normative research
-note and retained evidence bundle.
+is all null is recorded as missing with its returned unit. Raw/deferred entries
+retain their values, null mask, literal response unit, delivery class, pressure
+and valid times independently. Legitimately unavailable raw fields do not fail
+QC. Every advertised canonical temperature, wind-speed and wind-direction cell
+is mandatory: completeness is checked across all valid times at each field and
+level, and any missing required cell makes the whole run incomplete and
+nonpublishable while retaining `qc_passed=true`. The pressure coordinate is
+stored with `units=hPa`, `positive=down` and `standard_name=air_pressure`.
+All datasets are decoded and validated before either artifact is written, and a
+write failure removes this run's output files. Exact 2026-09-05 availability,
+including JMA's incomplete canonical levels and the ARPEGE all-null
+vertical-velocity exception, is recorded in the non-normative research note and
+retained evidence bundle.

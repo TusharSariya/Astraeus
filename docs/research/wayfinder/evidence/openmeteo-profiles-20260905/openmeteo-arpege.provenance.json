@@ -1,6 +1,101 @@
 {
   "access_path": "https://api.open-meteo.com/v1/forecast",
   "adapter_version": "openmeteo-named-point-v1",
+  "canonical_level_completeness": {
+    "temperature_pressure": {
+      "10": true,
+      "100": true,
+      "1000": true,
+      "125": true,
+      "150": true,
+      "175": true,
+      "20": true,
+      "200": true,
+      "225": true,
+      "250": true,
+      "275": true,
+      "30": true,
+      "300": true,
+      "350": true,
+      "400": true,
+      "450": true,
+      "50": true,
+      "500": true,
+      "550": true,
+      "600": true,
+      "650": true,
+      "70": true,
+      "700": true,
+      "750": true,
+      "800": true,
+      "850": true,
+      "900": true,
+      "925": true,
+      "950": true
+    },
+    "wind_direction_pressure": {
+      "10": true,
+      "100": true,
+      "1000": true,
+      "125": true,
+      "150": true,
+      "175": true,
+      "20": true,
+      "200": true,
+      "225": true,
+      "250": true,
+      "275": true,
+      "30": true,
+      "300": true,
+      "350": true,
+      "400": true,
+      "450": true,
+      "50": true,
+      "500": true,
+      "550": true,
+      "600": true,
+      "650": true,
+      "70": true,
+      "700": true,
+      "750": true,
+      "800": true,
+      "850": true,
+      "900": true,
+      "925": true,
+      "950": true
+    },
+    "wind_speed_pressure": {
+      "10": true,
+      "100": true,
+      "1000": true,
+      "125": true,
+      "150": true,
+      "175": true,
+      "20": true,
+      "200": true,
+      "225": true,
+      "250": true,
+      "275": true,
+      "30": true,
+      "300": true,
+      "350": true,
+      "400": true,
+      "450": true,
+      "50": true,
+      "500": true,
+      "550": true,
+      "600": true,
+      "650": true,
+      "70": true,
+      "700": true,
+      "750": true,
+      "800": true,
+      "850": true,
+      "900": true,
+      "925": true,
+      "950": true
+    }
+  },
   "cell_selection": "nearest",
   "coverage": {
     "fraction": 1.0,
@@ -258,6 +353,7 @@
     "Accumulation redistribution of 6-hourly totals across finer steps."
   ],
   "licence": "Open-Meteo CC BY 4.0 plus upstream terms",
+  "missing_required_canonical_levels": [],
   "model_selector": "meteofrance_arpege_world025",
   "native_crs": "EPSG:4326",
   "producer": "Meteo-France",
@@ -268,702 +364,3254 @@
     "status": "passed"
   },
   "raw_deferred_profile_fields": {
-    "cloud_cover_1000hPa": [
-      0.0
-    ],
-    "cloud_cover_100hPa": [
-      0.0
-    ],
-    "cloud_cover_10hPa": [
-      0.0
-    ],
-    "cloud_cover_125hPa": [
-      0.0
-    ],
-    "cloud_cover_150hPa": [
-      0.0
-    ],
-    "cloud_cover_175hPa": [
-      0.0
-    ],
-    "cloud_cover_200hPa": [
-      42.0
-    ],
-    "cloud_cover_20hPa": [
-      0.0
-    ],
-    "cloud_cover_225hPa": [
-      80.0
-    ],
-    "cloud_cover_250hPa": [
-      100.0
-    ],
-    "cloud_cover_275hPa": [
-      81.0
-    ],
-    "cloud_cover_300hPa": [
-      74.0
-    ],
-    "cloud_cover_30hPa": [
-      0.0
-    ],
-    "cloud_cover_350hPa": [
-      45.0
-    ],
-    "cloud_cover_400hPa": [
-      9.0
-    ],
-    "cloud_cover_450hPa": [
-      25.0
-    ],
-    "cloud_cover_500hPa": [
-      42.0
-    ],
-    "cloud_cover_50hPa": [
-      0.0
-    ],
-    "cloud_cover_550hPa": [
-      70.0
-    ],
-    "cloud_cover_600hPa": [
-      100.0
-    ],
-    "cloud_cover_650hPa": [
-      60.0
-    ],
-    "cloud_cover_700hPa": [
-      52.0
-    ],
-    "cloud_cover_70hPa": [
-      0.0
-    ],
-    "cloud_cover_750hPa": [
-      11.0
-    ],
-    "cloud_cover_800hPa": [
-      0.0
-    ],
-    "cloud_cover_850hPa": [
-      0.0
-    ],
-    "cloud_cover_900hPa": [
-      14.0
-    ],
-    "cloud_cover_925hPa": [
-      27.0
-    ],
-    "cloud_cover_950hPa": [
-      4.0
-    ],
-    "dew_point_1000hPa": [
-      9.3
-    ],
-    "dew_point_100hPa": [
-      null
-    ],
-    "dew_point_10hPa": [
-      null
-    ],
-    "dew_point_125hPa": [
-      -79.9
-    ],
-    "dew_point_150hPa": [
-      -76.4
-    ],
-    "dew_point_175hPa": [
-      -66.6
-    ],
-    "dew_point_200hPa": [
-      -59.8
-    ],
-    "dew_point_20hPa": [
-      null
-    ],
-    "dew_point_225hPa": [
-      -56.6
-    ],
-    "dew_point_250hPa": [
-      -50.0
-    ],
-    "dew_point_275hPa": [
-      -44.6
-    ],
-    "dew_point_300hPa": [
-      -39.7
-    ],
-    "dew_point_30hPa": [
-      null
-    ],
-    "dew_point_350hPa": [
-      -31.7
-    ],
-    "dew_point_400hPa": [
-      -27.4
-    ],
-    "dew_point_450hPa": [
-      -19.9
-    ],
-    "dew_point_500hPa": [
-      -13.7
-    ],
-    "dew_point_50hPa": [
-      null
-    ],
-    "dew_point_550hPa": [
-      -8.4
-    ],
-    "dew_point_600hPa": [
-      -4.6
-    ],
-    "dew_point_650hPa": [
-      -3.0
-    ],
-    "dew_point_700hPa": [
-      -1.1
-    ],
-    "dew_point_70hPa": [
-      null
-    ],
-    "dew_point_750hPa": [
-      0.0
-    ],
-    "dew_point_800hPa": [
-      -0.2
-    ],
-    "dew_point_850hPa": [
-      -1.8
-    ],
-    "dew_point_900hPa": [
-      5.2
-    ],
-    "dew_point_925hPa": [
-      6.7
-    ],
-    "dew_point_950hPa": [
-      7.5
-    ],
-    "geopotential_height_1000hPa": [
-      113.0
-    ],
-    "geopotential_height_100hPa": [
-      16433.33
-    ],
-    "geopotential_height_10hPa": [
-      31478.26
-    ],
-    "geopotential_height_125hPa": [
-      15005.22
-    ],
-    "geopotential_height_150hPa": [
-      13838.81
-    ],
-    "geopotential_height_175hPa": [
-      12862.75
-    ],
-    "geopotential_height_200hPa": [
-      12023.26
-    ],
-    "geopotential_height_20hPa": [
-      26852.27
-    ],
-    "geopotential_height_225hPa": [
-      11281.68
-    ],
-    "geopotential_height_250hPa": [
-      10603.81
-    ],
-    "geopotential_height_275hPa": [
-      9973.8
-    ],
-    "geopotential_height_300hPa": [
-      9385.48
-    ],
-    "geopotential_height_30hPa": [
-      24177.57
-    ],
-    "geopotential_height_350hPa": [
-      8311.89
-    ],
-    "geopotential_height_400hPa": [
-      7350.62
-    ],
-    "geopotential_height_450hPa": [
-      6480.66
-    ],
-    "geopotential_height_500hPa": [
-      5683.0
-    ],
-    "geopotential_height_50hPa": [
-      20868.97
-    ],
-    "geopotential_height_550hPa": [
-      4948.0
-    ],
-    "geopotential_height_600hPa": [
-      4266.0
-    ],
-    "geopotential_height_650hPa": [
-      3633.0
-    ],
-    "geopotential_height_700hPa": [
-      3041.0
-    ],
-    "geopotential_height_70hPa": [
-      18715.85
-    ],
-    "geopotential_height_750hPa": [
-      2485.0
-    ],
-    "geopotential_height_800hPa": [
-      1957.0
-    ],
-    "geopotential_height_850hPa": [
-      1458.0
-    ],
-    "geopotential_height_900hPa": [
-      989.0
-    ],
-    "geopotential_height_925hPa": [
-      763.0
-    ],
-    "geopotential_height_950hPa": [
-      542.0
-    ],
-    "relative_humidity_1000hPa": [
-      76.0
-    ],
-    "relative_humidity_100hPa": [
-      0.0
-    ],
-    "relative_humidity_10hPa": [
-      0.0
-    ],
-    "relative_humidity_125hPa": [
-      3.0
-    ],
-    "relative_humidity_150hPa": [
-      6.0
-    ],
-    "relative_humidity_175hPa": [
-      35.0
-    ],
-    "relative_humidity_200hPa": [
-      90.0
-    ],
-    "relative_humidity_20hPa": [
-      0.0
-    ],
-    "relative_humidity_225hPa": [
-      99.0
-    ],
-    "relative_humidity_250hPa": [
-      100.0
-    ],
-    "relative_humidity_275hPa": [
-      99.0
-    ],
-    "relative_humidity_300hPa": [
-      98.0
-    ],
-    "relative_humidity_30hPa": [
-      0.0
-    ],
-    "relative_humidity_350hPa": [
-      91.0
-    ],
-    "relative_humidity_400hPa": [
-      75.0
-    ],
-    "relative_humidity_450hPa": [
-      83.0
-    ],
-    "relative_humidity_500hPa": [
-      90.0
-    ],
-    "relative_humidity_50hPa": [
-      0.0
-    ],
-    "relative_humidity_550hPa": [
-      97.0
-    ],
-    "relative_humidity_600hPa": [
-      100.0
-    ],
-    "relative_humidity_650hPa": [
-      95.0
-    ],
-    "relative_humidity_700hPa": [
-      93.0
-    ],
-    "relative_humidity_70hPa": [
-      0.0
-    ],
-    "relative_humidity_750hPa": [
-      78.0
-    ],
-    "relative_humidity_800hPa": [
-      60.0
-    ],
-    "relative_humidity_850hPa": [
-      58.0
-    ],
-    "relative_humidity_900hPa": [
-      86.0
-    ],
-    "relative_humidity_925hPa": [
-      91.0
-    ],
-    "relative_humidity_950hPa": [
-      86.0
-    ],
-    "temperature_1000hPa": [
-      13.4
-    ],
-    "temperature_100hPa": [
-      -53.5
-    ],
-    "temperature_10hPa": [
-      -39.5
-    ],
-    "temperature_125hPa": [
-      -55.0
-    ],
-    "temperature_150hPa": [
-      -55.5
-    ],
-    "temperature_175hPa": [
-      -58.5
-    ],
-    "temperature_200hPa": [
-      -59.0
-    ],
-    "temperature_20hPa": [
-      -48.0
-    ],
-    "temperature_225hPa": [
-      -56.5
-    ],
-    "temperature_250hPa": [
-      -50.0
-    ],
-    "temperature_275hPa": [
-      -44.5
-    ],
-    "temperature_300hPa": [
-      -39.5
-    ],
-    "temperature_30hPa": [
-      -50.0
-    ],
-    "temperature_350hPa": [
-      -30.7
-    ],
-    "temperature_400hPa": [
-      -24.2
-    ],
-    "temperature_450hPa": [
-      -17.8
-    ],
-    "temperature_500hPa": [
-      -12.4
-    ],
-    "temperature_50hPa": [
-      -53.5
-    ],
-    "temperature_550hPa": [
-      -8.0
-    ],
-    "temperature_600hPa": [
-      -4.6
-    ],
-    "temperature_650hPa": [
-      -2.3
-    ],
-    "temperature_700hPa": [
-      -0.2
-    ],
-    "temperature_70hPa": [
-      -54.5
-    ],
-    "temperature_750hPa": [
-      3.5
-    ],
-    "temperature_800hPa": [
-      7.0
-    ],
-    "temperature_850hPa": [
-      5.8
-    ],
-    "temperature_900hPa": [
-      7.3
-    ],
-    "temperature_925hPa": [
-      8.1
-    ],
-    "temperature_950hPa": [
-      9.8
-    ],
-    "vertical_velocity_1000hPa": [
-      null
-    ],
-    "vertical_velocity_100hPa": [
-      null
-    ],
-    "vertical_velocity_10hPa": [
-      null
-    ],
-    "vertical_velocity_125hPa": [
-      null
-    ],
-    "vertical_velocity_150hPa": [
-      null
-    ],
-    "vertical_velocity_175hPa": [
-      null
-    ],
-    "vertical_velocity_200hPa": [
-      null
-    ],
-    "vertical_velocity_20hPa": [
-      null
-    ],
-    "vertical_velocity_225hPa": [
-      null
-    ],
-    "vertical_velocity_250hPa": [
-      null
-    ],
-    "vertical_velocity_275hPa": [
-      null
-    ],
-    "vertical_velocity_300hPa": [
-      null
-    ],
-    "vertical_velocity_30hPa": [
-      null
-    ],
-    "vertical_velocity_350hPa": [
-      null
-    ],
-    "vertical_velocity_400hPa": [
-      null
-    ],
-    "vertical_velocity_450hPa": [
-      null
-    ],
-    "vertical_velocity_500hPa": [
-      null
-    ],
-    "vertical_velocity_50hPa": [
-      null
-    ],
-    "vertical_velocity_550hPa": [
-      null
-    ],
-    "vertical_velocity_600hPa": [
-      null
-    ],
-    "vertical_velocity_650hPa": [
-      null
-    ],
-    "vertical_velocity_700hPa": [
-      null
-    ],
-    "vertical_velocity_70hPa": [
-      null
-    ],
-    "vertical_velocity_750hPa": [
-      null
-    ],
-    "vertical_velocity_800hPa": [
-      null
-    ],
-    "vertical_velocity_850hPa": [
-      null
-    ],
-    "vertical_velocity_900hPa": [
-      null
-    ],
-    "vertical_velocity_925hPa": [
-      null
-    ],
-    "vertical_velocity_950hPa": [
-      null
-    ],
-    "wind_direction_1000hPa": [
-      104.0
-    ],
-    "wind_direction_100hPa": [
-      265.0
-    ],
-    "wind_direction_10hPa": [
-      175.0
-    ],
-    "wind_direction_125hPa": [
-      254.0
-    ],
-    "wind_direction_150hPa": [
-      253.0
-    ],
-    "wind_direction_175hPa": [
-      231.0
-    ],
-    "wind_direction_200hPa": [
-      240.0
-    ],
-    "wind_direction_20hPa": [
-      188.0
-    ],
-    "wind_direction_225hPa": [
-      218.0
-    ],
-    "wind_direction_250hPa": [
-      214.0
-    ],
-    "wind_direction_275hPa": [
-      217.0
-    ],
-    "wind_direction_300hPa": [
-      223.0
-    ],
-    "wind_direction_30hPa": [
-      234.0
-    ],
-    "wind_direction_350hPa": [
-      226.0
-    ],
-    "wind_direction_400hPa": [
-      217.0
-    ],
-    "wind_direction_450hPa": [
-      202.0
-    ],
-    "wind_direction_500hPa": [
-      207.0
-    ],
-    "wind_direction_50hPa": [
-      259.0
-    ],
-    "wind_direction_550hPa": [
-      222.0
-    ],
-    "wind_direction_600hPa": [
-      206.0
-    ],
-    "wind_direction_650hPa": [
-      170.0
-    ],
-    "wind_direction_700hPa": [
-      162.0
-    ],
-    "wind_direction_70hPa": [
-      270.0
-    ],
-    "wind_direction_750hPa": [
-      153.0
-    ],
-    "wind_direction_800hPa": [
-      125.0
-    ],
-    "wind_direction_850hPa": [
-      96.0
-    ],
-    "wind_direction_900hPa": [
-      94.0
-    ],
-    "wind_direction_925hPa": [
-      107.0
-    ],
-    "wind_direction_950hPa": [
-      109.0
-    ],
-    "wind_speed_1000hPa": [
-      5.87
-    ],
-    "wind_speed_100hPa": [
-      12.04
-    ],
-    "wind_speed_10hPa": [
-      4.01
-    ],
-    "wind_speed_125hPa": [
-      16.99
-    ],
-    "wind_speed_150hPa": [
-      20.56
-    ],
-    "wind_speed_175hPa": [
-      19.21
-    ],
-    "wind_speed_200hPa": [
-      20.3
-    ],
-    "wind_speed_20hPa": [
-      2.36
-    ],
-    "wind_speed_225hPa": [
-      18.27
-    ],
-    "wind_speed_250hPa": [
-      17.75
-    ],
-    "wind_speed_275hPa": [
-      16.2
-    ],
-    "wind_speed_300hPa": [
-      14.15
-    ],
-    "wind_speed_30hPa": [
-      8.6
-    ],
-    "wind_speed_350hPa": [
-      11.55
-    ],
-    "wind_speed_400hPa": [
-      10.47
-    ],
-    "wind_speed_450hPa": [
-      7.92
-    ],
-    "wind_speed_500hPa": [
-      11.18
-    ],
-    "wind_speed_50hPa": [
-      5.43
-    ],
-    "wind_speed_550hPa": [
-      10.91
-    ],
-    "wind_speed_600hPa": [
-      12.4
-    ],
-    "wind_speed_650hPa": [
-      10.96
-    ],
-    "wind_speed_700hPa": [
-      9.27
-    ],
-    "wind_speed_70hPa": [
-      7.0
-    ],
-    "wind_speed_750hPa": [
-      6.19
-    ],
-    "wind_speed_800hPa": [
-      4.39
-    ],
-    "wind_speed_850hPa": [
-      11.71
-    ],
-    "wind_speed_900hPa": [
-      14.45
-    ],
-    "wind_speed_925hPa": [
-      13.18
-    ],
-    "wind_speed_950hPa": [
-      11.7
-    ]
+    "cloud_cover_1000hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 1000,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_100hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 100,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_10hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 10,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_125hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 125,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_150hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 150,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_175hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 175,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_200hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 200,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        42.0
+      ]
+    },
+    "cloud_cover_20hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 20,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_225hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 225,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        80.0
+      ]
+    },
+    "cloud_cover_250hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 250,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        100.0
+      ]
+    },
+    "cloud_cover_275hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 275,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        81.0
+      ]
+    },
+    "cloud_cover_300hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 300,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        74.0
+      ]
+    },
+    "cloud_cover_30hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 30,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_350hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 350,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        45.0
+      ]
+    },
+    "cloud_cover_400hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 400,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        9.0
+      ]
+    },
+    "cloud_cover_450hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 450,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        25.0
+      ]
+    },
+    "cloud_cover_500hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 500,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        42.0
+      ]
+    },
+    "cloud_cover_50hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 50,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_550hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 550,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        70.0
+      ]
+    },
+    "cloud_cover_600hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 600,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        100.0
+      ]
+    },
+    "cloud_cover_650hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 650,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        60.0
+      ]
+    },
+    "cloud_cover_700hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 700,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        52.0
+      ]
+    },
+    "cloud_cover_70hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 70,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_750hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 750,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        11.0
+      ]
+    },
+    "cloud_cover_800hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 800,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_850hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 850,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "cloud_cover_900hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 900,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        14.0
+      ]
+    },
+    "cloud_cover_925hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 925,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        27.0
+      ]
+    },
+    "cloud_cover_950hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 950,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        4.0
+      ]
+    },
+    "dew_point_1000hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 1000,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        9.3
+      ]
+    },
+    "dew_point_100hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 100,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "dew_point_10hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 10,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "dew_point_125hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 125,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -79.9
+      ]
+    },
+    "dew_point_150hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 150,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -76.4
+      ]
+    },
+    "dew_point_175hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 175,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -66.6
+      ]
+    },
+    "dew_point_200hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 200,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -59.8
+      ]
+    },
+    "dew_point_20hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 20,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "dew_point_225hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 225,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -56.6
+      ]
+    },
+    "dew_point_250hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 250,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -50.0
+      ]
+    },
+    "dew_point_275hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 275,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -44.6
+      ]
+    },
+    "dew_point_300hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 300,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -39.7
+      ]
+    },
+    "dew_point_30hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 30,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "dew_point_350hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 350,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -31.7
+      ]
+    },
+    "dew_point_400hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 400,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -27.4
+      ]
+    },
+    "dew_point_450hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 450,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -19.9
+      ]
+    },
+    "dew_point_500hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 500,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -13.7
+      ]
+    },
+    "dew_point_50hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 50,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "dew_point_550hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 550,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -8.4
+      ]
+    },
+    "dew_point_600hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 600,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -4.6
+      ]
+    },
+    "dew_point_650hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 650,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -3.0
+      ]
+    },
+    "dew_point_700hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 700,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -1.1
+      ]
+    },
+    "dew_point_70hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 70,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "dew_point_750hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 750,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "dew_point_800hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 800,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -0.2
+      ]
+    },
+    "dew_point_850hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 850,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -1.8
+      ]
+    },
+    "dew_point_900hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 900,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        5.2
+      ]
+    },
+    "dew_point_925hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 925,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        6.7
+      ]
+    },
+    "dew_point_950hPa": {
+      "delivery": "intermediary_derived",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 950,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        7.5
+      ]
+    },
+    "geopotential_height_1000hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 1000,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        113.0
+      ]
+    },
+    "geopotential_height_100hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 100,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        16433.33
+      ]
+    },
+    "geopotential_height_10hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 10,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        31478.26
+      ]
+    },
+    "geopotential_height_125hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 125,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        15005.22
+      ]
+    },
+    "geopotential_height_150hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 150,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        13838.81
+      ]
+    },
+    "geopotential_height_175hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 175,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        12862.75
+      ]
+    },
+    "geopotential_height_200hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 200,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        12023.26
+      ]
+    },
+    "geopotential_height_20hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 20,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        26852.27
+      ]
+    },
+    "geopotential_height_225hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 225,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        11281.68
+      ]
+    },
+    "geopotential_height_250hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 250,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        10603.81
+      ]
+    },
+    "geopotential_height_275hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 275,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        9973.8
+      ]
+    },
+    "geopotential_height_300hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 300,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        9385.48
+      ]
+    },
+    "geopotential_height_30hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 30,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        24177.57
+      ]
+    },
+    "geopotential_height_350hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 350,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        8311.89
+      ]
+    },
+    "geopotential_height_400hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 400,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        7350.62
+      ]
+    },
+    "geopotential_height_450hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 450,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        6480.66
+      ]
+    },
+    "geopotential_height_500hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 500,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        5683.0
+      ]
+    },
+    "geopotential_height_50hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 50,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        20868.97
+      ]
+    },
+    "geopotential_height_550hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 550,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        4948.0
+      ]
+    },
+    "geopotential_height_600hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 600,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        4266.0
+      ]
+    },
+    "geopotential_height_650hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 650,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        3633.0
+      ]
+    },
+    "geopotential_height_700hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 700,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        3041.0
+      ]
+    },
+    "geopotential_height_70hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 70,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        18715.85
+      ]
+    },
+    "geopotential_height_750hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 750,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        2485.0
+      ]
+    },
+    "geopotential_height_800hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 800,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        1957.0
+      ]
+    },
+    "geopotential_height_850hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 850,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        1458.0
+      ]
+    },
+    "geopotential_height_900hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 900,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        989.0
+      ]
+    },
+    "geopotential_height_925hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 925,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        763.0
+      ]
+    },
+    "geopotential_height_950hPa": {
+      "delivery": "raw_units_not_catalogued",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m",
+      "pressure_hpa": 950,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        542.0
+      ]
+    },
+    "relative_humidity_1000hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 1000,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        76.0
+      ]
+    },
+    "relative_humidity_100hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 100,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "relative_humidity_10hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 10,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "relative_humidity_125hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 125,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        3.0
+      ]
+    },
+    "relative_humidity_150hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 150,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        6.0
+      ]
+    },
+    "relative_humidity_175hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 175,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        35.0
+      ]
+    },
+    "relative_humidity_200hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 200,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        90.0
+      ]
+    },
+    "relative_humidity_20hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 20,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "relative_humidity_225hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 225,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        99.0
+      ]
+    },
+    "relative_humidity_250hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 250,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        100.0
+      ]
+    },
+    "relative_humidity_275hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 275,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        99.0
+      ]
+    },
+    "relative_humidity_300hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 300,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        98.0
+      ]
+    },
+    "relative_humidity_30hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 30,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "relative_humidity_350hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 350,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        91.0
+      ]
+    },
+    "relative_humidity_400hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 400,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        75.0
+      ]
+    },
+    "relative_humidity_450hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 450,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        83.0
+      ]
+    },
+    "relative_humidity_500hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 500,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        90.0
+      ]
+    },
+    "relative_humidity_50hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 50,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "relative_humidity_550hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 550,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        97.0
+      ]
+    },
+    "relative_humidity_600hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 600,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        100.0
+      ]
+    },
+    "relative_humidity_650hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 650,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        95.0
+      ]
+    },
+    "relative_humidity_700hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 700,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        93.0
+      ]
+    },
+    "relative_humidity_70hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 70,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        0.0
+      ]
+    },
+    "relative_humidity_750hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 750,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        78.0
+      ]
+    },
+    "relative_humidity_800hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 800,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        60.0
+      ]
+    },
+    "relative_humidity_850hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 850,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        58.0
+      ]
+    },
+    "relative_humidity_900hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 900,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        86.0
+      ]
+    },
+    "relative_humidity_925hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 925,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        91.0
+      ]
+    },
+    "relative_humidity_950hPa": {
+      "delivery": "raw_phase_unknown",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "%",
+      "pressure_hpa": 950,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        86.0
+      ]
+    },
+    "temperature_1000hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 1000,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        13.4
+      ]
+    },
+    "temperature_100hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 100,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -53.5
+      ]
+    },
+    "temperature_10hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 10,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -39.5
+      ]
+    },
+    "temperature_125hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 125,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -55.0
+      ]
+    },
+    "temperature_150hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 150,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -55.5
+      ]
+    },
+    "temperature_175hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 175,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -58.5
+      ]
+    },
+    "temperature_200hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 200,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -59.0
+      ]
+    },
+    "temperature_20hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 20,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -48.0
+      ]
+    },
+    "temperature_225hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 225,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -56.5
+      ]
+    },
+    "temperature_250hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 250,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -50.0
+      ]
+    },
+    "temperature_275hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 275,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -44.5
+      ]
+    },
+    "temperature_300hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 300,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -39.5
+      ]
+    },
+    "temperature_30hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 30,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -50.0
+      ]
+    },
+    "temperature_350hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 350,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -30.7
+      ]
+    },
+    "temperature_400hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 400,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -24.2
+      ]
+    },
+    "temperature_450hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 450,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -17.8
+      ]
+    },
+    "temperature_500hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 500,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -12.4
+      ]
+    },
+    "temperature_50hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 50,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -53.5
+      ]
+    },
+    "temperature_550hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 550,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -8.0
+      ]
+    },
+    "temperature_600hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 600,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -4.6
+      ]
+    },
+    "temperature_650hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 650,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -2.3
+      ]
+    },
+    "temperature_700hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 700,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -0.2
+      ]
+    },
+    "temperature_70hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 70,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        -54.5
+      ]
+    },
+    "temperature_750hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 750,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        3.5
+      ]
+    },
+    "temperature_800hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 800,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        7.0
+      ]
+    },
+    "temperature_850hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 850,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        5.8
+      ]
+    },
+    "temperature_900hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 900,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        7.3
+      ]
+    },
+    "temperature_925hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 925,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        8.1
+      ]
+    },
+    "temperature_950hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0C",
+      "pressure_hpa": 950,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        9.8
+      ]
+    },
+    "vertical_velocity_1000hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 1000,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_100hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 100,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_10hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 10,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_125hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 125,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_150hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 150,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_175hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 175,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_200hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 200,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_20hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 20,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_225hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 225,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_250hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 250,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_275hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 275,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_300hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 300,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_30hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 30,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_350hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 350,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_400hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 400,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_450hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 450,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_500hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 500,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_50hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 50,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_550hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 550,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_600hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 600,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_650hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 650,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_700hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 700,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_70hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 70,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_750hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 750,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_800hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 800,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_850hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 850,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_900hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 900,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_925hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 925,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "vertical_velocity_950hPa": {
+      "delivery": "raw_incompatible_with_omega",
+      "missing_mask": [
+        true
+      ],
+      "original_units": "undefined",
+      "pressure_hpa": 950,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        null
+      ]
+    },
+    "wind_direction_1000hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 1000,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        104.0
+      ]
+    },
+    "wind_direction_100hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 100,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        265.0
+      ]
+    },
+    "wind_direction_10hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 10,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        175.0
+      ]
+    },
+    "wind_direction_125hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 125,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        254.0
+      ]
+    },
+    "wind_direction_150hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 150,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        253.0
+      ]
+    },
+    "wind_direction_175hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 175,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        231.0
+      ]
+    },
+    "wind_direction_200hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 200,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        240.0
+      ]
+    },
+    "wind_direction_20hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 20,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        188.0
+      ]
+    },
+    "wind_direction_225hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 225,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        218.0
+      ]
+    },
+    "wind_direction_250hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 250,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        214.0
+      ]
+    },
+    "wind_direction_275hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 275,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        217.0
+      ]
+    },
+    "wind_direction_300hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 300,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        223.0
+      ]
+    },
+    "wind_direction_30hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 30,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        234.0
+      ]
+    },
+    "wind_direction_350hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 350,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        226.0
+      ]
+    },
+    "wind_direction_400hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 400,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        217.0
+      ]
+    },
+    "wind_direction_450hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 450,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        202.0
+      ]
+    },
+    "wind_direction_500hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 500,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        207.0
+      ]
+    },
+    "wind_direction_50hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 50,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        259.0
+      ]
+    },
+    "wind_direction_550hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 550,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        222.0
+      ]
+    },
+    "wind_direction_600hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 600,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        206.0
+      ]
+    },
+    "wind_direction_650hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 650,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        170.0
+      ]
+    },
+    "wind_direction_700hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 700,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        162.0
+      ]
+    },
+    "wind_direction_70hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 70,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        270.0
+      ]
+    },
+    "wind_direction_750hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 750,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        153.0
+      ]
+    },
+    "wind_direction_800hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 800,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        125.0
+      ]
+    },
+    "wind_direction_850hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 850,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        96.0
+      ]
+    },
+    "wind_direction_900hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 900,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        94.0
+      ]
+    },
+    "wind_direction_925hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 925,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        107.0
+      ]
+    },
+    "wind_direction_950hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "\u00b0",
+      "pressure_hpa": 950,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        109.0
+      ]
+    },
+    "wind_speed_1000hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 1000,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        5.87
+      ]
+    },
+    "wind_speed_100hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 100,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        12.04
+      ]
+    },
+    "wind_speed_10hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 10,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        4.01
+      ]
+    },
+    "wind_speed_125hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 125,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        16.99
+      ]
+    },
+    "wind_speed_150hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 150,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        20.56
+      ]
+    },
+    "wind_speed_175hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 175,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        19.21
+      ]
+    },
+    "wind_speed_200hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 200,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        20.3
+      ]
+    },
+    "wind_speed_20hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 20,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        2.36
+      ]
+    },
+    "wind_speed_225hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 225,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        18.27
+      ]
+    },
+    "wind_speed_250hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 250,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        17.75
+      ]
+    },
+    "wind_speed_275hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 275,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        16.2
+      ]
+    },
+    "wind_speed_300hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 300,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        14.15
+      ]
+    },
+    "wind_speed_30hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 30,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        8.6
+      ]
+    },
+    "wind_speed_350hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 350,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        11.55
+      ]
+    },
+    "wind_speed_400hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 400,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        10.47
+      ]
+    },
+    "wind_speed_450hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 450,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        7.92
+      ]
+    },
+    "wind_speed_500hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 500,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        11.18
+      ]
+    },
+    "wind_speed_50hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 50,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        5.43
+      ]
+    },
+    "wind_speed_550hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 550,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        10.91
+      ]
+    },
+    "wind_speed_600hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 600,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        12.4
+      ]
+    },
+    "wind_speed_650hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 650,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        10.96
+      ]
+    },
+    "wind_speed_700hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 700,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        9.27
+      ]
+    },
+    "wind_speed_70hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 70,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        7.0
+      ]
+    },
+    "wind_speed_750hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 750,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        6.19
+      ]
+    },
+    "wind_speed_800hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 800,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        4.39
+      ]
+    },
+    "wind_speed_850hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 850,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        11.71
+      ]
+    },
+    "wind_speed_900hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 900,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        14.45
+      ]
+    },
+    "wind_speed_925hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 925,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        13.18
+      ]
+    },
+    "wind_speed_950hPa": {
+      "delivery": "reprocessed",
+      "missing_mask": [
+        false
+      ],
+      "original_units": "m/s",
+      "pressure_hpa": 950,
+      "valid_times": [
+        "2026-09-05T15:00:00+00:00"
+      ],
+      "values": [
+        11.7
+      ]
+    }
   },
   "request_url": "https://api.open-meteo.com/v1/forecast?latitude=47.5615&longitude=-52.7126&models=meteofrance_arpege_world025&hourly=temperature_1000hPa%2Crelative_humidity_1000hPa%2Cdew_point_1000hPa%2Ccloud_cover_1000hPa%2Cwind_speed_1000hPa%2Cwind_direction_1000hPa%2Cvertical_velocity_1000hPa%2Cgeopotential_height_1000hPa%2Ctemperature_950hPa%2Crelative_humidity_950hPa%2Cdew_point_950hPa%2Ccloud_cover_950hPa%2Cwind_speed_950hPa%2Cwind_direction_950hPa%2Cvertical_velocity_950hPa%2Cgeopotential_height_950hPa%2Ctemperature_925hPa%2Crelative_humidity_925hPa%2Cdew_point_925hPa%2Ccloud_cover_925hPa%2Cwind_speed_925hPa%2Cwind_direction_925hPa%2Cvertical_velocity_925hPa%2Cgeopotential_height_925hPa%2Ctemperature_900hPa%2Crelative_humidity_900hPa%2Cdew_point_900hPa%2Ccloud_cover_900hPa%2Cwind_speed_900hPa%2Cwind_direction_900hPa%2Cvertical_velocity_900hPa%2Cgeopotential_height_900hPa%2Ctemperature_850hPa%2Crelative_humidity_850hPa%2Cdew_point_850hPa%2Ccloud_cover_850hPa%2Cwind_speed_850hPa%2Cwind_direction_850hPa%2Cvertical_velocity_850hPa%2Cgeopotential_height_850hPa%2Ctemperature_800hPa%2Crelative_humidity_800hPa%2Cdew_point_800hPa%2Ccloud_cover_800hPa%2Cwind_speed_800hPa%2Cwind_direction_800hPa%2Cvertical_velocity_800hPa%2Cgeopotential_height_800hPa%2Ctemperature_750hPa%2Crelative_humidity_750hPa%2Cdew_point_750hPa%2Ccloud_cover_750hPa%2Cwind_speed_750hPa%2Cwind_direction_750hPa%2Cvertical_velocity_750hPa%2Cgeopotential_height_750hPa%2Ctemperature_700hPa%2Crelative_humidity_700hPa%2Cdew_point_700hPa%2Ccloud_cover_700hPa%2Cwind_speed_700hPa%2Cwind_direction_700hPa%2Cvertical_velocity_700hPa%2Cgeopotential_height_700hPa%2Ctemperature_650hPa%2Crelative_humidity_650hPa%2Cdew_point_650hPa%2Ccloud_cover_650hPa%2Cwind_speed_650hPa%2Cwind_direction_650hPa%2Cvertical_velocity_650hPa%2Cgeopotential_height_650hPa%2Ctemperature_600hPa%2Crelative_humidity_600hPa%2Cdew_point_600hPa%2Ccloud_cover_600hPa%2Cwind_speed_600hPa%2Cwind_direction_600hPa%2Cvertical_velocity_600hPa%2Cgeopotential_height_600hPa%2Ctemperature_550hPa%2Crelative_humidity_550hPa%2Cdew_point_550hPa%2Ccloud_cover_550hPa%2Cwind_speed_550hPa%2Cwind_direction_550hPa%2Cvertical_velocity_550hPa%2Cgeopotential_height_550hPa%2Ctemperature_500hPa%2Crelative_humidity_500hPa%2Cdew_point_500hPa%2Ccloud_cover_500hPa%2Cwind_speed_500hPa%2Cwind_direction_500hPa%2Cvertical_velocity_500hPa%2Cgeopotential_height_500hPa%2Ctemperature_450hPa%2Crelative_humidity_450hPa%2Cdew_point_450hPa%2Ccloud_cover_450hPa%2Cwind_speed_450hPa%2Cwind_direction_450hPa%2Cvertical_velocity_450hPa%2Cgeopotential_height_450hPa%2Ctemperature_400hPa%2Crelative_humidity_400hPa%2Cdew_point_400hPa%2Ccloud_cover_400hPa%2Cwind_speed_400hPa%2Cwind_direction_400hPa%2Cvertical_velocity_400hPa%2Cgeopotential_height_400hPa%2Ctemperature_350hPa%2Crelative_humidity_350hPa%2Cdew_point_350hPa%2Ccloud_cover_350hPa%2Cwind_speed_350hPa%2Cwind_direction_350hPa%2Cvertical_velocity_350hPa%2Cgeopotential_height_350hPa%2Ctemperature_300hPa%2Crelative_humidity_300hPa%2Cdew_point_300hPa%2Ccloud_cover_300hPa%2Cwind_speed_300hPa%2Cwind_direction_300hPa%2Cvertical_velocity_300hPa%2Cgeopotential_height_300hPa%2Ctemperature_275hPa%2Crelative_humidity_275hPa%2Cdew_point_275hPa%2Ccloud_cover_275hPa%2Cwind_speed_275hPa%2Cwind_direction_275hPa%2Cvertical_velocity_275hPa%2Cgeopotential_height_275hPa%2Ctemperature_250hPa%2Crelative_humidity_250hPa%2Cdew_point_250hPa%2Ccloud_cover_250hPa%2Cwind_speed_250hPa%2Cwind_direction_250hPa%2Cvertical_velocity_250hPa%2Cgeopotential_height_250hPa%2Ctemperature_225hPa%2Crelative_humidity_225hPa%2Cdew_point_225hPa%2Ccloud_cover_225hPa%2Cwind_speed_225hPa%2Cwind_direction_225hPa%2Cvertical_velocity_225hPa%2Cgeopotential_height_225hPa%2Ctemperature_200hPa%2Crelative_humidity_200hPa%2Cdew_point_200hPa%2Ccloud_cover_200hPa%2Cwind_speed_200hPa%2Cwind_direction_200hPa%2Cvertical_velocity_200hPa%2Cgeopotential_height_200hPa%2Ctemperature_175hPa%2Crelative_humidity_175hPa%2Cdew_point_175hPa%2Ccloud_cover_175hPa%2Cwind_speed_175hPa%2Cwind_direction_175hPa%2Cvertical_velocity_175hPa%2Cgeopotential_height_175hPa%2Ctemperature_150hPa%2Crelative_humidity_150hPa%2Cdew_point_150hPa%2Ccloud_cover_150hPa%2Cwind_speed_150hPa%2Cwind_direction_150hPa%2Cvertical_velocity_150hPa%2Cgeopotential_height_150hPa%2Ctemperature_125hPa%2Crelative_humidity_125hPa%2Cdew_point_125hPa%2Ccloud_cover_125hPa%2Cwind_speed_125hPa%2Cwind_direction_125hPa%2Cvertical_velocity_125hPa%2Cgeopotential_height_125hPa%2Ctemperature_100hPa%2Crelative_humidity_100hPa%2Cdew_point_100hPa%2Ccloud_cover_100hPa%2Cwind_speed_100hPa%2Cwind_direction_100hPa%2Cvertical_velocity_100hPa%2Cgeopotential_height_100hPa%2Ctemperature_70hPa%2Crelative_humidity_70hPa%2Cdew_point_70hPa%2Ccloud_cover_70hPa%2Cwind_speed_70hPa%2Cwind_direction_70hPa%2Cvertical_velocity_70hPa%2Cgeopotential_height_70hPa%2Ctemperature_50hPa%2Crelative_humidity_50hPa%2Cdew_point_50hPa%2Ccloud_cover_50hPa%2Cwind_speed_50hPa%2Cwind_direction_50hPa%2Cvertical_velocity_50hPa%2Cgeopotential_height_50hPa%2Ctemperature_30hPa%2Crelative_humidity_30hPa%2Cdew_point_30hPa%2Ccloud_cover_30hPa%2Cwind_speed_30hPa%2Cwind_direction_30hPa%2Cvertical_velocity_30hPa%2Cgeopotential_height_30hPa%2Ctemperature_20hPa%2Crelative_humidity_20hPa%2Cdew_point_20hPa%2Ccloud_cover_20hPa%2Cwind_speed_20hPa%2Cwind_direction_20hPa%2Cvertical_velocity_20hPa%2Cgeopotential_height_20hPa%2Ctemperature_10hPa%2Crelative_humidity_10hPa%2Cdew_point_10hPa%2Ccloud_cover_10hPa%2Cwind_speed_10hPa%2Cwind_direction_10hPa%2Cvertical_velocity_10hPa%2Cgeopotential_height_10hPa&timezone=GMT&elevation=nan&cell_selection=nearest&wind_speed_unit=ms&forecast_hours=1",
   "requested_elevation": "nan",
@@ -977,7 +3625,7 @@
     "reason": "rolling response has no per-value run reference",
     "value": null
   },
-  "sha256": "3a09bca4b097d735905f1448a6039ad27e4e83a695de76cb7c3fbb570279fd1a",
+  "sha256": "a94fcb808effd66c21e0ae08b94dbdd78613bc609cdd8004c33bd9987b23e0af",
   "source_id": "openmeteo-arpege",
   "vertical_coordinate": {
     "interpolation": "none",

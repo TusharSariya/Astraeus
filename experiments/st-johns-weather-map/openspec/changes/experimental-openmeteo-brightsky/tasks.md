@@ -14,6 +14,10 @@
   documented pressure surfaces, all eight upstream field families, units,
   pressure coordinate, no-interpolation rule and per-field missing masks;
   retain exact live responses, immutable artifacts and `/profile` readback.
+- [x] Reprocess the retained pressure responses without provider requests;
+  require every advertised canonical field/level/time, preserve literal raw
+  units and masks, encode the pressure coordinate, prove JMA publication
+  refusal, and read every advertised level through `LiveStore` and `/profile`.
 - [ ] Accept a future production pressure-profile contract (owner only); the
   experimental evidence does not authorize registration or scheduling.
 - [ ] Accept production source contracts and licence decisions (owner only).

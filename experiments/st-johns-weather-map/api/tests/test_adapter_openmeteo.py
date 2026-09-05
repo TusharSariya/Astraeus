@@ -86,6 +86,7 @@ def test_named_model_fixture_becomes_immutable_point_artifact(tmp_path, source, 
     with xarray.open_zarr(zarr.storage.ZipStore(profile.payload_path, mode="r"), consolidated=False) as dataset:
         assert dataset.sizes["pressure"] == len(OPEN_METEO_PROFILE_LEVELS[source])
         assert set(dataset.data_vars) == {"temperature_pressure", "wind_speed_pressure", "wind_direction_pressure"}
+        assert dataset.pressure.attrs == {"units": "hPa", "positive": "down", "standard_name": "air_pressure"}
         assert profile.provenance["vertical_coordinate"]["interpolation"] == "none"
         assert profile.provenance["field_disposition"][f"relative_humidity_{OPEN_METEO_PROFILE_LEVELS[source][0]}hPa"].endswith("raw_phase_unknown")
     assert "models=" in client.urls[0] and "elevation=nan" in client.urls[0] and "cell_selection=nearest" in client.urls[0]
@@ -116,8 +117,56 @@ def test_profile_preserves_expected_null_mask_and_undefined_unit_without_failing
     )
     profile = next(item for item in result.artifacts if item.logical_name == "pressure-profile")
     assert result.complete
-    assert profile.provenance["raw_deferred_profile_fields"]["vertical_velocity_1000hPa"] == [None, None, None]
+    raw = profile.provenance["raw_deferred_profile_fields"]["vertical_velocity_1000hPa"]
+    assert raw == {
+        "values": [None, None, None],
+        "missing_mask": [True, True, True],
+        "original_units": "undefined",
+        "delivery": "raw_incompatible_with_omega",
+        "pressure_hpa": 1000,
+        "valid_times": [
+            "2026-09-05T00:00:00+00:00",
+            "2026-09-05T01:00:00+00:00",
+            "2026-09-05T02:00:00+00:00",
+        ],
+    }
     assert profile.provenance["field_disposition"]["vertical_velocity_1000hPa"] == "missing: all values null; raw_incompatible_with_omega"
+
+
+def test_missing_required_canonical_level_is_incomplete_and_cannot_publish(tmp_path):
+    payload = forecast("meteofrance_arpege_world025")
+    payload["hourly"]["temperature_850hPa"] = [None, None, None]
+    adapter = OpenMeteoAdapter("openmeteo-arpege", client=Client(payload))
+    result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    profile = next(item for item in result.artifacts if item.logical_name == "pressure-profile")
+
+    assert result.complete is False
+    assert result.qc_passed is True
+    assert profile.provenance["canonical_level_completeness"]["temperature_pressure"]["850"] is False
+    assert profile.provenance["missing_required_canonical_levels"] == ["temperature_pressure@850hPa"]
+    assert profile.provenance["coverage"]["status"] == "partial"
+    assert profile.provenance["quality"]["status"] == "suspect"
+
+    publication = FixtureArtifactStore()
+    prior = ArtifactRevision("prior", 100, True, True)
+    publication.stage("arpege-profile", prior)
+    publication.publish("arpege-profile")
+    publication.stage(
+        "arpege-profile",
+        ArtifactRevision("missing-temperature-850", profile.byte_size, result.complete, result.qc_passed),
+    )
+    with pytest.raises(ValueError, match="complete and pass QC"):
+        publication.publish("arpege-profile")
+    assert publication.visible["arpege-profile"] is prior
+
+
+def test_profile_validation_failure_leaves_no_partial_surface_artifact(tmp_path):
+    payload = forecast()
+    payload["hourly_units"]["temperature_850hPa"] = "K"
+    adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(payload))
+    with pytest.raises(AdapterUnavailable, match="unexpected_units:temperature_850hPa"):
+        adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    assert not list(tmp_path.glob("*.zarr.zip"))
 
 
 def test_omitted_profile_array_fails_closed(tmp_path):
