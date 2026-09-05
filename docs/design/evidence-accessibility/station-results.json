@@ -1,0 +1,107 @@
+{
+  "browser": "151.0.7922.34",
+  "url": "http://localhost:5203/map.html?stationStudy=1&variant=A",
+  "testedAt": "2026-09-05T03:09:59.382Z",
+  "events": [
+    {
+      "case": "initial Tab",
+      "focus": {
+        "tag": "A",
+        "id": "",
+        "label": null,
+        "text": "Skip to Map study"
+      }
+    },
+    {
+      "case": "skip Enter",
+      "focus": {
+        "tag": "MAIN",
+        "id": "s-main",
+        "label": null,
+        "text": "Map / non-raster evidenceLayer-ledSelect a layer in the stack; its readings and reasons sit below th"
+      }
+    },
+    {
+      "case": "select GFS with Enter",
+      "focus": {
+        "tag": "BODY",
+        "id": "",
+        "label": null,
+        "text": "Skip to Map study\n  \n    \n    \n    \n    \n    \n    \n    \n    ?\n    \n  \nASTRAEUS / DESIGN STUDYStation"
+      },
+      "readings": 12
+    },
+    {
+      "case": "reading Enter opens inspector",
+      "focus": {
+        "tag": "BODY",
+        "id": "",
+        "label": null,
+        "text": "Skip to Map study\n  \n    \n    \n    \n    \n    \n    \n    \n    ?\n    \n  \nASTRAEUS / DESIGN STUDYStation"
+      },
+      "inspectorVisible": true
+    },
+    {
+      "case": "next Tab after opening inspector",
+      "focus": {
+        "tag": "BUTTON",
+        "id": "",
+        "label": null,
+        "text": "Full provenance"
+      }
+    },
+    {
+      "case": "close inspector via Enter",
+      "focus": {
+        "tag": "BUTTON",
+        "id": "",
+        "label": null,
+        "text": "Inspect"
+      },
+      "inspectorVisible": false
+    },
+    {
+      "case": "toggle GFS via Space",
+      "focus": {
+        "tag": "BODY",
+        "id": "",
+        "label": null,
+        "text": "Skip to Map study\n  \n    \n    \n    \n    \n    \n    \n    \n    ?\n    \n  \nASTRAEUS / DESIGN STUDYStation"
+      },
+      "checked": false
+    },
+    {
+      "case": "move GFS up via Enter",
+      "focus": {
+        "tag": "BODY",
+        "id": "",
+        "label": null,
+        "text": "Skip to Map study\n  \n    \n    \n    \n    \n    \n    \n    \n    ?\n    \n  \nASTRAEUS / DESIGN STUDYStation"
+      },
+      "stack": [
+        "awc-metar-speci-surface",
+        "awc-taf-surface",
+        "eccc-aqhi-aqhi",
+        "eccc-cap-alerts-alerts",
+        "eccc-hrdps-surface",
+        "noaa-gfs-surface",
+        "eccc-rdps-surface",
+        "noaa-gfs-upper_air"
+      ]
+    },
+    {
+      "case": "native select ArrowDown Enter",
+      "focus": {
+        "tag": "SELECT",
+        "id": "s-focus",
+        "label": null,
+        "text": "Signal HillCYYT airportArbitrary point"
+      },
+      "variantUnchanged": true
+    }
+  ],
+  "readingAX": "- button \"retrieved cloud middle 0 % noaa-gfs stale · surface Valid 2026-09-04 01:00:00Z\":\n  - img \"retrieved\"\n  - text: cloud middle 0 % noaa-gfs stale · surface Valid 2026-09-04 01:00:00Z",
+  "stackAX": "- checkbox \"Show CYYT METAR / SPECI in the study\" [checked]\n- button \"Evidence class not supplied CYYT METAR / SPECI awc-metar-speci\":\n  - img \"Evidence class not supplied\"\n  - strong: CYYT METAR / SPECI\n  - text: awc-metar-speci\n- text: Unavailable at Focus\n- paragraph: awc-metar-speci-surface publishes no stored value at 2026-09-04T01:00:00+00:00; nothing has been substituted Last advertised sample 2026-09-03T02:00:00Z is outside the Focus tolerance; not substituted.\n- text: Layer advertised No weather marker\n- button \"Move CYYT METAR / SPECI up\" [disabled]: ↑ Up\n- button \"Move CYYT METAR / SPECI down\": ↓ Down\n- button \"Inspect\"\n- checkbox \"Show CYYT TAF in the study\" [checked]\n- button \"Evidence class not supplied CYYT TAF awc-taf\":\n  - img \"Evidence class not supplied\"\n  - strong: CYYT TAF\n  - text: awc-taf\n- text: Unavailable at Focus\n- paragraph: awc-taf-surface publishes no stored value at 2026-09-04T01:00:00+00:00; nothing has been substituted Last advertised sample 2026-09-01T10:00:00Z is outside the Focus tolerance; not substituted. TAF forecast-period end times are not available in this response; cadence does not establish a validity interval.\n- text: Layer advertised No weather marker\n- button \"Move CYYT TAF up\": ↑ Up\n- button \"Move CYYT TAF down\": ↓ Down\n- button \"Inspect\"\n- checkbox \"Show AQHI in the study\" [checked]\n- button \"Evidence class not supplied AQHI eccc-aqhi\":\n  - img \"Evidence class not supplied\"\n  - strong: AQHI\n  - text: eccc-aqhi\n- text: Unavailable at Focus\n- paragraph: eccc-aqhi-aqhi publishes no stored value at 2026-09-04T01:00:00+00:00; nothing has been substituted Last advertised sample 2026-09-03T02:00:00Z is outside the Focus tolerance; not substituted.\n- text: Layer advertised No weather marker\n- button \"Move AQHI up\": ↑ Up\n- button \"Move AQHI down\": ↓ Down\n- button \"Inspect\"\n- checkbox \"Show CAP alert points in the study\" [checked]\n- button \"Evidence class not supplied CAP alert points eccc-cap-alerts\":\n  - img \"Evidence class not supplied\"\n  - strong: CAP alert points\n  - text: eccc-cap-alerts\n- text: Unavailable at Focus\n- paragraph: eccc-cap-alerts-alerts publishes no stored value at 2026-09-04T01:00:00+00:00; nothing has been substituted Last advertised sample 2026-09-03T01:45:01Z is outside the Focus tolerance; not substituted.\n- text: Layer advertised No weather marker\n- button \"Move CAP alert points up\": ↑ Up\n- button \"Move CAP alert points down\": ↓ Down\n- button \"Inspect\"\n- checkbox \"Show HRDPS surface bundle in the study\" [checked]\n- button \"Evidence class not supplied HRDPS surface bundle eccc-hrdps\":\n  - img \"Evidence class not supplied\"\n  - strong: HRDPS surface bundle\n  - text: eccc-hrdps\n- text: Unavailable at Focus\n- paragraph: eccc-hrdps-surface publishes no stored value at 2026-09-04T01:00:00+00:00; nothing has been substituted\n- text: Layer advertised No weather marker\n- button \"Move HRDPS surface bundle up\": ↑ Up\n- button \"Move HRDPS surface bundle down\": ↓ Down\n- button \"Inspect\"\n- checkbox \"Show GFS surface / column bundle in the study\"\n- button \"Evidence class not supplied GFS surface / column bundle noaa-gfs\":\n  - img \"Evidence class not supplied\"\n  - strong: GFS surface / column bundle\n  - text: noaa-gfs\n- text: Hidden from Map\n- paragraph: 12 model fields sampled for Focus. Retrieval is stale. These are not station observations.\n- text: Layer advertised No weather marker\n- button \"Move GFS surface / column bundle up\": ↑ Up\n- button \"Move GFS surface / column bundle down\": ↓ Down\n- button \"Inspect\"\n- checkbox \"Show RDPS surface bundle in the study\" [checked]\n- button \"Evidence class not supplied RDPS surface bundle eccc-rdps\":\n  - img \"Evidence class not supplied\"\n  - strong: RDPS surface bundle\n  - text: eccc-rdps\n- text: Unavailable at Focus\n- paragraph: eccc-rdps-surface publishes no stored value at 2026-09-04T01:00:00+00:00; nothing has been substituted\n- text: Layer advertised No weather marker\n- button \"Move RDPS surface bundle up\": ↑ Up\n- button \"Move RDPS surface bundle down\": ↓ Down\n- button \"Inspect\"\n- checkbox \"Show GFS upper-air bundle in the study\" [checked]\n- button \"derived here GFS upper-air bundle noaa-gfs\":\n  - img \"derived here\"\n  - strong: GFS upper-air bundle\n  - text: noaa-gfs\n- text: Model evidence · no station marker\n- paragraph: 4 model fields sampled for Focus. Retrieval is stale. These are not station observations.\n- text: Layer advertised No weather marker\n- button \"Move GFS upper-air bundle up\": ↑ Up\n- button \"Move GFS upper-air bundle down\" [disabled]: ↓ Down\n- button \"Inspect\"",
+  "inspectNames": 8,
+  "coordinateInputs": 0
+}
