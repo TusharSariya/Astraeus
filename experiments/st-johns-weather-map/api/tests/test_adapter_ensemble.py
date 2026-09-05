@@ -1,40 +1,46 @@
-"""The four ensemble access shapes, one adapter each, no network.
+"""Ensemble access shapes, strict failures, and retained live readback.
 
 Every family here is declared **not schedulable**, so none of these adapters has
-ever run against its upstream. The fixtures below are therefore the whole of the
-evidence: fake ``.idx`` and ``.index`` text in the producers' own shapes (taken
-from ``docs/research/wayfinder/ensemble-access.md``), fake clients that answer
-from those strings, and injected readers that stand in for the GRIB and GeoTIFF
-decoders. What is being pinned is the part that does not depend on decoding: the
-member identifiers, the request shapes, the two-file assembly, the storage scope
-and the refusal to schedule.
+run through the scheduler. Fixtures pin identifiers, request shapes, assembly,
+storage scope, and failure behavior. The REPS test also opens the retained live
+artifact and reads it through the experimental HTTP API without making the
+source operational.
 
 Spec-Refs: openspec/changes/ensemble-families-and-member-statistics/specs/artifact-ingestion/spec.md
 """
 
 from __future__ import annotations
 
+import importlib
+import io
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy
 import pytest
 import xarray
 import zarr
-
+from fastapi.testclient import TestClient
 from ingest.adapters import eccc_geomet_ensemble as reps_module
 from ingest.adapters.eccc_geomet_ensemble import (
-    ECCCREPSEnsembleAdapter,
     REPS_EVIDENCE_BOX,
     REPS_SCALESIZE,
+    ECCCREPSEnsembleAdapter,
     control_retrieval_for,
     coverage_id,
     coverage_params,
     coverage_url,
     declaration_for,
+    decode_reps_geotiff,
     member_identifiers,
+    pressure_coverage_id,
     stored_member_coverages,
+)
+from ingest.adapters.eccc_geomet_reductions import (
+    SELECTED_REDUCTIONS,
+    fetch_geps_reductions,
 )
 from ingest.adapters.ecmwf_opendata import (
     ECMWFAIFSEnsembleAdapter,
@@ -51,11 +57,16 @@ from ingest.adapters.noaa_s3 import (
 from ingest.contract import AdapterUnavailable, FetchWindow, RunCandidate
 from ingest.grib import CONTROL_COORD, MEMBER_DIM
 from ingest.registry import get_config, registered_adapters
+from ingest.store import CurrentArtifact
+from PIL import Image, TiffImagePlugin
 
-UTC = timezone.utc
+from weather_api import store as api_store
+from weather_api.app import app
+from weather_api.store import LiveStore
 
 #: The four families this task builds, in the owner's declared build order.
 BUILD_ORDER = ("eccc-reps", "ecmwf-aifs-ens", "ecmwf-ens", "noaa-gefs")
+api_module = importlib.import_module("weather_api.app")
 
 
 # --------------------------------------------------------------------- fixtures
@@ -216,7 +227,8 @@ def test_reps_requests_the_box_server_side_in_the_verified_shape():
     params = coverage_params("REPS.MEM.ETA_NT.01")
     assert ("REQUEST", "GetCoverage") in params
     assert ("FORMAT", "image/tiff") in params  # mandatory on this endpoint
-    assert ("SCALESIZE", REPS_SCALESIZE) in params  # native resolution, mandatory
+    assert ("SCALESIZE", REPS_SCALESIZE) in params  # explicit server-resampled output shape
+    assert ("SUBSETTINGCRS", "http://www.opengis.net/def/crs/EPSG/0/4326") in params
     subsets = [value for key, value in params if key == "SUBSET"]
     assert subsets == [
         f"long({REPS_EVIDENCE_BOX['west']},{REPS_EVIDENCE_BOX['east']})",
@@ -278,6 +290,132 @@ def test_reps_publishes_one_member_axis_with_no_member_flagged_control(tmp_path:
     )
     assert stacked.sizes[MEMBER_DIM] == 21
     assert not bool(stacked[CONTROL_COORD].values.any())
+
+
+def _coverage_tiff(*, keyed: bool = False, width: int = 133, height: int = 61) -> bytes:
+    image = Image.fromarray(numpy.full((height, width), 42.0, dtype=numpy.float32), mode="F")
+    tags = TiffImagePlugin.ImageFileDirectory_v2()
+    tags[33550] = (12.0 / width, 5.5 / height, 0.0)
+    tags[33922] = (0.0, 0.0, 0.0, -58.0, 50.5, 0.0)
+    if keyed:
+        tags[34735] = (1, 1, 0, 2, 1025, 0, 1, 1, 2048, 0, 1, 4326)
+    output = io.BytesIO()
+    image.save(output, format="TIFF", tiffinfo=tags)
+    return output.getvalue()
+
+
+def test_reps_real_reader_accepts_unkeyed_geomet_output_and_records_resampling():
+    field = decode_reps_geotiff(
+        _coverage_tiff(), coverage="REPS.MEM.ETA_NT.01",
+        variable="total_cloud_opacity", valid_time=datetime(2026, 9, 5, 18, tzinfo=UTC),
+        bounds=REPS_EVIDENCE_BOX,
+    )
+    assert field.shape == (61, 133)
+    assert field.attrs["crs_evidence"].endswith("no GeoKeyDirectoryTag")
+    assert field.attrs["resampling"] == "server_resampled_method_unknown"
+    assert float(field.sel(latitude=47.5, longitude=-52.7, method="nearest")) == 42.0
+
+
+def test_reps_pressure_level_is_never_formed_when_not_advertised():
+    template = "REPS.MEM.PRES_HR.<hPa>.<member>"
+    advertised = ("REPS.MEM.PRES_HR.700.01",)
+    assert pressure_coverage_id(template, level_hpa=700, member="01", advertised=advertised) == advertised[0]
+    with pytest.raises(Exception, match="not advertised"):
+        pressure_coverage_id(template, level_hpa=775, member="01", advertised=advertised)
+
+
+def test_one_missing_reps_member_makes_the_selected_family_partial(tmp_path: Path):
+    client = FakeClient(missing=("ETA_NT.07",))
+    result = reps_adapter(client).assemble(
+        RunCandidate("reps-partial", datetime(2026, 9, 5, 12, tzinfo=UTC),
+                     detail={"valid_time": datetime(2026, 9, 5, 18, tzinfo=UTC)}),
+        window_at(datetime(2026, 9, 5, 18, tzinfo=UTC)), tmp_path,
+        selected_keys=("total_cloud_opacity", "wind_speed_10m"),
+    )
+    assert result.complete is False
+    assert "decode_error:coverage:REPS.MEM.ETA_NT.07" in result.artifacts[0].provenance["quality"]["flags"]
+
+
+class GEPSFixtureClient:
+    def __init__(self, *, missing: str | None = None):
+        self.missing = missing
+
+    def get(self, url: str):
+        if self.missing and self.missing in url:
+            return FakeResponse(b"<ExceptionReport>NoMatch</ExceptionReport>")
+        return FakeResponse(_coverage_tiff(keyed=True, width=24, height=11))
+
+
+def test_geps_retains_provider_reductions_without_a_member_axis(tmp_path: Path):
+    artifact = fetch_geps_reductions(
+        valid_time=datetime(2026, 9, 5, 12, tzinfo=UTC),
+        reference_time=datetime(2026, 9, 5, 0, tzinfo=UTC),
+        workdir=tmp_path, client=GEPSFixtureClient(),
+    )
+    dataset = open_artifact(artifact.payload_path)
+    assert set(dataset.data_vars) == {item.variable for item in SELECTED_REDUCTIONS}
+    assert MEMBER_DIM not in dataset.dims
+    assert artifact.provenance["members_published"] is False
+    assert artifact.provenance["computed_here"] is False
+    assert {row["provider_statistic"] for row in artifact.provenance["reductions"]} == {
+        "mean", "standard_deviation", "percentile", "threshold_probability"
+    }
+
+
+def test_missing_selected_geps_reduction_fails_without_an_artifact(tmp_path: Path):
+    with pytest.raises(Exception, match="not a TIFF"):
+        fetch_geps_reductions(
+            valid_time=datetime(2026, 9, 5, 12, tzinfo=UTC),
+            reference_time=datetime(2026, 9, 5, 0, tzinfo=UTC), workdir=tmp_path,
+            client=GEPSFixtureClient(missing="ERSSTD"),
+        )
+    assert not (tmp_path / "eccc_geps_reductions.zarr.zip").exists()
+
+
+def test_retained_live_reps_artifact_round_trips_through_reader_and_http(monkeypatch, tmp_path: Path):
+    artifact_path = Path(__file__).resolve().parents[2] / "docs/evidence/eccc-ensemble-2026-09-05/eccc_reps_members.zarr.zip"
+    dataset = open_artifact(artifact_path)
+    current = CurrentArtifact(
+        source_id="eccc-reps", logical_name="members", revision_id="retained-reps-20260905",
+        object_key=str(artifact_path), media_type="application/zarr+zip",
+        byte_size=artifact_path.stat().st_size,
+        provenance={"members": {"declared": 21, "present": list(member_identifiers(declaration_for("eccc-reps"))), "missing": [], "control": None}},
+        published_at=datetime(2026, 9, 5, 18, tzinfo=UTC),
+        run_time=datetime(2026, 9, 5, 12, tzinfo=UTC),
+        retrieved_at=datetime(2026, 9, 5, 18, tzinfo=UTC),
+        provider_run_id="reps-20260905T12Z-f006", native_crs="EPSG:4326",
+    )
+
+    class Harness(LiveStore):
+        def __init__(self):
+            super().__init__(artifact_store=None, cache_dir=tmp_path)
+        def current(self):
+            return [current]
+        def open(self, _artifact):
+            return dataset
+        def assert_object_store_reachable(self):
+            pass
+
+    manifest = SimpleNamespace(class_for=lambda _name: "retrieved", evidence_classes=("retrieved",))
+    monkeypatch.setattr(api_store, "artifact_manifest", lambda _artifact: manifest)
+    monkeypatch.setitem(api_store.FIELD_BY_VARIABLE, "wind_speed_10m", "wind_speed_10m")
+    harness = Harness()
+    samples = harness.sample_point(47.56, -52.71, datetime(2026, 9, 5, 18, tzinfo=UTC), member="01")
+    assert {sample.variable for sample in samples} == {"total_cloud_opacity", "wind_speed_10m"}
+    assert all(sample.value is not None for sample in samples)
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(api_module, "live_store", lambda: harness)
+    response = TestClient(app).get(
+        "/api/experiments/weather/v0/point",
+        params={
+            "latitude": 47.56, "longitude": -52.71,
+            "valid_time": "2026-09-05T18:00:00Z", "member": "01",
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["operational"] is False
+    assert {item["field"] for item in body["fields"]} >= {"total_cloud_opacity", "wind_speed_10m"}
 
 
 # ------------------------------------------------------------------ 2. AIFS-ENS
