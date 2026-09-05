@@ -39,7 +39,7 @@ Alternative: continue bounded client fan-out of `/point`, label that the respons
 
 The owner selected the bounded Series operation over continued client fan-out. Exact route name, query bounds, field identity, sample limits, pagination/error behavior and snapshot lifetime remain subsequent decisions; no arbitrary values are frozen here.
 
-Next proposed consistency rule, not yet selected: resolve one immutable set of artifact revisions for the request and use it throughout. Later ingestion becomes visible on the next read. Return the set identifier and per-sample revision identity. This is one coherent store selection, not one shared forecast run across different sources. If the selected evidence cannot remain readable, fail explicitly rather than silently substitute a newer revision. Missing fields within a readable selection remain explicit per-field absence, not whole-request failure. This does not commit to retaining historical snapshots or binding every view to a persistent session.
+Owner-selected consistency rule (explicit “yes” in live review): resolve one immutable set of artifact revisions for the request and use it throughout. Later ingestion becomes visible on the next read. Return the set identifier and per-sample revision identity. This is one coherent store selection, not one shared forecast run across different sources. If the selected evidence cannot remain readable, fail explicitly rather than silently substitute a newer revision. Missing fields within a readable selection remain explicit per-field absence, not whole-request failure. This does not commit to retaining historical snapshots or binding every view to a persistent session.
 
 ## Explicit exclusions and remaining dependencies
 
@@ -48,3 +48,8 @@ Do not add server persistence for temporary Compare, Saved stacks, theme or shar
 Band-math numeric raster inputs and renderer conclusions remain deferred and cannot be declared settled by this review. Positive station geometry, TAF intervals and combined raster/station rendering remain unverified. Outdoor red-night validation remains a separate owner task.
 
 Verification: compare issue resolutions and committed prototype evidence against `weather_api/app.py`, `models.py` and running `http://localhost:8000/openapi.json`; independent subagent review of Sources, Sky and station evidence completed. `uv run --project tools/specs python tools/specs/specctl.py validate` passed with 0 errors and 0 warnings.
+
+
+## Next decision: bounded response behavior
+
+Proposed, not yet selected: a successful Series read returns the complete result for its accepted field/source/window selection, including explicit absence and actual sample times. If the selection exceeds the server's declared limits, reject it with a structured error naming the exceeded limit so the client can narrow the request. Do not silently truncate, downsample, or paginate into a different revision set. Exact limits and status codes remain contract drafting/validation work; no arbitrary numeric cap is selected here. Pagination could be added later with explicit snapshot retention if a demonstrated consumer requires it.
