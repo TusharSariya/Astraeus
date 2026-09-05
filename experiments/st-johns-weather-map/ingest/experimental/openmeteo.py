@@ -126,13 +126,19 @@ def _open_meteo_keys(hourly: Mapping[str, Any], units: Mapping[str, Any], model:
 
     Open-Meteo's documented single-model response uses unsuffixed keys. Some
     deployments return model-suffixed keys. Either complete shape is accepted;
-    mixed shapes and suffixes naming another contracted model fail closed.
+    mixed shapes and every suffix other than the selected model fail closed.
     """
-    known_models = {item[0] for item in MODEL_SOURCES.values()}
-    foreign = [
-        key for key in set(hourly) | set(units)
-        if any(key.endswith(f"_{other}") for other in known_models if other != model)
-    ]
+    selected = {f"{name}_{model}" for name in OPEN_METEO_FIELDS}
+    foreign = []
+    for key in set(hourly) | set(units):
+        if key in OPEN_METEO_FIELDS or key in selected:
+            continue
+        # Match the longest field first because cloud_cover is a prefix of
+        # cloud_cover_low/mid/high. Any suffix on a selected field is a model
+        # identity claim; accepting only the exact requested selector avoids
+        # silently treating a new or misspelled selector as unrelated data.
+        if any(key.startswith(f"{name}_") for name in sorted(OPEN_METEO_FIELDS, key=len, reverse=True)):
+            foreign.append(key)
     if foreign:
         raise AdapterUnavailable(f"foreign_model_arrays:{','.join(sorted(foreign))}")
     has_plain = any(name in hourly or name in units for name in OPEN_METEO_FIELDS)

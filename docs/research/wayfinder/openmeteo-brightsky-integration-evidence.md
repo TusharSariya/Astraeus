@@ -30,7 +30,8 @@ run certainty is `unknown`; adjacent `meta.json` is not borrowed as lineage.
 
 Every selected Open-Meteo array is mandatory. The parser accepts the complete
 unsuffixed shape currently returned for one explicit model or a complete shape
-suffixed with that selector. Mixed shapes, a known foreign suffix, an omitted
+suffixed with that selector. Mixed shapes, any non-selected suffix (including
+an unknown model such as `gfs_global`), an omitted
 array or an omitted unit fail before artifact creation. The artifact carries
 the registry's six documented transformations: regridding, elevation
 downscaling (disabled here), cell selection, temporal interpolation,
@@ -69,19 +70,25 @@ not publishable and no prior visible revision would advance.
 | `brightsky-dwd-mosmix-71801` | incomplete (null gust), QC pass; exact source; run unknown | `4952ed3ad9b76c4de790ed4720c4418c13e2318fd50b7d6df60a0784d59f6e70` | 12,918 |
 
 The fixture suite covers complete unsuffixed and selected-model-suffixed
-shapes, omitted selected fields, mixed and foreign identities,
+shapes, omitted selected fields, mixed identities and known or unknown foreign
+suffixes,
 source/name/type/row mismatches, response-derived optional-field status,
 intervals, transformations, malformed JSON, 429 and artifact integrity. The
 point-handler test uses the real `LiveStore` download, checksum, Zarr-open and
 sampling path with a test-local product mapping; it no longer constructs a
-`Sample` manually. The live bundle's numeric reader proof includes eight
-catalogued JMA fields and their actual values.
+`Sample` manually. A zero-request retained-bundle replay repeats that full path
+through four test-local HTTP product routes. It compares all 39 selected stored
+fields with the actual response values and null masks and verifies each
+artifact checksum. MOSMIX's selected gust remains null. The same replay stages
+the incomplete/QC-passed MOSMIX revision and proves publication is refused
+while the prior visible revision remains `prior-visible`.
 
 Verification commands:
 
 ```text
 cd experiments/st-johns-weather-map
 uv run --project api python scripts/openmeteo_brightsky_live_smoke.py ../../docs/research/wayfinder/evidence/openmeteo-brightsky-20260905-corrective
+uv run --project api python scripts/openmeteo_brightsky_retained_http.py ../../docs/research/wayfinder/evidence/openmeteo-brightsky-20260905-corrective
 uv run --project api pytest api/tests/test_adapter_openmeteo.py -q
 cd ../..
 uv run --project tools/specs python tools/specs/specctl.py validate

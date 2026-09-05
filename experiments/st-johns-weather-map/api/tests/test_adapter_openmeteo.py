@@ -86,11 +86,15 @@ def test_complete_selected_model_suffix_shape_is_accepted(tmp_path):
     assert adapter.fetch(adapter.discover(window())[0], window(), tmp_path).complete
 
 
-@pytest.mark.parametrize("foreign,mixed,match", [(False, True, "mixed_model_response_shape"), (True, False, "foreign_model_arrays")])
+@pytest.mark.parametrize("foreign,mixed,match", [
+    (None, True, "mixed_model_response_shape"),
+    ("meteofrance_arpege_world025", False, "foreign_model_arrays"),
+    ("gfs_global", False, "foreign_model_arrays"),
+])
 def test_mixed_or_foreign_model_response_fails_closed(tmp_path, foreign, mixed, match):
     payload = forecast()
     if mixed: payload["hourly"]["temperature_2m_jma_gsm"] = payload["hourly"]["temperature_2m"]
-    if foreign: payload["hourly"]["temperature_2m_meteofrance_arpege_world025"] = [1, 2, 3]
+    if foreign: payload["hourly"][f"temperature_2m_{foreign}"] = [1, 2, 3]
     adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(payload))
     with pytest.raises(AdapterUnavailable, match=match): adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
 
@@ -129,6 +133,26 @@ def test_bright_sky_refuses_nearest_station_and_reads_exact_station(tmp_path):
     assert "wmo_station_id=71801" in candidate.urls[0]
     assert result.artifacts[0].provenance["field_disposition"]["condition"].startswith("raw_retrieved")
     assert result.artifacts[0].provenance["field_disposition"]["wind_gust_10m"] == "retrieved"
+
+
+def test_all_null_required_field_is_incomplete_qc_valid_and_cannot_publish(tmp_path):
+    payload = bright_sky_payload()
+    payload["weather"][0]["wind_gust_speed"] = None
+    adapter = BrightSkyMosmix71801Adapter(Client(payload))
+    result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    assert result.complete is False
+    assert result.qc_passed is True
+    assert result.artifacts[0].provenance["quality"]["status"] == "suspect"
+    assert "empty_field:wind_gust_10m" in result.artifacts[0].provenance["quality"]["flags"]
+
+    publication = FixtureArtifactStore()
+    prior = ArtifactRevision("prior", 100, True, True)
+    publication.stage("mosmix", prior)
+    publication.publish("mosmix")
+    publication.stage("mosmix", ArtifactRevision("all-null-gust", result.artifacts[0].byte_size, result.complete, result.qc_passed))
+    with pytest.raises(ValueError, match="complete and pass QC"):
+        publication.publish("mosmix")
+    assert publication.visible["mosmix"] is prior
 
 
 @pytest.mark.parametrize("source_update,row_update", [

@@ -42,6 +42,94 @@
     }
   ],
   "request_count": 4,
+  "retained_http_readback": {
+    "provider_request_count": 0,
+    "publication_gate": {
+      "blocked": true,
+      "reason": "artifact must be complete and pass QC before publication",
+      "visible_revision": "prior-visible"
+    },
+    "sources": {
+      "brightsky-dwd-mosmix-71801": {
+        "artifact_sha256_verified": "4952ed3ad9b76c4de790ed4720c4418c13e2318fd50b7d6df60a0784d59f6e70",
+        "complete": false,
+        "fields": {
+          "dew_point": 10.0,
+          "mean_sea_level_pressure": 1014.0,
+          "precipitation_accumulation": 0.0,
+          "temperature": 14.1,
+          "total_cloud_geometric": 95.0,
+          "visibility": 15000.0,
+          "wind_direction": 122.0,
+          "wind_gust": null,
+          "wind_speed": 7.194444444444445
+        },
+        "null_fields": [
+          "wind_gust"
+        ],
+        "qc_passed": true,
+        "route": "/api/experiments/weather/v0/point?product=MOSMIX-71801-RETAINED"
+      },
+      "openmeteo-arpege": {
+        "artifact_sha256_verified": "62551eeec6252b4b3cee7d4883caed82bcf428a24e0ce2cdb101445ac713ba97",
+        "complete": true,
+        "fields": {
+          "cloud_high": 99.0,
+          "cloud_low": 6.0,
+          "cloud_middle": 80.0,
+          "dew_point": 10.9,
+          "mean_sea_level_pressure": 1014.2,
+          "precipitation_accumulation": 0.4,
+          "temperature": 13.9,
+          "total_cloud_geometric": 100.0,
+          "wind_direction": 115.0,
+          "wind_speed": 5.64
+        },
+        "null_fields": [],
+        "qc_passed": true,
+        "route": "/api/experiments/weather/v0/point?product=ARPEGE-RETAINED"
+      },
+      "openmeteo-jma-gsm": {
+        "artifact_sha256_verified": "32d461050f1035d7ee42f748a1348d5aac6f58524b2d6a2e41f2f000f80c0500",
+        "complete": true,
+        "fields": {
+          "cloud_high": 59.0,
+          "cloud_low": 3.0,
+          "cloud_middle": 40.0,
+          "dew_point": 11.0,
+          "mean_sea_level_pressure": 1014.0,
+          "precipitation_accumulation": 0.0,
+          "temperature": 15.7,
+          "total_cloud_geometric": 72.0,
+          "wind_direction": 102.0,
+          "wind_speed": 7.47
+        },
+        "null_fields": [],
+        "qc_passed": true,
+        "route": "/api/experiments/weather/v0/point?product=JMA-GSM-RETAINED"
+      },
+      "openmeteo-ukmo-global": {
+        "artifact_sha256_verified": "060051a22d1523e7ef4df57b4ea2b4e99f6e2694a86dbf38e4ea05dfb7c7b922",
+        "complete": true,
+        "fields": {
+          "cloud_high": 100.0,
+          "cloud_low": 91.0,
+          "cloud_middle": 91.0,
+          "dew_point": 11.2,
+          "mean_sea_level_pressure": 1013.7,
+          "precipitation_accumulation": 0.0,
+          "temperature": 14.3,
+          "total_cloud_geometric": 100.0,
+          "wind_direction": 93.0,
+          "wind_speed": 6.6
+        },
+        "null_fields": [],
+        "qc_passed": true,
+        "route": "/api/experiments/weather/v0/point?product=UKMO-GLOBAL-RETAINED"
+      }
+    },
+    "valid_time": "2026-09-05T14:00:00+00:00"
+  },
   "retrieved_at": "2026-09-05T14:49:22.840262+00:00",
   "sources": [
     {
