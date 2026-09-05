@@ -72,8 +72,15 @@ Owner-selected package (explicit “yes” in live review): reuse existing route
 These are candidate contract changes and implementation corrections, not claims of completed capability. Missing report data is not repaired by a schema change. Exact shapes and verification belong in the proposal. This package does not add duplicate station, family, freshness or space-weather routes, infer a universal evidence class for mixed sources, or enable new scientific derivations.
 
 
-## Next discussion: registered sites and cameras
+## Owner decision: registered sites and cameras
 
-Proposed, not yet selected: expose read-only, versioned site/horizon and camera-registry metadata from the API so the shared Focus and Sky use the deployment's registered definitions. The prototypes currently embed checked-in registry copies. Reuse those registries without new admission, authoring, horizon estimation or directional reconstruction. Camera records retain their declared eligibility and absence reasons; a registry record alone does not make a frame eligible. Arbitrary points never inherit the nearest site's horizon.
+Owner-selected (explicit “yes” in live review): expose read-only, versioned site/horizon and camera-registry metadata from the API so the shared Focus and Sky use the deployment's registered definitions. The prototypes currently embed checked-in registry copies. Reuse those registries without new admission, authoring, horizon estimation or directional reconstruction. Camera records retain their declared eligibility and absence reasons; a registry record alone does not make a frame eligible. Arbitrary points never inherit the nearest site's horizon.
 
-Alternative: continue shipping versioned registry copies with the frontend, accepting that registry updates require a frontend release. Exact route shapes and revision association remain subsequent contract work. This does not authorize camera-image delivery or resolve the remaining camera-placement design questions.
+The alternative of continuing to ship registry copies with the frontend was not selected. Exact route shapes and revision association remain subsequent contract work. This does not authorize camera-image delivery or resolve the remaining camera-placement design questions.
+
+
+## Next discussion: imagery availability times
+
+Proposed, not yet selected: expose structured imagery availability on the existing layer response separately from stored data sample times when the two differ. Preserve the existing published-data time semantics; clients must not discover imagery bounds by parsing error text or assume that a point sample implies an image at that instant. The returned raster's served-time provenance remains authoritative for the image actually drawn. An unknown or unavailable imagery extent stays explicit; never invent frames from an enclosing interval. Exact metadata shape must distinguish discrete times from any provider-declared interval/cadence before implementation.
+
+This addresses the selected Map's captured two-time-axis gap. It does not resolve the deferred numeric band-math inputs or select new rendering/scientific behavior.
