@@ -315,6 +315,8 @@ class GeoMetWCSClient:
         if advertised_time is None:
             raise WCSResponseError(f"{field.coverage_id} advertises no valid-time dimension")
         advertised_run = None
+        if capability.reference_time is not None and reference_time is None:
+            raise WCSResponseError(f"{field.coverage_id} requires an explicit advertised reference time")
         if reference_time is not None:
             if capability.reference_time is None:
                 raise WCSResponseError(f"{field.coverage_id} advertises no reference-time dimension")

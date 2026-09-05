@@ -14,6 +14,7 @@
 
 - [x] Add positive fixture retrieval and immutable artifact/API sampler round-trip.
 - [x] Add missing coverage, wrong-grid and XML `NoMatch` negative cases.
+- [x] Refuse omitted reference times on run-bearing layers before GetCoverage; retain unknown run identity only when the layer has no run dimension.
 - [x] Fetch bounded live full fields for HRDPS, RDPS, GDPS and WEonG.
 - [x] Retrieve all 245 selected coverages at one latest advertised valid time over the small Avalon API bbox; record values, units, masks, resolution, transfer, timing and exact failures.
 - [x] Retain representative artifacts and checksums for reproducible reader verification.

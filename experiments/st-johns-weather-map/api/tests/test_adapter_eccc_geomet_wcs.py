@@ -192,6 +192,31 @@ def test_fixture_fetch_requires_format_subset_scalesize_and_exact_run(tmp_path):
     assert decoded["DIM_REFERENCE_TIME"] == "2026-09-05T00:00:00Z"
 
 
+def test_run_bearing_layer_refuses_omitted_reference_before_coverage_download(tmp_path):
+    http = FixtureHTTP(tmp_path)
+    client = GeoMetWCSClient(client=http, base_url="https://fixture.invalid/geomet")
+    destination = tmp_path / "seeing.tif"
+    with pytest.raises(WCSResponseError, match="requires an explicit advertised reference time"):
+        client.fetch(FIELD, valid_time=VALID, reference_time=None, bounds=AVALON_CORE_BOUNDS,
+                     width=45, height=23, destination=destination)
+    assert not destination.exists()
+    assert not any("request=getcoverage" in url.lower() for url in http.urls)
+
+
+def test_layer_without_run_dimension_allows_unknown_reference(tmp_path, monkeypatch):
+    from dataclasses import replace
+
+    http = FixtureHTTP(tmp_path)
+    client = GeoMetWCSClient(client=http, base_url="https://fixture.invalid/geomet")
+    capability = replace(client.metadata(FIELD.coverage_id), reference_time=None)
+    monkeypatch.setattr(client, "metadata", lambda _coverage_id: capability)
+    receipt = client.fetch(FIELD, valid_time=VALID, reference_time=None, bounds=AVALON_CORE_BOUNDS,
+                           width=45, height=23, destination=tmp_path / "seeing.tif")
+    assert receipt.selected_reference_time is None
+    assert "DIM_REFERENCE_TIME" not in httpx.URL(receipt.url).params
+    assert receipt.path.exists()
+
+
 def test_http_200_xml_nomatch_fails_closed_and_removes_partial_file(tmp_path):
     client = GeoMetWCSClient(client=FixtureHTTP(tmp_path, service_error=True), base_url="https://fixture.invalid/geomet")
     destination = tmp_path / "seeing.tif"
