@@ -133,6 +133,10 @@ FAMILIES: list[dict[str, Any]] = [
             "observed_layer": "An observer's reported cover for one reported cloud layer.",
             "derived_repair": "A derived-here repair of a producer's column cover; never the producer's value.",
             "scene_class": "A categorical clear/cloudy scene classification, not a fraction.",
+            "satellite_column": (
+                "Satellite-retrieved whole-column cloud fraction from a layered product; neither "
+                "opacity-weighted nor geometric overlap."
+            ),
         },
     },
     {
@@ -150,6 +154,34 @@ FAMILIES: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "cloud_microphysics",
+        "title": "Cloud microphysics",
+        "note": (
+            "Phase, optical depth and particle size retrieved from a satellite cloud algorithm. "
+            "Each is the output of its own retrieval method and is not comparable across "
+            "different algorithms or instruments; none of these is validated against an "
+            "in-situ or ground-based measurement in this deployment."
+        ),
+        "groups": {
+            "phase": "Categorical cloud-top thermodynamic phase from a satellite retrieval.",
+            "optical_depth": "Cloud optical depth from a satellite retrieval, daytime only.",
+            "particle_size": "Cloud particle effective size from a satellite retrieval, daytime only.",
+        },
+    },
+    {
+        "name": "stability",
+        "title": "Convective stability",
+        "note": (
+            "CAPE and four stability indices from a satellite sounding retrieval. The indices are "
+            "on different numeric scales from each other and from CAPE, and must never share an "
+            "axis or a colour ramp."
+        ),
+        "groups": {
+            "energy": "Convective available potential energy from a sounding retrieval.",
+            "index": "A stability index on its own numeric scale; never compared across index types.",
+        },
+    },
+    {
         "name": "temperature",
         "title": "Temperature",
         "note": (
@@ -162,7 +194,12 @@ FAMILIES: list[dict[str, Any]] = [
         "groups": {
             "air": "Air temperature at a stated height or pressure level.",
             "skin": "Aggregate land surface skin temperature.",
-            "radiative": "Aggregate surface radiative temperature; not verified equal to skin.",
+            "radiative": (
+                "Aggregate surface radiative temperature, or a satellite-retrieved cloud-top "
+                "radiative temperature; not verified equal to skin, and a cloud-top value is a "
+                "wholly different level from any surface retrieval even though both share this "
+                "comparability group."
+            ),
         },
     },
     {
@@ -384,6 +421,10 @@ FAMILIES: list[dict[str, Any]] = [
         ),
         "groups": {
             "sea_surface_temperature": "Temperature of the sea surface layer.",
+            "sea_surface_skin_temperature": (
+                "Satellite-retrieved radiometric skin temperature of the sea surface; a different "
+                "measurement from a modelled or buoy-reported bulk sea surface temperature."
+            ),
             "wave_height": "Height statistic of the combined sea state.",
             "wave_partition": "Height of one partition of the sea state.",
             "wave_direction": "Mean direction of the sea state.",
@@ -691,6 +732,32 @@ FIELDS: list[dict[str, Any]] = [
        "The satellite retrieval's own confidence that the scene is cloudy. Not a cover fraction: "
        "a certainly-cloudy thin cirrus scene reads 100 here and near zero in opacity-weighted "
        "cover.", value_range=(0.0, 100.0)),
+    _f("cloud_fraction_total_satellite", "satellite total cloud fraction", "percent", "cloud_cover",
+       "column", "satellite_column",
+       "Whole-column cloud fraction (GOES ABI Cloud Cover Layers TCF), a producer diagnostic "
+       "computed from the same layered cloud-top retrieval as cloud_fraction_layer_1..5, not an "
+       "independent whole-column measurement. Neither opacity-weighted (ECCC GEM NT) nor a "
+       "geometric maximum-random overlap (GFS, ECMWF, ICON); never share a ramp or axis with "
+       "either.", value_range=(0.0, 100.0)),
+    _f("cloud_layer_flag", "cloud layer flag", "code", "cloud_cover", "column", "scene_class",
+       "The GOES ABI Cloud Cover Layers product's own per-pixel cloud-layer flag (CL): a "
+       "categorical code, not a fraction, and never averaged or interpolated."),
+
+    # --- cloud microphysics -------------------------------------------------
+    _f("cloud_top_phase", "cloud top thermodynamic phase", "code", "cloud_microphysics", "cloud top",
+       "phase",
+       "GOES ABI Cloud Top Phase retrieval (ACTPF Phase): a per-pixel categorical code (0 clear "
+       "sky, 1 liquid water, 2 supercooled liquid water, 3 mixed phase, 4 ice, 5 unknown). A "
+       "classification, not a measured quantity, and not comparable across retrieval algorithms."),
+    _f("cloud_optical_depth", "cloud optical depth", "1", "cloud_microphysics", "cloud column",
+       "optical_depth",
+       "GOES ABI daytime DCOMP cloud optical depth retrieval (CODF COD), dimensionless. Valid "
+       "only for sunlit pixels; night pixels are flagged and carry no retrieval. Not comparable "
+       "across different optical-depth retrieval methods."),
+    _f("cloud_particle_size", "cloud particle effective size", "um", "cloud_microphysics",
+       "cloud top", "particle_size",
+       "GOES ABI cloud particle effective size retrieval (CPSF PSD), micrometres. A daytime "
+       "DCOMP companion to cloud_optical_depth and comparably retrieval-method-dependent."),
 
     # --- cloud geometry ----------------------------------------------------
     _f("cloud_top_height", "cloud top height", "m", "cloud_geometry", "cloud top", "satellite_top",
