@@ -1,6 +1,6 @@
 # Forecast-run selection across Map and Series
 
-Discussion draft for [Settle forecast-run selection across Map and Series](https://github.com/TusharSariya/Astraeus/issues/68). The owner selected the automatic default and explicit previous-run behavior; shared scope, Activity independence and URL persistence are also selected; unavailable-run and comparison behavior remain pending. No API behavior, retention rule or normative status is changed.
+Discussion draft for [Settle forecast-run selection across Map and Series](https://github.com/TusharSariya/Astraeus/issues/68). The owner selected the automatic default and explicit previous-run behavior; shared scope, Activity independence and URL persistence are also selected; removed-run and temporary same-source comparison behavior are also selected; snapshot retention remains pending. No API behavior, retention rule or normative status is changed.
 
 ## Existing decisions and evidence
 
@@ -42,11 +42,20 @@ The owner confirmed all three choices in live review:
 Expiry behavior and simultaneous same-source run comparison remain separate decisions. The committed two-run ceiling and proposed short-lived Series snapshot pins also need an explicit retention/capacity reconciliation before implementation; neither should silently override the other.
 
 
-## Next discussion: removed runs and comparing runs
+## Owner decisions: removed runs and comparing runs
 
-Proposed, not selected:
+The owner answered “yes yes” to both choices:
 
 1. If a pinned run is removed from the readable inventory, keep its identity selected and show “Selected run no longer available.” Keep Focus and instant unchanged. Offer an explicit “Use Latest available” action; never automatically replace the pinned run. A stale link behaves the same way. Distinguish removal from a frame gap in a still-readable run and from a temporary service failure. Snapshot retention conflicts remain separately unresolved.
 2. Permit the two retained, readable runs of one source to be overlaid in the temporary Series Compare workspace. Each trace names its run and source with distinct line treatment; preserve native timestamps, gaps and per-reading provenance. This comparison does not alter the shared source/run choice for Map or Activity, adds no Map comparison, and is not saved/shared. No run-difference calculation or new statistic is implied.
 
 A short-lived snapshot's retention promises and the hard two-run retention ceiling still require owner resolution before a final API contract can be implemented.
+
+
+## Final scope question: snapshot retention exception
+
+Proposed, not selected: retain the normal latest-plus-previous run inventory, but allow already-created, unexpired Series snapshots to pin the exact older revisions they need until their fixed advertised expiry. When a third run arrives, the displaced run leaves the new-query/selectable inventory, while existing snapshot pages can still read their pinned revisions until expiry. These transient pins can make physical retention exceed two runs temporarily, so this is an explicit exception to the current hard two-run retention rule, requiring owner approval and subsequent spec changes.
+
+Pins cannot renew themselves on page reads or change checks. Once a run is outside the normal selectable inventory, new reads cannot pin it again. Keep the existing storage quota; snapshot admission must fit declared retention/capacity budgets, refusing additional snapshots when they cannot be supported. Do not evict promised live pins silently, expand storage, or weaken the existing ingestion quota failure behavior. Expiry releases pins and allows purge; failures caused by unreadable pinned objects remain explicit.
+
+The alternative is to enforce the physical two-run ceiling strictly and invalidate affected snapshots at publication, making their advertised expiry only an upper bound. That would revise the earlier snapshot retention promise and require an explicit restart-required response. Neither policy is selected yet.
