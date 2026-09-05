@@ -451,5 +451,36 @@
       "reason": "Create one AIWP archive child per owner-selected model and initializer only after issue 93 sets the bounded historical acquisition plan."
     }
   ],
-  "created_issue_urls": {}
+  "created_issue_urls": {
+    "implement-open-meteo-deterministic-atmosphere-and-bright-sky-mosmix": "https://github.com/TusharSariya/Astraeus/issues/98",
+    "implement-open-meteo-marine-and-gfs-wave-retrieval": "https://github.com/TusharSariya/Astraeus/issues/99",
+    "implement-open-meteo-composition-and-lsa-saf-retrieval": "https://github.com/TusharSariya/Astraeus/issues/100",
+    "implement-goes-abi-expansion-and-glm-retrieval": "https://github.com/TusharSariya/Astraeus/issues/101",
+    "implement-viirs-and-jpss-cloud-retrieval": "https://github.com/TusharSariya/Astraeus/issues/102",
+    "implement-nucaps-retrieved-profile-acquisition": "https://github.com/TusharSariya/Astraeus/issues/103",
+    "evaluate-copernicus-modis-and-gpm-atmospheric-satellite-paths": "https://github.com/TusharSariya/Astraeus/issues/104",
+    "resolve-native-holyrood-radar-acquisition": "https://github.com/TusharSariya/Astraeus/issues/105",
+    "implement-native-cams-atmospheric-composition-forecasts": "https://github.com/TusharSariya/Astraeus/issues/106",
+    "implement-nasa-and-noaa-aerosol-observations": "https://github.com/TusharSariya/Astraeus/issues/107",
+    "implement-aeronet-and-account-gated-air-quality-observations": "https://github.com/TusharSariya/Astraeus/issues/108",
+    "implement-cwfis-and-firms-fire-products": "https://github.com/TusharSariya/Astraeus/issues/109",
+    "implement-ocean-wave-and-surge-model-grids": "https://github.com/TusharSariya/Astraeus/issues/110",
+    "implement-sst-ice-and-satellite-ocean-products": "https://github.com/TusharSariya/Astraeus/issues/111",
+    "implement-buoy-profile-and-water-level-observations": "https://github.com/TusharSariya/Astraeus/issues/112",
+    "implement-federal-and-provincial-hydrometric-products": "https://github.com/TusharSariya/Astraeus/issues/113",
+    "implement-marine-advisories-and-navigation-hazards": "https://github.com/TusharSariya/Astraeus/issues/114",
+    "implement-aviation-hazards-and-reports": "https://github.com/TusharSariya/Astraeus/issues/115",
+    "implement-swob-partner-wmo-and-city-products": "https://github.com/TusharSariya/Astraeus/issues/116",
+    "implement-community-weather-and-madis-paths": "https://github.com/TusharSariya/Astraeus/issues/117",
+    "implement-nl-provincial-air-quality-observations": "https://github.com/TusharSariya/Astraeus/issues/118",
+    "implement-terrain-and-canopy-acquisition": "https://github.com/TusharSariya/Astraeus/issues/119",
+    "implement-building-and-osm-obstruction-acquisition": "https://github.com/TusharSariya/Astraeus/issues/120",
+    "implement-night-light-and-sky-brightness-evidence": "https://github.com/TusharSariya/Astraeus/issues/121",
+    "implement-land-and-site-access-records": "https://github.com/TusharSariya/Astraeus/issues/122",
+    "implement-versioned-iers-time-inputs-and-supplementary-kernels": "https://github.com/TusharSariya/Astraeus/issues/123",
+    "implement-eclipse-and-geometry-validation-catalogues": "https://github.com/TusharSariya/Astraeus/issues/124",
+    "implement-orbital-and-small-body-catalogues": "https://github.com/TusharSariya/Astraeus/issues/125",
+    "implement-meteor-photometry-and-transient-catalogues": "https://github.com/TusharSariya/Astraeus/issues/126",
+    "implement-published-noaa-ai-gfs-and-ai-gefs-retrieval": "https://github.com/TusharSariya/Astraeus/issues/127"
+  }
 }

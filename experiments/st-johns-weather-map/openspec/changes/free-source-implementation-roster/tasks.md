@@ -24,14 +24,21 @@
   do not authorize behavior.
 - [ ] 2.2 Reconcile any selected contract with accepted V1 requirements and
   keep registry/API state below operational until the full evidence gate passes.
-- [ ] 2.3 Preserve the root readiness-image clarification and reconcile the
+- [x] 2.3 Preserve the root readiness-image clarification and reconcile the
   optional-model rented-GPU task as deferred under the free-only boundary.
+  Verify: this branch does not touch the root readiness delta; commit `c3fcba3`
+  on `execution/weathernext-access` records rented GPU work as deferred and
+  passes strict validation for `optional-north-atlantic-models`.
 
 ## 3. Execution-map structure
 
-- [ ] 3.1 Create the bounded family children listed in
+- [x] 3.1 Create the bounded family children listed in
   `docs/research/free-source-implementation-roster.md` and connect their native
   blockers to the final coverage ticket.
+  Verify: `python3 /tmp/astraeus-source-wayfinder/verify_expanded.py` reports
+  57 native children, 147 exact native blockers, correct labels, an acyclic
+  graph and frontier tickets 71 and 76 only; the 30 new issue URLs are stored
+  by stable key in `docs/research/free-source-roster-child-tickets.json`.
 - [ ] 3.2 Execute only eligible rows after contract approval. A completion must
   link fixture, upstream retrieval, artifact validation, Astraeus API readback,
   and failure/provenance evidence for every relevant field.
@@ -42,4 +49,3 @@
 
 - [x] 4.1 Run roster coverage validation, strict validation for this OpenSpec
   change, repository specification validation and `git diff --check`.
-
