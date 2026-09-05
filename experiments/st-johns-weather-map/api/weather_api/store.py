@@ -527,6 +527,13 @@ class SeriesData:
     retrieved_at: datetime | None
     provenance: dict[str, Any] = field(default_factory=dict)
     attrs: dict[str, Any] = field(default_factory=dict)
+    #: The categorical axes the stored series carries beside time, with their
+    #: labels exactly as stored: ``{"spacecraft": ["ACE", "IMAP", "SOLAR1"]}``
+    #: for an interleaved L1 feed. Empty on a plain time series. A variable
+    #: on such an axis is served once per label as ``name@label`` unless the
+    #: caller selected one label, so a reading is never detached from the
+    #: platform that measured it.
+    dimensions: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -1211,7 +1218,7 @@ class LiveStore:
                     result.setdefault(pressure, []).extend(found)
         return result
 
-    def read_series(self, source_id: str, logical_name: str) -> SeriesData | None:
+    def read_series(self, source_id: str, logical_name: str, *, select: Mapping[str, str] | None = None) -> SeriesData | None:
         """A coordinate-free time series from one published artifact, as stored.
 
         The read path is the same one ``sample_point`` uses - resolution
@@ -1221,6 +1228,15 @@ class LiveStore:
         a dataset carrying horizontal coordinates is refused here (it is a
         field, served by sampling), and the returned series carries no
         coordinates for a caller to mistake for local evidence.
+
+        A series may carry one categorical axis beside time - the measuring
+        platform of an interleaved feed (``spacecraft``, ``satellite``). Its
+        labels are reported in ``SeriesData.dimensions``; a variable on that
+        axis is served per label as ``name@label``, or under its plain name
+        when ``select`` names the label wanted (``{"spacecraft": "SOLAR1"}``).
+        A label the artifact does not carry is a skip, not an empty series,
+        and a dataset with more than one such axis is refused as a shape this
+        reader does not understand.
 
         Returns ``None`` when no current artifact matches; an unreadable or
         wrong-shaped artifact is recorded in ``skipped`` and also yields
@@ -1250,22 +1266,62 @@ class LiveStore:
         import pandas  # noqa: PLC0415
 
         times = [pandas.Timestamp(value).to_pydatetime().replace(tzinfo=UTC) for value in dataset[time_name].values]
-        variables: dict[str, SeriesVariable] = {}
-        for name in dataset.data_vars:
-            array = dataset[str(name)]
+        extra_dims = [str(dim) for dim in dataset.dims if str(dim) != time_name]
+        if len(extra_dims) > 1:
+            self._record_skip(artifact, ValueError(f"dataset carries {len(extra_dims)} axes beside time ({', '.join(extra_dims)}); a series has at most one platform axis"))
+            return None
+        dimensions: dict[str, list[str]] = {}
+        chosen: dict[str, str] = {}
+        for dim in extra_dims:
+            if dim not in dataset.coords:
+                self._record_skip(artifact, ValueError(f"axis {dim} carries no labels; a platform axis must name its platforms"))
+                return None
+            labels = [str(label) for label in dataset[dim].values]
+            wanted = (select or {}).get(dim)
+            if wanted is not None:
+                if wanted not in labels:
+                    self._record_skip(artifact, ValueError(f"axis {dim} carries no label {wanted!r}; it carries {', '.join(labels)}"))
+                    return None
+                chosen[dim] = wanted
+            dimensions[dim] = labels
+        for dim in select or {}:
+            if dim not in extra_dims:
+                self._record_skip(artifact, ValueError(f"dataset carries no axis {dim} to select on"))
+                return None
+
+        def _values(array: Any) -> list[float | str | None]:
             attrs = array.attrs
             values: list[float | str | None] = []
             for raw in array.values:
-                try:
-                    value: float | str | None = float(raw)
-                except (TypeError, ValueError):
+                value: float | str | None
+                if isinstance(raw, str):
+                    value = raw  # an issued text product, verbatim
+                else:
+                    try:
+                        value = float(raw)
+                    except (TypeError, ValueError):
+                        value = None
+                if isinstance(value, float) and value != value:  # NaN is absence, not a reading
                     value = None
-                if value is not None and value != value:  # NaN is absence, not a reading
-                    value = None
-                if value is not None and _is_flag_coded(attrs):
+                if isinstance(value, float) and _is_flag_coded(attrs):
                     value = _flag_meaning(attrs, value)
                 values.append(value)
-            variables[str(name)] = SeriesVariable(values=values, units=str(attrs.get("units", "unknown")))
+            return values
+
+        variables: dict[str, SeriesVariable] = {}
+        for name in dataset.data_vars:
+            array = dataset[str(name)]
+            units = str(array.attrs.get("units", "unknown"))
+            platform_dims = [dim for dim in extra_dims if dim in array.dims]
+            if not platform_dims:
+                variables[str(name)] = SeriesVariable(values=_values(array), units=units)
+                continue
+            dim = platform_dims[0]
+            if dim in chosen:
+                variables[str(name)] = SeriesVariable(values=_values(array.sel({dim: chosen[dim]})), units=units)
+                continue
+            for label in dimensions[dim]:
+                variables[f"{name}@{label}"] = SeriesVariable(values=_values(array.sel({dim: label})), units=units)
         return SeriesData(
             source_id=artifact.source_id,
             logical_name=artifact.logical_name,
@@ -1275,6 +1331,7 @@ class LiveStore:
             retrieved_at=artifact.retrieved_at,
             provenance=dict(artifact.provenance or {}),
             attrs=dict(dataset.attrs),
+            dimensions={dim: labels for dim, labels in dimensions.items()},
         )
 
     def published_layer_times(self) -> dict[str, LayerCoverage]:
