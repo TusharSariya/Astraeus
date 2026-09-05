@@ -22,6 +22,12 @@ UTC = timezone.utc
 AVALON_CORE_BOUNDS = {"south": 46.5, "west": -55.0, "north": 48.5, "east": -51.0}
 ATLANTIC_CONTEXT_BOUNDS = {"south": 40.0, "west": -70.0, "north": 55.0, "east": -40.0}
 
+# The evidence box every gridded source is subset to on ingest (CONTEXT.md,
+# storage window decision #20): 45.0 to 50.5 N, 58.0 to 46.0 W. Stated once
+# here so an adapter that crops to it names the same numbers the registry's
+# coverage checks and ``weather_api.sites.EVIDENCE_BOX`` name.
+EVIDENCE_BOX_BOUNDS = {"south": 45.0, "west": -58.0, "north": 50.5, "east": -46.0}
+
 # The location this experiment answers for.
 ST_JOHNS = (47.5615, -52.7126)
 
