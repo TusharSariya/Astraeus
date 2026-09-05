@@ -14,6 +14,9 @@ The central product question is:
 
 ## Documents
 
+- [Free-source implementation Wayfinder](wayfinder/free-source-implementation-map.md):
+  canonical execution map, native dependencies and resume pointer for implementing
+  missing free-access sources, including WeatherNext and Open-Meteo.
 - [Unimplemented data-source audit](unimplemented-data-sources.md):
   reconciles researched candidates with all 118 source-registry records,
   actual retrieval code, partial integrations and deliberate exclusions;
