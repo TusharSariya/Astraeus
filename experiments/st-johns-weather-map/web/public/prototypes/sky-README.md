@@ -1,6 +1,7 @@
 # Sky view design study
 
-**Experiment. Decision pending.** Three alternatives inside the settled Bench
+**Experiment. A / Horizon instrument selected.** The owner chose “i like A”
+on September 5, 2026 UTC. Three original alternatives remain inside the settled Bench
 shell, for [Design the Sky view](https://github.com/TusharSariya/Astraeus/issues/51).
 This route is a standalone throwaway HTML study beside the prior Series study;
 no production route or specification is changed.
@@ -78,5 +79,6 @@ suppresses the response’s numeric placeholders and observed/outlook Kp remain
 separate with their original per-reading statuses.
 
 Verification is recorded in the issue progress comment and handoff. This
-prototype has no added test suite. The owner must select or combine alternatives
-before a resolution comment and closure; the agent has not selected a winner.
+prototype has no added test suite. The owner selected A / Horizon instrument. B and C remain archived design
+alternatives. This decision does not promote the prototype or accept production
+specifications; API and specification handoff gates still apply.
