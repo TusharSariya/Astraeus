@@ -36,3 +36,9 @@
   them without replacing the prior current revision.
 - [ ] Accept source contract, distribution terms and API semantics; register,
   schedule and set operational status only in a later owner-approved change.
+
+## Tracked follow-up work
+
+These open tickets track remaining work beyond the completed isolated acquisition evidence. Their existence does not accept contracts or authorize production activation.
+
+- [ ] [Complete WeatherNext temporal coverage and experimental source admission](https://github.com/TusharSariya/Astraeus/issues/140).
