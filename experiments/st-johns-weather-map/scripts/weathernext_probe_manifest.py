@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Build and validate evidence for a bounded WeatherNext 3 probe.
 
-This tool deliberately has no authentication implementation. The repository's
-required ``aws-secrets-manager`` skill is unavailable, so authenticated account
-access remains a separate, blocked step. The tool prepares the exact public
-field inventory and rejects incomplete or over-budget evidence. It does not
-execute or meter provider requests; the counters are evidence supplied by a
-future approved transport.
+This tool deliberately has no authentication implementation. It prepares the
+exact public field inventory and rejects incomplete or over-budget evidence.
+It does not execute or meter provider requests; the counters are evidence
+supplied by a separately approved transport after requester-billing preflight.
 """
 
 from __future__ import annotations
@@ -80,7 +78,7 @@ def template() -> dict[str, Any]:
     return {
         "schema_version": 1,
         "result": "not_run",
-        "blocker": "authenticated access requires the repository-approved secret workflow",
+        "blocker": "sample transport has not supplied bounded retrieval evidence",
         "request": {
             "bucket": BUCKET,
             "prefix": PREFIX,

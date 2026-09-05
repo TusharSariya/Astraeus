@@ -52,10 +52,14 @@ exists.
 
 Execution preparation on 2026-09-05 added a bounded manifest validator for the
 non-requester-paid statistics surface and observed an anonymous HTTP 401 control
-for object listing. Authenticated access, exact grants, live schema, historical
-run availability and a data sample remain unverified because the repository's
-mandatory `aws-secrets-manager` skill is unavailable. This does not advance any
-admission or operational state.
+for object listing. A subsequent owner-authorized, redacted gcloud validation
+confirmed authenticated access to that statistics bucket, live
+`requesterPays: false`, the proposed August 1 historical run, and consolidated
+metadata containing all 126 documented statistic arrays. The proposed six-field
+sample was not read: its 18 whole-grid chunks total 375,209,154 compressed bytes,
+above the 64 MiB cap. No account identifier, requester project, credential or
+forecast value was retained. This does not advance any admission or operational
+state.
 
 This change makes the validated families optional evidence. It does not replace
 HRDPS, change a score, make any source operational, or admit an unverified

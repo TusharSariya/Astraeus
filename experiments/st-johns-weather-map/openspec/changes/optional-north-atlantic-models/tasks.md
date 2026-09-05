@@ -97,9 +97,16 @@
 - [ ] 6.2 Establish allowlisted access through the approved secret workflow;
       do not embed credentials or assume anonymous access.
       Verify: credential handling passes repository secret-safety checks.
-      Pending 2026-09-05: the required `aws-secrets-manager` skill is not
-      installed, so no identity, grant or credential was inspected. The
-      prepared manifest tool deliberately contains no authentication transport.
+      Partial 2026-09-05: owner authorized the existing isolated `astraeus`
+      gcloud login for a Google-native validation. Redacted preflight confirmed
+      an account is selected with no default project, explicitly stored quota
+      project, impersonation, token-file, credential-file or relevant
+      environment override. The `CURRENT_PROJECT` quota value was the SDK
+      default sentinel and resolved to no project. Authenticated access to the
+      statistics bucket succeeded without a requester project; no identity
+      value, token, grant or credential file was inspected. This task remains
+      unchecked because this single CLI result is not the complete repository
+      secret-safety verification or all-surface grant inventory.
 - [ ] 6.3 Probe the selected GCS, BigQuery or Earth Engine surface for a full
       evidence-box sample and pin dimensions, coordinates, members, units,
       missing values, product version and exact cloud variables.
@@ -108,8 +115,14 @@
       Partial preparation 2026-09-05: the bounded statistics-surface manifest
       enumerates all 126 documented surface/statistic combinations and rejects
       partial or over-budget success claims. One anonymous list control returned
-      HTTP 401 with a 742-byte body; no authenticated sample has run, so this
-      task remains unchecked.
+      HTTP 401 with a 742-byte body. The authenticated bounded probe then
+      observed `requesterPays: false`, accessed the proposed August 1 run, and
+      found all 126 documented arrays in its consolidated Zarr v3 metadata.
+      The six selected arrays declare 360 hourly slices on a 1801 by 3600 grid,
+      but their 18 requested whole-grid chunks total 375,209,154 compressed
+      bytes, above the 64 MiB cap, so no forecast value was read. This task
+      remains unchecked: there is no full-box data fixture or sample, exhaustive
+      object completeness proof, member read, or decoded missing-value evidence.
 - [ ] 6.4 Measure publication latency, completeness and retrieval cost across at
       least seven days, separating initialization, publication and retrieval.
       Verify: main and interim cycles are reported separately with failures.

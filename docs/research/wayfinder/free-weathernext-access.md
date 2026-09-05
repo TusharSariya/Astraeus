@@ -3,10 +3,12 @@
 Reviewed: 2026-09-05. Research issue: [Determine a no-charge WeatherNext access and sampling plan](https://github.com/TusharSariya/Astraeus/issues/73).
 Parent map: [Wayfinder map: implement the missing free-access evidence sources](https://github.com/TusharSariya/Astraeus/issues/70).
 
-Classification: **no spec impact**. Public-document investigation only; no
-account inspection, authentication, dataset requests, billing changes, terms
-acceptance, or implementation. `operational: false` remains the disposition.
-This supplements [prior validation](../google-weathernext-3-validation.md).
+Classification: **no spec impact**. The original phase was public-document
+investigation only. A later owner-authorized phase used an existing isolated
+gcloud login for redacted configuration checks and bounded live metadata
+requests. It made no billing, IAM, login, ADC, terms, or implementation change
+and read no forecast values. `operational: false` remains the disposition. This
+supplements [prior validation](../google-weathernext-3-validation.md).
 
 ## Decision
 
@@ -117,15 +119,53 @@ confirms that anonymous listing is unavailable; it says nothing about the
 owner's allowlisted identity, known-object reads, bucket billing configuration,
 or historical-run existence.
 
-Authenticated execution is blocked because the repository-mandated
-`aws-secrets-manager` skill is not installed in the available user, Codex,
-Claude, plugin-cache, or repository skill paths. No account identity,
-credential, ADC profile, grant, token, or authenticated object was inspected.
-The tool declares and validates caps; it does not execute or meter network
-requests. The approved resolution must either provide that exact skill or explicitly
-authorize a replacement runtime-only workflow that prevents token logging and
-requester-billing propagation. Until then the executable produces and validates
-the manifest but deliberately implements no authentication transport.
+The owner subsequently authorized a Google-native CLI validation using the
+existing, separately authenticated `astraeus` gcloud configuration. A redacted
+preflight on 2026-09-05 established that an account is selected and that no
+default project, explicitly stored billing quota project, impersonated service
+account, access-token file, credential-file override, or relevant environment
+override is configured. `gcloud config get-value billing/quota_project`
+reported `CURRENT_PROJECT`; configuration inspection established that this is
+the SDK default sentinel, not a stored project ID. With `core/project` absent,
+the installed SDK resolves that sentinel to no quota project. The validation
+also set `CLOUDSDK_BILLING_QUOTA_PROJECT` to an empty command-local value and
+removed related command-local environment overrides. No account or project
+identifier was printed or retained.
+
+The authenticated bucket-metadata request succeeded and reported
+`requesterPays: false` for the exact statistics bucket. A bounded object list
+also succeeded. This establishes that the selected login can access the GCS
+statistics surface without a requester project; it does not establish access
+to the excluded requester-paid full-ensemble bucket or any other WeatherNext
+surface.
+
+The proposed historical run
+`2026_to_present/20260801_00hr_01_preds/predictions.zarr/` exists. Its 182,540-
+byte consolidated Zarr v3 metadata declares a 360-element hourly forecast axis,
+133 nodes, and all 126 documented statistic arrays. The six selected cloud
+arrays are present as `float32` with units `(0 - 1)`, dimensions
+`[lead_time, lat_0p1, lon_0p1]`, shape `[360, 1801, 3600]`, chunk shape
+`[1, 1801, 3600]`, and Zstandard compression. This inventories the live schema
+and confirms the exact chunks for proposed leads 6, 12 and 24 exist. It does
+not prove that every data object behind every one of the 126 arrays is present;
+that would require an exhaustive listing outside this metadata probe.
+
+The consolidated metadata object's generation is `1787792319369404`, ETag is
+`CLyhg7HNv5YDEAE=`, and SHA-256 is
+`a1e1a47514c681be825ca5a5cfac7d0375e6b7d24b3dae201b64989e86724549`.
+Every one of the 126 manifest fields remains `deferred`, not `retrieved`: the
+live observation is metadata presence only. The inventory is the Cartesian
+product already encoded by the validator: the 21 named base fields and each of
+`mean`, `p10`, `p25`, `p50`, `p75`, and `p90`.
+
+The 18 compressed objects needed for the proposed six-field, three-lead sample
+total 375,209,154 bytes. That exceeds the 64 MiB received-byte cap before
+decode, so no forecast values were read and no sample artifact was created.
+The full-grid-per-lead chunk layout prevents the proposed point or Avalon subset
+from reducing transfer size. Metadata and list activity remained under 4 MiB,
+39 Cloud Storage requests, and five minutes. No token, credential file, ADC
+profile, IAM setting, or billing account was read, and no cloud resource was
+created or changed.
 
 ## Proposed bounded experiment (authenticated sample not executed)
 
@@ -214,6 +254,23 @@ implementation gates.
 - Read current primary pages linked above on 2026-09-05; no live dataset claims.
 - Anonymous control: one JSON API list request, HTTP 401, 742-byte body, no
   authorization or requester-billing identity.
+- Authenticated CLI preflight: selected account present; default project,
+  explicitly stored billing quota project, impersonation, token-file and
+  credential-file overrides absent. `CURRENT_PROJECT` was the unstored SDK
+  default and resolved to no project. Account and project values were consumed
+  only to emit redacted booleans.
+- Live bounded result: statistics bucket metadata accessible with
+  `requesterPays: false`; target historical run and consolidated Zarr metadata
+  accessible; 126/126 documented arrays present in metadata. Cloud data sample
+  not run because its 18 source chunks total 375,209,154 bytes, above 64 MiB.
+  Total Cloud Storage request upper bound: 39; metadata/list output below 4 MiB.
+- Reproducible request semantics: every invocation included
+  `--configuration=astraeus`; the process environment set
+  `CLOUDSDK_BILLING_QUOTA_PROJECT` to empty and removed
+  `GOOGLE_CLOUD_QUOTA_PROJECT`, `CLOUDSDK_CORE_PROJECT`, and
+  `CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT`. Listings used both `--limit` and
+  `--page-size`; object content used an exact byte range after a bounded
+  describe. No recursive or exhaustive CLI listing was used.
 - `uv run --with pytest python -m pytest experiments/st-johns-weather-map/scripts/tests/test_weathernext_bounded_probe.py -q`
 - `python3 experiments/st-johns-weather-map/scripts/weathernext_probe_manifest.py template`
 - `uv run --project tools/specs python tools/specs/specctl.py validate`
