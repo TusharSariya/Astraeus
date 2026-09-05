@@ -14,6 +14,10 @@ The central product question is:
 
 ## Documents
 
+- [Unimplemented data-source audit](unimplemented-data-sources.md):
+  reconciles researched candidates with all 118 source-registry records,
+  actual retrieval code, partial integrations and deliberate exclusions;
+  includes WeatherNext 3, Earth-2/FourCastNet and environmental archives.
 - [Google WeatherNext 3 validation](google-weathernext-3-validation.md):
   hourly satellite-informed initialization, 64-member global forecasts, direct
   cloud fields, access surfaces, latency, terms, costs, limitations, and
