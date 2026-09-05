@@ -1,0 +1,75 @@
+{
+  "classification": "Experiment, Spec-Impact: none",
+  "operational": false,
+  "retrieved_at_date": "2026-09-05",
+  "endpoint": "https://geo.weather.gc.ca/geomet/",
+  "bounds": {"south": 45.0, "west": -58.0, "north": 50.5, "east": -46.0},
+  "inventory": {
+    "reps_coverages": 1239,
+    "geps_coverages": 532,
+    "geps_member_coverages": 0,
+    "reps_members": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"],
+    "reps_source_crs": "EPSG:102990",
+    "reps_source_axis_spacing": [0.09, 0.09],
+    "geps_source_crs": "EPSG:4326",
+    "geps_source_axis_spacing": [0.5, 0.5],
+    "cadence": {
+      "reps_run": "PT6H",
+      "reps_valid": "PT3H through 72 hours in the live capability",
+      "geps_run": "PT12H",
+      "geps_valid": "PT3H through 384 hours for instantaneous reductions; product windows can be coarser"
+    },
+    "control_observation": "The current WMS title labels REPS member 01 '[control member]'. The experiment preserves the registry control identifier as null pending owner/spec resolution and does not flag 01 as control.",
+    "dead_datamart_paths_reactivated": false
+  },
+  "reps_artifact": {
+    "path": "eccc-ensemble-2026-09-05/eccc_reps_members.zarr.zip",
+    "run_time": "2026-09-05T12:00:00+00:00",
+    "valid_time": "2026-09-05T18:00:00+00:00",
+    "selected_fields": ["total_cloud_opacity", "wind_speed_10m"],
+    "members_present": 21,
+    "control_identifier": null,
+    "shape": {"member": 21, "latitude": 61, "longitude": 133},
+    "requested_output_geometry": "EPSG:4326 server-resampled output; method unknown; not native REPS geometry",
+    "wire_bytes": 1381800,
+    "artifact_bytes": 502873,
+    "sha256": "e0207f2f245ecd9a1cc65b287e275bae1f6f322e281c3d4999256a6412e6a99c",
+    "numeric_proof": {
+      "total_cloud_opacity": {"finite": 170373, "null": 0, "minimum": 0.0, "maximum": 100.0, "units": "percent"},
+      "wind_speed_10m": {"finite": 170373, "null": 0, "minimum": 0.01, "maximum": 23.72, "units": "m s-1"}
+    }
+  },
+  "geps_artifact": {
+    "path": "eccc-ensemble-2026-09-05/eccc_geps_reductions.zarr.zip",
+    "run_time": "2026-09-05T00:00:00+00:00",
+    "valid_time": "2026-09-05T12:00:00+00:00",
+    "shape": {"latitude": 11, "longitude": 24},
+    "member_dimension": false,
+    "computed_here": false,
+    "coverage_ids": [
+      "GEPS.DIAG.3_TT.ERMEAN",
+      "GEPS.DIAG.3_TT.ERSSTD",
+      "GEPS.DIAG.3_TT.ERC50",
+      "GEPS.DIAG.3_NT.ERC50",
+      "GEPS.DIAG.12_GUST-15MS.PROB"
+    ],
+    "wire_bytes": 7370,
+    "artifact_bytes": 12341,
+    "sha256": "1b9d8e963fa534fa5d8eb3b30a86760414c43a8b120f28fb99a07e06c9d05d0b",
+    "numeric_proof": {
+      "temperature_2m__mean": {"finite": 264, "null": 0, "minimum": 8.6320438385, "maximum": 18.6320438385, "units": "degC"},
+      "temperature_2m__spread": {"finite": 264, "null": 0, "minimum": 0.2019308358, "maximum": 0.9344308376, "units": "degC"},
+      "temperature_2m__p50": {"finite": 264, "null": 0, "minimum": 8.6668338776, "maximum": 18.8668155670, "units": "degC"},
+      "total_cloud_opacity__p50": {"finite": 264, "null": 0, "minimum": 18.7250003815, "maximum": 99.9749984741, "units": "percent"},
+      "raw__gust_over_15ms_probability": {"finite": 264, "null": 0, "minimum": 0.0, "maximum": 100.0, "units": "percent"}
+    }
+  },
+  "failure_proof": [
+    "A missing selected REPS member coverage marks the run incomplete and records decode_error plus reduced coverage.",
+    "A pressure level/member identifier is formed only when that exact coverage appears in the live inventory.",
+    "A missing selected GEPS reduction refuses the artifact; no partial reduction artifact is written.",
+    "A non-TIFF HTTP 200 response is rejected before numeric decoding."
+  ],
+  "readback_proof": "The retained REPS Zarr is opened by LiveStore, sampled with explicit member=01, and returned through the experimental FastAPI /point route with operational=false.",
+  "spec_refs": ["GOV-SPEC-001", "GOV-SPEC-002", "GOV-SPEC-004", "GOV-SPEC-005", "GOV-SPEC-006"]
+}

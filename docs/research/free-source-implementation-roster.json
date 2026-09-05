@@ -331,14 +331,15 @@
       "product_access_path": "REPS all members and control",
       "audit_ref": "experiments/st-johns-weather-map/registry/source_data.py:772",
       "implementation": {
-        "category": "unscheduled_partial",
+        "category": "experimental_live_verified",
         "adapter_registered": true,
         "evidence": [
           "experiments/st-johns-weather-map/ingest/adapters/eccc_geomet_ensemble.py:268",
-          "experiments/st-johns-weather-map/ingest/adapters/eccc_geomet_ensemble.py:300"
+          "experiments/st-johns-weather-map/ingest/adapters/eccc_geomet_ensemble.py",
+          "experiments/st-johns-weather-map/docs/evidence/eccc-ensemble-2026-09-05.json"
         ],
         "fixture_status": "passing",
-        "live_smoke_status": "planned"
+        "live_smoke_status": "passing-bounded-experiment"
       },
       "free_access": {
         "classification": "public-or-no-fee-path-to-reverify",
@@ -348,7 +349,7 @@
         "registry_state": "implemented-unverified",
         "schedulable": false,
         "admission_condition": null,
-        "notes": "Member assembly exists; registry disabled; discover always raises even if enabled; cadence/control incomplete."
+        "notes": "All 21 member identifiers were retrieved for selected cloud and wind fields through GeoMet WCS on 2026-09-05. The registry and scheduler remain disabled. Current WMS titles label member 01 as control, but the registry identifier remains null pending owner/spec resolution. The 133 by 61 EPSG:4326 artifact is explicitly server-resampled output, not native REPS geometry."
       },
       "field_family_scope": {
         "category": "ensemble",
@@ -528,11 +529,14 @@
       "product_access_path": "GEPS ensemble statistics (no members published openly)",
       "audit_ref": "experiments/st-johns-weather-map/registry/source_data.py:774",
       "implementation": {
-        "category": "absent",
+        "category": "experimental_live_verified",
         "adapter_registered": false,
-        "evidence": [],
-        "fixture_status": "planned",
-        "live_smoke_status": "planned"
+        "evidence": [
+          "experiments/st-johns-weather-map/ingest/adapters/eccc_geomet_reductions.py",
+          "experiments/st-johns-weather-map/docs/evidence/eccc-ensemble-2026-09-05.json"
+        ],
+        "fixture_status": "passing",
+        "live_smoke_status": "passing-bounded-experiment"
       },
       "free_access": {
         "classification": "public-or-no-fee-path-to-reverify",

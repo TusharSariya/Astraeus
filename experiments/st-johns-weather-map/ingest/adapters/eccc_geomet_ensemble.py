@@ -18,10 +18,9 @@ and nothing here defaults it onto ``01``. Where the declaration ever names one,
 :func:`control_retrieval_for` reports ``separate_coverage`` and the identifier
 travels straight into :func:`ingest.grib.stack_members`.
 
-It does not decode GeoTIFF itself. ``reader`` is injected; the default refuses,
-because no GeoTIFF-to-``DataArray`` path is wired in this deployment and a
-silently empty decode would look like a thin run. Tests inject a fake reader,
-which is also how the assembly below is exercised without touching the network.
+It decodes the numeric GeoTIFF through the same strict geometry reader as the
+deterministic WCS experiment. Tests may inject a fake reader to exercise
+assembly without touching the network.
 
 It does not schedule anything. :meth:`discover` reads
 ``IngestConfig.ensemble.schedulable`` and refuses while it is false, quoting the
@@ -33,12 +32,20 @@ located.
 
 from __future__ import annotations
 
+import hashlib
+import io
 import logging
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
 from urllib.parse import urlencode
+
+import numpy
+import xarray
+from PIL import Image
+from registry import fields as catalogue
 
 from ingest.adapters.eccc_geomet import GEOMET_BASE_URL
 from ingest.contract import (
@@ -60,25 +67,25 @@ from ingest.grib import (
 from ingest.http import PoliteClient
 from ingest.manifest import RequiredField, RunManifest, validate_run
 from ingest.registry import EnsembleDeclaration, get_config, register
-from registry import fields as catalogue
 
-UTC = timezone.utc
 _log = logging.getLogger(__name__)
 
 WCS_VERSION = "2.0.1"
 WCS_FORMAT = "image/tiff"
+WCS_EPSG4326 = "http://www.opengis.net/def/crs/EPSG/0/4326"
 
-#: The box the one bounded GeoMet call for ticket 13 was made against, and the
-#: only box whose native ``SCALESIZE`` has been measured. A different box needs
-#: its own measured grid size; deriving one would be a guess about the native
-#: resolution, so the adapter carries the measured pair together.
+#: The bounded validation box. Output shape and box travel together because a
+#: different pair would be a different server-resampling request.
 REPS_EVIDENCE_BOX = {"south": 45.0, "west": -58.0, "north": 50.5, "east": -46.0}
 
-#: ``long(133),lat(61)`` is REPS' native cell count over
-#: :data:`REPS_EVIDENCE_BOX`, from ``docs/research/wayfinder/geomet-wcs-inventory.md``.
-#: ``SCALESIZE`` is mandatory on this endpoint: omitting it returns a resampled
-#: coverage at the server's default size, which is not the model's own grid.
+#: The bounded output shape measured for the evidence box. DescribeCoverage
+#: reports the source grid as EPSG:102990 with 0.09 degree grid-axis offsets.
+#: GeoMet reprojects/resamples that source grid into this explicitly requested
+#: EPSG:4326 output. This is therefore an output geometry, never a native-grid
+#: claim.
 REPS_SCALESIZE = "long(133),lat(61)"
+REPS_WIDTH = 133
+REPS_HEIGHT = 61
 
 #: The placeholder the field catalogue writes into a per-member coverage id.
 MEMBER_PLACEHOLDER = "<member>"
@@ -173,12 +180,27 @@ def coverage_id(template: str, member: str) -> str:
     return template.replace(MEMBER_PLACEHOLDER, member)
 
 
+def pressure_coverage_id(
+    template: str, *, level_hpa: int, member: str, advertised: Sequence[str],
+) -> str:
+    """Resolve a pressure coverage only when the exact level is advertised."""
+    if LEVEL_PLACEHOLDER not in template or MEMBER_PLACEHOLDER not in template:
+        raise REPSCoverageError(f"{template!r} is not a pressure/member coverage template")
+    candidate = template.replace(LEVEL_PLACEHOLDER, str(level_hpa)).replace(MEMBER_PLACEHOLDER, member)
+    if candidate not in advertised:
+        raise REPSCoverageError(f"{candidate}: selected pressure level/member is not advertised")
+    return candidate
+
+
 def coverage_params(
     coverage: str,
     bounds: Mapping[str, float] = REPS_EVIDENCE_BOX,
     *,
     scalesize: str = REPS_SCALESIZE,
     image_format: str = WCS_FORMAT,
+    valid_time: datetime | None = None,
+    reference_time: datetime | None = None,
+    subsetting_crs: str = WCS_EPSG4326,
 ) -> list[tuple[str, str]]:
     """The working ``GetCoverage`` request, as ordered key/value pairs.
 
@@ -187,16 +209,22 @@ def coverage_params(
     endpoint and ``FORMAT`` is mandatory; both were established in
     ``docs/research/wayfinder/geomet-wcs-inventory.md``.
     """
-    return [
+    params = [
         ("SERVICE", "WCS"),
         ("VERSION", WCS_VERSION),
         ("REQUEST", "GetCoverage"),
         ("COVERAGEID", coverage),
         ("FORMAT", image_format),
+        ("SUBSETTINGCRS", subsetting_crs),
         ("SUBSET", f"long({bounds['west']},{bounds['east']})"),
         ("SUBSET", f"lat({bounds['south']},{bounds['north']})"),
         ("SCALESIZE", scalesize),
     ]
+    if valid_time is not None:
+        params.append(("TIME", valid_time.astimezone(UTC).isoformat().replace("+00:00", "Z")))
+    if reference_time is not None:
+        params.append(("DIM_REFERENCE_TIME", reference_time.astimezone(UTC).isoformat().replace("+00:00", "Z")))
+    return params
 
 
 def coverage_url(
@@ -206,16 +234,68 @@ def coverage_url(
     base_url: str = GEOMET_BASE_URL,
     scalesize: str = REPS_SCALESIZE,
     image_format: str = WCS_FORMAT,
+    valid_time: datetime | None = None,
+    reference_time: datetime | None = None,
+    subsetting_crs: str = WCS_EPSG4326,
 ) -> str:
-    params = coverage_params(coverage, bounds, scalesize=scalesize, image_format=image_format)
+    params = coverage_params(
+        coverage, bounds, scalesize=scalesize, image_format=image_format,
+        valid_time=valid_time, reference_time=reference_time,
+        subsetting_crs=subsetting_crs,
+    )
     return f"{base_url}?{urlencode(params)}"
 
 
-def _refusing_reader(payload: bytes, *, coverage: str) -> Any:
-    raise AdapterUnavailable(
-        f"{coverage}: no GeoTIFF decode path is wired for GeoMet WCS coverages in this deployment, "
-        f"so the {len(payload)} bytes retrieved cannot become a member field. A caller supplies its "
-        "own reader; nothing here publishes an empty grid in its place."
+def decode_reps_geotiff(
+    payload: bytes, *, coverage: str, variable: str, valid_time: datetime,
+    bounds: Mapping[str, float], width: int = REPS_WIDTH, height: int = REPS_HEIGHT,
+) -> Any:
+    """Decode the real WCS TIFF and retain its measured output geometry."""
+    if payload[:4] not in (b"II*\x00", b"MM\x00*"):
+        raise REPSCoverageError(f"{coverage}: GeoMet response is not a TIFF")
+    with Image.open(io.BytesIO(payload)) as image:
+        values = numpy.asarray(image, dtype=numpy.float32)
+        scale = tuple(float(value) for value in image.tag_v2.get(33550, ()))
+        tie = tuple(float(value) for value in image.tag_v2.get(33922, ()))
+        geokeys = tuple(image.tag_v2.get(34735, ()))
+    if values.shape != (height, width):
+        raise REPSCoverageError(f"{coverage}: shape {values.shape} != requested {(height, width)}")
+    if len(scale) < 2 or len(tie) != 6 or scale[0] <= 0 or scale[1] <= 0:
+        raise REPSCoverageError(f"{coverage}: unusable GeoTIFF scale/tie-point metadata")
+    if geokeys:
+        if len(geokeys) < 4 or int(geokeys[0]) != 1:
+            raise REPSCoverageError(f"{coverage}: unusable GeoTIFF key directory")
+        keys = {
+            int(geokeys[offset]): int(geokeys[offset + 3])
+            for offset in range(4, len(geokeys), 4)
+            if int(geokeys[offset + 1]) == 0 and int(geokeys[offset + 2]) == 1
+        }
+        if keys.get(2048) != 4326:
+            raise REPSCoverageError(f"{coverage}: GeoTIFF is not EPSG:4326")
+    west, north = tie[3], tie[4]
+    east, south = west + width * scale[0], north - height * scale[1]
+    wanted = tuple(float(bounds[key]) for key in ("west", "south", "east", "north"))
+    actual = (west, south, east, north)
+    if any(abs(a - b) > 1e-6 for a, b in zip(actual, wanted)):
+        raise REPSCoverageError(f"{coverage}: output bounds {actual} != requested {wanted}")
+    if numpy.isinf(values).any():
+        raise REPSCoverageError(f"{coverage}: coverage carries infinite values")
+    longitude = west + (numpy.arange(width, dtype=numpy.float64) + 0.5) * scale[0]
+    latitude = north - (numpy.arange(height, dtype=numpy.float64) + 0.5) * scale[1]
+    return xarray.DataArray(
+        values, dims=("latitude", "longitude"),
+        coords={"latitude": latitude, "longitude": longitude},
+        attrs={
+            "sampling_geometry": "pixel_is_area_cell_centres",
+            "longitude_resolution_degrees": scale[0],
+            "latitude_resolution_degrees": scale[1],
+            "crs": "EPSG:4326",
+            "crs_evidence": (
+                "GeoTIFF GeoKeyDirectoryTag" if geokeys
+                else "WCS subset axes; GeoTIFF carries no GeoKeyDirectoryTag"
+            ),
+            "resampling": "server_resampled_method_unknown",
+        },
     )
 
 
@@ -229,6 +309,7 @@ class _CoverageFetch:
     fields_by_member: dict[str, Any]
     retrieved: tuple[str, ...]
     errors: tuple[str, ...]
+    receipts: tuple[dict[str, Any], ...]
 
 
 def reps_manifest(declaration: EnsembleDeclaration, *, source_id: str = "eccc-reps") -> RunManifest:
@@ -275,7 +356,7 @@ class ECCCREPSEnsembleAdapter:
         bounds: Mapping[str, float] = REPS_EVIDENCE_BOX,
         scalesize: str = REPS_SCALESIZE,
         client: PoliteClient | None = None,
-        reader: CoverageReader = _refusing_reader,
+        reader: CoverageReader | None = None,
     ) -> None:
         self._base_url = base_url
         self._bounds = dict(bounds)
@@ -311,12 +392,14 @@ class ECCCREPSEnsembleAdapter:
     # ------------------------------------------------------------ the retrieval path
 
     def _fetch_field(
-        self, key: str, template: str, members: Sequence[str], *, valid_time: datetime | None
+        self, key: str, template: str, members: Sequence[str], *,
+        valid_time: datetime | None, reference_time: datetime | None,
     ) -> _CoverageFetch:
         client = self._get_client()
         fields_by_member: dict[str, Any] = {}
         retrieved: list[str] = []
         errors: list[str] = []
+        receipts: list[dict[str, Any]] = []
         for member in members:
             coverage = coverage_id(template, member)
             url = coverage_url(
@@ -324,13 +407,24 @@ class ECCCREPSEnsembleAdapter:
                 self._bounds,
                 base_url=self._base_url,
                 scalesize=self._scalesize,
+                valid_time=valid_time,
+                reference_time=reference_time,
             )
             try:
                 response = client.get(url)
                 payload = response.content
                 if not payload:
                     raise REPSCoverageError(f"{coverage}: the service answered an empty body")
-                field = self._reader(payload, coverage=coverage)
+                if valid_time is None:
+                    raise REPSCoverageError(f"{coverage}: an explicit valid/reference time is required")
+                if self._reader is None:
+                    field = decode_reps_geotiff(
+                        payload, coverage=coverage, variable=key, valid_time=valid_time,
+                        bounds=self._bounds,
+                    )
+                else:
+                    field = self._reader(payload, coverage=coverage)
+                field.attrs["units"] = catalogue.resolve(key).field.units or "unknown"
                 if key == "relative_humidity_2m":
                     # Measured 2026-09-01: the GEM family divides by saturation
                     # over liquid water at every temperature. An unstamped
@@ -341,41 +435,66 @@ class ECCCREPSEnsembleAdapter:
                         field, convention=RH_PHASE_LIQUID_WATER, basis=ECCC_RH_PHASE_BASIS
                     )
                 fields_by_member[member] = field
-            except Exception as error:  # transport, service fault or decode
+            except Exception as error:  # noqa: BLE001 - isolate one failed member
                 errors.append(f"coverage:{coverage}")
                 _log.warning("REPS coverage %s unavailable: %s", coverage, error)
                 continue
             retrieved.append(coverage)
+            receipts.append({
+                "coverage_id": coverage,
+                "source_uri": url,
+                "bytes": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            })
         return _CoverageFetch(
             fields_by_member=fields_by_member,
             retrieved=tuple(retrieved),
             errors=tuple(errors),
+            receipts=tuple(receipts),
         )
 
-    def assemble(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+    def assemble(
+        self, candidate: RunCandidate, window: FetchWindow, workdir: Path,
+        *, selected_keys: Sequence[str] | None = None,
+    ) -> RunResult:
         """Retrieve every stored member field and publish one member axis.
 
         The retrieval path proper, separated from :meth:`fetch` only by the
         schedule gate, so it can be driven by a caller that supplies its own
         client and reader without the family becoming schedulable.
         """
-        import xarray  # noqa: PLC0415
+        import xarray
 
         declaration = declaration_for(self.source_id)
         members = member_identifiers(declaration)
         control = None if declaration.control is None else declaration.control.identifier
         retrieved_at = datetime.now(UTC)
 
+        valid_time = candidate.detail.get("valid_time", candidate.run_time)
+        if not isinstance(valid_time, datetime) or candidate.run_time is None:
+            raise AdapterUnavailable(
+                f"{self.source_id}: experimental WCS assembly requires explicit run_time and valid_time"
+            )
+        available = dict(stored_member_coverages(self.source_id))
+        keys = tuple(available) if selected_keys is None else tuple(selected_keys)
+        unknown = sorted(set(keys) - set(available))
+        if unknown:
+            raise REPSCoverageError(f"selected fields have no verified REPS coverage template: {unknown}")
         stacked: dict[str, Any] = {}
         retrieved_names: list[str] = []
         decode_errors: list[str] = []
-        for key, template in stored_member_coverages(self.source_id):
-            fetched = self._fetch_field(key, template, members, valid_time=candidate.run_time)
+        receipts: list[dict[str, Any]] = []
+        for key in keys:
+            template = available[key]
+            fetched = self._fetch_field(
+                key, template, members, valid_time=valid_time, reference_time=candidate.run_time,
+            )
             decode_errors.extend(fetched.errors)
             retrieved_names.extend(fetched.retrieved)
+            receipts.extend(fetched.receipts)
             if not fetched.fields_by_member:
                 continue
-            stacked[key] = stack_members(fetched.fields_by_member, control=control)
+            stacked[key] = stack_members(fetched.fields_by_member, control=control).drop_vars("control")
 
         if not stacked:
             raise AdapterUnavailable(
@@ -384,6 +503,9 @@ class ECCCREPSEnsembleAdapter:
             )
 
         dataset = xarray.Dataset(stacked)
+        dataset = dataset.assign_coords(
+            control=("member", [control is not None and str(member) == control for member in dataset.member.values])
+        )
         manifest = reps_manifest(declaration, source_id=self.source_id)
         # Under ``every_published_field`` the wire set and the stored set are
         # the same set, so ``published`` is exactly what arrived: a coverage
@@ -411,8 +533,16 @@ class ECCCREPSEnsembleAdapter:
             "licence": LICENCE,
             "attribution": ATTRIBUTION,
             "subsetting": declaration.subsetting,
-            "scalesize": self._scalesize,
+            "requested_output_scalesize": self._scalesize,
+            "source_grid_crs": "EPSG:102990",
+            "source_grid_axis_spacing": [0.09, 0.09],
+            "stored_crs": "EPSG:4326",
+            "resampling": "server_resampled_method_unknown",
             "bounds": dict(self._bounds),
+            "run_time": candidate.run_time.astimezone(UTC).isoformat(),
+            "valid_time": valid_time.astimezone(UTC).isoformat(),
+            "selected_fields": list(keys),
+            "coverages": receipts,
             "quality": validation.as_quality(),
             "coverage": validation.as_coverage(),
             "members": validation.as_members(),
@@ -422,6 +552,7 @@ class ECCCREPSEnsembleAdapter:
 
         payload_path = workdir / "eccc_reps_members.zarr.zip"
         write_zarr(dataset, payload_path)
+        provenance["sha256"] = hashlib.sha256(payload_path.read_bytes()).hexdigest()
         return RunResult(
             source_id=self.source_id,
             provider_run_id=candidate.provider_run_id,
