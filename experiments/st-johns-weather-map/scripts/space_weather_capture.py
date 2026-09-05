@@ -26,6 +26,7 @@ import json
 import shutil
 import sys
 import tempfile
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,7 @@ if str(EXPERIMENT_ROOT) not in sys.path:
 
 from ingest.contract import FetchWindow  # noqa: E402
 from ingest.space_weather import FeedReceipt  # noqa: E402
+from ingest.store import CurrentArtifact  # noqa: E402
 
 UTC = timezone.utc
 RECEIPT_DIR = REPO_ROOT / "docs" / "research" / "wayfinder" / "space-weather-receipts"
@@ -96,6 +98,89 @@ def capture(source_id: str, adapter: Any, *, sample: int) -> dict[str, Any]:
         result = adapter.fetch(candidate, window, workdir)
         artifact = result.artifacts[0]
         byte_size, artifact_sha = _digest(artifact.payload_path)
+        revision_id = f"capture-{source_id}-{artifact_sha[:16]}"
+        published = CurrentArtifact(
+            source_id=source_id,
+            logical_name=artifact.logical_name,
+            revision_id=revision_id,
+            object_key=f"capture/{source_id}/{artifact.logical_name}",
+            media_type=artifact.media_type,
+            byte_size=byte_size,
+            provenance=dict(artifact.provenance),
+            published_at=result.retrieved_at,
+            run_time=result.run_time,
+            retrieved_at=result.retrieved_at,
+            provider_run_id=result.provider_run_id,
+            native_crs=result.native_crs,
+        )
+
+        # Exercise the HTTP route over the production LiveStore reader with a
+        # local test backing store. The artifact digest above independently
+        # pins the bytes; only the compact comparison summary survives.
+        from fastapi.testclient import TestClient
+        import importlib
+        api_module = importlib.import_module("weather_api.app")
+        from weather_api.store import LiveStore
+
+        class CaptureStore(LiveStore):
+            def __init__(self) -> None:
+                super().__init__(artifact_store=None, cache_dir=workdir)
+
+            def current(self):
+                return [published]
+
+            def _local_copy(self, _artifact):
+                return artifact.payload_path
+
+            def assert_object_store_reachable(self) -> None:
+                pass
+
+        old_mode = os.environ.get("WEATHER_DATA_MODE")
+        old_store = api_module.live_store
+        try:
+            os.environ["WEATHER_DATA_MODE"] = "live"
+            api_module.live_store = lambda: CaptureStore()
+            capture_store = CaptureStore()
+            stored_series = capture_store.read_series(source_id, artifact.logical_name)
+            assert stored_series is not None
+            response = TestClient(api_module.app).get(f"{api_module.PREFIX}/space-weather/products")
+        finally:
+            api_module.live_store = old_store
+            if old_mode is None:
+                os.environ.pop("WEATHER_DATA_MODE", None)
+            else:
+                os.environ["WEATHER_DATA_MODE"] = old_mode
+        response.raise_for_status()
+        body = response.json()
+        matched = next(
+            item for item in body["products"]
+            if item["source_id"] == source_id and item["logical_name"] == artifact.logical_name
+        )
+        expected_latest = {}
+        for served_name, variable in stored_series.variables.items():
+            name, _, label = served_name.partition("@")
+            value = None
+            stamp = None
+            for index in range(len(variable.values) - 1, -1, -1):
+                if variable.values[index] is not None:
+                    value = variable.values[index]
+                    stamp = stored_series.times[index]
+                    break
+            expected_latest[(name, label or None)] = (variable.units, value, stamp)
+        received_latest = {
+            (item["variable"], item["label"]): (
+                item["units"],
+                item["value"],
+                datetime.fromisoformat(item["time"].replace("Z", "+00:00")) if item["time"] else None,
+            )
+            for item in matched["latest"]
+        }
+        if received_latest != expected_latest:
+            raise AssertionError(f"API latest-value readback differs from artifact for {source_id}")
+        if matched["revision_id"] != revision_id or matched["provider_run_id"] != result.provider_run_id:
+            raise AssertionError(f"API artifact identity differs from capture for {source_id}")
+        if body["data_mode"] != "live" or body["operational"] is not False:
+            raise AssertionError(f"API mode/operational declaration differs for {source_id}")
         valid_times = candidate.detail.get("valid_times") or []
         record = {
             "source_id": source_id,
@@ -109,6 +194,7 @@ def capture(source_id: str, adapter: Any, *, sample: int) -> dict[str, Any]:
             "last_modified": (receipt.last_modified if isinstance(receipt, FeedReceipt) else None),
             "artifact_byte_size": byte_size,
             "artifact_sha256": artifact_sha,
+            "artifact_revision": revision_id,
             "record_count": len(parsed) if isinstance(parsed, list) else len(valid_times),
             "instant_count": len(valid_times),
             "newest_instant": valid_times[-1] if valid_times else None,
@@ -117,6 +203,26 @@ def capture(source_id: str, adapter: Any, *, sample: int) -> dict[str, Any]:
             "provider_run_id": result.provider_run_id,
             "complete": result.complete,
             "notes": result.notes,
+            "api_readback": {
+                "route": f"{api_module.PREFIX}/space-weather/products",
+                "http_status": response.status_code,
+                "data_mode": body["data_mode"],
+                "operational": body["operational"],
+                "source_id": matched["source_id"],
+                "logical_name": matched["logical_name"],
+                "revision_id": matched["revision_id"],
+                "provider_run_id": matched["provider_run_id"],
+                "record_count": matched["record_count"],
+                "newest_instant": matched["newest_instant"],
+                "measurement_scope": matched["measurement_scope"],
+                "evidence_classes": matched["evidence_classes"],
+                "quality_status": matched["quality"]["status"],
+                "structural_validation_status": matched["structural_validation"]["status"],
+                "missing_required_fields": matched["coverage"].get("missing_required_fields", []),
+                "latest_fields_verified": len(expected_latest),
+                "latest_value_unit_time_match": True,
+                "artifact_sha256_verified_before_readback": True,
+            },
         }
         return record
     finally:

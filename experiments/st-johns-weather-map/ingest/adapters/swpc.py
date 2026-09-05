@@ -418,6 +418,7 @@ class _RTSWFeedAdapter:
     key_variable: str
     fields: tuple[_Field, ...]
     required_keys: tuple[str, ...]
+    required_physical_fields: tuple[str, ...]
     default_url: str
 
     def __init__(self, client: PoliteClient | None = None, url: str | None = None) -> None:
@@ -480,7 +481,11 @@ class _RTSWFeedAdapter:
             },
             platform_dim="spacecraft",
         )
-        quality, coverage = series_quality(self.key_variable, arrays[self.key_variable])
+        quality, coverage = series_quality(
+            self.key_variable,
+            arrays[self.key_variable],
+            required_fields={name: arrays[name] for name in self.required_physical_fields},
+        )
         path = workdir / f"{self.logical_name}.zarr.zip"
         write_zarr(dataset, path)
         active_label = _active_at(times, labels, arrays["active"])
@@ -507,7 +512,7 @@ class _RTSWFeedAdapter:
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact(self.logical_name, MEDIA_ZARR, path, provenance)],
             native_crs=None,
@@ -535,6 +540,7 @@ class SWPCSolarWindAdapter(_RTSWFeedAdapter):
     key_variable = "bz_gsm"
     fields = RTSW_MAG_FIELDS
     required_keys = ("time_tag", "source", "bz_gsm")
+    required_physical_fields = ("bz_gsm", "bt")
     default_url = RTSW_MAG_URL
 
 
@@ -555,6 +561,7 @@ class SWPCPlasmaAdapter(_RTSWFeedAdapter):
     key_variable = "proton_speed"
     fields = RTSW_WIND_FIELDS
     required_keys = ("time_tag", "source", "proton_speed")
+    required_physical_fields = ("proton_speed", "proton_density", "proton_temperature")
     default_url = RTSW_WIND_URL
 
 

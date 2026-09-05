@@ -243,7 +243,7 @@ class SWPCPropagatedSolarWindAdapter:
                 "model_disclosure": "propagated model values, not a measurement at the bow shock",
             },
         )
-        quality, coverage = series_quality("speed", speed)
+        quality, coverage = series_quality("speed", speed, required_fields={key: variables[key][0] for key in ("speed", "density", "bz", "bt")})
         path = workdir / "propagated_solar_wind.zarr.zip"
         write_zarr(dataset, path)
         provenance = series_provenance(
@@ -264,7 +264,7 @@ class SWPCPropagatedSolarWindAdapter:
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("propagated_solar_wind", MEDIA_ZARR, path, provenance)],
             native_crs=None,
@@ -321,7 +321,7 @@ class SWPCKp1mAdapter:
             },
             {"source": "SWPC 1-minute planetary K index"},
         )
-        quality, coverage = series_quality("kp_index", kp_index)
+        quality, coverage = series_quality("kp_index", kp_index, required_fields={"kp_index": kp_index, "estimated_kp": estimated})
         path = workdir / "kp_1m.zarr.zip"
         write_zarr(dataset, path)
         provenance = series_provenance(
@@ -342,7 +342,7 @@ class SWPCKp1mAdapter:
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("kp_1m", MEDIA_ZARR, path, provenance)],
             native_crs=None,
@@ -467,7 +467,7 @@ class SWPCAlertsAdapter:
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("alerts", MEDIA_ZARR, path, provenance)],
             native_crs=None,
@@ -566,7 +566,7 @@ class SWPCScalesAdapter:
             },
             platform_dim="day_offset",
         )
-        quality, coverage = series_quality("g_scale", g_scale)
+        quality, coverage = series_quality("g_scale", g_scale, required_fields={"r_scale": scale("R"), "s_scale": scale("S"), "g_scale": g_scale})
         path = workdir / "noaa_scales.zarr.zip"
         write_zarr(dataset, path)
         provenance = series_provenance(
@@ -587,7 +587,7 @@ class SWPCScalesAdapter:
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or current,
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("noaa_scales", MEDIA_ZARR, path, provenance)],
             native_crs=None,
@@ -677,7 +677,7 @@ class GOESMagnetometerAdapter(_GOESAdapter):
             {"source": "SWPC GOES primary magnetometer (1 day)"},
             platform_dim="satellite",
         )
-        quality, coverage = series_quality("total", grids["total"])
+        quality, coverage = series_quality("total", grids["total"], required_fields=grids)
         path = workdir / "goes_magnetometer.zarr.zip"
         write_zarr(dataset, path)
         provenance = series_provenance(
@@ -698,7 +698,7 @@ class GOESMagnetometerAdapter(_GOESAdapter):
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("goes_magnetometer", MEDIA_ZARR, path, provenance)],
             native_crs=None,
@@ -760,7 +760,7 @@ class GOESXrayAdapter(_GOESAdapter):
             {"source": "SWPC GOES X-ray flux (1 day)", "channel_map": "0.05-0.4nm short; 0.1-0.8nm long"},
             platform_dim="satellite",
         )
-        quality, coverage = series_quality("xray_flux_long", grids["xray_flux_long"])
+        quality, coverage = series_quality("xray_flux_long", grids["xray_flux_long"], required_fields={key: grids[key] for key in ("xray_flux_short", "xray_flux_long")})
         path = workdir / "goes_xray.zarr.zip"
         write_zarr(dataset, path)
         provenance = series_provenance(
@@ -781,7 +781,7 @@ class GOESXrayAdapter(_GOESAdapter):
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("goes_xray", MEDIA_ZARR, path, provenance)],
             native_crs=None,
@@ -870,7 +870,7 @@ class SWPCKyotoDstAdapter:
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("kyoto_dst", MEDIA_ZARR, path, provenance)],
             native_crs=None,

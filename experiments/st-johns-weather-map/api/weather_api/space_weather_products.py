@@ -61,6 +61,8 @@ class SpaceWeatherProduct(StrictModel):
 
     source_id: str
     logical_name: str
+    revision_id: str
+    provider_run_id: str | None = None
     product: str
     producer: str
     intermediary: dict[str, Any] | None = None
@@ -69,6 +71,9 @@ class SpaceWeatherProduct(StrictModel):
     display_primary: bool
     adapter_version: str | None = None
     retrieval: list[dict[str, Any]] = Field(default_factory=list)
+    quality: dict[str, Any] = Field(default_factory=dict)
+    structural_validation: dict[str, Any] = Field(default_factory=dict)
+    coverage: dict[str, Any] = Field(default_factory=dict)
     dimensions: dict[str, list[str]] = Field(default_factory=dict)
     record_count: int
     newest_instant: datetime | None
@@ -162,6 +167,8 @@ def product_from_series(series: SeriesData, reference: datetime, threshold: int 
     return SpaceWeatherProduct(
         source_id=series.source_id,
         logical_name=series.logical_name,
+        revision_id=series.revision_id,
+        provider_run_id=series.provider_run_id,
         product=str(provenance.get("product", series.logical_name)),
         producer=str(provenance.get("producer", "undeclared")),
         intermediary=dict(provenance["intermediary"]) if isinstance(provenance.get("intermediary"), Mapping) else None,
@@ -170,6 +177,9 @@ def product_from_series(series: SeriesData, reference: datetime, threshold: int 
         display_primary=display_primary,
         adapter_version=str(provenance["adapter_version"]) if provenance.get("adapter_version") else None,
         retrieval=[dict(item) for item in (provenance.get("retrieval") or []) if isinstance(item, Mapping)],
+        quality=dict(provenance.get("quality") or {}),
+        structural_validation=dict(provenance.get("structural_validation") or {}),
+        coverage=dict(provenance.get("coverage") or {}),
         dimensions=dict(series.dimensions),
         record_count=len(series.times),
         newest_instant=newest,

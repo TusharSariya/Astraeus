@@ -268,7 +268,13 @@ def platform_series_dataset(
     )
 
 
-def series_quality(name: str, values: numpy.ndarray, *, note: str = "no spatial coverage claimed") -> tuple[dict[str, Any], dict[str, Any]]:
+def series_quality(
+    name: str,
+    values: numpy.ndarray,
+    *,
+    note: str = "no spatial coverage claimed",
+    required_fields: Mapping[str, numpy.ndarray] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Manual quality/coverage blocks for a coordinate-free series.
 
     ``validate_run`` requires a horizontal grid by design; these series have
@@ -282,12 +288,22 @@ def series_quality(name: str, values: numpy.ndarray, *, note: str = "no spatial 
     else:
         per_instant = numpy.isfinite(array)
     finite = float(per_instant.mean()) if per_instant.size else 0.0
+    required = dict(required_fields or {name: values})
+    missing = [field for field, array in required.items() if not numpy.isfinite(array).any()]
     quality = {
-        "status": "passed" if finite > 0.0 else "failed",
-        "flags": [] if finite > 0.0 else [f"empty_field:{name}"],
-        "detail": f"{name}: {finite:.4f} of instants carry a finite value; {note}",
+        "status": "unknown" if finite > 0.0 else "failed",
+        "flags": ["upstream_quality_not_interpreted"] if finite > 0.0 else [f"empty_field:{name}"],
+        "detail": (
+            f"structural decode passed; {name}: {finite:.4f} of instants carry a finite value; "
+            f"native upstream quality remains uninterpreted; {note}"
+        ),
     }
-    coverage = {"status": "complete" if finite > 0.0 else "outside", "fraction": round(finite, 4)}
+    coverage = {
+        "status": "complete" if not missing else ("outside" if finite == 0.0 else "partial"),
+        "fraction": round(finite, 4),
+        "required_fields": sorted(required),
+        "missing_required_fields": missing,
+    }
     return quality, coverage
 
 
@@ -332,6 +348,10 @@ def series_provenance(
         "adapter_version": adapter_version,
         "quality": dict(quality),
         "coverage": dict(coverage),
+        "structural_validation": {
+            "status": "passed" if coverage.get("status") == "complete" else "failed",
+            "detail": "all selected physical fields contain at least one finite retrieved value" if coverage.get("status") == "complete" else "one or more selected physical fields contain no finite retrieved value",
+        },
         **classes,
         "retrieval": [receipt.as_dict() for receipt in receipts],
     }

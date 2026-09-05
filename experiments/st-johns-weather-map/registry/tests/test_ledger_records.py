@@ -156,14 +156,14 @@ class LedgerRecordTests(unittest.TestCase):
         _, errors = audit.validate()
         self.assertEqual([], errors)
 
-    def test_noaa_swpc_rtsw_is_catalogued(self) -> None:
+    def test_noaa_swpc_rtsw_condition_is_satisfied_by_v2_adapter(self) -> None:
         sources = _by_id()
         rtsw = sources["noaa-swpc-rtsw"]
 
-        self.assertEqual("catalogued", rtsw["status"])
+        self.assertEqual("implemented-unverified", rtsw["status"])
         self.assertEqual("passing", rtsw["fixture_status"])
         condition = rtsw["admission_condition"]
-        self.assertFalse(condition["satisfied"])
+        self.assertTrue(condition["satisfied"])
         self.assertIn("SWFO-L1", condition["condition"])
         self.assertIn("quality flag", condition["satisfied_by"])
 

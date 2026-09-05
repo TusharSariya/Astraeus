@@ -89,6 +89,11 @@ from .models import (
     Freshness,
 )
 from .science import select_fallback
+from .space_weather_products import (
+    SpaceWeatherProductsResponse,
+    build_products,
+    unavailable_products,
+)
 from . import astronomy, aurora, grids, satellite as goes_satellite, wms
 from .config import WINDOW_BACK, WINDOW_STEPS, sliding_window
 from .store import (
@@ -2147,6 +2152,33 @@ def get_space_weather() -> SpaceWeatherResponse:
         solar_wind=solar_wind,
         notices=skip_notices(store) if available else [*skip_notices(store), "no SWPC space-weather artifact is currently published; every series is absent and nothing is invented"],
     )
+
+
+@app.get(f"{PREFIX}/space-weather/products", response_model=SpaceWeatherProductsResponse)
+def get_space_weather_products() -> SpaceWeatherProductsResponse:
+    """Read every published coordinate-free space-weather artifact.
+
+    This uses the same current-artifact store and integrity-checked series
+    reader as the focused ``/space-weather`` response. Fixtures never stand
+    in for a provider product.
+    """
+    reference = datetime.now(timezone.utc)
+    mode = configured_mode()
+    if mode == FIXTURE_MODE:
+        return unavailable_products(reference, "fixture mode carries no space-weather products; nothing is invented")
+    if mode != LIVE_MODE:
+        return unavailable_products(reference, "WEATHER_DATA_MODE is missing or malformed; this deployment fails closed")
+    store = live_store()
+    if store is None:
+        return unavailable_products(reference, "no live artifact store is reachable; no space-weather product can be read")
+    try:
+        store.assert_object_store_reachable()
+        return build_products(store, reference, registry_threshold=_swpc_threshold)
+    except StoreUnavailable as error:
+        return unavailable_products(reference, f"the object store is unreachable: {error}")
+    except Exception:
+        LOGGER.exception("space-weather products could not be read")
+        return unavailable_products(reference, "the live artifact store raised while reading space-weather products")
 
 
 @app.get(f"{PREFIX}/profile", response_model=ProfileResponse)

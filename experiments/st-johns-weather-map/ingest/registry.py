@@ -158,7 +158,16 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "total_cloud_mean_6h" if name == "total_cloud_opacity" else name for name in DEFAULT_VARIABLES
     ),
     "noaa-swpc-kp": ("kp_index", "a_running", "kp_status"),
-    "noaa-swpc-rtsw": ("bz_gsm", "bt"),
+    "noaa-swpc-rtsw": ("bx_gsm", "by_gsm", "bz_gsm", "bt", "longitude_gsm", "latitude_gsm", "active", "manual_mode", "max_telemetry_flag", "max_data_flag", "overall_quality"),
+    "noaa-swpc-plasma": ("proton_density", "proton_speed", "proton_temperature", "active", "max_convergence_flag", "max_data_flag", "max_error_count_flag", "max_processing_flag", "max_range_flag", "max_sample_count_flag", "max_telemetry_flag", "overall_quality"),
+    "noaa-swpc-propagated-solar-wind": ("speed", "vx", "vy", "vz", "density", "temperature", "bx", "by", "bz", "bt", "propagated_time_unix"),
+    "noaa-swpc-kp-1m": ("kp_index", "estimated_kp", "kp_code"),
+    "noaa-swpc-alerts": ("product_id", "message", "message_code", "serial_number", "noaa_scale"),
+    "noaa-swpc-scales": ("r_scale", "s_scale", "g_scale", "r_minor_probability", "r_major_probability", "s_probability", "valid_from_unix", "scale_kind"),
+    "gfz-hp30": ("hp30_index",),
+    "noaa-goes-magnetometer": ("he", "hp", "hn", "total", "arcjet_flag"),
+    "noaa-goes-xray": ("xray_flux_short", "xray_flux_long", "observed_flux_short", "observed_flux_long", "electron_correction_short", "electron_correction_long", "electron_contamination_short", "electron_contamination_long"),
+    "noaa-swpc-kyoto-dst": ("dst_index",),
     "noaa-swpc-ovation": ("aurora_probability",),
     # HRDPS and RDPS carry the default surface set plus the cloud steering
     # winds, the vertical velocity, the RH/temperature profile at the same

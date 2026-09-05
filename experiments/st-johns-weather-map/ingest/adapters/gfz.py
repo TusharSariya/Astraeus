@@ -232,7 +232,7 @@ class GFZHp30Adapter:
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("hp30", MEDIA_ZARR, path, provenance)],
             native_crs=None,

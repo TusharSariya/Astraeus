@@ -1,25 +1,48 @@
 {
   "adapter_version": "goes-xray-v1",
-  "artifact_byte_size": 41963,
-  "artifact_sha256": "252ba546e75a9af5ff7dfce80d1ecea79e1adecaa9fd63f430d8e891fc6fd5f4",
-  "byte_count": 640647,
-  "captured_at": "2026-09-05T19:53:57Z",
+  "api_readback": {
+    "artifact_sha256_verified_before_readback": true,
+    "data_mode": "live",
+    "evidence_classes": [
+      "retrieved"
+    ],
+    "http_status": 200,
+    "latest_fields_verified": 8,
+    "latest_value_unit_time_match": true,
+    "logical_name": "goes_xray",
+    "measurement_scope": "geosynchronous",
+    "missing_required_fields": [],
+    "newest_instant": "2026-09-05T20:40:00Z",
+    "operational": false,
+    "provider_run_id": "goes-xray-202609052040",
+    "quality_status": "unknown",
+    "record_count": 1438,
+    "revision_id": "capture-noaa-goes-xray-c9a32e81671be35a",
+    "route": "/api/experiments/weather/v0/space-weather/products",
+    "source_id": "noaa-goes-xray",
+    "structural_validation_status": "passed"
+  },
+  "artifact_byte_size": 41946,
+  "artifact_revision": "capture-noaa-goes-xray-c9a32e81671be35a",
+  "artifact_sha256": "c9a32e81671be35a21fa9164f630c0389f0018a3067714928360996c8dc9a037",
+  "byte_count": 640510,
+  "captured_at": "2026-09-05T20:44:04Z",
   "complete": true,
-  "instant_count": 1437,
-  "last_modified": "Sat, 05 Sep 2026 19:52:40 GMT",
+  "instant_count": 1438,
+  "last_modified": "Sat, 05 Sep 2026 20:42:45 GMT",
   "logical_name": "goes_xray",
-  "newest_instant": "2026-09-05T19:49:00Z",
-  "notes": "1437 minutes x 1 satellite(s), both channels, newest 2026-09-05T19:49:00Z",
-  "oldest_instant": "2026-09-04T19:53:00Z",
+  "newest_instant": "2026-09-05T20:40:00Z",
+  "notes": "1438 minutes x 1 satellite(s), both channels, newest 2026-09-05T20:40:00Z",
+  "oldest_instant": "2026-09-04T20:43:00Z",
   "platforms": {
     "satellite": [
       "18"
     ]
   },
-  "provider_run_id": "goes-xray-202609051949",
-  "record_count": 2874,
+  "provider_run_id": "goes-xray-202609052040",
+  "record_count": 2876,
   "request_parameters": {},
-  "sha256": "0a26f41d90cd234085b09565ef0ed68ab8b840388d3c6986273ffb545224d022",
+  "sha256": "96e87b2e2c936e45eed230706214bd352f02f9361e92d9fa256b0ff1046de1d4",
   "source_id": "noaa-goes-xray",
   "url": "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json"
 }

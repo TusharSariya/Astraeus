@@ -24,33 +24,33 @@ Not touched: `docs/specv1`, web, OVATION/Kp adapters' behaviour, the
 
 ## 2. Adapters
 
-- [ ] 2.1 RTSW v2 and plasma on `valid_time x spacecraft` with every flag.
+- [x] 2.1 RTSW v2 and plasma on `valid_time x spacecraft` with every flag.
       Verify: `cd api && uv run pytest tests/test_adapter_swpc.py -q`
-- [ ] 2.2 Propagated wind, Kp 1m, alerts, scales, GOES magnetometer, GOES
+- [x] 2.2 Propagated wind, Kp 1m, alerts, scales, GOES magnetometer, GOES
       X-ray, Kyoto Dst (reprocessed).
       Verify: `cd api && uv run pytest tests/test_adapter_swpc_products.py -q`
-- [ ] 2.3 GFZ Hp30 over a bounded 24 h selection with the licence checked.
+- [x] 2.3 GFZ Hp30 over a bounded 24 h selection with the licence checked.
       Verify: `cd api && uv run pytest tests/test_adapter_gfz.py -q`
 
 ## 3. Registry and scheduling
 
-- [ ] 3.1 Ten records schedulable (reach, native cadence, freshness,
+- [x] 3.1 Ten records schedulable (reach, native cadence, freshness,
       variables, RTSW condition satisfied, plasma endpoint corrected);
       tombstones unchanged in state.
       Verify: `make test-registry && cd api && uv run pytest tests/test_ingest_admission.py tests/test_ingest_registry_reach.py tests/test_space_weather_registry.py -q`
 
 ## 4. API readback
 
-- [ ] 4.1 `/space-weather` serves the active spacecraft's Bz by name;
+- [x] 4.1 `/space-weather` serves the active spacecraft's Bz by name;
       `/space-weather/products` reads every published series back; fixture
       mode fails closed.
       Verify: `cd api && uv run pytest tests/test_space_weather.py tests/test_space_weather_products.py -q`
 
 ## 5. Evidence
 
-- [ ] 5.1 One bounded live capture per feed with a receipt; hand-trimmed
+- [x] 5.1 One bounded live capture per feed with a receipt; hand-trimmed
       fixtures under 20 KB; no payload in Git.
       Verify: `git rev-list --objects origin/execution/free-source-contracts..HEAD | git cat-file --batch-check='%(objectsize) %(rest)' | sort -n | tail`
-- [ ] 5.2 `make test`, `specctl validate`, `openspec validate free-space-weather-products --strict`.
+- [x] 5.2 `make test-api test-registry`, `specctl validate`, `openspec validate free-space-weather-products --strict`.
 - [ ] 5.3 Owner decisions recorded (STEREO-A re-probe, plasma endpoint
       correction, GFZ Kp/Hp60, products endpoint shape); no state promoted.

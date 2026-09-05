@@ -124,7 +124,9 @@ def test_products_are_listed_by_provenance_with_scope_receipts_and_latest_values
     assert set(by_id) == {("gfz-hp30", "hp30"), ("noaa-goes-xray", "goes_xray"), ("noaa-swpc-kyoto-dst", "kyoto_dst"), ("noaa-swpc-alerts", "alerts")}
 
     hp = by_id[("gfz-hp30", "hp30")]
+    assert hp.revision_id == "rev-gfz-hp30-hp30" and hp.provider_run_id == "run"
     assert hp.measurement_scope == "planetary" and hp.evidence_classes == ["retrieved"] and hp.display_primary is True
+    assert hp.quality["status"] == "unknown" and hp.structural_validation["status"] == "passed"
     assert hp.retrieval == [RECEIPT.as_dict()] and "payload" not in str(hp.retrieval)
     assert hp.record_count == 3 and hp.newest_instant == REFERENCE - timedelta(minutes=60)  # the trailing NaN is a gap
     assert hp.freshness.status == "fresh" and hp.freshness.age_seconds == 3600

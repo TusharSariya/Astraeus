@@ -138,7 +138,8 @@ def test_platform_dataset_shape_and_quality():
     assert list(dataset.dims) == ["valid_time", "spacecraft"]
     assert list(dataset.spacecraft.values) == ["ACE", "SOLAR1"]
     quality, coverage = series_quality("bz_gsm", bz)
-    assert quality["status"] == "passed" and coverage["fraction"] == round(2 / 3, 4)
+    assert quality["status"] == "unknown" and "upstream_quality_not_interpreted" in quality["flags"]
+    assert coverage["fraction"] == round(2 / 3, 4)
     empty_quality, empty_coverage = series_quality("bz_gsm", numpy.full((2, 2), numpy.nan))
     assert empty_quality["status"] == "failed" and empty_coverage["status"] == "outside"
     with pytest.raises(AdapterUnavailable, match="unique and sorted"):

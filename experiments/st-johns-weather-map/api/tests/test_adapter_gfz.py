@@ -178,6 +178,7 @@ def test_no_artifact_file_is_written_when_discovery_refuses(tmp_path: Path):
 
 def test_fetch_writes_the_pinned_series(tmp_path: Path):
     import xarray
+    import zarr
 
     adapter, candidates, _recorder = discovered()
     result = adapter.fetch(candidates[0], WINDOW, tmp_path)
@@ -190,7 +191,7 @@ def test_fetch_writes_the_pinned_series(tmp_path: Path):
     assert written.payload_path == tmp_path / "hp30.zarr.zip"
     assert written.payload_path.exists()
 
-    dataset = xarray.open_zarr(f"zip::{written.payload_path}", consolidated=False)
+    dataset = xarray.open_zarr(zarr.storage.ZipStore(str(written.payload_path), mode="r"), consolidated=False)
     assert list(dataset.dims) == ["valid_time"]
     assert "latitude" not in dataset.coords and "longitude" not in dataset.coords
     values = dataset["hp30_index"].values

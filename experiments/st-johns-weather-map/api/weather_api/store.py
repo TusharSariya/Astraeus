@@ -525,6 +525,8 @@ class SeriesData:
     variables: dict[str, SeriesVariable]
     run_time: datetime | None
     retrieved_at: datetime | None
+    revision_id: str = "unknown"
+    provider_run_id: str | None = None
     provenance: dict[str, Any] = field(default_factory=dict)
     attrs: dict[str, Any] = field(default_factory=dict)
     #: The categorical axes the stored series carries beside time, with their
@@ -1329,6 +1331,8 @@ class LiveStore:
             variables=variables,
             run_time=artifact.run_time,
             retrieved_at=artifact.retrieved_at,
+            revision_id=artifact.revision_id,
+            provider_run_id=artifact.provider_run_id,
             provenance=dict(artifact.provenance or {}),
             attrs=dict(dataset.attrs),
             dimensions={dim: labels for dim, labels in dimensions.items()},
