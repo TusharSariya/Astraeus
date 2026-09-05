@@ -1,6 +1,6 @@
 # Arbitrary-point Focus on the Map
 
-Discussion draft for [Settle arbitrary-point Focus behavior on the Map](https://github.com/TusharSariya/Astraeus/issues/67). The owner selected the Map disclosure, placement, site-selection and coordinate-precision choices below; unsupported-coordinate handling remains pending. No behavior or normative status changes.
+Owner design decision record for [Settle arbitrary-point Focus behavior on the Map](https://github.com/TusharSariya/Astraeus/issues/67). The owner selected the Map disclosure, placement, site-selection and coordinate-precision choices below; unsupported-coordinate handling is also selected. No behavior or normative status changes.
 
 ## Inherited decisions
 
@@ -48,8 +48,17 @@ Camera placement, phone brief and band math remain deferred. No new site registr
 Classification: no spec impact, evidence gathering and proposed interaction choices only. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-005. Read-only subagent audit completed. Specctl validation passed (0 errors, 0 warnings); implementation behavior was not changed or tested by this documentation task.
 
 
-## Next discussion: unsupported coordinates
+## Owner decision: unsupported coordinates
 
-Proposed, not selected: retain the clicked coordinate as Focus even when the API explicitly refuses geographic coverage. Mark that Focus “Outside supported data area,” show the refusal reason and no point values, and do not snap to a supported point or substitute nearby evidence. Preserve the shared instant and layer selection. Previously returned readings must not appear to describe the new Focus. Distinguish an explicit geographic refusal from network/server failure or an unknown coverage boundary.
+The owner answered “yes”: retain the clicked coordinate as Focus even when the API explicitly refuses geographic coverage. Mark that Focus “Outside supported data area,” show the refusal reason and no point values, and do not snap to a supported point or substitute nearby evidence. Preserve the shared instant and layer selection. Previously returned readings must not appear to describe the new Focus. Distinguish an explicit geographic refusal from network/server failure or an unknown coverage boundary.
 
-A reference basemap or independently valid layer is not itself evidence that point sampling is supported; its existing provenance/disclosure rules still apply. This UX choice does not settle the wider helper-versus-route coverage conflict or authorize expanding service. The alternative is to reject the selection and keep the previous Focus with an input error.
+A reference basemap or independently valid layer is not itself evidence that point sampling is supported; its existing provenance/disclosure rules still apply. This UX choice does not settle the wider helper-versus-route coverage conflict or authorize expanding service. Rejecting the selection and keeping the previous Focus was not selected.
+
+
+## Resolution and implementation handoff
+
+The six owner choices above settle this ticket's interaction direction. Carry them into the front-end/API proposals without treating the current prototypes as conforming implementations. In particular, preserve the coverage-bound conflict, unwired site-aware point API, null-versus-blocked wording, and prototype coordinate rounding as follow-up work.
+
+Proposed verification for subsequent implementation: empty-map click versus pan/zoom; explicit site adoption versus inspection; off-site removal of site geometry; sampling geometry only for the inspected reading; query/link precision; unsupported Focus retaining its coordinate with explicit refusal and no old point values. Network errors remain distinct from coverage refusals. No new geometry, scientific method, source admission or wider coverage is authorized.
+
+Documentation verification: source/decision review and subagent audit completed; specctl validation and staged diff checks passed. The implementation cases above have not run. No normative status was changed.
