@@ -94,7 +94,7 @@
       retrievable and non-retrievable output boundaries, attribution, deletion,
       downstream notification and potential fee changes.
       Verify: a dated terms snapshot and owner decision are linked before use.
-- [ ] 6.2 Establish allowlisted access through the approved secret workflow;
+- [x] 6.2 Establish allowlisted access through the approved secret workflow;
       do not embed credentials or assume anonymous access.
       Verify: credential handling passes repository secret-safety checks.
       Partial 2026-09-05: owner authorized the existing isolated `astraeus`
@@ -103,10 +103,12 @@
       project, impersonation, token-file, credential-file or relevant
       environment override. The `CURRENT_PROJECT` quota value was the SDK
       default sentinel and resolved to no project. Authenticated access to the
-      statistics bucket succeeded without a requester project; no identity
-      value, token, grant or credential file was inspected. This task remains
-      unchecked because this single CLI result is not the complete repository
-      secret-safety verification or all-surface grant inventory.
+      selected statistics bucket succeeded without a requester project. The
+      account string was consumed only for a redacted boolean; no identity or
+      token value was printed or persisted in evidence, and no grant or
+      credential file was inspected. This completes the approved GCS CLI access
+      path. Python ADC and future unattended authentication are not configured
+      by this validation.
 - [ ] 6.3 Probe the selected GCS, BigQuery or Earth Engine surface for a full
       evidence-box sample and pin dimensions, coordinates, members, units,
       missing values, product version and exact cloud variables.
