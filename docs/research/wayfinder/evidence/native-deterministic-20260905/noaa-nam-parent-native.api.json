@@ -1,0 +1,17 @@
+{
+  "east_edge": {
+    "operational": false,
+    "source_id": "noaa-nam-parent-native",
+    "values": []
+  },
+  "profile_850_hpa": {
+    "operational": false,
+    "source_id": "noaa-nam-parent-native",
+    "values": []
+  },
+  "surface": {
+    "operational": false,
+    "source_id": "noaa-nam-parent-native",
+    "values": []
+  }
+}

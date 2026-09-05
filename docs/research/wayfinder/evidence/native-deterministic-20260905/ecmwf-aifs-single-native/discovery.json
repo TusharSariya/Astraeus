@@ -1,0 +1,9 @@
+{
+  "index_sha256": "76ea15d8904edb080469c53e42b7f7559f4f2ded57e6168d16f39a71a04d58d0",
+  "provider_run_id": "2026090506",
+  "run_time": "2026-09-05T06:00:00+00:00",
+  "urls": [
+    "https://data.ecmwf.int/forecasts/20260905/06z/aifs-single/0p25/oper/20260905060000-0h-oper-fc.grib2",
+    "https://data.ecmwf.int/forecasts/20260905/06z/aifs-single/0p25/oper/20260905060000-0h-oper-fc.index"
+  ]
+}
