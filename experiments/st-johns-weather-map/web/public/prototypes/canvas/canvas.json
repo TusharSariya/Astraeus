@@ -2,7 +2,7 @@
   "artboards": [
     {
       "file": "Main.dc.html",
-      "title": "Light · Instrument",
+      "title": "Light \u00b7 Hyperlegible",
       "x": 0,
       "y": 0,
       "w": 1440,
@@ -10,7 +10,7 @@
     },
     {
       "file": "Dark.dc.html",
-      "title": "Dark · Instrument",
+      "title": "Dark \u00b7 Hyperlegible",
       "x": 1540,
       "y": 0,
       "w": 1440,
@@ -18,7 +18,7 @@
     },
     {
       "file": "Night.dc.html",
-      "title": "Night · Red on black",
+      "title": "Night \u00b7 Red on black",
       "x": 3080,
       "y": 0,
       "w": 1440,
@@ -34,19 +34,12 @@
     },
     {
       "file": "DirectionB.dc.html",
-      "title": "Direction B · Almanac (light)",
+      "title": "Direction B \u00b7 Almanac (light)",
       "x": 1540,
       "y": 1060,
       "w": 1440,
-      "h": 900
-    },
-    {
-      "file": "DirectionC.dc.html",
-      "title": "Direction C · Hyperlegible (light)",
-      "x": 3080,
-      "y": 1060,
-      "w": 1440,
-      "h": 900
+      "h": 900,
+      "page": "page-2"
     }
   ],
   "annotations": [
@@ -55,10 +48,21 @@
       "x": 0,
       "y": -160,
       "w": 720,
-      "text": "Ticket #41 prototype. Top row: variant A in the three themes. Bottom row: the colour tokens with hex, then variants B and C in light. live GFS values at 2026-09-03T22:00:00Z; rows marked constructed use the contract's wire shape. Live switching lives in tokens.html on branch prototype/tokens."
+      "text": "Ticket #41, resolved 2026-09-04: variant C Hyperlegible, night red on black, sources by provider with line style. Top row: the selected variant in the three themes; below: the colour token sheet. Rejected direction B (Almanac) is on the second page; A (Instrument) was the interim lead and is kept in tokens.json."
     }
   ],
   "launch": {
-    "view": "canvas"
-  }
+    "view": "canvas",
+    "page": "page-1"
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Selected: Hyperlegible"
+    },
+    {
+      "id": "page-2",
+      "name": "Rejected directions"
+    }
+  ]
 }
