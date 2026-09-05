@@ -1,0 +1,9 @@
+{
+  "index_sha256": "01480db73ea81a883c109d29bdcdf73d0c92ddc283cc9c355cb80f8af877329c",
+  "provider_run_id": "2026090515",
+  "run_time": "2026-09-05T15:00:00+00:00",
+  "urls": [
+    "https://noaa-rap-pds.s3.amazonaws.com/rap.20260905/rap.t15z.awp130pgrbf00.grib2",
+    "https://noaa-rap-pds.s3.amazonaws.com/rap.20260905/rap.t15z.awp130pgrbf00.grib2.idx"
+  ]
+}

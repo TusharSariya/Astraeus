@@ -1,0 +1,2599 @@
+{
+  "east_edge": {
+    "operational": false,
+    "source_id": "ecmwf-ifs-native",
+    "values": []
+  },
+  "profiles_hpa": {
+    "10": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 230.6482391357422,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.20880126953125,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.9744720458984375,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 0.07012765109539032,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 4.08383220928954e-06,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 31477.76953125,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "10 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": 0.0009704828262329102,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "100": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 219.9805145263672,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 11.458206176757812,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.8767242431640625,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 1.4981701374053955,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 2.5910539989126846e-06,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 16425.93359375,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "100 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": 0.013413727283477783,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "1000": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 286.28155517578125,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14532470703125,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 2.0184326171875,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 88.14649200439453,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 0.008160673081874847,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 120.677001953125,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "1000 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": 0.032207489013671875,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "150": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 218.9019012451172,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 17.690460205078125,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.84173583984375,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 4.654575347900391,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 4.135546078032348e-06,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 13824.77734375,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "150 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.011777877807617188,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "200": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 213.8203887939453,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 19.16790771484375,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 2.4177703857421875,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 80.2112045288086,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 2.9825147066731006e-05,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 12007.02734375,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "200 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.045612335205078125,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "250": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 222.44204711914062,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 17.69793701171875,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 5.456146240234375,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 95.90153503417969,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 8.633035031380132e-05,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 10589.73046875,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "250 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.06116199493408203,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "300": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 232.98770141601562,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 11.093460083007812,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 8.023208618164062,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 80.60960388183594,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 0.00021459955314639956,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 9373.82421875,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.02024364471435547,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "400": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 248.46173095703125,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 8.255020141601562,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 6.292694091796875,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 100.25152587890625,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 0.0010509719140827656,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 7346.9921875,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "400 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.09447479248046875,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "50": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 219.09014892578125,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 5.4109954833984375,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.2939605712890625,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 1.4839482307434082,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 3.1295903681893833e-06,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 20863.40625,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "50 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.006797492504119873,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "500": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 260.3814697265625,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 8.365402221679688,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 5.4106292724609375,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 91.84663391113281,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 0.002388023305684328,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 5681.5859375,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.11133956909179688,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "600": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 268.5105285644531,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 5.3227081298828125,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 10.574203491210938,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 39.89360427856445,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 0.0017128264298662543,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 4266.37890625,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "600 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.11264705657958984,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "700": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 274.5851745605469,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.8577880859375,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 5.262420654296875,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 13.013248443603516,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 0.0007400785689242184,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 3039.342529296875,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.018863677978515625,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "850": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 278.62298583984375,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": -5.3065643310546875,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.0476226806640625,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 68.45423889160156,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 0.004501370247453451,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 1469.320068359375,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.008746147155761719,
+          "variable": "omega_pressure"
+        }
+      ]
+    },
+    "925": {
+      "operational": false,
+      "source_id": "ecmwf-ifs-native",
+      "values": [
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa",
+          "value": 101452.125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "(0 - 1)",
+          "value": 0.6796875,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 1.06085205078125,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "entire atmosphere (column)",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg m**-2",
+          "value": 21.300376892089844,
+          "variable": "precipitable_water"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 282.4018859863281,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": -3.233123779296875,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": -0.03326416015625,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "%",
+          "value": 95.40226745605469,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "kg kg**-1",
+          "value": 0.007537869270890951,
+          "variable": "specific_humidity_pressure"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 283.4940185546875,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "gpm",
+          "value": 772.7695922851562,
+          "variable": "geopotential_height_pressure"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "K",
+          "value": 284.3377685546875,
+          "variable": "temperature_2m"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "m s**-1",
+          "value": 0.14215087890625,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "925 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "units": "Pa s**-1",
+          "value": -0.23807811737060547,
+          "variable": "omega_pressure"
+        }
+      ]
+    }
+  },
+  "raw_artifact_http_comparison": [
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_2m"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "dew_point_2m"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_10m"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_10m"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "mean_sea_level_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "precipitable_water"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "total_cloud_geometric"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 600,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 50,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 10,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 1000,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 200,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 400,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 925,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 100,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 150,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 250,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 600,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 10,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 1000,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 50,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 200,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 400,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 925,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 150,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 100,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 250,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "specific_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 600,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 1000,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 10,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 50,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 200,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 400,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 925,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 100,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 150,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 250,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 600,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 10,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 1000,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 50,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 200,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 400,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 100,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 150,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 925,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 250,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 600,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 50,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 10,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 1000,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 200,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 400,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 925,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 100,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 150,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 250,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 600,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 1000,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 10,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 50,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 200,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 400,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 925,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 100,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 150,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 250,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "omega_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 600,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 10,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 50,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 1000,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 200,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 925,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 150,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 400,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 100,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 250,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "geopotential_height_pressure"
+    }
+  ],
+  "surface": {
+    "operational": false,
+    "source_id": "ecmwf-ifs-native",
+    "values": []
+  }
+}

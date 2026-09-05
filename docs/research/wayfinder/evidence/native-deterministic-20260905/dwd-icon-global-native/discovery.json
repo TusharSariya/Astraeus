@@ -1,0 +1,8 @@
+{
+  "index_sha256": null,
+  "provider_run_id": "2026090512",
+  "run_time": "2026-09-05T12:00:00+00:00",
+  "urls": [
+    "https://opendata.dwd.de/weather/nwp/icon/grib/12/clat/icon_global_icosahedral_time-invariant_2026090512_CLAT.grib2.bz2"
+  ]
+}

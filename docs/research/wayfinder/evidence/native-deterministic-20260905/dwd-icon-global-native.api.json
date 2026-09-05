@@ -1,0 +1,683 @@
+{
+  "east_edge": {
+    "operational": false,
+    "source_id": "dwd-icon-global-native",
+    "values": []
+  },
+  "profiles_hpa": {
+    "300": {
+      "operational": false,
+      "source_id": "dwd-icon-global-native",
+      "values": [
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 43.8671875,
+          "variable": "cloud_middle"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 53.717227935791016,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 233.13223266601562,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 11.173809051513672,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "Pa",
+          "value": 101426.703125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 96.87109375,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 9.201423645019531,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": -3.914051055908203,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 53.2578125,
+          "variable": "cloud_low"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 88.041015625,
+          "variable": "cloud_high"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 1.3302574157714844,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 283.9869079589844,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "300 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 288.2745361328125,
+          "variable": "temperature_2m"
+        }
+      ]
+    },
+    "500": {
+      "operational": false,
+      "source_id": "dwd-icon-global-native",
+      "values": [
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 43.8671875,
+          "variable": "cloud_middle"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 83.47702026367188,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 260.41876220703125,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 7.187736511230469,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "Pa",
+          "value": 101426.703125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 96.87109375,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 8.427631378173828,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": -3.914051055908203,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 53.2578125,
+          "variable": "cloud_low"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 88.041015625,
+          "variable": "cloud_high"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 1.3302574157714844,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 283.9869079589844,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "500 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 288.2745361328125,
+          "variable": "temperature_2m"
+        }
+      ]
+    },
+    "700": {
+      "operational": false,
+      "source_id": "dwd-icon-global-native",
+      "values": [
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 43.8671875,
+          "variable": "cloud_middle"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 21.31210708618164,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 274.9360046386719,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 0.7193794250488281,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "Pa",
+          "value": 101426.703125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 96.87109375,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 4.810359954833984,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": -3.914051055908203,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 53.2578125,
+          "variable": "cloud_low"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 88.041015625,
+          "variable": "cloud_high"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 1.3302574157714844,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 283.9869079589844,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "700 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 288.2745361328125,
+          "variable": "temperature_2m"
+        }
+      ]
+    },
+    "850": {
+      "operational": false,
+      "source_id": "dwd-icon-global-native",
+      "values": [
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 43.8671875,
+          "variable": "cloud_middle"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 63.93525695800781,
+          "variable": "relative_humidity_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 279.075439453125,
+          "variable": "temperature_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": -12.187026977539062,
+          "variable": "wind_u_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "Pa",
+          "value": 101426.703125,
+          "variable": "mean_sea_level_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 96.87109375,
+          "variable": "total_cloud_geometric"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": -1.4861984252929688,
+          "variable": "wind_v_pressure"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": -3.914051055908203,
+          "variable": "wind_u_10m"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 53.2578125,
+          "variable": "cloud_low"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "%",
+          "value": 88.041015625,
+          "variable": "cloud_high"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "m s**-1",
+          "value": 1.3302574157714844,
+          "variable": "wind_v_10m"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 283.9869079589844,
+          "variable": "dew_point_2m"
+        },
+        {
+          "level": "850 hPa",
+          "sample_method": "curvilinear_nearest_cell",
+          "sampled_latitude": 47.60643005371094,
+          "sampled_longitude": -52.78125,
+          "units": "K",
+          "value": 288.2745361328125,
+          "variable": "temperature_2m"
+        }
+      ]
+    }
+  },
+  "raw_artifact_http_comparison": [
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_2m"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "dew_point_2m"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_10m"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_10m"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "mean_sea_level_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "total_cloud_geometric"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "cloud_low"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "cloud_middle"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": null,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "cloud_high"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "relative_humidity_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "temperature_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_u_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 850,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 700,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 500,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    },
+    {
+      "cell_matches": true,
+      "pressure_hpa": 300,
+      "units_match": true,
+      "value_or_null_matches": true,
+      "variable": "wind_v_pressure"
+    }
+  ],
+  "surface": {
+    "operational": false,
+    "source_id": "dwd-icon-global-native",
+    "values": []
+  }
+}

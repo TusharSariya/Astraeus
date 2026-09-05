@@ -1,0 +1,9 @@
+{
+  "index_sha256": "9695220cd86d9c380fcaefd1ceb71bc9f952a2ae80ed7bfa57f5a4e9c5d857da",
+  "provider_run_id": "2026090512",
+  "run_time": "2026-09-05T12:00:00+00:00",
+  "urls": [
+    "https://noaa-nam-pds.s3.amazonaws.com/nam.20260905/nam.t12z.awphys00.tm00.grib2",
+    "https://noaa-nam-pds.s3.amazonaws.com/nam.20260905/nam.t12z.awphys00.tm00.grib2.idx"
+  ]
+}

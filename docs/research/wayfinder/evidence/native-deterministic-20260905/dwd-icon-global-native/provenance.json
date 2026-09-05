@@ -1,0 +1,587 @@
+{
+  "bounds": {
+    "east": -46.0,
+    "north": 50.5,
+    "south": 45.0,
+    "west": -58.0
+  },
+  "evidence_class_by_variable": {
+    "cloud_high": "retrieved",
+    "cloud_low": "retrieved",
+    "cloud_middle": "retrieved",
+    "dew_point_2m": "retrieved",
+    "mean_sea_level_pressure": "retrieved",
+    "relative_humidity_pressure": "retrieved",
+    "temperature_2m": "retrieved",
+    "temperature_pressure": "retrieved",
+    "total_cloud_geometric": "retrieved",
+    "wind_u_10m": "retrieved",
+    "wind_u_pressure": "retrieved",
+    "wind_v_10m": "retrieved",
+    "wind_v_pressure": "retrieved"
+  },
+  "evidence_classes": [
+    "retrieved"
+  ],
+  "field_disposition": [
+    {
+      "canonical": null,
+      "disposition": "catalogued-unavailable",
+      "note": "DWD exposes QV on model levels, not the selected pressure surfaces; no vertical conversion is invented",
+      "upstream": "qv"
+    },
+    {
+      "canonical": null,
+      "disposition": "catalogued-unavailable",
+      "note": "DWD exposes W on model/half levels, not the selected pressure surfaces; no vertical conversion is invented",
+      "upstream": "w"
+    }
+  ],
+  "lead_hours": 0,
+  "message_inventory": [
+    {
+      "canonical": "temperature_2m",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "heightAboveGround",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 288.2745361328125,
+      "selected_cells": 3107,
+      "short_name": "2t",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "K"
+    },
+    {
+      "canonical": "dew_point_2m",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "heightAboveGround",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 283.9869079589844,
+      "selected_cells": 3107,
+      "short_name": "2d",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "K"
+    },
+    {
+      "canonical": "wind_u_10m",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "heightAboveGround",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": -3.914051055908203,
+      "selected_cells": 3107,
+      "short_name": "10u",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "wind_v_10m",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "heightAboveGround",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 1.3302574157714844,
+      "selected_cells": 3107,
+      "short_name": "10v",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "mean_sea_level_pressure",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "meanSea",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 101426.703125,
+      "selected_cells": 3107,
+      "short_name": "prmsl",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "Pa"
+    },
+    {
+      "canonical": null,
+      "end_step": "0m",
+      "level": null,
+      "level_type": "surface",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 0.0,
+      "selected_cells": 3107,
+      "short_name": "tp",
+      "start_step": "0m",
+      "step_type": "accum",
+      "units": "kg m**-2"
+    },
+    {
+      "canonical": "total_cloud_geometric",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "surface",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 96.87109375,
+      "selected_cells": 3107,
+      "short_name": "CLCT",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "%"
+    },
+    {
+      "canonical": "cloud_low",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "unknown",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 53.2578125,
+      "selected_cells": 3107,
+      "short_name": "CLCL",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "%"
+    },
+    {
+      "canonical": "cloud_middle",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "isobaricLayer",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 43.8671875,
+      "selected_cells": 3107,
+      "short_name": "CLCM",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "%"
+    },
+    {
+      "canonical": "cloud_high",
+      "end_step": "0m",
+      "level": null,
+      "level_type": "isobaricLayer",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 88.041015625,
+      "selected_cells": 3107,
+      "short_name": "CLCH",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "%"
+    },
+    {
+      "canonical": "relative_humidity_pressure",
+      "end_step": "0m",
+      "level": 850,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 63.93525695800781,
+      "selected_cells": 3107,
+      "short_name": "r",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "%"
+    },
+    {
+      "canonical": "relative_humidity_pressure",
+      "end_step": "0m",
+      "level": 700,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 21.31210708618164,
+      "selected_cells": 3107,
+      "short_name": "r",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "%"
+    },
+    {
+      "canonical": "relative_humidity_pressure",
+      "end_step": "0m",
+      "level": 500,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 83.47702026367188,
+      "selected_cells": 3107,
+      "short_name": "r",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "%"
+    },
+    {
+      "canonical": "relative_humidity_pressure",
+      "end_step": "0m",
+      "level": 300,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 53.717227935791016,
+      "selected_cells": 3107,
+      "short_name": "r",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "%"
+    },
+    {
+      "canonical": "temperature_pressure",
+      "end_step": "0m",
+      "level": 850,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 279.075439453125,
+      "selected_cells": 3107,
+      "short_name": "t",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "K"
+    },
+    {
+      "canonical": "temperature_pressure",
+      "end_step": "0m",
+      "level": 700,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 274.9360046386719,
+      "selected_cells": 3107,
+      "short_name": "t",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "K"
+    },
+    {
+      "canonical": "temperature_pressure",
+      "end_step": "0m",
+      "level": 500,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 260.41876220703125,
+      "selected_cells": 3107,
+      "short_name": "t",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "K"
+    },
+    {
+      "canonical": "temperature_pressure",
+      "end_step": "0m",
+      "level": 300,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 233.13223266601562,
+      "selected_cells": 3107,
+      "short_name": "t",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "K"
+    },
+    {
+      "canonical": "wind_u_pressure",
+      "end_step": "0m",
+      "level": 850,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": -12.187026977539062,
+      "selected_cells": 3107,
+      "short_name": "u",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "wind_u_pressure",
+      "end_step": "0m",
+      "level": 700,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 0.7193794250488281,
+      "selected_cells": 3107,
+      "short_name": "u",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "wind_u_pressure",
+      "end_step": "0m",
+      "level": 500,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 7.187736511230469,
+      "selected_cells": 3107,
+      "short_name": "u",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "wind_u_pressure",
+      "end_step": "0m",
+      "level": 300,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 11.173809051513672,
+      "selected_cells": 3107,
+      "short_name": "u",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "wind_v_pressure",
+      "end_step": "0m",
+      "level": 850,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": -1.4861984252929688,
+      "selected_cells": 3107,
+      "short_name": "v",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "wind_v_pressure",
+      "end_step": "0m",
+      "level": 700,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 4.810359954833984,
+      "selected_cells": 3107,
+      "short_name": "v",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "wind_v_pressure",
+      "end_step": "0m",
+      "level": 500,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 8.427631378173828,
+      "selected_cells": 3107,
+      "short_name": "v",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    },
+    {
+      "canonical": "wind_v_pressure",
+      "end_step": "0m",
+      "level": 300,
+      "level_type": "isobaricInhPa",
+      "raw_point_latitude": 47.60643005371094,
+      "raw_point_longitude": -52.78125,
+      "raw_point_value": 9.201423645019531,
+      "selected_cells": 3107,
+      "short_name": "v",
+      "start_step": "0m",
+      "step_type": "instant",
+      "units": "m s**-1"
+    }
+  ],
+  "native_grid_coverage": {
+    "corner_max_distance_degrees": 0.09341609744997725,
+    "covers_full_box": true,
+    "native_east": 179.9453125,
+    "native_north": 89.91502380371094,
+    "native_south": -89.91310119628906,
+    "native_west": -180.0,
+    "selected_cells": 3107,
+    "selected_east": -46.0,
+    "selected_north": 50.49705505371094,
+    "selected_south": 45.00096130371094,
+    "selected_west": -58.0
+  },
+  "operational": false,
+  "product_access_path": "https://opendata.dwd.de/weather/nwp/icon/grib",
+  "provider_run_id": "2026090512",
+  "raw_sha256": "a44bfc8c7440c43e1998a30a0100691d6c873d120f817e8abfad426f0f48b90c",
+  "retrieved_at": "2026-09-05T16:24:55.813768+00:00",
+  "retrieved_objects": [
+    {
+      "compressed_bytes": 3328772,
+      "level": null,
+      "upstream": "t_2m",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t_2m/icon_global_icosahedral_single-level_2026090512_000_T_2M.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3470471,
+      "level": null,
+      "upstream": "td_2m",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/td_2m/icon_global_icosahedral_single-level_2026090512_000_TD_2M.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3514470,
+      "level": null,
+      "upstream": "u_10m",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u_10m/icon_global_icosahedral_single-level_2026090512_000_U_10M.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3522824,
+      "level": null,
+      "upstream": "v_10m",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v_10m/icon_global_icosahedral_single-level_2026090512_000_V_10M.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 2908614,
+      "level": null,
+      "upstream": "pmsl",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/pmsl/icon_global_icosahedral_single-level_2026090512_000_PMSL.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 183,
+      "level": null,
+      "upstream": "tot_prec",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/tot_prec/icon_global_icosahedral_single-level_2026090512_000_TOT_PREC.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4127211,
+      "level": null,
+      "upstream": "clct",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clct/icon_global_icosahedral_single-level_2026090512_000_CLCT.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4565809,
+      "level": null,
+      "upstream": "clcl",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clcl/icon_global_icosahedral_single-level_2026090512_000_CLCL.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3165349,
+      "level": null,
+      "upstream": "clcm",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clcm/icon_global_icosahedral_single-level_2026090512_000_CLCM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 1848372,
+      "level": null,
+      "upstream": "clch",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clch/icon_global_icosahedral_single-level_2026090512_000_CLCH.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4676393,
+      "level": 850,
+      "upstream": "relhum",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/relhum/icon_global_icosahedral_pressure-level_2026090512_000_850_RELHUM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4524853,
+      "level": 700,
+      "upstream": "relhum",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/relhum/icon_global_icosahedral_pressure-level_2026090512_000_700_RELHUM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4372459,
+      "level": 500,
+      "upstream": "relhum",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/relhum/icon_global_icosahedral_pressure-level_2026090512_000_500_RELHUM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4183788,
+      "level": 300,
+      "upstream": "relhum",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/relhum/icon_global_icosahedral_pressure-level_2026090512_000_300_RELHUM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3236138,
+      "level": 850,
+      "upstream": "t",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t/icon_global_icosahedral_pressure-level_2026090512_000_850_T.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3036660,
+      "level": 700,
+      "upstream": "t",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t/icon_global_icosahedral_pressure-level_2026090512_000_700_T.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3264543,
+      "level": 500,
+      "upstream": "t",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t/icon_global_icosahedral_pressure-level_2026090512_000_500_T.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3117462,
+      "level": 300,
+      "upstream": "t",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t/icon_global_icosahedral_pressure-level_2026090512_000_300_T.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3640614,
+      "level": 850,
+      "upstream": "u",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u/icon_global_icosahedral_pressure-level_2026090512_000_850_U.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3564170,
+      "level": 700,
+      "upstream": "u",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u/icon_global_icosahedral_pressure-level_2026090512_000_700_U.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3502971,
+      "level": 500,
+      "upstream": "u",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u/icon_global_icosahedral_pressure-level_2026090512_000_500_U.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3625022,
+      "level": 300,
+      "upstream": "u",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u/icon_global_icosahedral_pressure-level_2026090512_000_300_U.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3641813,
+      "level": 850,
+      "upstream": "v",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v/icon_global_icosahedral_pressure-level_2026090512_000_850_V.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3550686,
+      "level": 700,
+      "upstream": "v",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v/icon_global_icosahedral_pressure-level_2026090512_000_700_V.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3469828,
+      "level": 500,
+      "upstream": "v",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v/icon_global_icosahedral_pressure-level_2026090512_000_500_V.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3587429,
+      "level": 300,
+      "upstream": "v",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v/icon_global_icosahedral_pressure-level_2026090512_000_300_V.grib2.bz2"
+    }
+  ],
+  "run_time": "2026-09-05T12:00:00+00:00",
+  "sha256": "ddbc76bf732787b76f7dbedd8f55a72ab4486a49b8633d68eb5fcc7909eefcfe",
+  "source_id": "dwd-icon-global-native",
+  "valid_time": "2026-09-05T12:00:00+00:00"
+}
