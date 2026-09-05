@@ -1,7 +1,5 @@
 # Astraeus agent instructions
 
-Follow the `collaboration-principles` skill for all implementation work.
-
 For any planning, design, implementation, fix, review, API/schema, scientific,
 safety, provider, UX, infrastructure, documentation, commit, or pull-request
 task, use the repository skill at
