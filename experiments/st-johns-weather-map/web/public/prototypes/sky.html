@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sky · Wayfinder design study</title><link rel="stylesheet" href="sky.css"></head><body>
+<!-- Experiment: three Sky structures in the settled Bench shell; ?variant=A/B/C. No production conformance. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="deutan"><feColorMatrix type="matrix" values="0.367322 0.860646 -0.227968 0 0  0.280085 0.672501 0.047413 0 0  -0.011820 0.042940 0.968881 0 0  0 0 0 1 0"/></filter>
+    <symbol id="g-retrieved" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor"/></symbol>
+    <symbol id="g-reprocessed" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></symbol>
+    <symbol id="g-derived_here" viewBox="0 0 16 16"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z" fill="currentColor"/></symbol>
+    <symbol id="g-intermediary_derived" viewBox="0 0 16 16"><path d="M8 2.2 13.8 8 8 13.8 2.2 8z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="g-generated_display" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2.6 2.2"/></symbol>
+    <symbol id="g-uncalibrated_observation" viewBox="0 0 16 16"><path d="M8 2 14.5 14H1.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="g-unrecognised" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="8" y="12" font-size="9" font-weight="700" text-anchor="middle" fill="currentColor">?</text></symbol>
+    <symbol id="g-absent" viewBox="0 0 16 16"><path d="M3 8h10" stroke="currentColor" stroke-width="2"/></symbol>
+  </defs>
+</svg>
+
+<div class="prototype-note">ASTRAEUS / DESIGN STUDY <span>Sky · three alternatives · decision pending</span> <a href="sky-README.md">Read the study</a></div>
+<header class="focusbar"><div><div class="eyebrow">Bench / shared Focus</div><label class="focus-label" for="focus">Location</label><select id="focus"><option value="site">Signal Hill · registered site</option><option value="point">St. John's · arbitrary point</option></select><div id="focus-meta" class="muted"></div></div><div class="appearance"><label>Theme <select id="theme"><option value="light">Light</option><option value="dark">Dark</option><option value="night">Red night</option></select></label><label>Vision <select id="vision"><option value="normal">Normal</option><option value="gray">Grayscale</option><option value="deutan">Deuteranopia</option></select></label></div></header>
+<div id="notice" class="data-banner" role="status">Loading captured evidence…</div>
+<div class="shell"><nav class="tabs" aria-label="Bench views (shell context)"><span>Map</span><span>Series</span><b aria-current="page">Sky</b><span>Activity</span><span>Sources</span></nav>
+<main><div class="titlebar"><div><div class="eyebrow">The sky at the Focus</div><h1 id="heading">Sky</h1><p id="hypothesis" class="muted"></p></div><div class="evidence-controls"><label>Evidence <select id="mode"><option value="capture">Saved API capture</option><option value="live">Read live API</option><option value="outage">Unavailable state study</option></select></label><button id="refresh">Read this Focus now</button></div></div>
+<div id="stage" class="stage"></div><details class="state"><summary>Prototype state and evidence requests</summary><pre id="state"></pre></details></main>
+<aside id="inspector" hidden aria-label="Docked provenance inspector"><div class="inspector-head"><div class="eyebrow">Evidence / inspector</div><button id="close-inspector">Close</button></div><h2 id="inspect-title"></h2><p id="inspect-sentence"></p><dl id="inspect-fields"></dl><details><summary>Complete response object and capture</summary><pre id="inspect-raw"></pre></details></aside></div>
+<footer class="rail"><div class="rail-top"><label for="instant">Shared instant <select id="instant"></select></label><span id="tier" class="chip"></span><span id="local-time" class="muted"></span></div><div id="time-track" class="time-track"></div><div class="rail-labels"><span>04 Sep 00Z</span><span>06Z</span><span>12Z</span><span>18Z</span><span>05 Sep 00Z</span></div></footer>
+<nav class="switcher" aria-label="Prototype alternatives"><button id="previous" aria-label="Previous variant">←</button><span id="variant-label"></span><button id="next" aria-label="Next variant">→</button></nav>
+<script type="module" src="sky.js"></script></body></html>

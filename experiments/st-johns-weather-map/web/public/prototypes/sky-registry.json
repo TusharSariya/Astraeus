@@ -1,0 +1,129 @@
+{
+  "site": {
+    "path": "registry/sites/signal-hill.yaml",
+    "record": {
+      "id": "signal-hill",
+      "name": "Signal Hill (Cabot Tower)",
+      "note": "The horizon elevation angles were hand-registered from map reading on 2026-09-03 and await a field survey. They are read from contour and shoreline geometry, not measured on site, so each angle is good to about a degree and no better.",
+      "position": {
+        "latitude": 47.5704,
+        "longitude": -52.6816
+      },
+      "elevation": {
+        "metres": 140.0,
+        "datum": "CGVD2013"
+      },
+      "horizon": {
+        "bearing_resolution_deg": 10,
+        "elevation_deg": [
+          0.5,
+          0.5,
+          0.0,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          -0.5,
+          0.0,
+          0.5,
+          1.0,
+          1.5,
+          2.5,
+          4.0,
+          4.5,
+          5.0,
+          4.5,
+          3.5,
+          2.5,
+          2.0,
+          1.5,
+          1.5,
+          1.5,
+          2.0,
+          2.5,
+          3.0,
+          3.0,
+          2.5,
+          1.5
+        ]
+      },
+      "terrain_check": {
+        "status": "not_run",
+        "dem": null,
+        "tolerance_deg": 1.0,
+        "terrain_elevation_deg": null,
+        "note": "No digital elevation model is available in the repository; the terrain check was not run and the terrain horizon is not assumed to agree."
+      },
+      "registered": {
+        "date": "2026-09-03",
+        "by": "Tushar Sariya"
+      }
+    }
+  },
+  "camera": {
+    "path": "registry/cameras/ntv-st-johns-sky.yaml",
+    "record": {
+      "id": "ntv-st-johns-sky",
+      "name": "St. John's Sky",
+      "source_id": "ntv-cameras",
+      "operator": "NTV (Newfoundland Broadcasting)",
+      "status": "partnership-only",
+      "terms": {
+        "text": "No terms, copyright or privacy page found anywhere on ntv.ca; all rights presumed reserved.",
+        "url": "https://ntv.ca/",
+        "read_date": "2026-09-02",
+        "redistribution": false,
+        "permission": {
+          "requested_on": null,
+          "requested_from": "NTV (Newfoundland Broadcasting)",
+          "granted_on": null,
+          "document": null
+        }
+      },
+      "endpoint": {
+        "url": "https://ntv.ca/cams/thumb_st-johns-sky-cam.jpg",
+        "format": "jpeg",
+        "cadence_seconds": 780,
+        "cadence_measured_on": "2026-09-02"
+      },
+      "position": {
+        "latitude": null,
+        "longitude": null,
+        "elevation": {
+          "metres": null,
+          "datum": "CGVD2013"
+        },
+        "surveyed": false
+      },
+      "orientation": {
+        "bearing_deg": null,
+        "hfov_deg": null,
+        "vfov_deg": null,
+        "roll_deg": null
+      },
+      "image": {
+        "width_px": null,
+        "height_px": null
+      },
+      "landmarks": [],
+      "privacy_masks": [],
+      "registered": {
+        "date": "2026-09-03",
+        "by": "Tushar Sariya"
+      },
+      "geometry_validation": {
+        "reprojection_tolerance_px": 5,
+        "skyline_tolerance_deg": 0.5,
+        "status": "not_run",
+        "dem": null
+      }
+    }
+  }
+}
