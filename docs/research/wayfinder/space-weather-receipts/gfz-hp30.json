@@ -1,0 +1,43 @@
+{
+  "adapter_version": "gfz-hp30-v1",
+  "artifact": {
+    "byte_size": 2682,
+    "logical_name": "hp30",
+    "media_type": "application/zarr+zip",
+    "sha256": "152d89b00ed0496e3759e1ec09e11c3758d490f5f5ff1eb25ab46c05fb938b98"
+  },
+  "byte_count": 1407,
+  "captured_at": "2026-09-05T19:53:09Z",
+  "coverage": {
+    "fraction": 1.0,
+    "status": "complete"
+  },
+  "last_modified": null,
+  "licence": "CC BY 4.0",
+  "meta": {
+    "license": "CC BY 4.0",
+    "source": "GFZ Potsdam"
+  },
+  "newest_instant": "2026-09-05T19:00:00Z",
+  "newest_instant_age_seconds_at_capture": 3189,
+  "notes": "47 half-hour Hp30 values from 2026-09-04T20:00:00Z to 2026-09-05T19:00:00Z; licence CC BY 4.0; no per-value status declared by the feed",
+  "oldest_instant": "2026-09-04T20:00:00Z",
+  "platforms": [
+    "planetary index; no measuring platform is declared by the feed"
+  ],
+  "quality": {
+    "detail": "hp30_index: 1.0000 of instants carry a finite value; no spatial coverage claimed",
+    "flags": [],
+    "status": "passed"
+  },
+  "record_count": 47,
+  "request_parameters": {
+    "end": "2026-09-05T19:53:09Z",
+    "index": "Hp30",
+    "start": "2026-09-04T19:53:09Z"
+  },
+  "sha256": "b79dc24fe0188e7bb0f96e427390b423c6c29f5a6d2d0d1c7e01839d094cbc3d",
+  "source_id": "gfz-hp30",
+  "status_declared": false,
+  "url": "https://kp.gfz.de/app/json/?start=2026-09-04T19%3A53%3A09Z&end=2026-09-05T19%3A53%3A09Z&index=Hp30"
+}
