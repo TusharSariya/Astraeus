@@ -155,6 +155,10 @@ def _dqf_meanings(variable: Any) -> list[str]:
     return str(raw).split() if raw else []
 
 
+def _dqf_values(variable: Any) -> list[int]:
+    return [int(value) for value in numpy.atleast_1d(variable.attrs.get("flag_values", []))]
+
+
 def _iso(value: Any) -> str:
     """A numpy datetime64 or datetime as an ISO UTC string."""
     if isinstance(value, datetime):
@@ -209,6 +213,7 @@ def read_band_vectors(
         solar_zenith = numpy.asarray(dataset["solar_zenith_angle"].values, dtype="float64")
         observation = dataset["time"].values
         meanings = _dqf_meanings(dataset["DQF"])
+        meaning_by_value = dict(zip(_dqf_values(dataset["DQF"]), meanings))
         speed_range = [float(value) for value in numpy.asarray(dataset["wind_speed"].attrs.get("valid_range", [3.0, 155.0]))]
         direction_range = [float(value) for value in numpy.asarray(dataset["wind_direction"].attrs.get("valid_range", [0.0, 360.0]))]
         platform = str(dataset.attrs.get("platform_ID", ""))
@@ -239,11 +244,7 @@ def read_band_vectors(
     for index in indices:
         flag = dqf[index]
         flag_value = int(flag) if numpy.isfinite(flag) else None
-        meaning = (
-            meanings[flag_value]
-            if flag_value is not None and 0 <= flag_value < len(meanings)
-            else None
-        )
+        meaning = meaning_by_value.get(flag_value)
         speed_value = float(speed[index])
         direction_value = float(direction[index])
         if not (
@@ -335,7 +336,7 @@ class GOESDerivedMotionWindsAdapter:
         for hours_back in range(DISCOVERY_HOURS):
             moment = window.now - timedelta(hours=hours_back)
             prefix = _hour_prefix(self.product, moment)
-            url = f"{self._base_url}/?list-type=2&prefix={prefix}"
+            url = f"{self._base_url}/?list-type=2&max-keys=1000&prefix={prefix}"
             try:
                 text = client.get_text(url)
             except Exception as error:  # noqa: BLE001 - one missing hour is not an outage
@@ -415,14 +416,24 @@ class GOESDerivedMotionWindsAdapter:
                 }
             )
             qc_passed = qc_passed and bool(stats["qc_passed"])
+            qc_passed = qc_passed and stats["in_box_good_vectors"] == stats["in_box_vectors"]
+            if stats["platform_ID"] != "G19" or not str(stats["dataset_name"]).startswith(f"OR_{self.product}-M6{band}_G19_"):
+                raise ValueError(f"downloaded granule identity does not match {self.product} {band} on G19")
             if scan_start is None:
                 scan_start = stats["scan_start"]
                 scan_end = stats["scan_end"]
                 platform = stats["platform_ID"]
                 title = stats["title"]
                 meanings = stats["dqf_flag_meanings"]
+            elif stats["scan_start"] != scan_start or stats["scan_end"] != scan_end:
+                raise ValueError("DMW band granules do not share one scan interval")
+            if abs((stats["scan_start"] - parse_scan_stamp(str(candidate.detail.get("scan_stamp", "")))).total_seconds()) > 1.0:
+                raise ValueError(f"DMW {band} scan time does not match the discovered object key")
 
         assert scan_start is not None  # a band was fetched, so a scan time was read
+        expected_stamp = str(candidate.detail.get("scan_stamp", ""))
+        if expected_stamp and abs((scan_start - parse_scan_stamp(expected_stamp)).total_seconds()) > 1.0:
+            raise ValueError("DMW granule scan time does not match the discovered object key")
         geojson_path = workdir / f"{self.logical_name}_{candidate.detail.get('scan_stamp', '')}.geojson"
         geojson_path.parent.mkdir(parents=True, exist_ok=True)
         geojson_path.write_text(
@@ -450,6 +461,7 @@ class GOESDerivedMotionWindsAdapter:
             "scan_start": scan_start.isoformat(),
             "scan_end": scan_end.isoformat() if scan_end else None,
             "valid_times": [scan_start.isoformat()],
+            "provider_run_id": candidate.provider_run_id,
             "platform_ID": platform,
             "per_band": per_band,
             "total_vectors": sum(entry["total_vectors"] for entry in per_band),
@@ -468,13 +480,17 @@ class GOESDerivedMotionWindsAdapter:
             **declared_classes(["retrieved"]),
         }
 
+        artifact_digest = _sha256(geojson_path)
+        provenance["artifact_revision"] = artifact_digest
+        provenance["artifact_sha256"] = artifact_digest
+
         artifact = Artifact(
             logical_name=self.logical_name,
             media_type=MEDIA_GEOJSON,
             payload_path=geojson_path,
             provenance=provenance,
         )
-        complete = sorted(fetched) == sorted(bands)
+        complete = sorted(fetched) == sorted(self.expected_bands)
         return RunResult(
             source_id=self.source_id,
             provider_run_id=candidate.provider_run_id,

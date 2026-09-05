@@ -1,6 +1,9 @@
 {
   "catalogue_version": "0.1.0",
   "plan_candidates": {
+    "GOES-19 ABI and GLM": [
+      "noaa-goes-glm"
+    ],
     "HRDPS raw and statistical post-processing": [
       "eccc-hrdps",
       "eccc-hrdps-weg-prognos"

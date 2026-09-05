@@ -99,6 +99,20 @@ CLOUD_LAYER_VARIABLES = tuple(
 )
 FIELD_BY_VARIABLE.update({name: name for name in CLOUD_LAYER_VARIABLES})
 
+# GOES-19 ABI L2+ experiment fields. Each name is a canonical catalogue key;
+# quality_flag remains in the artifact for provenance/QC and is deliberately
+# absent here, so it cannot be mistaken for a physical reading.
+GOES_ABI_L2_FIELDS = (
+    "cloud_fraction_layer_1", "cloud_fraction_layer_2", "cloud_fraction_layer_3",
+    "cloud_fraction_layer_4", "cloud_fraction_layer_5", "cloud_fraction_total_satellite",
+    "cloud_layer_flag", "cloud_top_phase",
+    "cloud_top_temperature", "cloud_optical_depth", "cloud_particle_size",
+    "convective_available_potential_energy", "lifted_index", "total_totals_index",
+    "showalter_index", "k_index", "sea_surface_skin_temperature",
+    "relative_humidity_pressure", "temperature_pressure", "precipitation_rate",
+)
+FIELD_BY_VARIABLE.update({name: name for name in GOES_ABI_L2_FIELDS})
+
 # The upper-air wind components must pass the sampling filter to reach the
 # derivation below, so they map to themselves here; DERIVATION_INPUTS then
 # keeps them out of the served fields, exactly like the 10 m components.
@@ -1034,6 +1048,12 @@ class LiveStore:
             distance = _corrected_distance_degrees(latitude, longitude, cell_latitude, cell_longitude)
             sample_method = "rectilinear"
 
+        selected_valid_time = valid_time
+        if time_name is not None:
+            import pandas  # noqa: PLC0415
+
+            selected_valid_time = pandas.Timestamp(located[time_name].values).to_pydatetime().replace(tzinfo=UTC)
+
         provenance = dict(artifact.provenance or {})
         level = provenance.get("vertical_level", "surface" if pressure is None else f"{pressure} hPa")
         if manifest is None:
@@ -1075,7 +1095,7 @@ class LiveStore:
                 "units": str(attrs.get("units", "unknown")),
                 "evidence_class": evidence_class,
                 "level": variable_level(name, str(level)),
-                "valid_time": valid_time,
+                "valid_time": selected_valid_time,
                 "run_time": artifact.run_time,
                 "retrieved_at": artifact.retrieved_at,
                 "native_crs": artifact.native_crs or provenance.get("native_crs", "unknown"),

@@ -273,12 +273,13 @@ class ReachSchemaTests(unittest.TestCase):
 
     def test_reach_summary_counts_the_records_that_declare_one(self) -> None:
         report = audit.summary(registry())
-        self.assertEqual(24, report["reach_declared"])
+        self.assertEqual(25, report["reach_declared"])
         self.assertEqual([], report["latency_measured"])
         # 17 adapters after horizon-tiers, plus the four ensemble adapters
         # (eccc-reps, ecmwf-aifs-ens, ecmwf-ens, noaa-gefs) registered by
         # ensemble-families-and-member-statistics, none schedulable.
-        self.assertEqual(21, len(report["adapter_source_ids"]))
+        # and the isolated GOES GLM acquisition adapter.
+        self.assertEqual(22, len(report["adapter_source_ids"]))
 
 
 if __name__ == "__main__":

@@ -380,7 +380,7 @@ class GOESLightningAdapter:
         selected: dict[str, str] = {}
         listed_any = False
         for prefix in prefixes:
-            url = f"{self._base_url}/?list-type=2&prefix={prefix}"
+            url = f"{self._base_url}/?list-type=2&max-keys=1000&prefix={prefix}"
             try:
                 text = client.get_text(url)
             except Exception as error:  # noqa: BLE001 - one missing hour is not an outage
@@ -392,7 +392,7 @@ class GOESLightningAdapter:
                 if stamp is None:
                     continue
                 scan_start = parse_scan_stamp(stamp)
-                if interval_start <= scan_start <= interval_end:
+                if interval_start <= scan_start < interval_end:
                     selected[stamp] = key
         if not selected:
             raise AdapterUnavailable(
@@ -415,6 +415,8 @@ class GOESLightningAdapter:
                     "prefixes": prefixes,
                     "listed_files": len(selected),
                     "capped_at": self._max_files,
+                    "expected_files": min(self._max_files, max(1, int(self._interval.total_seconds() // 20))),
+                    "truncated": len(selected) > self._max_files,
                 },
             )
         ]
@@ -441,6 +443,10 @@ class GOESLightningAdapter:
             path = workdir / Path(key).name
             written = client.download(url, path, max_bytes=MAX_FILE_BYTES)
             file_features, stats = read_detections(path, bounds=self._bounds)
+            if stats["platform_ID"] != "G19" or not str(stats["source_file"]).startswith(f"OR_{GLM_PRODUCT}_G19_"):
+                raise ValueError("downloaded granule identity does not match GLM-L2-LCFA on G19")
+            if abs((stats["scan_start"] - parse_scan_stamp(stamp)).total_seconds()) > 1.0:
+                raise ValueError("GLM granule scan time does not match the discovered object key")
             features.extend(file_features)
             files.append(
                 {
@@ -485,6 +491,7 @@ class GOESLightningAdapter:
             "interval_start": candidate.detail.get("interval_start"),
             "interval_end": candidate.detail.get("interval_end"),
             "valid_times": sorted(set(valid_times)),
+            "provider_run_id": candidate.provider_run_id,
             "platform_ID": platform,
             "spatial_resolution": spatial_resolution,
             "counts": {"files": len(files), **totals},
@@ -502,20 +509,26 @@ class GOESLightningAdapter:
             **declared_classes(["retrieved"]),
         }
 
+        artifact_digest = _sha256(geojson_path)
+        provenance["artifact_revision"] = artifact_digest
+        provenance["artifact_sha256"] = artifact_digest
+
         artifact = Artifact(
             logical_name=LOGICAL_NAME,
             media_type=MEDIA_GEOJSON,
             payload_path=geojson_path,
             provenance=provenance,
         )
-        complete = len(files) == len(keys)
+        expected_files = int(candidate.detail.get("expected_files", len(keys)))
+        complete = len(files) == expected_files and not bool(candidate.detail.get("truncated"))
+        qc_passed = coordinates_in_range and totals.get("in_box_good_flashes", 0) == totals.get("in_box_flashes", 0) and totals.get("in_box_good_groups", 0) == totals.get("in_box_groups", 0)
         return RunResult(
             source_id=self.source_id,
             provider_run_id=candidate.provider_run_id,
             run_time=interval_start,
             retrieved_at=retrieved_at,
             complete=complete,
-            qc_passed=coordinates_in_range,
+            qc_passed=qc_passed,
             artifacts=[artifact],
             native_crs="EPSG:4326",
             notes=(
