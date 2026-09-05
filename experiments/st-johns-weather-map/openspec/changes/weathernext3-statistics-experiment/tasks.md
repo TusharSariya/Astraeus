@@ -19,7 +19,15 @@
   decoded bytes and 432 seconds. Preserve 120 numeric values and six SST land
   null masks.
 - [x] Normalize all 126 fields into separate immutable 0.1 and 0.05 degree
-  artifacts. Exercise numeric HTTP readback through a test-local field
-  catalogue without claiming full spatial coverage from the point proof.
+  artifacts. Compare all 120 numeric values and six null masks through the real
+  reader and HTTP endpoint using a test-local field catalogue; compare all six
+  retained box fields through the same path.
+- [x] Validate source identity records structurally, including exact run paths,
+  generation, ETag, size, truthful verified-read mechanism, field/lead binding and box
+  metadata/coordinates. Refuse identity mutations without claiming
+  cryptographic authentication of arbitrary JSON.
+- [x] Mark point and box artifacts as experimental partial samples and return
+  incomplete/QC-failed results. Prove the actual store publication gate stages
+  them without replacing the prior current revision.
 - [ ] Accept source contract, distribution terms and API semantics; register,
   schedule and set operational status only in a later owner-approved change.

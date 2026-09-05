@@ -1576,6 +1576,7 @@
       "field": "temperature_2m_mean",
       "generation": "1787793177989584",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19485366,
       "updated": null
     },
@@ -1584,6 +1585,7 @@
       "field": "temperature_2m_p10",
       "generation": "1787793153334524",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19519426,
       "updated": null
     },
@@ -1592,6 +1594,7 @@
       "field": "temperature_2m_p25",
       "generation": "1787793151811031",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19490107,
       "updated": null
     },
@@ -1600,6 +1603,7 @@
       "field": "temperature_2m_p50",
       "generation": "1787793126588907",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19407311,
       "updated": null
     },
@@ -1608,6 +1612,7 @@
       "field": "temperature_2m_p75",
       "generation": "1787793125117405",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19482554,
       "updated": null
     },
@@ -1616,6 +1621,7 @@
       "field": "temperature_2m_p90",
       "generation": "1787793100151037",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19506135,
       "updated": null
     },
@@ -1624,6 +1630,7 @@
       "field": "dewpoint_temperature_2m_mean",
       "generation": "1787784458688924",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19541333,
       "updated": null
     },
@@ -1632,6 +1639,7 @@
       "field": "dewpoint_temperature_2m_p10",
       "generation": "1787784458318596",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19594332,
       "updated": null
     },
@@ -1640,6 +1648,7 @@
       "field": "dewpoint_temperature_2m_p25",
       "generation": "1787784456732733",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19553126,
       "updated": null
     },
@@ -1648,6 +1657,7 @@
       "field": "dewpoint_temperature_2m_p50",
       "generation": "1787784457091519",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19462836,
       "updated": null
     },
@@ -1656,6 +1666,7 @@
       "field": "dewpoint_temperature_2m_p75",
       "generation": "1787784457719665",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19520644,
       "updated": null
     },
@@ -1664,6 +1675,7 @@
       "field": "dewpoint_temperature_2m_p90",
       "generation": "1787784431542869",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19534962,
       "updated": null
     },
@@ -1672,6 +1684,7 @@
       "field": "wind_speed_10m_mean",
       "generation": "1787792425124551",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22906133,
       "updated": null
     },
@@ -1680,6 +1693,7 @@
       "field": "wind_speed_10m_p10",
       "generation": "1787792398097751",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23062129,
       "updated": null
     },
@@ -1688,6 +1702,7 @@
       "field": "wind_speed_10m_p25",
       "generation": "1787792382839229",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22966663,
       "updated": null
     },
@@ -1696,6 +1711,7 @@
       "field": "wind_speed_10m_p50",
       "generation": "1787787506286063",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22851435,
       "updated": null
     },
@@ -1704,6 +1720,7 @@
       "field": "wind_speed_10m_p75",
       "generation": "1787792345263155",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22829800,
       "updated": null
     },
@@ -1712,6 +1729,7 @@
       "field": "wind_speed_10m_p90",
       "generation": "1787787506617289",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22787734,
       "updated": null
     },
@@ -1720,6 +1738,7 @@
       "field": "wind_speed_100m_mean",
       "generation": "1787792510254489",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22860011,
       "updated": null
     },
@@ -1728,6 +1747,7 @@
       "field": "wind_speed_100m_p10",
       "generation": "1787792495419273",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23016316,
       "updated": null
     },
@@ -1736,6 +1756,7 @@
       "field": "wind_speed_100m_p25",
       "generation": "1787792481377875",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22926123,
       "updated": null
     },
@@ -1744,6 +1765,7 @@
       "field": "wind_speed_100m_p50",
       "generation": "1787792463511345",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22804219,
       "updated": null
     },
@@ -1752,6 +1774,7 @@
       "field": "wind_speed_100m_p75",
       "generation": "1787792452268060",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22775941,
       "updated": null
     },
@@ -1760,6 +1783,7 @@
       "field": "wind_speed_100m_p90",
       "generation": "1787787520029439",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22738736,
       "updated": null
     },
@@ -1768,6 +1792,7 @@
       "field": "u_component_of_wind_10m_mean",
       "generation": "1787792743813006",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23784618,
       "updated": null
     },
@@ -1776,6 +1801,7 @@
       "field": "u_component_of_wind_10m_p10",
       "generation": "1787792740890356",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23768836,
       "updated": null
     },
@@ -1784,6 +1810,7 @@
       "field": "u_component_of_wind_10m_p25",
       "generation": "1787792716090417",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23763695,
       "updated": null
     },
@@ -1792,6 +1819,7 @@
       "field": "u_component_of_wind_10m_p50",
       "generation": "1787792713738113",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23721046,
       "updated": null
     },
@@ -1800,6 +1828,7 @@
       "field": "u_component_of_wind_10m_p75",
       "generation": "1787792699108609",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23744747,
       "updated": null
     },
@@ -1808,6 +1837,7 @@
       "field": "u_component_of_wind_10m_p90",
       "generation": "1787792683633391",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23737306,
       "updated": null
     },
@@ -1816,6 +1846,7 @@
       "field": "v_component_of_wind_10m_mean",
       "generation": "1787783283778974",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23914876,
       "updated": null
     },
@@ -1824,6 +1855,7 @@
       "field": "v_component_of_wind_10m_p10",
       "generation": "1787787534186865",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23902856,
       "updated": null
     },
@@ -1832,6 +1864,7 @@
       "field": "v_component_of_wind_10m_p25",
       "generation": "1787792566955669",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23893395,
       "updated": null
     },
@@ -1840,6 +1873,7 @@
       "field": "v_component_of_wind_10m_p50",
       "generation": "1787792538171699",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23838207,
       "updated": null
     },
@@ -1848,6 +1882,7 @@
       "field": "v_component_of_wind_10m_p75",
       "generation": "1787792537213927",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23871906,
       "updated": null
     },
@@ -1856,6 +1891,7 @@
       "field": "v_component_of_wind_10m_p90",
       "generation": "1787792509264342",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23863530,
       "updated": null
     },
@@ -1864,6 +1900,7 @@
       "field": "u_component_of_wind_100m_mean",
       "generation": "1787792830138352",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23767450,
       "updated": null
     },
@@ -1872,6 +1909,7 @@
       "field": "u_component_of_wind_100m_p10",
       "generation": "1787792817627222",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23762365,
       "updated": null
     },
@@ -1880,6 +1918,7 @@
       "field": "u_component_of_wind_100m_p25",
       "generation": "1787792804133222",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23753637,
       "updated": null
     },
@@ -1888,6 +1927,7 @@
       "field": "u_component_of_wind_100m_p50",
       "generation": "1787792805277530",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23706457,
       "updated": null
     },
@@ -1896,6 +1936,7 @@
       "field": "u_component_of_wind_100m_p75",
       "generation": "1787787534052415",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23731516,
       "updated": null
     },
@@ -1904,6 +1945,7 @@
       "field": "u_component_of_wind_100m_p90",
       "generation": "1787792771996550",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23727859,
       "updated": null
     },
@@ -1912,6 +1954,7 @@
       "field": "v_component_of_wind_100m_mean",
       "generation": "1787792671415639",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23926258,
       "updated": null
     },
@@ -1920,6 +1963,7 @@
       "field": "v_component_of_wind_100m_p10",
       "generation": "1787792657969365",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23918112,
       "updated": null
     },
@@ -1928,6 +1972,7 @@
       "field": "v_component_of_wind_100m_p25",
       "generation": "1787787535661093",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23905997,
       "updated": null
     },
@@ -1936,6 +1981,7 @@
       "field": "v_component_of_wind_100m_p50",
       "generation": "1787792626507335",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23852413,
       "updated": null
     },
@@ -1944,6 +1990,7 @@
       "field": "v_component_of_wind_100m_p75",
       "generation": "1787792626426611",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23889896,
       "updated": null
     },
@@ -1952,6 +1999,7 @@
       "field": "v_component_of_wind_100m_p90",
       "generation": "1787792597696067",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23886633,
       "updated": null
     },
@@ -1960,6 +2008,7 @@
       "field": "surface_solar_radiation_downwards_1hr_mean",
       "generation": "1787793257380033",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23149005,
       "updated": null
     },
@@ -1968,6 +2017,7 @@
       "field": "surface_solar_radiation_downwards_1hr_p10",
       "generation": "1787793232816338",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 12356212,
       "updated": null
     },
@@ -1976,6 +2026,7 @@
       "field": "surface_solar_radiation_downwards_1hr_p25",
       "generation": "1787765359972434",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 13188466,
       "updated": null
     },
@@ -1984,6 +2035,7 @@
       "field": "surface_solar_radiation_downwards_1hr_p50",
       "generation": "1787793204533943",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 17551063,
       "updated": null
     },
@@ -1992,6 +2044,7 @@
       "field": "surface_solar_radiation_downwards_1hr_p75",
       "generation": "1787793207549030",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 21707572,
       "updated": null
     },
@@ -2000,6 +2053,7 @@
       "field": "surface_solar_radiation_downwards_1hr_p90",
       "generation": "1787793178021669",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22799396,
       "updated": null
     },
@@ -2008,6 +2062,7 @@
       "field": "total_sky_direct_solar_radiation_at_surface_1hr_mean",
       "generation": "1787792920110927",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23311003,
       "updated": null
     },
@@ -2016,6 +2071,7 @@
       "field": "total_sky_direct_solar_radiation_at_surface_1hr_p10",
       "generation": "1787792904992810",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 9701091,
       "updated": null
     },
@@ -2024,6 +2080,7 @@
       "field": "total_sky_direct_solar_radiation_at_surface_1hr_p25",
       "generation": "1787792889608307",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 11060250,
       "updated": null
     },
@@ -2032,6 +2089,7 @@
       "field": "total_sky_direct_solar_radiation_at_surface_1hr_p50",
       "generation": "1787792875816458",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 16834942,
       "updated": null
     },
@@ -2040,6 +2098,7 @@
       "field": "total_sky_direct_solar_radiation_at_surface_1hr_p75",
       "generation": "1787792859768478",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 21901824,
       "updated": null
     },
@@ -2048,6 +2107,7 @@
       "field": "total_sky_direct_solar_radiation_at_surface_1hr_p90",
       "generation": "1787792844548012",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22930232,
       "updated": null
     },
@@ -2056,6 +2116,7 @@
       "field": "total_precipitation_1hr_mean",
       "generation": "1787792989793999",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23949374,
       "updated": null
     },
@@ -2064,6 +2125,7 @@
       "field": "total_precipitation_1hr_p10",
       "generation": "1787792989208997",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 11535925,
       "updated": null
     },
@@ -2072,6 +2134,7 @@
       "field": "total_precipitation_1hr_p25",
       "generation": "1787787534464548",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 14340008,
       "updated": null
     },
@@ -2080,6 +2143,7 @@
       "field": "total_precipitation_1hr_p50",
       "generation": "1787792961917868",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 20164882,
       "updated": null
     },
@@ -2088,6 +2152,7 @@
       "field": "total_precipitation_1hr_p75",
       "generation": "1787792945834124",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23275054,
       "updated": null
     },
@@ -2096,6 +2161,7 @@
       "field": "total_precipitation_1hr_p90",
       "generation": "1787787536461595",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23789648,
       "updated": null
     },
@@ -2104,6 +2170,7 @@
       "field": "imerg_tp_1hr_mean",
       "generation": "1787784190066675",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23501936,
       "updated": null
     },
@@ -2112,6 +2179,7 @@
       "field": "imerg_tp_1hr_p10",
       "generation": "1787784140019863",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 1716365,
       "updated": null
     },
@@ -2120,6 +2188,7 @@
       "field": "imerg_tp_1hr_p25",
       "generation": "1787784114345991",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 3410743,
       "updated": null
     },
@@ -2128,6 +2197,7 @@
       "field": "imerg_tp_1hr_p50",
       "generation": "1787784090378256",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 10937250,
       "updated": null
     },
@@ -2136,6 +2206,7 @@
       "field": "imerg_tp_1hr_p75",
       "generation": "1787784050099740",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 20332409,
       "updated": null
     },
@@ -2144,6 +2215,7 @@
       "field": "imerg_tp_1hr_p90",
       "generation": "1787784019926228",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22463060,
       "updated": null
     },
@@ -2152,6 +2224,7 @@
       "field": "experimental_tp_1hr_mean",
       "generation": "1787784431642608",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23668296,
       "updated": null
     },
@@ -2160,6 +2233,7 @@
       "field": "experimental_tp_1hr_p10",
       "generation": "1787784429880435",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 909085,
       "updated": null
     },
@@ -2168,6 +2242,7 @@
       "field": "experimental_tp_1hr_p25",
       "generation": "1787784433089206",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 2521660,
       "updated": null
     },
@@ -2176,6 +2251,7 @@
       "field": "experimental_tp_1hr_p50",
       "generation": "1787784404172437",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 10486994,
       "updated": null
     },
@@ -2184,6 +2260,7 @@
       "field": "experimental_tp_1hr_p75",
       "generation": "1787784387317170",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 20090921,
       "updated": null
     },
@@ -2192,6 +2269,7 @@
       "field": "experimental_tp_1hr_p90",
       "generation": "1787784373929551",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22831114,
       "updated": null
     },
@@ -2200,6 +2278,7 @@
       "field": "total_cloud_cover_mean",
       "generation": "1787793099594332",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22016066,
       "updated": null
     },
@@ -2208,6 +2287,7 @@
       "field": "total_cloud_cover_p10",
       "generation": "1787793073022726",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 20194632,
       "updated": null
     },
@@ -2216,6 +2296,7 @@
       "field": "total_cloud_cover_p25",
       "generation": "1787765239857502",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 20677030,
       "updated": null
     },
@@ -2224,6 +2305,7 @@
       "field": "total_cloud_cover_p50",
       "generation": "1787793044311374",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 20582236,
       "updated": null
     },
@@ -2232,6 +2314,7 @@
       "field": "total_cloud_cover_p75",
       "generation": "1787793016576011",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 15713889,
       "updated": null
     },
@@ -2240,6 +2323,7 @@
       "field": "total_cloud_cover_p90",
       "generation": "1787793003120165",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 12313826,
       "updated": null
     },
@@ -2248,6 +2332,7 @@
       "field": "low_cloud_cover_mean",
       "generation": "1787783990866791",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23091744,
       "updated": null
     },
@@ -2256,6 +2341,7 @@
       "field": "low_cloud_cover_p10",
       "generation": "1787783963208647",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 18150394,
       "updated": null
     },
@@ -2264,6 +2350,7 @@
       "field": "low_cloud_cover_p25",
       "generation": "1787783935247207",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19632218,
       "updated": null
     },
@@ -2272,6 +2359,7 @@
       "field": "low_cloud_cover_p50",
       "generation": "1787783919903443",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 21926028,
       "updated": null
     },
@@ -2280,6 +2368,7 @@
       "field": "low_cloud_cover_p75",
       "generation": "1787783893855010",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 19546366,
       "updated": null
     },
@@ -2288,6 +2377,7 @@
       "field": "low_cloud_cover_p90",
       "generation": "1787783866213427",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 17036935,
       "updated": null
     },
@@ -2296,6 +2386,7 @@
       "field": "medium_cloud_cover_mean",
       "generation": "1787783657261101",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23772605,
       "updated": null
     },
@@ -2304,6 +2395,7 @@
       "field": "medium_cloud_cover_p10",
       "generation": "1787783629111347",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 13562079,
       "updated": null
     },
@@ -2312,6 +2404,7 @@
       "field": "medium_cloud_cover_p25",
       "generation": "1787783602046941",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 17046358,
       "updated": null
     },
@@ -2320,6 +2413,7 @@
       "field": "medium_cloud_cover_p50",
       "generation": "1787783575324296",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22697445,
       "updated": null
     },
@@ -2328,6 +2422,7 @@
       "field": "medium_cloud_cover_p75",
       "generation": "1787783534956527",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 21640020,
       "updated": null
     },
@@ -2336,6 +2431,7 @@
       "field": "medium_cloud_cover_p90",
       "generation": "1787783498415062",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 20253983,
       "updated": null
     },
@@ -2344,6 +2440,7 @@
       "field": "high_cloud_cover_mean",
       "generation": "1787784361462972",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 23623282,
       "updated": null
     },
@@ -2352,6 +2449,7 @@
       "field": "high_cloud_cover_p10",
       "generation": "1787784346296881",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 11806313,
       "updated": null
     },
@@ -2360,6 +2458,7 @@
       "field": "high_cloud_cover_p25",
       "generation": "1787784318215408",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 15718331,
       "updated": null
     },
@@ -2368,6 +2467,7 @@
       "field": "high_cloud_cover_p50",
       "generation": "1787784294352245",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 22582513,
       "updated": null
     },
@@ -2376,6 +2476,7 @@
       "field": "high_cloud_cover_p75",
       "generation": "1787784243973116",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 20938559,
       "updated": null
     },
@@ -2384,6 +2485,7 @@
       "field": "high_cloud_cover_p90",
       "generation": "1787784216076650",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 18422365,
       "updated": null
     },
@@ -2392,6 +2494,7 @@
       "field": "mean_sea_level_pressure_mean",
       "generation": "1787783838601815",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 18867014,
       "updated": null
     },
@@ -2400,6 +2503,7 @@
       "field": "mean_sea_level_pressure_p10",
       "generation": "1787783806670355",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 18890797,
       "updated": null
     },
@@ -2408,6 +2512,7 @@
       "field": "mean_sea_level_pressure_p25",
       "generation": "1787783777988384",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 18857093,
       "updated": null
     },
@@ -2416,6 +2521,7 @@
       "field": "mean_sea_level_pressure_p50",
       "generation": "1787783751498190",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 18734503,
       "updated": null
     },
@@ -2424,6 +2530,7 @@
       "field": "mean_sea_level_pressure_p75",
       "generation": "1787783726166360",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 18850947,
       "updated": null
     },
@@ -2432,6 +2539,7 @@
       "field": "mean_sea_level_pressure_p90",
       "generation": "1787783695048716",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 18886527,
       "updated": null
     },
@@ -2440,6 +2548,7 @@
       "field": "sea_surface_temperature_mean",
       "generation": "1787783459913088",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 11097418,
       "updated": null
     },
@@ -2448,6 +2557,7 @@
       "field": "sea_surface_temperature_p10",
       "generation": "1787783421754265",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 11109512,
       "updated": null
     },
@@ -2456,6 +2566,7 @@
       "field": "sea_surface_temperature_p25",
       "generation": "1787783363154842",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 10952413,
       "updated": null
     },
@@ -2464,6 +2575,7 @@
       "field": "sea_surface_temperature_p50",
       "generation": "1787793430878309",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 10847947,
       "updated": null
     },
@@ -2472,6 +2584,7 @@
       "field": "sea_surface_temperature_p75",
       "generation": "1787793433269950",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 11044124,
       "updated": null
     },
@@ -2480,6 +2593,7 @@
       "field": "sea_surface_temperature_p90",
       "generation": "1787793415697447",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 11167474,
       "updated": null
     },
@@ -2488,6 +2602,7 @@
       "field": "station_head_temperature_2m_mean",
       "generation": "1787765111335134",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77288430,
       "updated": null
     },
@@ -2496,6 +2611,7 @@
       "field": "station_head_temperature_2m_p10",
       "generation": "1787765443423730",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77843263,
       "updated": null
     },
@@ -2504,6 +2620,7 @@
       "field": "station_head_temperature_2m_p25",
       "generation": "1787765430782675",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77663436,
       "updated": null
     },
@@ -2512,6 +2629,7 @@
       "field": "station_head_temperature_2m_p50",
       "generation": "1787765415675862",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77218146,
       "updated": null
     },
@@ -2520,6 +2638,7 @@
       "field": "station_head_temperature_2m_p75",
       "generation": "1787765415017487",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77596979,
       "updated": null
     },
@@ -2528,6 +2647,7 @@
       "field": "station_head_temperature_2m_p90",
       "generation": "1787765399248059",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77721284,
       "updated": null
     },
@@ -2536,6 +2656,7 @@
       "field": "station_head_dewpoint_temperature_2m_mean",
       "generation": "1787765088052201",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77573090,
       "updated": null
     },
@@ -2544,6 +2665,7 @@
       "field": "station_head_dewpoint_temperature_2m_p10",
       "generation": "1787765145453947",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 78044086,
       "updated": null
     },
@@ -2552,6 +2674,7 @@
       "field": "station_head_dewpoint_temperature_2m_p25",
       "generation": "1787765145336012",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77871142,
       "updated": null
     },
@@ -2560,6 +2683,7 @@
       "field": "station_head_dewpoint_temperature_2m_p50",
       "generation": "1787765148488013",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77457634,
       "updated": null
     },
@@ -2568,6 +2692,7 @@
       "field": "station_head_dewpoint_temperature_2m_p75",
       "generation": "1787765133688245",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77699407,
       "updated": null
     },
@@ -2576,6 +2701,7 @@
       "field": "station_head_dewpoint_temperature_2m_p90",
       "generation": "1787765123619333",
       "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
       "size": 77814774,
       "updated": null
     }

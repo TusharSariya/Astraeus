@@ -162,7 +162,13 @@ def run(plan_path: Path, output: Path) -> dict:
     manifest["usage"] = {"received_bytes": transport.received_bytes, "decoded_working_bytes": max_decoded,
                          "object_requests": transport.requests, "deadline_seconds": math.ceil(time.monotonic() - started),
                          "output_bytes": 0}
-    manifest["objects"] = plan["field_objects"]
+    # Every body was fetched through its generation-qualified URI and its byte
+    # count matched the description captured in the plan. Name that mechanism
+    # precisely; this recorder does not perform a later metadata/ETag recheck.
+    manifest["objects"] = [
+        {**item, "identity_verification_method": "generation_qualified_read_with_size_check"}
+        for item in plan["field_objects"]
+    ]
     manifest["decoder"] = {"name": "zarr", "version": zarr.__version__, "numpy": np.__version__}
     manifest["resource_gate"] = {"received_cap": RECEIVED_CAP, "decoded_cap": DECODED_CAP,
                                  "local_reservation": LOCAL_RESERVATION, "deadline": DEADLINE_SECONDS}

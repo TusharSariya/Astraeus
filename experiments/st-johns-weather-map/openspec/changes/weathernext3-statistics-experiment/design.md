@@ -32,7 +32,13 @@ The bounded acquisition reads one object at a time, calculates sizes before
 download, decodes at most one global chunk, deletes it after extraction, and
 enforces byte, request, memory, output, deadline and disk-reserve gates. The
 Avalon proof rechecks generation, ETag and size after reads; the all-field proof
-downloads the exact generations established by its immutable metadata plan. Initialization,
+downloads generation-qualified objects and verifies their described byte sizes.
+The adapter requires an explicit verified-read mechanism: either the box
+collector's post-read metadata/ETag/size recheck or the all-field collector's
+generation-qualified read with size check. It validates exact run
+paths, object identities, field/lead bindings, and box metadata/coordinate
+objects. This establishes internal record consistency; it does not
+cryptographically authenticate arbitrary manifest JSON. Initialization,
 lead, valid time, retrieval time, unknown publication time, native cell and
 grid identity, native units, fill masks, product version, ECMWF initializer lineage, terms
 identity and counters enter artifact provenance.
@@ -43,3 +49,8 @@ Wrong version/surface/member identity, incomplete inventory, invalid statistic,
 time mismatch, out-of-range value, missing payload, identity drift, cost gate,
 storage gate or blocked acquisition fails closed before publication. The module
 has no registry side effect and no scheduler or production configuration entry.
+Point and bounded-box acquisitions are explicitly partial experiments. Their
+run results remain incomplete and QC-failed, so the artifact store may stage
+them for local inspection but cannot advance a current revision. Publication
+requires a later accepted contract defining complete spatial, temporal and
+cadence bounds.

@@ -24,6 +24,11 @@ fabrication.
   object identity or a resource gate is invalid
 - **THEN** acquisition fails explicitly and publishes nothing
 
+#### Scenario: A partial proof reaches the publication boundary
+
+- **WHEN** a point or bounded-box experimental sample has valid identities and values
+- **THEN** its artifact is marked partial and non-publishable, its run remains incomplete and QC-failed, and an existing published revision is preserved
+
 ### Requirement: Experimental isolation
 
 The WeatherNext 3 adapter SHALL remain absent from production registration and

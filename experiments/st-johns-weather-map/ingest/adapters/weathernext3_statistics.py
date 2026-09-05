@@ -75,6 +75,81 @@ def _expected_unit(name: str) -> str:
     return "m"
 
 
+def _run_object_prefix(initialization: str) -> str:
+    run = _time(initialization)
+    return (
+        f"{PRODUCT}/zarr/2026_to_present/"
+        f"{run:%Y%m%d_%H}hr_01_preds/predictions.zarr"
+    )
+
+
+def _validate_object_identity(manifest: dict[str, Any], selected: set[str], leads: list[int]) -> None:
+    """Validate the acquisition's own identity evidence.
+
+    This proves that the record is structurally self-consistent. It cannot
+    cryptographically establish that an arbitrary JSON record came from GCS.
+    """
+    objects = manifest.get("objects")
+    if not isinstance(objects, list) or not objects:
+        raise WeatherNextManifestError("source object identity evidence is missing")
+    prefix = _run_object_prefix(manifest["times"]["initialization"])
+    paths: set[str] = set()
+    field_leads: list[tuple[str, int]] = []
+    is_box = manifest.get("avalon_box_sample") is not None
+    required_ancillary = set()
+    if is_box:
+        required_ancillary = {f"{prefix}/zarr.json", f"{prefix}/lat_0p1/c/0", f"{prefix}/lon_0p1/c/0",
+                              f"{prefix}/lead_time/c/0", f"{prefix}/init_time/c"}
+        required_ancillary.update(f"{prefix}/datetime/c/{lead - 1}" for lead in leads)
+    for item in objects:
+        path = item.get("name", item.get("object"))
+        if not isinstance(path, str) or not path.startswith(f"{prefix}/") or path in paths:
+            raise WeatherNextManifestError("source object path is missing, duplicated or outside the exact run")
+        paths.add(path)
+        if not isinstance(item.get("generation"), str) or not item["generation"].isdigit():
+            raise WeatherNextManifestError(f"{path}: source generation is missing or invalid")
+        if not isinstance(item.get("etag"), str) or not item["etag"]:
+            raise WeatherNextManifestError(f"{path}: source ETag is missing")
+        if not isinstance(item.get("size"), int) or isinstance(item["size"], bool) or item["size"] <= 0:
+            raise WeatherNextManifestError(f"{path}: source size is missing or invalid")
+        post_read = item.get("post_read_identity_verified")
+        pinned_read = item.get("identity_verification_method") == "generation_qualified_read_with_size_check"
+        if post_read is False or (post_read is not True and not pinned_read):
+            raise WeatherNextManifestError(f"{path}: source identity has no verified read mechanism")
+
+        relative = path.removeprefix(f"{prefix}/")
+        matched_field = False
+        for field in selected:
+            marker = f"{field}/c/"
+            if relative.startswith(marker) and relative.endswith("/0/0"):
+                try:
+                    chunk = int(relative.removeprefix(marker).split("/", 1)[0])
+                except ValueError as error:
+                    raise WeatherNextManifestError(f"{path}: invalid field chunk identity") from error
+                declared = item.get("field", field)
+                if declared != field:
+                    raise WeatherNextManifestError(f"{path}: source object field identity mismatch")
+                # These two recorders deliberately retain their provider path
+                # conventions: box chunks use zero-based lead indexes while
+                # the point proof names the lead coordinate itself.
+                matching_lead = next((lead for lead in leads if chunk == (lead - 1 if is_box else lead)), None)
+                if matching_lead is None:
+                    raise WeatherNextManifestError(f"{path}: source object lead identity mismatch")
+                field_leads.append((field, matching_lead))
+                matched_field = True
+                break
+        if not matched_field and path not in required_ancillary:
+            raise WeatherNextManifestError(f"{path}: source object is not bound to sampled data or required coordinates")
+
+    expected = {(field, lead) for field in selected for lead in leads}
+    if set(field_leads) != expected or len(field_leads) != len(expected):
+        raise WeatherNextManifestError("source objects do not bind every selected field and lead exactly once")
+
+    if is_box:
+        if not required_ancillary <= paths:
+            raise WeatherNextManifestError("source metadata or coordinate object identity is missing")
+
+
 def validate_acquisition(manifest: dict[str, Any]) -> None:
     identity = manifest.get("identity", {})
     if identity.get("product_version") != "3.0.0" or identity.get("access_surface") != ACCESS_SURFACE:
@@ -113,6 +188,7 @@ def validate_acquisition(manifest: dict[str, Any]) -> None:
     leads = manifest.get("sample", {}).get("lead_hours", [])
     if leads != request.get("lead_hours") or not leads or len(leads) != len(set(leads)):
         raise WeatherNextManifestError("request and sample leads must be equal, non-empty and unique")
+    _validate_object_identity(manifest, retrieved, leads)
     valid = manifest.get("times", {}).get("valid", [])
     if len(leads) != len(valid) or any(len(item.get("values", [])) != len(leads) for item in samples.values()):
         raise WeatherNextManifestError("lead, valid-time and value cardinalities differ")
@@ -268,12 +344,19 @@ class WeatherNext3StatisticsAdapter:
                      "period_end": item.isoformat().replace("+00:00", "Z")}
                     for item in valid
                 ],
-                "upstream_objects": manifest.get("objects", []), "usage": manifest.get("usage", {}),
+                "upstream_objects": manifest["objects"], "usage": manifest.get("usage", {}),
+                "acquisition_scope": {
+                    "kind": "experimental_partial_sample",
+                    "spatial_coverage": "avalon_16x16_box" if box else "single_native_cell_per_grid",
+                    "lead_hours": manifest["sample"]["lead_hours"],
+                    "operational_publishable": False,
+                },
                 "terms": {key: manifest["identity"].get(key) for key in ("terms_class", "terms_url", "terms_reviewed", "terms_sha256")},
                 "input_lineage": manifest["identity"].get("input_lineage"),
                 "attribution": manifest["identity"].get("attribution"),
             }
             artifacts.append(Artifact(f"weathernext3-statistics-{grid_name}", MEDIA_ZARR, output, provenance))
         return RunResult(self.source_id, candidate.provider_run_id, candidate.run_time,
-                         _time(manifest["times"]["retrieval"]), True, True, artifacts, "EPSG:4326",
+                         _time(manifest["times"]["retrieval"]), False, False, artifacts, "EPSG:4326",
+                         "experimental partial sample; non-publishable until an accepted full-coverage and cadence contract exists; "
                          f"{sum(len(group) for group in groups.values())} retrieved; {sum(v == 'deferred' for v in dispositions.values())} deferred")

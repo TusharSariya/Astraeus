@@ -25,17 +25,25 @@ zero forecast bytes. A value read would require 3,150,715,420 compressed bytes.
 The owner then authorized the known operation with a 30-minute deadline and
 4 GiB cap. `evidence/weathernext-20260801-all-fields-lead6-values.json`
 retrieved all 126 lead-6 point values sequentially: 3,150,943,978 bytes, 140
-operations, 103,708,800 peak decoded bytes, 122,420 output bytes and 432
-seconds. It records 120 numeric values and six explicit unavailable masks, all
+operations, 103,708,800 peak decoded bytes, 122,420 collector-output bytes and 432
+seconds. Each generation-qualified download matched its described byte size;
+the retained records name that pinned-read mechanism explicitly and do not
+claim a later metadata or ETag recheck. The
+adapter validates the exact run path, generation, ETag, size and one-to-one
+field/lead binding before normalization. These are internal consistency checks
+on the evidence record, not cryptographic proof that arbitrary JSON came from
+GCS. It records 120 numeric values and six explicit unavailable masks, all
 six being sea-surface-temperature statistics at the selected land cell. The
 114 0.1-degree and 12 station-head 0.05-degree arrays retain distinct grid and
 coordinate identity. This is all-field point evidence, not full spatial
-coverage. Its SHA-256 is
-`f6d853bc65e4deae11ed2ff4137b6ea3bf521edd6a238a6761ed8cdc0ae2940d`.
+coverage. Its annotated SHA-256 is
+`b9ed43359425550eeab98c6f639dcc67f347657ae8a25a081850bef337a1d122`.
 Roughly 50,067,508 KiB was physically free before the operation. The gate held
 a 4 GiB team reservation plus the next compressed chunk, decoded allowance and
 output allowance. Every raw chunk was deleted immediately after point
-extraction. Only the 122,420-byte evidence JSON is retained in the repository;
+extraction. Only the evidence JSON is retained in the repository; its current
+132,878-byte form includes the explicit identity-mechanism annotations added during
+adapter hardening.
 the two normalized Zarr artifacts are created in temporary test directories
 and are not installed in a shared store.
 
@@ -55,18 +63,28 @@ The all-field metadata artifact SHA-256 is
 The isolated adapter validates exact product/surface/member/statistic/time and
 the complete disposition inventory, preserves nulls as masks, writes a
 deterministic immutable Zarr artifacts split by native grid, and carries all
-126 dispositions in provenance. Astraeus' real HTTP point endpoint reads the resulting artifact in
-a local harness and returns the numeric `total_cloud_cover_mean` value using a
-test-local field catalogue. No production catalogue, source registry,
-scheduler or deployment configuration is changed.
+126 dispositions plus the validated source-object records in provenance.
+Astraeus' real reader and HTTP point endpoint read both native-grid artifacts
+in a local harness and compare all 126 response fields with the retained point
+manifest: 120 numeric values and six explicit SST nulls. The same path compares
+all six box fields at a retained native cell. Every catalogue override is
+test-local. No production catalogue, source registry, scheduler, shared store
+or deployment configuration is changed.
 
 The all-field sample proves one point at one representative lead. The separate
 Avalon artifact proves spatial extraction only for six cloud statistics at
 three leads. Neither is described as a 126-field spatial coverage proof or as
-an operational cadence/completeness result.
+an operational cadence/completeness result. Both return `complete=false` and
+`qc_passed=false`, with explicit `experimental_partial_sample` provenance, so
+even manual passage to the actual artifact store stages without moving a
+published revision. Operational publishability remains blocked until accepted
+full spatial, temporal and cadence bounds exist.
 
 Tests refuse WN2 identity, fabricated member identity, incomplete inventory,
 statistic mismatch, invalid cloud fractions, mask-count mismatch, blocked
-acquisition and requester-paid bucket state. Invalid inputs create no partial
-artifact. Existing transport tests prove request reservation, byte limits,
-redacted failures and empty billing/project/auth override variables.
+acquisition and requester-paid bucket state. Mutations of either retained
+manifest's path, generation, ETag or verified-read mechanism fail closed; box
+metadata and coordinate identities and every selected field/lead binding are
+required. Invalid inputs create no partial artifact. Existing transport tests
+prove request reservation, byte limits, redacted failures and empty
+billing/project/auth override variables.
