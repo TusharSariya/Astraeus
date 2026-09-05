@@ -1,6 +1,6 @@
 # Forecast-run selection across Map and Series
 
-Discussion draft for [Settle forecast-run selection across Map and Series](https://github.com/TusharSariya/Astraeus/issues/68). No owner run-selection choices have been made yet. No API behavior, retention rule or normative status is changed.
+Discussion draft for [Settle forecast-run selection across Map and Series](https://github.com/TusharSariya/Astraeus/issues/68). The owner selected the automatic default and explicit previous-run behavior; scope and persistence remain pending. No API behavior, retention rule or normative status is changed.
 
 ## Existing decisions and evidence
 
@@ -11,9 +11,9 @@ Discussion draft for [Settle forecast-run selection across Map and Series](https
 - `web/src/runSegments.ts` already recognizes adjacent frames with different run times. Its comments describe a short cycle leaving previous-run frames at leads the new cycle does not reach. This is run disclosure, not an implemented run picker.
 - Existing Map/Series prototypes do not implement run selection. The Map URL records layer id/opacity/enabled state, not a run selector. Retained storage objects or run metadata alone do not prove that an API can read an explicitly chosen previous run.
 
-## First discussion round
+## Owner decisions: default and explicit run
 
-Proposed, not selected:
+The owner answered “yes, yes” to both choices:
 
 1. **Automatic default:** “Latest available” follows the published evidence selection at each valid time, naming the actual run on each frame/segment. It may show an older run at a lead the newest complete run does not cover, but does not disguise that as one newer run. It preserves the existing Map frame-age rule and Series native timing. No new source substitution is introduced.
 2. **Explicit previous-run choice:** selecting “Previous” resolves to a named, currently retained run and pins that run identity. It does not silently advance to a different run when another cycle arrives. Within that pinned run, absent frames stay absent; neither Latest nor another source fills them. The control displays the actual run time/id, not just a moving “previous” label.
@@ -29,3 +29,14 @@ Backend audit: retention policy already commits to two runs, but current API sam
 Both audits preserve these gaps for the API proposal. No positive previous-run serving capability is claimed. Run-stale flags remain evidence disclosure, not an automatic reason to hide or switch a selected run. Observation/nowcast sources without forecast-run identity do not acquire artificial run controls.
 
 Classification: no spec impact; documentation and proposed choices only. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-005. Required documentation check: specctl validate. Implementation verification belongs to the later proposal after owner decisions and accepted contracts.
+
+
+## Next discussion: scope and sharing
+
+Proposed, not selected:
+
+1. Apply a run choice to that forecast source's layers in Map and readings in Series, keeping the two views aligned. Scope the choice to an actual provider run family/logical stream; never assume unrelated streams or products share a run just because they share a provider. If a selected delivery cannot address that run, show it unavailable rather than substitute another. Observation layers have no forecast-run selector.
+2. Keep Activity verdicts on the previously selected server-side source/run evaluation policy. A Map/Series browsing override does not silently alter a verdict or its score. Its input provenance still identifies the evidence it used; make a mismatch visible when relevant.
+3. Store source/run browsing choices alongside Focus in the URL, using explicit run identity for pinned selections and an explicit automatic mode for Latest available. This does not persist the temporary Compare workspace's selected fields/layout, and a URL cannot promise retention of an old run.
+
+Expiry behavior and simultaneous same-source run comparison remain separate decisions. The committed two-run ceiling and proposed short-lived Series snapshot pins also need an explicit retention/capacity reconciliation before implementation; neither should silently override the other.
