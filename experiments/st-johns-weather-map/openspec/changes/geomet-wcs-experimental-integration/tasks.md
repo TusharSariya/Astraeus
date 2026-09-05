@@ -20,3 +20,10 @@
 - [x] Retain representative artifacts and checksums for reproducible reader verification.
 - [ ] Owner accepts or revises the contract and production field/lead window.
 - [ ] Register and schedule the production access path only after acceptance.
+
+## Tracked follow-up work
+
+These open tickets track remaining work beyond the completed isolated acquisition evidence. Their existence does not accept contracts or authorize production activation.
+
+- [ ] [Complete GeoMet experimental source admission and field-window contracts](https://github.com/TusharSariya/Astraeus/issues/141).
+- [ ] [Account for the remaining advertised GeoMet family fields](https://github.com/TusharSariya/Astraeus/issues/145).
