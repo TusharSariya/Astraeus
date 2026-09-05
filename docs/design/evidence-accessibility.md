@@ -1,6 +1,6 @@
 # Keyboard and evidence accessibility audit
 
-For [Validate keyboard and screen-reader access to evidence controls](https://github.com/TusharSariya/Astraeus/issues/69). Result: **browser audit found defects; no accessibility pass or actual screen-reader verification is claimed**. This is experimental design evidence and implementation handoff, not WCAG certification or a normative status transition.
+For [Validate keyboard and screen-reader access to evidence controls](https://github.com/TusharSariya/Astraeus/issues/69). Result: **baseline defects repaired in isolated prototypes and browser keyboard rechecks passed; actual screen-reader verification remains pending**. This is experimental design evidence and implementation handoff, not WCAG certification or a normative status transition.
 
 ## Scope and method
 
@@ -13,7 +13,7 @@ Tested September 5, 2026 with Playwright Chromium (main run: 151.0.7922.34), nat
 | Sky Horizon instrument | `prototype/sky` at `4125ea1` | http://localhost:5206/sky.html?variant=A |
 | Sources Ledger, Family finder, Coverage lanes | `prototype/sources` at `7127d64` | http://localhost:5202/sources.html?variant=A, B and C |
 
-No prototype source was modified. Map coverage here is the selected non-raster study; the original raster route was only inspected during initial loading and is not counted as a complete keyboard test. Activity's canvas and the assembled production shell were not browser-tested. VoiceOver, NVDA, JAWS, touch readers, outdoor night use and physical-device verification were not run.
+The initial audit did not modify prototype sources. Owner-authorized repairs and their rechecks are recorded below. Map coverage here is the selected non-raster study; the original raster route was only inspected during initial loading and is not counted as a complete keyboard test. Activity's canvas and the assembled production shell were not browser-tested. VoiceOver, NVDA, JAWS, touch readers, outdoor night use and physical-device verification were not run.
 
 ## Reproduced findings
 
@@ -39,12 +39,29 @@ Reproduction/source anchors: station `station-study.js:39,92–95`; Series `seri
 - Sources filters and time slider are labelled; family keyboard selection and native details work. Result/banner status regions exist; restoration to an opener that remains visible works.
 - Stylesheets contain visible-focus treatments. This is not a full contrast, clipping or screen-reader announcement pass.
 
-## Recommended shared interaction contract — not yet owner-selected
+## Owner-selected shared interaction contract
+
+The owner approved this contract and prototype repairs with “yes as subagents” on September 5, 2026. This selects experimental design behavior; it does not promote normative specifications.
 
 1. Explicit Inspect activation moves focus to the docked inspector's named heading or first appropriate control. The inspector remains nonmodal: normal navigation can return to the rest of the view. Close, and Escape while focus is within that inspector, restore the actual opener; if it disappeared, use a visible focusable fallback in its original view. Do not apply a page-wide Escape handler that conflicts with existing fullscreen or native controls.
 2. Changing a layer, field, checkbox or order retains focus on the corresponding logical control after rendering. Expose selected/expanded state where meaningful, and give repeated actions target-specific names. A chart button gets the same relevant evidence identity as its corresponding row, without duplicating every detail into an enormous label.
 3. Keep a semantic row/table alternative for chart samples and gaps, with an inspection action for each reading. Use native button behavior for actions; chart shortcuts must not steal native select, slider or scrolling keys. Coordinate controls provide the equivalent of map-click Focus placement.
 4. Announce concise completion, result-count, absence and error changes where they otherwise occur without focus movement. Avoid re-announcing the entire catalogue/inspector on every update. Marked live regions alone do not prove useful spoken behavior.
+
+## Prototype repairs and browser recheck
+
+Three subagents repaired Sources, Series and Sky while the main agent repaired the station Map, each in an isolated worktree. All four repair branches are published:
+
+| Study | Repair artifact | Passing browser checks |
+| --- | --- | --- |
+| Station Map | [c3222bc](https://github.com/TusharSariya/Astraeus/commit/c3222bc), `prototype/a11y-station`, localhost:5213 | Rerender focus, layer state/order, named inspection, actual opener/fallback, keyboard coordinate entry, zero/absence, native keys, narrow viewport |
+| Sources | [45909aa](https://github.com/TusharSariya/Astraeus/commit/45909aa), `prototype/a11y-sources`, localhost:5210 | Rerender and filtered-opener fallback, scoped Escape, horizontal scrolling, refresh failure focus, names/status |
+| Series | [1a870db](https://github.com/TusharSariya/Astraeus/commit/1a870db), `prototype/a11y-series`, localhost:5211 | A/B field and time controls, native chart buttons, semantic sample/gap table, inspector restoration and disappeared-opener fallback |
+| Sky | [1dc8364](https://github.com/TusharSariya/Astraeus/commit/1dc8364), `prototype/a11y-sky`, localhost:5212 | Inspector entry/return, nonmodal navigation, scoped Escape, native arrow behavior, night-theme focus, nine-row Kp table |
+
+An independent [cross-view recheck](evidence-accessibility/repair-recheck.cjs) passed Enter and Space opening, inspector heading focus, scoped Escape and Close returning to the actual opener for all four repaired artifacts. Per-study scripts are included in the Station, Sources and Series repair commits. JavaScript syntax, diff checks and specctl validation passed in all four worktrees (zero spec errors/warnings).
+
+These are browser keyboard checks, not spoken-output tests. Series native buttons inside SVG foreignObject still need reader/browser verification; the HTML table supplies an independent sample/gap inspection path. Station coordinate entry preserves typed precision but retains the study's existing geographic bounds; it does not resolve the API bounds mismatch. Captured weather evidence and scientific calculations were not changed. The original raster route, Activity canvas, assembled production shell, full contrast/zoom coverage and physical-device behavior remain outside this recheck.
 
 ## Actual screen-reader procedure still required
 
@@ -58,7 +75,7 @@ Use a recorded browser/reader/OS pairing on the built or corrected artifact. Thi
 6. Enter an arbitrary coordinate through keyboard controls and exercise an explicit geographic refusal separately from an API/network error. Old readings must not be spoken as the new Focus's evidence.
 7. Record actual utterances, steps, success/failure and artifact commit. Repeat after fixes; do not infer a pass from this browser audit.
 
-The outdoor red-night task remains separate. The issue stays open for remediation decisions and actual reader verification; no incomplete checks are marked passed.
+The outdoor red-night task remains separate. The issue stays open for actual reader verification; no incomplete checks are marked passed.
 
 ## Standards used to interpret findings
 
@@ -72,4 +89,4 @@ Status updates need appropriate programmatic exposure when they do not take focu
 
 [Station script](evidence-accessibility/station-audit.cjs), [station observations](evidence-accessibility/station-results.json), [Series/Sky script](evidence-accessibility/series-sky-audit.cjs), [follow-up script](evidence-accessibility/series-sky-followup.cjs), and [Sources detailed findings](evidence-accessibility/sources-audit.md). Scripts use this workspace's installed Playwright and running prototype servers; temporary screenshot paths are inspection aids, not required handoff assets.
 
-Classification: no spec impact. Documentation/reproduction artifacts only; no product or normative status change. Specctl validation is required before handoff. Browser checks found the failures above; they are not reported as a passing test suite.
+Classification: no spec impact. Documentation/reproduction artifacts only; no product or normative status change. Specctl validation is required before handoff. Baseline browser checks found the failures above; the separate repaired-prototype recheck passed its bounded assertions. No overall accessibility conformance is claimed.
