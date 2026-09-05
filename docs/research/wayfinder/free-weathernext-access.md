@@ -214,7 +214,7 @@ implementation gates.
 - Read current primary pages linked above on 2026-09-05; no live dataset claims.
 - Anonymous control: one JSON API list request, HTTP 401, 742-byte body, no
   authorization or requester-billing identity.
-- `python3 -m pytest experiments/st-johns-weather-map/scripts/tests/test_weathernext_bounded_probe.py -q`
+- `uv run --with pytest python -m pytest experiments/st-johns-weather-map/scripts/tests/test_weathernext_bounded_probe.py -q`
 - `python3 experiments/st-johns-weather-map/scripts/weathernext_probe_manifest.py template`
 - `uv run --project tools/specs python tools/specs/specctl.py validate`
 - `git diff --check`
