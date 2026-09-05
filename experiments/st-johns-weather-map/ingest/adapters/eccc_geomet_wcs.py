@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
+from typing import Iterable, Iterator, Mapping, Sequence
 from urllib.parse import urlencode
 
 import numpy
@@ -111,6 +111,21 @@ class CoverageDescription:
     grid_axis_labels: tuple[str, ...]
     longitude_spacing: float
     latitude_spacing: float
+
+
+@dataclass(frozen=True)
+class FetchReceipt:
+    path: Path
+    url: str
+    requested_valid_time: datetime
+    selected_valid_time: datetime
+    requested_reference_time: datetime | None
+    selected_reference_time: datetime | None
+
+    def __iter__(self) -> Iterator[Path | str]:
+        """Retain the original ``path, url = fetch(...)`` convenience."""
+        yield self.path
+        yield self.url
 
 
 def parse_description(path: Path) -> CoverageDescription:
@@ -225,6 +240,8 @@ class GeoMetWCSClient:
     def __post_init__(self) -> None:
         self._owned = None
         self._wms = GeoMetClient(client=self.client, base_url=self.base_url)
+        self._metadata_cache: dict[str, LayerCapability] = {}
+        self._description_cache: dict[str, CoverageDescription] = {}
 
     def _http(self) -> PoliteClient:
         if self.client is not None:
@@ -249,9 +266,13 @@ class GeoMetWCSClient:
         return parse_coverage_ids(destination)
 
     def metadata(self, coverage_id: str) -> LayerCapability:
-        return self._wms.capabilities(coverage_id)
+        if coverage_id not in self._metadata_cache:
+            self._metadata_cache[coverage_id] = self._wms.capabilities(coverage_id)
+        return self._metadata_cache[coverage_id]
 
     def description(self, coverage_id: str) -> CoverageDescription:
+        if coverage_id in self._description_cache:
+            return self._description_cache[coverage_id]
         base = self.scratch_dir or Path("/tmp")
         base.mkdir(parents=True, exist_ok=True)
         path = base / f"describe-{_snake(coverage_id)}.xml.part"
@@ -261,14 +282,16 @@ class GeoMetWCSClient:
             error = _service_error(path.read_bytes()[:4096], "application/xml")
             if error:
                 raise WCSResponseError(f"DescribeCoverage failed: {error}")
-            return parse_description(path)
+            description = parse_description(path)
+            self._description_cache[coverage_id] = description
+            return description
         finally:
             path.unlink(missing_ok=True)
 
     def fetch(
         self, field: CoverageField, *, valid_time: datetime, reference_time: datetime | None,
         bounds: Mapping[str, float], width: int, height: int, destination: Path,
-    ) -> tuple[Path, str]:
+    ) -> FetchReceipt:
         if field.disposition != "experimental-retrievable":
             raise WCSResponseError(f"{field.variable} is {field.disposition}")
         if width <= 0 or height <= 0 or width * height > MAX_PIXELS_PER_COVERAGE:
@@ -313,13 +336,31 @@ class GeoMetWCSClient:
             error = _service_error(head, "application/xml")
             destination.unlink(missing_ok=True)
             raise WCSResponseError(f"GeoMet returned a non-TIFF coverage: {error or head[:120]!r}")
-        return destination, url
+        return FetchReceipt(
+            path=destination,
+            url=url,
+            requested_valid_time=valid_time,
+            selected_valid_time=advertised_time,
+            requested_reference_time=reference_time,
+            selected_reference_time=advertised_run,
+        )
 
-    def fetch_many(self, fields: Sequence[CoverageField], **kwargs: object) -> list[tuple[Path, str]]:
+    def fetch_many(self, fields: Sequence[CoverageField], **kwargs: object) -> list[FetchReceipt]:
         """Fetch a bounded list sequentially; no provider concurrency is used."""
         if len(fields) > MAX_FIELDS_PER_OPERATION:
             raise ValueError(f"operation selects {len(fields)} fields; maximum is {MAX_FIELDS_PER_OPERATION}")
         return [self.fetch(field, **kwargs) for field in fields]
+
+
+def _geokeys(raw: Sequence[int]) -> dict[int, int]:
+    if len(raw) < 4 or raw[0] != 1 or len(raw) != 4 + 4 * raw[3]:
+        raise WCSResponseError("coverage lacks a usable GeoTIFF key directory")
+    keys: dict[int, int] = {}
+    for offset in range(4, len(raw), 4):
+        key, location, count, value = map(int, raw[offset:offset + 4])
+        if location == 0 and count == 1:
+            keys[key] = value
+    return keys
 
 
 def decode_geotiff(path: Path, field: CoverageField, *, valid_time: datetime, expected_bounds: Mapping[str, float], expected_width: int, expected_height: int) -> xarray.Dataset:
@@ -329,30 +370,66 @@ def decode_geotiff(path: Path, field: CoverageField, *, valid_time: datetime, ex
         tags = image.tag_v2
         scale = tuple(float(value) for value in tags.get(33550, ()))
         tie = tuple(float(value) for value in tags.get(33922, ()))
+        transform = tuple(float(value) for value in tags.get(34264, ()))
+        keys = _geokeys(tuple(int(value) for value in tags.get(34735, ())))
         nodata_raw = tags.get(42113)
     if values.shape != (expected_height, expected_width):
         raise WCSResponseError(f"coverage shape {values.shape} != requested {(expected_height, expected_width)}")
-    if len(scale) < 2 or len(tie) < 6 or scale[0] <= 0 or scale[1] <= 0:
+    if (
+        len(scale) < 2 or len(tie) < 6
+        or not all(numpy.isfinite(value) for value in (*scale[:2], *tie[:6]))
+        or scale[0] <= 0 or scale[1] <= 0
+    ):
         raise WCSResponseError("coverage lacks usable GeoTIFF scale/tie-point metadata")
-    west, north = tie[3], tie[4]
-    if abs(west - expected_bounds["west"]) > NATIVE_GRID_TOLERANCE or abs(north - expected_bounds["north"]) > NATIVE_GRID_TOLERANCE:
-        raise WCSResponseError("coverage tie point does not match the requested subset")
-    longitude = west + numpy.arange(expected_width, dtype=numpy.float64) * scale[0]
-    latitude = north - numpy.arange(expected_height, dtype=numpy.float64) * scale[1]
+    if transform or len(tie) != 6 or any(abs(value) > NATIVE_GRID_TOLERANCE for value in tie[:3]):
+        raise WCSResponseError("coverage carries an unexpected affine transform or raster tie point")
+    if keys.get(2048) != 4326:
+        raise WCSResponseError("coverage GeoTIFF CRS is not EPSG:4326")
+    raster_type = keys.get(1025)
+    if raster_type not in (1, 2):
+        raise WCSResponseError("coverage GeoTIFF RasterType is missing or unsupported")
+    tie_west, tie_north = tie[3], tie[4]
+    if raster_type == 1:  # PixelIsArea: tie point is the northwest outer corner.
+        west, east = tie_west, tie_west + expected_width * scale[0]
+        north, south = tie_north, tie_north - expected_height * scale[1]
+        longitude = tie_west + (numpy.arange(expected_width, dtype=numpy.float64) + 0.5) * scale[0]
+        latitude = tie_north - (numpy.arange(expected_height, dtype=numpy.float64) + 0.5) * scale[1]
+        sampling = "pixel_is_area_cell_centres"
+    else:  # PixelIsPoint: tie point and final sample are cell centres.
+        west, east = tie_west, tie_west + (expected_width - 1) * scale[0]
+        north, south = tie_north, tie_north - (expected_height - 1) * scale[1]
+        longitude = tie_west + numpy.arange(expected_width, dtype=numpy.float64) * scale[0]
+        latitude = tie_north - numpy.arange(expected_height, dtype=numpy.float64) * scale[1]
+        sampling = "pixel_is_point_centres"
+    actual_bounds = (west, south, east, north)
+    wanted_bounds = tuple(expected_bounds[name] for name in ("west", "south", "east", "north"))
+    if not all(numpy.isfinite(value) for value in wanted_bounds):
+        raise WCSResponseError("requested bounds contain a non-finite coordinate")
+    if any(abs(actual - wanted) > NATIVE_GRID_TOLERANCE for actual, wanted in zip(actual_bounds, wanted_bounds)):
+        raise WCSResponseError(f"coverage bounds {actual_bounds} do not match requested {wanted_bounds}")
     nodata = None
     if nodata_raw is not None:
         try:
             raw = nodata_raw[0] if isinstance(nodata_raw, tuple) else nodata_raw
             nodata = float(str(raw).strip().rstrip("\x00"))
-        except ValueError:
-            nodata = None
+        except (TypeError, ValueError) as error:
+            raise WCSResponseError("coverage carries an unparseable nodata value") from error
     if nodata is not None:
         values = numpy.where(values == nodata, numpy.nan, values)
+    if numpy.isinf(values).any():
+        raise WCSResponseError("coverage carries an infinite numeric value")
     data = values[numpy.newaxis, :, :]
-    return xarray.Dataset(
+    dataset = xarray.Dataset(
         {field.variable: (("valid_time", "latitude", "longitude"), data)},
         coords={"valid_time": [numpy.datetime64(valid_time.astimezone(UTC).replace(tzinfo=None), "ns")], "latitude": latitude, "longitude": longitude},
     )
+    dataset.attrs.update({
+        "sampling_geometry": sampling,
+        "longitude_resolution_degrees": scale[0],
+        "latitude_resolution_degrees": scale[1],
+        "resampling": "server_resampled_method_unknown",
+    })
+    return dataset
 
 
 def fetch_artifact(
@@ -366,9 +443,9 @@ def fetch_artifact(
         raise ValueError(f"{field.coverage_id} does not belong to model {model}")
     workdir.mkdir(parents=True, exist_ok=True)
     tiff = workdir / f"{_snake(field.coverage_id)}.tif"
-    tiff, url = client.fetch(field, valid_time=valid_time, reference_time=reference_time,
-                             bounds=bounds, width=grid.width, height=grid.height, destination=tiff)
-    dataset = decode_geotiff(tiff, field, valid_time=valid_time, expected_bounds=bounds,
+    receipt = client.fetch(field, valid_time=valid_time, reference_time=reference_time,
+                           bounds=bounds, width=grid.width, height=grid.height, destination=tiff)
+    dataset = decode_geotiff(receipt.path, field, valid_time=receipt.selected_valid_time, expected_bounds=bounds,
                              expected_width=grid.width, expected_height=grid.height)
     capability = client.metadata(field.coverage_id)
     raw_units, units, recognised = capability.units
@@ -381,14 +458,20 @@ def fetch_artifact(
         "adapter_version": "geomet-wcs-experimental-v1",
         "access_path": "GeoMet WCS 2.0.1",
         "coverage_id": field.coverage_id,
-        "source_uri": url,
-        "valid_time": valid_time.astimezone(UTC).isoformat(),
-        "run_time": None if reference_time is None else reference_time.astimezone(UTC).isoformat(),
-        "run_identity_status": "requested_unverified" if reference_time is not None else "unknown",
-        "native_crs": "EPSG:4326",
+        "source_uri": receipt.url,
+        "requested_valid_time": receipt.requested_valid_time.astimezone(UTC).isoformat(),
+        "valid_time": receipt.selected_valid_time.astimezone(UTC).isoformat(),
+        "requested_run_time": None if receipt.requested_reference_time is None else receipt.requested_reference_time.astimezone(UTC).isoformat(),
+        "run_time": None if receipt.selected_reference_time is None else receipt.selected_reference_time.astimezone(UTC).isoformat(),
+        "run_identity_status": "requested_unverified" if receipt.selected_reference_time is not None else "unknown",
+        "request_crs": "EPSG:4326",
+        "stored_crs": "EPSG:4326",
         "stored_geometry": "rectilinear_grid",
         "requested_bounds": dict(bounds),
         "requested_shape": [grid.height, grid.width],
+        "sampling_geometry": dataset.attrs["sampling_geometry"],
+        "sampling_resolution_degrees": [dataset.attrs["latitude_resolution_degrees"], dataset.attrs["longitude_resolution_degrees"]],
+        "resampling": dataset.attrs["resampling"],
         "units_as_published": raw_units,
         "units_recognised": recognised,
         "evidence_classes": ["retrieved"],
@@ -426,12 +509,17 @@ def fetch_pressure_profile_artifact(
     raw_units: str | None = None
     units: str | None = None
     recognised = False
+    selected_valid: datetime | None = None
+    selected_run: datetime | None = None
     for field, level in zip(fields, levels_hpa):
         tiff = workdir / f"{_snake(field.coverage_id)}.tif"
-        client.fetch(field, valid_time=valid_time, reference_time=reference_time, bounds=bounds,
-                     width=grid.width, height=grid.height, destination=tiff)
-        dataset = decode_geotiff(tiff, field, valid_time=valid_time, expected_bounds=bounds,
+        receipt = client.fetch(field, valid_time=valid_time, reference_time=reference_time, bounds=bounds,
+                               width=grid.width, height=grid.height, destination=tiff)
+        dataset = decode_geotiff(receipt.path, field, valid_time=receipt.selected_valid_time, expected_bounds=bounds,
                                  expected_width=grid.width, expected_height=grid.height)
+        if coverage_ids and (receipt.selected_valid_time, receipt.selected_reference_time) != (selected_valid, selected_run):
+            raise WCSResponseError("pressure coverages selected different valid or reference times")
+        selected_valid, selected_run = receipt.selected_valid_time, receipt.selected_reference_time
         capability = client.metadata(field.coverage_id)
         field_raw, field_units, field_recognised = capability.units
         if coverage_ids and (field_raw, field_units) != (raw_units, units):
@@ -440,6 +528,7 @@ def fetch_pressure_profile_artifact(
         arrays.append(dataset[field.variable].expand_dims(pressure=[int(level)]))
         coverage_ids.append(field.coverage_id)
     stacked = xarray.concat(arrays, dim="pressure").to_dataset(name="relative_humidity_pressure")
+    assert selected_valid is not None
     stacked["relative_humidity_pressure"].attrs.update({
         "units": units or "unknown", "original_units": raw_units or "unknown",
         "pressure_units": "hPa",
@@ -451,13 +540,19 @@ def fetch_pressure_profile_artifact(
         "access_path": "GeoMet WCS 2.0.1",
         "coverage_ids": coverage_ids,
         "pressure_levels_hpa": list(map(int, levels_hpa)),
-        "valid_time": valid_time.astimezone(UTC).isoformat(),
-        "run_time": None if reference_time is None else reference_time.astimezone(UTC).isoformat(),
-        "run_identity_status": "requested_unverified" if reference_time is not None else "unknown",
-        "native_crs": "EPSG:4326",
+        "requested_valid_time": valid_time.astimezone(UTC).isoformat(),
+        "valid_time": selected_valid.astimezone(UTC).isoformat(),
+        "requested_run_time": None if reference_time is None else reference_time.astimezone(UTC).isoformat(),
+        "run_time": None if selected_run is None else selected_run.astimezone(UTC).isoformat(),
+        "run_identity_status": "requested_unverified" if selected_run is not None else "unknown",
+        "request_crs": "EPSG:4326",
+        "stored_crs": "EPSG:4326",
         "stored_geometry": "rectilinear_pressure_grid",
         "requested_bounds": dict(bounds),
         "requested_shape": [grid.height, grid.width],
+        "sampling_geometry": stacked.attrs.get("sampling_geometry", dataset.attrs["sampling_geometry"]),
+        "sampling_resolution_degrees": [dataset.attrs["latitude_resolution_degrees"], dataset.attrs["longitude_resolution_degrees"]],
+        "resampling": dataset.attrs["resampling"],
         "units_as_published": raw_units,
         "units_recognised": recognised,
         "evidence_classes": ["retrieved"],

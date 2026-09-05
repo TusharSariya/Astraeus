@@ -15,5 +15,7 @@
 - [x] Add positive fixture retrieval and immutable artifact/API sampler round-trip.
 - [x] Add missing coverage, wrong-grid and XML `NoMatch` negative cases.
 - [x] Fetch bounded live full fields for HRDPS, RDPS, GDPS and WEonG.
+- [x] Retrieve all 245 selected coverages at one latest advertised valid time over the small Avalon API bbox; record values, units, masks, resolution, transfer, timing and exact failures.
+- [x] Retain representative artifacts and checksums for reproducible reader verification.
 - [ ] Owner accepts or revises the contract and production field/lead window.
 - [ ] Register and schedule the production access path only after acceptance.

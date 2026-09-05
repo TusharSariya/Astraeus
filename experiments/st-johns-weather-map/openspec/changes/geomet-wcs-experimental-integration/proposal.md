@@ -45,9 +45,20 @@ representative fields across 40 m humidity, WEonG sky state, seeing,
 transparency and GDPS WEonG fog visibility were fetched sequentially,
 validated and reopened as immutable artifacts.
 
-The five retrieved fields are a representative live smoke, not evidence that
-all 245 selected fields or all 1,289 family fields were downloaded. The generic
-experimental client can preserve any explicitly selected advertised coverage
+A corrective full selected-field run then retrieved all 245 advertised selected
+coverages at one latest advertised valid time each over the exact small Avalon
+API bbox (46.5–48.5 N, 55–51 W). All 245 TIFFs decoded and their artifacts
+reopened; the run transferred 5,919,436 bytes in 392.041 seconds with no field
+failures. This is one-time coverage evidence, not a production lead sweep. The
+ledger records every field's selected times, published units, finite/nodata
+counts, numeric range, artifact hash and elapsed time.
+
+The retained representative artifacts are reproducible reader fixtures. Their
+coordinates use the GeoTIFF RasterType: GeoMet's PixelIsArea tie point is the
+northwest outer corner, so stored coordinates are cell centres. The requested
+SCALESIZE output is explicitly recorded as server-resampled with an unknown
+method and its actual per-axis resolution; it is not described as a native
+grid. The generic experimental client can preserve any explicitly selected advertised coverage
 under a `raw__<coverage_id>` name without assigning canonical meaning; each
 operation remains bounded to 64 sequential fields and requires metadata and
 geometry validation.
