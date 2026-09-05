@@ -1,0 +1,61 @@
+{
+  "source_id": "noaa-swpc-plasma",
+  "adapter_version": "swpc-plasma-v1",
+  "logical_name": "solar_wind_plasma",
+  "product": "Real-time solar wind plasma (1-minute, per spacecraft)",
+  "retrieval": {
+    "url": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+    "byte_count": 2698868,
+    "sha256": "be8d7335c3c8f97d8ff2f0f703ffd09cda4003984a9a2252ea7a2ade02bfadc0",
+    "captured_at": "2026-09-05T19:49:07Z",
+    "last_modified": "Sat, 05 Sep 2026 19:48:31 GMT"
+  },
+  "artifact": {
+    "logical_name": "solar_wind_plasma",
+    "media_type": "application/zarr+zip",
+    "byte_size": 98557,
+    "sha256": "dff5b6161e780dfc5e86d8386845d29b1846895d4245e26fff27d92bce9402b3"
+  },
+  "record_count": 3653,
+  "instant_count": 2290,
+  "oldest_instant": "2026-09-04T19:49:00Z",
+  "newest_instant": "2026-09-05T19:45:00Z",
+  "spacecraft_seen": [
+    "ACE",
+    "IMAP",
+    "SOLAR1"
+  ],
+  "records_per_spacecraft": {
+    "ACE": 1366,
+    "IMAP": 853,
+    "SOLAR1": 1434
+  },
+  "active_rows_per_spacecraft": {
+    "ACE": 0,
+    "IMAP": 0,
+    "SOLAR1": 1434
+  },
+  "active_spacecraft_at_newest": "SOLAR1",
+  "quality_flags_stored": [
+    "active",
+    "max_convergence_flag",
+    "max_data_flag",
+    "max_error_count_flag",
+    "max_processing_flag",
+    "max_range_flag",
+    "max_sample_count_flag",
+    "max_telemetry_flag",
+    "overall_quality"
+  ],
+  "sentinel_minus_9999_occurrences": {},
+  "quality": {
+    "status": "passed",
+    "flags": [],
+    "detail": "proton_speed: 1.0000 of instants carry a finite value; no spatial coverage claimed"
+  },
+  "coverage": {
+    "status": "complete",
+    "fraction": 1.0
+  },
+  "note": "no provider payload bytes are recorded here; the feed body is identified by byte_count and sha256 only"
+}

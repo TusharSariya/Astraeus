@@ -1928,6 +1928,7 @@ def _absent_solar_wind(notice: str) -> SolarWindLatest:
     return SolarWindLatest(
         available=False, source_id=SWPC_RTSW_SOURCE, product="unavailable",
         bz_gsm_nt=None, bt_nt=None, measured_at=None, feed_declared_spacecraft=None,
+        active=None, overall_quality=None,
         freshness=Freshness.evaluate(None, _swpc_threshold(SWPC_RTSW_SOURCE)), notices=[notice],
     )
 
@@ -1989,37 +1990,120 @@ def _kp_series(series: SeriesData | None, reference: datetime, *, with_status: b
 
 
 def _solar_wind_latest(series: SeriesData | None, reference: datetime) -> SolarWindLatest:
-    """The newest finite Bz with the instant it was measured. A gap stays a gap."""
+    """The newest finite Bz with the instant it was measured and the craft that took it.
+
+    The real-time solar wind feed interleaves several spacecraft, so the
+    stored artifact carries a ``spacecraft`` axis and ``read_series`` serves
+    every variable once per label as ``bz_gsm@SOLAR1`` and so on. The served
+    Bz is the newest instant at which ANY spacecraft carries a finite
+    reading; at that instant the craft the feed itself flagged ``active`` is
+    preferred, and if the feed flagged none, the first label alphabetically
+    is served and the choice is said out loud rather than passed off as the
+    provider's. A gap stays a gap; nothing is combined across spacecraft.
+
+    A plain 1-D ``solar_wind`` artifact - what the previous adapter version
+    published, with no spacecraft axis - is still served exactly as it was,
+    from the feed's declared spacecraft attribute.
+    """
     if series is None:
         return _absent_solar_wind("no solar_wind artifact is currently published; the latest Bz is absent, and nothing is substituted for it")
-    bz = series.variables.get("bz_gsm")
-    if bz is None:
-        return _absent_solar_wind("the published solar_wind artifact does not carry bz_gsm; the latest Bz is absent")
-    finite = [(stamp, index) for index, stamp in enumerate(series.times) if isinstance(bz.values[index], float)]
-    spacecraft_raw = series.attrs.get("feed_declared_spacecraft") or series.provenance.get("feed_declared_spacecraft")
-    spacecraft = str(spacecraft_raw) if spacecraft_raw else None
+    labels = [str(label) for label in series.dimensions.get("spacecraft", [])]
+    notices: list[str] = []
     threshold = _swpc_threshold(SWPC_RTSW_SOURCE)
-    if not finite:
-        return _absent_solar_wind("the stored solar-wind series carries no finite Bz record; a gap in the feed is a gap, never zero")
-    measured_at, index = max(finite)
-    bt = series.variables.get("bt")
-    bt_value = bt.values[index] if bt is not None and isinstance(bt.values[index], float) else None
+
+    def _finite(variable: str, index: int) -> float | None:
+        entry = series.variables.get(variable)
+        if entry is None:
+            return None
+        raw = entry.values[index]
+        return raw if isinstance(raw, float) else None
+
+    if labels:
+        bz_by_label = {label: series.variables.get(f"bz_gsm@{label}") for label in labels}
+        if not any(entry is not None for entry in bz_by_label.values()):
+            return _absent_solar_wind("the published solar_wind artifact carries no per-spacecraft bz_gsm; the latest Bz is absent")
+        newest_index: int | None = None
+        for index in range(len(series.times) - 1, -1, -1):
+            if any(entry is not None and isinstance(entry.values[index], float) for entry in bz_by_label.values()):
+                newest_index = index
+                break
+        if newest_index is None:
+            return _absent_solar_wind("the stored solar-wind series carries no finite Bz record; a gap in the feed is a gap, never zero")
+        measuring = sorted(
+            label for label in labels
+            if bz_by_label[label] is not None and isinstance(bz_by_label[label].values[newest_index], float)
+        )
+        flagged = [label for label in measuring if _flag_is(series, f"active@{label}", newest_index, "active")]
+        measured_at = series.times[newest_index]
+        if flagged:
+            spacecraft = flagged[0]
+        else:
+            spacecraft = measuring[0]
+            notices.append(
+                f"solar_wind: no spacecraft carried the feed's active flag at {measured_at.isoformat()}; "
+                f"the served reading is {spacecraft}'s, the first label alphabetically, not a provider-designated primary"
+            )
+        index = newest_index
+        bz_value = _finite(f"bz_gsm@{spacecraft}", index)
+        bt_value = _finite(f"bt@{spacecraft}", index)
+        quality_value = _finite(f"overall_quality@{spacecraft}", index)
+        active_value = _flag_bool(series, f"active@{spacecraft}", index)
+    else:
+        bz = series.variables.get("bz_gsm")
+        if bz is None:
+            return _absent_solar_wind("the published solar_wind artifact does not carry bz_gsm; the latest Bz is absent")
+        finite = [(stamp, position) for position, stamp in enumerate(series.times) if isinstance(bz.values[position], float)]
+        if not finite:
+            return _absent_solar_wind("the stored solar-wind series carries no finite Bz record; a gap in the feed is a gap, never zero")
+        measured_at, index = max(finite)
+        declared = series.attrs.get("feed_declared_spacecraft") or series.provenance.get("feed_declared_spacecraft")
+        spacecraft = str(declared) if declared else None
+        bz_value = _finite("bz_gsm", index)
+        bt_value = _finite("bt", index)
+        quality_value = _finite("overall_quality", index)
+        active_value = _flag_bool(series, "active", index)
+
     age = int((reference - measured_at).total_seconds())
     freshness = Freshness.evaluate(age, threshold)
-    notices: list[str] = []
     if freshness.status == "stale":
         notices.append(f"solar_wind: the newest Bz record is {age} s old, past the {threshold} s freshness threshold; it is served stale, not as current")
     return SolarWindLatest(
         available=True,
         source_id=series.source_id,
         product=str(series.provenance.get("product", series.logical_name)),
-        bz_gsm_nt=bz.values[index] if isinstance(bz.values[index], float) else None,
+        bz_gsm_nt=bz_value,
         bt_nt=bt_value,
         measured_at=measured_at,
         feed_declared_spacecraft=spacecraft,
+        active=active_value,
+        overall_quality=quality_value,
         freshness=freshness,
         notices=notices,
     )
+
+
+def _flag_is(series: SeriesData, variable: str, index: int, meaning: str) -> bool:
+    """Whether a stored flag reads as ``meaning`` at one instant.
+
+    ``read_series`` serves a flag-coded variable as its CF meaning, so the
+    feed's ``active`` flag arrives as the string ``"active"``. An absent
+    flag is not "inactive": it is unstated, and it never counts as a yes.
+    """
+    entry = series.variables.get(variable)
+    return entry is not None and entry.values[index] == meaning
+
+
+def _flag_bool(series: SeriesData, variable: str, index: int) -> bool | None:
+    """A stored ``inactive|active`` flag as a bool, or None where unstated."""
+    entry = series.variables.get(variable)
+    if entry is None:
+        return None
+    value = entry.values[index]
+    if value == "active":
+        return True
+    if value == "inactive":
+        return False
+    return None
 
 
 @app.get(f"{PREFIX}/space-weather", response_model=SpaceWeatherResponse)

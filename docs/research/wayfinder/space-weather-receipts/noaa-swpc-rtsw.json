@@ -1,0 +1,59 @@
+{
+  "source_id": "noaa-swpc-rtsw",
+  "adapter_version": "swpc-rtsw-v2",
+  "logical_name": "solar_wind",
+  "product": "Real-time solar wind magnetic field (1-minute, per spacecraft)",
+  "retrieval": {
+    "url": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+    "byte_count": 1547301,
+    "sha256": "50eedd7b03da6be105d49ba5d183d21735ce59963330878905148bef58bcf625",
+    "captured_at": "2026-09-05T19:49:06Z",
+    "last_modified": "Sat, 05 Sep 2026 19:47:24 GMT"
+  },
+  "artifact": {
+    "logical_name": "solar_wind",
+    "media_type": "application/zarr+zip",
+    "byte_size": 139696,
+    "sha256": "e82f2191f5a8ecc8b3cffe312ccf9cc23830af1ca457a3cf40ef90bcb1bf4ca7"
+  },
+  "record_count": 3669,
+  "instant_count": 1442,
+  "oldest_instant": "2026-09-04T19:48:00Z",
+  "newest_instant": "2026-09-05T19:43:00Z",
+  "spacecraft_seen": [
+    "ACE",
+    "IMAP",
+    "SOLAR1"
+  ],
+  "records_per_spacecraft": {
+    "ACE": 1371,
+    "IMAP": 863,
+    "SOLAR1": 1435
+  },
+  "active_rows_per_spacecraft": {
+    "ACE": 0,
+    "IMAP": 0,
+    "SOLAR1": 1435
+  },
+  "active_spacecraft_at_newest": "SOLAR1",
+  "quality_flags_stored": [
+    "manual_mode",
+    "active",
+    "max_telemetry_flag",
+    "max_data_flag",
+    "overall_quality"
+  ],
+  "sentinel_minus_9999_occurrences": {
+    "max_data_flag": 2806
+  },
+  "quality": {
+    "status": "passed",
+    "flags": [],
+    "detail": "bz_gsm: 1.0000 of instants carry a finite value; no spatial coverage claimed"
+  },
+  "coverage": {
+    "status": "complete",
+    "fraction": 1.0
+  },
+  "note": "no provider payload bytes are recorded here; the feed body is identified by byte_count and sha256 only"
+}
