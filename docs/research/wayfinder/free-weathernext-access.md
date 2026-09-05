@@ -1,7 +1,7 @@
 # WeatherNext: no-charge access and bounded Avalon sampling
 
-Reviewed: 2026-09-05. Research issue: [#73](https://github.com/TusharSariya/Astraeus/issues/73).
-Parent map: [#70](https://github.com/TusharSariya/Astraeus/issues/70).
+Reviewed: 2026-09-05. Research issue: [Determine a no-charge WeatherNext access and sampling plan](https://github.com/TusharSariya/Astraeus/issues/73).
+Parent map: [Wayfinder map: implement the missing free-access evidence sources](https://github.com/TusharSariya/Astraeus/issues/70).
 
 Classification: **no spec impact**. Public-document investigation only; no
 account inspection, authentication, dataset requests, billing changes, terms
