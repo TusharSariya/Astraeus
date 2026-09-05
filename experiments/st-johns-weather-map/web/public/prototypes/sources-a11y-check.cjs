@@ -1,0 +1,88 @@
+// Browser regression evidence for the experimental Sources interaction repair.
+const assert=require('node:assert/strict');
+
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+
+(async()=>{const b=await chromium.launch({headless:true});
+const p=await b.newPage({viewport:{width:900,height:800}});
+const errors=[];
+p.on('pageerror',e=>errors.push(e.message));
+const focus=()=>p.evaluate(()=>document.activeElement.id);
+await p.goto((process.env.PROTOTYPE_URL||'http://localhost:5210')+'/sources.html?variant=A');
+const opener=p.locator('[data-inspect]').first();
+await opener.waitFor();
+assert.match(await opener.getAttribute('aria-label'),/eccc-hrdps, Evidence class not supplied/);
+assert.equal(await opener.getAttribute('aria-controls'),'inspector');
+await p.locator('.table-wrap').focus();
+await p.keyboard.press('ArrowRight');
+assert.match(await p.locator('#variant-label').textContent(),/^A/);
+await p.waitForFunction(()=>document.querySelector('.table-wrap').scrollLeft>0);
+assert.equal(await p.locator('.table-wrap').evaluate(e=>e===document.activeElement),true);
+
+await opener.focus();
+await p.keyboard.press('Enter');
+assert.equal(await focus(),'inspect-title');
+assert.equal(await opener.getAttribute('aria-expanded'),'true');
+await p.keyboard.press('Shift+Tab');
+assert.equal(await focus(),'close-inspector');
+await p.keyboard.press('Enter');
+assert.equal(await opener.evaluate(e=>e===document.activeElement),true);
+await p.keyboard.press('Space');
+assert.equal(await focus(),'inspect-title');
+await p.keyboard.press('Escape');
+assert.equal(await opener.evaluate(e=>e===document.activeElement),true);
+await p.keyboard.press('Escape');
+assert.equal(await p.locator('#inspector').isHidden(),true);
+
+await p.keyboard.press('Enter');
+await p.locator('#search').fill('no match qwerty');
+await p.locator('#close-inspector').focus();
+await p.keyboard.press('Enter');
+assert.equal(await focus(),'heading');
+await p.locator('#clear').click();
+await p.locator('#next').click();
+await p.locator('[data-family="air_quality"]').focus();
+await p.keyboard.press('Enter');
+assert.equal(await focus(),'family');
+let cell=p.locator('.cell').first();
+const identity=await cell.evaluate(e=>({...e.dataset}));
+await cell.focus();
+await p.keyboard.press('Enter');
+assert.equal(await focus(),'inspect-title');
+await p.locator('#theme').selectOption('dark');
+await p.locator('#close-inspector').focus();
+await p.keyboard.press('Enter');
+assert.deepEqual(await p.evaluate(()=>({...document.activeElement.dataset})),identity);
+
+await p.locator('#next').click();
+await p.locator('#lane-range').focus();
+await p.locator('#lane-range').selectOption('full');
+assert.equal(await focus(),'lane-range');
+await p.keyboard.press('ArrowLeft');
+assert.match(await p.locator('#variant-label').textContent(),/^C/);
+await p.locator('#mode').focus();
+await p.locator('#mode').selectOption('outage');
+assert.equal(await focus(),'mode');
+await p.waitForFunction(()=>document.querySelector('#a11y-status').textContent.includes('Unavailable:'));
+assert.equal(await p.locator('[data-inspect]').count(),0);
+assert.equal(await p.locator('[role="status"]').count(),1);
+await p.locator('#mode').selectOption('capture');
+await p.locator('#clear').click();
+await p.locator('[data-inspect]').first().focus();
+await p.keyboard.press('Enter');
+assert.equal(await focus(),'inspect-title');
+await p.locator('#search').focus();
+await p.keyboard.press('Escape');
+assert.equal(await p.locator('#inspector').isVisible(),true);
+
+await p.route('**/api/experiments/weather/v0/**',route=>route.fulfill({status:502,body:'audit outage'}));
+await p.locator('#refresh').click();
+await p.waitForFunction(()=>document.querySelector('#refresh').getAttribute('aria-disabled')==='false');
+await p.waitForFunction(()=>document.querySelector('#a11y-status').textContent.includes('Unavailable:'));
+assert.equal(await focus(),'refresh');
+assert.equal(await p.locator('[data-inspect]').count(),0);
+assert.deepEqual(errors,[]);
+require('fs').writeFileSync('/tmp/sources-a11y-repaired-ax.txt',await p.locator('body').ariaSnapshot());
+console.log('PASS: A scrolling, direct inspector entry, 1 Shift+Tab to Close instead of238Tabs, Enter/Space/Escape, visible and filtered fallback restoration, B exact cell after rerender, C window focus, native arrows, single status, outage/no fallback, no page errors.');
+await b.close()})().catch(e=>{console.error(e);
+process.exit(1)});

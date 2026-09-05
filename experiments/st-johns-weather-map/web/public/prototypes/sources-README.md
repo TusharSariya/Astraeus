@@ -129,3 +129,49 @@ useful ways to see the same data. The [issue resolution](https://github.com/Tush
 and map pointer carry this decision forward to the API and specification handoff gates. This selection
 does not establish per-field availability or local coverage beyond the evidence
 boundaries above.
+
+
+## Keyboard repair study — September 5, 2026
+
+The owner approved the shared interaction contract after Wayfinder69's browser
+audit. This branch repairs that contract in the isolated Sources experiment;
+no production behavior, source data, or normative status changes.
+
+Explicit Inspect now focuses the docked inspector heading. Close or Escape
+within the inspector restores the actual source/field opener, including after
+rerender; a filtered-out opener falls back to the visible view heading. The
+inspector remains nonmodal. Native control and horizontal-scroll arrows retain
+their behavior; prototype variants use the explicit previous/next buttons.
+Actions expose source identity, evidence class and expanded state. A single
+250ms-debounced status reports the view/result count and API completion or
+unavailability, without announcing the full catalogue. Refresh retains focus
+while busy and ignores duplicate button activation. Reader announcement quality
+still requires an actual reader session.
+
+Run the repaired study with `PORT=5210 python3 serve.py` from this directory.
+A bounded browser regression script covers the original defects and related
+controls. With Playwright installed in the web project, run from this directory:
+
+```sh
+node sources-a11y-check.cjs
+node --check sources.js
+```
+
+For a shared dependency installation, set `PLAYWRIGHT_MODULE` to its absolute
+Playwright module directory; `PROTOTYPE_URL` defaults to `http://localhost:5210`.
+The September 5 run used the workspace web project's Playwright installation.
+The script stubs HTTP 502 in its own browser for failure verification and writes
+its final accessibility snapshot to `/tmp/sources-a11y-repaired-ax.txt`.
+
+Passed: ledger ArrowRight scrolls without switching variant; Enter/Space inspect
+focuses the heading, with one Shift+Tab to Close instead of 238 Tabs; Close/Escape
+restore visible source and exact matrix-cell openers; filtered-out opener uses
+heading fallback; Coverage window rerender preserves its select focus; Escape
+outside inspector is untouched; outage clears source rows and supplies concise
+status; no browser page errors. Chromium keyboard/accessibility-tree evidence
+only, not VoiceOver/NVDA/JAWS verification. Positive per-value generated evidence,
+physical-device/outdoor use, and full contrast coverage remain unverified.
+
+Classification: Experiment. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002,
+GOV-SPEC-004, GOV-SPEC-005. Root specctl validation and diff whitespace checks
+passed; these are governance checks, not UI conformance certification.
