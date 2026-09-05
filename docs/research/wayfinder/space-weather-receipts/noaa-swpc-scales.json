@@ -1,0 +1,29 @@
+{
+  "adapter_version": "swpc-scales-v1",
+  "artifact_byte_size": 11490,
+  "artifact_sha256": "b63124e70f9d32ea04db6c31c05eab515baaa6a9d0bff55052032ebb4c16dffa",
+  "byte_count": 1103,
+  "captured_at": "2026-09-05T19:53:48Z",
+  "complete": true,
+  "instant_count": 1,
+  "last_modified": "Sat, 05 Sep 2026 19:52:53 GMT",
+  "logical_name": "noaa_scales",
+  "newest_instant": "2026-09-05T19:52:00Z",
+  "notes": "NOAA scales at 2026-09-05T19:52:00Z across day offsets -1 0 1 2 3",
+  "oldest_instant": "2026-09-05T19:52:00Z",
+  "platforms": {
+    "day_offset": [
+      "-1",
+      "0",
+      "1",
+      "2",
+      "3"
+    ]
+  },
+  "provider_run_id": "swpc-scales-202609051952",
+  "record_count": 1,
+  "request_parameters": {},
+  "sha256": "718999c1590056e5bbb00f854e3088d15da0cedbd3274ff7659756c23b663255",
+  "source_id": "noaa-swpc-scales",
+  "url": "https://services.swpc.noaa.gov/products/noaa-scales.json"
+}

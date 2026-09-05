@@ -1,0 +1,21 @@
+{
+  "adapter_version": "swpc-propagated-v1",
+  "artifact_byte_size": 15354,
+  "artifact_sha256": "78830312910204c030618c83f15c9d09f17e7f0e03341fe71a7e6a99a3c8746e",
+  "byte_count": 6545,
+  "captured_at": "2026-09-05T19:53:48Z",
+  "complete": true,
+  "instant_count": 55,
+  "last_modified": "Sat, 05 Sep 2026 19:52:39 GMT",
+  "logical_name": "propagated_solar_wind",
+  "newest_instant": "2026-09-05T19:47:00Z",
+  "notes": "55 propagated solar wind minutes, newest 2026-09-05T19:47:00Z",
+  "oldest_instant": "2026-09-05T18:53:00Z",
+  "platforms": {},
+  "provider_run_id": "swpc-propagated-202609051947",
+  "record_count": 55,
+  "request_parameters": {},
+  "sha256": "66663128e33fd7d18f2888e20019a07eb589cf9e0b3ee1ac9bed71b93e46bd5b",
+  "source_id": "noaa-swpc-propagated-solar-wind",
+  "url": "https://services.swpc.noaa.gov/products/geospace/propagated-solar-wind-1-hour.json"
+}

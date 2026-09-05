@@ -1,0 +1,21 @@
+{
+  "adapter_version": "swpc-kyoto-dst-v1",
+  "artifact_byte_size": 2933,
+  "artifact_sha256": "1e8a602be6f67911bdca3069a669a291d2e874f0637d4f8b762be06adcaa4237",
+  "byte_count": 7377,
+  "captured_at": "2026-09-05T19:53:48Z",
+  "complete": true,
+  "instant_count": 168,
+  "last_modified": "Sat, 05 Sep 2026 19:52:10 GMT",
+  "logical_name": "kyoto_dst",
+  "newest_instant": "2026-09-05T19:00:00Z",
+  "notes": "168 relayed Dst hours, newest 2026-09-05T19:00:00Z",
+  "oldest_instant": "2026-08-29T20:00:00Z",
+  "platforms": {},
+  "provider_run_id": "swpc-kyoto-dst-202609051900",
+  "record_count": 168,
+  "request_parameters": {},
+  "sha256": "d4d6e17df28103d4a945eff765c14c0078c42d85021025afed0dbd620921d7cb",
+  "source_id": "noaa-swpc-kyoto-dst",
+  "url": "https://services.swpc.noaa.gov/products/kyoto-dst.json"
+}

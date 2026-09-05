@@ -1,0 +1,25 @@
+{
+  "adapter_version": "goes-magnetometer-v1",
+  "artifact_byte_size": 27579,
+  "artifact_sha256": "821f006c3d9d651d0b7e9c7a8545d28b8f8f8c26bf77a593f026a329dfb57d2b",
+  "byte_count": 241549,
+  "captured_at": "2026-09-05T19:53:57Z",
+  "complete": true,
+  "instant_count": 1330,
+  "last_modified": "Sat, 05 Sep 2026 19:52:40 GMT",
+  "logical_name": "goes_magnetometer",
+  "newest_instant": "2026-09-05T18:02:00Z",
+  "notes": "1330 minutes across satellites 19, newest 2026-09-05T18:02:00Z",
+  "oldest_instant": "2026-09-04T19:53:00Z",
+  "platforms": {
+    "satellite": [
+      "19"
+    ]
+  },
+  "provider_run_id": "goes-magnetometer-202609051802",
+  "record_count": 1330,
+  "request_parameters": {},
+  "sha256": "5d671b67921b9db4708e2987c455f3a324fccffdc4222691959d150ebd8c01b6",
+  "source_id": "noaa-goes-magnetometer",
+  "url": "https://services.swpc.noaa.gov/json/goes/primary/magnetometers-1-day.json"
+}

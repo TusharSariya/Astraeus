@@ -1,0 +1,21 @@
+{
+  "adapter_version": "swpc-kp1m-v1",
+  "artifact_byte_size": 5538,
+  "artifact_sha256": "8527d4adbcfee3da9dd94e7046e68237fd6fb3989fe9113503ff2221c7971a57",
+  "byte_count": 27925,
+  "captured_at": "2026-09-05T19:53:48Z",
+  "complete": true,
+  "instant_count": 358,
+  "last_modified": "Sat, 05 Sep 2026 19:51:29 GMT",
+  "logical_name": "kp_1m",
+  "newest_instant": "2026-09-05T19:49:00Z",
+  "notes": "358 Kp minutes, 0 code(s) outside the SWPC thirds table, newest 2026-09-05T19:49:00Z",
+  "oldest_instant": "2026-09-05T13:52:00Z",
+  "platforms": {},
+  "provider_run_id": "swpc-kp1m-202609051949",
+  "record_count": 358,
+  "request_parameters": {},
+  "sha256": "9cd9de28c5088a9b7aa3ad9b3c1ee8c2c0dd2e8fb5ba53a6ea30853a1a612f68",
+  "source_id": "noaa-swpc-kp-1m",
+  "url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json"
+}

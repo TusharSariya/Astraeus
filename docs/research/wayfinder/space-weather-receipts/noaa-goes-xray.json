@@ -1,0 +1,25 @@
+{
+  "adapter_version": "goes-xray-v1",
+  "artifact_byte_size": 41963,
+  "artifact_sha256": "252ba546e75a9af5ff7dfce80d1ecea79e1adecaa9fd63f430d8e891fc6fd5f4",
+  "byte_count": 640647,
+  "captured_at": "2026-09-05T19:53:57Z",
+  "complete": true,
+  "instant_count": 1437,
+  "last_modified": "Sat, 05 Sep 2026 19:52:40 GMT",
+  "logical_name": "goes_xray",
+  "newest_instant": "2026-09-05T19:49:00Z",
+  "notes": "1437 minutes x 1 satellite(s), both channels, newest 2026-09-05T19:49:00Z",
+  "oldest_instant": "2026-09-04T19:53:00Z",
+  "platforms": {
+    "satellite": [
+      "18"
+    ]
+  },
+  "provider_run_id": "goes-xray-202609051949",
+  "record_count": 2874,
+  "request_parameters": {},
+  "sha256": "0a26f41d90cd234085b09565ef0ed68ab8b840388d3c6986273ffb545224d022",
+  "source_id": "noaa-goes-xray",
+  "url": "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json"
+}

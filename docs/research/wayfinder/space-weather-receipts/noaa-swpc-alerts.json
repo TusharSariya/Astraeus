@@ -1,0 +1,21 @@
+{
+  "adapter_version": "swpc-alerts-v1",
+  "artifact_byte_size": 11086,
+  "artifact_sha256": "61cd6962407440ee3edd6ff6d0b3068efeff22608db033b625f987c3e8e8a1cc",
+  "byte_count": 42669,
+  "captured_at": "2026-09-05T19:53:56Z",
+  "complete": true,
+  "instant_count": 72,
+  "last_modified": "Sat, 05 Sep 2026 19:52:10 GMT",
+  "logical_name": "alerts",
+  "newest_instant": "2026-09-05T16:33:07Z",
+  "notes": "72 issued messages, newest issue instant 2026-09-05T16:33:07Z",
+  "oldest_instant": "2026-08-08T09:59:19Z",
+  "platforms": {},
+  "provider_run_id": "swpc-alerts-202609051633",
+  "record_count": 72,
+  "request_parameters": {},
+  "sha256": "fb438d2ad5e5420b43dcdf684d3693097dccce60ba39a78e620f8d80e2f8f8c8",
+  "source_id": "noaa-swpc-alerts",
+  "url": "https://services.swpc.noaa.gov/products/alerts.json"
+}
