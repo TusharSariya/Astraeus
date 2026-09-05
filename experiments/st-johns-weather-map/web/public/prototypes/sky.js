@@ -4,6 +4,7 @@ const $=s=>document.querySelector(s),esc=x=>String(x??'').replace(/[&<>"']/g,c=>
 const q=new URLSearchParams(location.search),names={A:'Horizon instrument',B:'Night planner',C:'Evidence ledger'};
 const times=['2026-09-04T00:00:00Z','2026-09-04T01:00:00Z','2026-09-04T06:00:00Z','2026-09-04T12:00:00Z','2026-09-05T00:00:00Z'];
 const state={variant:names[q.get('variant')]?q.get('variant'):'A',theme:['light','dark','night'].includes(q.get('theme'))?q.get('theme'):'light',focus:q.get('focus')==='point'?'point':'site',instant:times.includes(q.get('instant'))?q.get('instant'):times[0],mode:'capture',cv:'normal',selection:null};
+let inspectorOpener=null;
 let T,capture,registry,live={},pending=false,sequence=0;const records=new Map();
 try{[T,capture,registry]=await Promise.all(['tokens.json','sky-captures.json','sky-registry.json'].map(async p=>{const r=await fetch(p);if(!r.ok)throw Error(p+': '+r.status);return r.json()}))}catch(e){$('#notice').textContent='Required prototype assets unavailable: '+e.message;throw e}
 const font=document.createElement('link');font.rel='stylesheet';font.href='https://fonts.googleapis.com/css2?'+T.variants.C.fonts.google+'&display=swap';document.head.append(font);
@@ -66,7 +67,15 @@ function renderInspector(){
  const p=e.raw?.provenance??{},f={Source:e.source,'Evidence class':e.cls==='unrecognised'?'Not supplied / not classified':e.cls,'Requested Focus':state.instant,'Evidence valid time':p.valid_time??e.raw?.valid_time??e.raw?.measured_at??'See raw intervals or readings','Run time':p.run_time??'Not supplied','Run stale':p.run_stale==null?'Unknown · '+(p.run_stale_reason??'Not supplied'):String(p.run_stale),'Retrieval time':p.retrieval_time??'Not supplied','Freshness at response':p.freshness?.status??e.raw?.freshness?.status??'Not supplied','Quality':p.quality?.status??'Not supplied','Sampling':p.sample_method??'Not supplied','Sample distance':p.sample_distance_km==null?'Not supplied':p.sample_distance_km+' km','Method':p.derivation??'Not supplied','Citation':p.derivation_citation??'Not supplied','Comparability':e.raw?.comparability??'Not supplied','Terms / attribution':p.attribution??p.licence??'See raw record / not supplied','Capture time':e.request?.captured_at??'Registry context / UI state','Request':e.request?.request_url??'Repository registry / absent capability'};
  $('#inspect-fields').innerHTML=Object.entries(f).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');$('#inspect-raw').textContent=JSON.stringify({selected:e.raw,capture:e.request,prototype:true},null,2);
 }
+function visibleFocusTarget(node){return node?.isConnected&&!node.disabled&&node.getClientRects().length>0&&!node.closest('[hidden]')}
+function matchingInspect(key){return [...document.querySelectorAll('[data-inspect]')].find(node=>node.dataset.inspect===key&&visibleFocusTarget(node))}
+function closeInspector(){
+ const opener=visibleFocusTarget(inspectorOpener?.node)?inspectorOpener.node:matchingInspect(inspectorOpener?.key);
+ state.selection=null;renderInspector();(opener??$('#heading')).focus();inspectorOpener=null;
+}
 function render(){
+ const focused=document.activeElement,focusedKey=focused?.dataset?.inspect;
+
  for(const[k,v]of Object.entries(cssVars(T,'C',state.theme)))document.documentElement.style.setProperty(k,v);document.documentElement.style.colorScheme=state.theme==='light'?'light':'dark';document.body.dataset.cv=state.cv;records.clear();
  for(const id of ['focus','theme','mode'])$('#'+id).value=state[id];$('#instant').value=state.instant;
  $('#heading').textContent='Sky / '+names[state.variant];$('#hypothesis').textContent={A:'Start with orientation; keep weather fractions beside the horizon.',B:'Start with the night; align geometry and planetary context in time.',C:'Start with what is known; keep source, limits and missing capabilities in view.'}[state.variant];
@@ -81,6 +90,7 @@ function render(){
  $('#time-track').innerHTML=times.map(t=>`<span class="sample-mark ${t===state.instant?'active':''}" style="left:${percent(t)}%" title="${t}"></span>`).join('');$('#variant-label').textContent=state.variant+' · '+names[state.variant];$('#refresh').disabled=pending;
  $('#state').textContent=JSON.stringify({...state,coordinates:position(),tokens:'C Hyperlegible / provider slots / red night',operational:false,requests:['astronomy','point','space-weather'].map(r=>({route:r,url:response(r).request_url,captured_at:response(r).captured_at,status:response(r).status,error:response(r).error}))},null,2);
  for(const k of ['variant','focus','instant','theme'])q.set(k,state[k]);history.replaceState(null,'','?'+q);renderInspector();
+ if(!focused?.isConnected&&focusedKey)(matchingInspect(focusedKey)??$('#heading')).focus();
 }
 async function readLive(){const seq=++sequence;state.mode='live';pending=true;live={};render();const base='/api/experiments/weather/v0/',params=new URLSearchParams({...position(),valid_time:state.instant});const responses=await Promise.all(['astronomy','point','space-weather'].map(async route=>{const url=base+route+(route==='space-weather'?'':'?'+params),requested_at=new Date().toISOString();try{const r=await fetch(url,{signal:AbortSignal.timeout(20000)});if(!r.headers.get('content-type')?.includes('application/json'))throw Error('API request failed (HTTP '+r.status+')');const raw=await r.json();return [route,{request_url:url,requested_at,captured_at:new Date().toISOString(),status:r.status,response:r.ok?raw:{data_mode:'unavailable',notices:['HTTP '+r.status],raw}}]}catch(e){return[route,{request_url:url,requested_at,error:e.message,response:{data_mode:'unavailable',notices:[e.message]}}]}}));if(seq!==sequence)return;live=Object.fromEntries(responses);pending=false;render()}
 $('#instant').innerHTML=times.map(t=>`<option value="${t}">${stamp(t)}</option>`).join('');
@@ -89,6 +99,7 @@ $('#theme').onchange=e=>{state.theme=e.target.value;render()};$('#vision').oncha
 $('#mode').onchange=e=>{state.mode=e.target.value;if(state.mode==='live')readLive();else{sequence++;pending=false;render()}};$('#refresh').onclick=readLive;
 function cycle(d){state.variant=['A','B','C'][(['A','B','C'].indexOf(state.variant)+d+3)%3];render()}
 $('#previous').onclick=()=>cycle(-1);$('#next').onclick=()=>cycle(1);
-document.addEventListener('keydown',e=>{if(e.target.closest('input,select,textarea,[contenteditable]'))return;if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();cycle(e.key==='ArrowRight'?1:-1)}});
-document.addEventListener('click',e=>{const b=e.target.closest('[data-inspect]');if(b){state.selection=b.dataset.inspect;renderInspector();$('#state').textContent=JSON.stringify({...JSON.parse($('#state').textContent),...state},null,2)}});
-$('#close-inspector').onclick=()=>{state.selection=null;renderInspector()};render();
+// Variant navigation uses its native Previous/Next buttons; arrow keys belong to controls and scrolling.
+$('#inspector').addEventListener('keydown',e=>{if(e.key==='Escape'&&!e.defaultPrevented){e.preventDefault();e.stopPropagation();closeInspector()}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-inspect]');if(b){inspectorOpener={node:b,key:b.dataset.inspect};state.selection=b.dataset.inspect;renderInspector();$('#inspect-title').focus();$('#state').textContent=JSON.stringify({...JSON.parse($('#state').textContent),...state},null,2)}});
+$('#close-inspector').onclick=closeInspector;render();

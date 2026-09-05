@@ -82,3 +82,32 @@ Verification is recorded in the issue progress comment and handoff. This
 prototype has no added test suite. The owner selected A / Horizon instrument. B and C remain archived design
 alternatives. This decision does not promote the prototype or accept production
 specifications; API and specification handoff gates still apply.
+
+## Keyboard repair evidence — September 5, 2026
+
+For Wayfinder #69 and the owner-selected shared evidence interaction contract,
+this experimental repair moves explicit Inspect activation to the inspector’s
+focusable heading. The dock stays nonmodal. Close, or Escape originating within
+the inspector, restores the actual opener. If rendering replaced that button,
+the matching evidence action receives focus; if it disappeared, the visible Sky
+heading is the focusable fallback. Evidence actions also preserve their logical
+focus when the stage rerenders. Page-global variant arrow shortcuts were removed;
+the native Previous/Next buttons still navigate the archived alternatives.
+
+The existing source/class/value/absence content, live status banner, native Kp
+reading tables, numeric evidence and registry eligibility are unchanged. This
+does not activate a camera or perform new science.
+
+Serve with `PORT=5212 python3 experiments/st-johns-weather-map/web/public/prototypes/serve.py`.
+Review `http://localhost:5212/sky.html?variant=A`. Focused Chromium/Playwright checks
+passed: Inspect with Enter, heading focus, Close and scoped Escape restoration,
+recreated/missing opener fallback, nonmodal navigation, ArrowRight on an Inspect
+button without variant changes, native Kp disclosure and nine-row UTC/Kp/Status
+accessibility tree, Tab to inspection, and night-theme control focus retention.
+No browser page errors occurred. These checks programmatically focus some
+starting controls; they are not a whole-page sequential keyboard journey.
+
+Validation: `node --check experiments/st-johns-weather-map/web/public/prototypes/sky.js`,
+`uv run --project tools/specs python tools/specs/specctl.py validate` (0 errors,
+0 warnings), and `git diff --check` passed. Actual VoiceOver/NVDA speech, physical
+devices, outdoor night viewing and full contrast verification remain unperformed.
