@@ -1,6 +1,6 @@
 # Forecast-run selection across Map and Series
 
-Discussion draft for [Settle forecast-run selection across Map and Series](https://github.com/TusharSariya/Astraeus/issues/68). The owner selected the automatic default and explicit previous-run behavior; scope and persistence remain pending. No API behavior, retention rule or normative status is changed.
+Discussion draft for [Settle forecast-run selection across Map and Series](https://github.com/TusharSariya/Astraeus/issues/68). The owner selected the automatic default and explicit previous-run behavior; shared scope, Activity independence and URL persistence are also selected; unavailable-run and comparison behavior remain pending. No API behavior, retention rule or normative status is changed.
 
 ## Existing decisions and evidence
 
@@ -31,12 +31,22 @@ Both audits preserve these gaps for the API proposal. No positive previous-run s
 Classification: no spec impact; documentation and proposed choices only. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-005. Required documentation check: specctl validate. Implementation verification belongs to the later proposal after owner decisions and accepted contracts.
 
 
-## Next discussion: scope and sharing
+## Owner decisions: scope and sharing
 
-Proposed, not selected:
+The owner confirmed all three choices in live review:
 
 1. Apply a run choice to that forecast source's layers in Map and readings in Series, keeping the two views aligned. Scope the choice to an actual provider run family/logical stream; never assume unrelated streams or products share a run just because they share a provider. If a selected delivery cannot address that run, show it unavailable rather than substitute another. Observation layers have no forecast-run selector.
 2. Keep Activity verdicts on the previously selected server-side source/run evaluation policy. A Map/Series browsing override does not silently alter a verdict or its score. Its input provenance still identifies the evidence it used; make a mismatch visible when relevant.
 3. Store source/run browsing choices alongside Focus in the URL, using explicit run identity for pinned selections and an explicit automatic mode for Latest available. This does not persist the temporary Compare workspace's selected fields/layout, and a URL cannot promise retention of an old run.
 
 Expiry behavior and simultaneous same-source run comparison remain separate decisions. The committed two-run ceiling and proposed short-lived Series snapshot pins also need an explicit retention/capacity reconciliation before implementation; neither should silently override the other.
+
+
+## Next discussion: removed runs and comparing runs
+
+Proposed, not selected:
+
+1. If a pinned run is removed from the readable inventory, keep its identity selected and show “Selected run no longer available.” Keep Focus and instant unchanged. Offer an explicit “Use Latest available” action; never automatically replace the pinned run. A stale link behaves the same way. Distinguish removal from a frame gap in a still-readable run and from a temporary service failure. Snapshot retention conflicts remain separately unresolved.
+2. Permit the two retained, readable runs of one source to be overlaid in the temporary Series Compare workspace. Each trace names its run and source with distinct line treatment; preserve native timestamps, gaps and per-reading provenance. This comparison does not alter the shared source/run choice for Map or Activity, adds no Map comparison, and is not saved/shared. No run-difference calculation or new statistic is implied.
+
+A short-lived snapshot's retention promises and the hard two-run retention ceiling still require owner resolution before a final API contract can be implemented.
