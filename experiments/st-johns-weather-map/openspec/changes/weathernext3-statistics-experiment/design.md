@@ -1,0 +1,45 @@
+# Design
+
+## Exact source
+
+The adapter accepts only Google DeepMind WeatherNext 3 product version `3.0.0`
+from `gs://weathernext3_statistics_spatial/weathernext_3_0_0_statistics/zarr/`.
+WeatherNext 2 and Open-Meteo's WeatherNext 2 diagnostic remain separate. The
+requester-paid 64-member bucket is excluded. Provider statistics carry
+`member_id: null`, statistic identity, and the documented ensemble size 64;
+they are never reconstructed as members.
+
+## Field matrix
+
+The acquisition and adapter scope contains all 126 arrays: 21 provider base
+fields by `mean`, `p10`, `p25`, `p50`, `p75`, and `p90`. A bounded point read
+retrieved every lead-6 array at its native 0.1 or 0.05 degree cell and preserved
+six SST null masks over the selected land cell. The product-facing cloud
+candidate is all 24 native total, low, medium and high cloud statistics in
+fraction `[0,1]` units. The other 102 arrays are retrieved capability with no
+accepted consumer mapping; production storage and API exposure remain
+deferred rather than silently omitted or promoted.
+
+An independent spatial proof retrieves six cloud statistics over the full 16
+by 16 native-cell Avalon box at three leads. It does not claim spatial coverage
+for the all-field point sample. Fog, visibility, ceiling, cloud base and cloud top are unsupported because the
+product does not publish them. Pressure levels and raw members exist only on
+the excluded full-ensemble surface and are not fabricated here.
+
+## Retrieval and identity
+
+The bounded acquisition reads one object at a time, calculates sizes before
+download, decodes at most one global chunk, deletes it after extraction, and
+enforces byte, request, memory, output, deadline and disk-reserve gates. The
+Avalon proof rechecks generation, ETag and size after reads; the all-field proof
+downloads the exact generations established by its immutable metadata plan. Initialization,
+lead, valid time, retrieval time, unknown publication time, native cell and
+grid identity, native units, fill masks, product version, ECMWF initializer lineage, terms
+identity and counters enter artifact provenance.
+
+## Failure and activation boundary
+
+Wrong version/surface/member identity, incomplete inventory, invalid statistic,
+time mismatch, out-of-range value, missing payload, identity drift, cost gate,
+storage gate or blocked acquisition fails closed before publication. The module
+has no registry side effect and no scheduler or production configuration entry.

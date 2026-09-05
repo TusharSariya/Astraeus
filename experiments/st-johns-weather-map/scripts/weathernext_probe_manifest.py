@@ -171,7 +171,7 @@ def validate(manifest: dict[str, Any]) -> list[str]:
         state = item.get("status")
         if state not in FIELD_STATES:
             errors.append(f"{name}: invalid status {state!r}")
-        if state == "retrieved" and item.get("unit") == "fraction_0_to_1":
+        if state == "retrieved" and item.get("unit") in {"fraction_0_to_1", "(0 - 1)"}:
             low, high = item.get("finite_min"), item.get("finite_max")
             if low is None or high is None or not (0 <= low <= high <= 1):
                 errors.append(f"{name}: retrieved finite range is absent or outside [0,1]")

@@ -42,6 +42,7 @@ COORDINATE_OBJECTS = {
 }
 DEADLINE_SECONDS = contract.CAPS["deadline_seconds"]
 LOCAL_FREE_SPACE_RESERVE = 1024 * 1024 * 1024
+AVALON_BOX = {"west": -54.0, "south": 46.5, "east": -52.5, "north": 48.0}
 
 
 class ProbeError(RuntimeError):
@@ -243,6 +244,15 @@ def run(output: Path) -> None:
         selected_latitude = float(latitudes[latitude_index])
         selected_longitude_native = float(longitudes[longitude_index])
         selected_longitude = ((selected_longitude_native + 180) % 360) - 180
+        normalized_lons = ((longitudes + 180) % 360) - 180
+        box_latitude_indices = np.flatnonzero(
+            (latitudes >= AVALON_BOX["south"]) & (latitudes <= AVALON_BOX["north"])
+        )
+        box_longitude_indices = np.flatnonzero(
+            (normalized_lons >= AVALON_BOX["west"]) & (normalized_lons <= AVALON_BOX["east"])
+        )
+        if not len(box_latitude_indices) or not len(box_longitude_indices):
+            raise ProbeError("Avalon box selects no native cells")
 
         lead_indices: dict[int, int] = {}
         for lead in contract.LEADS_HOURS:
@@ -271,6 +281,7 @@ def run(output: Path) -> None:
             shutil.rmtree(raw_dir / "datetime")
 
         samples: list[dict[str, Any]] = []
+        box_samples: list[dict[str, Any]] = []
         max_decoded_bytes = max(array.nbytes for array in coordinate_values.values())
         for field in contract.SELECTED_FIELDS:
             node = _node(metadata, field)
@@ -286,6 +297,7 @@ def run(output: Path) -> None:
             values: list[float | None] = []
             null_count = 0
             finite_values: list[float] = []
+            field_box_values: list[dict[str, Any]] = []
             for lead in contract.LEADS_HOURS:
                 index = lead_indices[lead]
                 relative = f"{field}/c/{index}/0/0"
@@ -298,6 +310,12 @@ def run(output: Path) -> None:
                 grid = _decode_array(raw_dir, field, node, relative, (index, slice(None), slice(None)))
                 max_decoded_bytes = max(max_decoded_bytes, grid.nbytes)
                 value = float(grid[latitude_index, longitude_index])
+                box = grid[np.ix_(box_latitude_indices, box_longitude_indices)]
+                box_values = [
+                    [float(item) if math.isfinite(float(item)) else None for item in row]
+                    for row in box
+                ]
+                field_box_values.append({"lead_hours": lead, "values": box_values})
                 if math.isfinite(value):
                     if not 0 <= value <= 1:
                         raise ProbeError(f"{field} has out-of-range value {value}")
@@ -312,13 +330,15 @@ def run(output: Path) -> None:
                 raise ProbeError(f"{field} has no finite values at the selected point")
             manifest["fields"][field].update(
                 status="retrieved",
+                unit="(0 - 1)",
                 dtype="float32",
                 fill_value="NaN",
                 null_count=null_count,
                 finite_min=min(finite_values),
                 finite_max=max(finite_values),
             )
-            samples.append({"field": field, "unit": "fraction_0_to_1", "values": values})
+            samples.append({"field": field, "unit": "(0 - 1)", "values": values})
+            box_samples.append({"field": field, "unit": "(0 - 1)", "leads": field_box_values})
 
         verify_object_identities(transport, objects, contract.BUCKET)
 
@@ -350,6 +370,13 @@ def run(output: Path) -> None:
     manifest["objects"] = objects
     manifest["decoder"] = {"name": "zarr", "version": zarr.__version__, "numpy": np.__version__}
     manifest["sample"] = {"lead_hours": contract.LEADS_HOURS, "fields": samples}
+    manifest["avalon_box_sample"] = {
+        "bounds": AVALON_BOX,
+        "selection": "all_native_cell_centres_inside_inclusive_bounds",
+        "latitudes": [float(latitudes[index]) for index in box_latitude_indices],
+        "longitudes": [float(normalized_lons[index]) for index in box_longitude_indices],
+        "fields": box_samples,
+    }
     manifest["identity"].update(
         terms_url="https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
         terms_reviewed="2026-09-05",
