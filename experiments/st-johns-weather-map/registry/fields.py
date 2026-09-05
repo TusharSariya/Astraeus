@@ -960,24 +960,26 @@ _PROBE = "docs/research/wayfinder/size-probe-full-fields.md"
 
 SOURCE_SCOPE: list[dict[str, Any]] = [
     {
-        "source_id": "eccc-hrdps", "subsetting": "server_side", "policy": "every_published_field",
+        "source_id": "eccc-hrdps", "subsetting": "server_side", "policy": "family_fields_only",
         "published_field_count": 377, "counted_from": _PROBE,
         "note": ("GeoMet WCS subsets to the evidence box before the bytes leave the producer, so "
-                 "wire and stored are the same number and every published field is stored. At "
+                 "wire and stored are the same number. The current production owner is the "
+                 "Datamart GRIB adapter and stores only its declared family fields; WCS-only "
+                 "fields remain available-not-stored pending source-contract acceptance. At "
                  "377 coverages HRDPS is about 5.5 GB resident and 74 percent of the core "
                  "window; its 206 pressure-level coverages are 3.02 GB of that. A coverage the "
                  "catalogue does not know blocks publication as uncatalogued_upstream_field "
                  "rather than being skipped."),
     },
     {
-        "source_id": "eccc-rdps", "subsetting": "server_side", "policy": "every_published_field",
+        "source_id": "eccc-rdps", "subsetting": "server_side", "policy": "family_fields_only",
         "published_field_count": 438, "counted_from": _PROBE,
-        "note": "As HRDPS, at 10 km and about 0.40 GB over the core window.",
+        "note": "As HRDPS, with WCS-only fields available-not-stored, at 10 km.",
     },
     {
-        "source_id": "eccc-gdps", "subsetting": "server_side", "policy": "every_published_field",
+        "source_id": "eccc-gdps", "subsetting": "server_side", "policy": "family_fields_only",
         "published_field_count": 474, "counted_from": _PROBE,
-        "note": "As HRDPS, at 15 km, including the 25 km GEML coverages on their own grid.",
+        "note": "As HRDPS, at 15 km, including the separately inventoried 25 km GEML grid.",
     },
     {
         "source_id": "eccc-reps", "subsetting": "server_side", "policy": "every_published_field",
@@ -1087,36 +1089,41 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
     _sf("eccc-hrdps", "precipitation_accumulation", "HRDPS.CONTINENTAL.DIAG_PR_PT1H", "stored",
         "One-hour accumulation; the interval travels with the value."),
     _sf("eccc-hrdps", "relative_humidity_pressure", "HRDPS.CONTINENTAL.PRES_HR.<hPa>", "stored",
-        "28 levels, 50 to 1015 hPa. " + _ECCC_LIQUID, phase="liquid"),
-    _sf("eccc-hrdps", "relative_humidity_40m", "HRDPS.CONTINENTAL_HR_40m", "stored",
+        "GeoMet advertises 28 levels from 50 to 1015 hPa. The production Datamart adapter stores "
+        "its declared nine-level low-cloud profile; the other WCS levels remain capability-only. "
+        + _ECCC_LIQUID, phase="liquid"),
+    _sf("eccc-hrdps", "relative_humidity_40m", "HRDPS.CONTINENTAL_HR_40m", "available-not-stored",
         "Title verified, [%]. " + _ECCC_LIQUID, phase="liquid"),
-    _sf("eccc-hrdps", "relative_humidity_80m", "HRDPS.CONTINENTAL_HR_80m", "stored",
+    _sf("eccc-hrdps", "relative_humidity_80m", "HRDPS.CONTINENTAL_HR_80m", "available-not-stored",
         _ECCC_LIQUID, phase="liquid"),
-    _sf("eccc-hrdps", "relative_humidity_120m", "HRDPS.CONTINENTAL_HR_120m", "stored",
+    _sf("eccc-hrdps", "relative_humidity_120m", "HRDPS.CONTINENTAL_HR_120m", "available-not-stored",
         _ECCC_LIQUID, phase="liquid"),
-    _sf("eccc-hrdps", "temperature_40m", "HRDPS.CONTINENTAL_TT_40m", "stored", "Verified live."),
-    _sf("eccc-hrdps", "temperature_80m", "HRDPS.CONTINENTAL_TT_80m", "stored", "Verified live."),
-    _sf("eccc-hrdps", "temperature_120m", "HRDPS.CONTINENTAL_TT_120m", "stored", "Verified live."),
-    _sf("eccc-hrdps", "dew_point_40m", "HRDPS.CONTINENTAL_TD_40m", "stored",
+    _sf("eccc-hrdps", "temperature_40m", "HRDPS.CONTINENTAL_TT_40m", "available-not-stored", "Verified live WCS capability; production storage pending."),
+    _sf("eccc-hrdps", "temperature_80m", "HRDPS.CONTINENTAL_TT_80m", "available-not-stored", "As 40 m."),
+    _sf("eccc-hrdps", "temperature_120m", "HRDPS.CONTINENTAL_TT_120m", "available-not-stored", "As 40 m."),
+    _sf("eccc-hrdps", "specific_humidity_40m", "HRDPS.CONTINENTAL_HU_40m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-hrdps", "specific_humidity_80m", "HRDPS.CONTINENTAL_HU_80m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-hrdps", "specific_humidity_120m", "HRDPS.CONTINENTAL_HU_120m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-hrdps", "dew_point_40m", "HRDPS.CONTINENTAL_TD_40m", "available-not-stored",
         "Title verified 'Dew point temperature at 40m above ground'. RDPS and GDPS publish "
         "DewPoint_2m only."),
-    _sf("eccc-hrdps", "dew_point_80m", "HRDPS.CONTINENTAL_TD_80m", "stored", "Title verified."),
-    _sf("eccc-hrdps", "dew_point_120m", "HRDPS.CONTINENTAL_TD_120m", "stored", "Verified live."),
-    _sf("eccc-hrdps", "wind_speed_40m", "HRDPS.CONTINENTAL_WSPD_40m", "stored",
+    _sf("eccc-hrdps", "dew_point_80m", "HRDPS.CONTINENTAL_TD_80m", "available-not-stored", "Title verified."),
+    _sf("eccc-hrdps", "dew_point_120m", "HRDPS.CONTINENTAL_TD_120m", "available-not-stored", "Verified live WCS capability."),
+    _sf("eccc-hrdps", "wind_speed_40m", "HRDPS.CONTINENTAL_WSPD_40m", "available-not-stored",
         "GeoMet publishes speed and direction at height, never components."),
-    _sf("eccc-hrdps", "wind_speed_80m", "HRDPS.CONTINENTAL_WSPD_80m", "stored", "As 40 m."),
-    _sf("eccc-hrdps", "wind_speed_120m", "HRDPS.CONTINENTAL_WSPD_120m", "stored", "As 40 m."),
-    _sf("eccc-hrdps", "wind_direction_40m", "HRDPS.CONTINENTAL_WD_40m", "stored", "As 40 m."),
-    _sf("eccc-hrdps", "wind_direction_80m", "HRDPS.CONTINENTAL_WD_80m", "stored", "As 40 m."),
-    _sf("eccc-hrdps", "wind_direction_120m", "HRDPS.CONTINENTAL_WD_120m", "stored", "As 40 m."),
-    _sf("eccc-hrdps", "boundary_layer_height", "HRDPS.CONTINENTAL_HPBL", "stored",
+    _sf("eccc-hrdps", "wind_speed_80m", "HRDPS.CONTINENTAL_WSPD_80m", "available-not-stored", "As 40 m."),
+    _sf("eccc-hrdps", "wind_speed_120m", "HRDPS.CONTINENTAL_WSPD_120m", "available-not-stored", "As 40 m."),
+    _sf("eccc-hrdps", "wind_direction_40m", "HRDPS.CONTINENTAL_WD_40m", "available-not-stored", "As 40 m."),
+    _sf("eccc-hrdps", "wind_direction_80m", "HRDPS.CONTINENTAL_WD_80m", "available-not-stored", "As 40 m."),
+    _sf("eccc-hrdps", "wind_direction_120m", "HRDPS.CONTINENTAL_WD_120m", "available-not-stored", "As 40 m."),
+    _sf("eccc-hrdps", "boundary_layer_height", "HRDPS.CONTINENTAL_HPBL", "available-not-stored",
         "Title verified 'Planetary boundary layer height [m]'."),
-    _sf("eccc-hrdps", "skin_temperature", "HRDPS.CONTINENTAL_SKINT", "stored",
+    _sf("eccc-hrdps", "skin_temperature", "HRDPS.CONTINENTAL_SKINT", "available-not-stored",
         "Title verified 'Aggregate land surface skin temperature [degC]'."),
-    _sf("eccc-hrdps", "sea_ice_fraction", "HRDPS.CONTINENTAL_ICEC", "stored",
+    _sf("eccc-hrdps", "sea_ice_fraction", "HRDPS.CONTINENTAL_ICEC", "available-not-stored",
         "Analysis-only: the WMS time extent advertised one instant with PT0H, not a forecast "
         "series. Whether that is permanent is unverified."),
-    _sf("eccc-hrdps", "downward_shortwave_accumulated", "HRDPS.CONTINENTAL_N4", "stored",
+    _sf("eccc-hrdps", "downward_shortwave_accumulated", "HRDPS.CONTINENTAL_N4", "available-not-stored",
         "Title verified 'Downward shortwave accumulated radiation flux at the surface [J/m2]'. "
         "The WCS range type calls it W.m-2.Sr-1 and is not trustworthy."),
     _sf("eccc-hrdps", "surface_height", "HGT_Sfc", "stored",
@@ -1132,9 +1139,9 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
         "Nothing in the 6123 advertised coverages matches precipitable water, integrated water "
         "vapour or total column water vapour for HRDPS, RDPS or GDPS. The only PW* ids are GDWPS "
         "wave-period layers, and CloudWater_EAtm is condensate, not vapour."),
-    _sf("eccc-hrdps", "total_cloud_weong", "HRDPS-WEonG_2.5km_SkyState", "stored",
-        "The WEonG post-processed sky state is a categorical proxy, not a layered fraction; the "
-        "repaired column cover this deployment serves is computed here from the RH profile."),
+    _sf("eccc-hrdps", "total_cloud_weong", "HRDPS-WEonG_2.5km_SkyState", "available-not-stored",
+        "GeoMet advertises this categorical proxy and the isolated WCS experiment retrieved it; "
+        "the production adapter is still the Datamart GRIB path and does not store this coverage."),
 
     _sf("eccc-rdps", "total_cloud_opacity", "RDPS_10km_TotalCloudCover", "stored",
         "The same opacity-weighted quantity as HRDPS NT; comparable with it."),
@@ -1150,34 +1157,64 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
     _sf("eccc-rdps", "wind_v_10m", None, "not-published", "As wind_u_10m."),
     _sf("eccc-rdps", "precipitation_accumulation", "RDPS_10km_Precip-Accum1h", "stored",
         "One-hour accumulation."),
-    _sf("eccc-rdps", "temperature_40m", "RDPS_10km_AirTemp_40m", "stored", "Verified live."),
-    _sf("eccc-rdps", "temperature_80m", "RDPS_10km_AirTemp_80m", "stored", "Verified live."),
-    _sf("eccc-rdps", "temperature_120m", "RDPS_10km_AirTemp_120m", "stored", "Verified live."),
+    _sf("eccc-rdps", "temperature_40m", "RDPS_10km_AirTemp_40m", "available-not-stored", "Verified live WCS capability; production storage pending."),
+    _sf("eccc-rdps", "temperature_80m", "RDPS_10km_AirTemp_80m", "available-not-stored", "As 40 m."),
+    _sf("eccc-rdps", "temperature_120m", "RDPS_10km_AirTemp_120m", "available-not-stored", "As 40 m."),
     _sf("eccc-rdps", "relative_humidity_pressure", "RDPS_10km_RelativeHumidity_<n>mb", "stored",
-        "31 levels plus 2 m, adding 10, 20 and 30 mb below the HRDPS set. " + _ECCC_LIQUID,
+        "GeoMet advertises 31 levels plus 2 m, adding 10, 20 and 30 mb to the HRDPS set. The "
+        "production Datamart adapter stores its declared subset; the other WCS levels remain "
+        "capability-only. " + _ECCC_LIQUID,
         phase="liquid"),
-    _sf("eccc-rdps", "specific_humidity_40m", "RDPS_10km_SpecificHumidity_40m", "stored",
+    _sf("eccc-rdps", "specific_humidity_40m", "RDPS_10km_SpecificHumidity_40m", "available-not-stored",
         "RDPS publishes no relative humidity at 40/80/120 m, only specific humidity."),
+    _sf("eccc-rdps", "specific_humidity_80m", "RDPS_10km_SpecificHumidity_80m", "available-not-stored", "As 40 m."),
+    _sf("eccc-rdps", "specific_humidity_120m", "RDPS_10km_SpecificHumidity_120m", "available-not-stored", "As 40 m."),
+    _sf("eccc-rdps", "wind_speed_40m", "RDPS_10km_WindSpeed_40m", "available-not-stored", "WCS-only; production storage pending."),
+    _sf("eccc-rdps", "wind_speed_80m", "RDPS_10km_WindSpeed_80m", "available-not-stored", "As 40 m."),
+    _sf("eccc-rdps", "wind_speed_120m", "RDPS_10km_WindSpeed_120m", "available-not-stored", "As 40 m."),
+    _sf("eccc-rdps", "wind_direction_40m", "RDPS_10km_WindDir_40m", "available-not-stored", "As 40 m."),
+    _sf("eccc-rdps", "wind_direction_80m", "RDPS_10km_WindDir_80m", "available-not-stored", "As 40 m."),
+    _sf("eccc-rdps", "wind_direction_120m", "RDPS_10km_WindDir_120m", "available-not-stored", "As 40 m."),
     _sf("eccc-rdps", "relative_humidity_40m", None, "not-published",
         "RDPS publishes SpecificHumidity_40m and no RelativeHumidity_40m."),
-    _sf("eccc-rdps", "seeing_class_eccc", "RDPS_10km_SeeingIndex", "stored",
-        "The only operational seeing product covering the evidence box, at about 33 KB per hour. "
-        "GDPS and HRDPS publish neither this nor the transparency index."),
-    _sf("eccc-rdps", "transparency_class_eccc", "RDPS_10km_SkyTransparencyIndex", "stored",
-        "Hourly, four runs a day, about 84 h horizon, about 0.95 MB per field per run."),
-    _sf("eccc-rdps", "radiative_surface_temperature", "RDPS_10km_RadiativeTemp", "stored",
+    _sf("eccc-rdps", "seeing_class_eccc", "RDPS_10km_SeeingIndex", "available-not-stored",
+        "The isolated WCS experiment retrieved and API-read this unlabelled class field. The "
+        "production adapter remains Datamart GRIB and does not store it; class-zero semantics "
+        "remain unresolved."),
+    _sf("eccc-rdps", "transparency_class_eccc", "RDPS_10km_SkyTransparencyIndex", "available-not-stored",
+        "The isolated WCS experiment retrieved and API-read this unlabelled class field. The "
+        "production adapter remains Datamart GRIB and does not store it; class-zero semantics "
+        "remain unresolved."),
+    _sf("eccc-rdps", "radiative_surface_temperature", "RDPS_10km_RadiativeTemp", "available-not-stored",
         "'Aggregate surface radiative temperature'. Whether this is the same physical quantity "
         "as HRDPS SKINT is unverified, which is why they are separate keys."),
     _sf("eccc-rdps", "skin_temperature", None, "not-published",
         "No SKINT coverage exists for RDPS; RadiativeTemp is a different quantity."),
-    _sf("eccc-rdps", "sea_ice_fraction", "RDPS_10km_SeaIceFraction", "stored", "Verified live."),
-    _sf("eccc-rdps", "boundary_layer_height", "RDPS_10km_PlanetaryBoundaryLayerHeight", "stored",
+    _sf("eccc-rdps", "sea_ice_fraction", "RDPS_10km_SeaIceFraction", "available-not-stored", "Verified live WCS capability."),
+    _sf("eccc-rdps", "boundary_layer_height", "RDPS_10km_PlanetaryBoundaryLayerHeight", "available-not-stored",
         "Verified live."),
     _sf("eccc-rdps", "precipitable_water", None, "not-published", "As HRDPS."),
 
     _sf("eccc-gdps", "total_cloud_opacity", "GDPS_15km_TotalCloudCover", "stored", "Verified live."),
     _sf("eccc-gdps", "relative_humidity_pressure", "GDPS_15km_RelativeHumidity_<n>mb", "stored",
-        "31 levels plus 2 m. " + _ECCC_LIQUID, phase="liquid"),
+        "GeoMet advertises 31 levels plus 2 m; production storage is limited to the Datamart "
+        "adapter's declared subset. " + _ECCC_LIQUID, phase="liquid"),
+    _sf("eccc-gdps", "temperature_40m", "GDPS_15km_AirTemp_40m", "available-not-stored",
+        "GeoMet advertises this WCS-only height field; production remains on Datamart GRIB."),
+    _sf("eccc-gdps", "temperature_80m", "GDPS_15km_AirTemp_80m", "available-not-stored", "As 40 m."),
+    _sf("eccc-gdps", "temperature_120m", "GDPS_15km_AirTemp_120m", "available-not-stored", "As 40 m."),
+    _sf("eccc-gdps", "specific_humidity_40m", "GDPS_15km_SpecificHumidity_40m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "specific_humidity_80m", "GDPS_15km_SpecificHumidity_80m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "specific_humidity_120m", "GDPS_15km_SpecificHumidity_120m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "wind_speed_40m", "GDPS_15km_WindSpeed_40m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "wind_speed_80m", "GDPS_15km_WindSpeed_80m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "wind_speed_120m", "GDPS_15km_WindSpeed_120m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "wind_direction_40m", "GDPS_15km_WindDir_40m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "wind_direction_80m", "GDPS_15km_WindDir_80m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "wind_direction_120m", "GDPS_15km_WindDir_120m", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "boundary_layer_height", "GDPS_15km_PlanetaryBoundaryLayerHeight", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "radiative_surface_temperature", "GDPS_15km_RadiativeTemp", "available-not-stored", "As temperature_40m."),
+    _sf("eccc-gdps", "sea_ice_fraction", "GDPS_15km_SeaIceFraction", "available-not-stored", "As temperature_40m."),
     _sf("eccc-gdps", "precipitable_water", None, "not-published", "As HRDPS."),
 
     _sf("eccc-reps", "total_cloud_opacity", "REPS.MEM.ETA_NT.<member>", "stored",
