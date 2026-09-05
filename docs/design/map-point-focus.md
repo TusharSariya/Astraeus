@@ -1,6 +1,6 @@
 # Arbitrary-point Focus on the Map
 
-Discussion draft for [Settle arbitrary-point Focus behavior on the Map](https://github.com/TusharSariya/Astraeus/issues/67). The owner selected the first two Map disclosure choices; the remaining interaction choices are pending. No behavior or normative status changes.
+Discussion draft for [Settle arbitrary-point Focus behavior on the Map](https://github.com/TusharSariya/Astraeus/issues/67). The owner selected the Map disclosure, placement, site-selection and coordinate-precision choices below; unsupported-coordinate handling remains pending. No behavior or normative status changes.
 
 ## Inherited decisions
 
@@ -31,9 +31,9 @@ The owner answered “yes, yes” to both choices:
 1. **Site geometry on leaving a site.** Remove that site's horizon/sector overlay from the active Focus display when the Focus moves off-site. Keep a compact “No registered horizon at this point” explanation and nearby site references as context. Do not leave old geometry beneath a new point label. Selecting a registered site explicitly can restore that site's registered geometry, subject to its evidence status; no new sector capability is implied.
 2. **Model sampling geometry.** Keep the shared Focus as the main marker. Reveal the selected field's sampled model-cell marker and its distance from Focus only while inspecting that field. Label it as a model sample, never a station or a second Focus. If no sample coordinates are returned, show the absence instead of inferring geometry. Different sources may sample different cells; only the selected reading's geometry is highlighted.
 
-## Next discussion: placement, site selection and precision
+## Owner decisions: placement, site selection and precision
 
-Proposed, not selected:
+The owner answered “yes, yes, yes” to these three choices:
 
 1. A click on empty Map space moves the shared Focus immediately, preserving the current instant, layer state and viewport. Pan/zoom gestures do not move Focus. Keep an explicit recenter action rather than automatically moving the map after each selection.
 2. Clicking a registered-site reference opens its information first. A distinct “Use this site” action adopts its registered identity and position as the shared Focus. Selecting a site in the shell's dedicated site picker remains a direct explicit choice. Inspecting station reports or sampled cells never changes Focus implicitly.
@@ -46,3 +46,10 @@ Unsupported-coordinate behavior remains a separate decision because the audit fo
 Camera placement, phone brief and band math remain deferred. No new site registration, source admission, sector derivation, horizon estimation or production Map implementation. The separate API discussion already selected read-only site/horizon registry exposure; route shapes remain draft.
 
 Classification: no spec impact, evidence gathering and proposed interaction choices only. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-005. Read-only subagent audit completed. Specctl validation passed (0 errors, 0 warnings); implementation behavior was not changed or tested by this documentation task.
+
+
+## Next discussion: unsupported coordinates
+
+Proposed, not selected: retain the clicked coordinate as Focus even when the API explicitly refuses geographic coverage. Mark that Focus “Outside supported data area,” show the refusal reason and no point values, and do not snap to a supported point or substitute nearby evidence. Preserve the shared instant and layer selection. Previously returned readings must not appear to describe the new Focus. Distinguish an explicit geographic refusal from network/server failure or an unknown coverage boundary.
+
+A reference basemap or independently valid layer is not itself evidence that point sampling is supported; its existing provenance/disclosure rules still apply. This UX choice does not settle the wider helper-versus-route coverage conflict or authorize expanding service. The alternative is to reject the selection and keep the previous Focus with an input error.
