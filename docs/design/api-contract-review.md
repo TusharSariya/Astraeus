@@ -79,8 +79,11 @@ Owner-selected (explicit “yes” in live review): expose read-only, versioned 
 The alternative of continuing to ship registry copies with the frontend was not selected. Exact route shapes and revision association remain subsequent contract work. This does not authorize camera-image delivery or resolve the remaining camera-placement design questions.
 
 
-## Next discussion: imagery availability times
+## Owner decision: imagery availability times
 
-Proposed, not yet selected: expose structured imagery availability on the existing layer response separately from stored data sample times when the two differ. Preserve the existing published-data time semantics; clients must not discover imagery bounds by parsing error text or assume that a point sample implies an image at that instant. The returned raster's served-time provenance remains authoritative for the image actually drawn. An unknown or unavailable imagery extent stays explicit; never invent frames from an enclosing interval. Exact metadata shape must distinguish discrete times from any provider-declared interval/cadence before implementation.
+Owner-selected (explicit “yes” in live review): expose structured imagery availability on the existing layer response separately from stored data sample times when the two differ. Preserve the existing published-data time semantics; clients must not discover imagery bounds by parsing error text or assume that a point sample implies an image at that instant. The returned raster's served-time provenance remains authoritative for the image actually drawn. An unknown or unavailable imagery extent stays explicit; never invent frames from an enclosing interval. Exact metadata shape must distinguish discrete times from any provider-declared interval/cadence before implementation.
 
 This addresses the selected Map's captured two-time-axis gap. It does not resolve the deferred numeric band-math inputs or select new rendering/scientific behavior.
+
+
+Concrete candidate wire shapes and open choices are collected in [API contract draft](api-contract-draft.md). They remain proposed until owner review; the selections above are the authority for drafting scope.
