@@ -73,9 +73,13 @@
       member and one six-hour step under explicit time and memory bounds.
       Verify: success, timeout, out-of-memory and unsupported-operation are all
       reported as measured outcomes without relabelling a load test as inference.
-- [ ] 5.3 If CPU inference is impractical, repeat the identical FCN3 case on a
+- [ ] 5.3 **Deferred outside the free-source map:** if CPU inference is impractical, repeat the identical FCN3 case on a
       named rented GPU and measure actual peak VRAM; do not infer a hard minimum
       from Earth2Studio's recommended-memory badge.
+      Owner direction on September 5, 2026 limits the current map to free
+      providers and available local compute. Rented GPU execution requires a
+      separately authorized scope; CPU failure must remain a measured blocker.
+      This task is not completed by deferral.
       Verify: the initializer, checkpoint, precision, seed and output request
       are identical or their differences are declared.
 - [ ] 5.4 Register Earth2Studio only as an inference framework and FourCastNet
