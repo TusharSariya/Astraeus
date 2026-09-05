@@ -37,7 +37,7 @@ Owner-selected direction (explicit “yes” in live review): a bounded Series o
 
 Alternative: continue bounded client fan-out of `/point`, label that the responses can come from different store states, and expose enough revision identity to let the client detect differences. This avoids a Series route but retains orchestration, repeated payload and consistency costs demonstrated by the prototype.
 
-The owner selected the bounded Series operation over continued client fan-out. Exact route name, query bounds, field identity, sample limits, pagination/error behavior and snapshot lifetime remain subsequent decisions; no arbitrary values are frozen here.
+The owner selected the bounded Series operation over continued client fan-out. Exact route name, query bounds, field identity, sample limits, detailed error shape and snapshot lifetime remain subsequent decisions; no arbitrary values are frozen here.
 
 Owner-selected consistency rule (explicit “yes” in live review): resolve one immutable set of artifact revisions for the request and use it throughout. Later ingestion becomes visible on the next read. Return the set identifier and per-sample revision identity. This is one coherent store selection, not one shared forecast run across different sources. If the selected evidence cannot remain readable, fail explicitly rather than silently substitute a newer revision. Missing fields within a readable selection remain explicit per-field absence, not whole-request failure. This does not commit to retaining historical snapshots or binding every view to a persistent session.
 
@@ -60,6 +60,13 @@ The server retains the selected revisions briefly. If the snapshot expires, the 
 
 Exact lifetime, page/sample limits, cursor encoding, status codes and retention mechanics remain proposed-contract work, not selected values. This decision authorizes no production implementation or indefinite historical retention.
 
-## Next decision: refresh while browsing
+## Owner decision: refresh while browsing
 
-Proposed, not yet selected: an in-progress Series comparison continues using its snapshot. New data availability is indicated, but adopting it requires an explicit refresh that starts a new read and replaces the displayed snapshot together. Existing pages must never be silently combined with pages from the new snapshot. Retain field/source choices and Focus during refresh. Snapshot expiry clearly offers restart; it does not present old results as current.
+Owner-selected (explicit “yes” in live review): an in-progress Series comparison continues using its snapshot. New data availability is indicated, but adopting it requires an explicit refresh that starts a new read and replaces the displayed snapshot together. Existing pages must never be silently combined with pages from the new snapshot. Retain field/source choices and Focus during refresh. Snapshot expiry clearly offers restart; it does not present old results as current.
+
+
+## Next discussion: existing response corrections
+
+Proposed, not yet selected as a package: reuse existing routes and extend their representations where the selected views demonstrated missing information. Add authoritative layer/source and canonical field associations; expose station/report identity and full per-reading provenance through the existing feature response; preserve TAF forecast validity intervals and classification; expose evidence identity on astronomy and space-weather values; replace unavailable astronomy zero placeholders with explicit absence; and reconcile existing run/freshness metadata with its authoritative origin.
+
+These are candidate contract changes and implementation corrections, not claims of completed capability. Missing report data is not repaired by a schema change. Exact shapes and verification belong in the proposal. This package does not add duplicate station, family, freshness or space-weather routes, infer a universal evidence class for mixed sources, or enable new scientific derivations.
