@@ -1,0 +1,791 @@
+{
+  "capture_date": "2026-09-05",
+  "request": {
+    "endpoint": "https://noaa-goes19.s3.amazonaws.com",
+    "discovery_parameters": {
+      "list-type": "2",
+      "max-keys": "1000",
+      "prefix": "product/year/day/hour"
+    },
+    "aggregate_byte_cap": 4294967296
+  },
+  "daylight_products": [
+    {
+      "product": "ABI-L2-CODF",
+      "retrieved_at": "2026-09-05T23:47:34.236932+00:00",
+      "complete": true,
+      "qc_passed": true,
+      "source_url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CODF/2026/248/14/OR_ABI-L2-CODF-M6_G19_s20262481450209_e20262481459517_c20262481503508.nc",
+      "source_bytes": 6825571,
+      "source_sha256": "44017a740d28af9e3685203f04b856ebdd8b1d677f882480f8df8b5ac1d56d5c",
+      "artifact_revision": "b284e8ffcd3fa76bbf4403c2298b74f7d60611998a867840eabcc9c3f4f70847",
+      "good_quality_cells": 98,
+      "field_dispositions": [
+        {
+          "native": "COD",
+          "field": "cloud_optical_depth",
+          "disposition": "retrieved"
+        }
+      ]
+    },
+    {
+      "product": "ABI-L2-COD2KMF",
+      "retrieved_at": "2026-09-05T23:47:35.401824+00:00",
+      "complete": true,
+      "qc_passed": true,
+      "source_url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-COD2KMF/2026/248/14/OR_ABI-L2-COD2KMF-M6_G19_s20262481450209_e20262481459517_c20262481503503.nc",
+      "source_bytes": 24926948,
+      "source_sha256": "ee2584c28838e2006142ecee6a008940d21cdb32d9f34e9b66a90ae9cd2527ea",
+      "artifact_revision": "11afafe0cd36508e55878e2d963051092c907f320e35c6659f61038ffcc7a169",
+      "good_quality_cells": 108,
+      "field_dispositions": [
+        {
+          "native": "COD",
+          "field": "cloud_optical_depth",
+          "disposition": "retrieved"
+        }
+      ]
+    },
+    {
+      "product": "ABI-L2-CPSF",
+      "retrieved_at": "2026-09-05T23:47:49.105214+00:00",
+      "complete": false,
+      "qc_passed": true,
+      "source_url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/14/OR_ABI-L2-CPSF-M6_G19_s20262481450209_e20262481459517_c20262481503505.nc",
+      "source_bytes": 26837207,
+      "source_sha256": "e57584882158dccf4154f15810bf4fb3dacb7973afc546eb67cc99e97a69467a",
+      "artifact_revision": "4474bc86e7af261e4a94770704113376a91eb73d66f15e322eacea70af10e67f",
+      "good_quality_cells": 108,
+      "field_dispositions": [
+        {
+          "native": "CPS",
+          "field": "cloud_particle_size",
+          "disposition": "retrieved-no-usable-native-quality-cell",
+          "usable_cells": 0
+        }
+      ]
+    }
+  ],
+  "cps_disposition_samples": [
+    {
+      "scan": "2026-09-05T10:50:20.9Z",
+      "bytes": 21041485,
+      "sha256": "0eb2771147d5242ddce2d120d29205204e5efd95ff5062868d889557f2ef0881",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/10/OR_ABI-L2-CPSF-M6_G19_s20262481050209_e20262481059517_c20262481103547.nc"
+    },
+    {
+      "scan": "2026-09-05T11:50:20.9Z",
+      "bytes": 21969708,
+      "sha256": "9de31a81180b0ddcef91e86d16bffac982d63436936f40d2e2216cef129f295f",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/11/OR_ABI-L2-CPSF-M6_G19_s20262481150209_e20262481159517_c20262481203504.nc"
+    },
+    {
+      "scan": "2026-09-05T12:50:20.9Z",
+      "bytes": 23465456,
+      "sha256": "fb4b9f78bd550fd1dc698a6fe1bd1260f98581a5f99165a3ad7bbb8a38ff65aa",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/12/OR_ABI-L2-CPSF-M6_G19_s20262481250209_e20262481259517_c20262481303531.nc"
+    },
+    {
+      "scan": "2026-09-05T13:50:20.9Z",
+      "bytes": 25578922,
+      "sha256": "c6af8deee63087fbf5ed94c9af060d31da8de61b89181e8b714c394b9a6a99a6",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/13/OR_ABI-L2-CPSF-M6_G19_s20262481350209_e20262481359517_c20262481403517.nc"
+    },
+    {
+      "scan": "2026-09-05T15:50:20.9Z",
+      "bytes": 26856045,
+      "sha256": "cde0287c5fc53f03f7b52f5e490419fea1f1b52a97a24d9bd74f6068d746aa11",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/15/OR_ABI-L2-CPSF-M6_G19_s20262481550209_e20262481559517_c20262481604233.nc"
+    },
+    {
+      "scan": "2026-09-05T16:50:20.9Z",
+      "bytes": 27056567,
+      "sha256": "0bd02ae7f1e8f9bb087e73f0c90eec0034f5c886d45d656b25137a35d3f0b63c",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/16/OR_ABI-L2-CPSF-M6_G19_s20262481650209_e20262481659517_c20262481703596.nc"
+    },
+    {
+      "scan": "2026-09-05T17:50:20.7Z",
+      "bytes": 27353437,
+      "sha256": "fe7102262ffa1d9406ab7c9db42160492c13d74be6fe6015037cffe91a0200b2",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/17/OR_ABI-L2-CPSF-M6_G19_s20262481750207_e20262481759515_c20262481804358.nc"
+    },
+    {
+      "scan": "2026-09-05T18:50:20.7Z",
+      "bytes": 27569242,
+      "sha256": "af8bb0e2220632a334f3e46ccd5eead43a77982b5177bbe4bf14fc5799b9a4a7",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/18/OR_ABI-L2-CPSF-M6_G19_s20262481850207_e20262481859515_c20262481904309.nc"
+    },
+    {
+      "scan": "2026-09-03T14:50:20.7Z",
+      "bytes": 25234035,
+      "sha256": "3bff771942b848658f3805e22634dfc5c0b75ded042e1c4483d4de2bb37f81bd",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/246/14/OR_ABI-L2-CPSF-M6_G19_s20262461450207_e20262461459515_c20262461503487.nc"
+    },
+    {
+      "scan": "2026-09-03T16:50:20.7Z",
+      "bytes": 25711710,
+      "sha256": "e7ad0ffdd715c3a48cae21e641c01f94ab7ecd961efae4337fbcc70a9490d398",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/246/16/OR_ABI-L2-CPSF-M6_G19_s20262461650207_e20262461659516_c20262461703577.nc"
+    },
+    {
+      "scan": "2026-09-03T18:50:20.5Z",
+      "bytes": 26305152,
+      "sha256": "598146861e579e9c7589c76b14d17682c9d850b9bd43a21e818a111115551267",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/246/18/OR_ABI-L2-CPSF-M6_G19_s20262461850205_e20262461859513_c20262461903546.nc"
+    },
+    {
+      "scan": "2026-09-04T14:50:20.8Z",
+      "bytes": 25920426,
+      "sha256": "b07609e2c0fd17d423656d0cef302fe09cc8d3ce523b2f44c999eb060ee19571",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/247/14/OR_ABI-L2-CPSF-M6_G19_s20262471450208_e20262471459516_c20262471503524.nc"
+    },
+    {
+      "scan": "2026-09-04T16:50:20.8Z",
+      "bytes": 26635289,
+      "sha256": "c357f8779670df521917ab6fdfb9b396d0fa2c725ad20662bf8c5cf8e290fc13",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/247/16/OR_ABI-L2-CPSF-M6_G19_s20262471650208_e20262471659516_c20262471704334.nc"
+    },
+    {
+      "scan": "2026-09-04T18:50:20.6Z",
+      "bytes": 27187862,
+      "sha256": "c2c5bae7ea1a9e875cd869f95525a3fde5d6eb1599e314c9309b92abd72c518a",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/247/18/OR_ABI-L2-CPSF-M6_G19_s20262471850206_e20262471859514_c20262471904007.nc"
+    },
+    {
+      "scan": "2026-09-05T14:50:20.9Z",
+      "bytes": 26837207,
+      "sha256": "e57584882158dccf4154f15810bf4fb3dacb7973afc546eb67cc99e97a69467a",
+      "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/14/OR_ABI-L2-CPSF-M6_G19_s20262481450209_e20262481459517_c20262481503505.nc"
+    }
+  ],
+  "point_http_comparisons": [
+    {
+      "route": "/point",
+      "product": "ABI-L2-CCLF",
+      "field": "cloud_fraction_total_satellite",
+      "source_value": 96.00066375732422,
+      "expected_http_value": 96.00066375732422,
+      "http_value": 96.00066375732422,
+      "source_units": "percent",
+      "http_units": "percent",
+      "source_time": "2026-09-05T20:00:20.700000+00:00",
+      "http_time": "2026-09-05T20:00:20.700000Z",
+      "artifact_revision": "415b24d184480b26c93e93f148d64abf29ed0a3ac8b4237645b132bfb77d8c10",
+      "latitude": 46.82189178466797,
+      "longitude": -52.654754638671875,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-CCLF",
+      "field": "cloud_fraction_layer_1",
+      "source_value": 24.0,
+      "expected_http_value": 24.0,
+      "http_value": 24.0,
+      "source_units": "percent",
+      "http_units": "percent",
+      "source_time": "2026-09-05T20:00:20.700000+00:00",
+      "http_time": "2026-09-05T20:00:20.700000Z",
+      "artifact_revision": "415b24d184480b26c93e93f148d64abf29ed0a3ac8b4237645b132bfb77d8c10",
+      "latitude": 48.36155319213867,
+      "longitude": -54.882816314697266,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-CCLF",
+      "field": "cloud_fraction_layer_2",
+      "source_value": 36.0,
+      "expected_http_value": 36.0,
+      "http_value": 36.0,
+      "source_units": "percent",
+      "http_units": "percent",
+      "source_time": "2026-09-05T20:00:20.700000+00:00",
+      "http_time": "2026-09-05T20:00:20.700000Z",
+      "artifact_revision": "415b24d184480b26c93e93f148d64abf29ed0a3ac8b4237645b132bfb77d8c10",
+      "latitude": 48.36155319213867,
+      "longitude": -54.882816314697266,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-CCLF",
+      "field": "cloud_fraction_layer_5",
+      "source_value": 100.0,
+      "expected_http_value": 100.0,
+      "http_value": 100.0,
+      "source_units": "percent",
+      "http_units": "percent",
+      "source_time": "2026-09-05T20:00:20.700000+00:00",
+      "http_time": "2026-09-05T20:00:20.700000Z",
+      "artifact_revision": "415b24d184480b26c93e93f148d64abf29ed0a3ac8b4237645b132bfb77d8c10",
+      "latitude": 48.36155319213867,
+      "longitude": -54.882816314697266,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-CCLF",
+      "field": "cloud_fraction_layer_3",
+      "source_value": 100.0,
+      "expected_http_value": 100.0,
+      "http_value": 100.0,
+      "source_units": "percent",
+      "http_units": "percent",
+      "source_time": "2026-09-05T20:00:20.700000+00:00",
+      "http_time": "2026-09-05T20:00:20.700000Z",
+      "artifact_revision": "415b24d184480b26c93e93f148d64abf29ed0a3ac8b4237645b132bfb77d8c10",
+      "latitude": 48.36155319213867,
+      "longitude": -54.882816314697266,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-CCLF",
+      "field": "cloud_layer_flag",
+      "source_value": 28.0,
+      "expected_http_value": 28.0,
+      "http_value": 28.0,
+      "source_units": "code",
+      "http_units": "code",
+      "source_time": "2026-09-05T20:00:20.700000+00:00",
+      "http_time": "2026-09-05T20:00:20.700000Z",
+      "artifact_revision": "415b24d184480b26c93e93f148d64abf29ed0a3ac8b4237645b132bfb77d8c10",
+      "latitude": 48.36155319213867,
+      "longitude": -54.882816314697266,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-CCLF",
+      "field": "cloud_fraction_layer_4",
+      "source_value": 100.0,
+      "expected_http_value": 100.0,
+      "http_value": 100.0,
+      "source_units": "percent",
+      "http_units": "percent",
+      "source_time": "2026-09-05T20:00:20.700000+00:00",
+      "http_time": "2026-09-05T20:00:20.700000Z",
+      "artifact_revision": "415b24d184480b26c93e93f148d64abf29ed0a3ac8b4237645b132bfb77d8c10",
+      "latitude": 48.36155319213867,
+      "longitude": -54.882816314697266,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-ACTPF",
+      "field": "cloud_top_phase",
+      "source_value": 4.0,
+      "expected_http_value": "ice",
+      "http_value": "ice",
+      "source_units": "code",
+      "http_units": "code",
+      "source_time": "2026-09-05T20:20:20.700000+00:00",
+      "http_time": "2026-09-05T20:20:20.700000Z",
+      "artifact_revision": "9300f9dc45689c07e621986909b2b4a6d1ebb5c11e004db63843fbbe7cf3deef",
+      "latitude": 48.49234390258789,
+      "longitude": -54.979469299316406,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-ACHTF",
+      "field": "cloud_top_temperature",
+      "source_value": 234.0918731689453,
+      "expected_http_value": 234.0918731689453,
+      "http_value": 234.0918731689453,
+      "source_units": "K",
+      "http_units": "K",
+      "source_time": "2026-09-05T20:10:20.700000+00:00",
+      "http_time": "2026-09-05T20:10:20.700000Z",
+      "artifact_revision": "b73e526b626b3d112447765ae3198678c0587aa805e20eedaa820a12f6c93eaf",
+      "latitude": 48.49234390258789,
+      "longitude": -54.979469299316406,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-CODF",
+      "field": "cloud_optical_depth",
+      "source_value": 0.0,
+      "expected_http_value": 0.0,
+      "http_value": 0.0,
+      "source_units": "1",
+      "http_units": "1",
+      "source_time": "2026-09-05T14:50:20.900000+00:00",
+      "http_time": "2026-09-05T14:50:20.900000Z",
+      "artifact_revision": "b284e8ffcd3fa76bbf4403c2298b74f7d60611998a867840eabcc9c3f4f70847",
+      "latitude": 48.459049224853516,
+      "longitude": -51.46065139770508,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-COD2KMF",
+      "field": "cloud_optical_depth",
+      "source_value": 0.0,
+      "expected_http_value": 0.0,
+      "http_value": 0.0,
+      "source_units": "1",
+      "http_units": "1",
+      "source_time": "2026-09-05T14:50:20.900000+00:00",
+      "http_time": "2026-09-05T14:50:20.900000Z",
+      "artifact_revision": "11afafe0cd36508e55878e2d963051092c907f320e35c6659f61038ffcc7a169",
+      "latitude": 48.44252395629883,
+      "longitude": -51.45356750488281,
+      "equal": true
+    },
+    {
+      "route": "/point",
+      "product": "ABI-L2-RRQPEF",
+      "field": "precipitation_rate",
+      "source_value": 0.0,
+      "expected_http_value": 0.0,
+      "http_value": 0.0,
+      "source_units": "mm h-1",
+      "http_units": "mm h-1",
+      "source_time": "2026-09-05T20:20:20.700000+00:00",
+      "http_time": "2026-09-05T20:20:20.700000Z",
+      "artifact_revision": "eed3db8c3b51f3efc900353f3b252686ec695da897ef358ab0ab635a1cc34ba9",
+      "latitude": 48.49234390258789,
+      "longitude": -54.979469299316406,
+      "equal": true
+    }
+  ],
+  "feature_http_comparisons": [
+    {
+      "route": "/layers/noaa-goes-east-abi_dmwf/features",
+      "product": "ABI-L2-DMWF",
+      "source_feature_count": 422,
+      "http_feature_count": 422,
+      "source_time": "2026-09-05T14:00:20.900000+00:00",
+      "http_data_mode": "live",
+      "artifact_revision": "f69266269348542224611017b6f2ea8cd6c5a6c45929de27e8ee208efcfaab19",
+      "first_feature_equal": true
+    },
+    {
+      "route": "/layers/noaa-goes-east-abi_dmwvf/features",
+      "product": "ABI-L2-DMWVF",
+      "source_feature_count": 1,
+      "http_feature_count": 1,
+      "source_time": "2026-09-05T14:00:20.900000+00:00",
+      "http_data_mode": "live",
+      "artifact_revision": "18c4cad3da59e5bfb6a4e4928c42affdd22ee6fd466db1e379f10e9dd1ae2e2b",
+      "first_feature_equal": true
+    },
+    {
+      "route": "/layers/noaa-goes-glm-glm_lcfa/features",
+      "product": "GLM-L2-LCFA",
+      "source_feature_count": 0,
+      "http_feature_count": 0,
+      "source_time": "2026-09-05T14:50:00+00:00",
+      "http_data_mode": "unavailable",
+      "artifact_revision": "fcd19a92362e5ace443cea187479eaf1b646e4a307c533d6190f24c74edfea4d",
+      "first_feature_equal": true
+    }
+  ],
+  "complete_vector_intervals": [
+    {
+      "product": "ABI-L2-DMWF",
+      "retrieved_at": "2026-09-05T23:45:36.286997+00:00",
+      "complete": true,
+      "qc_passed": true,
+      "artifact_revision": "f69266269348542224611017b6f2ea8cd6c5a6c45929de27e8ee208efcfaab19",
+      "files": [
+        {
+          "band": "C02",
+          "key": "ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C02_G19_s20262481400209_e20262481409517_c20262481426590.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C02_G19_s20262481400209_e20262481409517_c20262481426590.nc",
+          "bytes": 3812318,
+          "sha256": "dc9b8b57eba31f113dd4348dae768fe9a83e12e29bb5a02de317cfa77bc5ae9c"
+        },
+        {
+          "band": "C07",
+          "key": "ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C07_G19_s20262481400209_e20262481409517_c20262481420096.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C07_G19_s20262481400209_e20262481409517_c20262481420096.nc",
+          "bytes": 175350,
+          "sha256": "912ce7d14a2e480fbf5864acadcff1cca156c31288d783144140266f4d49daf4"
+        },
+        {
+          "band": "C08",
+          "key": "ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C08_G19_s20262481400209_e20262481409517_c20262481420128.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C08_G19_s20262481400209_e20262481409517_c20262481420128.nc",
+          "bytes": 461229,
+          "sha256": "0bc9cd04c6b7812ce9ae12184b1cb6dfd2ad3643ecf8f6e37b31e7202336b386"
+        },
+        {
+          "band": "C09",
+          "key": "ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C09_G19_s20262481400209_e20262481409517_c20262481440212.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C09_G19_s20262481400209_e20262481409517_c20262481440212.nc",
+          "bytes": 253782,
+          "sha256": "8604db7083705b522d31e59a7c483b26e207b792c74f973a21f6146b8097a808"
+        },
+        {
+          "band": "C10",
+          "key": "ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C10_G19_s20262481400209_e20262481409517_c20262481440207.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C10_G19_s20262481400209_e20262481409517_c20262481440207.nc",
+          "bytes": 134127,
+          "sha256": "c4d523dbd45ffff39551cf358db51a10187937c770ce42123b9d53e6784d3869"
+        },
+        {
+          "band": "C14",
+          "key": "ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C14_G19_s20262481400209_e20262481409517_c20262481424261.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-DMWF/2026/248/14/OR_ABI-L2-DMWF-M6C14_G19_s20262481400209_e20262481409517_c20262481424261.nc",
+          "bytes": 980532,
+          "sha256": "053ee8906f8f54aa87920c87c7b94a5d93334834d4455fdb72782c808d7b1488"
+        }
+      ],
+      "bands_retrieved": [
+        "C02",
+        "C07",
+        "C08",
+        "C09",
+        "C10",
+        "C14"
+      ],
+      "bands_absent": [],
+      "per_band": [
+        {
+          "band": "C02",
+          "total_vectors": 161972,
+          "in_box_vectors": 126,
+          "in_box_good_vectors": 126,
+          "band_id": [
+            2
+          ],
+          "dataset_name": "OR_ABI-L2-DMWF-M6C02_G19_s20262481400209_e20262481409517_c20262481426590.nc",
+          "id": "e99f5bae-7dfc-4d6e-9c68-f962c9fbcc23"
+        },
+        {
+          "band": "C07",
+          "total_vectors": 2080,
+          "in_box_vectors": 0,
+          "in_box_good_vectors": 0,
+          "band_id": [
+            7
+          ],
+          "dataset_name": "OR_ABI-L2-DMWF-M6C07_G19_s20262481400209_e20262481409517_c20262481420096.nc",
+          "id": "b6bdabc2-a6ec-4f1d-a934-a25a41165bfe"
+        },
+        {
+          "band": "C08",
+          "total_vectors": 13789,
+          "in_box_vectors": 146,
+          "in_box_good_vectors": 146,
+          "band_id": [
+            8
+          ],
+          "dataset_name": "OR_ABI-L2-DMWF-M6C08_G19_s20262481400209_e20262481409517_c20262481420128.nc",
+          "id": "b2141e04-3e99-4332-b2aa-131fdf8b9e72"
+        },
+        {
+          "band": "C09",
+          "total_vectors": 5203,
+          "in_box_vectors": 1,
+          "in_box_good_vectors": 1,
+          "band_id": [
+            9
+          ],
+          "dataset_name": "OR_ABI-L2-DMWF-M6C09_G19_s20262481400209_e20262481409517_c20262481440212.nc",
+          "id": "efe2b7af-d061-426f-bbfe-2189819574aa"
+        },
+        {
+          "band": "C10",
+          "total_vectors": 314,
+          "in_box_vectors": 0,
+          "in_box_good_vectors": 0,
+          "band_id": [
+            10
+          ],
+          "dataset_name": "OR_ABI-L2-DMWF-M6C10_G19_s20262481400209_e20262481409517_c20262481440207.nc",
+          "id": "6d6eeb6f-90c5-411b-8f14-64ab43641614"
+        },
+        {
+          "band": "C14",
+          "total_vectors": 35239,
+          "in_box_vectors": 149,
+          "in_box_good_vectors": 149,
+          "band_id": [
+            14
+          ],
+          "dataset_name": "OR_ABI-L2-DMWF-M6C14_G19_s20262481400209_e20262481409517_c20262481424261.nc",
+          "id": "915a75df-074d-4d3f-b2bb-fb8427bf7f59"
+        }
+      ],
+      "counts": null,
+      "interval_start": null,
+      "interval_end": null
+    },
+    {
+      "product": "ABI-L2-DMWVF",
+      "retrieved_at": "2026-09-05T23:45:41.021026+00:00",
+      "complete": true,
+      "qc_passed": true,
+      "artifact_revision": "18c4cad3da59e5bfb6a4e4928c42affdd22ee6fd466db1e379f10e9dd1ae2e2b",
+      "files": [
+        {
+          "band": "C08",
+          "key": "ABI-L2-DMWVF/2026/248/14/OR_ABI-L2-DMWVF-M6C08_G19_s20262481400209_e20262481409517_c20262481440216.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/ABI-L2-DMWVF/2026/248/14/OR_ABI-L2-DMWVF-M6C08_G19_s20262481400209_e20262481409517_c20262481440216.nc",
+          "bytes": 234814,
+          "sha256": "c97cbbf2e0759ba502c7c1b96622dc6da039e4903c5345ec19346776a617d93b"
+        }
+      ],
+      "bands_retrieved": [
+        "C08"
+      ],
+      "bands_absent": [],
+      "per_band": [
+        {
+          "band": "C08",
+          "total_vectors": 4424,
+          "in_box_vectors": 1,
+          "in_box_good_vectors": 1,
+          "band_id": [
+            8
+          ],
+          "dataset_name": "OR_ABI-L2-DMWVF-M6C08_G19_s20262481400209_e20262481409517_c20262481440216.nc",
+          "id": "225aebca-8bb7-46c1-a937-7f116c9ac68f"
+        }
+      ],
+      "counts": null,
+      "interval_start": null,
+      "interval_end": null
+    },
+    {
+      "product": "GLM-L2-LCFA",
+      "retrieved_at": "2026-09-05T23:45:42.217826+00:00",
+      "complete": true,
+      "qc_passed": true,
+      "artifact_revision": "fcd19a92362e5ace443cea187479eaf1b646e4a307c533d6190f24c74edfea4d",
+      "files": [
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481450000_e20262481450200_c20262481450218.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481450000_e20262481450200_c20262481450218.nc",
+          "bytes": 286997,
+          "sha256": "1a9401f4b1fd8be309d41c717eb10732031f49a5b69f9851d44259436e134cda",
+          "scan_start": "2026-09-05T14:50:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481450200_e20262481450400_c20262481450420.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481450200_e20262481450400_c20262481450420.nc",
+          "bytes": 284257,
+          "sha256": "224029b51dec42bd4b09eb1639d17548a8371ca292909684898efbda38f59021",
+          "scan_start": "2026-09-05T14:50:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481450400_e20262481451000_c20262481451022.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481450400_e20262481451000_c20262481451022.nc",
+          "bytes": 286562,
+          "sha256": "ac4fee65120f7a9a233f387cbc46af98c3e549274f99286f60f1c6e700f53e7d",
+          "scan_start": "2026-09-05T14:50:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481451000_e20262481451200_c20262481451220.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481451000_e20262481451200_c20262481451220.nc",
+          "bytes": 274006,
+          "sha256": "f69115a87ee76953622b0416ce4b395597be9d6ce18701e6893b4491a2a5dd4b",
+          "scan_start": "2026-09-05T14:51:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481451200_e20262481451400_c20262481451421.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481451200_e20262481451400_c20262481451421.nc",
+          "bytes": 272656,
+          "sha256": "7f9e54082dd0447d972a18ef4347df4dc87b6792d4ba35181f957ed6d7442470",
+          "scan_start": "2026-09-05T14:51:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481451400_e20262481452000_c20262481452020.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481451400_e20262481452000_c20262481452020.nc",
+          "bytes": 285963,
+          "sha256": "83869d2aa8d08c642a864e0cce30abf4b2d29f789aaba7ebdca9781fb346c464",
+          "scan_start": "2026-09-05T14:51:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481452000_e20262481452200_c20262481452220.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481452000_e20262481452200_c20262481452220.nc",
+          "bytes": 288985,
+          "sha256": "559badba42e759f814190a508e3830cac3a1f09ea54724223d6c99f51d1b765f",
+          "scan_start": "2026-09-05T14:52:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481452200_e20262481452400_c20262481452419.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481452200_e20262481452400_c20262481452419.nc",
+          "bytes": 291996,
+          "sha256": "6edfaf773c33974ee4f61df92cdf13afc50d1fd96548ef426dbd65cf68567082",
+          "scan_start": "2026-09-05T14:52:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481452400_e20262481453000_c20262481453021.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481452400_e20262481453000_c20262481453021.nc",
+          "bytes": 278504,
+          "sha256": "840b1af4e3cdeac21c29f0a50e6dd8ed4037120fb983545a617f0ee669d99612",
+          "scan_start": "2026-09-05T14:52:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481453000_e20262481453200_c20262481453221.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481453000_e20262481453200_c20262481453221.nc",
+          "bytes": 290012,
+          "sha256": "81c0681d0d87717878f0cf8a4d515194320c0a3291da7debc1ab1972d8dfacb3",
+          "scan_start": "2026-09-05T14:53:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481453200_e20262481453400_c20262481453422.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481453200_e20262481453400_c20262481453422.nc",
+          "bytes": 289183,
+          "sha256": "a8d476ca98fcca4e20f01c296ccad7ac62b326324dbff876857e2a59baac8e8d",
+          "scan_start": "2026-09-05T14:53:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481453400_e20262481454000_c20262481454022.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481453400_e20262481454000_c20262481454022.nc",
+          "bytes": 271059,
+          "sha256": "02eb714f0045eaa197aa2244df8815f1dcba1b64e8071c13d4ce9362e8008171",
+          "scan_start": "2026-09-05T14:53:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481454000_e20262481454200_c20262481454219.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481454000_e20262481454200_c20262481454219.nc",
+          "bytes": 273255,
+          "sha256": "13a0ebefcb2d1213bd5f46174ca4d52c70086feb23d8241451f927078ebfad76",
+          "scan_start": "2026-09-05T14:54:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481454200_e20262481454400_c20262481454421.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481454200_e20262481454400_c20262481454421.nc",
+          "bytes": 283974,
+          "sha256": "33979b649d3c56a1d19caa684a26d4086655098ff0a68bc7b5e5061db2f43244",
+          "scan_start": "2026-09-05T14:54:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481454400_e20262481455000_c20262481455020.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481454400_e20262481455000_c20262481455020.nc",
+          "bytes": 300464,
+          "sha256": "32a268408d2c12f7c21e923cb2a7854c32f526d5cf6339301ce6d4d74c942334",
+          "scan_start": "2026-09-05T14:54:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481455000_e20262481455200_c20262481455221.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481455000_e20262481455200_c20262481455221.nc",
+          "bytes": 300905,
+          "sha256": "db69c3863f564861b01b3287bf0f933bbf2090b062851fae6739db330cb4b777",
+          "scan_start": "2026-09-05T14:55:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481455200_e20262481455400_c20262481455422.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481455200_e20262481455400_c20262481455422.nc",
+          "bytes": 281137,
+          "sha256": "1d5f4e831b87c75818e13c7ea4efe7622e9423903ca849ca86aad899584cc973",
+          "scan_start": "2026-09-05T14:55:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481455400_e20262481456000_c20262481456021.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481455400_e20262481456000_c20262481456021.nc",
+          "bytes": 290371,
+          "sha256": "0ae966cc9929a25dface2854302c20ef5edb9819279506754472a19a6375c66a",
+          "scan_start": "2026-09-05T14:55:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481456000_e20262481456200_c20262481456223.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481456000_e20262481456200_c20262481456223.nc",
+          "bytes": 277060,
+          "sha256": "d5a43d00299a9eb04c421c657d985ac15fe9f89cd464abc2c6d3c52970fe3af7",
+          "scan_start": "2026-09-05T14:56:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481456200_e20262481456400_c20262481456421.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481456200_e20262481456400_c20262481456421.nc",
+          "bytes": 279681,
+          "sha256": "7978576932eeb6fe1e7c05eff723eac4b8185037af2e536cd3f5c5b351feeb81",
+          "scan_start": "2026-09-05T14:56:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481456400_e20262481457000_c20262481457022.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481456400_e20262481457000_c20262481457022.nc",
+          "bytes": 283853,
+          "sha256": "6b9adf89fc55da0995da629869496c64ba9b19fad7329f1602bcba2caec338ca",
+          "scan_start": "2026-09-05T14:56:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481457000_e20262481457200_c20262481457221.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481457000_e20262481457200_c20262481457221.nc",
+          "bytes": 290211,
+          "sha256": "02cbfe400a1ec5c8bbe6c62af0b3f542b697e4adad2dda2757370a92a6ceb230",
+          "scan_start": "2026-09-05T14:57:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481457200_e20262481457400_c20262481457420.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481457200_e20262481457400_c20262481457420.nc",
+          "bytes": 276088,
+          "sha256": "adb8f34367a0fb83ae828fc15444038993fbffa04d878712da4580dd101f4015",
+          "scan_start": "2026-09-05T14:57:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481457400_e20262481458000_c20262481458019.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481457400_e20262481458000_c20262481458019.nc",
+          "bytes": 283133,
+          "sha256": "03de43fca50ac4292908afde579c1a3012ca8d96b2d7c3365fd3db98956a23d3",
+          "scan_start": "2026-09-05T14:57:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481458000_e20262481458200_c20262481458221.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481458000_e20262481458200_c20262481458221.nc",
+          "bytes": 292661,
+          "sha256": "9f662abb76d96f25d7a57d0329a9e4b8678fdc5ec31be45390568cb0a772b348",
+          "scan_start": "2026-09-05T14:58:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481458200_e20262481458400_c20262481458421.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481458200_e20262481458400_c20262481458421.nc",
+          "bytes": 283005,
+          "sha256": "170280aabf91293c9a20641d1b76b62f4f3c6e7e1747f9c661cb4680c68aef14",
+          "scan_start": "2026-09-05T14:58:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481458400_e20262481459000_c20262481459022.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481458400_e20262481459000_c20262481459022.nc",
+          "bytes": 279325,
+          "sha256": "4741b80d0826167d6af0bcbf169cc0a497a9eccd23ff623308e26c5ad544bc18",
+          "scan_start": "2026-09-05T14:58:40+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481459000_e20262481459200_c20262481459219.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481459000_e20262481459200_c20262481459219.nc",
+          "bytes": 267980,
+          "sha256": "8a200a521d198d6483cfec6b07dacde68649522523e31931ca9c7875da7a618c",
+          "scan_start": "2026-09-05T14:59:00+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481459200_e20262481459400_c20262481459420.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481459200_e20262481459400_c20262481459420.nc",
+          "bytes": 276886,
+          "sha256": "3be29f2f44f252bc425e413c00f21721639cedbc49a55f310be40aed9ee31db3",
+          "scan_start": "2026-09-05T14:59:20+00:00"
+        },
+        {
+          "key": "GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481459400_e20262481500000_c20262481500021.nc",
+          "url": "https://noaa-goes19.s3.amazonaws.com/GLM-L2-LCFA/2026/248/14/OR_GLM-L2-LCFA_G19_s20262481459400_e20262481500000_c20262481500021.nc",
+          "bytes": 288942,
+          "sha256": "5f339d3ac71af9e064053780b456cf3542cf1dbd0b0a3a72bb4032347e7c03f3",
+          "scan_start": "2026-09-05T14:59:40+00:00"
+        }
+      ],
+      "bands_retrieved": null,
+      "bands_absent": null,
+      "per_band": null,
+      "counts": {
+        "files": 30,
+        "flashes": 8534,
+        "in_box_flashes": 0,
+        "in_box_good_flashes": 0,
+        "groups": 171201,
+        "in_box_groups": 0,
+        "in_box_good_groups": 0,
+        "events": 334443,
+        "in_box_events": 0
+      },
+      "interval_start": "2026-09-05T14:50:00+00:00",
+      "interval_end": "2026-09-05T15:00:00+00:00"
+    }
+  ]
+}

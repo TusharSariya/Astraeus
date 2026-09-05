@@ -48,6 +48,7 @@ class Product:
     quality: str
     cadence_seconds: int
     good_quality_values: tuple[int, ...] = (0,)
+    quality_is_cod_bitfield: bool = False
 
 
 PRODUCTS: dict[str, Product] = {
@@ -58,9 +59,9 @@ PRODUCTS: dict[str, Product] = {
     ), "DQF", 3600),
     "ABI-L2-ACTPF": Product("ABI-L2-ACTPF", "abi_actpf", (FieldMap("Phase", "cloud_top_phase", "code", "1", valid=(0.0, 5.0)),), "DQF", 600),
     "ABI-L2-ACHTF": Product("ABI-L2-ACHTF", "abi_achtf", (FieldMap("TEMP", "cloud_top_temperature", "K", "K"),), "DQF", 600),
-    "ABI-L2-CODF": Product("ABI-L2-CODF", "abi_codf", (FieldMap("COD", "cloud_optical_depth", "1", "1"),), "DQF", 600, (1, 2)),
-    "ABI-L2-COD2KMF": Product("ABI-L2-COD2KMF", "abi_cod2kmf", (FieldMap("COD", "cloud_optical_depth", "1", "1"),), "DQF", 600, (1, 2)),
-    "ABI-L2-CPSF": Product("ABI-L2-CPSF", "abi_cpsf", (FieldMap("CPS", "cloud_particle_size", "um", "um"),), "DQF", 600, (1, 2)),
+    "ABI-L2-CODF": Product("ABI-L2-CODF", "abi_codf", (FieldMap("COD", "cloud_optical_depth", "1", "1"),), "DQF", 600, quality_is_cod_bitfield=True),
+    "ABI-L2-COD2KMF": Product("ABI-L2-COD2KMF", "abi_cod2kmf", (FieldMap("COD", "cloud_optical_depth", "1", "1"),), "DQF", 600, quality_is_cod_bitfield=True),
+    "ABI-L2-CPSF": Product("ABI-L2-CPSF", "abi_cpsf", (FieldMap("CPS", "cloud_particle_size", "um", "um"),), "DQF", 600, quality_is_cod_bitfield=True),
     "ABI-L2-TPWF": Product("ABI-L2-TPWF", "abi_tpwf", (FieldMap("TPW", "precipitable_water", "kg m-2", "mm"),), "DQF_Overall", 600),
     "ABI-L2-LVMPF": Product("ABI-L2-LVMPF", "abi_lvmpf", (FieldMap("LVM", "relative_humidity_pressure", "percent", "percent", valid=(0.0, 100.0)),), "DQF_Overall", 600),
     "ABI-L2-LVTPF": Product("ABI-L2-LVTPF", "abi_lvtpf", (FieldMap("LVT", "temperature_pressure", "degC", "K", offset=-273.15),), "DQF_Overall", 600),
@@ -88,6 +89,31 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _cod_good_quality(quality: xarray.DataArray) -> numpy.ndarray:
+    """Decode the producer's COD/CPS DQF bit field from its CF declarations."""
+    masks = [int(value) for value in numpy.atleast_1d(quality.attrs.get("flag_masks", []))]
+    values = [int(value) for value in numpy.atleast_1d(quality.attrs.get("flag_values", []))]
+    meanings = str(quality.attrs.get("flag_meanings", "")).split()
+    declared = {meaning: (mask, value) for meaning, mask, value in zip(meanings, masks, values)}
+    required = {
+        "day_algorithm_pixel_qf": (1, 0),
+        "not_day_algorithm_pixel_qf": (1, 1),
+        "night_algorithm_pixel_qf": (2, 0),
+        "not_night_algorithm_pixel_qf": (2, 2),
+        "good_quality_qf": (4, 0),
+        "degraded_quality_qf": (4, 4),
+    }
+    if any(declared.get(name) != rule for name, rule in required.items()):
+        raise ValueError("COD/CPS DQF does not declare the expected algorithm and quality bits")
+    raw = numpy.asarray(quality.values, dtype="float64")
+    finite = numpy.isfinite(raw)
+    bits = numpy.where(finite, raw, 0).astype("uint16")
+    day = (bits & 1) == 0
+    night = (bits & 2) == 0
+    exactly_one_algorithm = day ^ night
+    return finite & exactly_one_algorithm & ((bits & 4) == 0)
 
 
 def crop_product(path: Path, product: Product, *, bounds: Mapping[str, float]) -> tuple[xarray.Dataset, dict[str, Any]]:
@@ -135,7 +161,11 @@ def crop_product(path: Path, product: Product, *, bounds: Mapping[str, float]) -
     dispositions: list[dict[str, Any]] = []
     quality = subset[product.quality]
     quality_values = numpy.asarray(quality.values, dtype="float32")
-    good_quality = numpy.isfinite(quality_values) & numpy.isin(quality_values, product.good_quality_values)
+    good_quality = (
+        _cod_good_quality(quality)
+        if product.quality_is_cod_bitfield
+        else numpy.isfinite(quality_values) & numpy.isin(quality_values, product.good_quality_values)
+    )
     for item in product.fields:
         native = subset[item.native]
         if str(native.attrs.get("units", "")) != item.native_units:
@@ -151,10 +181,16 @@ def crop_product(path: Path, product: Product, *, bounds: Mapping[str, float]) -
         if "flag_values" in native.attrs:
             out_attrs.update(flag_values=numpy.asarray(native.attrs["flag_values"]).tolist(), flag_meanings=str(native.attrs.get("flag_meanings", "")))
         variables[item.canonical] = (dims, values.astype("float32"), out_attrs)
-        dispositions.append({"native": item.native, "field": item.canonical, "disposition": "retrieved"})
+        usable_cells = int(numpy.count_nonzero(numpy.isfinite(values)))
+        dispositions.append({
+            "native": item.native,
+            "field": item.canonical,
+            "disposition": "retrieved" if usable_cells else "retrieved-no-usable-native-quality-cell",
+            "usable_cells": usable_cells,
+        })
     qdims = tuple("latitude_index" if dim == "y" else "longitude_index" if dim == "x" else dim for dim in quality.dims)
     quality_values = numpy.where(inside[(...,) + (None,) * (quality_values.ndim - 2)], quality_values, numpy.nan)
-    variables["quality_flag"] = (qdims, quality_values, {"units": "1", "native_name": product.quality, "flag_values": numpy.asarray(quality.attrs.get("flag_values", [])).tolist(), "flag_meanings": str(quality.attrs.get("flag_meanings", ""))})
+    variables["quality_flag"] = (qdims, quality_values, {"units": "1", "native_name": product.quality, "flag_masks": numpy.asarray(quality.attrs.get("flag_masks", [])).tolist(), "flag_values": numpy.asarray(quality.attrs.get("flag_values", [])).tolist(), "flag_meanings": str(quality.attrs.get("flag_meanings", ""))})
     coords: dict[str, Any] = {
         "latitude": (("latitude_index", "longitude_index"), numpy.asarray(lat2d, dtype="float32")),
         "longitude": (("latitude_index", "longitude_index"), numpy.asarray(lon2d, dtype="float32")),
@@ -173,7 +209,7 @@ def crop_product(path: Path, product: Product, *, bounds: Mapping[str, float]) -
     lon_step = float(numpy.nanmax(numpy.abs(numpy.diff(lon2d, axis=1))))
     covers_bounds = bool(numpy.nanmin(lat2d) <= bounds["south"] + lat_step and numpy.nanmax(lat2d) >= bounds["north"] - lat_step and numpy.nanmin(lon2d) <= bounds["west"] + lon_step and numpy.nanmax(lon2d) >= bounds["east"] - lon_step)
     pressure_hash = hashlib.sha256(numpy.asarray(dataset.coords["pressure"].values, dtype="float32").tobytes()).hexdigest() if "pressure" in dataset.coords else None
-    return dataset, {"scan_start": scan_start, "source_attrs": source_attrs, "coverage_cells": int(inside.sum()), "total_crop_cells": int(inside.size), "covers_bounds": covers_bounds, "field_dispositions": dispositions, "quality_native_name": product.quality, "good_quality_cells": int(good_quality.sum()), "pressure_sha256": pressure_hash}
+    return dataset, {"scan_start": scan_start, "source_attrs": source_attrs, "coverage_cells": int(inside.sum()), "total_crop_cells": int(inside.size), "covers_bounds": covers_bounds, "field_dispositions": dispositions, "quality_native_name": product.quality, "good_quality_cells": int(numpy.count_nonzero(good_quality & inside)), "pressure_sha256": pressure_hash}
 
 
 class GOESABIL2Adapter:
@@ -238,7 +274,8 @@ class GOESABIL2Adapter:
             "good_quality_cells": stats["good_quality_cells"],
             "pressure_coordinate_sha256": stats["pressure_sha256"], "validation_flags": list(validation.flags),
             "field_dispositions": stats["field_dispositions"], "quality_native_name": stats["quality_native_name"],
-            "readable_quality_values": list(self.product.good_quality_values),
+            "readable_quality_values": list(self.product.good_quality_values) if not self.product.quality_is_cod_bitfield else None,
+            "readable_quality_rule": "exactly one day/night algorithm bit and producer good-quality bit clear" if self.product.quality_is_cod_bitfield else "native DQF value is in readable_quality_values",
             "geometry": "native ABI fixed-grid pixels cropped to the evidence box; values are not interpolated",
             "operational": False, "adapter_version": self.adapter_version, **declared_classes(["retrieved"], by_variable={item.canonical: "retrieved" for item in self.product.fields}),
         }

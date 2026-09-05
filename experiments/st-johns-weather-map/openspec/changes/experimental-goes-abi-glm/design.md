@@ -12,16 +12,23 @@ LVMPF/LVTPF. Native units are checked before the three explicit normalizations:
 TCF fraction to percent, TPW millimetres to the dimensionally equivalent
 kg m-2, and LVT kelvin to degC.
 
-Every native DQF array and meaning table remains in the artifact. Scientific
-values become readable only at product-declared good states. CODF, COD2KMF and
-CPSF use DQF 1/2 for the valid day/night algorithm branches; the remaining
-products use zero. A scan with no readable value fails completeness and QC.
+Every native DQF array, mask, value and meaning table remains in the artifact.
+Scientific values become readable only at product-declared good states. CODF,
+COD2KMF and CPSF validate and decode the declared bit field: exactly one
+day/night algorithm branch must apply and the producer quality bit must be
+good. The remaining products use native DQF zero. A field with no finite value
+after that rule fails completeness and records its unavailable disposition.
 
 DMW keeps every in-box vector with its DQF, band, pressure, tracer temperature
 and geometry. GLM keeps events, groups and flashes with their identifiers,
 parents, time, energy, area and quality. An empty in-box GLM or DMW collection
 is an observed empty only after the file was read and its field of view was
 proved to contain the box.
+
+The measured complete public scan inventory is C02/C07/C08/C09/C10/C14 for
+DMWF and C08 for DMWVF. Completeness is checked against those product-specific
+sets. GLM completeness requires all thirty 20-second files in the selected
+ten-minute interval.
 
 All adapters remain absent from scheduler registration. Artifacts and source
 payloads are local evidence only; Git contains tests, the receipt and code.

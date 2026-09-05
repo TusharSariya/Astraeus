@@ -68,7 +68,7 @@ DMWVF_PRODUCT = "ABI-L2-DMWVF"
 #: the set is complete for a given scan: whatever is listed is fetched, and the
 #: bands that were absent are named in the provenance.
 DMWF_BANDS: tuple[str, ...] = ("C02", "C07", "C08", "C09", "C10", "C14")
-DMWVF_BANDS: tuple[str, ...] = ("C08", "C10")
+DMWVF_BANDS: tuple[str, ...] = ("C08",)
 
 #: Observed sizes on 2026-09-05: a DMWF C14 file is ~1.09 MB, a DMWVF C08 file
 #: ~0.23 MB. The ceilings leave headroom for a busier scene and abort a

@@ -6,8 +6,12 @@
 - [x] Prove a current anonymous HTTPS capture and immutable artifact readback.
 - [x] Prove actual `LiveStore` sampling for every readable gridded field.
 - [x] Pin DMW quality and GLM empty-detection behavior in tests.
-- [ ] Capture a scan with producer-good CODF, COD2KMF and CPSF pixels in the
-  evidence box; the September 5 capture correctly returns them unavailable.
+- [x] Capture producer-good CODF and COD2KMF cells in a suitable daylight scan,
+  and record the bounded fifteen-scan evidence disposition for CPSF.
+- [x] Capture every expected band in complete selected DMWF and DMWVF scans.
+- [x] Capture every file in a complete selected ten-minute GLM interval.
+- [x] Compare stored artifact values, units, times and revisions through the
+  actual `/point` and `/layers/{layer_id}/features` HTTP routes.
 - [ ] Accept production source contracts, registration and scheduling (owner only).
 
 Verification:

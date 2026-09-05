@@ -20,8 +20,10 @@ these products.
 
 ## Limits
 
-The capture proves one current scan or interval per access path. CODF,
-COD2KMF and CPSF had no producer-good pixel in the evidence box in this
-capture and therefore failed closed; they remain retrieved-but-unreadable for
-this scan. Production admission, scheduling and owner verification remain
+The completion capture proves complete selected DMWF and DMWVF scans and one
+complete ten-minute GLM interval. A bounded suitable-daylight capture produced
+readable CODF and COD2KMF cells. Fifteen daylight CPSF scans across three days
+contained no finite particle-size value whose producer good-quality bit was
+clear, so CPSF remains explicitly retrieved but unavailable under the native
+quality rule. Production admission, scheduling and owner verification remain
 unapproved.
