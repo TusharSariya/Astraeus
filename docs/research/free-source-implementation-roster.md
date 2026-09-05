@@ -38,17 +38,20 @@ artifact, Astraeus API readback, and failure/provenance evidence.
 
 ## Authority and contract status
 
-Accepted `GOV-SPEC-001`, `GOV-SPEC-002`, `GOV-SPEC-004`, `GOV-SPEC-005`,
-`GOV-SPEC-006`, `EVD-PROV-001` and `EVD-MASK-001` govern truthfulness,
-authority, traceability, provenance and masks. They do not admit any new
+Accepted `GOV-SPEC-001`, `GOV-SPEC-002`, `GOV-SPEC-004`, `GOV-SPEC-005`
+and `GOV-SPEC-006` govern authority, traceability and truthful verification.
+`EVD-PROV-001` and `EVD-MASK-001` remain proposed V1 requirements, not
+accepted implementation authority. None of these references admits a new
 provider product or field.
 
 The experiment's `artifact-ingestion`, `evidence-truth-boundary` and
 `source-registry-catalogue` contracts are executable design inputs, but their
 source-specific additions remain OpenSpec drafts. Each unimplemented roster
-row therefore records a contract gap. Implementation waits for an accepted
+row therefore records a contract gap. Production implementation and admission wait for an accepted
 product/access/field decision; a research probe or passing fixture cannot fill
-that gap. Existing ordinary paths still require live artifact/API/provenance
+that gap. Isolated exploratory adapter development and verification may
+proceed under the explicit experiment scope described in the
+[source-contract matrix](source-contract-authority-matrix.md). Existing ordinary paths still require live artifact/API/provenance
 verification before they can count as completed by this map.
 
 The root worktree contains an uncommitted readiness-container clarification in
