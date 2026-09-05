@@ -10,8 +10,8 @@ Classification: no spec impact. Documentation only; no API implementation or nor
 | --- | --- | --- |
 | Bounded point Series read | [Series decision](https://github.com/TusharSariya/Astraeus/issues/50#issuecomment-5548103502), `prototype/series` capture notes: requests span changing store state; seven retained point requests were approximately 32–156 KB each | Owner selected one bounded batch read with per-sample provenance and explicit revision consistency; retain sparse samples and sampled absence, never interpolate server data to fill the chart |
 | Verdict reads | [Activity contract](https://github.com/TusharSariya/Astraeus/issues/48#issuecomment-5532460091), [scoring decision](https://github.com/TusharSariya/Astraeus/issues/49#issuecomment-5533313908); no routes in inspected OpenAPI | Carry the already selected `/verdicts` and `/verdicts/series` into the proposal; preserve four profiles, six states, coverage, inputs and overrides; scoring implementation still requires its specification gates |
-| Layer/source identity and field vocabulary | [Map decision](https://github.com/TusharSariya/Astraeus/issues/46#issuecomment-5532224119); Layer schema lacks `source_id` and canonical catalogue field mapping | Explicit source and field joins are candidates. Short titles/family display labels alone do not justify an endpoint: the selected Map already derives them. A bundle may contain multiple fields/classes, so a scalar layer class must not mislabel every value |
-| Structured provider imagery time extent | Map decision reports artifact time versus imagery time mismatch and discovery through a 422 message | Candidate delivery-specific time metadata on the existing layer representation, with served raster headers still authoritative for the returned image |
+| Layer/source identity and field vocabulary | [Map decision](https://github.com/TusharSariya/Astraeus/issues/46#issuecomment-5532224119); Layer schema lacks `source_id` and canonical catalogue field mapping | Owner selected explicit source and field joins. Short titles/family display labels alone do not justify an endpoint: the selected Map already derives them. A bundle may contain multiple fields/classes, so a scalar layer class must not mislabel every value |
+| Structured provider imagery time extent | Map decision reports artifact time versus imagery time mismatch and discovery through a 422 message | Owner selected delivery-specific time metadata on the existing layer representation, with served raster headers still authoritative for the returned image |
 | Run and freshness | `Layer`, `LayerFrame`, `LayerRunSummary` already expose run fields; Series captures preserve contradictory freshness | Reuse existing fields; investigate population/consistency defects instead of inventing another run clock. Null remains unknown with reason |
 | Coverage | `TimelineItem.coverage`, tier and coverage notices already exist | Reuse temporal summaries. Their existence does not establish availability for a field at the Focus coordinate or a verified alert all-clear |
 | Station evidence | [Layer-led decision](https://github.com/TusharSariya/Astraeus/issues/58#issuecomment-5548645284); existing `/layers/{id}/features` returns GeoJSON | Existing `store.py` feature properties omit full per-reading provenance and station identity; reuse and strengthen this route. Empty captures do not prove a new station endpoint is necessary |
@@ -25,11 +25,11 @@ The subagent compared the [Sources decision](https://github.com/TusharSariya/Ast
 
 - `models.py:338` already defines full point provenance. Space-weather models at `1316` and `1327`, astronomy provenance at `1384`, and station feature properties do not expose the same evidence identity. Extend the affected representations rather than assigning one class to an entire mixed source.
 - `models.py:1393` requires numeric astronomy values and `app.py:1838` returns zero placeholders when unavailable. A nullable or discriminated unavailable shape is a contract correction candidate; zero must remain a real value when measured/computed.
-- Checked-in sites/horizons and camera registries exist but no corresponding GET routes are exposed. Decide whether embedded versioned registries suffice before adding routes. Neither new horizon estimation nor camera admission is established by this need.
+- Checked-in sites/horizons and camera registries exist but no corresponding GET routes are exposed. The owner subsequently selected read-only API exposure of those registries. Neither new horizon estimation nor camera admission is established by this need.
 - Celestial azimuth is absent, but the selected Sky prototype deliberately does not draw directional celestial positions. Treat directional placement as conditional scope, not automatically mandatory API work.
 - `store.py:2148` uses provenance run time for staleness while the returned run time at `2165` comes from the sample. Reconcile this source of contradictory metadata rather than adding another freshness representation.
 - Family filtering is derivable from catalogue field families. `/space-weather` already distinguishes observed and forecast Kp and timestamped Bz/Bt. No extra family or space-weather endpoint is justified.
-- Non-atomic Sources and Sky reads corroborate the consistency problem. They do not establish that batching is the only solution; revision binding remains an alternative to consider.
+- Non-atomic Sources and Sky reads corroborate the consistency problem. They did not by themselves establish that batching was the only solution; the owner subsequently selected a bounded paginated Series operation with revision binding.
 
 ## First decision: coherent Series reads
 
@@ -87,3 +87,13 @@ This addresses the selected Map's captured two-time-axis gap. It does not resolv
 
 
 Concrete candidate wire shapes and open choices are collected in [API contract draft](api-contract-draft.md). They remain proposed until owner review; the selections above are the authority for drafting scope.
+
+
+## Owner decisions: native sampling and relevant refresh notices
+
+The owner answered “yes for both” to these two behavior choices:
+
+- Preserve each source's actual timestamps instead of forcing all sources onto hourly rows. Preserve sparse samples and explicitly checked absences. Do not manufacture missing values at another source's timestamps or imply that unqueried intervals were evaluated.
+- Show a new-data notice only when data relevant to the current selection changes. A deployment-wide token that changes for unrelated sources is not sufficient. The check compares the fixed snapshot's selection with current relevant evidence without mutating or renewing the snapshot. Refresh remains explicit.
+
+The proposed wire draft now describes a selection-specific check. Its transport, numeric limits and exact error/schema definitions remain reviewable implementation-proposal details. No backend behavior or normative status has changed.

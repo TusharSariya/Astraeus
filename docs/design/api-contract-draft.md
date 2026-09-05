@@ -45,17 +45,18 @@ Continuation request uses the same route with `{cursor: opaque_string}` only. Do
     id: opaque string,
     selected_at: UTC datetime,
     expires_at: UTC datetime,
-    artifact_revisions: [{source_id, revision_id}]
+    artifact_revisions: [{source_id, revision_id}],
+    change_token: opaque selection-bound token
   },
   series: [{
     series_id: stable within this snapshot,
+    selector_id: request-local selector id,
     identity: {source_id, key, vertical_level, phase, member, statistic},
     availability: {
       status: "samples" | "no_samples" | "unknown",
       reason: string | null
     },
     samples: [{
-      selector_id: request-local selector id,
       revision_ids: [immutable artifact revision id],
       evidence: existing EvidenceField
     }]
@@ -66,11 +67,11 @@ Continuation request uses the same route with `{cursor: opaque_string}` only. Do
 }
 ```
 
-Identity must distinguish statistic parameters as well as name where applicable. The echoed selector id connects expanded levels/members back to the requested selector. Actual field units and comparability travel through `EvidenceField`; equal units alone never authorize a shared axis. An empty `revision_ids` list is permitted only for an explicit absence that read no artifact, with a reason. Each sample time is `evidence.provenance.valid_time`, avoiding a second independently authored timestamp. Derived values need input revision identities as well as their output revision; reuse the same provenance extension across point and Series rather than hiding derivation inputs in cursor state.
+Identity must distinguish statistic parameters as well as name where applicable. The envelope selector id connects expanded levels/members and metadata-only absences back to the requested selector. Actual field units and comparability travel through `EvidenceField`; equal units alone never authorize a shared axis. An empty `revision_ids` list is permitted only for an explicit absence that read no artifact, with a reason. Each sample time is `evidence.provenance.valid_time`, avoiding a second independently authored timestamp. Derived values need input revision identities as well as their output revision; reuse the same provenance extension across point and Series rather than hiding derivation inputs in cursor state.
 
-A logical page contains a bounded number of sample records, ordered deterministically by valid time and a canonical identity order. Series envelopes can repeat across pages; sample identity is stable for de-duplication. A terminal page has `next_cursor: null` and `complete: true`. Request-level selection/availability metadata is present even when no samples exist. Metadata-only series appear once, on the first page; they must not consume an unbounded payload outside the selector limit.
+A logical page contains a bounded number of sample records, ordered deterministically by valid time and a canonical identity order. Series envelopes can repeat across pages; sample identity is stable for de-duplication. A terminal page has `next_cursor: null` and `complete: true`. Request-level selection/availability metadata is present even when no samples exist. Availability describes the complete frozen selection, not the current page; it cannot change because pagination split its samples. Metadata-only series appear once, on the first page; they must not consume an unbounded payload outside the selector limit.
 
-Only actual published sample times become numeric samples. Evaluated absent samples retain existing absence states/reasons. Unqueried or unpublished intervals never become synthetic hourly nulls or implied continuous coverage. Availability here describes this selected source/field/location/window, not the deployment's generic source coverage and not alert clearance.
+Owner-selected sampling: retain each source's actual timestamps. Only actual published sample times become numeric samples. Evaluate absences only at that source/field's declared published times that were explicitly checked and retain existing absence states/reasons. Do not cross-product every selected source against every other source's timestamps. Numeric and explicit-null sample rows identify the checked times. A selection with no declared native times is metadata-only `no_samples`, with a reason and no invented timestamp; an unreadable inventory is `unknown`, not `no_samples`. Unqueried or unpublished intervals never become synthetic hourly nulls or implied continuous coverage. Availability here describes this selected source/field/location/window, not the deployment's generic source coverage and not alert clearance.
 
 The snapshot pins an immutable set of artifact revisions, derived-input revisions, registry/derivation versions and the inventory state used to report absence. Fix the freshness assessment clock at `selected_at` as well, retaining original retrieval/run times. Derived calculations must not read newer inputs during continuation. New ingestion affects the next initial read, never later pages of this read. Retain pinned revisions until advertised expiry; do not extend expiry silently on every page. This is a request snapshot, not forecast-vintage history or a persistent comparison workspace.
 
@@ -93,9 +94,25 @@ Page size limits bound individual responses. Separate selector, sample, byte, du
 
 ## New-data indicator and refresh
 
-Propose a lightweight `evidence_revision` token on the existing catalogue response that changes when the current published evidence selection changes. It is a deployment-wide refresh hint, not an artifact revision or proof that selected fields changed. UI wording must say new evidence is available, without claiming the current selection changed. A failed or unattempted check is unknown, not checked-and-unchanged. A client can check it through its existing refresh cycle; no push transport or polling interval is selected.
+Owner-selected behavior: notify only when evidence relevant to the current selection changes. A deployment-wide revision token is not sufficient. The snapshot remains fixed; a separate lightweight check reports current relevant changes without reading another result page or refreshing automatically.
 
-The frontend keeps displaying its labelled snapshot until explicit refresh. Refresh preserves Focus and selections, starts a new read, and replaces the displayed snapshot as a unit; it never appends new pages to old pages. Expiry offers restart and old results are not labelled current. A selection-specific check would reduce irrelevant notices but requires a separately scoped read contract; that tradeoff remains an owner choice.
+Propose read-only `POST /point/series/changes` with `{change_token}`. This opaque token binds the original coordinate/window/selectors and the snapshot's relevant evidence baseline. It is not a pagination cursor, cannot change the selection, and does not pin additional data or extend snapshot lifetime. The response shape is:
+
+```text
+{
+  snapshot_id: opaque string,
+  checked_at: UTC datetime,
+  state: "unchanged" | "changed" | "unknown",
+  changed_selector_ids: [request-local selector id],
+  reason: string | null
+}
+```
+
+`changed` means a selected field/source/location/window's sample availability, evidence revision or relevant interpretation metadata changed, including an initially absent stream becoming available. The comparison includes relevant derived-input and registry versions. Unrelated source updates must return `unchanged`; a global store-revision mismatch cannot by itself trigger a notice. Clock passage alone does not count as new evidence. A failed or unattempted check is `unknown`, never checked-and-unchanged. The response's `checked_at` is separate from the snapshot's fixed freshness assessment at `selected_at`.
+
+The baseline remains the displayed snapshot on every check; checking does not acknowledge or consume a change. If a later check fails, return `unknown`; the UI can retain the last successful change notice with its check timestamp, but must disclose the failed current check. A successful later comparison uses the actual current state, including `unchanged` if it matches the original baseline again. No polling interval or push transport is selected. At snapshot expiry, both continuation and change checks return `snapshot_expired`; the frontend offers restart rather than treating expiry as new evidence or unchanged data. This draft keeps baseline retention and pinned-data retention under the same advertised expiry.
+
+The frontend keeps displaying its labelled snapshot until explicit refresh. Refresh preserves Focus and selections, starts a new read, and replaces the displayed snapshot as a unit; it never appends new pages to old pages. Expiry offers restart and old results are not labelled current. The change-check route and field spellings are proposed mechanisms for the selected behavior, not independently accepted wire contracts.
 
 ## Extend existing responses
 
@@ -129,6 +146,7 @@ Machine-readable legend stops, a family-finder endpoint, server persistence for 
 - Ingest publishes a new revision between pages: continuation returns only pinned revisions; refresh returns the new selection.
 - Expired, altered, over-budget and unreadable snapshot cases follow the selected error semantics; storage purge respects live pins.
 - Multiple source cadences, levels, phases, members and statistic parameters remain distinct across page boundaries; no sample duplicates or losses, and final completion is explicit.
+- A relevant source gains/revises selected evidence: a change check reports it without mutating the snapshot; unrelated updates do not trigger a notice. Repeated checks retain the original baseline; failure is unknown and expiry requires restart.
 - Zero remains numeric; explicit absence and unknown/unpublished intervals remain distinguishable; failed evidence cannot become a favorable value.
 - Station/reference/model geometry stays distinct; TAF periods and CAP absence never imply unsupported validity or clearance.
 - Imagery and point axes differ: the Map uses advertised imagery availability and verifies the returned raster timestamp.
