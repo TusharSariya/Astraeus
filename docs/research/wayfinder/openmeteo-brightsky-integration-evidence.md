@@ -1,71 +1,88 @@
 # Open-Meteo deterministic atmosphere and Bright Sky MOSMIX evidence
 
-Evidence date: 2026-09-05 UTC. Tracking: [Implement Open-Meteo deterministic
-atmosphere and Bright Sky MOSMIX](https://github.com/TusharSariya/Astraeus/issues/98).
+Evidence date: 2026-09-05 UTC. Tracking: [issue 98](https://github.com/TusharSariya/Astraeus/issues/98).
 
 This is an isolated experiment under `GOV-SPEC-001`, `GOV-SPEC-002`,
-`GOV-SPEC-004`, `GOV-SPEC-005` and `GOV-SPEC-006`. The source-specific contract
-below is draft input. The adapters are intentionally absent from the adapter
-loader, registry entries remain `catalogued`, and `operational` remains false.
+`GOV-SPEC-004`, `GOV-SPEC-005` and `GOV-SPEC-006`. The source contracts are
+draft input. The adapters remain absent from the adapter loader, registry
+entries remain `catalogued`, and `operational` remains false.
 
 ## Draft source contract
 
-The three Open-Meteo sources use `api.open-meteo.com/v1/forecast` with the exact
-selectors `jma_gsm`, `meteofrance_arpege_world025` and
-`ukmo_global_deterministic_10km`. Requests name one model, UTC, `elevation=nan`,
-`cell_selection=nearest`, SI wind and a finite hourly window. Producer and
-intermediary remain separate. Bright Sky uses `/weather` with the exact
-`wmo_station_id=71801`; source 1228, `ST.JOHNS NEUFUNDL.`, must appear in the
-response. A coordinate or nearest-station fallback is forbidden.
+The Open-Meteo sources use `api.open-meteo.com/v1/forecast` with exact selectors
+`jma_gsm`, `meteofrance_arpege_world025` and
+`ukmo_global_deterministic_10km`. Requests name one model, UTC,
+`elevation=nan`, `cell_selection=nearest`, SI wind and a finite hourly window.
+Bright Sky uses exact `wmo_station_id=71801`; source 1228,
+`ST.JOHNS NEUFUNDL.` and `observation_type=forecast` must appear once, and every
+weather row must carry `source_id=1228`. Nearest-station fallback is forbidden.
 
-Both routes return point series on EPSG:4326. Values retain returned coordinates,
-valid time, original units, normalized units, response SHA-256, exact request,
-producer, intermediary and field disposition. Open-Meteo's rolling response and
-Bright Sky's response expose no per-value producer cycle, so `run_time` is null
-and run certainty is `unknown`. Adjacent `meta.json` is not borrowed as lineage.
+Both routes return point series on EPSG:4326. Values retain returned
+coordinates, valid time, original and normalized units, response and artifact
+SHA-256, exact request, producer, intermediary and field disposition. Both
+rolling responses expose no per-value producer cycle, so `run_time` is null and
+run certainty is `unknown`; adjacent `meta.json` is not borrowed as lineage.
 
-| Source | Retrieved and stored | Missing, unsupported or deferred |
+| Source | Retrieved and stored | Raw/deferred accounting |
 |---|---|---|
-| JMA GSM, ARPEGE World, UKMO Global | temperature, dew point, total/low/mid/high cloud, 10 m wind speed/direction, MSL pressure, hourly precipitation | RH deferred because no saturation phase is declared; profiles are deferred because this bounded contract has no accepted profile mapping |
-| MOSMIX 71801 | temperature, dew point, total cloud, visibility, 10 m wind speed/direction, MSL pressure, hourly precipitation | RH missing/null and phase undeclared; gust, probability, sunshine and solar unsupported by the field catalogue; Bright Sky `condition` deferred because it is intermediary-derived |
+| JMA GSM, ARPEGE World, UKMO Global | temperature, dew point, total/low/mid/high cloud, 10 m wind speed/direction, MSL pressure, preceding-hour precipitation | RH is requested and confirmed `raw_retrieved`, but canonical publication is deferred because no saturation phase is declared. Pressure profiles remain outside this draft contract pending exact per-model availability, levels and conventions; this evidence does not claim them. |
+| MOSMIX 71801 | temperature, dew point, total cloud, visibility, 10 m wind speed/direction and gust, MSL pressure, preceding-hour precipitation | RH, gust direction, hourly/six-hour probability, sunshine, solar, condition and icon are retained exactly in `raw_deferred_fields`; each status comes from the response as `raw_retrieved` or `raw_returned_null`. Unknown catalogue semantics remain `canonical_deferred`. |
+
+Every selected Open-Meteo array is mandatory. The parser accepts the complete
+unsuffixed shape currently returned for one explicit model or a complete shape
+suffixed with that selector. Mixed shapes, a known foreign suffix, an omitted
+array or an omitted unit fail before artifact creation. The artifact carries
+the registry's six documented transformations: regridding, elevation
+downscaling (disabled here), cell selection, temporal interpolation,
+intermediary field derivation and accumulation redistribution. Precipitation
+carries `reporting_interval=preceding_hour` and
+`reporting_interval_hours=1` for both providers.
 
 Open-Meteo values are `reprocessed`. UKMO stays research-only under the recorded
-CC BY-SA 4.0 restriction; this evidence does not approve redistribution. Bright
-Sky remains DWD-produced and Bright Sky-reprocessed under DWD terms. The local
-Open-Meteo ceiling is 40 weighted/minute, 400/hour, 2,000/day and 50,000/month,
-one request at a time. Each response is limited to 4 MiB and one point/window;
-there is no bulk loop. Provider 429, malformed JSON, wrong units, misaligned
-arrays, wrong station, empty window and all-missing selected fields fail closed.
-
-Publication uses the existing deterministic zipped-Zarr writer and stage/publish
-store seam. An incomplete or failed-QC run cannot publish, so the prior visible
-revision remains. Rollback is removal of this unregistered module and its tests;
-no scheduler or deployed database/object store was changed.
+CC BY-SA 4.0 restriction. Bright Sky remains DWD-produced and Bright
+Sky-reprocessed. The local Open-Meteo ceiling is 40 weighted/minute, 400/hour,
+2,000/day and 50,000/month, one request at a time. Each response is limited to
+4 MiB and one point/window; there is no artificial daily byte cap or bulk loop.
+Provider 429, malformed JSON, wrong units, misaligned arrays, missing selected
+fields, wrong source identity and empty windows fail closed. The existing
+stage/publish seam preserves the previous visible revision unless a run is
+complete and passes QC. The physical experiment allocation remains bounded by
+the existing finite disk and operation quotas.
 
 ## Evidence
 
-A bounded live retrieval at `2026-09-05T14:28:27Z` made four anonymous requests,
-one per source, for 24 hours. All four produced complete, QC-passed immutable
-artifacts. Response/artifact evidence was:
+The reproducible smoke command made exactly four anonymous requests for a
+three-step window at `2026-09-05T14:49:22Z`. It retained small raw responses,
+immutable Zarr artifacts, provenance, checksums, all field dispositions and a
+numeric read through `weather_api.store.LiveStore` under
+`docs/research/wayfinder/evidence/openmeteo-brightsky-20260905-corrective/`.
+All three Open-Meteo artifacts were complete and QC-passed. MOSMIX returned a
+null gust throughout this live window, so its manifest honestly records
+`complete=false`, `qc_passed=true`; the artifact is retained as evidence but is
+not publishable and no prior visible revision would advance.
 
-| Source | Returned identity | Response SHA-256 | Zarr bytes |
+| Source | Outcome | Artifact SHA-256 | Bytes |
 |---|---|---|---:|
-| `openmeteo-jma-gsm` | cell 47.5, -52.5; run unknown | `a30dbe005723696fb19ab7b32998418c6cafebcc2cda8a4c64462d36df1a7769` | 14,727 |
-| `openmeteo-arpege` | cell 47.5, -52.75; run unknown | `952fa60659ed3cb9e590f117450f57cedac181cb66db947e85ea992175742fda` | 14,641 |
-| `openmeteo-ukmo-global` | cell 47.53125, -52.734375; run unknown | `2ec12663b7cad3c76c3ff723790dc6f690ba41373a45e3c4c3e64524f3c67d0a` | 14,545 |
-| `brightsky-dwd-mosmix-71801` | exact WMO 71801, Bright Sky source 1228; run unknown | `aefd9a467b5b98c8e348d80cec2e1e0448e8bd8bdddaab1b28fe8102602e0db0` | 12,441 |
+| `openmeteo-jma-gsm` | complete, QC pass; run unknown | `32d461050f1035d7ee42f748a1348d5aac6f58524b2d6a2e41f2f000f80c0500` | 14,131 |
+| `openmeteo-arpege` | complete, QC pass; run unknown | `62551eeec6252b4b3cee7d4883caed82bcf428a24e0ce2cdb101445ac713ba97` | 14,132 |
+| `openmeteo-ukmo-global` | complete, QC pass; run unknown | `060051a22d1523e7ef4df57b4ea2b4e99f6e2694a86dbf38e4ea05dfb7c7b922` | 14,101 |
+| `brightsky-dwd-mosmix-71801` | incomplete (null gust), QC pass; exact source; run unknown | `4952ed3ad9b76c4de790ed4720c4418c13e2318fd50b7d6df60a0784d59f6e70` | 12,918 |
 
-The test suite covers representative fixtures, model-suffixed arrays, field
-dispositions, units, timestamps, unknown rolling run identity, malformed JSON,
-partial arrays, 429, exact-station enforcement and deterministic artifact
-round-trip. It also opens the immutable artifact and reads its value through the
-real Astraeus `/api/experiments/weather/v0/point` handler using a test-only
-product mapping; the response stays `operational: false` and preserves source
-and `reprocessed` provenance. No production product mapping is added.
+The fixture suite covers complete unsuffixed and selected-model-suffixed
+shapes, omitted selected fields, mixed and foreign identities,
+source/name/type/row mismatches, response-derived optional-field status,
+intervals, transformations, malformed JSON, 429 and artifact integrity. The
+point-handler test uses the real `LiveStore` download, checksum, Zarr-open and
+sampling path with a test-local product mapping; it no longer constructs a
+`Sample` manually. The live bundle's numeric reader proof includes eight
+catalogued JMA fields and their actual values.
 
 Verification commands:
 
 ```text
-uv run --project experiments/st-johns-weather-map/api pytest experiments/st-johns-weather-map/api/tests/test_adapter_openmeteo.py -q
+cd experiments/st-johns-weather-map
+uv run --project api python scripts/openmeteo_brightsky_live_smoke.py ../../docs/research/wayfinder/evidence/openmeteo-brightsky-20260905-corrective
+uv run --project api pytest api/tests/test_adapter_openmeteo.py -q
+cd ../..
 uv run --project tools/specs python tools/specs/specctl.py validate
 ```

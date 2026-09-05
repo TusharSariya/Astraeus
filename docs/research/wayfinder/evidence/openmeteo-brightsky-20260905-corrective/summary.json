@@ -1,0 +1,142 @@
+{
+  "numeric_reader_proof": [
+    {
+      "units": "mm",
+      "value": 0.0,
+      "variable": "precipitation_accumulation"
+    },
+    {
+      "units": "hPa",
+      "value": 1014.0,
+      "variable": "mean_sea_level_pressure"
+    },
+    {
+      "units": "percent",
+      "value": 3.0,
+      "variable": "cloud_low"
+    },
+    {
+      "units": "percent",
+      "value": 40.0,
+      "variable": "cloud_middle"
+    },
+    {
+      "units": "degC",
+      "value": 15.7,
+      "variable": "temperature_2m"
+    },
+    {
+      "units": "degC",
+      "value": 11.0,
+      "variable": "dew_point_2m"
+    },
+    {
+      "units": "percent",
+      "value": 59.0,
+      "variable": "cloud_high"
+    },
+    {
+      "units": "percent",
+      "value": 72.0,
+      "variable": "total_cloud_geometric"
+    }
+  ],
+  "request_count": 4,
+  "retrieved_at": "2026-09-05T14:49:22.840262+00:00",
+  "sources": [
+    {
+      "artifact_bytes": 14131,
+      "artifact_sha256": "32d461050f1035d7ee42f748a1348d5aac6f58524b2d6a2e41f2f000f80c0500",
+      "complete": true,
+      "field_disposition": {
+        "cloud_high": "retrieved",
+        "cloud_low": "retrieved",
+        "cloud_middle": "retrieved",
+        "dew_point_2m": "retrieved",
+        "mean_sea_level_pressure": "retrieved",
+        "precipitation_accumulation": "retrieved",
+        "relative_humidity_2m": "raw_retrieved; canonical_deferred: saturation phase convention is not published",
+        "temperature_2m": "retrieved",
+        "total_cloud_geometric": "retrieved",
+        "wind_direction_10m": "retrieved",
+        "wind_speed_10m": "retrieved"
+      },
+      "qc_passed": true,
+      "response_sha256": "3ddc8cce4f4960590166d119aafc12cc8dc137497b5bf3835083d0aa8a306ba9",
+      "source_id": "openmeteo-jma-gsm"
+    },
+    {
+      "artifact_bytes": 14132,
+      "artifact_sha256": "62551eeec6252b4b3cee7d4883caed82bcf428a24e0ce2cdb101445ac713ba97",
+      "complete": true,
+      "field_disposition": {
+        "cloud_high": "retrieved",
+        "cloud_low": "retrieved",
+        "cloud_middle": "retrieved",
+        "dew_point_2m": "retrieved",
+        "mean_sea_level_pressure": "retrieved",
+        "precipitation_accumulation": "retrieved",
+        "relative_humidity_2m": "raw_retrieved; canonical_deferred: saturation phase convention is not published",
+        "temperature_2m": "retrieved",
+        "total_cloud_geometric": "retrieved",
+        "wind_direction_10m": "retrieved",
+        "wind_speed_10m": "retrieved"
+      },
+      "qc_passed": true,
+      "response_sha256": "960babc5f0c1f8d359266d8ebcf0c7979d3d2172c945b4482ce1915223bef083",
+      "source_id": "openmeteo-arpege"
+    },
+    {
+      "artifact_bytes": 14101,
+      "artifact_sha256": "060051a22d1523e7ef4df57b4ea2b4e99f6e2694a86dbf38e4ea05dfb7c7b922",
+      "complete": true,
+      "field_disposition": {
+        "cloud_high": "retrieved",
+        "cloud_low": "retrieved",
+        "cloud_middle": "retrieved",
+        "dew_point_2m": "retrieved",
+        "mean_sea_level_pressure": "retrieved",
+        "precipitation_accumulation": "retrieved",
+        "relative_humidity_2m": "raw_retrieved; canonical_deferred: saturation phase convention is not published",
+        "temperature_2m": "retrieved",
+        "total_cloud_geometric": "retrieved",
+        "wind_direction_10m": "retrieved",
+        "wind_speed_10m": "retrieved"
+      },
+      "qc_passed": true,
+      "response_sha256": "77af5ec5762eb8ddb58546c502e1ccb96fcca56c67a83df902ad105f19b5f0a7",
+      "source_id": "openmeteo-ukmo-global"
+    },
+    {
+      "artifact_bytes": 12918,
+      "artifact_sha256": "4952ed3ad9b76c4de790ed4720c4418c13e2318fd50b7d6df60a0784d59f6e70",
+      "complete": false,
+      "field_disposition": {
+        "condition": "raw_retrieved; canonical_deferred: catalogue semantics or producer convention unresolved",
+        "dew_point_2m": "retrieved",
+        "icon": "raw_retrieved; canonical_deferred: catalogue semantics or producer convention unresolved",
+        "mean_sea_level_pressure": "retrieved",
+        "precipitation_accumulation": "retrieved",
+        "precipitation_probability": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+        "precipitation_probability_6h": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+        "relative_humidity_2m": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+        "solar": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+        "sunshine": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+        "temperature_2m": "retrieved",
+        "total_cloud_geometric": "retrieved",
+        "visibility": "retrieved",
+        "wind_direction_10m": "retrieved",
+        "wind_gust_10m": "missing: all station values null",
+        "wind_gust_direction": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+        "wind_speed_10m": "retrieved"
+      },
+      "qc_passed": true,
+      "response_sha256": "51c56ebf5334331cb7b03e98d8ab8381c765f62424fe1912f446e2d69b90f08c",
+      "source_id": "brightsky-dwd-mosmix-71801"
+    }
+  ],
+  "window": [
+    "2026-09-05T14:00:00+00:00",
+    "2026-09-05T16:00:00+00:00"
+  ]
+}

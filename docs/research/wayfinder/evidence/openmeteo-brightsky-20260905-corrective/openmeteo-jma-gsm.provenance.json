@@ -1,0 +1,70 @@
+{
+  "access_path": "https://api.open-meteo.com/v1/forecast",
+  "adapter_version": "openmeteo-named-point-v1",
+  "cell_selection": "nearest",
+  "coverage": {
+    "fraction": 1.0,
+    "status": "complete"
+  },
+  "evidence_class_by_variable": {
+    "cloud_high": "reprocessed",
+    "cloud_low": "reprocessed",
+    "cloud_middle": "reprocessed",
+    "dew_point_2m": "reprocessed",
+    "mean_sea_level_pressure": "reprocessed",
+    "precipitation_accumulation": "reprocessed",
+    "temperature_2m": "reprocessed",
+    "total_cloud_geometric": "reprocessed",
+    "wind_direction_10m": "reprocessed",
+    "wind_speed_10m": "reprocessed"
+  },
+  "evidence_classes": [
+    "reprocessed"
+  ],
+  "field_disposition": {
+    "cloud_high": "retrieved",
+    "cloud_low": "retrieved",
+    "cloud_middle": "retrieved",
+    "dew_point_2m": "retrieved",
+    "mean_sea_level_pressure": "retrieved",
+    "precipitation_accumulation": "retrieved",
+    "relative_humidity_2m": "raw_retrieved; canonical_deferred: saturation phase convention is not published",
+    "temperature_2m": "retrieved",
+    "total_cloud_geometric": "retrieved",
+    "wind_direction_10m": "retrieved",
+    "wind_speed_10m": "retrieved"
+  },
+  "intermediary": "Open-Meteo",
+  "intermediary_transformations": [
+    "Regridding off the producer's native grid onto Open-Meteo's own grid.",
+    "Statistical elevation downscaling against a 90 m digital elevation model, on by default.",
+    "Grid-cell selection by Open-Meteo's own policy (cell_selection=land|sea|nearest).",
+    "Temporal interpolation to the finest step Open-Meteo offers, finer than the producer's own output step.",
+    "Derivation of fields the producer never published, including every cloud field and relative humidity.",
+    "Accumulation redistribution of 6-hourly totals across finer steps."
+  ],
+  "licence": "Open-Meteo CC BY 4.0 plus upstream terms",
+  "model_selector": "jma_gsm",
+  "native_crs": "EPSG:4326",
+  "producer": "Japan Meteorological Agency",
+  "product": "JMA GSM",
+  "quality": {
+    "detail": "openmeteo-jma-gsm: all declared fields present, in units, and covered",
+    "flags": [],
+    "status": "passed"
+  },
+  "request_url": "https://api.open-meteo.com/v1/forecast?latitude=47.5615&longitude=-52.7126&models=jma_gsm&hourly=temperature_2m%2Cdew_point_2m%2Crelative_humidity_2m%2Ccloud_cover%2Ccloud_cover_low%2Ccloud_cover_mid%2Ccloud_cover_high%2Cwind_speed_10m%2Cwind_direction_10m%2Cpressure_msl%2Cprecipitation&timezone=GMT&elevation=nan&cell_selection=nearest&wind_speed_unit=ms&start_hour=2026-09-05T14%3A00&end_hour=2026-09-05T16%3A00",
+  "requested_elevation": "nan",
+  "response_sha256": "acbd4c13d87e6d8b6e5ea3acf4f8483b7c4ae1bdaa494354a585c050ec0d2b22",
+  "returned_coordinates": [
+    47.5,
+    -52.5
+  ],
+  "run_identity": {
+    "certainty": "unknown",
+    "reason": "rolling response has no per-value run reference",
+    "value": null
+  },
+  "sha256": "32d461050f1035d7ee42f748a1348d5aac6f58524b2d6a2e41f2f000f80c0500",
+  "source_id": "openmeteo-jma-gsm"
+}

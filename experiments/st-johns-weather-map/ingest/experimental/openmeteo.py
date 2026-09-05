@@ -23,6 +23,7 @@ from ingest.contract import MEDIA_ZARR, AdapterUnavailable, Artifact, FetchWindo
 from ingest.grib import write_zarr
 from ingest.http import PoliteClient
 from ingest.manifest import RequiredField, RunManifest, validate_run
+from registry.source_data import OPEN_METEO_TRANSFORMATIONS
 
 UTC = timezone.utc
 MAX_JSON_BYTES = 4 * 1024 * 1024
@@ -53,6 +54,34 @@ MODEL_SOURCES = {
     "openmeteo-arpege": ("meteofrance_arpege_world025", "Meteo-France", "ARPEGE World 0.25 degree"),
     "openmeteo-ukmo-global": ("ukmo_global_deterministic_10km", "UK Met Office", "UKMO Global 10 km"),
 }
+
+BRIGHT_SKY_SOURCE = {
+    "id": 1228,
+    "wmo_station_id": "71801",
+    "station_name": "ST.JOHNS NEUFUNDL.",
+    "observation_type": "forecast",
+}
+
+BRIGHT_SKY_FIELDS = {
+    "temperature": ("temperature_2m", "degC", 1.0, "instant"),
+    "dew_point": ("dew_point_2m", "degC", 1.0, "instant"),
+    "cloud_cover": ("total_cloud_geometric", "percent", 1.0, "instant"),
+    "visibility": ("visibility", "m", 1.0, "instant"),
+    "pressure_msl": ("mean_sea_level_pressure", "hPa", 1.0, "instant"),
+    "wind_speed": ("wind_speed_10m", "m s-1", 1 / 3.6, "instant"),
+    "wind_direction": ("wind_direction_10m", "degree", 1.0, "instant"),
+    "wind_gust_speed": ("wind_gust_10m", "m s-1", 1 / 3.6, "instant"),
+    "precipitation": ("precipitation_accumulation", "mm", 1.0, "preceding_hour"),
+}
+
+# These are relevant fields returned by Bright Sky for this product but cannot
+# yet be published under a catalogue key without inventing semantics. Their raw
+# values and nulls remain in provenance so retrieval status comes from the
+# response rather than from a hard-coded assumption.
+BRIGHT_SKY_RAW_FIELDS = (
+    "relative_humidity", "wind_gust_direction", "precipitation_probability",
+    "precipitation_probability_6h", "sunshine", "solar", "condition", "icon",
+)
 
 
 def _response_json(response: Any) -> tuple[dict[str, Any], str]:
@@ -92,6 +121,44 @@ def _times(values: Any) -> list[datetime]:
     return [value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC) for value in result]
 
 
+def _open_meteo_keys(hourly: Mapping[str, Any], units: Mapping[str, Any], model: str) -> dict[str, tuple[str, str]]:
+    """Bind one response shape to the explicitly requested model.
+
+    Open-Meteo's documented single-model response uses unsuffixed keys. Some
+    deployments return model-suffixed keys. Either complete shape is accepted;
+    mixed shapes and suffixes naming another contracted model fail closed.
+    """
+    known_models = {item[0] for item in MODEL_SOURCES.values()}
+    foreign = [
+        key for key in set(hourly) | set(units)
+        if any(key.endswith(f"_{other}") for other in known_models if other != model)
+    ]
+    if foreign:
+        raise AdapterUnavailable(f"foreign_model_arrays:{','.join(sorted(foreign))}")
+    has_plain = any(name in hourly or name in units for name in OPEN_METEO_FIELDS)
+    has_selected_suffix = any(f"{name}_{model}" in hourly or f"{name}_{model}" in units for name in OPEN_METEO_FIELDS)
+    if has_plain and has_selected_suffix:
+        raise AdapterUnavailable("mixed_model_response_shape")
+    suffix = f"_{model}" if has_selected_suffix else ""
+    resolved: dict[str, tuple[str, str]] = {}
+    for name in OPEN_METEO_FIELDS:
+        key = f"{name}{suffix}"
+        if key not in hourly or key not in units:
+            raise AdapterUnavailable(f"missing_selected_field:{key}")
+        resolved[name] = (key, key)
+    return resolved
+
+
+def _bright_sky_source(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    sources = payload.get("sources")
+    if not isinstance(sources, list):
+        raise AdapterUnavailable("Bright Sky response has no sources array")
+    matches = [source for source in sources if isinstance(source, dict) and all(source.get(key) == value for key, value in BRIGHT_SKY_SOURCE.items())]
+    if len(matches) != 1:
+        raise AdapterUnavailable("Bright Sky exact source 1228 / WMO 71801 / ST.JOHNS NEUFUNDL. forecast identity mismatch; nearest-station fallback forbidden")
+    return matches[0]
+
+
 @dataclass
 class OpenMeteoAdapter:
     source_id: str
@@ -125,7 +192,7 @@ class OpenMeteoAdapter:
         except Exception as error:
             raise AdapterUnavailable(f"Open-Meteo request failed: {error}") from error
         # Rolling responses stitch latest values and expose no per-value run.
-        return [RunCandidate(f"rolling-unknown-{digest[:16]}", None, [url], {"payload": payload, "sha256": digest})]
+        return [RunCandidate(f"rolling-unknown-{digest[:16]}", None, [url], {"payload": payload, "sha256": digest, "model_selector": MODEL_SOURCES[self.source_id][0]})]
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         payload = candidate.detail.get("payload")
@@ -136,24 +203,28 @@ class OpenMeteoAdapter:
             raise AdapterUnavailable("missing hourly data or unit declarations")
         times = _times(hourly.get("time")); count = len(times)
         model = MODEL_SOURCES[self.source_id][0]
+        if candidate.detail.get("model_selector") != model or f"models={model}" not in candidate.urls[0]:
+            raise AdapterUnavailable("candidate model selector does not match adapter source")
+        keys = _open_meteo_keys(hourly, units, model)
         data_vars: dict[str, Any] = {}
         disposition: dict[str, str] = {}
         manifest_fields: list[RequiredField] = []
         for upstream, (field, canonical_units) in OPEN_METEO_FIELDS.items():
-            key = upstream if upstream in hourly else f"{upstream}_{model}"
-            unit_key = upstream if upstream in units else f"{upstream}_{model}"
-            if key not in hourly:
-                disposition[field] = "missing: response omitted array"
-                continue
-            if upstream in DEFERRED_FIELDS:
-                disposition[field] = DEFERRED_FIELDS[upstream]
-                continue
+            key, unit_key = keys[upstream]
             original = units.get(unit_key)
             expected = {"degC": "°C", "percent": "%", "m s-1": "m/s", "degree": "°", "hPa": "hPa", "mm": "mm"}[canonical_units]
             if original != expected:
                 raise AdapterUnavailable(f"unexpected_units:{key}:{original!r}; expected {expected!r}")
+            if upstream in DEFERRED_FIELDS:
+                _numbers(hourly[key], count, key)
+                disposition[field] = f"raw_retrieved; canonical_{DEFERRED_FIELDS[upstream]}"
+                continue
             array = _numbers(hourly[key], count, key)
-            data_vars[field] = (("valid_time", "latitude", "longitude"), array, {"units": canonical_units, "original_units": original})
+            attrs = {"units": canonical_units, "original_units": original}
+            if field == "precipitation_accumulation":
+                attrs["reporting_interval"] = "preceding_hour"
+                attrs["reporting_interval_hours"] = 1
+            data_vars[field] = (("valid_time", "latitude", "longitude"), array, attrs)
             manifest_fields.append(RequiredField(field, canonical_units, evidence_class="reprocessed"))
             disposition[field] = "retrieved" if numpy.isfinite(array).any() else "missing: all values null"
         if not data_vars:
@@ -172,12 +243,14 @@ class OpenMeteoAdapter:
             "adapter_version": self.adapter_version, "native_crs": "EPSG:4326",
             "returned_coordinates": [payload["latitude"], payload["longitude"]],
             "requested_elevation": "nan", "cell_selection": "nearest",
+            "intermediary_transformations": list(OPEN_METEO_TRANSFORMATIONS),
             "run_identity": {"value": None, "certainty": "unknown", "reason": "rolling response has no per-value run reference"},
             "request_url": candidate.urls[0], "response_sha256": candidate.detail["sha256"],
             "field_disposition": disposition, "quality": validation.as_quality(), "coverage": validation.as_coverage(),
             "licence": "CC BY-SA 4.0 research-only" if self.source_id == "openmeteo-ukmo-global" else "Open-Meteo CC BY 4.0 plus upstream terms",
             **manifest.as_manifest_block(),
         }
+        provenance["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
         artifact = Artifact("surface", MEDIA_ZARR, path, provenance)
         return RunResult(self.source_id, candidate.provider_run_id, None, datetime.now(UTC), validation.complete, validation.qc_passed, [artifact], "EPSG:4326", "experimental; not registered or scheduled")
 
@@ -197,9 +270,7 @@ class BrightSkyMosmix71801Adapter:
             payload, digest = _response_json(response)
         except Exception as error:
             raise AdapterUnavailable(f"Bright Sky exact WMO station 71801 unavailable; nearest-station fallback forbidden: {error}") from error
-        sources = payload.get("sources")
-        if not isinstance(sources, list) or not any(str(s.get("wmo_station_id")) == "71801" for s in sources if isinstance(s, dict)):
-            raise AdapterUnavailable("Bright Sky did not return exact WMO station 71801; nearest-station fallback forbidden")
+        _bright_sky_source(payload)
         return [RunCandidate(f"mosmix-71801-unknown-{digest[:16]}", None, [url], {"payload": payload, "sha256": digest})]
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
@@ -215,27 +286,26 @@ class BrightSkyMosmix71801Adapter:
             except (KeyError, ValueError) as error: raise AdapterUnavailable(f"invalid Bright Sky timestamp: {error}") from error
             if window.covers(stamp): selected.append((stamp, record))
         if not selected: raise AdapterUnavailable("exact WMO station 71801 has no records in the requested window")
-        mapping = {
-            "temperature": ("temperature_2m", "degC", 1.0), "dew_point": ("dew_point_2m", "degC", 1.0),
-            "cloud_cover": ("total_cloud_geometric", "percent", 1.0), "visibility": ("visibility", "m", 1.0),
-            "pressure_msl": ("mean_sea_level_pressure", "hPa", 1.0), "wind_speed": ("wind_speed_10m", "m s-1", 1 / 3.6),
-            "wind_direction": ("wind_direction_10m", "degree", 1.0), "precipitation": ("precipitation_accumulation", "mm", 1.0),
-        }
+        source = _bright_sky_source(payload)
+        if any(record.get("source_id") != BRIGHT_SKY_SOURCE["id"] for _, record in selected):
+            raise AdapterUnavailable("Bright Sky weather row source_id does not match exact source 1228")
         data_vars, dispositions, fields = {}, {}, []
         count = len(selected)
-        for upstream, (field, units, scale) in mapping.items():
+        for upstream, (field, units, scale, interval) in BRIGHT_SKY_FIELDS.items():
             values = [record.get(upstream) for _, record in selected]
             array = _numbers(values, count, upstream) * scale
-            data_vars[field] = (("valid_time", "latitude", "longitude"), array, {"units": units, "original_units": "km/h" if upstream == "wind_speed" else units})
+            attrs = {"units": units, "original_units": "km/h" if upstream in {"wind_speed", "wind_gust_speed"} else units}
+            if field == "precipitation_accumulation":
+                attrs["reporting_interval"] = interval
+                attrs["reporting_interval_hours"] = 1
+            data_vars[field] = (("valid_time", "latitude", "longitude"), array, attrs)
             fields.append(RequiredField(field, units, evidence_class="reprocessed"))
             dispositions[field] = "retrieved" if numpy.isfinite(array).any() else "missing: all station values null"
-        dispositions.update({
-            "relative_humidity_2m": "missing: station values null; phase also undeclared",
-            "wind_gust_speed": "unsupported: no catalogue key", "precipitation_probability": "unsupported: no catalogue key",
-            "sunshine": "unsupported: no catalogue key", "solar": "unsupported: no catalogue key",
-            "condition": "deferred: Bright Sky intermediary-derived categorical field",
-        })
-        source = next(s for s in payload["sources"] if str(s.get("wmo_station_id")) == "71801")
+        raw_fields = {name: [record.get(name) for _, record in selected] for name in BRIGHT_SKY_RAW_FIELDS}
+        for name, values in raw_fields.items():
+            canonical = "relative_humidity_2m" if name == "relative_humidity" else name
+            status = "raw_retrieved" if any(value is not None for value in values) else "raw_returned_null"
+            dispositions[canonical] = f"{status}; canonical_deferred: catalogue semantics or producer convention unresolved"
         dataset = xarray.Dataset(data_vars, coords={
             "valid_time": numpy.array([numpy.datetime64(t.replace(tzinfo=None), "ns") for t, _ in selected]),
             "latitude": [float(source["lat"])], "longitude": [float(source["lon"])],
@@ -245,12 +315,13 @@ class BrightSkyMosmix71801Adapter:
         path = workdir / f"{self.source_id}.zarr.zip"; write_zarr(dataset, path)
         provenance = {
             "source_id": self.source_id, "producer": "Deutscher Wetterdienst", "intermediary": "Bright Sky",
-            "product": "MOSMIX_L station forecast", "station": {"wmo_station_id": "71801", "source_id": source.get("id"), "name": source.get("station_name")},
+            "product": "MOSMIX_L station forecast", "station": {"wmo_station_id": "71801", "source_id": source.get("id"), "name": source.get("station_name"), "observation_type": source.get("observation_type")},
             "access_path": self.endpoint, "request_url": candidate.urls[0], "response_sha256": candidate.detail["sha256"],
             "run_identity": {"value": None, "certainty": "unknown", "reason": "Bright Sky response carries no MOSMIX cycle"},
-            "native_crs": "EPSG:4326", "field_disposition": dispositions,
+            "native_crs": "EPSG:4326", "field_disposition": dispositions, "raw_deferred_fields": raw_fields,
             "quality": validation.as_quality(), "coverage": validation.as_coverage(), "licence": "DWD terms apply; Bright Sky public instance is free",
             **manifest.as_manifest_block(),
         }
+        provenance["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
         artifact = Artifact("station-71801", MEDIA_ZARR, path, provenance)
         return RunResult(self.source_id, candidate.provider_run_id, None, datetime.now(UTC), validation.complete, validation.qc_passed, [artifact], "EPSG:4326", "experimental; not registered or scheduled")

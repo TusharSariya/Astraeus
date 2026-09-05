@@ -1,0 +1,81 @@
+{
+  "sources": [
+    {
+      "dwd_station_id": null,
+      "first_record": "2026-09-05T12:00:00+00:00",
+      "height": 134.0,
+      "id": 1228,
+      "last_record": "2026-09-15T16:00:00+00:00",
+      "lat": 47.62,
+      "lon": -52.73,
+      "observation_type": "forecast",
+      "station_name": "ST.JOHNS NEUFUNDL.",
+      "wmo_station_id": "71801"
+    }
+  ],
+  "weather": [
+    {
+      "cloud_cover": 95,
+      "condition": "rain",
+      "dew_point": 10.0,
+      "icon": "cloudy",
+      "precipitation": 0.0,
+      "precipitation_probability": null,
+      "precipitation_probability_6h": null,
+      "pressure_msl": 1014.0,
+      "relative_humidity": null,
+      "solar": null,
+      "source_id": 1228,
+      "sunshine": null,
+      "temperature": 14.1,
+      "timestamp": "2026-09-05T14:00:00+00:00",
+      "visibility": 15000,
+      "wind_direction": 122,
+      "wind_gust_direction": null,
+      "wind_gust_speed": null,
+      "wind_speed": 25.9
+    },
+    {
+      "cloud_cover": 100,
+      "condition": "rain",
+      "dew_point": 9.7,
+      "icon": "cloudy",
+      "precipitation": 0.0,
+      "precipitation_probability": null,
+      "precipitation_probability_6h": null,
+      "pressure_msl": 1013.6,
+      "relative_humidity": null,
+      "solar": null,
+      "source_id": 1228,
+      "sunshine": null,
+      "temperature": 13.5,
+      "timestamp": "2026-09-05T15:00:00+00:00",
+      "visibility": 10800,
+      "wind_direction": 118,
+      "wind_gust_direction": null,
+      "wind_gust_speed": null,
+      "wind_speed": 27.8
+    },
+    {
+      "cloud_cover": 100,
+      "condition": "rain",
+      "dew_point": 9.3,
+      "icon": "rain",
+      "precipitation": 0.7,
+      "precipitation_probability": null,
+      "precipitation_probability_6h": null,
+      "pressure_msl": 1013.1,
+      "relative_humidity": null,
+      "solar": null,
+      "source_id": 1228,
+      "sunshine": null,
+      "temperature": 12.9,
+      "timestamp": "2026-09-05T16:00:00+00:00",
+      "visibility": 9000,
+      "wind_direction": 114,
+      "wind_gust_direction": null,
+      "wind_gust_speed": null,
+      "wind_speed": 27.8
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "elevation": 0.0,
+  "generationtime_ms": 0.14591217041015625,
+  "hourly": {
+    "cloud_cover": [
+      100,
+      100,
+      100
+    ],
+    "cloud_cover_high": [
+      100,
+      100,
+      100
+    ],
+    "cloud_cover_low": [
+      91,
+      52,
+      25
+    ],
+    "cloud_cover_mid": [
+      91,
+      88,
+      100
+    ],
+    "dew_point_2m": [
+      11.2,
+      11.2,
+      10.7
+    ],
+    "precipitation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "pressure_msl": [
+      1013.7,
+      1013.3,
+      1012.9
+    ],
+    "relative_humidity_2m": [
+      82,
+      82,
+      79
+    ],
+    "temperature_2m": [
+      14.3,
+      14.3,
+      14.3
+    ],
+    "time": [
+      "2026-09-05T14:00",
+      "2026-09-05T15:00",
+      "2026-09-05T16:00"
+    ],
+    "wind_direction_10m": [
+      93,
+      93,
+      93
+    ],
+    "wind_speed_10m": [
+      6.6,
+      7.3,
+      7.7
+    ]
+  },
+  "hourly_units": {
+    "cloud_cover": "%",
+    "cloud_cover_high": "%",
+    "cloud_cover_low": "%",
+    "cloud_cover_mid": "%",
+    "dew_point_2m": "\u00b0C",
+    "precipitation": "mm",
+    "pressure_msl": "hPa",
+    "relative_humidity_2m": "%",
+    "temperature_2m": "\u00b0C",
+    "time": "iso8601",
+    "wind_direction_10m": "\u00b0",
+    "wind_speed_10m": "m/s"
+  },
+  "latitude": 47.53125,
+  "longitude": -52.734375,
+  "timezone": "GMT",
+  "timezone_abbreviation": "GMT",
+  "utc_offset_seconds": 0
+}
