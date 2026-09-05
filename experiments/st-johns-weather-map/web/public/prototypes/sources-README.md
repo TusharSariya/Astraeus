@@ -1,8 +1,14 @@
 # Sources view design study
 
-**Experiment. Decision pending.** Three alternatives inside the settled Bench
-shell for [Design the Sources view](https://github.com/TusharSariya/Astraeus/issues/52).
-No production route or normative specification is changed.
+**Experiment. Combined direction selected by the owner.** Keep all three
+perspectives inside Sources in the settled Bench shell for
+[Design the Sources view](https://github.com/TusharSariya/Astraeus/issues/52).
+Source ledger is the default; Family finder and Coverage lanes answer
+complementary questions over the same data. Switching perspectives preserves
+filters, shared Focus and the open inspector.
+
+This records the owner’s design selection, not prototype promotion. No production
+route or normative specification is changed by this study annotation.
 
 From this directory:
 
@@ -25,8 +31,9 @@ connects to localhost:8000.
 
 Use the bottom arrows or left/right keys outside native controls to switch.
 Variant, location and instant live in the URL. Filters, theme, vision simulation,
-inspector selection and response objects remain in memory. Switching alternatives
-preserves them. Other Bench view labels provide shell context only.
+inspector selection and response objects remain in memory. Switching perspectives
+preserves them. The A/B/C controls remain the study navigation; the selected
+product direction is a perspective switcher within Sources. Other Bench view labels provide shell context only.
 
 ## Review interactions
 
@@ -117,5 +124,8 @@ retained-run or aged-out examples, so those positive visual states are unverifie
 Full keyboard/screen-reader and outdoor night checks are not claimed; the phone
 brief remains a separate design decision.
 
-No variant has been selected. Keep this ticket open until the owner chooses a
-structure or combination, then record the resolution and append one map pointer.
+The owner selected the combined direction in the design review: all three are
+useful ways to see the same data. The [issue resolution](https://github.com/TusharSariya/Astraeus/issues/52#issuecomment-5548442947)
+and map pointer carry this decision forward to the API and specification handoff gates. This selection
+does not establish per-field availability or local coverage beyond the evidence
+boundaries above.
