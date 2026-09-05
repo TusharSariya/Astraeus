@@ -21,6 +21,10 @@ The central product question is:
   reconciles researched candidates with all 118 source-registry records,
   actual retrieval code, partial integrations and deliberate exclusions;
   includes WeatherNext 3, Earth-2/FourCastNet and environmental archives.
+- [Free-source implementation roster](free-source-implementation-roster.md):
+  routes every audited registry ID and overlapping product/access research row
+  to an exact implementation or disposition ticket, with a validated
+  machine-readable roster and bounded child-ticket definitions.
 - [Google WeatherNext 3 validation](google-weathernext-3-validation.md):
   hourly satellite-informed initialization, 64-member global forecasts, direct
   cloud fields, access surfaces, latency, terms, costs, limitations, and
