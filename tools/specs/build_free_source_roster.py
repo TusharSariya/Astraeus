@@ -236,7 +236,8 @@ def build_registered() -> list[dict]:
                 "url": f"https://github.com/TusharSariya/Astraeus/issues/{task}",
             },
             "contract_status": {
-                "accepted_authority": ["GOV-SPEC-001", "GOV-SPEC-002", "GOV-SPEC-004", "GOV-SPEC-005", "GOV-SPEC-006", "EVD-PROV-001", "EVD-MASK-001"],
+                "accepted_authority": ["GOV-SPEC-001", "GOV-SPEC-002", "GOV-SPEC-004", "GOV-SPEC-005", "GOV-SPEC-006"],
+                "proposed_v1_target_shape": ["EVD-PROV-001", "EVD-MASK-001", "EVD-API-001"],
                 "draft_executable_contracts": ["artifact-ingestion", "evidence-truth-boundary", "source-registry-catalogue"],
                 "gap": contract_gap,
             },
@@ -363,7 +364,8 @@ def build_research_candidates() -> list[dict]:
                 "geography": "must prove relevance to the evidence box or named Avalon validation sites; wider research coverage is not admission",
                 "target_task": {"issue": task, "title": TASKS[task], "url": f"https://github.com/TusharSariya/Astraeus/issues/{task}"},
                 "contract_status": {
-                    "accepted_authority": ["GOV-SPEC-001", "GOV-SPEC-002", "GOV-SPEC-004", "GOV-SPEC-005", "GOV-SPEC-006", "EVD-PROV-001", "EVD-MASK-001"],
+                    "accepted_authority": ["GOV-SPEC-001", "GOV-SPEC-002", "GOV-SPEC-004", "GOV-SPEC-005", "GOV-SPEC-006"],
+                    "proposed_v1_target_shape": ["EVD-PROV-001", "EVD-MASK-001", "EVD-API-001"],
                     "draft_executable_contracts": ["artifact-ingestion", "evidence-truth-boundary", "source-registry-catalogue"],
                     "gap": "unregistered or product/access-path granularity exceeds the registry; owner-approved source and field contract required before implementation",
                 },
@@ -398,7 +400,8 @@ def build_research_candidates() -> list[dict]:
             "geography": "must prove evidence-box or Avalon relevance; exclusions and broader-region rows remain visible",
             "target_task": {"issue": task, "title": TASKS[task], "url": f"https://github.com/TusharSariya/Astraeus/issues/{task}"},
             "contract_status": {
-                "accepted_authority": ["GOV-SPEC-001", "GOV-SPEC-002", "GOV-SPEC-004", "GOV-SPEC-005", "GOV-SPEC-006", "EVD-PROV-001", "EVD-MASK-001"],
+                "accepted_authority": ["GOV-SPEC-001", "GOV-SPEC-002", "GOV-SPEC-004", "GOV-SPEC-005", "GOV-SPEC-006"],
+                "proposed_v1_target_shape": ["EVD-PROV-001", "EVD-MASK-001", "EVD-API-001"],
                 "draft_executable_contracts": ["artifact-ingestion", "evidence-truth-boundary", "source-registry-catalogue"],
                 "gap": "no accepted source-specific contract; this row records research routing or an explicit disposition only",
             },
@@ -436,6 +439,11 @@ def validate(payload: dict) -> None:
             errors.append(f"{row.get('roster_id')} missing {sorted(missing)}")
         if row.get("operational") is not False:
             errors.append(f"{row.get('roster_id')} must keep operational false")
+        contract = row.get("contract_status", {})
+        if any(ref.startswith("EVD-") for ref in contract.get("accepted_authority", [])):
+            errors.append(f"{row.get('roster_id')} mislabels proposed EVD requirements as accepted")
+        if contract.get("proposed_v1_target_shape") != ["EVD-PROV-001", "EVD-MASK-001", "EVD-API-001"]:
+            errors.append(f"{row.get('roster_id')} missing proposed V1 target-shape references")
         issue = row.get("target_task", {}).get("issue")
         if issue not in TASKS:
             errors.append(f"{row.get('roster_id')} has unknown target task {issue}")
