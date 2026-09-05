@@ -1,6 +1,6 @@
 # Station and point layers on the Map
 
-Experimental artifact for [Design station and point layers on the Map](https://github.com/TusharSariya/Astraeus/issues/58). Owner selection is pending. This does not change accepted product behavior or specification status.
+Experimental artifact for [Design station and point layers on the Map](https://github.com/TusharSariya/Astraeus/issues/58). The owner selected **A — Layer-led**. [Canonical resolution](https://github.com/TusharSariya/Astraeus/issues/58#issuecomment-5548645284). B and C remain comparison artifacts, not selected product modes. This does not change accepted product behavior or specification status.
 
 Run from the repository root:
 
