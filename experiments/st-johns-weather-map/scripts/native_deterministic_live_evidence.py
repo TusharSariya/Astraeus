@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from ingest.contract import AdapterUnavailable, Artifact, FetchWindow, RunResult, MEDIA_ZARR
+from ingest.contract import AdapterUnavailable, Artifact, FetchWindow, RunCandidate, RunResult, MEDIA_ZARR
 from ingest.experimental.native_deterministic import DWDIconNativeCandidate, IndexedNativeCandidate
 from weather_api.store import LiveStore
 
@@ -32,8 +32,37 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def retained_candidate(adapter: object, source_dir: Path) -> RunCandidate | None:
+    """Resolve an offline candidate only when all upstream evidence is retained."""
+    discovery_path = source_dir / "discovery.json"
+    if not discovery_path.is_file():
+        return None
+    discovery = json.loads(discovery_path.read_text())
+    run = datetime.fromisoformat(discovery["run_time"])
+    if isinstance(adapter, IndexedNativeCandidate):
+        index_path = source_dir / f"{adapter.source_id}.index"
+        raw_path = source_dir / f"{adapter.source_id}.grib2"
+        if not index_path.is_file() or not raw_path.is_file():
+            return None
+        index = index_path.read_bytes()
+        expected = discovery.get("index_sha256")
+        if expected and hashlib.sha256(index).hexdigest() != expected:
+            raise AssertionError(f"retained index digest mismatch: {adapter.source_id}")
+        return RunCandidate(discovery["provider_run_id"], run, discovery["urls"], {"index": index, "retained_raw": True})
+    manifest_path = source_dir / "upstream-objects.json"
+    if not manifest_path.is_file():
+        return None
+    for item in json.loads(manifest_path.read_text())["objects"]:
+        path = source_dir / item["path"]
+        if not path.is_file() or path.stat().st_size != item["compressed_bytes"] or sha256(path) != item["compressed_sha256"]:
+            raise AssertionError(f"retained ICON object mismatch: {item['path']}")
+    return RunCandidate(discovery["provider_run_id"], run, discovery["urls"], {"cycle": run.strftime("%H"), "stamp": discovery["provider_run_id"], "retained_raw": True})
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(); parser.add_argument("output", type=Path); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); parser.add_argument("output", type=Path)
+    parser.add_argument("--offline", action="store_true", help="require retained upstream bytes and make no provider requests")
+    args = parser.parse_args()
     output = args.output.resolve(); output.mkdir(parents=True, exist_ok=True)
     now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0); window = FetchWindow(now, back_hours=0, forward_hours=0)
     adapters = [IndexedNativeCandidate("ecmwf-ifs-native"), IndexedNativeCandidate("ecmwf-aifs-single-native"),
@@ -43,22 +72,15 @@ def main() -> None:
     artifacts = []
     for adapter in adapters:
         source_dir = output / adapter.source_id; source_dir.mkdir(exist_ok=True)
-        retained_artifact = source_dir / f"{adapter.source_id}.zarr.zip"; retained_provenance = source_dir / "provenance.json"
-        if retained_artifact.exists() and retained_provenance.exists():
-            provenance = json.loads(retained_provenance.read_text()); provenance["evidence_classes"] = ["retrieved"]
-            provenance["evidence_class_by_variable"] = {item["canonical"]: "retrieved" for item in provenance["message_inventory"] if item.get("canonical")}
-            provenance["sha256"] = sha256(retained_artifact)
-            retained_provenance.write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")
-            run = datetime.fromisoformat(provenance["run_time"]); artifact = Artifact("native-deterministic", MEDIA_ZARR, retained_artifact, provenance)
-            result = RunResult(adapter.source_id, provenance["provider_run_id"], run, datetime.fromisoformat(provenance["retrieved_at"]), True, True, [artifact], native_crs="native producer grid")
-            artifacts.append((artifact, result)); summary["sources"].append({"source_id": adapter.source_id, "status": "artifact-built",
-                "artifact_bytes": artifact.byte_size, "artifact_sha256": sha256(artifact.payload_path), "coverage": provenance["native_grid_coverage"],
-                "retrieved_message_count": len(provenance["message_inventory"]), "replayed_retained": True})
-            continue
         try:
-            candidate = adapter.discover(window); candidate = candidate[0]
-            (source_dir / "discovery.json").write_text(json.dumps({"provider_run_id": candidate.provider_run_id, "run_time": candidate.run_time.isoformat() if candidate.run_time else None,
-                "urls": candidate.urls, "index_sha256": hashlib.sha256(candidate.detail.get("index", b"")).hexdigest() if isinstance(candidate.detail.get("index"), bytes) else None}, indent=2, sort_keys=True) + "\n")
+            candidate = retained_candidate(adapter, source_dir)
+            replayed = candidate is not None
+            if candidate is None:
+                if args.offline:
+                    raise AdapterUnavailable(f"offline replay evidence is incomplete for {adapter.source_id}")
+                candidate = adapter.discover(window)[0]
+                (source_dir / "discovery.json").write_text(json.dumps({"provider_run_id": candidate.provider_run_id, "run_time": candidate.run_time.isoformat() if candidate.run_time else None,
+                    "urls": candidate.urls, "index_sha256": hashlib.sha256(candidate.detail.get("index", b"")).hexdigest() if isinstance(candidate.detail.get("index"), bytes) else None}, indent=2, sort_keys=True) + "\n")
             result = adapter.fetch(candidate, window, source_dir)
             artifact = result.artifacts[0]; provenance_path = source_dir / "provenance.json"
             artifact.provenance["sha256"] = sha256(artifact.payload_path)
@@ -66,11 +88,12 @@ def main() -> None:
             artifacts.append((artifact, result))
             summary["sources"].append({"source_id": adapter.source_id, "status": "artifact-built", "artifact_bytes": artifact.byte_size,
                 "artifact_sha256": sha256(artifact.payload_path), "coverage": artifact.provenance["native_grid_coverage"],
-                "retrieved_message_count": len(artifact.provenance["message_inventory"])})
+                "retrieved_message_count": len(artifact.provenance["message_inventory"]), "replayed_retained_raw": replayed})
         except AdapterUnavailable as error:
             raw = source_dir / f"{adapter.source_id}.grib2"
             summary["sources"].append({"source_id": adapter.source_id, "status": "excluded", "reason": str(error),
-                "retained_raw_bytes": raw.stat().st_size if raw.exists() else 0, "retained_raw_sha256": sha256(raw) if raw.exists() else None})
+                "retained_raw_bytes": raw.stat().st_size if raw.exists() else 0, "retained_raw_sha256": sha256(raw) if raw.exists() else None,
+                "replayed_retained_raw": bool(candidate and candidate.detail.get("retained_raw"))})
 
     api = FastAPI()
     readbacks = {}
@@ -117,9 +140,15 @@ def main() -> None:
                 "cell_matches": math.isclose(actual["sampled_latitude"], message["raw_point_latitude"], abs_tol=1e-6) and math.isclose(actual["sampled_longitude"], message["raw_point_longitude"], abs_tol=1e-6)})
         if not all(item["cell_matches"] for item in compared): raise AssertionError(f"HTTP/raw cell mismatch: {result.source_id}")
         payload["raw_artifact_http_comparison"] = compared
+        payload["raw_only_messages"] = [{"upstream": item["short_name"], "pressure_hpa": item["level"],
+            "value_or_null": item["raw_point_value"], "units": item["units"], "step_type": item["step_type"],
+            "start_step": item["start_step"], "end_step": item["end_step"]}
+            for item in artifact.provenance["message_inventory"] if not item.get("canonical")]
         readbacks[result.source_id] = payload; (output / f"{result.source_id}.api.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     summary["api_readback"] = readbacks
     (output / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    for artifact, result in artifacts:
+        shutil.rmtree(output / result.source_id / ".reader-cache", ignore_errors=True)
 
 
 if __name__ == "__main__": main()

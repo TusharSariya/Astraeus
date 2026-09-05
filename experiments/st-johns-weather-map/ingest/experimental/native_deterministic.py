@@ -318,8 +318,19 @@ class IndexedNativeCandidate:
         else:
             records, dispositions = select_noaa_records(body.decode(), inventory)
         if not records: raise AdapterUnavailable("selected inventory has no retrievable messages")
-        workdir.mkdir(parents=True, exist_ok=True); raw = workdir / f"{self.source_id}.grib2"
-        byte_size, digest = _message_bytes(self.client or PoliteClient(), candidate.urls[0], records, raw)
+        workdir.mkdir(parents=True, exist_ok=True)
+        (workdir / f"{self.source_id}.index").write_bytes(body)
+        raw = workdir / f"{self.source_id}.grib2"
+        if candidate.detail.get("retained_raw"):
+            if not raw.is_file():
+                raise AdapterUnavailable(f"retained raw bundle is absent: {raw}")
+            byte_size = raw.stat().st_size
+            expected_size = sum(int(row["_length"]) for row in records)
+            if byte_size != expected_size:
+                raise AdapterUnavailable(f"retained raw bundle size mismatch: wanted {expected_size}, got {byte_size}")
+            digest = hashlib.sha256(raw.read_bytes()).hexdigest()
+        else:
+            byte_size, digest = _message_bytes(self.client or PoliteClient(), candidate.urls[0], records, raw)
         canonical = {field.upstream.lower(): field.canonical for field in inventory if field.canonical is not None}
         if self.source_id == "noaa-nam-parent-native":
             canonical["tcc"] = "total_cloud_geometric"  # NCEP idx TCDC decodes to WMO shortName tcc
@@ -420,26 +431,38 @@ class DWDIconNativeCandidate:
         if run is None: raise AdapterUnavailable("ICON run identity missing")
         workdir.mkdir(parents=True, exist_ok=True); cycle, stamp = run.strftime("%H"), run.strftime("%Y%m%d%H")
         retrieved = []; digest = hashlib.sha256(); bundle = workdir / f"{self.source_id}.grib2"
+        objects = workdir / "upstream-objects"
+        objects.mkdir(exist_ok=True)
         coord_paths = {}
         with bundle.open("wb") as output:
             for coordinate in ("clat", "clon"):
                 url = f"{DWD_BASE}/{cycle}/{coordinate}/icon_global_icosahedral_time-invariant_{stamp}_{coordinate.upper()}.grib2.bz2"
-                packed = workdir / f"{coordinate}.bz2"; client.download(url, packed, max_bytes=8 * 1024 * 1024)
+                packed = objects / f"{coordinate}.grib2.bz2"
+                if not candidate.detail.get("retained_raw"):
+                    client.download(url, packed, max_bytes=8 * 1024 * 1024)
+                if not packed.is_file(): raise AdapterUnavailable(f"retained ICON coordinate is absent: {packed}")
                 raw = bz2.decompress(packed.read_bytes()); coord_paths[coordinate] = workdir / f"{coordinate}.grib2"; coord_paths[coordinate].write_bytes(raw); digest.update(packed.read_bytes())
+                retrieved.append({"upstream": coordinate, "level": None, "url": url, "path": str(packed.relative_to(workdir)),
+                    "compressed_bytes": packed.stat().st_size, "compressed_sha256": hashlib.sha256(packed.read_bytes()).hexdigest(), "coordinate": True})
             for field in PRODUCT_INVENTORY[self.source_id]:
                 if field.disposition != "selected": continue
                 levels: Iterable[int | None] = field.levels or (None,)
                 for level in levels:
                     kind = "pressure-level" if level is not None else "single-level"; suffix = f"_{level}" if level is not None else ""
                     filename = f"icon_global_icosahedral_{kind}_{stamp}_000{suffix}_{field.upstream.upper()}.grib2.bz2"
-                    url = f"{DWD_BASE}/{cycle}/{field.upstream}/{filename}"; packed = workdir / (filename + ".download")
-                    try:
-                        client.download(url, packed, max_bytes=8 * 1024 * 1024)
-                    except Exception as error:
-                        raise AdapterUnavailable(f"ICON selected object unavailable: {url}: {error}") from error
+                    url = f"{DWD_BASE}/{cycle}/{field.upstream}/{filename}"; packed = objects / filename
+                    if not candidate.detail.get("retained_raw"):
+                        try:
+                            client.download(url, packed, max_bytes=8 * 1024 * 1024)
+                        except Exception as error:
+                            raise AdapterUnavailable(f"ICON selected object unavailable: {url}: {error}") from error
+                    if not packed.is_file(): raise AdapterUnavailable(f"retained ICON field is absent: {packed}")
                     compressed = packed.read_bytes(); raw = bz2.decompress(compressed)
                     if not raw.startswith(b"GRIB") or not raw.endswith(b"7777"): raise AdapterUnavailable(f"invalid ICON GRIB object: {filename}")
-                    output.write(raw); digest.update(compressed); retrieved.append({"upstream": field.upstream, "level": level, "url": url, "compressed_bytes": len(compressed)})
+                    output.write(raw); digest.update(compressed); retrieved.append({"upstream": field.upstream, "level": level, "url": url,
+                        "path": str(packed.relative_to(workdir)), "compressed_bytes": len(compressed),
+                        "compressed_sha256": hashlib.sha256(compressed).hexdigest(), "coordinate": False})
+        (workdir / "upstream-objects.json").write_text(json.dumps({"objects": retrieved}, indent=2, sort_keys=True) + "\n")
         canonical = {
             "2t": "temperature_2m", "2d": "dew_point_2m", "10u": "wind_u_10m", "10v": "wind_v_10m",
             "prmsl": "mean_sea_level_pressure", "tp": None, "clct": "total_cloud_geometric",
@@ -447,6 +470,9 @@ class DWDIconNativeCandidate:
             "t": "temperature_pressure", "u": "wind_u_pressure", "v": "wind_v_pressure",
         }
         dataset, geometry, messages = _decode_icon(bundle, coord_paths["clat"], coord_paths["clon"], canonical)
+        bundle.unlink()
+        coord_paths["clat"].unlink()
+        coord_paths["clon"].unlink()
         dataset = dataset.assign_coords(time=[numpy.datetime64(run.replace(tzinfo=None))]); dataset.attrs.update(source_id=self.source_id, operational=False, native_grid=True)
         artifact_path = workdir / f"{self.source_id}.zarr.zip"; write_zarr(dataset, artifact_path)
         unavailable = [{"upstream": field.upstream, "canonical": field.canonical, "disposition": field.disposition, "note": field.note} for field in PRODUCT_INVENTORY[self.source_id] if field.disposition != "selected"]

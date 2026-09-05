@@ -17,6 +17,6 @@ Verification:
 ```text
 cd experiments/st-johns-weather-map/api
 uv run --extra grib pytest tests/test_native_deterministic_candidate.py -q
-uv run --extra grib python ../scripts/native_deterministic_live_evidence.py ../../../docs/research/wayfinder/evidence/native-deterministic-20260905
+uv run --extra grib python ../scripts/native_deterministic_live_evidence.py --offline ../../../docs/research/wayfinder/evidence/native-deterministic-20260905
 uv run --project tools/specs python tools/specs/specctl.py validate
 ```

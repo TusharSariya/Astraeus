@@ -17,7 +17,8 @@ messages. Values stay on the R03B07 cell centres. It selects ten surface
 objects and RH/T/U/V on 850, 700, 500, and 300 hPa. QV and W exist on model
 coordinates, not those pressure surfaces, and are unavailable rather than
 vertically converted. A lead-0 precipitation initialization is retained raw
-but has no canonical value because a nonzero interval is not established.
+and replay-decoded, but has no canonical value because a nonzero interval is
+not established.
 
 NOAA uses public `noaa-rap-pds` grid 130 `awp130pgrb` and `noaa-nam-pds`
 `awphys` parent-grid objects, each with its `.idx`. Grid 130 contains RAP
@@ -32,3 +33,8 @@ Every decoded artifact stores two-dimensional native cell coordinates. The
 reader chooses one nearest published cell without interpolation and reports
 that coordinate and distance. Pressure is an integer hPa coordinate. GRIB
 `units`, `stepType`, `startStep`, and `endStep` are copied from the message.
+ECMWF replay starts from the retained JSON-lines index and concatenated selected
+GRIB messages. ICON replay validates and decompresses each retained field and
+CLAT/CLON object from its manifest. The HTTP check mounts the real `LiveStore`
+behind a test-only route, so it proves reader sampling rather than a production
+response schema.

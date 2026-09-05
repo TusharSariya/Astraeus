@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
+from pathlib import Path
 
 import numpy
 import pytest
 
-from ingest.contract import AdapterUnavailable
+from ingest.contract import AdapterUnavailable, FetchWindow, RunCandidate
 from ingest.adapters import LOADED
 from ingest.experimental.native_deterministic import (
     EVIDENCE_BOUNDS,
@@ -13,6 +15,8 @@ from ingest.experimental.native_deterministic import (
     coverage,
     select_ecmwf_records,
     select_noaa_records,
+    IndexedNativeCandidate,
+    DWDIconNativeCandidate,
 )
 from ingest.registry import registered_adapters
 
@@ -84,3 +88,22 @@ def test_geometry_proves_full_box_or_explicit_regional_exclusion() -> None:
     assert triangular.native_east == -46.0 and triangular.native_north == 50.5
     assert not triangular.covers_full_box
     assert EVIDENCE_BOUNDS == {"south": 45.0, "west": -58.0, "north": 50.5, "east": -46.0}
+
+
+def test_indexed_offline_replay_refuses_incomplete_retained_raw(tmp_path: Path) -> None:
+    adapter = IndexedNativeCandidate("ecmwf-ifs-native")
+    row = _ecmwf("2t")
+    index = (json.dumps(row) + "\n").encode()
+    (tmp_path / "ecmwf-ifs-native.grib2").write_bytes(b"GRIB7777")
+    candidate = RunCandidate("2026090506", datetime(2026, 9, 5, 6, tzinfo=timezone.utc), ["data", "index"],
+        {"index": index, "retained_raw": True})
+    with pytest.raises(AdapterUnavailable, match="retained raw bundle size mismatch"):
+        adapter.fetch(candidate, FetchWindow(datetime.now(timezone.utc), 0, 0), tmp_path)
+
+
+def test_icon_offline_replay_requires_retained_coordinates(tmp_path: Path) -> None:
+    adapter = DWDIconNativeCandidate()
+    run = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
+    candidate = RunCandidate("2026090512", run, ["clat"], {"cycle": "12", "stamp": "2026090512", "retained_raw": True})
+    with pytest.raises(AdapterUnavailable, match="retained ICON coordinate is absent"):
+        adapter.fetch(candidate, FetchWindow(run, 0, 0), tmp_path)

@@ -1865,7 +1865,7 @@
   "provider_run_id": "2026090506",
   "raw_bytes": 66626102,
   "raw_sha256": "b77b8c7273d95fa84aa3461a563c4ecb130076640bcc3732bc2faf5a89c4d5a6",
-  "retrieved_at": "2026-09-05T16:26:28.417475+00:00",
+  "retrieved_at": "2026-09-05T17:09:48.554853+00:00",
   "run_time": "2026-09-05T06:00:00+00:00",
   "sha256": "cf8409980e8aca9a31105b4a9d52955cadb158dde22527e0776b53c17fde67d1",
   "source_id": "ecmwf-aifs-single-native",

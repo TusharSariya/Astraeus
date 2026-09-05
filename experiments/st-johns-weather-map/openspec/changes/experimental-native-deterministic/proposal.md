@@ -12,13 +12,15 @@ stubs, schedule acquisition, or enter a production response.
 
 - Add directly instantiated, unregistered HTTPS candidates with bounded index,
   message, discovery, and transfer limits.
-- Retain complete selected lead-0 inventories, native units, pressure axes,
-  masks, grids, source URLs, ranges, hashes, and HTTP reader evidence.
+- Retain exact selected upstream bytes and indexes/coordinate objects, native
+  units, pressure axes, masks, grids, source URLs, ranges, hashes, and a
+  test-only HTTP harness around the real artifact reader.
 - Record regional exclusions rather than substituting another grid.
 - Keep every result `operational: false` pending owner acceptance.
 
 ## Evidence and limits
 
-The retained run proves one complete selected lead (not a cycle or horizon).
+An offline raw-to-artifact-to-reader replay proves one complete selected lead
+(not a cycle or horizon). It does not prove an existing production HTTP route.
 Cadence, later-lead accumulation semantics, scheduler/storage behavior,
 production admission, and stub replacement remain unverified and unauthorized.
