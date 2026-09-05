@@ -1,0 +1,501 @@
+{
+  "note": "Receipts for the 2026-09-05 ECMWF ensemble bounded-retrieval captures. URL, request parameters, byte counts, checksums, capture times and artifact revision only. No provider payload is retained in Git.",
+  "captures": [
+    {
+      "capture": "ecmwf-ensemble-20260905-corrective",
+      "source_id": "ecmwf-aifs-ens",
+      "run_stamp": "20260905000000",
+      "lead_hours": 24,
+      "timestamps": {
+        "captured_at": "2026-09-05T18:11:36.430856+00:00"
+      },
+      "request": {
+        "method": "GET",
+        "http_status": [
+          206
+        ],
+        "range_requests": 459,
+        "range_bytes": 451054255,
+        "parameters": [
+          "10u",
+          "10v",
+          "2d",
+          "2t",
+          "hcc",
+          "lcc",
+          "mcc",
+          "msl",
+          "tcc"
+        ],
+        "members": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50"
+        ],
+        "objects": {
+          "https://data.ecmwf.int/forecasts/20260905/00z/aifs-ens/0p25/enfo/20260905000000-24h-enfo-cf.grib2": {
+            "ranges": 9,
+            "bytes": 8805406
+          },
+          "https://data.ecmwf.int/forecasts/20260905/00z/aifs-ens/0p25/enfo/20260905000000-24h-enfo-pf.grib2": {
+            "ranges": 450,
+            "bytes": 442248849
+          }
+        }
+      },
+      "indexes": [
+        {
+          "bytes": 25806,
+          "label": "cf",
+          "sha256": "146197f135f1f06d500a7d3a5371f1d1b5876474c5406f92a1a6af0a4c8b678a",
+          "url": "https://data.ecmwf.int/forecasts/20260905/00z/aifs-ens/0p25/enfo/20260905000000-24h-enfo-cf.index"
+        },
+        {
+          "bytes": 1386284,
+          "label": "pf",
+          "sha256": "81e3317cedc10a6c58aabc8e2ab74c6b66227535a11e7d26f02d9f070894aa64",
+          "url": "https://data.ecmwf.int/forecasts/20260905/00z/aifs-ens/0p25/enfo/20260905000000-24h-enfo-pf.index"
+        }
+      ],
+      "artifact": {
+        "bytes": 907863,
+        "path": "ecmwf_aifs_ens_members.zarr.zip",
+        "sha256": "3749a0e38f84af10d08c3e357fdbd7c58b0726db2bd078aa7d58899f63154bd1"
+      },
+      "result": {
+        "complete": true,
+        "qc_passed": true,
+        "quality": {
+          "detail": "ecmwf-aifs-ens: all declared fields present, in units, and covered",
+          "flags": [],
+          "notices": [
+            "uncatalogued_upstream_field:sf",
+            "uncatalogued_upstream_field:100v",
+            "uncatalogued_upstream_field:strd",
+            "uncatalogued_upstream_field:w",
+            "uncatalogued_upstream_field:tp",
+            "uncatalogued_upstream_field:ssrd",
+            "uncatalogued_upstream_field:100u",
+            "uncatalogued_upstream_field:sp",
+            "uncatalogued_upstream_field:t",
+            "uncatalogued_upstream_field:tcw",
+            "uncatalogued_upstream_field:v",
+            "uncatalogued_upstream_field:fscov",
+            "uncatalogued_upstream_field:skt",
+            "uncatalogued_upstream_field:cp",
+            "uncatalogued_upstream_field:rowe",
+            "uncatalogued_upstream_field:q",
+            "uncatalogued_upstream_field:u",
+            "uncatalogued_upstream_field:sot",
+            "uncatalogued_upstream_field:vsw"
+          ],
+          "status": "passed"
+        },
+        "members": {
+          "control": "0",
+          "control_retrieval": "separate_file",
+          "declared": 51,
+          "missing": []
+        }
+      },
+      "original_receipt": {
+        "bytes": 222591,
+        "sha256": "3728ac50ab71ea54ae4257f5aab2b651091e4063048dc2759f39500620ff5c1e",
+        "note": "Full per-range receipt from the live capture; not retained in Git per the owner decision of 2026-09-05 (issue #70)."
+      }
+    },
+    {
+      "capture": "ecmwf-ensemble-20260905-corrective",
+      "source_id": "ecmwf-ens",
+      "run_stamp": "20260905000000",
+      "lead_hours": 24,
+      "timestamps": {
+        "retrieved_at": "2026-09-05T18:17:01.727458+00:00"
+      },
+      "request": {
+        "method": "GET",
+        "http_status": [
+          206
+        ],
+        "range_requests": 300,
+        "range_bytes": 200090799,
+        "parameters": [
+          "10u",
+          "10v",
+          "2d",
+          "2t",
+          "msl",
+          "tcc"
+        ],
+        "members": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50"
+        ],
+        "objects": {
+          "https://data.ecmwf.int/forecasts/20260905/00z/ifs/0p25/enfo/20260905000000-24h-enfo-ef.grib2": {
+            "ranges": 300,
+            "bytes": 200090799
+          }
+        }
+      },
+      "indexes": [
+        {
+          "bytes": 2004415,
+          "label": "ef",
+          "sha256": "13bec225f8450c65301c97b88197f7784d0ba7191246ec6b3f03b212b84f8e62",
+          "url": "https://data.ecmwf.int/forecasts/20260905/00z/ifs/0p25/enfo/20260905000000-24h-enfo-ef.index"
+        }
+      ],
+      "artifact": {
+        "bytes": 584371,
+        "path": "ecmwf_ens_members.zarr.zip",
+        "sha256": "7a61b523459023d7c27566ec6671b2c00d914fe989246e0d3073eb0acce56c9d"
+      },
+      "result": {
+        "complete": false,
+        "qc_passed": true,
+        "quality": {
+          "detail": "ecmwf-ens declares 51 members and 50 arrived (1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 3, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 4, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 5, 50, 6, 7, 8, 9); ecmwf-ens declares control member '0' and no member carries the control flag; the control is a flagged member and is never defaulted onto another one",
+          "flags": [
+            "partial_members:0",
+            "control_missing:0"
+          ],
+          "notices": [
+            "uncatalogued_upstream_field:tp",
+            "uncatalogued_upstream_field:100u",
+            "uncatalogued_upstream_field:sf",
+            "uncatalogued_upstream_field:rsn",
+            "uncatalogued_upstream_field:sd",
+            "uncatalogued_upstream_field:ttr",
+            "uncatalogued_upstream_field:strd",
+            "uncatalogued_upstream_field:str",
+            "uncatalogued_upstream_field:ssrd",
+            "uncatalogued_upstream_field:vsw",
+            "uncatalogued_upstream_field:100v",
+            "uncatalogued_upstream_field:nsss",
+            "uncatalogued_upstream_field:sp",
+            "uncatalogued_upstream_field:q",
+            "uncatalogued_upstream_field:tprate",
+            "uncatalogued_upstream_field:sot",
+            "uncatalogued_upstream_field:ptype",
+            "uncatalogued_upstream_field:tcw",
+            "uncatalogued_upstream_field:mucape",
+            "uncatalogued_upstream_field:svn",
+            "uncatalogued_upstream_field:sve",
+            "uncatalogued_upstream_field:skt",
+            "uncatalogued_upstream_field:mx2t3",
+            "uncatalogued_upstream_field:mn2t3",
+            "uncatalogued_upstream_field:zos",
+            "uncatalogued_upstream_field:sithick",
+            "uncatalogued_upstream_field:ssr",
+            "uncatalogued_upstream_field:10fg",
+            "uncatalogued_upstream_field:lsm",
+            "uncatalogued_upstream_field:ewss",
+            "uncatalogued_upstream_field:asn",
+            "uncatalogued_upstream_field:ro",
+            "uncatalogued_upstream_field:tcwv",
+            "uncatalogued_upstream_field:vo",
+            "uncatalogued_upstream_field:r",
+            "uncatalogued_upstream_field:u",
+            "uncatalogued_upstream_field:v",
+            "uncatalogued_upstream_field:w",
+            "uncatalogued_upstream_field:d",
+            "uncatalogued_upstream_field:t"
+          ],
+          "status": "suspect"
+        },
+        "members": {
+          "control": "0",
+          "control_retrieval": null,
+          "declared": 51,
+          "missing": [
+            "0"
+          ]
+        }
+      },
+      "original_receipt": {
+        "bytes": 145975,
+        "sha256": "9638e7566a7cf69ec5e1758dcaf63a40588bb3cef771fc0a305ae8be5eb509aa",
+        "note": "Full per-range receipt from the live capture; not retained in Git per the owner decision of 2026-09-05 (issue #70)."
+      }
+    },
+    {
+      "capture": "ecmwf-ensemble-20260905-cycle50r1-control",
+      "source_id": "ecmwf-ens",
+      "run_stamp": "20260905000000",
+      "lead_hours": 24,
+      "timestamps": {
+        "retrieved_at": "2026-09-05T18:55:56.680298+00:00",
+        "assembled_at": "2026-09-05T18:56:05.523853+00:00"
+      },
+      "request": {
+        "method": "GET",
+        "http_status": [
+          206
+        ],
+        "range_requests": 306,
+        "range_bytes": 203987411,
+        "parameters": [
+          "10u",
+          "10v",
+          "2d",
+          "2t",
+          "msl",
+          "tcc"
+        ],
+        "members": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50"
+        ],
+        "objects": {
+          "https://data.ecmwf.int/forecasts/20260905/00z/ifs/0p25/enfo/20260905000000-24h-enfo-ef.grib2": {
+            "ranges": 300,
+            "bytes": 200090799
+          },
+          "https://data.ecmwf.int/forecasts/20260905/00z/ifs/0p25/oper/20260905000000-24h-oper-fc.grib2": {
+            "ranges": 6,
+            "bytes": 3896612
+          }
+        }
+      },
+      "indexes": [
+        {
+          "bytes": 2004415,
+          "label": "ef",
+          "sha256": "13bec225f8450c65301c97b88197f7784d0ba7191246ec6b3f03b212b84f8e62",
+          "url": "https://data.ecmwf.int/forecasts/20260905/00z/ifs/0p25/enfo/20260905000000-24h-enfo-ef.index"
+        },
+        {
+          "bytes": 40210,
+          "label": "oper-fc-control0",
+          "sha256": "927c5d4e7550ba978afb1a05e0ba7ee0c09a288719eecb12765ab355791b62de",
+          "url": "https://data.ecmwf.int/forecasts/20260905/00z/ifs/0p25/oper/20260905000000-24h-oper-fc.index"
+        }
+      ],
+      "artifact": {
+        "bytes": 596426,
+        "path": "ecmwf_ens_members.zarr.zip",
+        "sha256": "7e0520d3b764f6d9ce46a08522d1d3d7dbf830633657cf4fe18eefa41b53b6c4"
+      },
+      "result": {
+        "complete": true,
+        "qc_passed": true,
+        "quality": {
+          "detail": "ecmwf-ens: all declared fields present, in units, and covered",
+          "flags": [],
+          "notices": [
+            "uncatalogued_upstream_field:tp",
+            "uncatalogued_upstream_field:100u",
+            "uncatalogued_upstream_field:sf",
+            "uncatalogued_upstream_field:rsn",
+            "uncatalogued_upstream_field:sd",
+            "uncatalogued_upstream_field:ttr",
+            "uncatalogued_upstream_field:strd",
+            "uncatalogued_upstream_field:str",
+            "uncatalogued_upstream_field:ssrd",
+            "uncatalogued_upstream_field:vsw",
+            "uncatalogued_upstream_field:100v",
+            "uncatalogued_upstream_field:nsss",
+            "uncatalogued_upstream_field:sp",
+            "uncatalogued_upstream_field:q",
+            "uncatalogued_upstream_field:tprate",
+            "uncatalogued_upstream_field:sot",
+            "uncatalogued_upstream_field:ptype",
+            "uncatalogued_upstream_field:tcw",
+            "uncatalogued_upstream_field:mucape",
+            "uncatalogued_upstream_field:svn",
+            "uncatalogued_upstream_field:sve",
+            "uncatalogued_upstream_field:skt",
+            "uncatalogued_upstream_field:mx2t3",
+            "uncatalogued_upstream_field:mn2t3",
+            "uncatalogued_upstream_field:zos",
+            "uncatalogued_upstream_field:sithick",
+            "uncatalogued_upstream_field:ssr",
+            "uncatalogued_upstream_field:10fg",
+            "uncatalogued_upstream_field:lsm",
+            "uncatalogued_upstream_field:ewss",
+            "uncatalogued_upstream_field:asn",
+            "uncatalogued_upstream_field:ro",
+            "uncatalogued_upstream_field:tcwv",
+            "uncatalogued_upstream_field:vo",
+            "uncatalogued_upstream_field:r",
+            "uncatalogued_upstream_field:u",
+            "uncatalogued_upstream_field:v",
+            "uncatalogued_upstream_field:w",
+            "uncatalogued_upstream_field:d",
+            "uncatalogued_upstream_field:t",
+            "uncatalogued_upstream_field:z"
+          ],
+          "status": "passed"
+        },
+        "members": {
+          "control": "0",
+          "control_retrieval": "separate_file",
+          "declared": 51,
+          "missing": []
+        }
+      },
+      "original_receipt": {
+        "bytes": 235760,
+        "sha256": "5a2ccc6e288a2879b7ad644e47586f189e5e391006fdc58150e99a93faaad3db",
+        "note": "Full per-range receipt from the live capture; not retained in Git per the owner decision of 2026-09-05 (issue #70)."
+      },
+      "input_captures": {
+        "mapped_control": {
+          "retrieved_at": "2026-09-05T18:56:05.523853+00:00",
+          "source": "anonymous ECMWF HTTPS"
+        },
+        "perturbed": {
+          "receipt_sha256": "9638e7566a7cf69ec5e1758dcaf63a40588bb3cef771fc0a305ae8be5eb509aa",
+          "retrieved_at": "2026-09-05T18:17:01.727458+00:00",
+          "source": "retained ecmwf-ensemble-20260905-corrective/ecmwf-ens"
+        }
+      }
+    }
+  ]
+}

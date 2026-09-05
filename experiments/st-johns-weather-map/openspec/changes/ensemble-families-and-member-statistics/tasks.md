@@ -141,15 +141,16 @@ Decision reference: wayfinder ticket
   needs no extra retrieval step (true, every GEFS member is its own object),
   `control_retrieval` says which file it was in - and mapping the flag would
   have written `same_file` into provenance, which is false for this family.
-  Live smoke remains, one per family, and none is schedulable: no real REPS
+  Live smoke remains for REPS and GEFS, and none is schedulable: no real REPS
   `GetCoverage` has been issued for the 21 member coverages of one field
-  (cadence unverified, control unlocated); no real AIFS-ENS `pf` plus `cf`
-  pair has been byte-ranged into one axis of 51 (owner gate 6.1); no real IFS
-  ENS `enfo-ef` file has been read to confirm whether a `cf` record exists at
-  any lead (the adapter reports the control missing either way); no real GEFS
+  (cadence unverified, control unlocated). Issue 82 completed the real f024
+  AIFS-ENS `pf` plus `cf` retrieval into one axis of 51 and the real IFS ENS
+  retrieval of every selected field for `pf` 1..50; the live IFS listing and
+  index expose no control, so it remains partial with control 0 missing. See
+  `docs/research/wayfinder/ecmwf-ensemble-bounded-retrieval.md`. No real GEFS
   member `.idx` has been selected down to the seven family fields with its
-  `N-M hour ave fcst` label stamped. The fixture tests are the whole of the
-  evidence; the first scheduled member run of each family is its smoke.
+  `N-M hour ave fcst` label stamped. The registry and schedule gates remain
+  unchanged; issue 82 used the unregistered experiment seam.
 
 - [x] 3.2 Apply the per-family storage scope and write the
   `available-not-stored` list into the manifest.
