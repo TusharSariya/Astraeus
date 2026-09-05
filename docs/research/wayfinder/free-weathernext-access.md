@@ -302,10 +302,9 @@ point-decode questions.
   project, impersonation, token file or credential-file override was active.
   No billing, IAM, login, ADC or cloud-resource mutation was made.
 - Reproducible request semantics: every invocation included
-  `--configuration=astraeus`; the process environment set
-  `CLOUDSDK_BILLING_QUOTA_PROJECT` to empty and removed
-  `GOOGLE_CLOUD_QUOTA_PROJECT`, `CLOUDSDK_CORE_PROJECT`, and
-  `CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT`. Listings used both `--limit` and
+  `--configuration=astraeus`; the process environment forced the billing quota
+  project, Google quota project, core project, impersonation, access-token-file
+  and credential-file overrides to empty values. Listings used both `--limit` and
   `--page-size` during metadata discovery. Sample reads used exact known object
   names after bounded describes. No recursive or exhaustive CLI listing was
   used.

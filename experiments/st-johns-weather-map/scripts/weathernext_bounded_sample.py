@@ -58,14 +58,19 @@ class Transport:
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
             raise ProbeError("five-minute probe deadline expired")
+        if self.requests >= contract.CAPS["object_requests"]:
+            raise ProbeError("object-request cap would be exceeded")
+        self.requests += 1
         env = os.environ.copy()
-        env["CLOUDSDK_BILLING_QUOTA_PROJECT"] = ""
         for key in (
+            "CLOUDSDK_BILLING_QUOTA_PROJECT",
             "GOOGLE_CLOUD_QUOTA_PROJECT",
             "CLOUDSDK_CORE_PROJECT",
             "CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT",
+            "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE",
+            "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE",
         ):
-            env.pop(key, None)
+            env[key] = ""
         command = ["gcloud", "--configuration=astraeus", "storage", *args]
         try:
             result = subprocess.run(
@@ -77,13 +82,11 @@ class Transport:
                 timeout=remaining,
             )
         except subprocess.CalledProcessError as exc:
-            detail = exc.stderr.decode(errors="replace").strip().splitlines()
-            raise ProbeError(detail[-1] if detail else "gcloud request failed") from exc
+            raise ProbeError(
+                f"gcloud storage operation failed with exit code {exc.returncode}; stderr redacted"
+            ) from exc
         except subprocess.TimeoutExpired as exc:
             raise ProbeError("five-minute probe deadline expired") from exc
-        self.requests += 1
-        if self.requests > contract.CAPS["object_requests"]:
-            raise ProbeError("object-request cap exceeded")
         return result
 
     def describe(self, uri: str) -> dict[str, Any]:

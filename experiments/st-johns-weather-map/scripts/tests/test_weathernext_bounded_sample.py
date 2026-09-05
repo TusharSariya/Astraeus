@@ -2,6 +2,10 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+import subprocess
+import time
+
+import pytest
 
 
 SCRIPT_DIR = Path(__file__).parents[1]
@@ -51,3 +55,60 @@ def test_success_manifest_serializes_validates_and_writes_exact_size(tmp_path):
     assert output.stat().st_size == measured == manifest["usage"]["output_bytes"]
     assert len(digest) == 64
     assert contract.validate(json.loads(output.read_text())) == []
+
+
+def test_request_cap_is_reserved_before_subprocess(monkeypatch):
+    transport = sample.Transport(time.monotonic() + 10)
+    transport.requests = contract.CAPS["object_requests"]
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("subprocess must not run after the request cap")
+
+    monkeypatch.setattr(sample.subprocess, "run", forbidden)
+    with pytest.raises(sample.ProbeError, match="would be exceeded"):
+        transport._run(["objects", "describe", "gs://example/object"])
+    assert transport.requests == contract.CAPS["object_requests"]
+
+
+def test_failed_operation_is_counted_and_stderr_is_redacted(monkeypatch):
+    transport = sample.Transport(time.monotonic() + 10)
+
+    def fail(*args, **kwargs):
+        raise subprocess.CalledProcessError(7, args[0], stderr=b"private@example.com")
+
+    monkeypatch.setattr(sample.subprocess, "run", fail)
+    with pytest.raises(sample.ProbeError) as caught:
+        transport._run(["objects", "describe", "gs://example/object"])
+    assert transport.requests == 1
+    assert "exit code 7" in str(caught.value)
+    assert "private@example.com" not in str(caught.value)
+
+
+def test_sensitive_gcloud_overrides_are_forced_empty(monkeypatch):
+    captured = {}
+
+    def succeed(*args, **kwargs):
+        captured.update(kwargs["env"])
+        return subprocess.CompletedProcess(args[0], 0, stdout=b"{}", stderr=b"")
+
+    for key in (
+        "CLOUDSDK_BILLING_QUOTA_PROJECT",
+        "GOOGLE_CLOUD_QUOTA_PROJECT",
+        "CLOUDSDK_CORE_PROJECT",
+        "CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT",
+        "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE",
+        "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE",
+    ):
+        monkeypatch.setenv(key, "unexpected-sensitive-value")
+    monkeypatch.setattr(sample.subprocess, "run", succeed)
+
+    sample.Transport(time.monotonic() + 10)._run(["objects", "describe", "gs://example/object"])
+
+    assert all(captured[key] == "" for key in (
+        "CLOUDSDK_BILLING_QUOTA_PROJECT",
+        "GOOGLE_CLOUD_QUOTA_PROJECT",
+        "CLOUDSDK_CORE_PROJECT",
+        "CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT",
+        "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE",
+        "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE",
+    ))
