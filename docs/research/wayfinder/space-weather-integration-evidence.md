@@ -41,10 +41,11 @@ Explicit exclusions remain unchanged: the STEREO-A and hourly Kp prediction
 records stay `unavailable`; NRCan STJ stays `partnership-only`; the Canadian
 regional forecast stays link/citation-only; imagery and the existing SWPC Kp
 and OVATION adapters are outside this change. GFZ Kp/Hp60 are catalogued
-follow-ups rather than substitutes for the selected Hp30 acquisition. No
-existing native child of map 70 owns their live integration: issue 94 owns
-bounded historical acquisition, while current GFZ Kp/Hp60 remain inside issue
-89 unless the owner chooses a new bounded child.
+follow-ups rather than substitutes for the selected Hp30 acquisition. Current
+GFZ Kp/Hp60 acquisition is owned by native map-70 child
+[issue 150](https://github.com/TusharSariya/Astraeus/issues/150), which blocks
+issue 89. Issue 94 separately owns bounded historical acquisition. The fresh
+STEREO-A re-probe does not reopen its settled `unavailable` disposition.
 
 Verification commands and outcomes:
 
