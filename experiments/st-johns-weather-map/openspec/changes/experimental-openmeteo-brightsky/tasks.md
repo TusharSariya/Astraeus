@@ -24,3 +24,11 @@
   experimental evidence does not authorize registration or scheduling.
 - [ ] Accept production source contracts and licence decisions (owner only).
 - [ ] Register adapters, schedule retrieval or mark sources operational.
+
+## Tracked follow-up work
+
+These open tickets track remaining work beyond the completed isolated acquisition evidence. Their existence does not accept contracts or authorize production activation.
+
+- [ ] [Complete Open-Meteo and Bright Sky experimental source admission](https://github.com/TusharSariya/Astraeus/issues/142).
+- [ ] [Resolve missing JMA pressure levels in the free acquisition path](https://github.com/TusharSariya/Astraeus/issues/143).
+- [ ] [Resolve missing MOSMIX gusts for the St Johns station](https://github.com/TusharSariya/Astraeus/issues/144).
