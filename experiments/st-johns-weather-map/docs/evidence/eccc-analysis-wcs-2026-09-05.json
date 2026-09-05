@@ -1,0 +1,42 @@
+{
+  "classification": "isolated experiment; source contracts pending owner acceptance",
+  "retrieved_at": "2026-09-05T15:41:00Z",
+  "endpoint": "https://geo.weather.gc.ca/geomet/",
+  "service": "WCS 2.0.1",
+  "operational": false,
+  "capabilities": {"http_status": 200, "bytes": 1090094, "coverage_count": 5589},
+  "artifacts": [
+    {
+      "source_id": "eccc-raqdps",
+      "coverage_id": "RAQDPS.SFC_PM2.5",
+      "valid_time": "2026-09-05T15:00:00+00:00",
+      "run_time": "2026-09-05T00:00:00+00:00",
+      "published_units": "kg/m³",
+      "request_crs": "EPSG:4326",
+      "shape": [23, 45],
+      "raw_bytes": 4558,
+      "raw_sha256": "77c3e241bde23e5089d5dfc56bd369e9ded74d978779839a79e3119c73c76601",
+      "artifact_bytes": 6528,
+      "artifact_sha256": "b434c9ee2b29b0789fdd81461674ffbefc91cb0fa2aa4edf82d8fe44defe3ae0",
+      "finite_cells": 1035,
+      "null_cells": 0,
+      "quality": "unknown"
+    },
+    {
+      "source_id": "eccc-hrdpa",
+      "coverage_id": "HRDPA_2.5km_Precip-Accum6h",
+      "valid_time": "2026-09-05T06:00:00+00:00",
+      "run_time": null,
+      "published_units": "mm",
+      "request_crs": "EPSG:4326",
+      "shape": [89, 178],
+      "raw_bytes": 63840,
+      "raw_sha256": "055c80a29a8199d9f3b43f5ac47c2365ad27e418467a786aec1de6e0e7f34a8b",
+      "artifact_bytes": 9377,
+      "artifact_sha256": "0c62ff484989773e4cf222211bff6bdb312f3b739a1afc34adf8ae68bdbbfec7",
+      "finite_cells": 15842,
+      "null_cells": 0,
+      "quality": "unknown"
+    }
+  ]
+}
