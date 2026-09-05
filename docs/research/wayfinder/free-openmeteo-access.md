@@ -1,8 +1,8 @@
 # Free Open-Meteo access, provenance and request budgets
 
 Research date and anonymous samples: **2026-09-05 UTC**. Resolves investigation
-[#72](https://github.com/TusharSariya/Astraeus/issues/72) in map
-[#70](https://github.com/TusharSariya/Astraeus/issues/70).
+[Verify Open-Meteo free access, provenance and request budgets](https://github.com/TusharSariya/Astraeus/issues/72) in map
+[Wayfinder map: implement the missing free-access evidence sources](https://github.com/TusharSariya/Astraeus/issues/70).
 
 **Spec-Impact: none**: evidence and implementation recommendations only; no code,
 provider admission, scientific rule, deployment or normative status changes.
