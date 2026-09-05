@@ -29,6 +29,7 @@ from ingest.adapters.eccc_geomet_wcs import (
     fetch_artifact,
     fetch_pressure_profile_artifact,
     raw_field,
+    retained_raw_artifact,
 )
 from ingest.contract import AVALON_CORE_BOUNDS
 from ingest.store import CurrentArtifact
@@ -234,6 +235,11 @@ def test_fixture_artifact_round_trips_through_the_astraeus_live_api_sampler(tmp_
     assert artifact.provenance["sampling_geometry"] == "pixel_is_area_cell_centres"
     assert artifact.provenance["resampling"] == "server_resampled_method_unknown"
     assert hashlib.sha256(artifact.payload_path.read_bytes()).hexdigest() == artifact.provenance["sha256"]
+    raw = retained_raw_artifact(artifact)
+    assert raw.media_type == "image/tiff"
+    assert raw.provenance["representation"] == "upstream_geotiff"
+    assert raw.byte_size == artifact.provenance["raw_response"]["bytes"]
+    assert hashlib.sha256(raw.payload_path.read_bytes()).hexdigest() == raw.provenance["sha256"]
     import zarr
     zipped = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")
     dataset = xarray.open_zarr(zipped, consolidated=False)
