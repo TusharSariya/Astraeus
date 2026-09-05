@@ -1,0 +1,185 @@
+{
+  "_note": "Hand-trimmed representative receipt for the 2026-09-05 live ECCC ensemble capture. Provider payloads (48 responses, 2,479,264 decoded bytes, and the two rebuilt Zarr artifacts) were removed from history per the owner decision of 2026-09-05 (issue 70). This file carries request identity, byte counts, checksums and times only - no payload values.",
+  "classification": "test-only capture receipt; operational=false",
+  "captured_at": "2026-09-05T18:11:57.687500+00:00",
+  "endpoint": "https://geo.weather.gc.ca/geomet/",
+  "bounds": {
+    "south": 45.0,
+    "west": -58.0,
+    "north": 50.5,
+    "east": -46.0
+  },
+  "request_shape": {
+    "SERVICE": "WCS",
+    "VERSION": "2.0.1",
+    "REQUEST": "GetCoverage",
+    "FORMAT": "image/tiff",
+    "SUBSETTINGCRS": "http://www.opengis.net/def/crs/EPSG/0/4326",
+    "SUBSET": [
+      "long(-58.0,-46.0)",
+      "lat(45.0,50.5)"
+    ],
+    "SCALESIZE": "long(133),lat(61)",
+    "note": "GEPS reduction requests use the same envelope at the coarser advertised 0.5 degree axis; SCALESIZE is a requested server-resampled output shape with an undocumented method, not a native grid."
+  },
+  "artifact_revision": {
+    "run_identity": "requested_unverified",
+    "operational": false,
+    "geometry": "pixel_is_area_cell_centres",
+    "resampling": "server_resampled_method_unknown"
+  },
+  "byte_measurement": "decoded HTTP response body bytes retained on disk; not compressed wire bytes",
+  "hard_decoded_response_ceiling_bytes": 4194304,
+  "totals": {
+    "requests": 48,
+    "decoded_body_bytes": 2479264,
+    "inventory_responses": 1,
+    "inventory_bytes": 1090094,
+    "reps_responses": 42,
+    "reps_decoded_body_bytes": 1381800,
+    "geps_responses": 5,
+    "geps_decoded_body_bytes": 7370,
+    "first_retrieved_at": "2026-09-05T18:11:34.578972+00:00",
+    "last_retrieved_at": "2026-09-05T18:11:57.687177+00:00"
+  },
+  "representative_responses": [
+    {
+      "kind": "inventory",
+      "coverage_id": null,
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCapabilities",
+      "decoded_body_bytes": 1090094,
+      "sha256": "73c26c280d0bcb31018fa33683b8d4680f2ba09483728992418669bd6624452d",
+      "retrieved_at": "2026-09-05T18:11:34.578972+00:00",
+      "content_type": "text/xml; charset=UTF-8"
+    },
+    {
+      "kind": "reps",
+      "coverage_id": "REPS.MEM.ETA_NT.01",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=REPS.MEM.ETA_NT.01&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%28133%29%2Clat%2861%29&TIME=2026-09-05T18%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T12%3A00%3A00Z",
+      "decoded_body_bytes": 32900,
+      "sha256": "a54d288bdfb7af223019d1c98eb20422fe01d80788978e64ed4c21465531ae36",
+      "retrieved_at": "2026-09-05T18:11:34.682251+00:00",
+      "content_type": "image/tiff"
+    },
+    {
+      "kind": "reps",
+      "coverage_id": "REPS.MEM.ETA_NT.21",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=REPS.MEM.ETA_NT.21&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%28133%29%2Clat%2861%29&TIME=2026-09-05T18%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T12%3A00%3A00Z",
+      "decoded_body_bytes": 32900,
+      "sha256": "a61afcfd7ebf0c1b6b3864759025b875caab67c918a2226fadeb8e908d98fd88",
+      "retrieved_at": "2026-09-05T18:11:44.785128+00:00",
+      "content_type": "image/tiff"
+    },
+    {
+      "kind": "reps",
+      "coverage_id": "REPS.MEM.ETA_WSPD.01",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=REPS.MEM.ETA_WSPD.01&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%28133%29%2Clat%2861%29&TIME=2026-09-05T18%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T12%3A00%3A00Z",
+      "decoded_body_bytes": 32900,
+      "sha256": "14cd4ca1de6807b048de3cb5ed5cb3321ca4659413fa73931b06b540b4d919fa",
+      "retrieved_at": "2026-09-05T18:11:45.240438+00:00",
+      "content_type": "image/tiff"
+    },
+    {
+      "kind": "reps",
+      "coverage_id": "REPS.MEM.ETA_WSPD.21",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=REPS.MEM.ETA_WSPD.21&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%28133%29%2Clat%2861%29&TIME=2026-09-05T18%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T12%3A00%3A00Z",
+      "decoded_body_bytes": 32900,
+      "sha256": "76c109ea243d7a0767708e62b0cc63c7a6133ccf0e84fa8239a3ae77f90b3322",
+      "retrieved_at": "2026-09-05T18:11:55.258022+00:00",
+      "content_type": "image/tiff"
+    },
+    {
+      "kind": "geps",
+      "coverage_id": "GEPS.DIAG.3_TT.ERMEAN",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=GEPS.DIAG.3_TT.ERMEAN&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%2824%29%2Clat%2811%29&TIME=2026-09-05T12%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T00%3A00%3A00Z",
+      "decoded_body_bytes": 1474,
+      "sha256": "c1a20d3cf3a8fac4db9ea313ba7b8eb10966be067f004003f1064be45ab9db8c",
+      "retrieved_at": "2026-09-05T18:11:55.679246+00:00",
+      "content_type": "image/tiff"
+    },
+    {
+      "kind": "geps",
+      "coverage_id": "GEPS.DIAG.3_TT.ERSSTD",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=GEPS.DIAG.3_TT.ERSSTD&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%2824%29%2Clat%2811%29&TIME=2026-09-05T12%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T00%3A00%3A00Z",
+      "decoded_body_bytes": 1474,
+      "sha256": "2cf45aa771cc422379f19c503de781b8dd844885640c5ffa6ff07c2b88f1766e",
+      "retrieved_at": "2026-09-05T18:11:56.194052+00:00",
+      "content_type": "image/tiff"
+    },
+    {
+      "kind": "geps",
+      "coverage_id": "GEPS.DIAG.3_TT.ERC50",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=GEPS.DIAG.3_TT.ERC50&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%2824%29%2Clat%2811%29&TIME=2026-09-05T12%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T00%3A00%3A00Z",
+      "decoded_body_bytes": 1474,
+      "sha256": "6e6f67cad0551dd3113c4e002a64f4542dbbc8fc71699fba68e092c7f43e075d",
+      "retrieved_at": "2026-09-05T18:11:56.710282+00:00",
+      "content_type": "image/tiff"
+    },
+    {
+      "kind": "geps",
+      "coverage_id": "GEPS.DIAG.3_NT.ERC50",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=GEPS.DIAG.3_NT.ERC50&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%2824%29%2Clat%2811%29&TIME=2026-09-05T12%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T00%3A00%3A00Z",
+      "decoded_body_bytes": 1474,
+      "sha256": "8988b868bcacfbf59507caf21b90be9280fec3dd076f55bf03f6e98c2c77a4f3",
+      "retrieved_at": "2026-09-05T18:11:57.192111+00:00",
+      "content_type": "image/tiff"
+    },
+    {
+      "kind": "geps",
+      "coverage_id": "GEPS.DIAG.12_GUST-15MS.PROB",
+      "source_uri": "https://geo.weather.gc.ca/geomet/?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=GEPS.DIAG.12_GUST-15MS.PROB&FORMAT=image%2Ftiff&SUBSETTINGCRS=http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F4326&SUBSET=long%28-58.0%2C-46.0%29&SUBSET=lat%2845.0%2C50.5%29&SCALESIZE=long%2824%29%2Clat%2811%29&TIME=2026-09-05T12%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-05T00%3A00%3A00Z",
+      "decoded_body_bytes": 1474,
+      "sha256": "24dd1c7372bc3581e4bdca9f991a58a15d11a436018b4194f353d216f3061185",
+      "retrieved_at": "2026-09-05T18:11:57.687177+00:00",
+      "content_type": "image/tiff"
+    }
+  ],
+  "rebuilt_artifacts": {
+    "eccc_reps_members.zarr.zip": {
+      "bytes": 504100,
+      "sha256": "b9110ef16bd5fad599a4122e122f928e5d41756153d14f19aa77fb8bf62f08da",
+      "shape": {
+        "member": 21,
+        "valid_time": 1,
+        "latitude": 61,
+        "longitude": 133
+      },
+      "run_time": "2026-09-05T12:00:00+00:00",
+      "valid_time": "2026-09-05T18:00:00+00:00",
+      "retained_in_git": false
+    },
+    "eccc_geps_reductions.zarr.zip": {
+      "bytes": 13636,
+      "sha256": "c4ddefac471549d2366b5c1d4dac574dc5de3125305fcaa2fab6697dda7aa53a",
+      "shape": {
+        "valid_time": 1,
+        "latitude": 11,
+        "longitude": 24
+      },
+      "run_time": "2026-09-05T00:00:00+00:00",
+      "valid_time": "2026-09-05T12:00:00+00:00",
+      "retained_in_git": false
+    }
+  },
+  "field_accounting": {
+    "reps": {
+      "advertised_coverages": 1239,
+      "catalogued_surface_fields": 7,
+      "selected_surface_fields": [
+        "total_cloud_opacity",
+        "wind_speed_10m"
+      ],
+      "other_advertised_coverages_deferred": 1092,
+      "whole_family_complete": false
+    },
+    "geps": {
+      "advertised_coverages": 532,
+      "selected_reductions": 5,
+      "member_coverages_advertised": 0,
+      "other_advertised_coverages_deferred": 527,
+      "whole_family_complete": false
+    }
+  },
+  "readback": "core reader and test-only HTTP readback passed at 2026-09-05T18:20:53.756390+00:00 with operational=false",
+  "reproduce_with": "experiments/st-johns-weather-map/scripts/eccc_ensemble_live_evidence.py"
+}
