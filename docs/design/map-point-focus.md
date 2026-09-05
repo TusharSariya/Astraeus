@@ -1,6 +1,6 @@
 # Arbitrary-point Focus on the Map
 
-Discussion draft for [Settle arbitrary-point Focus behavior on the Map](https://github.com/TusharSariya/Astraeus/issues/67). No owner choices for this ticket have been made yet. No behavior or normative status changes.
+Discussion draft for [Settle arbitrary-point Focus behavior on the Map](https://github.com/TusharSariya/Astraeus/issues/67). The owner selected the first two Map disclosure choices; the remaining interaction choices are pending. No behavior or normative status changes.
 
 ## Inherited decisions
 
@@ -24,14 +24,22 @@ The subagent found further implementation limits:
 
 These findings must feed the paused API discussion and implementation proposal. They do not authorize widening live coverage or relabeling current failures.
 
-## First discussion round
+## Owner decisions: site and sample geometry
 
-Proposed choices, not selected:
+The owner answered “yes, yes” to both choices:
 
 1. **Site geometry on leaving a site.** Remove that site's horizon/sector overlay from the active Focus display when the Focus moves off-site. Keep a compact “No registered horizon at this point” explanation and nearby site references as context. Do not leave old geometry beneath a new point label. Selecting a registered site explicitly can restore that site's registered geometry, subject to its evidence status; no new sector capability is implied.
 2. **Model sampling geometry.** Keep the shared Focus as the main marker. Reveal the selected field's sampled model-cell marker and its distance from Focus only while inspecting that field. Label it as a model sample, never a station or a second Focus. If no sample coordinates are returned, show the absence instead of inferring geometry. Different sources may sample different cells; only the selected reading's geometry is highlighted.
 
-Later interaction details to settle: whether site reference clicks inspect first with a distinct “Use this site” action; coordinate-label precision versus stored query precision; viewport behavior when changing Focus. These should preserve the shared instant, layer state and open provenance context where still applicable.
+## Next discussion: placement, site selection and precision
+
+Proposed, not selected:
+
+1. A click on empty Map space moves the shared Focus immediately, preserving the current instant, layer state and viewport. Pan/zoom gestures do not move Focus. Keep an explicit recenter action rather than automatically moving the map after each selection.
+2. Clicking a registered-site reference opens its information first. A distinct “Use this site” action adopts its registered identity and position as the shared Focus. Selecting a site in the shell's dedicated site picker remains a direct explicit choice. Inspecting station reports or sampled cells never changes Focus implicitly.
+3. Preserve query coordinates through requests and URL state without reducing them merely for a shorter label. Round only displayed labels; expose the full stored query coordinates in inspection. A numeric coordinate alone never acquires a nearby site's identity or horizon.
+
+Unsupported-coordinate behavior remains a separate decision because the audit found conflicting service bounds. No choice here authorizes widening the geographic API contract or converting a refusal into evidence.
 
 ## Boundaries
 
