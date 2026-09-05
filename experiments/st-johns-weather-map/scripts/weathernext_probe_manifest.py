@@ -23,7 +23,7 @@ LEADS_HOURS = [6, 12, 24]
 VALID_TIMES = ["2026-08-01T06:00:00Z", "2026-08-01T12:00:00Z", "2026-08-02T00:00:00Z"]
 POINT = {"latitude": 47.5, "longitude": -52.7, "selection": "nearest_native_cell"}
 CAPS = {
-    "received_bytes": 64 * 1024 * 1024,
+    "received_bytes": 512 * 1024 * 1024,
     "metadata_bytes": 4 * 1024 * 1024,
     "decoded_working_bytes": 128 * 1024 * 1024,
     "output_bytes": 5 * 1024 * 1024,
@@ -190,6 +190,7 @@ def validate(manifest: dict[str, Any]) -> list[str]:
                 errors.append(f"success requires selected field {name} to be retrieved")
         if any(usage.get(key) is None for key in CAPS):
             errors.append("success requires every usage counter")
+        for name in SELECTED_FIELDS:
             item = fields.get(name)
             if isinstance(item, dict) and (
                 not item.get("dtype")

@@ -56,10 +56,12 @@ for object listing. A subsequent owner-authorized, redacted gcloud validation
 confirmed authenticated access to that statistics bucket, live
 `requesterPays: false`, the proposed August 1 historical run, and consolidated
 metadata containing all 126 documented statistic arrays. The proposed six-field
-sample was not read: its 18 whole-grid chunks total 375,209,154 compressed bytes,
-above the 64 MiB cap. No account identifier, requester project, credential or
-forecast value was retained. This does not advance any admission or operational
-state.
+sample initially exceeded the 64 MiB preparation cap. After the owner raised
+the experiment cap to 512 MiB, a bounded point read retrieved the 18 chunks and
+retained only 18 numeric values plus provenance. All 126 arrays were enumerated
+from metadata while 120 remain deferred. No account identifier, requester
+project or credential was retained. This does not advance any admission or
+operational state.
 
 This change makes the validated families optional evidence. It does not replace
 HRDPS, change a score, make any source operational, or admit an unverified

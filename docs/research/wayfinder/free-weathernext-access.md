@@ -6,9 +6,10 @@ Parent map: [Wayfinder map: implement the missing free-access evidence sources](
 Classification: **no spec impact**. The original phase was public-document
 investigation only. A later owner-authorized phase used an existing isolated
 gcloud login for redacted configuration checks and bounded live metadata
-requests. It made no billing, IAM, login, ADC, terms, or implementation change
-and read no forecast values. `operational: false` remains the disposition. This
-supplements [prior validation](../google-weathernext-3-validation.md).
+requests and, after the owner raised the experiment's transport allowance, one
+bounded historical point sample. It made no billing, IAM, login, ADC, terms, or
+provider implementation change. `operational: false` remains the disposition.
+This supplements [prior validation](../google-weathernext-3-validation.md).
 
 ## Decision
 
@@ -159,25 +160,56 @@ product already encoded by the validator: the 21 named base fields and each of
 `mean`, `p10`, `p25`, `p50`, `p75`, and `p90`.
 
 The 18 compressed objects needed for the proposed six-field, three-lead sample
-total 375,209,154 bytes. That exceeds the 64 MiB received-byte cap before
-decode, so no forecast values were read and no sample artifact was created.
-The full-grid-per-lead chunk layout prevents the proposed point or Avalon subset
-from reducing transfer size. Metadata and list activity remained under 4 MiB,
-39 Cloud Storage requests, and five minutes. No token, credential file, ADC
-profile, IAM setting, or billing account was read, and no cloud resource was
-created or changed.
+total 375,209,154 bytes. That exceeded the original 64 MiB received-byte cap,
+so the metadata phase read no forecast values. The owner subsequently removed
+the artificial daily download ceiling and raised this one experiment's
+received-byte cap to 512 MiB while retaining the no-charge provider boundary,
+five-minute deadline, 256-request cap, 128 MiB decoded-working cap, 5 MiB output
+cap and shared-disk headroom gate. The full-grid-per-lead chunk layout still
+prevents a point or Avalon subset from reducing transfer size.
 
-## Proposed bounded experiment (authenticated sample not executed)
+The resulting sample is
+[`weathernext-20260801-avalon-point.json`](../evidence/weathernext-20260801-avalon-point.json)
+(SHA-256 `cbb1dd55e31382e261fac090947a903f88395d734f1662d1c6f4e3565defc5e7`).
+It contains six cloud statistics at leads 6, 12 and 24 for the nearest native
+cell, `(47.5, -52.70001220703125)`. All 18 values are finite and inside `[0,1]`.
+The successful attempt received 375,407,160 bytes including consolidated and
+coordinate metadata, used 78 explicit Cloud Storage operations including the
+post-read generation/ETag checks, decoded at most 25,934,400 bytes at once,
+and completed retrieval plus identity verification in 105 seconds. Its output
+is 52,993 bytes and contains 18 numeric values. Each raw chunk was deleted
+immediately after point extraction.
+The local gate required room for the next compressed chunk, the full decoded
+and output allowances, and a 1 GiB reserve; roughly 48 GiB was free.
+
+Those counters measure 78 explicit CLI object operations and 375,407,160 bytes
+of downloaded object bodies. HTTP framing, describe-response bodies and any
+implicit SDK retries were not wire-instrumented, so they are bounded
+application-level measurements rather than exact network totals. The CLI
+reported no retry or transport failure.
+
+This is only a six-field by three-lead point sample. Consolidated metadata
+enumerates all 126 documented statistic arrays, but the other 120 remain
+explicitly deferred. It is not a full-box read, member sample, completeness
+study, latency study, skill result, terms approval, or provider admission.
+Publication time remains unknown; object update time is not substituted.
+
+One earlier attempt completed the same 375,407,160-byte payload in about 79
+seconds but refused to emit an artifact because output-byte accounting was
+unset. A later retry was interrupted during payload transfer so offline
+serialization could be tested first; its transferred bytes were not retained
+and are therefore unknown. Earlier decoder-development attempts stopped after
+metadata/coordinate reads and before forecast payload. The successful-attempt
+counters above are not cumulative across those development attempts.
+
+## Bounded experiment executed
 
 These are experimental limits, not accepted ingestion requirements.
 
-1. **Run:** propose initialization `2026-08-01T00:00:00Z`; its maximum
+1. **Run:** initialization `2026-08-01T00:00:00Z`; its maximum
    360-hour horizon ended August 16. Verify the entire source run satisfies
-   the historical cutoff and exists before any forecast read. This is a target,
-   not an observed available object. If absent, explicitly select and record
-   one other complete historical synoptic run; never silently substitute a
-   vintage. Do not copy Google's August 26 example: that run contains future
-   predictions through September 10, 2026.
+   the historical cutoff and exists before any forecast read. The selected run
+   was observed and no vintage was substituted.
 2. **Region:** proposed Avalon smoke-test box `[-54.0, 46.5, -52.5, 48.0]`
    (west, south, east, north). This is not the complete accepted evidence box.
    Start with the nearest native cell to `(47.5, -52.7)` before expanding to
@@ -193,7 +225,7 @@ These are experimental limits, not accepted ingestion requirements.
    and documented ensemble size 64 separately from any observed metadata.
    The model guide documents the four cloud fields and units; the statistics
    surface documents suffixes. [Variables](https://developers.google.com/weathernext/guides/models).
-5. **Budget:** total received bytes at most 64 MiB, decoded working arrays at
+5. **Budget:** total received bytes at most 512 MiB, decoded working arrays at
    most 128 MiB, output at most 5 MiB, at most 256 object requests including
    metadata and retries, and a five-minute deadline. These are conservative
    proposed limits, not measured chunk sizes. Cap metadata at 4 MiB within the
@@ -239,15 +271,15 @@ No provider/account operation occurred during this research.
    fit its caps, record a blocked experiment rather than enlarge limits
    silently. Earth Engine is an alternative only after its unpaid status and
    dataset entitlement are established; BigQuery needs sandbox compatibility.
-6. Execute the exact experiment once. Return the local artifact and redacted
-   success/failure evidence. Only a later accepted provider specification and
+6. Execute the exact experiment once. This bounded point sample is now complete;
+   the full-box requirement remains open. Only a later accepted provider specification and
    mapped fixture/live/API/failure verification may admit the source.
 
-Remaining unknowns: actual entitlements; live requester-pays configuration;
-client billing propagation; historical object availability; chunk sizes and
-schema; source latency; usable Avalon completeness; and owner-approved
-redistribution. Public docs answer the research question, not those account or
-implementation gates.
+Remaining unknowns: unattended-client authentication; source publication
+latency and multi-day completeness; full-box and spatial missing-value behavior;
+usable Avalon skill; and owner-approved redistribution. The bounded read closes
+only the selected-login, bucket-billing, historical-run, selected-schema and
+point-decode questions.
 
 ## Verification
 
@@ -261,17 +293,23 @@ implementation gates.
   only to emit redacted booleans.
 - Live bounded result: statistics bucket metadata accessible with
   `requesterPays: false`; target historical run and consolidated Zarr metadata
-  accessible; 126/126 documented arrays present in metadata. Cloud data sample
-  not run because its 18 source chunks total 375,209,154 bytes, above 64 MiB.
-  Total Cloud Storage request upper bound: 39; metadata/list output below 4 MiB.
+  accessible; 126/126 documented arrays present in metadata. Six cloud fields
+  at three leads were decoded at one native point; 120 inventory fields remain
+  deferred. The successful attempt used the exact bounded counters recorded
+  above and post-read identity checks matched every source generation/ETag.
+- Post-run redacted preflight remained unchanged: the statistics bucket still
+  reported `requesterPays: false`; no core project, non-empty billing quota
+  project, impersonation, token file or credential-file override was active.
+  No billing, IAM, login, ADC or cloud-resource mutation was made.
 - Reproducible request semantics: every invocation included
   `--configuration=astraeus`; the process environment set
   `CLOUDSDK_BILLING_QUOTA_PROJECT` to empty and removed
   `GOOGLE_CLOUD_QUOTA_PROJECT`, `CLOUDSDK_CORE_PROJECT`, and
   `CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT`. Listings used both `--limit` and
-  `--page-size`; object content used an exact byte range after a bounded
-  describe. No recursive or exhaustive CLI listing was used.
-- `uv run --with pytest python -m pytest experiments/st-johns-weather-map/scripts/tests/test_weathernext_bounded_probe.py -q`
+  `--page-size` during metadata discovery. Sample reads used exact known object
+  names after bounded describes. No recursive or exhaustive CLI listing was
+  used.
+- `uv run --project experiments/st-johns-weather-map/api python -m pytest experiments/st-johns-weather-map/scripts/tests/test_weathernext_bounded_probe.py experiments/st-johns-weather-map/scripts/tests/test_weathernext_bounded_sample.py -q`
 - `python3 experiments/st-johns-weather-map/scripts/weathernext_probe_manifest.py template`
 - `uv run --project tools/specs python tools/specs/specctl.py validate`
 - `git diff --check`

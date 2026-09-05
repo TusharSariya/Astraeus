@@ -36,6 +36,18 @@ def test_requester_billing_identity_and_over_budget_usage_fail_closed():
     assert any("received_bytes" in error for error in errors)
 
 
+def test_owner_raised_cap_fits_measured_sample_without_removing_other_bounds():
+    assert probe.CAPS == {
+        "received_bytes": 512 * 1024 * 1024,
+        "metadata_bytes": 4 * 1024 * 1024,
+        "decoded_working_bytes": 128 * 1024 * 1024,
+        "output_bytes": 5 * 1024 * 1024,
+        "object_requests": 256,
+        "deadline_seconds": 300,
+    }
+    assert 375_209_154 < probe.CAPS["received_bytes"]
+
+
 def test_boolean_usage_and_malformed_field_evidence_fail_closed():
     manifest = probe.template()
     manifest["usage"]["object_requests"] = True

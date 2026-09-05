@@ -121,10 +121,15 @@
       observed `requesterPays: false`, accessed the proposed August 1 run, and
       found all 126 documented arrays in its consolidated Zarr v3 metadata.
       The six selected arrays declare 360 hourly slices on a 1801 by 3600 grid,
-      but their 18 requested whole-grid chunks total 375,209,154 compressed
-      bytes, above the 64 MiB cap, so no forecast value was read. This task
-      remains unchecked: there is no full-box data fixture or sample, exhaustive
-      object completeness proof, member read, or decoded missing-value evidence.
+      and their 18 requested whole-grid chunks total 375,209,154 compressed
+      bytes. After owner authorization raised this experiment's received cap to
+      512 MiB, a bounded read decoded all six fields at leads 6, 12 and 24 for
+      the nearest native cell to `(47.5, -52.7)`. The retained artifact records
+      finite values, masks, exact coordinates/times, units, statistics, source
+      generations/ETags, decoder versions and successful post-read identity
+      checks. The other 120 metadata-enumerated arrays remain deferred. This
+      task remains unchecked: there is no full-box fixture/sample, exhaustive
+      completeness proof, member read, or spatial missing-value evidence.
 - [ ] 6.4 Measure publication latency, completeness and retrieval cost across at
       least seven days, separating initialization, publication and retrieval.
       Verify: main and interim cycles are reported separately with failures.

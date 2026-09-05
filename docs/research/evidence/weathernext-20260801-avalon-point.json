@@ -1,0 +1,1947 @@
+{
+  "blocker": null,
+  "caps": {
+    "deadline_seconds": 300,
+    "decoded_working_bytes": 134217728,
+    "metadata_bytes": 4194304,
+    "object_requests": 256,
+    "output_bytes": 5242880,
+    "received_bytes": 536870912
+  },
+  "coordinates": {
+    "chunk_or_shard_layout": {
+      "chunk_shape": [
+        1,
+        1801,
+        3600
+      ],
+      "sharded": false
+    },
+    "coordinate_direction": {
+      "latitude": "ascending",
+      "longitude": "ascending"
+    },
+    "dimensions": {
+      "lat_0p1": 1801,
+      "lead_time": 360,
+      "lon_0p1": 3600
+    },
+    "selected_native_cell": {
+      "latitude": 47.5,
+      "latitude_index": 1375,
+      "longitude": -52.70001220703125,
+      "longitude_index": 3073,
+      "longitude_native": 307.29998779296875
+    }
+  },
+  "decoder": {
+    "name": "zarr",
+    "numpy": "2.5.2",
+    "version": "3.3.0"
+  },
+  "documented_absences": {
+    "ceiling": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    },
+    "cloud_base": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    },
+    "cloud_top": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    },
+    "fog": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    },
+    "visibility": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    }
+  },
+  "fields": {
+    "dewpoint_temperature_2m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "experimental_tp_1hr_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "high_cloud_cover_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.8738738298416138,
+      "finite_min": 0.2527674734592438,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "fraction_0_to_1"
+    },
+    "high_cloud_cover_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "high_cloud_cover_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "high_cloud_cover_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "high_cloud_cover_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "high_cloud_cover_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "imerg_tp_1hr_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "low_cloud_cover_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.998450756072998,
+      "finite_min": 0.9948182702064514,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "fraction_0_to_1"
+    },
+    "low_cloud_cover_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "low_cloud_cover_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "low_cloud_cover_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "low_cloud_cover_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "low_cloud_cover_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "mean_sea_level_pressure_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "Pa"
+    },
+    "medium_cloud_cover_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.3494783937931061,
+      "finite_min": 0.015743423253297806,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "fraction_0_to_1"
+    },
+    "medium_cloud_cover_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "medium_cloud_cover_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "medium_cloud_cover_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "medium_cloud_cover_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "medium_cloud_cover_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "sea_surface_temperature_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p05",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "surface_solar_radiation_downwards_1hr_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "surface_solar_radiation_downwards_1hr_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "surface_solar_radiation_downwards_1hr_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "surface_solar_radiation_downwards_1hr_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "surface_solar_radiation_downwards_1hr_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "surface_solar_radiation_downwards_1hr_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "temperature_2m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "temperature_2m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "temperature_2m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "temperature_2m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "temperature_2m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "temperature_2m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "K"
+    },
+    "total_cloud_cover_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9995275735855103,
+      "finite_min": 0.9960803985595703,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "fraction_0_to_1"
+    },
+    "total_cloud_cover_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.999448299407959,
+      "finite_min": 0.9972257614135742,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "fraction_0_to_1"
+    },
+    "total_cloud_cover_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "total_cloud_cover_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "total_cloud_cover_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "fraction_0_to_1"
+    },
+    "total_cloud_cover_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.0,
+      "finite_min": 1.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "fraction_0_to_1"
+    },
+    "total_precipitation_1hr_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "J/m^2"
+    },
+    "u_component_of_wind_100m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_100m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_100m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_100m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_100m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_100m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_10m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_10m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_10m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_10m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_10m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "u_component_of_wind_10m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_100m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_100m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_100m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_100m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_100m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_100m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_10m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_10m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_10m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_10m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_10m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "v_component_of_wind_10m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_100m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_100m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_100m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_100m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_100m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_100m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_10m_mean": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "mean",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_10m_p10": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p10",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_10m_p25": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p25",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_10m_p50": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p50",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_10m_p75": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p75",
+      "status": "deferred",
+      "unit": "m/s"
+    },
+    "wind_speed_10m_p90": {
+      "dtype": null,
+      "fill_value": null,
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": null,
+      "selected_for_sample": false,
+      "statistic": "p90",
+      "status": "deferred",
+      "unit": "m/s"
+    }
+  },
+  "identity": {
+    "access_surface": "gcs_statistics_spatial",
+    "attribution": "WeatherNext data provided by Google",
+    "ensemble_size_documented": 64,
+    "input_lineage": "ECMWF HRES analysis documented by provider",
+    "member_id": null,
+    "product_version": "3.0.0",
+    "terms_class": "historical_cc_by_4_0_candidate_must_be_verified_at_read_time",
+    "terms_reviewed": "2026-09-05",
+    "terms_sha256": "5fe155ace6bb11737f15bc735913c5739d31d27374269a8cbfa5f338c4d40654",
+    "terms_url": "https://storage.googleapis.com/weathernext-public/terms-of-use.pdf"
+  },
+  "local_storage": {
+    "free_space_reserve_bytes": 1073741824,
+    "gate_includes_next_chunk_decoded_working_cap_and_output_cap": true,
+    "raw_chunks_retained": false
+  },
+  "notes": [
+    "Expected fields come from public documentation and are not live observations.",
+    "A successful small sample does not prove full-field implementation readiness.",
+    "All 126 documented statistic arrays were enumerated from consolidated metadata; only six arrays were sampled.",
+    "Object-request usage counts explicit Cloud Storage CLI operations; HTTP requests and implicit SDK retries were not wire-instrumented.",
+    "Received-byte usage sums downloaded object bodies; describe-response headers and bodies were not wire-instrumented.",
+    "Raw chunks were deleted immediately after point extraction and are not retained."
+  ],
+  "objects": [
+    {
+      "etag": "CLyhg7HNv5YDEAE=",
+      "generation": "1787792319369404",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/zarr.json",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 182540,
+      "updated": null
+    },
+    {
+      "etag": "CIzEpbyuv5YDEAE=",
+      "generation": "1787784021500428",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/lat_0p1/c/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 4886,
+      "updated": null
+    },
+    {
+      "etag": "CPzivLyuv5YDEAE=",
+      "generation": "1787784021881212",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/lon_0p1/c/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 9944,
+      "updated": null
+    },
+    {
+      "etag": "CIvRs7uuv5YDEAE=",
+      "generation": "1787784019634315",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/lead_time/c/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 568,
+      "updated": null
+    },
+    {
+      "etag": "CKSZwLyuv5YDEAE=",
+      "generation": "1787784021937316",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/init_time/c",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 17,
+      "updated": null
+    },
+    {
+      "etag": "CNfC0Iuwv5YDEAE=",
+      "generation": "1787784456315223",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/datetime/c/5",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 17,
+      "updated": null
+    },
+    {
+      "etag": "CMCzxoywv5YDEAE=",
+      "generation": "1787784458246592",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/datetime/c/11",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 17,
+      "updated": null
+    },
+    {
+      "etag": "CI/dt4ywv5YDEAE=",
+      "generation": "1787784458006159",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/datetime/c/23",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 17,
+      "updated": null
+    },
+    {
+      "etag": "CIWyjqXQv5YDEAE=",
+      "generation": "1787793099692293",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_mean/c/5/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 21942261,
+      "updated": null
+    },
+    {
+      "etag": "CKOMnN2rv5YDEAE=",
+      "generation": "1787783285245475",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_mean/c/11/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 21935146,
+      "updated": null
+    },
+    {
+      "etag": "COPL06TQv5YDEAE=",
+      "generation": "1787793098728931",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_mean/c/23/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 22006165,
+      "updated": null
+    },
+    {
+      "etag": "CIWBpa6uv5YDEAE=",
+      "generation": "1787783992131717",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_mean/c/5/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23113278,
+      "updated": null
+    },
+    {
+      "etag": "CPTCp7yuv5YDEAE=",
+      "generation": "1787784021533044",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_mean/c/11/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23084202,
+      "updated": null
+    },
+    {
+      "etag": "CMm6wLSuv5YDEAE=",
+      "generation": "1787784005164361",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_mean/c/23/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23053576,
+      "updated": null
+    },
+    {
+      "etag": "COK5vo6tv5YDEAE=",
+      "generation": "1787783657004258",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_mean/c/5/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23837943,
+      "updated": null
+    },
+    {
+      "etag": "CO+PtqGtv5YDEAE=",
+      "generation": "1787783696713711",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_mean/c/11/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23759751,
+      "updated": null
+    },
+    {
+      "etag": "CL2X/JWtv5YDEAE=",
+      "generation": "1787783672695741",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_mean/c/23/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23802202,
+      "updated": null
+    },
+    {
+      "etag": "CIrFvN2vv5YDEAE=",
+      "generation": "1787784359518858",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_mean/c/5/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23686111,
+      "updated": null
+    },
+    {
+      "etag": "CLHo8uOvv5YDEAE=",
+      "generation": "1787784372991025",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_mean/c/11/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23588463,
+      "updated": null
+    },
+    {
+      "etag": "CN73g+avv5YDEAE=",
+      "generation": "1787784377465822",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_mean/c/23/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 23594479,
+      "updated": null
+    },
+    {
+      "etag": "COun3ZjQv5YDEAE=",
+      "generation": "1787793073722347",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p10/c/5/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 20398014,
+      "updated": null
+    },
+    {
+      "etag": "COOavKTQv5YDEAE=",
+      "generation": "1787793098345827",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p10/c/11/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 20428629,
+      "updated": null
+    },
+    {
+      "etag": "CJfhy57Qv5YDEAE=",
+      "generation": "1787793086017687",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p10/c/23/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 20236688,
+      "updated": null
+    },
+    {
+      "etag": "CLWLovfPv5YDEAE=",
+      "generation": "1787793003546037",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p90/c/5/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 12960043,
+      "updated": null
+    },
+    {
+      "etag": "CIPzvP7Pv5YDEAE=",
+      "generation": "1787793018665347",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p90/c/11/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 12111784,
+      "updated": null
+    },
+    {
+      "etag": "CNveqv7Pv5YDEAE=",
+      "generation": "1787793018367835",
+      "name": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p90/c/23/0/0",
+      "post_read_checked_at": "2026-09-05T14:08:06.193983Z",
+      "post_read_identity_verified": true,
+      "size": 11670419,
+      "updated": null
+    }
+  ],
+  "request": {
+    "bucket": "weathernext3_statistics_spatial",
+    "initialization": "2026-08-01T00:00:00Z",
+    "lead_hours": [
+      6,
+      12,
+      24
+    ],
+    "point": {
+      "latitude": 47.5,
+      "longitude": -52.7,
+      "selection": "nearest_native_cell"
+    },
+    "prefix": "weathernext_3_0_0_statistics/zarr/",
+    "requester_billing_identity": null,
+    "selected_fields": [
+      "total_cloud_cover_mean",
+      "low_cloud_cover_mean",
+      "medium_cloud_cover_mean",
+      "high_cloud_cover_mean",
+      "total_cloud_cover_p10",
+      "total_cloud_cover_p90"
+    ]
+  },
+  "result": "success",
+  "sample": {
+    "fields": [
+      {
+        "field": "total_cloud_cover_mean",
+        "unit": "fraction_0_to_1",
+        "values": [
+          0.9960803985595703,
+          0.9995275735855103,
+          0.9962342977523804
+        ]
+      },
+      {
+        "field": "low_cloud_cover_mean",
+        "unit": "fraction_0_to_1",
+        "values": [
+          0.9963370561599731,
+          0.998450756072998,
+          0.9948182702064514
+        ]
+      },
+      {
+        "field": "medium_cloud_cover_mean",
+        "unit": "fraction_0_to_1",
+        "values": [
+          0.04397255927324295,
+          0.015743423253297806,
+          0.3494783937931061
+        ]
+      },
+      {
+        "field": "high_cloud_cover_mean",
+        "unit": "fraction_0_to_1",
+        "values": [
+          0.2527674734592438,
+          0.8738738298416138,
+          0.30045440793037415
+        ]
+      },
+      {
+        "field": "total_cloud_cover_p10",
+        "unit": "fraction_0_to_1",
+        "values": [
+          0.999448299407959,
+          0.9987911581993103,
+          0.9972257614135742
+        ]
+      },
+      {
+        "field": "total_cloud_cover_p90",
+        "unit": "fraction_0_to_1",
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "lead_hours": [
+      6,
+      12,
+      24
+    ]
+  },
+  "schema_version": 1,
+  "times": {
+    "initialization": "2026-08-01T00:00:00Z",
+    "object_updated_is_publication": false,
+    "publication": null,
+    "retrieval": "2026-09-05T14:06:45.362914Z",
+    "valid": [
+      "2026-08-01T06:00:00Z",
+      "2026-08-01T12:00:00Z",
+      "2026-08-02T00:00:00Z"
+    ]
+  },
+  "usage": {
+    "deadline_seconds": 105,
+    "decoded_working_bytes": 25934400,
+    "metadata_bytes": 182540,
+    "object_requests": 78,
+    "output_bytes": 52993,
+    "received_bytes": 375407160
+  }
+}
