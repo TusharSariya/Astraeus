@@ -81,3 +81,23 @@ unavailable; nothing SHALL be substituted for an absent artifact.
 #### Scenario: Fixture mode
 - **WHEN** the API runs in fixture mode
 - **THEN** the endpoint answers unavailable and lists no product
+
+### Requirement: Experimental current GFZ products preserve native status and catalogue state
+The bounded current GFZ Kp reader SHALL retain the producer's per-value
+`status` token verbatim beside each three-hour Kp value. The bounded current
+GFZ Hp60 reader SHALL retain hourly values and SHALL declare that the response
+contains no per-value provisional/final status. Both readers SHALL enforce the
+response's CC BY 4.0 licence, SHALL request at most 24 hours, and SHALL remain
+unregistered while their source records remain `catalogued`.
+
+#### Scenario: Current Kp carries status
+- **WHEN** GFZ returns aligned Kp, datetime and status arrays
+- **THEN** the artifact carries dimensionless Kp and the native status token at each producer instant
+
+#### Scenario: Hp60 has no status field
+- **WHEN** GFZ returns aligned Hp60 and datetime arrays with no status array
+- **THEN** the artifact declares `status_declared: false` and invents no status
+
+#### Scenario: A catalogue entry cannot run
+- **WHEN** adapter registration is inspected
+- **THEN** neither current GFZ Kp nor current GFZ Hp60 is scheduler-registered

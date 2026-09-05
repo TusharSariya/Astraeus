@@ -58,3 +58,8 @@ Not touched: `docs/specv1`, web, OVATION/Kp adapters' behaviour, the
       evidence-backed plasma endpoint correction and the non-operational
       products readback are completed experimental seams authorized by issue
       75.
+- [x] 5.4 Current GFZ Kp and Hp60 have bounded experimental readers, compact
+      live receipts and actual `/space-weather/products` readback. Kp status is
+      retained verbatim; Hp60 declares no status. Both records remain
+      `catalogued`, `operational: false`, and absent from scheduler registration.
+      Verify: `cd api && uv run pytest tests/test_adapter_gfz.py -q`

@@ -18,7 +18,7 @@ import httpx
 import numpy
 import pytest
 
-from ingest.adapters.gfz import GFZ_JSON_URL, GFZHp30Adapter
+from ingest.adapters.gfz import GFZ_JSON_URL, GFZHp30Adapter, GFZHp60Adapter, GFZKpAdapter
 from ingest.contract import AdapterUnavailable, FetchWindow
 from ingest.http import USER_AGENT, PoliteClient
 
@@ -247,6 +247,70 @@ def test_read_series_serves_what_the_adapter_wrote(tmp_path: Path):
     assert values[0] == pytest.approx(0.333)
     assert values[8] is None  # the gap stays a gap through the reader too
     assert len(values) == 10
+
+
+# --- current Kp and Hp60 experimental dispositions -----------------------
+
+
+@pytest.mark.parametrize(
+    ("adapter_type", "fixture_name", "index", "logical_name", "field", "expected", "status_declared"),
+    [
+        (GFZKpAdapter, "gfz_kp.json", "Kp", "kp", "kp_index", 1.667, True),
+        (GFZHp60Adapter, "gfz_hp60.json", "Hp60", "hp60", "hp60_index", 1.0, False),
+    ],
+)
+def test_current_product_value_unit_time_and_source_round_trip(
+    tmp_path: Path,
+    adapter_type,
+    fixture_name: str,
+    index: str,
+    logical_name: str,
+    field: str,
+    expected: float,
+    status_declared: bool,
+):
+    body = json.loads((FIXTURE.parent / fixture_name).read_text(encoding="utf-8"))
+    client, recorder = make_client(body)
+    adapter = adapter_type(client=client)
+    candidate = adapter.discover(WINDOW)[0]
+    query = {key: value[0] for key, value in parse_qs(urlparse(recorder.urls[0]).query).items()}
+    assert query["index"] == index
+    assert candidate.detail["receipt"].request_parameters == query
+
+    result = adapter.fetch(candidate, WINDOW, tmp_path)
+    store = ZipStore([(artifact(adapter.source_id, logical_name), result.artifacts[0].payload_path)])
+    series = store.read_series(adapter.source_id, logical_name)
+    assert series is not None
+    assert series.source_id == adapter.source_id
+    assert series.times[-1] == datetime(2026, 9, 5, 0, 0, tzinfo=UTC)
+    assert series.variables[field].units == "dimensionless"
+    assert series.variables[field].values[-1] == pytest.approx(expected)
+    provenance = result.artifacts[0].provenance
+    assert provenance["status_declared"] is status_declared
+    assert provenance["retrieval"][0]["request_parameters"]["index"] == index
+    if index == "Kp":
+        assert series.variables["kp_status"].units == "flag"
+        assert series.variables["kp_status"].values[-1] == "pre"
+
+
+def test_current_kp_refuses_missing_or_misaligned_status():
+    body = json.loads((FIXTURE.parent / "gfz_kp.json").read_text(encoding="utf-8"))
+    body.pop("status")
+    client, _ = make_client(body)
+    with pytest.raises(AdapterUnavailable, match="schema drift"):
+        GFZKpAdapter(client=client).discover(WINDOW)
+
+    body["status"] = ["pre"]
+    client, _ = make_client(body)
+    with pytest.raises(AdapterUnavailable, match="status array is misaligned"):
+        GFZKpAdapter(client=client).discover(WINDOW)
+
+
+def test_current_products_are_not_scheduler_registered():
+    from ingest.registry import registered_adapters
+
+    assert "gfz-kp-current" not in registered_adapters()
+    assert "gfz-hp60-current" not in registered_adapters()
 
 
 # --- live smoke -----------------------------------------------------------

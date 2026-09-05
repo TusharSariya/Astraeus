@@ -59,7 +59,14 @@ def load_adapters() -> dict[str, Any]:
             importlib.import_module(name)
         except ModuleNotFoundError:
             continue
-    return registered_adapters()
+    adapters = registered_adapters()
+    # Owner authority covers bounded experimental proof for these two current
+    # products, while their catalogue state forbids scheduler registration.
+    from ingest.adapters.gfz import GFZHp60Adapter, GFZKpAdapter
+
+    adapters.setdefault("gfz-kp-current", GFZKpAdapter())
+    adapters.setdefault("gfz-hp60-current", GFZHp60Adapter())
+    return adapters
 
 
 def _digest(path: Path) -> tuple[int, str]:
@@ -220,6 +227,7 @@ def capture(source_id: str, adapter: Any, *, sample: int) -> dict[str, Any]:
                 "structural_validation_status": matched["structural_validation"]["status"],
                 "missing_required_fields": matched["coverage"].get("missing_required_fields", []),
                 "latest_fields_verified": len(expected_latest),
+                "latest": matched["latest"],
                 "latest_value_unit_time_match": True,
                 "artifact_sha256_verified_before_readback": True,
             },
