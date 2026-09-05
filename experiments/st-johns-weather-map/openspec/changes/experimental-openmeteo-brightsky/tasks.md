@@ -10,9 +10,11 @@
 - [x] Test malformed JSON, 429, selected-field absence, mixed/foreign model
   shapes including unknown suffixes, exact source identity, units, intervals,
   times, provenance and incomplete-artifact publication refusal.
-- [ ] Define and accept a future pressure-profile contract naming each model's
-  available pressure levels, upstream field keys, units, vertical coordinate,
-  interpolation policy and missing-level behavior before retrieving or serving
-  any profile; surface evidence does not claim atmospheric-profile coverage.
+- [x] Define an experimental pressure-profile contract naming each model's
+  documented pressure surfaces, all eight upstream field families, units,
+  pressure coordinate, no-interpolation rule and per-field missing masks;
+  retain exact live responses, immutable artifacts and `/profile` readback.
+- [ ] Accept a future production pressure-profile contract (owner only); the
+  experimental evidence does not authorize registration or scheduling.
 - [ ] Accept production source contracts and licence decisions (owner only).
 - [ ] Register adapters, schedule retrieval or mark sources operational.

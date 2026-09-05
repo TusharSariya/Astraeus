@@ -25,7 +25,7 @@ run certainty is `unknown`; adjacent `meta.json` is not borrowed as lineage.
 
 | Source | Retrieved and stored | Raw/deferred accounting |
 |---|---|---|
-| JMA GSM, ARPEGE World, UKMO Global | temperature, dew point, total/low/mid/high cloud, 10 m wind speed/direction, MSL pressure, preceding-hour precipitation | RH is requested and confirmed `raw_retrieved`, but canonical publication is deferred because no saturation phase is declared. Pressure profiles remain outside this draft contract pending exact per-model availability, levels and conventions; this evidence does not claim them. |
+| JMA GSM, ARPEGE World, UKMO Global | temperature, dew point, total/low/mid/high cloud, 10 m wind speed/direction, MSL pressure, preceding-hour precipitation; source-specific pressure temperature and wind profiles | RH is requested and confirmed `raw_retrieved`, but canonical publication is deferred because no saturation phase is declared. The [pressure-profile addendum](openmeteo-pressure-profiles.md) inventories all eight documented upstream profile families at every source-specific level and retains deferred fields and null masks without interpolation. |
 | MOSMIX 71801 | temperature, dew point, total cloud, visibility, 10 m wind speed/direction and gust, MSL pressure, preceding-hour precipitation | RH, gust direction, hourly/six-hour probability, sunshine, solar, condition and icon are retained exactly in `raw_deferred_fields`; each status comes from the response as `raw_retrieved` or `raw_returned_null`. Unknown catalogue semantics remain `canonical_deferred`. |
 
 Every selected Open-Meteo array is mandatory. The parser accepts the complete
@@ -83,6 +83,13 @@ artifact checksum. MOSMIX's selected gust remains null. The same replay stages
 the incomplete/QC-passed MOSMIX revision and proves publication is refused
 while the prior visible revision remains `prior-visible`.
 
+A separate three-request pressure-profile proof under
+`evidence/openmeteo-profiles-20260905/` retains the source-specific live
+responses and profile artifacts and replays each through the real `LiveStore`
+and `/profile` endpoint. It retrieves all documented profile field/level keys,
+including expected null masks, while publishing only mappings whose semantics
+fit the existing catalogue.
+
 Verification commands:
 
 ```text
@@ -90,6 +97,7 @@ cd experiments/st-johns-weather-map
 uv run --project api python scripts/openmeteo_brightsky_live_smoke.py ../../docs/research/wayfinder/evidence/openmeteo-brightsky-20260905-corrective
 uv run --project api python scripts/openmeteo_brightsky_retained_http.py ../../docs/research/wayfinder/evidence/openmeteo-brightsky-20260905-corrective
 uv run --project api pytest api/tests/test_adapter_openmeteo.py -q
+PYTHONPATH=. uv run --project api python scripts/openmeteo_profile_evidence.py /tmp ../../docs/research/wayfinder/evidence/openmeteo-profiles-20260905
 cd ../..
 uv run --project tools/specs python tools/specs/specctl.py validate
 ```
