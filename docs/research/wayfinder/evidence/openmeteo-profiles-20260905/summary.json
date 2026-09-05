@@ -2,7 +2,7 @@
   "captured_at": "2026-09-05T15:17:54.801230+00:00",
   "derivation": "corrected adapter replay of retained provider responses; no new retrieval",
   "provider_request_count": 0,
-  "reprocessed_at": "2026-09-05T15:32:24.758603+00:00",
+  "reprocessed_at": "2026-09-05T15:40:57.322134+00:00",
   "sources": {
     "openmeteo-arpege": {
       "advertised_levels": [
@@ -67,6 +67,7 @@
         20,
         10
       ],
+      "api_numeric_or_mask_comparisons": 87,
       "api_status": 200,
       "artifact_complete": true,
       "artifact_qc_passed": true,
@@ -350,6 +351,7 @@
         150,
         100
       ],
+      "api_numeric_or_mask_comparisons": 48,
       "api_status": 200,
       "artifact_complete": false,
       "artifact_qc_passed": true,
@@ -576,6 +578,7 @@
         20,
         10
       ],
+      "api_numeric_or_mask_comparisons": 99,
       "api_status": 200,
       "artifact_complete": true,
       "artifact_qc_passed": true,

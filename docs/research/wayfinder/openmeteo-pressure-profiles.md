@@ -48,6 +48,10 @@ artifacts, provenance, and real `LiveStore` `/profile` readbacks at all 16 JMA,
 from the retained response bodies with zero new provider requests; the original
 capture time and response hashes remain unchanged, while regenerated artifact
 hashes and the reprocessing time are explicit in `summary.json`.
+The replay compares all 234 canonical numeric values or null masks directly
+against the retained provider responses, across all 78 model/level entries.
+HTTP provenance retains the original capture timestamp rather than treating
+local reprocessing as a new provider retrieval.
 
 Canonical completeness is assessed for temperature, wind speed and wind
 direction at every advertised level and retained valid time. JMA's canonical

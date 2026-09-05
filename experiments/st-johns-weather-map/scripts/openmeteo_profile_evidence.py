@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import shutil
 import sys
@@ -25,6 +26,31 @@ from weather_api.store import LiveStore
 UTC = timezone.utc
 
 
+def verify_profile_values(source_id: str, provider_payload: dict, api_payload: dict) -> int:
+    expected_levels = OPEN_METEO_PROFILE_LEVELS[source_id]
+    levels = api_payload["levels"]
+    if [level["pressure_hpa"] for level in levels] != list(expected_levels):
+        raise AssertionError(f"{source_id}: HTTP pressure levels differ from the selected inventory")
+    checked = 0
+    for level in levels:
+        pressure = level["pressure_hpa"]
+        fields = {field["field"]: field for field in level["fields"]
+                  if field["provenance"]["source_id"] == source_id}
+        for upstream, (canonical, _units, _original, _delivery) in OPEN_METEO_PROFILE_FIELDS.items():
+            if canonical is None:
+                continue
+            expected = provider_payload["hourly"][f"{upstream}_{pressure}hPa"][0]
+            field = fields[canonical]
+            actual = field["value"]
+            if expected is None:
+                if actual is not None or field["absence_state"] != "null":
+                    raise AssertionError(f"{source_id}/{canonical}/{pressure}: source mask was lost")
+            elif actual is None or not math.isclose(actual, expected, rel_tol=1e-6, abs_tol=1e-6):
+                raise AssertionError(f"{source_id}/{canonical}/{pressure}: {actual!r} != {expected!r}")
+            checked += 1
+    return checked
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("response_dir", type=Path)
@@ -32,7 +58,14 @@ def main() -> None:
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     prior_summary_path = args.output_dir / "summary.json"
+    if not prior_summary_path.exists():
+        prior_summary_path = args.response_dir / "summary.json"
     prior_summary = json.loads(prior_summary_path.read_text()) if prior_summary_path.exists() else {}
+    if not prior_summary.get("captured_at"):
+        raise ValueError("retained evidence requires its original captured_at timestamp")
+    captured_at = datetime.fromisoformat(prior_summary["captured_at"])
+    if captured_at.tzinfo is None:
+        raise ValueError("retained captured_at timestamp must include a timezone")
     summary: dict[str, object] = {
         "captured_at": prior_summary.get("captured_at"),
         "reprocessed_at": datetime.now(UTC).isoformat(),
@@ -74,7 +107,7 @@ def main() -> None:
                 revision_id=f"{source_id}-bounded-profile", source_id=source_id,
                 logical_name="pressure-profile", media_type=profile.media_type,
                 object_key=retained_artifact.name, byte_size=profile.byte_size,
-                provenance=profile.provenance, run_time=None, retrieved_at=datetime.now(UTC),
+                provenance=profile.provenance, run_time=None, retrieved_at=captured_at,
                 native_crs="EPSG:4326",
             )
 
@@ -108,6 +141,7 @@ def main() -> None:
                     else: os.environ["WEATHER_DATA_MODE"] = prior_mode
             response.raise_for_status()
             api_payload = response.json()
+            checked_values = verify_profile_values(source_id, payload, api_payload)
             (args.output_dir / f"{source_id}.profile-api.json").write_text(json.dumps(api_payload, indent=2, sort_keys=True) + "\n")
             returned_levels = [item["pressure_hpa"] for item in api_payload["levels"]]
             expected_levels = list(OPEN_METEO_PROFILE_LEVELS[source_id])
@@ -132,6 +166,7 @@ def main() -> None:
                 "artifact_sha256": profile.provenance["sha256"], "artifact_complete": result.complete,
                 "artifact_qc_passed": result.qc_passed,
                 "api_status": response.status_code, "api_levels": returned_levels,
+                "api_numeric_or_mask_comparisons": checked_values,
                 "advertised_levels": expected_levels, "unavailable_api_levels": unavailable_levels,
                 "publication_blocked": publication_blocked, "publication_reason": publication_reason,
                 "visible_revision_after_publication_attempt": publication.visible[source_id].revision,

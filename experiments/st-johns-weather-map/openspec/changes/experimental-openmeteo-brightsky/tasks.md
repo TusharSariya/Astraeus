@@ -18,6 +18,8 @@
   require every advertised canonical field/level/time, preserve literal raw
   units and masks, encode the pressure coordinate, prove JMA publication
   refusal, and read every advertised level through `LiveStore` and `/profile`.
+- [x] Compare all 234 canonical HTTP values or masks against the retained
+  responses and preserve the original provider capture time during replay.
 - [ ] Accept a future production pressure-profile contract (owner only); the
   experimental evidence does not authorize registration or scheduling.
 - [ ] Accept production source contracts and licence decisions (owner only).

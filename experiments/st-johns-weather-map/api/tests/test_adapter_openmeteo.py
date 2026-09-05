@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import shutil
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -167,6 +168,22 @@ def test_profile_validation_failure_leaves_no_partial_surface_artifact(tmp_path)
     with pytest.raises(AdapterUnavailable, match="unexpected_units:temperature_850hPa"):
         adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
     assert not list(tmp_path.glob("*.zarr.zip"))
+
+
+@pytest.mark.parametrize("pressure,replacement", [(1000, -999.0), (975, 0.0)])
+def test_retained_profile_http_comparator_rejects_changed_values_or_masks(pressure, replacement):
+    from scripts.openmeteo_profile_evidence import verify_profile_values
+
+    bundle = Path(__file__).resolve().parents[4] / "docs/research/wayfinder/evidence/openmeteo-profiles-20260905"
+    source_id = "openmeteo-jma-gsm"
+    provider = json.loads((bundle / f"{source_id}.response.json").read_text())
+    response = json.loads((bundle / f"{source_id}.profile-api.json").read_text())
+    assert verify_profile_values(source_id, provider, response) == 48
+    level = next(item for item in response["levels"] if item["pressure_hpa"] == pressure)
+    field = next(item for item in level["fields"] if item["field"] == "temperature_pressure")
+    field["value"] = replacement
+    with pytest.raises(AssertionError):
+        verify_profile_values(source_id, provider, response)
 
 
 def test_omitted_profile_array_fails_closed(tmp_path):
