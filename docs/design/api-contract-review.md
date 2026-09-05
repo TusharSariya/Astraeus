@@ -50,6 +50,16 @@ Band-math numeric raster inputs and renderer conclusions remain deferred and can
 Verification: compare issue resolutions and committed prototype evidence against `weather_api/app.py`, `models.py` and running `http://localhost:8000/openapi.json`; independent subagent review of Sources, Sky and station evidence completed. `uv run --project tools/specs python tools/specs/specctl.py validate` passed with 0 errors and 0 warnings.
 
 
-## Next decision: bounded response behavior
+## Owner decision: cursor pagination
 
-Proposed, not yet selected: a successful Series read returns the complete result for its accepted field/source/window selection, including explicit absence and actual sample times. If the selection exceeds the server's declared limits, reject it with a structured error naming the exceeded limit so the client can narrow the request. Do not silently truncate, downsample, or paginate into a different revision set. Exact limits and status codes remain contract drafting/validation work; no arbitrary numeric cap is selected here. Pagination could be added later with explicit snapshot retention if a demonstrated consumer requires it.
+The owner suggested pagination and explicitly selected cursor pagination with a short-lived snapshot. This replaces the earlier unselected proposal to reject requests solely because they exceed one response page.
+
+An opaque cursor binds the original coordinate, field/source selection and window to the fixed artifact-revision set and next position. All pages preserve that selection and revision set; new ingestion does not alter later pages. Responses preserve actual sample times, provenance and explicit absence, with no silent truncation or downsampling. A continuation signals remaining results; completion is explicit.
+
+The server retains the selected revisions briefly. If the snapshot expires, the API explicitly requires a fresh read; it must not silently resume against new revisions. If a pinned revision becomes unreadable before expiry, the previously selected explicit retryable failure still applies. Ordinary field absence stays an explicit gap. Overall request limits still apply independently of page size.
+
+Exact lifetime, page/sample limits, cursor encoding, status codes and retention mechanics remain proposed-contract work, not selected values. This decision authorizes no production implementation or indefinite historical retention.
+
+## Next decision: refresh while browsing
+
+Proposed, not yet selected: an in-progress Series comparison continues using its snapshot. New data availability is indicated, but adopting it requires an explicit refresh that starts a new read and replaces the displayed snapshot together. Existing pages must never be silently combined with pages from the new snapshot. Retain field/source choices and Focus during refresh. Snapshot expiry clearly offers restart; it does not present old results as current.
