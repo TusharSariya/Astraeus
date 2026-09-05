@@ -65,8 +65,15 @@ Exact lifetime, page/sample limits, cursor encoding, status codes and retention 
 Owner-selected (explicit “yes” in live review): an in-progress Series comparison continues using its snapshot. New data availability is indicated, but adopting it requires an explicit refresh that starts a new read and replaces the displayed snapshot together. Existing pages must never be silently combined with pages from the new snapshot. Retain field/source choices and Focus during refresh. Snapshot expiry clearly offers restart; it does not present old results as current.
 
 
-## Next discussion: existing response corrections
+## Owner decision: existing response corrections
 
-Proposed, not yet selected as a package: reuse existing routes and extend their representations where the selected views demonstrated missing information. Add authoritative layer/source and canonical field associations; expose station/report identity and full per-reading provenance through the existing feature response; preserve TAF forecast validity intervals and classification; expose evidence identity on astronomy and space-weather values; replace unavailable astronomy zero placeholders with explicit absence; and reconcile existing run/freshness metadata with its authoritative origin.
+Owner-selected package (explicit “yes” in live review): reuse existing routes and extend their representations where the selected views demonstrated missing information. Add authoritative layer/source and canonical field associations; expose station/report identity and full per-reading provenance through the existing feature response; preserve TAF forecast validity intervals and classification; expose evidence identity on astronomy and space-weather values; replace unavailable astronomy zero placeholders with explicit absence; and reconcile existing run/freshness metadata with its authoritative origin.
 
 These are candidate contract changes and implementation corrections, not claims of completed capability. Missing report data is not repaired by a schema change. Exact shapes and verification belong in the proposal. This package does not add duplicate station, family, freshness or space-weather routes, infer a universal evidence class for mixed sources, or enable new scientific derivations.
+
+
+## Next discussion: registered sites and cameras
+
+Proposed, not yet selected: expose read-only, versioned site/horizon and camera-registry metadata from the API so the shared Focus and Sky use the deployment's registered definitions. The prototypes currently embed checked-in registry copies. Reuse those registries without new admission, authoring, horizon estimation or directional reconstruction. Camera records retain their declared eligibility and absence reasons; a registry record alone does not make a frame eligible. Arbitrary points never inherit the nearest site's horizon.
+
+Alternative: continue shipping versioned registry copies with the frontend, accepting that registry updates require a frontend release. Exact route shapes and revision association remain subsequent contract work. This does not authorize camera-image delivery or resolve the remaining camera-placement design questions.
