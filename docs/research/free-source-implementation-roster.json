@@ -100,9 +100,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -190,9 +193,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -295,9 +301,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -391,9 +400,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -486,9 +498,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -579,9 +594,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -670,9 +688,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -752,9 +773,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -834,9 +858,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -921,9 +948,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1009,9 +1039,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1101,9 +1134,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1191,9 +1227,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1279,9 +1318,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1370,9 +1412,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1461,9 +1506,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1547,9 +1595,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1629,9 +1680,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1713,9 +1767,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1813,9 +1870,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1907,9 +1967,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -1995,9 +2058,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2080,9 +2146,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2173,9 +2242,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2257,9 +2329,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2347,9 +2422,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2435,9 +2513,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2526,9 +2607,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2613,9 +2697,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2699,9 +2786,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2781,9 +2871,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2875,9 +2968,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -2965,9 +3061,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3047,9 +3146,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3133,9 +3235,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3216,9 +3321,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3320,9 +3428,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3424,9 +3535,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3525,9 +3639,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3629,9 +3746,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3731,9 +3851,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3827,9 +3950,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -3927,9 +4053,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4009,9 +4138,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4098,9 +4230,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4194,9 +4329,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4288,9 +4426,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4386,9 +4527,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4473,9 +4617,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4555,9 +4702,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4640,9 +4790,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4722,9 +4875,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4804,9 +4960,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4893,9 +5052,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -4981,9 +5143,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5063,9 +5228,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5149,9 +5317,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5240,9 +5411,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5324,9 +5498,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5408,9 +5585,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5493,9 +5673,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5575,9 +5758,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5657,9 +5843,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5741,9 +5930,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5823,9 +6015,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5908,9 +6103,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -5991,9 +6189,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6073,9 +6274,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6158,9 +6362,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6240,9 +6447,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6325,9 +6535,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6407,9 +6620,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6489,9 +6705,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6577,9 +6796,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6664,9 +6886,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6746,9 +6971,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6842,9 +7070,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -6935,9 +7166,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7023,9 +7257,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7114,9 +7351,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7208,9 +7448,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7295,9 +7538,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7385,9 +7631,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7474,9 +7723,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7560,9 +7812,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7644,9 +7899,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7731,9 +7989,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7818,9 +8079,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7905,9 +8169,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -7993,9 +8260,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8086,9 +8356,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8174,9 +8447,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8262,9 +8538,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8344,9 +8623,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8426,9 +8708,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8511,9 +8796,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8595,9 +8883,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8677,9 +8968,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8770,9 +9064,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8860,9 +9157,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -8954,9 +9254,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9048,9 +9351,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9142,9 +9448,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9237,9 +9546,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9319,9 +9631,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9401,9 +9716,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9483,9 +9801,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9571,9 +9892,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9656,9 +9980,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9738,9 +10065,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9820,9 +10150,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9902,9 +10235,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -9985,9 +10321,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10070,9 +10409,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10153,9 +10495,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10237,9 +10582,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10321,9 +10669,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10405,9 +10756,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10461,9 +10815,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10515,9 +10872,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10569,9 +10929,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10623,9 +10986,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10677,9 +11043,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10731,9 +11100,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10785,9 +11157,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10839,9 +11214,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10893,9 +11271,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -10947,9 +11328,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11001,9 +11385,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11055,9 +11442,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11109,9 +11499,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11163,9 +11556,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11217,9 +11613,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11271,9 +11670,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11325,9 +11727,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11379,9 +11784,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11433,9 +11841,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11487,9 +11898,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11541,9 +11955,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11595,9 +12012,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11649,9 +12069,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11703,9 +12126,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11757,9 +12183,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11811,9 +12240,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11865,9 +12297,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11919,9 +12354,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -11973,9 +12411,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12027,9 +12468,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12081,9 +12525,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12135,9 +12582,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12189,9 +12639,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12243,9 +12696,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12297,9 +12753,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12351,9 +12810,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12405,9 +12867,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12459,9 +12924,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12513,9 +12981,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12567,9 +13038,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12621,9 +13095,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12675,9 +13152,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12729,9 +13209,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12783,9 +13266,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12837,9 +13323,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12891,9 +13380,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12945,9 +13437,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -12999,9 +13494,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13053,9 +13551,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13107,9 +13608,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13161,9 +13665,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13215,9 +13722,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13269,9 +13779,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13323,9 +13836,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13377,9 +13893,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13431,9 +13950,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13485,9 +14007,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13539,9 +14064,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13593,9 +14121,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13647,9 +14178,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13701,9 +14235,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13755,9 +14292,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13809,9 +14349,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13863,9 +14406,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13917,9 +14463,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -13971,9 +14520,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14025,9 +14577,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14079,9 +14634,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14133,9 +14691,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14187,9 +14748,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14241,9 +14805,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14295,9 +14862,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14349,9 +14919,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14403,9 +14976,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14457,9 +15033,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14511,9 +15090,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14565,9 +15147,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14619,9 +15204,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14673,9 +15261,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14727,9 +15318,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14781,9 +15375,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14835,9 +15432,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14889,9 +15489,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14943,9 +15546,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -14997,9 +15603,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15051,9 +15660,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15105,9 +15717,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15159,9 +15774,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15213,9 +15831,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15267,9 +15888,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15321,9 +15945,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15375,9 +16002,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15429,9 +16059,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15483,9 +16116,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15537,9 +16173,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15591,9 +16230,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15645,9 +16287,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15699,9 +16344,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15753,9 +16401,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15807,9 +16458,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15861,9 +16515,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15915,9 +16572,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -15969,9 +16629,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16023,9 +16686,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16077,9 +16743,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16131,9 +16800,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16185,9 +16857,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16239,9 +16914,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16293,9 +16971,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16347,9 +17028,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16401,9 +17085,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16455,9 +17142,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16509,9 +17199,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16563,9 +17256,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16617,9 +17313,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16671,9 +17370,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16725,9 +17427,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16779,9 +17484,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16833,9 +17541,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16887,9 +17598,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16941,9 +17655,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -16995,9 +17712,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17049,9 +17769,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17103,9 +17826,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17157,9 +17883,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17211,9 +17940,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17265,9 +17997,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17319,9 +18054,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17373,9 +18111,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17427,9 +18168,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17481,9 +18225,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17535,9 +18282,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17589,9 +18339,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17643,9 +18396,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17697,9 +18453,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17751,9 +18510,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17805,9 +18567,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17859,9 +18624,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17913,9 +18681,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -17967,9 +18738,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18021,9 +18795,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18075,9 +18852,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18129,9 +18909,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18183,9 +18966,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18237,9 +19023,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18291,9 +19080,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18345,9 +19137,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18399,9 +19194,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18453,9 +19251,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18507,9 +19308,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18561,9 +19365,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18615,9 +19422,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18669,9 +19479,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18723,9 +19536,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18777,9 +19593,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18831,9 +19650,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18885,9 +19707,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18939,9 +19764,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -18993,9 +19821,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19047,9 +19878,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19101,9 +19935,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19155,9 +19992,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19209,9 +20049,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19263,9 +20106,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19317,9 +20163,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19371,9 +20220,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19425,9 +20277,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19479,9 +20334,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19533,9 +20391,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
@@ -19587,9 +20448,12 @@
           "GOV-SPEC-002",
           "GOV-SPEC-004",
           "GOV-SPEC-005",
-          "GOV-SPEC-006",
+          "GOV-SPEC-006"
+        ],
+        "proposed_v1_target_shape": [
           "EVD-PROV-001",
-          "EVD-MASK-001"
+          "EVD-MASK-001",
+          "EVD-API-001"
         ],
         "draft_executable_contracts": [
           "artifact-ingestion",
