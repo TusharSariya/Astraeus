@@ -52,5 +52,11 @@ Not touched: `docs/specv1`, web, OVATION/Kp adapters' behaviour, the
       fixtures under 20 KB; no payload in Git.
       Verify: `git rev-list --objects origin/execution/free-source-contracts..HEAD | git cat-file --batch-check='%(objectsize) %(rest)' | sort -n | tail`
 - [x] 5.2 `make test-api test-registry`, `specctl validate`, `openspec validate free-space-weather-products --strict`.
-- [ ] 5.3 Owner decisions recorded (STEREO-A re-probe, plasma endpoint
-      correction, GFZ Kp/Hp60, products endpoint shape); no state promoted.
+- [ ] 5.3 Owner decisions recorded for the two remaining scope questions:
+      whether a current STEREO-A re-probe is enough to revisit its
+      `unavailable` tombstone, and whether live GFZ Kp/Hp60 belong in issue 89
+      or a bounded child. Until then STEREO-A stays unavailable and GFZ
+      Kp/Hp60 stay unimplemented. No state is promoted. The evidence-backed
+      plasma endpoint correction and the non-operational products readback are
+      completed experimental seams authorized by issue 75, not pending
+      production decisions.

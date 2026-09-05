@@ -41,7 +41,10 @@ Explicit exclusions remain unchanged: the STEREO-A and hourly Kp prediction
 records stay `unavailable`; NRCan STJ stays `partnership-only`; the Canadian
 regional forecast stays link/citation-only; imagery and the existing SWPC Kp
 and OVATION adapters are outside this change. GFZ Kp/Hp60 are catalogued
-follow-ups rather than substitutes for the selected Hp30 acquisition.
+follow-ups rather than substitutes for the selected Hp30 acquisition. No
+existing native child of map 70 owns their live integration: issue 94 owns
+bounded historical acquisition, while current GFZ Kp/Hp60 remain inside issue
+89 unless the owner chooses a new bounded child.
 
 Verification commands and outcomes:
 
