@@ -1,0 +1,109 @@
+{
+  "access_path": "https://api.brightsky.dev/weather",
+  "coverage": {
+    "fraction": 0.8889,
+    "status": "partial"
+  },
+  "evidence_class_by_variable": {
+    "dew_point_2m": "reprocessed",
+    "mean_sea_level_pressure": "reprocessed",
+    "precipitation_accumulation": "reprocessed",
+    "temperature_2m": "reprocessed",
+    "total_cloud_geometric": "reprocessed",
+    "visibility": "reprocessed",
+    "wind_direction_10m": "reprocessed",
+    "wind_gust_10m": "reprocessed",
+    "wind_speed_10m": "reprocessed"
+  },
+  "evidence_classes": [
+    "reprocessed"
+  ],
+  "field_disposition": {
+    "condition": "raw_retrieved; canonical_deferred: catalogue semantics or producer convention unresolved",
+    "dew_point_2m": "retrieved",
+    "icon": "raw_retrieved; canonical_deferred: catalogue semantics or producer convention unresolved",
+    "mean_sea_level_pressure": "retrieved",
+    "precipitation_accumulation": "retrieved",
+    "precipitation_probability": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+    "precipitation_probability_6h": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+    "relative_humidity_2m": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+    "solar": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+    "sunshine": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+    "temperature_2m": "retrieved",
+    "total_cloud_geometric": "retrieved",
+    "visibility": "retrieved",
+    "wind_direction_10m": "retrieved",
+    "wind_gust_10m": "missing: all station values null",
+    "wind_gust_direction": "raw_returned_null; canonical_deferred: catalogue semantics or producer convention unresolved",
+    "wind_speed_10m": "retrieved"
+  },
+  "intermediary": "Bright Sky",
+  "licence": "DWD terms apply; Bright Sky public instance is free",
+  "native_crs": "EPSG:4326",
+  "producer": "Deutscher Wetterdienst",
+  "product": "MOSMIX_L station forecast",
+  "quality": {
+    "detail": "wind_gust_10m is present but entirely missing values",
+    "flags": [
+      "empty_field:wind_gust_10m"
+    ],
+    "status": "suspect"
+  },
+  "raw_deferred_fields": {
+    "condition": [
+      "rain",
+      "rain",
+      "rain"
+    ],
+    "icon": [
+      "cloudy",
+      "cloudy",
+      "rain"
+    ],
+    "precipitation_probability": [
+      null,
+      null,
+      null
+    ],
+    "precipitation_probability_6h": [
+      null,
+      null,
+      null
+    ],
+    "relative_humidity": [
+      null,
+      null,
+      null
+    ],
+    "solar": [
+      null,
+      null,
+      null
+    ],
+    "sunshine": [
+      null,
+      null,
+      null
+    ],
+    "wind_gust_direction": [
+      null,
+      null,
+      null
+    ]
+  },
+  "request_url": "https://api.brightsky.dev/weather?date=2026-09-05T14%3A00%3A00%2B00%3A00&last_date=2026-09-05T16%3A00%3A00%2B00%3A00&wmo_station_id=71801&units=dwd",
+  "response_sha256": "0540de55e40cf6d9a881c46615984cfa2dfd165d617060e6d516a0d670ca6b0b",
+  "run_identity": {
+    "certainty": "unknown",
+    "reason": "Bright Sky response carries no MOSMIX cycle",
+    "value": null
+  },
+  "sha256": "4952ed3ad9b76c4de790ed4720c4418c13e2318fd50b7d6df60a0784d59f6e70",
+  "source_id": "brightsky-dwd-mosmix-71801",
+  "station": {
+    "name": "ST.JOHNS NEUFUNDL.",
+    "observation_type": "forecast",
+    "source_id": 1228,
+    "wmo_station_id": "71801"
+  }
+}

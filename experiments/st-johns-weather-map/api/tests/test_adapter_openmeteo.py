@@ -1,0 +1,304 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import shutil
+from datetime import datetime, timezone
+from types import SimpleNamespace
+
+import httpx
+import pytest
+import xarray
+from fastapi.testclient import TestClient
+
+from ingest.contract import AdapterUnavailable, FetchWindow
+from ingest.experimental.openmeteo import (
+    OPEN_METEO_PROFILE_FIELDS,
+    OPEN_METEO_PROFILE_LEVELS,
+    BrightSkyMosmix71801Adapter,
+    OpenMeteoAdapter,
+)
+from weather_api.app import PREFIX, app
+from weather_api.storage import ArtifactRevision, FixtureArtifactStore
+from weather_api.store import LiveStore
+
+UTC = timezone.utc
+
+
+class Response:
+    def __init__(self, value): self.content = value if isinstance(value, bytes) else json.dumps(value).encode()
+
+
+class Client:
+    def __init__(self, value=None, error=None): self.value, self.error, self.urls = value, error, []
+    def get(self, url):
+        self.urls.append(url)
+        if self.error: raise self.error
+        return Response(self.value)
+
+
+def window(): return FetchWindow(datetime(2026, 9, 5, 1, tzinfo=UTC), back_hours=1, forward_hours=1)
+
+
+def forecast(model="jma_gsm", *, omit=(), suffixed=False):
+    names = {
+        "temperature_2m": "°C", "dew_point_2m": "°C", "relative_humidity_2m": "%",
+        "cloud_cover": "%", "cloud_cover_low": "%", "cloud_cover_mid": "%", "cloud_cover_high": "%",
+        "wind_speed_10m": "m/s", "wind_direction_10m": "°", "pressure_msl": "hPa", "precipitation": "mm",
+    }
+    hourly = {"time": ["2026-09-05T00:00", "2026-09-05T01:00", "2026-09-05T02:00"]}
+    units = {"time": "iso8601"}
+    for index, (name, unit) in enumerate(names.items(), 1):
+        if name in omit: continue
+        key = f"{name}_{model}" if suffixed else name
+        hourly[key], units[key] = [index, index + 1, index + 2], unit
+    source = next(source for source, details in {
+        "openmeteo-jma-gsm": "jma_gsm",
+        "openmeteo-arpege": "meteofrance_arpege_world025",
+        "openmeteo-ukmo-global": "ukmo_global_deterministic_10km",
+    }.items() if details == model)
+    for level in OPEN_METEO_PROFILE_LEVELS[source]:
+        for index, (kind, (_canonical, _units, original, _delivery)) in enumerate(OPEN_METEO_PROFILE_FIELDS.items(), 20):
+            name = f"{kind}_{level}hPa"
+            key = f"{name}_{model}" if suffixed else name
+            hourly[key], units[key] = [index, index + 1, index + 2], original
+    return {"latitude": 47.5, "longitude": -52.5, "elevation": 0, "hourly": hourly, "hourly_units": units}
+
+
+@pytest.mark.parametrize("source,model", [
+    ("openmeteo-jma-gsm", "jma_gsm"), ("openmeteo-arpege", "meteofrance_arpege_world025"),
+    ("openmeteo-ukmo-global", "ukmo_global_deterministic_10km"),
+])
+def test_named_model_fixture_becomes_immutable_point_artifact(tmp_path, source, model):
+    client = Client(forecast(model)); adapter = OpenMeteoAdapter(source, client=client)
+    result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    assert result.complete and result.qc_passed and result.run_time is None
+    assert len(result.artifacts) == 2
+    artifact, profile = result.artifacts
+    assert artifact.payload_path.is_file() and artifact.byte_size > 0
+    assert artifact.provenance["model_selector"] == model
+    assert artifact.provenance["run_identity"]["certainty"] == "unknown"
+    assert artifact.provenance["field_disposition"]["relative_humidity_2m"].startswith("raw_retrieved")
+    assert len(artifact.provenance["intermediary_transformations"]) == 6
+    import zarr
+    with xarray.open_zarr(zarr.storage.ZipStore(artifact.payload_path, mode="r"), consolidated=False) as dataset:
+        assert set(dataset.data_vars) >= {"temperature_2m", "total_cloud_geometric", "wind_speed_10m"}
+        assert dataset.precipitation_accumulation.attrs["reporting_interval"] == "preceding_hour"
+    with xarray.open_zarr(zarr.storage.ZipStore(profile.payload_path, mode="r"), consolidated=False) as dataset:
+        assert dataset.sizes["pressure"] == len(OPEN_METEO_PROFILE_LEVELS[source])
+        assert set(dataset.data_vars) == {"temperature_pressure", "wind_speed_pressure", "wind_direction_pressure"}
+        assert dataset.pressure.attrs == {"units": "hPa", "positive": "down", "standard_name": "air_pressure"}
+        assert profile.provenance["vertical_coordinate"]["interpolation"] == "none"
+        assert profile.provenance["field_disposition"][f"relative_humidity_{OPEN_METEO_PROFILE_LEVELS[source][0]}hPa"].endswith("raw_phase_unknown")
+    assert "models=" in client.urls[0] and "elevation=nan" in client.urls[0] and "cell_selection=nearest" in client.urls[0]
+
+
+def test_selected_field_absence_fails_closed_before_writing_artifact(tmp_path):
+    publication = FixtureArtifactStore()
+    prior = ArtifactRevision("prior", 100, True, True)
+    publication.stage("jma", prior); publication.publish("jma")
+    adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(forecast(omit=("cloud_cover_high",))))
+    with pytest.raises(AdapterUnavailable, match="missing_selected_field:cloud_cover_high"):
+        adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    assert not list(tmp_path.glob("*.zarr.zip"))
+    assert publication.visible["jma"] is prior
+
+
+def test_complete_selected_model_suffix_shape_is_accepted(tmp_path):
+    adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(forecast(suffixed=True)))
+    assert adapter.fetch(adapter.discover(window())[0], window(), tmp_path).complete
+
+
+def test_profile_preserves_expected_null_mask_and_undefined_unit_without_failing_other_fields(tmp_path):
+    payload = forecast("meteofrance_arpege_world025")
+    payload["hourly"]["vertical_velocity_1000hPa"] = [None, None, None]
+    payload["hourly_units"]["vertical_velocity_1000hPa"] = "undefined"
+    result = OpenMeteoAdapter("openmeteo-arpege", client=Client(payload)).fetch(
+        OpenMeteoAdapter("openmeteo-arpege", client=Client(payload)).discover(window())[0], window(), tmp_path
+    )
+    profile = next(item for item in result.artifacts if item.logical_name == "pressure-profile")
+    assert result.complete
+    raw = profile.provenance["raw_deferred_profile_fields"]["vertical_velocity_1000hPa"]
+    assert raw == {
+        "values": [None, None, None],
+        "missing_mask": [True, True, True],
+        "original_units": "undefined",
+        "delivery": "raw_incompatible_with_omega",
+        "pressure_hpa": 1000,
+        "valid_times": [
+            "2026-09-05T00:00:00+00:00",
+            "2026-09-05T01:00:00+00:00",
+            "2026-09-05T02:00:00+00:00",
+        ],
+    }
+    assert profile.provenance["field_disposition"]["vertical_velocity_1000hPa"] == "missing: all values null; raw_incompatible_with_omega"
+
+
+def test_missing_required_canonical_level_is_incomplete_and_cannot_publish(tmp_path):
+    payload = forecast("meteofrance_arpege_world025")
+    payload["hourly"]["temperature_850hPa"] = [None, None, None]
+    adapter = OpenMeteoAdapter("openmeteo-arpege", client=Client(payload))
+    result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    profile = next(item for item in result.artifacts if item.logical_name == "pressure-profile")
+
+    assert result.complete is False
+    assert result.qc_passed is True
+    assert profile.provenance["canonical_level_completeness"]["temperature_pressure"]["850"] is False
+    assert profile.provenance["missing_required_canonical_levels"] == ["temperature_pressure@850hPa"]
+    assert profile.provenance["coverage"]["status"] == "partial"
+    assert profile.provenance["quality"]["status"] == "suspect"
+
+    publication = FixtureArtifactStore()
+    prior = ArtifactRevision("prior", 100, True, True)
+    publication.stage("arpege-profile", prior)
+    publication.publish("arpege-profile")
+    publication.stage(
+        "arpege-profile",
+        ArtifactRevision("missing-temperature-850", profile.byte_size, result.complete, result.qc_passed),
+    )
+    with pytest.raises(ValueError, match="complete and pass QC"):
+        publication.publish("arpege-profile")
+    assert publication.visible["arpege-profile"] is prior
+
+
+def test_profile_validation_failure_leaves_no_partial_surface_artifact(tmp_path):
+    payload = forecast()
+    payload["hourly_units"]["temperature_850hPa"] = "K"
+    adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(payload))
+    with pytest.raises(AdapterUnavailable, match="unexpected_units:temperature_850hPa"):
+        adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    assert not list(tmp_path.glob("*.zarr.zip"))
+
+
+@pytest.mark.parametrize("pressure,replacement", [(1000, -999.0), (975, 0.0)])
+def test_retained_profile_http_comparator_rejects_changed_values_or_masks(pressure, replacement):
+    from scripts.openmeteo_profile_evidence import verify_profile_values
+
+    bundle = Path(__file__).resolve().parents[4] / "docs/research/wayfinder/evidence/openmeteo-profiles-20260905"
+    source_id = "openmeteo-jma-gsm"
+    provider = json.loads((bundle / f"{source_id}.response.json").read_text())
+    response = json.loads((bundle / f"{source_id}.profile-api.json").read_text())
+    assert verify_profile_values(source_id, provider, response) == 48
+    level = next(item for item in response["levels"] if item["pressure_hpa"] == pressure)
+    field = next(item for item in level["fields"] if item["field"] == "temperature_pressure")
+    field["value"] = replacement
+    with pytest.raises(AssertionError):
+        verify_profile_values(source_id, provider, response)
+
+
+def test_omitted_profile_array_fails_closed(tmp_path):
+    payload = forecast()
+    del payload["hourly"]["temperature_850hPa"]
+    adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(payload))
+    with pytest.raises(AdapterUnavailable, match="missing_selected_field:temperature_850hPa"):
+        adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+
+
+@pytest.mark.parametrize("foreign,mixed,match", [
+    (None, True, "mixed_model_response_shape"),
+    ("meteofrance_arpege_world025", False, "foreign_model_arrays"),
+    ("gfs_global", False, "foreign_model_arrays"),
+])
+def test_mixed_or_foreign_model_response_fails_closed(tmp_path, foreign, mixed, match):
+    payload = forecast()
+    if mixed: payload["hourly"]["temperature_2m_jma_gsm"] = payload["hourly"]["temperature_2m"]
+    if foreign: payload["hourly"][f"temperature_2m_{foreign}"] = [1, 2, 3]
+    adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(payload))
+    with pytest.raises(AdapterUnavailable, match=match): adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+
+
+@pytest.mark.parametrize("payload,match", [(b"{", "malformed provider JSON"), ({"hourly": {}}, "missing hourly")])
+def test_malformed_and_partial_responses_fail_closed(tmp_path, payload, match):
+    adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(payload))
+    if isinstance(payload, bytes):
+        with pytest.raises(AdapterUnavailable, match=match): adapter.discover(window())
+    else:
+        with pytest.raises(AdapterUnavailable, match=match): adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+
+
+def test_throttling_is_unavailable_and_never_a_run():
+    response = httpx.Response(429, request=httpx.Request("GET", "https://example.test"))
+    adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=Client(error=httpx.HTTPStatusError("429", request=response.request, response=response)))
+    with pytest.raises(AdapterUnavailable, match="request failed"): adapter.discover(window())
+
+
+def bright_sky_payload():
+    return {"sources": [{"id": 1228, "wmo_station_id": "71801", "lat": 47.62, "lon": -52.73, "station_name": "ST.JOHNS NEUFUNDL.", "observation_type": "forecast"}], "weather": [{
+        "timestamp": "2026-09-05T01:00:00Z", "source_id": 1228, "temperature": 13.3, "dew_point": 10.2,
+        "cloud_cover": 94, "visibility": 9800, "pressure_msl": 1014.2, "wind_speed": 18.0,
+        "wind_direction": 118, "wind_gust_speed": 32.4, "precipitation": 0.0, "relative_humidity": None,
+        "precipitation_probability": 25, "precipitation_probability_6h": None, "sunshine": None, "solar": None,
+        "condition": "rain", "icon": "rain", "wind_gust_direction": None,
+    }]}
+
+
+def test_bright_sky_refuses_nearest_station_and_reads_exact_station(tmp_path):
+    adapter = BrightSkyMosmix71801Adapter(Client({"sources": [{"wmo_station_id": "10147"}], "weather": []}))
+    with pytest.raises(AdapterUnavailable, match="nearest-station fallback forbidden"): adapter.discover(window())
+    exact = BrightSkyMosmix71801Adapter(Client(bright_sky_payload())); candidate = exact.discover(window())[0]
+    result = exact.fetch(candidate, window(), tmp_path)
+    assert result.complete and result.artifacts[0].provenance["station"]["source_id"] == 1228
+    assert "wmo_station_id=71801" in candidate.urls[0]
+    assert result.artifacts[0].provenance["field_disposition"]["condition"].startswith("raw_retrieved")
+    assert result.artifacts[0].provenance["field_disposition"]["wind_gust_10m"] == "retrieved"
+
+
+def test_all_null_required_field_is_incomplete_qc_valid_and_cannot_publish(tmp_path):
+    payload = bright_sky_payload()
+    payload["weather"][0]["wind_gust_speed"] = None
+    adapter = BrightSkyMosmix71801Adapter(Client(payload))
+    result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    assert result.complete is False
+    assert result.qc_passed is True
+    assert result.artifacts[0].provenance["quality"]["status"] == "suspect"
+    assert "empty_field:wind_gust_10m" in result.artifacts[0].provenance["quality"]["flags"]
+
+    publication = FixtureArtifactStore()
+    prior = ArtifactRevision("prior", 100, True, True)
+    publication.stage("mosmix", prior)
+    publication.publish("mosmix")
+    publication.stage("mosmix", ArtifactRevision("all-null-gust", result.artifacts[0].byte_size, result.complete, result.qc_passed))
+    with pytest.raises(ValueError, match="complete and pass QC"):
+        publication.publish("mosmix")
+    assert publication.visible["mosmix"] is prior
+
+
+@pytest.mark.parametrize("source_update,row_update", [
+    ({"id": 999}, {}), ({"station_name": "WRONG"}, {}), ({"observation_type": "current"}, {}), ({}, {"source_id": 999}),
+])
+def test_bright_sky_rejects_wrong_exact_source_identity(tmp_path, source_update, row_update):
+    payload = bright_sky_payload(); payload["sources"][0].update(source_update); payload["weather"][0].update(row_update)
+    adapter = BrightSkyMosmix71801Adapter(Client(payload))
+    if source_update:
+        with pytest.raises(AdapterUnavailable, match="identity mismatch"): adapter.discover(window())
+    else:
+        with pytest.raises(AdapterUnavailable, match="row source_id"): adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+
+
+def test_immutable_artifact_reads_back_through_real_artifact_reader_and_point_api(tmp_path, monkeypatch):
+    import sys
+    api_module = sys.modules["weather_api.app"]
+    client = Client(forecast()); adapter = OpenMeteoAdapter("openmeteo-jma-gsm", client=client)
+    artifact = adapter.fetch(adapter.discover(window())[0], window(), tmp_path).artifacts[0]
+
+    class S3:
+        def head_bucket(self, **_kwargs): return {}
+        def download_fileobj(self, _bucket, _key, handle):
+            with artifact.payload_path.open("rb") as source: shutil.copyfileobj(source, handle)
+
+    record = SimpleNamespace(revision_id="live-proof-1", source_id="openmeteo-jma-gsm", logical_name="surface",
+        media_type=artifact.media_type, object_key="proof/openmeteo.zip", byte_size=artifact.byte_size,
+        provenance=artifact.provenance, run_time=None, retrieved_at=datetime(2026, 9, 5, 1, 5, tzinfo=UTC), native_crs="EPSG:4326")
+    class ArtifactStore:
+        s3 = S3(); config = SimpleNamespace(bucket="test")
+        def current_artifacts(self): return [record]
+        def source_activity(self): return {record.source_id: record.retrieved_at}
+
+    store = LiveStore(ArtifactStore(), tmp_path / "cache")
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live"); monkeypatch.setattr(api_module, "live_store", lambda: store)
+    monkeypatch.setitem(api_module.PRODUCT_SOURCE_IDS, "JMA-GSM-EXPERIMENT", "openmeteo-jma-gsm")
+    response = TestClient(app).get(f"{PREFIX}/point", params={"product": "JMA-GSM-EXPERIMENT", "valid_time": "2026-09-05T01:00:00Z"})
+    assert response.status_code == 200
+    payload = response.json(); assert payload["operational"] is False and payload["data_mode"] == "live"
+    temperature = next(field for field in payload["fields"] if field["field"] == "temperature")
+    assert temperature["value"] == 2.0 and temperature["provenance"]["source_id"] == "openmeteo-jma-gsm"
