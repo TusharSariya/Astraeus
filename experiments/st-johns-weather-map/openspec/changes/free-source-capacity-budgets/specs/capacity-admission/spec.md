@@ -3,11 +3,18 @@
 ### Requirement: Capacity admission accounts for every retained and staged byte
 The system SHALL admit a source run only when the two normally retained visible
 runs, the complete incoming staged run, incremental bytes retained only by
-unexpired snapshot pins, and the approved derived/format/manifest reserve fit
-both their approved envelopes and the 64 GiB hard quota. It SHALL calculate the
-complete-run upper bound before payload retrieval and reconcile it to observed
-bytes after staging. It SHALL NOT double-count normally retained runs as pinned
-bytes or omit a staged run from publication-peak accounting.
+unexpired snapshot pins, and a conservative measured derived/format/manifest
+and sizing-variance allowance fit the 64 GiB hard quota. For each local
+filesystem, it SHALL also require every additional allocation made by the
+operation, including download/decode temporaries and locally stored staged or
+published bytes, plus a measured overhead and sizing-variance allowance to fit
+actual free space. It SHALL avoid double-counting the same allocation across
+these projections and SHALL reserve the projected filesystem bytes atomically
+against concurrent admissions. An unmeasured bound or allowance SHALL block
+admission. It SHALL calculate these upper bounds before payload retrieval and
+reconcile them to observed bytes after staging. It SHALL NOT infer a fixed
+reserve percentage, double-count normally retained runs as pinned bytes or omit
+a staged run from publication-peak accounting.
 
 #### Scenario: A third run is staged while two runs are visible
 - **WHEN** two complete runs are retained and the next run is considered
@@ -21,18 +28,29 @@ bytes or omit a staged run from publication-peak accounting.
 - **WHEN** metadata, index, chunk layout or representative retrieval cannot establish a conservative complete-run bound
 - **THEN** the run remains non-operational and no unbounded full payload retrieval begins
 
+#### Scenario: Local temporary space is insufficient
+- **WHEN** all additional allocations on a filesystem plus its measured allowance exceed unreserved current free space
+- **THEN** the operation does not begin even when the projected object-store total is below 64 GiB
+
+#### Scenario: Concurrent operations contend for local space
+- **WHEN** two operations would each fit the same currently free bytes but their combined conservative allocations would not
+- **THEN** atomic reservation admits at most the operations whose combined bounds fit and refuses the rest before transfer
+
 ### Requirement: Source budgets preserve complete admitted products
-Every admitted product/access path SHALL have numeric provider-request,
-received-byte, decode-resource and refresh budgets based on real full-field and
-full-member evidence. Provider limits SHALL be hard ceilings and local limits
-SHALL be equal or lower. Metadata, failed requests and retries SHALL count. A
+Every admitted product/access path SHALL have numeric provider-request and rate
+ceilings plus finite per-operation received-byte, decode-memory, temporary-disk,
+wall-time, concurrency and refresh safety bounds based on real full-field and
+full-member evidence. The shared daily direct-feed receive ceiling SHALL be
+disabled. Provider limits SHALL be hard ceilings and operation limits SHALL
+respect them. Metadata, failed requests and retries SHALL count. Cancellation
+and throttle responses SHALL stop work and permit only bounded backoff. A
 budget failure SHALL preserve the last visible revision and report
 `retrieval_failed` with `upstream_budget_exhausted`. It SHALL NOT reduce an
 admitted field, level, ensemble member, native resolution or retention promise,
 and SHALL NOT silently substitute another product.
 
-#### Scenario: A daily transfer budget is exhausted
-- **WHEN** the next complete product retrieval would exceed its source or shared received-byte budget
+#### Scenario: An operation transfer bound would be exceeded
+- **WHEN** the next complete product retrieval would exceed its metadata-derived received-byte bound
 - **THEN** retrieval does not begin, the last visible revision remains, and the source reports `upstream_budget_exhausted`
 
 #### Scenario: A provider throttles a batch

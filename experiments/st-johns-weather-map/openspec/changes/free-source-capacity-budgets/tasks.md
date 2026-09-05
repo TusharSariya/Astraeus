@@ -2,10 +2,19 @@
 
 ## 1. Human decisions and specification gate
 
-- [ ] 1.1 Owner approves or replaces the 51.2/12.8 GiB payload/nonpayload envelopes.
-- [ ] 1.2 Owner approves a numeric shared direct-feed receive allowance.
-- [ ] 1.3 Update the delta requirements to the owner's exact answers and obtain
-  the required normative status authorization; do not infer it from silence.
+- [x] 1.1 Record the owner's 2026-09-05 direction without inferring a fixed
+  reserve: "yeah increase our budget then maybe set the budget to off unless we
+  are going to run out of storage". Result: retain 64 GiB and require measured
+  product overhead plus conservative disk/free-space gates.
+- [x] 1.2 Remove the artificial shared daily receive ceiling. Provider ceilings
+  and finite metadata-sized operation bounds remain mandatory.
+- [ ] 1.3 Obtain separate normative status authorization under GOV-SPEC-002.
+  The capacity answer resolves issue 74's policy choice but does not accept
+  this draft or authorize production runtime/scheduler changes.
+- [x] 1.4 Validate the revised draft with `openspec validate
+  free-source-capacity-budgets --strict` and validate the repository
+  specification graph. Result on 2026-09-05: the change is valid; `specctl`
+  reports 0 errors and 0 warnings.
 
 ## 2. Complete source ledgers
 
@@ -23,11 +32,15 @@
 ## 3. Admission and enforcement
 
 - [ ] 3.1 Add atomic accounting for normal retained bytes, committed complete
-  staging, incremental snapshot pins and measured reserve without double-counting.
-- [ ] 3.2 Refuse source/run or snapshot admission before transfer when any
-  approved envelope or the 64 GiB total would be exceeded.
-- [ ] 3.3 Meter provider weights, requests, received bytes and decode resources;
-  include metadata, failures and retries.
+  staging, incremental snapshot pins, measured reserve and all additional local
+  filesystem allocations without double-counting. Concurrent admissions must
+  reserve projected filesystem allocations atomically.
+- [ ] 3.2 Refuse source/run or snapshot admission before transfer when the
+  projected 64 GiB total, temporary-disk bound or local free-space safety gate
+  would be exceeded.
+- [ ] 3.3 Enforce provider weights/rates and finite per-operation request,
+  received-byte, decode-resource and time bounds; include metadata, failures
+  and retries. Do not introduce a shared daily receive ceiling.
 - [ ] 3.4 Return `upstream_budget_exhausted` or `quota_exceeded` with the last
   visible revision preserved and no field/member/resolution thinning.
 
@@ -36,7 +49,9 @@
 - [ ] 4.1 Test two visible runs plus one complete staged run and incremental
   snapshot-only pins at every boundary and one byte over it.
 - [ ] 4.2 Test restart accounting, expired-pin release, nonrenewable page reads,
-  provider 429/backoff and exhausted daily byte/compute allowances.
+  local free-space refusal, cancellation, provider 429/backoff and exhausted
+  operation byte/compute/time bounds. Test concurrent admissions competing for
+  the same filesystem bytes.
 - [ ] 4.3 For each admitted source, attach real upstream retrieval, immutable
   artifact validation, Astraeus API readback and failure/provenance evidence.
 - [ ] 4.4 Run `openspec validate free-source-capacity-budgets --strict`, the
