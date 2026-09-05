@@ -593,8 +593,8 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertIn("RDPS_10km_SeeingIndex", rdps["reason"])
         self.assertIn("RDPS_10km_SkyTransparencyIndex", rdps["reason"])
 
-        self.assertEqual("stored", fields.storage_of("eccc-rdps", "seeing_class_eccc"))
-        self.assertEqual("stored", fields.storage_of("eccc-rdps", "transparency_class_eccc"))
+        self.assertEqual("available-not-stored", fields.storage_of("eccc-rdps", "seeing_class_eccc"))
+        self.assertEqual("available-not-stored", fields.storage_of("eccc-rdps", "transparency_class_eccc"))
         self.assertEqual("transparency", fields.family_of("transparency_class_eccc"))
 
         transparency_family = next(
