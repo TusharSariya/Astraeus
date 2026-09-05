@@ -42,3 +42,21 @@ producer has no public data.
 
 Spec-Impact: experiment. Accepted governance authority: GOV-SPEC-001,
 GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-005, GOV-SPEC-006.
+
+## Live capture receipt
+
+Per the owner decision of 2026-09-05 (issue #70) the capture is recorded as a
+receipt, not a payload. One anonymous WCS 2.0.1 session against
+`https://geo.weather.gc.ca/geomet/` at `2026-09-05T15:41:00Z`:
+`GetCapabilities` returned HTTP 200, 1,090,094 bytes, 5,589 coverages. Two
+`GetCoverage` requests in `EPSG:4326` over the Avalon box produced the raw
+GeoTIFFs and zipped-Zarr artifacts below; nothing is registered or scheduled
+and the classification is "isolated experiment; source contracts pending owner
+acceptance".
+
+| Source | Coverage | Valid time | Run time | Units | Shape | Raw bytes | Raw SHA-256 | Artifact bytes | Artifact SHA-256 | Finite / null cells |
+|---|---|---|---|---|---|---:|---|---:|---|---|
+| `eccc-raqdps` | `RAQDPS.SFC_PM2.5` | 2026-09-05T15:00Z | 2026-09-05T00:00Z | kg/m³ | 23 x 45 | 4,558 | `77c3e241bde23e5089d5dfc56bd369e9ded74d978779839a79e3119c73c76601` | 6,528 | `b434c9ee2b29b0789fdd81461674ffbefc91cb0fa2aa4edf82d8fe44defe3ae0` | 1,035 / 0 |
+| `eccc-hrdpa` | `HRDPA_2.5km_Precip-Accum6h` | 2026-09-05T06:00Z | none published | mm | 89 x 178 | 63,840 | `055c80a29a8199d9f3b43f5ac47c2365ad27e418467a786aec1de6e0e7f34a8b` | 9,377 | `0c62ff484989773e4cf222211bff6bdb312f3b739a1afc34adf8ae68bdbbfec7` | 15,842 / 0 |
+
+Quality is `unknown` for both; `operational: false`.
