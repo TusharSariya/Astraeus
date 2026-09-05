@@ -81,6 +81,9 @@ The central product question is:
   reproducible Sun/Moon and eclipse calculations, aurora and space-weather
   archives, meteor/comet/transient sources, forecast-vintage semantics, and the
   event-to-weather validation pipeline.
+- [WeatherNext 3 experimental integration evidence](weathernext3-integration-evidence.md):
+  exact 126-field inventory, bounded all-field point proof, six-field Avalon
+  box proof, immutable artifacts, API harness and remaining production gates.
 
 ## Current recommendation
 

@@ -1,0 +1,114 @@
+# WeatherNext 3 experimental integration evidence
+
+Recorded 2026-09-05 for [Implement the verified WeatherNext forecast source](https://github.com/TusharSariya/Astraeus/issues/77).
+This evidence is non-normative. The source contract remains draft and the
+adapter remains absent from production registration and scheduling.
+
+## Exact source and field scope
+
+The implementation accepts only Google DeepMind WeatherNext 3.0.0 statistics
+from `weathernext3_statistics_spatial/weathernext_3_0_0_statistics/zarr`.
+It preserves the Cartesian inventory of 21 base variables and six statistics
+(`mean`, `p10`, `p25`, `p50`, `p75`, `p90`), 126 fields total. The selected
+cloud candidate is four native cloud-cover variables by six statistics, 24
+fields. All 126 are retrieved adapter capability; the other 102 have no
+accepted consumer mapping and remain deferred for production exposure. Fog, visibility,
+ceiling, cloud base and cloud top are unsupported. Raw members and pressure
+levels belong to the excluded requester-paid full-ensemble product.
+
+## Live proofs
+
+`evidence/weathernext-20260801-all-fields-lead6.json` describes the exact
+lead-6 chunk for every field. All 126 exist with positive size, generation and
+ETag. The 127 metadata operations completed in 81.617 seconds and downloaded
+zero forecast bytes. A value read would require 3,150,715,420 compressed bytes.
+The owner then authorized the known operation with a 30-minute deadline and
+4 GiB cap. `evidence/weathernext-20260801-all-fields-lead6-values.json`
+retrieved all 126 lead-6 point values sequentially: 3,150,943,978 bytes, 140
+operations, 103,708,800 peak decoded bytes, 122,420 collector-output bytes and 432
+seconds. Each generation-qualified download matched its described byte size;
+the retained records name that pinned-read mechanism explicitly and do not
+claim a later metadata or ETag recheck. The
+adapter validates the exact run path, generation, ETag, size and one-to-one
+field/lead binding before normalization. These are internal consistency checks
+on the evidence record, not cryptographic proof that arbitrary JSON came from
+GCS. It records 120 numeric values and six explicit unavailable masks, all
+six being sea-surface-temperature statistics at the selected land cell. The
+114 0.1-degree and 12 station-head 0.05-degree arrays retain distinct grid and
+coordinate identity. This is all-field point evidence, not full spatial
+coverage. Its annotated SHA-256 is
+`b9ed43359425550eeab98c6f639dcc67f347657ae8a25a081850bef337a1d122`.
+Roughly 50,067,508 KiB was physically free before the operation. The gate held
+a 4 GiB team reservation plus the next compressed chunk, decoded allowance and
+output allowance. Every raw chunk was deleted immediately after point
+extraction. Only the evidence JSON is retained in the repository; its current
+132,878-byte form includes the explicit identity-mechanism annotations added during
+adapter hardening.
+the two normalized Zarr artifacts are created in temporary test directories
+and are not installed in a shared store.
+
+`evidence/weathernext-20260801-avalon-box.json` is the value proof for the six
+previously sampled cloud statistics at leads 6, 12 and 24. It contains every
+native cell centre within `[-54.0, 46.5, -52.5, 48.0]`: 16 latitudes by 16
+longitudes, 256 cells per lead. The read received 375,407,160 bytes in 78
+operations, decoded at most 25,934,400 bytes at once, emitted 220,942 bytes,
+and completed in 100 seconds. Source object identity checks all passed. Its
+SHA-256 is `d35a5bbb3b92deab515732ae88f92934e605a3697d4fe1aee90374c1c81e4d4c`.
+
+`evidence/weathernext-20260801-all-fields-lead6-avalon-box.json` is the
+complete bounded spatial proof. It retains every lead-6 native cell whose
+centre lies within 45.0–50.5 N, 58.0–46.0 W for all 126 fields: 56 by 121 cells
+for 114 fields on the 0.1-degree grid and 111 by 241 cells for 12 fields on the
+0.05-degree station-head grid. It received 3,150,943,978 bytes in 140
+operations, decoded at most 103,708,800 bytes at once, emitted 37,503,385
+bytes, and completed in 433 seconds. The collector held the 4 GiB received-byte
+bound and local reservation, a 128 MiB decoded bound, a 64 MiB serialized-output
+bound, and a 30-minute deadline. Every raw global chunk was deleted immediately
+after extraction. The 133 retained identities cover all 126 field chunks, root
+metadata, both latitude and longitude coordinate pairs, lead time, and
+initialization. Its SHA-256 is
+`c46e4609cf8d2b9915c78ce65b1cbe4dde6603639899655b67831154bb605ca5`.
+
+Every field retains its native unit, provider statistic, valid time, finite
+range, values and null count. Only the six sea-surface-temperature statistics
+contain nulls: each has 1,587 provider-null land cells and finite ocean cells;
+the mean spans 283.22454833984375–291.3005676269531 K. This is a spatial proof
+at one historical lead, not a cadence or operational-window proof. Its two
+temporary normalized Zarr artifacts are approximately 0.91 MiB and 2.26 MiB
+and remain outside shared storage.
+
+The all-field metadata artifact SHA-256 is
+`17fff8135223e867693acb70c0de4635d22587a6d616d08184d501ee14990e46`.
+
+## Adapter, artifact, API and failures
+
+The isolated adapter validates exact product/surface/member/statistic/time and
+the complete disposition inventory, preserves nulls as masks, writes a
+deterministic immutable Zarr artifacts split by native grid, and carries all
+126 dispositions plus the validated source-object records in provenance.
+Astraeus' real reader and HTTP point endpoint read both native-grid artifacts
+in a local harness and compare all 126 response fields with the retained point
+manifest: 120 numeric values and six explicit SST nulls. The same path compares
+all six earlier box fields at a retained native cell, and compares all 126
+complete-box fields at representative land and ocean cells, including SST null
+and finite behavior. Every catalogue override is
+test-local. No production catalogue, source registry, scheduler, shared store
+or deployment configuration is changed.
+
+The complete all-field box proves spatial extraction at one representative
+historical lead. The earlier Avalon artifact proves six cloud statistics at
+three leads. Neither establishes operational cadence or full-window
+completeness. Both return `complete=false` and
+`qc_passed=false`, with explicit `experimental_partial_sample` provenance, so
+even manual passage to the actual artifact store stages without moving a
+published revision. Operational publishability remains blocked until accepted
+full temporal and cadence bounds exist.
+
+Tests refuse WN2 identity, fabricated member identity, incomplete inventory,
+statistic mismatch, invalid cloud fractions, mask-count mismatch, blocked
+acquisition and requester-paid bucket state. Mutations of either retained
+manifest's path, generation, ETag or verified-read mechanism fail closed; box
+metadata and coordinate identities and every selected field/lead binding are
+required. Invalid inputs create no partial artifact. Existing transport tests
+prove request reservation, byte limits, redacted failures and empty
+billing/project/auth override variables.

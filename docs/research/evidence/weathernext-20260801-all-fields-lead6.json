@@ -1,0 +1,1029 @@
+{
+  "access_surface": "gcs_statistics_spatial",
+  "elapsed_seconds": 81.617,
+  "field_count": 126,
+  "field_objects": [
+    {
+      "etag": "CNCjucrQv5YDEAE=",
+      "field": "temperature_2m_mean",
+      "generation": "1787793177989584",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_mean/c/6/0/0",
+      "size": 19485366,
+      "updated": null
+    },
+    {
+      "etag": "CPy52L7Qv5YDEAE=",
+      "field": "temperature_2m_p10",
+      "generation": "1787793153334524",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p10/c/6/0/0",
+      "size": 19519426,
+      "updated": null
+    },
+    {
+      "etag": "CNe7+73Qv5YDEAE=",
+      "field": "temperature_2m_p25",
+      "generation": "1787793151811031",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p25/c/6/0/0",
+      "size": 19490107,
+      "updated": null
+    },
+    {
+      "etag": "COuD+LHQv5YDEAE=",
+      "field": "temperature_2m_p50",
+      "generation": "1787793126588907",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p50/c/6/0/0",
+      "size": 19407311,
+      "updated": null
+    },
+    {
+      "etag": "CN2bnrHQv5YDEAE=",
+      "field": "temperature_2m_p75",
+      "generation": "1787793125117405",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p75/c/6/0/0",
+      "size": 19482554,
+      "updated": null
+    },
+    {
+      "etag": "CP2xqqXQv5YDEAE=",
+      "field": "temperature_2m_p90",
+      "generation": "1787793100151037",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p90/c/6/0/0",
+      "size": 19506135,
+      "updated": null
+    },
+    {
+      "etag": "CJyz4Yywv5YDEAE=",
+      "field": "dewpoint_temperature_2m_mean",
+      "generation": "1787784458688924",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_mean/c/6/0/0",
+      "size": 19541333,
+      "updated": null
+    },
+    {
+      "etag": "CITmyoywv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p10",
+      "generation": "1787784458318596",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p10/c/6/0/0",
+      "size": 19594332,
+      "updated": null
+    },
+    {
+      "etag": "CL2A6ouwv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p25",
+      "generation": "1787784456732733",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p25/c/6/0/0",
+      "size": 19553126,
+      "updated": null
+    },
+    {
+      "etag": "CL/z/4uwv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p50",
+      "generation": "1787784457091519",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p50/c/6/0/0",
+      "size": 19462836,
+      "updated": null
+    },
+    {
+      "etag": "CPGepoywv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p75",
+      "generation": "1787784457719665",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p75/c/6/0/0",
+      "size": 19520644,
+      "updated": null
+    },
+    {
+      "etag": "CNXE6P+vv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p90",
+      "generation": "1787784431542869",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p90/c/6/0/0",
+      "size": 19534962,
+      "updated": null
+    },
+    {
+      "etag": "CMeFuuPNv5YDEAE=",
+      "field": "wind_speed_10m_mean",
+      "generation": "1787792425124551",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_mean/c/6/0/0",
+      "size": 22906133,
+      "updated": null
+    },
+    {
+      "etag": "CNe6yNbNv5YDEAE=",
+      "field": "wind_speed_10m_p10",
+      "generation": "1787792398097751",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p10/c/6/0/0",
+      "size": 23062129,
+      "updated": null
+    },
+    {
+      "etag": "CL2Tpc/Nv5YDEAE=",
+      "field": "wind_speed_10m_p25",
+      "generation": "1787792382839229",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p25/c/6/0/0",
+      "size": 22966663,
+      "updated": null
+    },
+    {
+      "etag": "CO/7+7m7v5YDEAE=",
+      "field": "wind_speed_10m_p50",
+      "generation": "1787787506286063",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p50/c/6/0/0",
+      "size": 22851435,
+      "updated": null
+    },
+    {
+      "etag": "CLPYr73Nv5YDEAE=",
+      "field": "wind_speed_10m_p75",
+      "generation": "1787792345263155",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p75/c/6/0/0",
+      "size": 22829800,
+      "updated": null
+    },
+    {
+      "etag": "CMmXkLq7v5YDEAE=",
+      "field": "wind_speed_10m_p90",
+      "generation": "1787787506617289",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p90/c/6/0/0",
+      "size": 22787734,
+      "updated": null
+    },
+    {
+      "etag": "CJn7hYzOv5YDEAE=",
+      "field": "wind_speed_100m_mean",
+      "generation": "1787792510254489",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_mean/c/6/0/0",
+      "size": 22860011,
+      "updated": null
+    },
+    {
+      "etag": "CIm//ITOv5YDEAE=",
+      "field": "wind_speed_100m_p10",
+      "generation": "1787792495419273",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p10/c/6/0/0",
+      "size": 23016316,
+      "updated": null
+    },
+    {
+      "etag": "CNO8o/7Nv5YDEAE=",
+      "field": "wind_speed_100m_p25",
+      "generation": "1787792481377875",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p25/c/6/0/0",
+      "size": 22926123,
+      "updated": null
+    },
+    {
+      "etag": "CLH+4PXNv5YDEAE=",
+      "field": "wind_speed_100m_p50",
+      "generation": "1787792463511345",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p50/c/6/0/0",
+      "size": 22804219,
+      "updated": null
+    },
+    {
+      "etag": "CJzgsvDNv5YDEAE=",
+      "field": "wind_speed_100m_p75",
+      "generation": "1787792452268060",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p75/c/6/0/0",
+      "size": 22775941,
+      "updated": null
+    },
+    {
+      "etag": "CP/lwsC7v5YDEAE=",
+      "field": "wind_speed_100m_p90",
+      "generation": "1787787520029439",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p90/c/6/0/0",
+      "size": 22738736,
+      "updated": null
+    },
+    {
+      "etag": "CI6ftfvOv5YDEAE=",
+      "field": "u_component_of_wind_10m_mean",
+      "generation": "1787792743813006",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_mean/c/6/0/0",
+      "size": 23784618,
+      "updated": null
+    },
+    {
+      "etag": "CPTtgvrOv5YDEAE=",
+      "field": "u_component_of_wind_10m_p10",
+      "generation": "1787792740890356",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p10/c/6/0/0",
+      "size": 23768836,
+      "updated": null
+    },
+    {
+      "etag": "CLGYme7Ov5YDEAE=",
+      "field": "u_component_of_wind_10m_p25",
+      "generation": "1787792716090417",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p25/c/6/0/0",
+      "size": 23763695,
+      "updated": null
+    },
+    {
+      "etag": "CIHPie3Ov5YDEAE=",
+      "field": "u_component_of_wind_10m_p50",
+      "generation": "1787792713738113",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p50/c/6/0/0",
+      "size": 23721046,
+      "updated": null
+    },
+    {
+      "etag": "CIHajObOv5YDEAE=",
+      "field": "u_component_of_wind_10m_p75",
+      "generation": "1787792699108609",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p75/c/6/0/0",
+      "size": 23744747,
+      "updated": null
+    },
+    {
+      "etag": "CO+V3N7Ov5YDEAE=",
+      "field": "u_component_of_wind_10m_p90",
+      "generation": "1787792683633391",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p90/c/6/0/0",
+      "size": 23737306,
+      "updated": null
+    },
+    {
+      "etag": "CJ7Lwtyrv5YDEAE=",
+      "field": "v_component_of_wind_10m_mean",
+      "generation": "1787783283778974",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_mean/c/6/0/0",
+      "size": 23914876,
+      "updated": null
+    },
+    {
+      "etag": "CPHyose7v5YDEAE=",
+      "field": "v_component_of_wind_10m_p10",
+      "generation": "1787787534186865",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p10/c/6/0/0",
+      "size": 23902856,
+      "updated": null
+    },
+    {
+      "etag": "CJXdiqfOv5YDEAE=",
+      "field": "v_component_of_wind_10m_p25",
+      "generation": "1787792566955669",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p25/c/6/0/0",
+      "size": 23893395,
+      "updated": null
+    },
+    {
+      "etag": "CLPyrZnOv5YDEAE=",
+      "field": "v_component_of_wind_10m_p50",
+      "generation": "1787792538171699",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p50/c/6/0/0",
+      "size": 23838207,
+      "updated": null
+    },
+    {
+      "etag": "COe385jOv5YDEAE=",
+      "field": "v_component_of_wind_10m_p75",
+      "generation": "1787792537213927",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p75/c/6/0/0",
+      "size": 23871906,
+      "updated": null
+    },
+    {
+      "etag": "CNbDyYvOv5YDEAE=",
+      "field": "v_component_of_wind_10m_p90",
+      "generation": "1787792509264342",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p90/c/6/0/0",
+      "size": 23863530,
+      "updated": null
+    },
+    {
+      "etag": "CPCPyqTPv5YDEAE=",
+      "field": "u_component_of_wind_100m_mean",
+      "generation": "1787792830138352",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_mean/c/6/0/0",
+      "size": 23767450,
+      "updated": null
+    },
+    {
+      "etag": "CNbAzp7Pv5YDEAE=",
+      "field": "u_component_of_wind_100m_p10",
+      "generation": "1787792817627222",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p10/c/6/0/0",
+      "size": 23762365,
+      "updated": null
+    },
+    {
+      "etag": "CObylpjPv5YDEAE=",
+      "field": "u_component_of_wind_100m_p25",
+      "generation": "1787792804133222",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p25/c/6/0/0",
+      "size": 23753637,
+      "updated": null
+    },
+    {
+      "etag": "CNre3JjPv5YDEAE=",
+      "field": "u_component_of_wind_100m_p50",
+      "generation": "1787792805277530",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p50/c/6/0/0",
+      "size": 23706457,
+      "updated": null
+    },
+    {
+      "etag": "CL/Ymse7v5YDEAE=",
+      "field": "u_component_of_wind_100m_p75",
+      "generation": "1787787534052415",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p75/c/6/0/0",
+      "size": 23731516,
+      "updated": null
+    },
+    {
+      "etag": "CIa37YjPv5YDEAE=",
+      "field": "u_component_of_wind_100m_p90",
+      "generation": "1787792771996550",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p90/c/6/0/0",
+      "size": 23727859,
+      "updated": null
+    },
+    {
+      "etag": "CNe68tjOv5YDEAE=",
+      "field": "v_component_of_wind_100m_mean",
+      "generation": "1787792671415639",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_mean/c/6/0/0",
+      "size": 23926258,
+      "updated": null
+    },
+    {
+      "etag": "CNXhvdLOv5YDEAE=",
+      "field": "v_component_of_wind_100m_p10",
+      "generation": "1787792657969365",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p10/c/6/0/0",
+      "size": 23918112,
+      "updated": null
+    },
+    {
+      "etag": "CKXw/Me7v5YDEAE=",
+      "field": "v_component_of_wind_100m_p25",
+      "generation": "1787787535661093",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p25/c/6/0/0",
+      "size": 23905997,
+      "updated": null
+    },
+    {
+      "etag": "CMe8vcPOv5YDEAE=",
+      "field": "v_component_of_wind_100m_p50",
+      "generation": "1787792626507335",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p50/c/6/0/0",
+      "size": 23852413,
+      "updated": null
+    },
+    {
+      "etag": "CPPFuMPOv5YDEAE=",
+      "field": "v_component_of_wind_100m_p75",
+      "generation": "1787792626426611",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p75/c/6/0/0",
+      "size": 23889896,
+      "updated": null
+    },
+    {
+      "etag": "CMP83rXOv5YDEAE=",
+      "field": "v_component_of_wind_100m_p90",
+      "generation": "1787792597696067",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p90/c/6/0/0",
+      "size": 23886633,
+      "updated": null
+    },
+    {
+      "etag": "CMHxpvDQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_mean",
+      "generation": "1787793257380033",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_mean/c/6/0/0",
+      "size": 23149005,
+      "updated": null
+    },
+    {
+      "etag": "CNLRy+TQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p10",
+      "generation": "1787793232816338",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p10/c/6/0/0",
+      "size": 12356212,
+      "updated": null
+    },
+    {
+      "etag": "CNKg5PnovpYDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p25",
+      "generation": "1787765359972434",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p25/c/6/0/0",
+      "size": 13188466,
+      "updated": null
+    },
+    {
+      "etag": "CLe1jdfQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p50",
+      "generation": "1787793204533943",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p50/c/6/0/0",
+      "size": 17551063,
+      "updated": null
+    },
+    {
+      "etag": "COa4xdjQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p75",
+      "generation": "1787793207549030",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p75/c/6/0/0",
+      "size": 21707572,
+      "updated": null
+    },
+    {
+      "etag": "CKWeu8rQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p90",
+      "generation": "1787793178021669",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p90/c/6/0/0",
+      "size": 22799396,
+      "updated": null
+    },
+    {
+      "etag": "CM/Ovc/Pv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_mean",
+      "generation": "1787792920110927",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_mean/c/6/0/0",
+      "size": 23311003,
+      "updated": null
+    },
+    {
+      "etag": "CKrwosjPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p10",
+      "generation": "1787792904992810",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p10/c/6/0/0",
+      "size": 9701091,
+      "updated": null
+    },
+    {
+      "etag": "CPPw98DPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p25",
+      "generation": "1787792889608307",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p25/c/6/0/0",
+      "size": 11060250,
+      "updated": null
+    },
+    {
+      "etag": "CIqMrrrPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p50",
+      "generation": "1787792875816458",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p50/c/6/0/0",
+      "size": 16834942,
+      "updated": null
+    },
+    {
+      "etag": "CJ7N2rLPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p75",
+      "generation": "1787792859768478",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p75/c/6/0/0",
+      "size": 21901824,
+      "updated": null
+    },
+    {
+      "etag": "CKzPuavPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p90",
+      "generation": "1787792844548012",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p90/c/6/0/0",
+      "size": 22930232,
+      "updated": null
+    },
+    {
+      "etag": "CM/d2vDPv5YDEAE=",
+      "field": "total_precipitation_1hr_mean",
+      "generation": "1787792989793999",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_mean/c/6/0/0",
+      "size": 23949374,
+      "updated": null
+    },
+    {
+      "etag": "CKWDt/DPv5YDEAE=",
+      "field": "total_precipitation_1hr_p10",
+      "generation": "1787792989208997",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p10/c/6/0/0",
+      "size": 11535925,
+      "updated": null
+    },
+    {
+      "etag": "CKTss8e7v5YDEAE=",
+      "field": "total_precipitation_1hr_p25",
+      "generation": "1787787534464548",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p25/c/6/0/0",
+      "size": 14340008,
+      "updated": null
+    },
+    {
+      "etag": "CKyntePPv5YDEAE=",
+      "field": "total_precipitation_1hr_p50",
+      "generation": "1787792961917868",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p50/c/6/0/0",
+      "size": 20164882,
+      "updated": null
+    },
+    {
+      "etag": "CIzR39vPv5YDEAE=",
+      "field": "total_precipitation_1hr_p75",
+      "generation": "1787792945834124",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p75/c/6/0/0",
+      "size": 23275054,
+      "updated": null
+    },
+    {
+      "etag": "CJverci7v5YDEAE=",
+      "field": "total_precipitation_1hr_p90",
+      "generation": "1787787536461595",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p90/c/6/0/0",
+      "size": 23789648,
+      "updated": null
+    },
+    {
+      "etag": "CPP/1Yyvv5YDEAE=",
+      "field": "imerg_tp_1hr_mean",
+      "generation": "1787784190066675",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_mean/c/6/0/0",
+      "size": 23501936,
+      "updated": null
+    },
+    {
+      "etag": "CJex5/Suv5YDEAE=",
+      "field": "imerg_tp_1hr_p10",
+      "generation": "1787784140019863",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p10/c/6/0/0",
+      "size": 1716365,
+      "updated": null
+    },
+    {
+      "etag": "CIewyOiuv5YDEAE=",
+      "field": "imerg_tp_1hr_p25",
+      "generation": "1787784114345991",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p25/c/6/0/0",
+      "size": 3410743,
+      "updated": null
+    },
+    {
+      "etag": "CJDAkd2uv5YDEAE=",
+      "field": "imerg_tp_1hr_p50",
+      "generation": "1787784090378256",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p50/c/6/0/0",
+      "size": 10937250,
+      "updated": null
+    },
+    {
+      "etag": "CJyM98muv5YDEAE=",
+      "field": "imerg_tp_1hr_p75",
+      "generation": "1787784050099740",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p75/c/6/0/0",
+      "size": 20332409,
+      "updated": null
+    },
+    {
+      "etag": "CNS5xbuuv5YDEAE=",
+      "field": "imerg_tp_1hr_p90",
+      "generation": "1787784019926228",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p90/c/6/0/0",
+      "size": 22463060,
+      "updated": null
+    },
+    {
+      "etag": "CPDP7v+vv5YDEAE=",
+      "field": "experimental_tp_1hr_mean",
+      "generation": "1787784431642608",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_mean/c/6/0/0",
+      "size": 23668296,
+      "updated": null
+    },
+    {
+      "etag": "CPOIg/+vv5YDEAE=",
+      "field": "experimental_tp_1hr_p10",
+      "generation": "1787784429880435",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p10/c/6/0/0",
+      "size": 909085,
+      "updated": null
+    },
+    {
+      "etag": "CLb1xoCwv5YDEAE=",
+      "field": "experimental_tp_1hr_p25",
+      "generation": "1787784433089206",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p25/c/6/0/0",
+      "size": 2521660,
+      "updated": null
+    },
+    {
+      "etag": "CJX94fKvv5YDEAE=",
+      "field": "experimental_tp_1hr_p50",
+      "generation": "1787784404172437",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p50/c/6/0/0",
+      "size": 10486994,
+      "updated": null
+    },
+    {
+      "etag": "CLKb3eqvv5YDEAE=",
+      "field": "experimental_tp_1hr_p75",
+      "generation": "1787784387317170",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p75/c/6/0/0",
+      "size": 20090921,
+      "updated": null
+    },
+    {
+      "etag": "CM+MrOSvv5YDEAE=",
+      "field": "experimental_tp_1hr_p90",
+      "generation": "1787784373929551",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p90/c/6/0/0",
+      "size": 22831114,
+      "updated": null
+    },
+    {
+      "etag": "CNy0iKXQv5YDEAE=",
+      "field": "total_cloud_cover_mean",
+      "generation": "1787793099594332",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_mean/c/6/0/0",
+      "size": 22016066,
+      "updated": null
+    },
+    {
+      "etag": "CIbOspjQv5YDEAE=",
+      "field": "total_cloud_cover_p10",
+      "generation": "1787793073022726",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p10/c/6/0/0",
+      "size": 20194632,
+      "updated": null
+    },
+    {
+      "etag": "CN6CwcDovpYDEAE=",
+      "field": "total_cloud_cover_p25",
+      "generation": "1787765239857502",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p25/c/6/0/0",
+      "size": 20677030,
+      "updated": null
+    },
+    {
+      "etag": "CM6a2orQv5YDEAE=",
+      "field": "total_cloud_cover_p50",
+      "generation": "1787793044311374",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p50/c/6/0/0",
+      "size": 20582236,
+      "updated": null
+    },
+    {
+      "etag": "CIuwvf3Pv5YDEAE=",
+      "field": "total_cloud_cover_p75",
+      "generation": "1787793016576011",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p75/c/6/0/0",
+      "size": 15713889,
+      "updated": null
+    },
+    {
+      "etag": "CKWMiPfPv5YDEAE=",
+      "field": "total_cloud_cover_p90",
+      "generation": "1787793003120165",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p90/c/6/0/0",
+      "size": 12313826,
+      "updated": null
+    },
+    {
+      "etag": "COfm162uv5YDEAE=",
+      "field": "low_cloud_cover_mean",
+      "generation": "1787783990866791",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_mean/c/6/0/0",
+      "size": 23091744,
+      "updated": null
+    },
+    {
+      "etag": "CMfXv6Cuv5YDEAE=",
+      "field": "low_cloud_cover_p10",
+      "generation": "1787783963208647",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p10/c/6/0/0",
+      "size": 18150394,
+      "updated": null
+    },
+    {
+      "etag": "COeGlZOuv5YDEAE=",
+      "field": "low_cloud_cover_p25",
+      "generation": "1787783935247207",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p25/c/6/0/0",
+      "size": 19632218,
+      "updated": null
+    },
+    {
+      "etag": "CNPF7Iuuv5YDEAE=",
+      "field": "low_cloud_cover_p50",
+      "generation": "1787783919903443",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p50/c/6/0/0",
+      "size": 21926028,
+      "updated": null
+    },
+    {
+      "etag": "CKLWtv+tv5YDEAE=",
+      "field": "low_cloud_cover_p75",
+      "generation": "1787783893855010",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p75/c/6/0/0",
+      "size": 19546366,
+      "updated": null
+    },
+    {
+      "etag": "CLPIn/Ktv5YDEAE=",
+      "field": "low_cloud_cover_p90",
+      "generation": "1787783866213427",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p90/c/6/0/0",
+      "size": 17036935,
+      "updated": null
+    },
+    {
+      "etag": "CK2Qzo6tv5YDEAE=",
+      "field": "medium_cloud_cover_mean",
+      "generation": "1787783657261101",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_mean/c/6/0/0",
+      "size": 23772605,
+      "updated": null
+    },
+    {
+      "etag": "CLOAmIGtv5YDEAE=",
+      "field": "medium_cloud_cover_p10",
+      "generation": "1787783629111347",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p10/c/6/0/0",
+      "size": 13562079,
+      "updated": null
+    },
+    {
+      "etag": "CN2PpPSsv5YDEAE=",
+      "field": "medium_cloud_cover_p25",
+      "generation": "1787783602046941",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p25/c/6/0/0",
+      "size": 17046358,
+      "updated": null
+    },
+    {
+      "etag": "CIiNxeesv5YDEAE=",
+      "field": "medium_cloud_cover_p50",
+      "generation": "1787783575324296",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p50/c/6/0/0",
+      "size": 22697445,
+      "updated": null
+    },
+    {
+      "etag": "CO+fpdSsv5YDEAE=",
+      "field": "medium_cloud_cover_p75",
+      "generation": "1787783534956527",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p75/c/6/0/0",
+      "size": 21640020,
+      "updated": null
+    },
+    {
+      "etag": "CNb37sKsv5YDEAE=",
+      "field": "medium_cloud_cover_p90",
+      "generation": "1787783498415062",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p90/c/6/0/0",
+      "size": 20253983,
+      "updated": null
+    },
+    {
+      "etag": "CLyZs96vv5YDEAE=",
+      "field": "high_cloud_cover_mean",
+      "generation": "1787784361462972",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_mean/c/6/0/0",
+      "size": 23623282,
+      "updated": null
+    },
+    {
+      "etag": "CLHEldevv5YDEAE=",
+      "field": "high_cloud_cover_p10",
+      "generation": "1787784346296881",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p10/c/6/0/0",
+      "size": 11806313,
+      "updated": null
+    },
+    {
+      "etag": "CPDJ48mvv5YDEAE=",
+      "field": "high_cloud_cover_p25",
+      "generation": "1787784318215408",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p25/c/6/0/0",
+      "size": 15718331,
+      "updated": null
+    },
+    {
+      "etag": "CPWKs76vv5YDEAE=",
+      "field": "high_cloud_cover_p50",
+      "generation": "1787784294352245",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p50/c/6/0/0",
+      "size": 22582513,
+      "updated": null
+    },
+    {
+      "etag": "CPyXsKavv5YDEAE=",
+      "field": "high_cloud_cover_p75",
+      "generation": "1787784243973116",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p75/c/6/0/0",
+      "size": 20938559,
+      "updated": null
+    },
+    {
+      "etag": "COrCiZmvv5YDEAE=",
+      "field": "high_cloud_cover_p90",
+      "generation": "1787784216076650",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p90/c/6/0/0",
+      "size": 18422365,
+      "updated": null
+    },
+    {
+      "etag": "CNekiuWtv5YDEAE=",
+      "field": "mean_sea_level_pressure_mean",
+      "generation": "1787783838601815",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_mean/c/6/0/0",
+      "size": 18867014,
+      "updated": null
+    },
+    {
+      "etag": "CJOs7dWtv5YDEAE=",
+      "field": "mean_sea_level_pressure_p10",
+      "generation": "1787783806670355",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p10/c/6/0/0",
+      "size": 18890797,
+      "updated": null
+    },
+    {
+      "etag": "CKDelsitv5YDEAE=",
+      "field": "mean_sea_level_pressure_p25",
+      "generation": "1787783777988384",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p25/c/6/0/0",
+      "size": 18857093,
+      "updated": null
+    },
+    {
+      "etag": "CM7zxbutv5YDEAE=",
+      "field": "mean_sea_level_pressure_p50",
+      "generation": "1787783751498190",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p50/c/6/0/0",
+      "size": 18734503,
+      "updated": null
+    },
+    {
+      "etag": "CNjiu6+tv5YDEAE=",
+      "field": "mean_sea_level_pressure_p75",
+      "generation": "1787783726166360",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p75/c/6/0/0",
+      "size": 18850947,
+      "updated": null
+    },
+    {
+      "etag": "CIzA0KCtv5YDEAE=",
+      "field": "mean_sea_level_pressure_p90",
+      "generation": "1787783695048716",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p90/c/6/0/0",
+      "size": 18886527,
+      "updated": null
+    },
+    {
+      "etag": "CID7wLCsv5YDEAE=",
+      "field": "sea_surface_temperature_mean",
+      "generation": "1787783459913088",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_mean/c/6/0/0",
+      "size": 11097418,
+      "updated": null
+    },
+    {
+      "etag": "CJn3p56sv5YDEAE=",
+      "field": "sea_surface_temperature_p10",
+      "generation": "1787783421754265",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p10/c/6/0/0",
+      "size": 11109512,
+      "updated": null
+    },
+    {
+      "etag": "CJqnr4Ksv5YDEAE=",
+      "field": "sea_surface_temperature_p25",
+      "generation": "1787783363154842",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p25/c/6/0/0",
+      "size": 10952413,
+      "updated": null
+    },
+    {
+      "etag": "COWwhMPRv5YDEAE=",
+      "field": "sea_surface_temperature_p50",
+      "generation": "1787793430878309",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p50/c/6/0/0",
+      "size": 10847947,
+      "updated": null
+    },
+    {
+      "etag": "CL6tlsTRv5YDEAE=",
+      "field": "sea_surface_temperature_p75",
+      "generation": "1787793433269950",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p75/c/6/0/0",
+      "size": 11044124,
+      "updated": null
+    },
+    {
+      "etag": "CKfo5bvRv5YDEAE=",
+      "field": "sea_surface_temperature_p90",
+      "generation": "1787793415697447",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p90/c/6/0/0",
+      "size": 11167474,
+      "updated": null
+    },
+    {
+      "etag": "CN7RnIPovpYDEAE=",
+      "field": "station_head_temperature_2m_mean",
+      "generation": "1787765111335134",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_mean/c/6/0/0",
+      "size": 77288430,
+      "updated": null
+    },
+    {
+      "etag": "CPLbyaHpvpYDEAE=",
+      "field": "station_head_temperature_2m_p10",
+      "generation": "1787765443423730",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p10/c/6/0/0",
+      "size": 77843263,
+      "updated": null
+    },
+    {
+      "etag": "CNOVxpvpvpYDEAE=",
+      "field": "station_head_temperature_2m_p25",
+      "generation": "1787765430782675",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p25/c/6/0/0",
+      "size": 77663436,
+      "updated": null
+    },
+    {
+      "etag": "CNaPrJTpvpYDEAE=",
+      "field": "station_head_temperature_2m_p50",
+      "generation": "1787765415675862",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p50/c/6/0/0",
+      "size": 77218146,
+      "updated": null
+    },
+    {
+      "etag": "CI/4g5TpvpYDEAE=",
+      "field": "station_head_temperature_2m_p75",
+      "generation": "1787765415017487",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p75/c/6/0/0",
+      "size": 77596979,
+      "updated": null
+    },
+    {
+      "etag": "CLu5wYzpvpYDEAE=",
+      "field": "station_head_temperature_2m_p90",
+      "generation": "1787765399248059",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p90/c/6/0/0",
+      "size": 77721284,
+      "updated": null
+    },
+    {
+      "etag": "COnHj/jnvpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_mean",
+      "generation": "1787765088052201",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_mean/c/6/0/0",
+      "size": 77573090,
+      "updated": null
+    },
+    {
+      "etag": "CPuKv5PovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p10",
+      "generation": "1787765145453947",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p10/c/6/0/0",
+      "size": 78044086,
+      "updated": null
+    },
+    {
+      "etag": "CMzxt5PovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p25",
+      "generation": "1787765145336012",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p25/c/6/0/0",
+      "size": 77871142,
+      "updated": null
+    },
+    {
+      "etag": "CM2i+JTovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p50",
+      "generation": "1787765148488013",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p50/c/6/0/0",
+      "size": 77457634,
+      "updated": null
+    },
+    {
+      "etag": "CLX78I3ovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p75",
+      "generation": "1787765133688245",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p75/c/6/0/0",
+      "size": 77699407,
+      "updated": null
+    },
+    {
+      "etag": "CIW0ionovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p90",
+      "generation": "1787765123619333",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p90/c/6/0/0",
+      "size": 77814774,
+      "updated": null
+    }
+  ],
+  "forecast_bytes_not_downloaded": 3150715420,
+  "initialization": "2026-08-01T00:00:00Z",
+  "lead_hours": 6,
+  "note": "Metadata-only existence and cost proof; no forecast values were decoded.",
+  "object_operations": 127,
+  "product": "weathernext_3_0_0_statistics",
+  "received_forecast_bytes": 0,
+  "requester_pays": false,
+  "requester_pays_evidence": "raw JSON API billing block absent (disabled)",
+  "result": "success",
+  "retrieved_at": "2026-09-05T14:35:58.579591Z",
+  "schema_version": 1,
+  "source_id": "google-weathernext-3-statistics",
+  "valid_time": "2026-08-01T06:00:00Z"
+}

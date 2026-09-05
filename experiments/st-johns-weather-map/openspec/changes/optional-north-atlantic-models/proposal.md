@@ -50,6 +50,19 @@ real-time terms constrain raw or retrievable redistribution, anonymous bucket
 probes were denied, and no authenticated Avalon read or local skill result
 exists.
 
+Execution preparation on 2026-09-05 added a bounded manifest validator for the
+non-requester-paid statistics surface and observed an anonymous HTTP 401 control
+for object listing. A subsequent owner-authorized, redacted gcloud validation
+confirmed authenticated access to that statistics bucket, live
+`requesterPays: false`, the proposed August 1 historical run, and consolidated
+metadata containing all 126 documented statistic arrays. The proposed six-field
+sample initially exceeded the 64 MiB preparation cap. After the owner raised
+the experiment cap to 512 MiB, a bounded point read retrieved the 18 chunks and
+retained only 18 numeric values plus provenance. All 126 arrays were enumerated
+from metadata while 120 remain deferred. No account identifier, requester
+project or credential was retained. This does not advance any admission or
+operational state.
+
 This change makes the validated families optional evidence. It does not replace
 HRDPS, change a score, make any source operational, or admit an unverified
 regional grid.

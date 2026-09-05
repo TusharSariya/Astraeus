@@ -1,0 +1,4268 @@
+{
+  "blocker": null,
+  "caps": {
+    "deadline_seconds": 300,
+    "decoded_working_bytes": 134217728,
+    "metadata_bytes": 4194304,
+    "object_requests": 256,
+    "output_bytes": 5242880,
+    "received_bytes": 536870912
+  },
+  "coordinates": {
+    "chunk_or_shard_layout": null,
+    "coordinate_direction": null,
+    "dimensions": null,
+    "selected_native_cell": null
+  },
+  "decoder": {
+    "name": "zarr",
+    "numpy": "2.5.2",
+    "version": "3.3.0"
+  },
+  "documented_absences": {
+    "ceiling": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    },
+    "cloud_base": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    },
+    "cloud_top": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    },
+    "fog": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    },
+    "visibility": {
+      "observed_in_manifest": false,
+      "status": "unsupported"
+    }
+  },
+  "fields": {
+    "dewpoint_temperature_2m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.2488708496094,
+      "finite_min": 285.2488708496094,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 284.9590148925781,
+      "finite_min": 284.9590148925781,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.13116455078125,
+      "finite_min": 285.13116455078125,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.2772216796875,
+      "finite_min": 285.2772216796875,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.3816833496094,
+      "finite_min": 285.3816833496094,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "dewpoint_temperature_2m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.4950866699219,
+      "finite_min": 285.4950866699219,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "experimental_tp_1hr_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 4.314834995966521e-07,
+      "finite_min": 4.314834995966521e-07,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 4.032663127873093e-07,
+      "finite_min": 4.032663127873093e-07,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 6.276732165133581e-07,
+      "finite_min": 6.276732165133581e-07,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "experimental_tp_1hr_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.056137989507988e-06,
+      "finite_min": 1.056137989507988e-06,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "high_cloud_cover_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.4744468629360199,
+      "finite_min": 0.4744468629360199,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "high_cloud_cover_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.02574744261801243,
+      "finite_min": 0.02574744261801243,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "high_cloud_cover_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.11565646529197693,
+      "finite_min": 0.11565646529197693,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "high_cloud_cover_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.48250946402549744,
+      "finite_min": 0.48250946402549744,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "high_cloud_cover_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.8132364749908447,
+      "finite_min": 0.8132364749908447,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "high_cloud_cover_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9539116024971008,
+      "finite_min": 0.9539116024971008,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "imerg_tp_1hr_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 2.661565304151736e-06,
+      "finite_min": 2.661565304151736e-06,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.0750227374956012e-08,
+      "finite_min": 1.0750227374956012e-08,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.7379534256178886e-07,
+      "finite_min": 1.7379534256178886e-07,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "imerg_tp_1hr_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 3.291162897767208e-07,
+      "finite_min": 3.291162897767208e-07,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "low_cloud_cover_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9957972764968872,
+      "finite_min": 0.9957972764968872,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "low_cloud_cover_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9971429705619812,
+      "finite_min": 0.9971429705619812,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "low_cloud_cover_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9984009861946106,
+      "finite_min": 0.9984009861946106,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "low_cloud_cover_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9996628165245056,
+      "finite_min": 0.9996628165245056,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "low_cloud_cover_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.0,
+      "finite_min": 1.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "low_cloud_cover_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.0,
+      "finite_min": 1.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "mean_sea_level_pressure_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 101458.40625,
+      "finite_min": 101458.40625,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 101434.921875,
+      "finite_min": 101434.921875,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 101445.015625,
+      "finite_min": 101445.015625,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 101459.703125,
+      "finite_min": 101459.703125,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 101471.8359375,
+      "finite_min": 101471.8359375,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "Pa"
+    },
+    "mean_sea_level_pressure_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 101478.4140625,
+      "finite_min": 101478.4140625,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "Pa"
+    },
+    "medium_cloud_cover_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.01584133505821228,
+      "finite_min": 0.01584133505821228,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "medium_cloud_cover_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "medium_cloud_cover_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "medium_cloud_cover_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "medium_cloud_cover_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0029866050463169813,
+      "finite_min": 0.0029866050463169813,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "medium_cloud_cover_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.046731140464544296,
+      "finite_min": 0.046731140464544296,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "sea_surface_temperature_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": 1,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": 1,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": 1,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": 1,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": 1,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "sea_surface_temperature_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": null,
+      "finite_min": null,
+      "grid": "0p1",
+      "null_count": 1,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 284.9734802246094,
+      "finite_min": 284.9734802246094,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 284.1317138671875,
+      "finite_min": 284.1317138671875,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 284.5082702636719,
+      "finite_min": 284.5082702636719,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 284.8494873046875,
+      "finite_min": 284.8494873046875,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.5766296386719,
+      "finite_min": 285.5766296386719,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_dewpoint_temperature_2m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 286.1147766113281,
+      "finite_min": 286.1147766113281,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.09881591796875,
+      "finite_min": 285.09881591796875,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 284.353759765625,
+      "finite_min": 284.353759765625,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 284.6614074707031,
+      "finite_min": 284.6614074707031,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 284.9566650390625,
+      "finite_min": 284.9566650390625,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.53973388671875,
+      "finite_min": 285.53973388671875,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "station_head_temperature_2m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 286.1454772949219,
+      "finite_min": 286.1454772949219,
+      "grid": "0p05",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "surface_solar_radiation_downwards_1hr_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 211.6064453125,
+      "finite_min": 211.6064453125,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "surface_solar_radiation_downwards_1hr_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "surface_solar_radiation_downwards_1hr_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "surface_solar_radiation_downwards_1hr_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "surface_solar_radiation_downwards_1hr_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 21.65625,
+      "finite_min": 21.65625,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "surface_solar_radiation_downwards_1hr_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 943.8812255859375,
+      "finite_min": 943.8812255859375,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "temperature_2m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.39569091796875,
+      "finite_min": 285.39569091796875,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "temperature_2m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.10760498046875,
+      "finite_min": 285.10760498046875,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "temperature_2m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.2912902832031,
+      "finite_min": 285.2912902832031,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "temperature_2m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.42559814453125,
+      "finite_min": 285.42559814453125,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "temperature_2m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.50457763671875,
+      "finite_min": 285.50457763671875,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "temperature_2m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 285.60205078125,
+      "finite_min": 285.60205078125,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "K"
+    },
+    "total_cloud_cover_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9987242221832275,
+      "finite_min": 0.9987242221832275,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "total_cloud_cover_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9977548122406006,
+      "finite_min": 0.9977548122406006,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "total_cloud_cover_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9986893534660339,
+      "finite_min": 0.9986893534660339,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "total_cloud_cover_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.0,
+      "finite_min": 1.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "total_cloud_cover_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.0,
+      "finite_min": 1.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "total_cloud_cover_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.0,
+      "finite_min": 1.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "(0 - 1)"
+    },
+    "total_precipitation_1hr_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 5.4415784688899294e-05,
+      "finite_min": 5.4415784688899294e-05,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 5.509613401954994e-06,
+      "finite_min": 5.509613401954994e-06,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.2138050806242973e-05,
+      "finite_min": 1.2138050806242973e-05,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 2.9604223527712747e-05,
+      "finite_min": 2.9604223527712747e-05,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 5.631619569612667e-05,
+      "finite_min": 5.631619569612667e-05,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "total_precipitation_1hr_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 9.066771599464118e-05,
+      "finite_min": 9.066771599464118e-05,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 193.1806640625,
+      "finite_min": 193.1806640625,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.0,
+      "finite_min": 0.0,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 287.796875,
+      "finite_min": 287.796875,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "total_sky_direct_solar_radiation_at_surface_1hr_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 641.0062255859375,
+      "finite_min": 641.0062255859375,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "J m**-2"
+    },
+    "u_component_of_wind_100m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -2.732754945755005,
+      "finite_min": -2.732754945755005,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_100m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -3.488832473754883,
+      "finite_min": -3.488832473754883,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_100m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -3.2738025188446045,
+      "finite_min": -3.2738025188446045,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_100m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -2.785346508026123,
+      "finite_min": -2.785346508026123,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_100m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -2.2692174911499023,
+      "finite_min": -2.2692174911499023,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_100m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -1.904658555984497,
+      "finite_min": -1.904658555984497,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_10m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -1.6376270055770874,
+      "finite_min": -1.6376270055770874,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_10m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -2.1333560943603516,
+      "finite_min": -2.1333560943603516,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_10m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -1.9273971319198608,
+      "finite_min": -1.9273971319198608,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_10m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -1.6729722023010254,
+      "finite_min": -1.6729722023010254,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_10m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -1.3678736686706543,
+      "finite_min": -1.3678736686706543,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "u_component_of_wind_10m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": -1.0688893795013428,
+      "finite_min": -1.0688893795013428,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_100m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.7583978176116943,
+      "finite_min": 1.7583978176116943,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_100m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9195391535758972,
+      "finite_min": 0.9195391535758972,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_100m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.4100536108016968,
+      "finite_min": 1.4100536108016968,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_100m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.7726694345474243,
+      "finite_min": 1.7726694345474243,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_100m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 2.1801071166992188,
+      "finite_min": 2.1801071166992188,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_100m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 2.4766812324523926,
+      "finite_min": 2.4766812324523926,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_10m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.7138437628746033,
+      "finite_min": 0.7138437628746033,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_10m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.13778156042099,
+      "finite_min": 0.13778156042099,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_10m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.4825814664363861,
+      "finite_min": 0.4825814664363861,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_10m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.7302142381668091,
+      "finite_min": 0.7302142381668091,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_10m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 0.9821074604988098,
+      "finite_min": 0.9821074604988098,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "v_component_of_wind_10m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.1642110347747803,
+      "finite_min": 1.1642110347747803,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_100m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 3.3075950145721436,
+      "finite_min": 3.3075950145721436,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_100m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 2.413278341293335,
+      "finite_min": 2.413278341293335,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_100m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 2.8118820190429688,
+      "finite_min": 2.8118820190429688,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_100m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 3.4476232528686523,
+      "finite_min": 3.4476232528686523,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_100m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 3.762367010116577,
+      "finite_min": 3.762367010116577,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_100m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 4.077697277069092,
+      "finite_min": 4.077697277069092,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_10m_mean": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.833694338798523,
+      "finite_min": 1.833694338798523,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "mean",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_10m_p10": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.2362383604049683,
+      "finite_min": 1.2362383604049683,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p10",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_10m_p25": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.5748285055160522,
+      "finite_min": 1.5748285055160522,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p25",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_10m_p50": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 1.8969011306762695,
+      "finite_min": 1.8969011306762695,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p50",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_10m_p75": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 2.0808238983154297,
+      "finite_min": 2.0808238983154297,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p75",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    },
+    "wind_speed_10m_p90": {
+      "dtype": "float32",
+      "fill_value": "NaN",
+      "finite_max": 2.33260440826416,
+      "finite_min": 2.33260440826416,
+      "grid": "0p1",
+      "null_count": 0,
+      "selected_for_sample": true,
+      "statistic": "p90",
+      "status": "retrieved",
+      "unit": "m s**-1"
+    }
+  },
+  "identity": {
+    "access_surface": "gcs_statistics_spatial",
+    "attribution": "WeatherNext data provided by Google",
+    "ensemble_size_documented": 64,
+    "input_lineage": "ECMWF HRES analysis documented by provider",
+    "member_id": null,
+    "product_version": "3.0.0",
+    "terms_class": "historical_cc_by_4_0_candidate_must_be_verified_at_read_time",
+    "terms_reviewed": "2026-09-05",
+    "terms_url": "https://storage.googleapis.com/weathernext-public/terms-of-use.pdf"
+  },
+  "notes": [
+    "Expected fields come from public documentation and are not live observations.",
+    "A successful small sample does not prove full-field implementation readiness."
+  ],
+  "objects": [
+    {
+      "etag": "CNCjucrQv5YDEAE=",
+      "field": "temperature_2m_mean",
+      "generation": "1787793177989584",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19485366,
+      "updated": null
+    },
+    {
+      "etag": "CPy52L7Qv5YDEAE=",
+      "field": "temperature_2m_p10",
+      "generation": "1787793153334524",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19519426,
+      "updated": null
+    },
+    {
+      "etag": "CNe7+73Qv5YDEAE=",
+      "field": "temperature_2m_p25",
+      "generation": "1787793151811031",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19490107,
+      "updated": null
+    },
+    {
+      "etag": "COuD+LHQv5YDEAE=",
+      "field": "temperature_2m_p50",
+      "generation": "1787793126588907",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19407311,
+      "updated": null
+    },
+    {
+      "etag": "CN2bnrHQv5YDEAE=",
+      "field": "temperature_2m_p75",
+      "generation": "1787793125117405",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19482554,
+      "updated": null
+    },
+    {
+      "etag": "CP2xqqXQv5YDEAE=",
+      "field": "temperature_2m_p90",
+      "generation": "1787793100151037",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/temperature_2m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19506135,
+      "updated": null
+    },
+    {
+      "etag": "CJyz4Yywv5YDEAE=",
+      "field": "dewpoint_temperature_2m_mean",
+      "generation": "1787784458688924",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19541333,
+      "updated": null
+    },
+    {
+      "etag": "CITmyoywv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p10",
+      "generation": "1787784458318596",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19594332,
+      "updated": null
+    },
+    {
+      "etag": "CL2A6ouwv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p25",
+      "generation": "1787784456732733",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19553126,
+      "updated": null
+    },
+    {
+      "etag": "CL/z/4uwv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p50",
+      "generation": "1787784457091519",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19462836,
+      "updated": null
+    },
+    {
+      "etag": "CPGepoywv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p75",
+      "generation": "1787784457719665",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19520644,
+      "updated": null
+    },
+    {
+      "etag": "CNXE6P+vv5YDEAE=",
+      "field": "dewpoint_temperature_2m_p90",
+      "generation": "1787784431542869",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/dewpoint_temperature_2m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19534962,
+      "updated": null
+    },
+    {
+      "etag": "CMeFuuPNv5YDEAE=",
+      "field": "wind_speed_10m_mean",
+      "generation": "1787792425124551",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22906133,
+      "updated": null
+    },
+    {
+      "etag": "CNe6yNbNv5YDEAE=",
+      "field": "wind_speed_10m_p10",
+      "generation": "1787792398097751",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23062129,
+      "updated": null
+    },
+    {
+      "etag": "CL2Tpc/Nv5YDEAE=",
+      "field": "wind_speed_10m_p25",
+      "generation": "1787792382839229",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22966663,
+      "updated": null
+    },
+    {
+      "etag": "CO/7+7m7v5YDEAE=",
+      "field": "wind_speed_10m_p50",
+      "generation": "1787787506286063",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22851435,
+      "updated": null
+    },
+    {
+      "etag": "CLPYr73Nv5YDEAE=",
+      "field": "wind_speed_10m_p75",
+      "generation": "1787792345263155",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22829800,
+      "updated": null
+    },
+    {
+      "etag": "CMmXkLq7v5YDEAE=",
+      "field": "wind_speed_10m_p90",
+      "generation": "1787787506617289",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_10m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22787734,
+      "updated": null
+    },
+    {
+      "etag": "CJn7hYzOv5YDEAE=",
+      "field": "wind_speed_100m_mean",
+      "generation": "1787792510254489",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22860011,
+      "updated": null
+    },
+    {
+      "etag": "CIm//ITOv5YDEAE=",
+      "field": "wind_speed_100m_p10",
+      "generation": "1787792495419273",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23016316,
+      "updated": null
+    },
+    {
+      "etag": "CNO8o/7Nv5YDEAE=",
+      "field": "wind_speed_100m_p25",
+      "generation": "1787792481377875",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22926123,
+      "updated": null
+    },
+    {
+      "etag": "CLH+4PXNv5YDEAE=",
+      "field": "wind_speed_100m_p50",
+      "generation": "1787792463511345",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22804219,
+      "updated": null
+    },
+    {
+      "etag": "CJzgsvDNv5YDEAE=",
+      "field": "wind_speed_100m_p75",
+      "generation": "1787792452268060",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22775941,
+      "updated": null
+    },
+    {
+      "etag": "CP/lwsC7v5YDEAE=",
+      "field": "wind_speed_100m_p90",
+      "generation": "1787787520029439",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/wind_speed_100m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22738736,
+      "updated": null
+    },
+    {
+      "etag": "CI6ftfvOv5YDEAE=",
+      "field": "u_component_of_wind_10m_mean",
+      "generation": "1787792743813006",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23784618,
+      "updated": null
+    },
+    {
+      "etag": "CPTtgvrOv5YDEAE=",
+      "field": "u_component_of_wind_10m_p10",
+      "generation": "1787792740890356",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23768836,
+      "updated": null
+    },
+    {
+      "etag": "CLGYme7Ov5YDEAE=",
+      "field": "u_component_of_wind_10m_p25",
+      "generation": "1787792716090417",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23763695,
+      "updated": null
+    },
+    {
+      "etag": "CIHPie3Ov5YDEAE=",
+      "field": "u_component_of_wind_10m_p50",
+      "generation": "1787792713738113",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23721046,
+      "updated": null
+    },
+    {
+      "etag": "CIHajObOv5YDEAE=",
+      "field": "u_component_of_wind_10m_p75",
+      "generation": "1787792699108609",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23744747,
+      "updated": null
+    },
+    {
+      "etag": "CO+V3N7Ov5YDEAE=",
+      "field": "u_component_of_wind_10m_p90",
+      "generation": "1787792683633391",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_10m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23737306,
+      "updated": null
+    },
+    {
+      "etag": "CJ7Lwtyrv5YDEAE=",
+      "field": "v_component_of_wind_10m_mean",
+      "generation": "1787783283778974",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23914876,
+      "updated": null
+    },
+    {
+      "etag": "CPHyose7v5YDEAE=",
+      "field": "v_component_of_wind_10m_p10",
+      "generation": "1787787534186865",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23902856,
+      "updated": null
+    },
+    {
+      "etag": "CJXdiqfOv5YDEAE=",
+      "field": "v_component_of_wind_10m_p25",
+      "generation": "1787792566955669",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23893395,
+      "updated": null
+    },
+    {
+      "etag": "CLPyrZnOv5YDEAE=",
+      "field": "v_component_of_wind_10m_p50",
+      "generation": "1787792538171699",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23838207,
+      "updated": null
+    },
+    {
+      "etag": "COe385jOv5YDEAE=",
+      "field": "v_component_of_wind_10m_p75",
+      "generation": "1787792537213927",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23871906,
+      "updated": null
+    },
+    {
+      "etag": "CNbDyYvOv5YDEAE=",
+      "field": "v_component_of_wind_10m_p90",
+      "generation": "1787792509264342",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_10m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23863530,
+      "updated": null
+    },
+    {
+      "etag": "CPCPyqTPv5YDEAE=",
+      "field": "u_component_of_wind_100m_mean",
+      "generation": "1787792830138352",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23767450,
+      "updated": null
+    },
+    {
+      "etag": "CNbAzp7Pv5YDEAE=",
+      "field": "u_component_of_wind_100m_p10",
+      "generation": "1787792817627222",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23762365,
+      "updated": null
+    },
+    {
+      "etag": "CObylpjPv5YDEAE=",
+      "field": "u_component_of_wind_100m_p25",
+      "generation": "1787792804133222",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23753637,
+      "updated": null
+    },
+    {
+      "etag": "CNre3JjPv5YDEAE=",
+      "field": "u_component_of_wind_100m_p50",
+      "generation": "1787792805277530",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23706457,
+      "updated": null
+    },
+    {
+      "etag": "CL/Ymse7v5YDEAE=",
+      "field": "u_component_of_wind_100m_p75",
+      "generation": "1787787534052415",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23731516,
+      "updated": null
+    },
+    {
+      "etag": "CIa37YjPv5YDEAE=",
+      "field": "u_component_of_wind_100m_p90",
+      "generation": "1787792771996550",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/u_component_of_wind_100m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23727859,
+      "updated": null
+    },
+    {
+      "etag": "CNe68tjOv5YDEAE=",
+      "field": "v_component_of_wind_100m_mean",
+      "generation": "1787792671415639",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23926258,
+      "updated": null
+    },
+    {
+      "etag": "CNXhvdLOv5YDEAE=",
+      "field": "v_component_of_wind_100m_p10",
+      "generation": "1787792657969365",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23918112,
+      "updated": null
+    },
+    {
+      "etag": "CKXw/Me7v5YDEAE=",
+      "field": "v_component_of_wind_100m_p25",
+      "generation": "1787787535661093",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23905997,
+      "updated": null
+    },
+    {
+      "etag": "CMe8vcPOv5YDEAE=",
+      "field": "v_component_of_wind_100m_p50",
+      "generation": "1787792626507335",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23852413,
+      "updated": null
+    },
+    {
+      "etag": "CPPFuMPOv5YDEAE=",
+      "field": "v_component_of_wind_100m_p75",
+      "generation": "1787792626426611",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23889896,
+      "updated": null
+    },
+    {
+      "etag": "CMP83rXOv5YDEAE=",
+      "field": "v_component_of_wind_100m_p90",
+      "generation": "1787792597696067",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/v_component_of_wind_100m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23886633,
+      "updated": null
+    },
+    {
+      "etag": "CMHxpvDQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_mean",
+      "generation": "1787793257380033",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23149005,
+      "updated": null
+    },
+    {
+      "etag": "CNLRy+TQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p10",
+      "generation": "1787793232816338",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 12356212,
+      "updated": null
+    },
+    {
+      "etag": "CNKg5PnovpYDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p25",
+      "generation": "1787765359972434",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 13188466,
+      "updated": null
+    },
+    {
+      "etag": "CLe1jdfQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p50",
+      "generation": "1787793204533943",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 17551063,
+      "updated": null
+    },
+    {
+      "etag": "COa4xdjQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p75",
+      "generation": "1787793207549030",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 21707572,
+      "updated": null
+    },
+    {
+      "etag": "CKWeu8rQv5YDEAE=",
+      "field": "surface_solar_radiation_downwards_1hr_p90",
+      "generation": "1787793178021669",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/surface_solar_radiation_downwards_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22799396,
+      "updated": null
+    },
+    {
+      "etag": "CM/Ovc/Pv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_mean",
+      "generation": "1787792920110927",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23311003,
+      "updated": null
+    },
+    {
+      "etag": "CKrwosjPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p10",
+      "generation": "1787792904992810",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 9701091,
+      "updated": null
+    },
+    {
+      "etag": "CPPw98DPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p25",
+      "generation": "1787792889608307",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 11060250,
+      "updated": null
+    },
+    {
+      "etag": "CIqMrrrPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p50",
+      "generation": "1787792875816458",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 16834942,
+      "updated": null
+    },
+    {
+      "etag": "CJ7N2rLPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p75",
+      "generation": "1787792859768478",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 21901824,
+      "updated": null
+    },
+    {
+      "etag": "CKzPuavPv5YDEAE=",
+      "field": "total_sky_direct_solar_radiation_at_surface_1hr_p90",
+      "generation": "1787792844548012",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_sky_direct_solar_radiation_at_surface_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22930232,
+      "updated": null
+    },
+    {
+      "etag": "CM/d2vDPv5YDEAE=",
+      "field": "total_precipitation_1hr_mean",
+      "generation": "1787792989793999",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23949374,
+      "updated": null
+    },
+    {
+      "etag": "CKWDt/DPv5YDEAE=",
+      "field": "total_precipitation_1hr_p10",
+      "generation": "1787792989208997",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 11535925,
+      "updated": null
+    },
+    {
+      "etag": "CKTss8e7v5YDEAE=",
+      "field": "total_precipitation_1hr_p25",
+      "generation": "1787787534464548",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 14340008,
+      "updated": null
+    },
+    {
+      "etag": "CKyntePPv5YDEAE=",
+      "field": "total_precipitation_1hr_p50",
+      "generation": "1787792961917868",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 20164882,
+      "updated": null
+    },
+    {
+      "etag": "CIzR39vPv5YDEAE=",
+      "field": "total_precipitation_1hr_p75",
+      "generation": "1787792945834124",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23275054,
+      "updated": null
+    },
+    {
+      "etag": "CJverci7v5YDEAE=",
+      "field": "total_precipitation_1hr_p90",
+      "generation": "1787787536461595",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_precipitation_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23789648,
+      "updated": null
+    },
+    {
+      "etag": "CPP/1Yyvv5YDEAE=",
+      "field": "imerg_tp_1hr_mean",
+      "generation": "1787784190066675",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23501936,
+      "updated": null
+    },
+    {
+      "etag": "CJex5/Suv5YDEAE=",
+      "field": "imerg_tp_1hr_p10",
+      "generation": "1787784140019863",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 1716365,
+      "updated": null
+    },
+    {
+      "etag": "CIewyOiuv5YDEAE=",
+      "field": "imerg_tp_1hr_p25",
+      "generation": "1787784114345991",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 3410743,
+      "updated": null
+    },
+    {
+      "etag": "CJDAkd2uv5YDEAE=",
+      "field": "imerg_tp_1hr_p50",
+      "generation": "1787784090378256",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 10937250,
+      "updated": null
+    },
+    {
+      "etag": "CJyM98muv5YDEAE=",
+      "field": "imerg_tp_1hr_p75",
+      "generation": "1787784050099740",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 20332409,
+      "updated": null
+    },
+    {
+      "etag": "CNS5xbuuv5YDEAE=",
+      "field": "imerg_tp_1hr_p90",
+      "generation": "1787784019926228",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/imerg_tp_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22463060,
+      "updated": null
+    },
+    {
+      "etag": "CPDP7v+vv5YDEAE=",
+      "field": "experimental_tp_1hr_mean",
+      "generation": "1787784431642608",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23668296,
+      "updated": null
+    },
+    {
+      "etag": "CPOIg/+vv5YDEAE=",
+      "field": "experimental_tp_1hr_p10",
+      "generation": "1787784429880435",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 909085,
+      "updated": null
+    },
+    {
+      "etag": "CLb1xoCwv5YDEAE=",
+      "field": "experimental_tp_1hr_p25",
+      "generation": "1787784433089206",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 2521660,
+      "updated": null
+    },
+    {
+      "etag": "CJX94fKvv5YDEAE=",
+      "field": "experimental_tp_1hr_p50",
+      "generation": "1787784404172437",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 10486994,
+      "updated": null
+    },
+    {
+      "etag": "CLKb3eqvv5YDEAE=",
+      "field": "experimental_tp_1hr_p75",
+      "generation": "1787784387317170",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 20090921,
+      "updated": null
+    },
+    {
+      "etag": "CM+MrOSvv5YDEAE=",
+      "field": "experimental_tp_1hr_p90",
+      "generation": "1787784373929551",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/experimental_tp_1hr_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22831114,
+      "updated": null
+    },
+    {
+      "etag": "CNy0iKXQv5YDEAE=",
+      "field": "total_cloud_cover_mean",
+      "generation": "1787793099594332",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22016066,
+      "updated": null
+    },
+    {
+      "etag": "CIbOspjQv5YDEAE=",
+      "field": "total_cloud_cover_p10",
+      "generation": "1787793073022726",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 20194632,
+      "updated": null
+    },
+    {
+      "etag": "CN6CwcDovpYDEAE=",
+      "field": "total_cloud_cover_p25",
+      "generation": "1787765239857502",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 20677030,
+      "updated": null
+    },
+    {
+      "etag": "CM6a2orQv5YDEAE=",
+      "field": "total_cloud_cover_p50",
+      "generation": "1787793044311374",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 20582236,
+      "updated": null
+    },
+    {
+      "etag": "CIuwvf3Pv5YDEAE=",
+      "field": "total_cloud_cover_p75",
+      "generation": "1787793016576011",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 15713889,
+      "updated": null
+    },
+    {
+      "etag": "CKWMiPfPv5YDEAE=",
+      "field": "total_cloud_cover_p90",
+      "generation": "1787793003120165",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/total_cloud_cover_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 12313826,
+      "updated": null
+    },
+    {
+      "etag": "COfm162uv5YDEAE=",
+      "field": "low_cloud_cover_mean",
+      "generation": "1787783990866791",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23091744,
+      "updated": null
+    },
+    {
+      "etag": "CMfXv6Cuv5YDEAE=",
+      "field": "low_cloud_cover_p10",
+      "generation": "1787783963208647",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 18150394,
+      "updated": null
+    },
+    {
+      "etag": "COeGlZOuv5YDEAE=",
+      "field": "low_cloud_cover_p25",
+      "generation": "1787783935247207",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19632218,
+      "updated": null
+    },
+    {
+      "etag": "CNPF7Iuuv5YDEAE=",
+      "field": "low_cloud_cover_p50",
+      "generation": "1787783919903443",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 21926028,
+      "updated": null
+    },
+    {
+      "etag": "CKLWtv+tv5YDEAE=",
+      "field": "low_cloud_cover_p75",
+      "generation": "1787783893855010",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 19546366,
+      "updated": null
+    },
+    {
+      "etag": "CLPIn/Ktv5YDEAE=",
+      "field": "low_cloud_cover_p90",
+      "generation": "1787783866213427",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/low_cloud_cover_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 17036935,
+      "updated": null
+    },
+    {
+      "etag": "CK2Qzo6tv5YDEAE=",
+      "field": "medium_cloud_cover_mean",
+      "generation": "1787783657261101",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23772605,
+      "updated": null
+    },
+    {
+      "etag": "CLOAmIGtv5YDEAE=",
+      "field": "medium_cloud_cover_p10",
+      "generation": "1787783629111347",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 13562079,
+      "updated": null
+    },
+    {
+      "etag": "CN2PpPSsv5YDEAE=",
+      "field": "medium_cloud_cover_p25",
+      "generation": "1787783602046941",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 17046358,
+      "updated": null
+    },
+    {
+      "etag": "CIiNxeesv5YDEAE=",
+      "field": "medium_cloud_cover_p50",
+      "generation": "1787783575324296",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22697445,
+      "updated": null
+    },
+    {
+      "etag": "CO+fpdSsv5YDEAE=",
+      "field": "medium_cloud_cover_p75",
+      "generation": "1787783534956527",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 21640020,
+      "updated": null
+    },
+    {
+      "etag": "CNb37sKsv5YDEAE=",
+      "field": "medium_cloud_cover_p90",
+      "generation": "1787783498415062",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/medium_cloud_cover_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 20253983,
+      "updated": null
+    },
+    {
+      "etag": "CLyZs96vv5YDEAE=",
+      "field": "high_cloud_cover_mean",
+      "generation": "1787784361462972",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 23623282,
+      "updated": null
+    },
+    {
+      "etag": "CLHEldevv5YDEAE=",
+      "field": "high_cloud_cover_p10",
+      "generation": "1787784346296881",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 11806313,
+      "updated": null
+    },
+    {
+      "etag": "CPDJ48mvv5YDEAE=",
+      "field": "high_cloud_cover_p25",
+      "generation": "1787784318215408",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 15718331,
+      "updated": null
+    },
+    {
+      "etag": "CPWKs76vv5YDEAE=",
+      "field": "high_cloud_cover_p50",
+      "generation": "1787784294352245",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 22582513,
+      "updated": null
+    },
+    {
+      "etag": "CPyXsKavv5YDEAE=",
+      "field": "high_cloud_cover_p75",
+      "generation": "1787784243973116",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 20938559,
+      "updated": null
+    },
+    {
+      "etag": "COrCiZmvv5YDEAE=",
+      "field": "high_cloud_cover_p90",
+      "generation": "1787784216076650",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/high_cloud_cover_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 18422365,
+      "updated": null
+    },
+    {
+      "etag": "CNekiuWtv5YDEAE=",
+      "field": "mean_sea_level_pressure_mean",
+      "generation": "1787783838601815",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 18867014,
+      "updated": null
+    },
+    {
+      "etag": "CJOs7dWtv5YDEAE=",
+      "field": "mean_sea_level_pressure_p10",
+      "generation": "1787783806670355",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 18890797,
+      "updated": null
+    },
+    {
+      "etag": "CKDelsitv5YDEAE=",
+      "field": "mean_sea_level_pressure_p25",
+      "generation": "1787783777988384",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 18857093,
+      "updated": null
+    },
+    {
+      "etag": "CM7zxbutv5YDEAE=",
+      "field": "mean_sea_level_pressure_p50",
+      "generation": "1787783751498190",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 18734503,
+      "updated": null
+    },
+    {
+      "etag": "CNjiu6+tv5YDEAE=",
+      "field": "mean_sea_level_pressure_p75",
+      "generation": "1787783726166360",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 18850947,
+      "updated": null
+    },
+    {
+      "etag": "CIzA0KCtv5YDEAE=",
+      "field": "mean_sea_level_pressure_p90",
+      "generation": "1787783695048716",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/mean_sea_level_pressure_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 18886527,
+      "updated": null
+    },
+    {
+      "etag": "CID7wLCsv5YDEAE=",
+      "field": "sea_surface_temperature_mean",
+      "generation": "1787783459913088",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 11097418,
+      "updated": null
+    },
+    {
+      "etag": "CJn3p56sv5YDEAE=",
+      "field": "sea_surface_temperature_p10",
+      "generation": "1787783421754265",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 11109512,
+      "updated": null
+    },
+    {
+      "etag": "CJqnr4Ksv5YDEAE=",
+      "field": "sea_surface_temperature_p25",
+      "generation": "1787783363154842",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 10952413,
+      "updated": null
+    },
+    {
+      "etag": "COWwhMPRv5YDEAE=",
+      "field": "sea_surface_temperature_p50",
+      "generation": "1787793430878309",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 10847947,
+      "updated": null
+    },
+    {
+      "etag": "CL6tlsTRv5YDEAE=",
+      "field": "sea_surface_temperature_p75",
+      "generation": "1787793433269950",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 11044124,
+      "updated": null
+    },
+    {
+      "etag": "CKfo5bvRv5YDEAE=",
+      "field": "sea_surface_temperature_p90",
+      "generation": "1787793415697447",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/sea_surface_temperature_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 11167474,
+      "updated": null
+    },
+    {
+      "etag": "CN7RnIPovpYDEAE=",
+      "field": "station_head_temperature_2m_mean",
+      "generation": "1787765111335134",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77288430,
+      "updated": null
+    },
+    {
+      "etag": "CPLbyaHpvpYDEAE=",
+      "field": "station_head_temperature_2m_p10",
+      "generation": "1787765443423730",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77843263,
+      "updated": null
+    },
+    {
+      "etag": "CNOVxpvpvpYDEAE=",
+      "field": "station_head_temperature_2m_p25",
+      "generation": "1787765430782675",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77663436,
+      "updated": null
+    },
+    {
+      "etag": "CNaPrJTpvpYDEAE=",
+      "field": "station_head_temperature_2m_p50",
+      "generation": "1787765415675862",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77218146,
+      "updated": null
+    },
+    {
+      "etag": "CI/4g5TpvpYDEAE=",
+      "field": "station_head_temperature_2m_p75",
+      "generation": "1787765415017487",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77596979,
+      "updated": null
+    },
+    {
+      "etag": "CLu5wYzpvpYDEAE=",
+      "field": "station_head_temperature_2m_p90",
+      "generation": "1787765399248059",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_temperature_2m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77721284,
+      "updated": null
+    },
+    {
+      "etag": "COnHj/jnvpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_mean",
+      "generation": "1787765088052201",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_mean/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77573090,
+      "updated": null
+    },
+    {
+      "etag": "CPuKv5PovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p10",
+      "generation": "1787765145453947",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p10/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 78044086,
+      "updated": null
+    },
+    {
+      "etag": "CMzxt5PovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p25",
+      "generation": "1787765145336012",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p25/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77871142,
+      "updated": null
+    },
+    {
+      "etag": "CM2i+JTovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p50",
+      "generation": "1787765148488013",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p50/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77457634,
+      "updated": null
+    },
+    {
+      "etag": "CLX78I3ovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p75",
+      "generation": "1787765133688245",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p75/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77699407,
+      "updated": null
+    },
+    {
+      "etag": "CIW0ionovpYDEAE=",
+      "field": "station_head_dewpoint_temperature_2m_p90",
+      "generation": "1787765123619333",
+      "object": "weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/station_head_dewpoint_temperature_2m_p90/c/6/0/0",
+      "identity_verification_method": "generation_qualified_read_with_size_check",
+      "size": 77814774,
+      "updated": null
+    }
+  ],
+  "request": {
+    "bucket": "weathernext3_statistics_spatial",
+    "initialization": "2026-08-01T00:00:00Z",
+    "lead_hours": [
+      6
+    ],
+    "point": {
+      "latitude": 47.5,
+      "longitude": -52.7,
+      "selection": "nearest_native_cell"
+    },
+    "prefix": "weathernext_3_0_0_statistics/zarr/",
+    "requester_billing_identity": null,
+    "selected_fields": [
+      "temperature_2m_mean",
+      "temperature_2m_p10",
+      "temperature_2m_p25",
+      "temperature_2m_p50",
+      "temperature_2m_p75",
+      "temperature_2m_p90",
+      "dewpoint_temperature_2m_mean",
+      "dewpoint_temperature_2m_p10",
+      "dewpoint_temperature_2m_p25",
+      "dewpoint_temperature_2m_p50",
+      "dewpoint_temperature_2m_p75",
+      "dewpoint_temperature_2m_p90",
+      "wind_speed_10m_mean",
+      "wind_speed_10m_p10",
+      "wind_speed_10m_p25",
+      "wind_speed_10m_p50",
+      "wind_speed_10m_p75",
+      "wind_speed_10m_p90",
+      "wind_speed_100m_mean",
+      "wind_speed_100m_p10",
+      "wind_speed_100m_p25",
+      "wind_speed_100m_p50",
+      "wind_speed_100m_p75",
+      "wind_speed_100m_p90",
+      "u_component_of_wind_10m_mean",
+      "u_component_of_wind_10m_p10",
+      "u_component_of_wind_10m_p25",
+      "u_component_of_wind_10m_p50",
+      "u_component_of_wind_10m_p75",
+      "u_component_of_wind_10m_p90",
+      "v_component_of_wind_10m_mean",
+      "v_component_of_wind_10m_p10",
+      "v_component_of_wind_10m_p25",
+      "v_component_of_wind_10m_p50",
+      "v_component_of_wind_10m_p75",
+      "v_component_of_wind_10m_p90",
+      "u_component_of_wind_100m_mean",
+      "u_component_of_wind_100m_p10",
+      "u_component_of_wind_100m_p25",
+      "u_component_of_wind_100m_p50",
+      "u_component_of_wind_100m_p75",
+      "u_component_of_wind_100m_p90",
+      "v_component_of_wind_100m_mean",
+      "v_component_of_wind_100m_p10",
+      "v_component_of_wind_100m_p25",
+      "v_component_of_wind_100m_p50",
+      "v_component_of_wind_100m_p75",
+      "v_component_of_wind_100m_p90",
+      "surface_solar_radiation_downwards_1hr_mean",
+      "surface_solar_radiation_downwards_1hr_p10",
+      "surface_solar_radiation_downwards_1hr_p25",
+      "surface_solar_radiation_downwards_1hr_p50",
+      "surface_solar_radiation_downwards_1hr_p75",
+      "surface_solar_radiation_downwards_1hr_p90",
+      "total_sky_direct_solar_radiation_at_surface_1hr_mean",
+      "total_sky_direct_solar_radiation_at_surface_1hr_p10",
+      "total_sky_direct_solar_radiation_at_surface_1hr_p25",
+      "total_sky_direct_solar_radiation_at_surface_1hr_p50",
+      "total_sky_direct_solar_radiation_at_surface_1hr_p75",
+      "total_sky_direct_solar_radiation_at_surface_1hr_p90",
+      "total_precipitation_1hr_mean",
+      "total_precipitation_1hr_p10",
+      "total_precipitation_1hr_p25",
+      "total_precipitation_1hr_p50",
+      "total_precipitation_1hr_p75",
+      "total_precipitation_1hr_p90",
+      "imerg_tp_1hr_mean",
+      "imerg_tp_1hr_p10",
+      "imerg_tp_1hr_p25",
+      "imerg_tp_1hr_p50",
+      "imerg_tp_1hr_p75",
+      "imerg_tp_1hr_p90",
+      "experimental_tp_1hr_mean",
+      "experimental_tp_1hr_p10",
+      "experimental_tp_1hr_p25",
+      "experimental_tp_1hr_p50",
+      "experimental_tp_1hr_p75",
+      "experimental_tp_1hr_p90",
+      "total_cloud_cover_mean",
+      "total_cloud_cover_p10",
+      "total_cloud_cover_p25",
+      "total_cloud_cover_p50",
+      "total_cloud_cover_p75",
+      "total_cloud_cover_p90",
+      "low_cloud_cover_mean",
+      "low_cloud_cover_p10",
+      "low_cloud_cover_p25",
+      "low_cloud_cover_p50",
+      "low_cloud_cover_p75",
+      "low_cloud_cover_p90",
+      "medium_cloud_cover_mean",
+      "medium_cloud_cover_p10",
+      "medium_cloud_cover_p25",
+      "medium_cloud_cover_p50",
+      "medium_cloud_cover_p75",
+      "medium_cloud_cover_p90",
+      "high_cloud_cover_mean",
+      "high_cloud_cover_p10",
+      "high_cloud_cover_p25",
+      "high_cloud_cover_p50",
+      "high_cloud_cover_p75",
+      "high_cloud_cover_p90",
+      "mean_sea_level_pressure_mean",
+      "mean_sea_level_pressure_p10",
+      "mean_sea_level_pressure_p25",
+      "mean_sea_level_pressure_p50",
+      "mean_sea_level_pressure_p75",
+      "mean_sea_level_pressure_p90",
+      "sea_surface_temperature_mean",
+      "sea_surface_temperature_p10",
+      "sea_surface_temperature_p25",
+      "sea_surface_temperature_p50",
+      "sea_surface_temperature_p75",
+      "sea_surface_temperature_p90",
+      "station_head_temperature_2m_mean",
+      "station_head_temperature_2m_p10",
+      "station_head_temperature_2m_p25",
+      "station_head_temperature_2m_p50",
+      "station_head_temperature_2m_p75",
+      "station_head_temperature_2m_p90",
+      "station_head_dewpoint_temperature_2m_mean",
+      "station_head_dewpoint_temperature_2m_p10",
+      "station_head_dewpoint_temperature_2m_p25",
+      "station_head_dewpoint_temperature_2m_p50",
+      "station_head_dewpoint_temperature_2m_p75",
+      "station_head_dewpoint_temperature_2m_p90"
+    ]
+  },
+  "resource_gate": {
+    "deadline": 1800,
+    "decoded_cap": 134217728,
+    "local_reservation": 4294967296,
+    "received_cap": 4294967296
+  },
+  "result": "success",
+  "sample": {
+    "fields": [
+      {
+        "field": "temperature_2m_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "K",
+        "values": [
+          285.39569091796875
+        ]
+      },
+      {
+        "field": "temperature_2m_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "K",
+        "values": [
+          285.10760498046875
+        ]
+      },
+      {
+        "field": "temperature_2m_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "K",
+        "values": [
+          285.2912902832031
+        ]
+      },
+      {
+        "field": "temperature_2m_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "K",
+        "values": [
+          285.42559814453125
+        ]
+      },
+      {
+        "field": "temperature_2m_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "K",
+        "values": [
+          285.50457763671875
+        ]
+      },
+      {
+        "field": "temperature_2m_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "K",
+        "values": [
+          285.60205078125
+        ]
+      },
+      {
+        "field": "dewpoint_temperature_2m_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "K",
+        "values": [
+          285.2488708496094
+        ]
+      },
+      {
+        "field": "dewpoint_temperature_2m_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "K",
+        "values": [
+          284.9590148925781
+        ]
+      },
+      {
+        "field": "dewpoint_temperature_2m_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "K",
+        "values": [
+          285.13116455078125
+        ]
+      },
+      {
+        "field": "dewpoint_temperature_2m_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "K",
+        "values": [
+          285.2772216796875
+        ]
+      },
+      {
+        "field": "dewpoint_temperature_2m_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "K",
+        "values": [
+          285.3816833496094
+        ]
+      },
+      {
+        "field": "dewpoint_temperature_2m_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "K",
+        "values": [
+          285.4950866699219
+        ]
+      },
+      {
+        "field": "wind_speed_10m_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m s**-1",
+        "values": [
+          1.833694338798523
+        ]
+      },
+      {
+        "field": "wind_speed_10m_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m s**-1",
+        "values": [
+          1.2362383604049683
+        ]
+      },
+      {
+        "field": "wind_speed_10m_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m s**-1",
+        "values": [
+          1.5748285055160522
+        ]
+      },
+      {
+        "field": "wind_speed_10m_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m s**-1",
+        "values": [
+          1.8969011306762695
+        ]
+      },
+      {
+        "field": "wind_speed_10m_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m s**-1",
+        "values": [
+          2.0808238983154297
+        ]
+      },
+      {
+        "field": "wind_speed_10m_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m s**-1",
+        "values": [
+          2.33260440826416
+        ]
+      },
+      {
+        "field": "wind_speed_100m_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m s**-1",
+        "values": [
+          3.3075950145721436
+        ]
+      },
+      {
+        "field": "wind_speed_100m_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m s**-1",
+        "values": [
+          2.413278341293335
+        ]
+      },
+      {
+        "field": "wind_speed_100m_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m s**-1",
+        "values": [
+          2.8118820190429688
+        ]
+      },
+      {
+        "field": "wind_speed_100m_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m s**-1",
+        "values": [
+          3.4476232528686523
+        ]
+      },
+      {
+        "field": "wind_speed_100m_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m s**-1",
+        "values": [
+          3.762367010116577
+        ]
+      },
+      {
+        "field": "wind_speed_100m_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m s**-1",
+        "values": [
+          4.077697277069092
+        ]
+      },
+      {
+        "field": "u_component_of_wind_10m_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m s**-1",
+        "values": [
+          -1.6376270055770874
+        ]
+      },
+      {
+        "field": "u_component_of_wind_10m_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m s**-1",
+        "values": [
+          -2.1333560943603516
+        ]
+      },
+      {
+        "field": "u_component_of_wind_10m_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m s**-1",
+        "values": [
+          -1.9273971319198608
+        ]
+      },
+      {
+        "field": "u_component_of_wind_10m_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m s**-1",
+        "values": [
+          -1.6729722023010254
+        ]
+      },
+      {
+        "field": "u_component_of_wind_10m_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m s**-1",
+        "values": [
+          -1.3678736686706543
+        ]
+      },
+      {
+        "field": "u_component_of_wind_10m_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m s**-1",
+        "values": [
+          -1.0688893795013428
+        ]
+      },
+      {
+        "field": "v_component_of_wind_10m_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m s**-1",
+        "values": [
+          0.7138437628746033
+        ]
+      },
+      {
+        "field": "v_component_of_wind_10m_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m s**-1",
+        "values": [
+          0.13778156042099
+        ]
+      },
+      {
+        "field": "v_component_of_wind_10m_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m s**-1",
+        "values": [
+          0.4825814664363861
+        ]
+      },
+      {
+        "field": "v_component_of_wind_10m_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m s**-1",
+        "values": [
+          0.7302142381668091
+        ]
+      },
+      {
+        "field": "v_component_of_wind_10m_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m s**-1",
+        "values": [
+          0.9821074604988098
+        ]
+      },
+      {
+        "field": "v_component_of_wind_10m_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m s**-1",
+        "values": [
+          1.1642110347747803
+        ]
+      },
+      {
+        "field": "u_component_of_wind_100m_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m s**-1",
+        "values": [
+          -2.732754945755005
+        ]
+      },
+      {
+        "field": "u_component_of_wind_100m_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m s**-1",
+        "values": [
+          -3.488832473754883
+        ]
+      },
+      {
+        "field": "u_component_of_wind_100m_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m s**-1",
+        "values": [
+          -3.2738025188446045
+        ]
+      },
+      {
+        "field": "u_component_of_wind_100m_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m s**-1",
+        "values": [
+          -2.785346508026123
+        ]
+      },
+      {
+        "field": "u_component_of_wind_100m_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m s**-1",
+        "values": [
+          -2.2692174911499023
+        ]
+      },
+      {
+        "field": "u_component_of_wind_100m_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m s**-1",
+        "values": [
+          -1.904658555984497
+        ]
+      },
+      {
+        "field": "v_component_of_wind_100m_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m s**-1",
+        "values": [
+          1.7583978176116943
+        ]
+      },
+      {
+        "field": "v_component_of_wind_100m_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m s**-1",
+        "values": [
+          0.9195391535758972
+        ]
+      },
+      {
+        "field": "v_component_of_wind_100m_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m s**-1",
+        "values": [
+          1.4100536108016968
+        ]
+      },
+      {
+        "field": "v_component_of_wind_100m_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m s**-1",
+        "values": [
+          1.7726694345474243
+        ]
+      },
+      {
+        "field": "v_component_of_wind_100m_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m s**-1",
+        "values": [
+          2.1801071166992188
+        ]
+      },
+      {
+        "field": "v_component_of_wind_100m_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m s**-1",
+        "values": [
+          2.4766812324523926
+        ]
+      },
+      {
+        "field": "surface_solar_radiation_downwards_1hr_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "J m**-2",
+        "values": [
+          211.6064453125
+        ]
+      },
+      {
+        "field": "surface_solar_radiation_downwards_1hr_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "J m**-2",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "surface_solar_radiation_downwards_1hr_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "J m**-2",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "surface_solar_radiation_downwards_1hr_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "J m**-2",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "surface_solar_radiation_downwards_1hr_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "J m**-2",
+        "values": [
+          21.65625
+        ]
+      },
+      {
+        "field": "surface_solar_radiation_downwards_1hr_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "J m**-2",
+        "values": [
+          943.8812255859375
+        ]
+      },
+      {
+        "field": "total_sky_direct_solar_radiation_at_surface_1hr_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "J m**-2",
+        "values": [
+          193.1806640625
+        ]
+      },
+      {
+        "field": "total_sky_direct_solar_radiation_at_surface_1hr_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "J m**-2",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "total_sky_direct_solar_radiation_at_surface_1hr_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "J m**-2",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "total_sky_direct_solar_radiation_at_surface_1hr_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "J m**-2",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "total_sky_direct_solar_radiation_at_surface_1hr_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "J m**-2",
+        "values": [
+          287.796875
+        ]
+      },
+      {
+        "field": "total_sky_direct_solar_radiation_at_surface_1hr_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "J m**-2",
+        "values": [
+          641.0062255859375
+        ]
+      },
+      {
+        "field": "total_precipitation_1hr_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m",
+        "values": [
+          5.4415784688899294e-05
+        ]
+      },
+      {
+        "field": "total_precipitation_1hr_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m",
+        "values": [
+          5.509613401954994e-06
+        ]
+      },
+      {
+        "field": "total_precipitation_1hr_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m",
+        "values": [
+          1.2138050806242973e-05
+        ]
+      },
+      {
+        "field": "total_precipitation_1hr_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m",
+        "values": [
+          2.9604223527712747e-05
+        ]
+      },
+      {
+        "field": "total_precipitation_1hr_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m",
+        "values": [
+          5.631619569612667e-05
+        ]
+      },
+      {
+        "field": "total_precipitation_1hr_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m",
+        "values": [
+          9.066771599464118e-05
+        ]
+      },
+      {
+        "field": "imerg_tp_1hr_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m",
+        "values": [
+          2.661565304151736e-06
+        ]
+      },
+      {
+        "field": "imerg_tp_1hr_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "imerg_tp_1hr_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "imerg_tp_1hr_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m",
+        "values": [
+          1.0750227374956012e-08
+        ]
+      },
+      {
+        "field": "imerg_tp_1hr_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m",
+        "values": [
+          1.7379534256178886e-07
+        ]
+      },
+      {
+        "field": "imerg_tp_1hr_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m",
+        "values": [
+          3.291162897767208e-07
+        ]
+      },
+      {
+        "field": "experimental_tp_1hr_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "m",
+        "values": [
+          4.314834995966521e-07
+        ]
+      },
+      {
+        "field": "experimental_tp_1hr_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "m",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "experimental_tp_1hr_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "m",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "experimental_tp_1hr_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "m",
+        "values": [
+          4.032663127873093e-07
+        ]
+      },
+      {
+        "field": "experimental_tp_1hr_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "m",
+        "values": [
+          6.276732165133581e-07
+        ]
+      },
+      {
+        "field": "experimental_tp_1hr_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "m",
+        "values": [
+          1.056137989507988e-06
+        ]
+      },
+      {
+        "field": "total_cloud_cover_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "(0 - 1)",
+        "values": [
+          0.9987242221832275
+        ]
+      },
+      {
+        "field": "total_cloud_cover_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "(0 - 1)",
+        "values": [
+          0.9977548122406006
+        ]
+      },
+      {
+        "field": "total_cloud_cover_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "(0 - 1)",
+        "values": [
+          0.9986893534660339
+        ]
+      },
+      {
+        "field": "total_cloud_cover_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "(0 - 1)",
+        "values": [
+          1.0
+        ]
+      },
+      {
+        "field": "total_cloud_cover_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "(0 - 1)",
+        "values": [
+          1.0
+        ]
+      },
+      {
+        "field": "total_cloud_cover_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "(0 - 1)",
+        "values": [
+          1.0
+        ]
+      },
+      {
+        "field": "low_cloud_cover_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "(0 - 1)",
+        "values": [
+          0.9957972764968872
+        ]
+      },
+      {
+        "field": "low_cloud_cover_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "(0 - 1)",
+        "values": [
+          0.9971429705619812
+        ]
+      },
+      {
+        "field": "low_cloud_cover_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "(0 - 1)",
+        "values": [
+          0.9984009861946106
+        ]
+      },
+      {
+        "field": "low_cloud_cover_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "(0 - 1)",
+        "values": [
+          0.9996628165245056
+        ]
+      },
+      {
+        "field": "low_cloud_cover_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "(0 - 1)",
+        "values": [
+          1.0
+        ]
+      },
+      {
+        "field": "low_cloud_cover_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "(0 - 1)",
+        "values": [
+          1.0
+        ]
+      },
+      {
+        "field": "medium_cloud_cover_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "(0 - 1)",
+        "values": [
+          0.01584133505821228
+        ]
+      },
+      {
+        "field": "medium_cloud_cover_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "(0 - 1)",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "medium_cloud_cover_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "(0 - 1)",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "medium_cloud_cover_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "(0 - 1)",
+        "values": [
+          0.0
+        ]
+      },
+      {
+        "field": "medium_cloud_cover_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "(0 - 1)",
+        "values": [
+          0.0029866050463169813
+        ]
+      },
+      {
+        "field": "medium_cloud_cover_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "(0 - 1)",
+        "values": [
+          0.046731140464544296
+        ]
+      },
+      {
+        "field": "high_cloud_cover_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "(0 - 1)",
+        "values": [
+          0.4744468629360199
+        ]
+      },
+      {
+        "field": "high_cloud_cover_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "(0 - 1)",
+        "values": [
+          0.02574744261801243
+        ]
+      },
+      {
+        "field": "high_cloud_cover_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "(0 - 1)",
+        "values": [
+          0.11565646529197693
+        ]
+      },
+      {
+        "field": "high_cloud_cover_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "(0 - 1)",
+        "values": [
+          0.48250946402549744
+        ]
+      },
+      {
+        "field": "high_cloud_cover_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "(0 - 1)",
+        "values": [
+          0.8132364749908447
+        ]
+      },
+      {
+        "field": "high_cloud_cover_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "(0 - 1)",
+        "values": [
+          0.9539116024971008
+        ]
+      },
+      {
+        "field": "mean_sea_level_pressure_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "Pa",
+        "values": [
+          101458.40625
+        ]
+      },
+      {
+        "field": "mean_sea_level_pressure_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "Pa",
+        "values": [
+          101434.921875
+        ]
+      },
+      {
+        "field": "mean_sea_level_pressure_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "Pa",
+        "values": [
+          101445.015625
+        ]
+      },
+      {
+        "field": "mean_sea_level_pressure_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "Pa",
+        "values": [
+          101459.703125
+        ]
+      },
+      {
+        "field": "mean_sea_level_pressure_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "Pa",
+        "values": [
+          101471.8359375
+        ]
+      },
+      {
+        "field": "mean_sea_level_pressure_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "Pa",
+        "values": [
+          101478.4140625
+        ]
+      },
+      {
+        "field": "sea_surface_temperature_mean",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "K",
+        "values": [
+          null
+        ]
+      },
+      {
+        "field": "sea_surface_temperature_p10",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "K",
+        "values": [
+          null
+        ]
+      },
+      {
+        "field": "sea_surface_temperature_p25",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "K",
+        "values": [
+          null
+        ]
+      },
+      {
+        "field": "sea_surface_temperature_p50",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "K",
+        "values": [
+          null
+        ]
+      },
+      {
+        "field": "sea_surface_temperature_p75",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "K",
+        "values": [
+          null
+        ]
+      },
+      {
+        "field": "sea_surface_temperature_p90",
+        "grid": "0p1",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "K",
+        "values": [
+          null
+        ]
+      },
+      {
+        "field": "station_head_temperature_2m_mean",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "K",
+        "values": [
+          285.09881591796875
+        ]
+      },
+      {
+        "field": "station_head_temperature_2m_p10",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "K",
+        "values": [
+          284.353759765625
+        ]
+      },
+      {
+        "field": "station_head_temperature_2m_p25",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "K",
+        "values": [
+          284.6614074707031
+        ]
+      },
+      {
+        "field": "station_head_temperature_2m_p50",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "K",
+        "values": [
+          284.9566650390625
+        ]
+      },
+      {
+        "field": "station_head_temperature_2m_p75",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "K",
+        "values": [
+          285.53973388671875
+        ]
+      },
+      {
+        "field": "station_head_temperature_2m_p90",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "K",
+        "values": [
+          286.1454772949219
+        ]
+      },
+      {
+        "field": "station_head_dewpoint_temperature_2m_mean",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "mean",
+        "unit": "K",
+        "values": [
+          284.9734802246094
+        ]
+      },
+      {
+        "field": "station_head_dewpoint_temperature_2m_p10",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p10",
+        "unit": "K",
+        "values": [
+          284.1317138671875
+        ]
+      },
+      {
+        "field": "station_head_dewpoint_temperature_2m_p25",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p25",
+        "unit": "K",
+        "values": [
+          284.5082702636719
+        ]
+      },
+      {
+        "field": "station_head_dewpoint_temperature_2m_p50",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p50",
+        "unit": "K",
+        "values": [
+          284.8494873046875
+        ]
+      },
+      {
+        "field": "station_head_dewpoint_temperature_2m_p75",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p75",
+        "unit": "K",
+        "values": [
+          285.5766296386719
+        ]
+      },
+      {
+        "field": "station_head_dewpoint_temperature_2m_p90",
+        "grid": "0p05",
+        "latitude": 47.5,
+        "longitude": -52.70001220703125,
+        "statistic": "p90",
+        "unit": "K",
+        "values": [
+          286.1147766113281
+        ]
+      }
+    ],
+    "lead_hours": [
+      6
+    ]
+  },
+  "schema_version": 1,
+  "times": {
+    "initialization": "2026-08-01T00:00:00Z",
+    "object_updated_is_publication": false,
+    "publication": null,
+    "retrieval": "2026-09-05T14:49:52.831182Z",
+    "valid": [
+      "2026-08-01T06:00:00Z"
+    ]
+  },
+  "usage": {
+    "deadline_seconds": 432,
+    "decoded_working_bytes": 103708800,
+    "object_requests": 140,
+    "output_bytes": 122420,
+    "received_bytes": 3150943978
+  }
+}
