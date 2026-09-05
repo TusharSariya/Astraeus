@@ -18,6 +18,13 @@ fabrication.
 - **THEN** an immutable artifact exposes only the retrieved fields and carries
   every selected, deferred, missing and unsupported disposition
 
+#### Scenario: The all-field spatial proof is normalized
+
+- **WHEN** all 126 lead-6 fields are retained over the declared evidence box
+- **THEN** separate 0.1 and 0.05 degree artifacts preserve every native cell,
+  coordinate, unit, statistic, finite value and provider null without inventing
+  a production catalogue mapping
+
 #### Scenario: Input is ambiguous or invalid
 
 - **WHEN** product/surface/member identity, inventory, statistic, time, value,

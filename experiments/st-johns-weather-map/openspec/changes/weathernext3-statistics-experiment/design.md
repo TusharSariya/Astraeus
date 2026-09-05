@@ -20,9 +20,14 @@ fraction `[0,1]` units. The other 102 arrays are retrieved capability with no
 accepted consumer mapping; production storage and API exposure remain
 deferred rather than silently omitted or promoted.
 
-An independent spatial proof retrieves six cloud statistics over the full 16
-by 16 native-cell Avalon box at three leads. It does not claim spatial coverage
-for the all-field point sample. Fog, visibility, ceiling, cloud base and cloud top are unsupported because the
+The complete bounded spatial proof retains all 126 fields at lead 6 over the
+declared evidence box, 45.0–50.5 N and 58.0–46.0 W: 56 by 121 cells for 114
+fields on the 0.1-degree grid and 111 by 241 cells for 12 station-head fields
+on the 0.05-degree grid. It preserves every cell, provider null, native unit,
+statistic, time and raw object identity. Six sea-surface-temperature statistics
+retain both finite ocean values and 1,587 null land cells each. This proves one
+historical lead's spatial extraction and does not prove forecast cadence or a
+complete operational time window. Fog, visibility, ceiling, cloud base and cloud top are unsupported because the
 product does not publish them. Pressure levels and raw members exist only on
 the excluded full-ensemble surface and are not fabricated here.
 
@@ -30,7 +35,9 @@ the excluded full-ensemble surface and are not fabricated here.
 
 The bounded acquisition reads one object at a time, calculates sizes before
 download, decodes at most one global chunk, deletes it after extraction, and
-enforces byte, request, memory, output, deadline and disk-reserve gates. The
+enforces a 4 GiB received-byte bound, 128 MiB decoded bound, 64 MiB serialized
+output bound, 30-minute deadline, and 4 GiB local reservation in addition to
+the next chunk and working allowances. The
 Avalon proof rechecks generation, ETag and size after reads; the all-field proof
 downloads generation-qualified objects and verifies their described byte sizes.
 The adapter requires an explicit verified-read mechanism: either the box
@@ -52,5 +59,5 @@ has no registry side effect and no scheduler or production configuration entry.
 Point and bounded-box acquisitions are explicitly partial experiments. Their
 run results remain incomplete and QC-failed, so the artifact store may stage
 them for local inspection but cannot advance a current revision. Publication
-requires a later accepted contract defining complete spatial, temporal and
-cadence bounds.
+requires a later accepted contract defining complete temporal and cadence
+bounds.

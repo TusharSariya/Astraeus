@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sequentially decode one point from all 126 WeatherNext 3 statistic arrays."""
+"""Sequentially decode a bounded box from all 126 WeatherNext 3 arrays."""
 
 from __future__ import annotations
 
@@ -24,14 +24,31 @@ from weathernext_bounded_sample import RUN_PREFIX, _decode_array, _node
 RECEIVED_CAP = 4 * 1024**3
 REQUEST_CAP = 300
 DECODED_CAP = 128 * 1024**2
-OUTPUT_CAP = 5 * 1024**2
+OUTPUT_CAP = 64 * 1024**2
 LOCAL_RESERVATION = 4 * 1024**3
 DEADLINE_SECONDS = 30 * 60
 LEAD = 6
+AVALON_BOX = {"west": -58.0, "south": 45.0, "east": -46.0, "north": 50.5}
 
 
 class SampleError(RuntimeError):
     pass
+
+
+def _expected_unit(name: str) -> str:
+    base = name.rsplit("_", 1)[0]
+    if "cloud_cover" in base:
+        return "(0 - 1)"
+    if base in {"temperature_2m", "dewpoint_temperature_2m", "sea_surface_temperature",
+                "station_head_temperature_2m", "station_head_dewpoint_temperature_2m"}:
+        return "K"
+    if "wind" in base:
+        return "m s**-1"
+    if "radiation" in base:
+        return "J m**-2"
+    if base == "mean_sea_level_pressure":
+        return "Pa"
+    return "m"
 
 
 class Transport:
@@ -90,6 +107,12 @@ def run(plan_path: Path, output: Path) -> dict:
         metadata_path = raw / "root-zarr.json"
         transport.download(f"{metadata_uri}#{metadata_item['generation']}", metadata_path, int(metadata_item["size"]))
         metadata = json.loads(metadata_path.read_text())
+        ancillary_objects = [{
+            "object": metadata_uri.removeprefix(f"gs://{contract.BUCKET}/"),
+            "generation": str(metadata_item["generation"]), "etag": metadata_item["etag"],
+            "size": int(metadata_item["size"]), "updated": metadata_item.get("updateTime"),
+            "identity_verification_method": "generation_qualified_read_with_size_check",
+        }]
 
         coordinate_values = {}
         coordinate_objects = {
@@ -104,6 +127,12 @@ def run(plan_path: Path, output: Path) -> dict:
             local.parent.mkdir(parents=True, exist_ok=True)
             transport.download(f"{uri}#{item['generation']}", local, int(item["size"]))
             coordinate_values[name] = _decode_array(raw, name, _node(metadata, name), relative)
+            ancillary_objects.append({
+                "object": uri.removeprefix(f"gs://{contract.BUCKET}/"),
+                "generation": str(item["generation"]), "etag": item["etag"],
+                "size": int(item["size"]), "updated": item.get("updateTime"),
+                "identity_verification_method": "generation_qualified_read_with_size_check",
+            })
 
         lead_values = coordinate_values["lead_time"]
         matches = np.flatnonzero(lead_values == LEAD)
@@ -116,6 +145,32 @@ def run(plan_path: Path, output: Path) -> dict:
             raise SampleError("initialization coordinate mismatch")
 
         samples = []
+        box_grids = {}
+        box_indices = {}
+        for grid_name in ("0p1", "0p05"):
+            latitudes = coordinate_values[f"lat_{grid_name}"]
+            longitudes = coordinate_values[f"lon_{grid_name}"]
+            normalized_longitudes = ((longitudes + 180) % 360) - 180
+            latitude_indices = np.flatnonzero(
+                (latitudes >= AVALON_BOX["south"]) & (latitudes <= AVALON_BOX["north"])
+            )
+            longitude_indices = np.flatnonzero(
+                (normalized_longitudes >= AVALON_BOX["west"]) & (normalized_longitudes <= AVALON_BOX["east"])
+            )
+            if not len(latitude_indices) or not len(longitude_indices):
+                raise SampleError(f"Avalon box selects no {grid_name} native cells")
+            selected_latitudes = np.asarray(latitudes[latitude_indices], dtype="float64")
+            selected_longitudes = np.asarray(normalized_longitudes[longitude_indices], dtype="float64")
+            # The normalized output uses ascending geographic coordinates on
+            # both native grids, independently of provider storage direction.
+            latitude_order = np.argsort(selected_latitudes)
+            longitude_order = np.argsort(selected_longitudes)
+            box_indices[grid_name] = (latitude_indices[latitude_order], longitude_indices[longitude_order])
+            box_grids[grid_name] = {
+                "latitudes": selected_latitudes[latitude_order].tolist(),
+                "longitudes": selected_longitudes[longitude_order].tolist(),
+                "native_resolution_degrees": 0.1 if grid_name == "0p1" else 0.05,
+            }
         fields = contract.template()["fields"]
         max_decoded = max(value.nbytes for value in coordinate_values.values())
         for name in contract.EXPECTED_FIELDS:
@@ -126,8 +181,10 @@ def run(plan_path: Path, output: Path) -> dict:
             grid_name = dimensions[1].removeprefix("lat_")
             latitudes = coordinate_values[dimensions[1]]
             longitudes = coordinate_values[dimensions[2]]
-            lat_index = int(np.nanargmin(np.abs(latitudes - contract.POINT["latitude"])))
-            lon_index = int(np.nanargmin(np.abs(longitudes - (contract.POINT["longitude"] % 360))))
+            if node.get("data_type") != "float32" or node.get("shape") != [len(lead_values), len(latitudes), len(longitudes)]:
+                raise SampleError(f"{name}: unexpected native shape or dtype")
+            if node.get("chunk_grid", {}).get("configuration", {}).get("chunk_shape") != [1, len(latitudes), len(longitudes)]:
+                raise SampleError(f"{name}: unexpected native chunk shape")
             relative = f"{name}/c/{lead_index}/0/0"
             item = planned[name]
             local = raw / relative
@@ -138,17 +195,27 @@ def run(plan_path: Path, output: Path) -> dict:
             max_decoded = max(max_decoded, grid.nbytes)
             if max_decoded > DECODED_CAP:
                 raise SampleError("decoded working-array cap exceeded")
-            raw_value = float(grid[lat_index, lon_index])
-            value = raw_value if math.isfinite(raw_value) else None
+            latitude_indices, longitude_indices = box_indices[grid_name]
+            selected = grid[np.ix_(latitude_indices, longitude_indices)]
+            values = [
+                [float(value) if math.isfinite(float(value)) else None for value in row]
+                for row in selected
+            ]
+            finite_values = [value for row in values for value in row if value is not None]
+            if name in contract.SELECTED_FIELDS and any(not 0 <= value <= 1 for value in finite_values):
+                raise SampleError(f"{name}: cloud fraction outside [0, 1]")
             unit = str(node.get("attributes", {}).get("units", "unknown"))
+            if unit != _expected_unit(name):
+                raise SampleError(f"{name}: unexpected native unit {unit}")
             fields[name].update(status="retrieved", selected_for_sample=True, grid=grid_name,
                                 unit=unit, dtype=str(node.get("data_type")),
-                                fill_value=str(node.get("fill_value", "NaN")), null_count=int(value is None),
-                                finite_min=value, finite_max=value)
-            samples.append({"field": name, "unit": unit, "values": [value],
-                            "grid": grid_name, "statistic": name.rsplit("_", 1)[1],
-                            "latitude": float(latitudes[lat_index]),
-                            "longitude": float(((longitudes[lon_index] + 180) % 360) - 180)})
+                                fill_value=str(node.get("fill_value", "NaN")),
+                                null_count=sum(value is None for row in values for value in row),
+                                finite_min=min(finite_values) if finite_values else None,
+                                finite_max=max(finite_values) if finite_values else None)
+            samples.append({"field": name, "unit": unit, "grid": grid_name,
+                            "statistic": name.rsplit("_", 1)[1],
+                            "leads": [{"lead_hours": LEAD, "values": values}]})
             shutil.rmtree(raw / name)
 
     manifest = contract.template()
@@ -156,6 +223,11 @@ def run(plan_path: Path, output: Path) -> dict:
     manifest["request"].update(lead_hours=[LEAD], selected_fields=list(contract.EXPECTED_FIELDS))
     manifest["times"].update(valid=["2026-08-01T06:00:00Z"], retrieval=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
     manifest["sample"] = {"lead_hours": [LEAD], "fields": samples}
+    manifest["avalon_box_sample"] = {
+        "bounds": AVALON_BOX,
+        "selection": "all_native_cell_centres_within_inclusive_bounds",
+        "grids": box_grids,
+    }
     manifest["identity"].update(terms_url="https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
                                 terms_reviewed="2026-09-05", input_lineage="ECMWF HRES analysis documented by provider",
                                 attribution="WeatherNext data provided by Google")
@@ -165,7 +237,7 @@ def run(plan_path: Path, output: Path) -> dict:
     # Every body was fetched through its generation-qualified URI and its byte
     # count matched the description captured in the plan. Name that mechanism
     # precisely; this recorder does not perform a later metadata/ETag recheck.
-    manifest["objects"] = [
+    manifest["objects"] = ancillary_objects + [
         {**item, "identity_verification_method": "generation_qualified_read_with_size_check"}
         for item in plan["field_objects"]
     ]

@@ -27,6 +27,7 @@ from weather_api.store import LiveStore
 UTC = timezone.utc
 EVIDENCE = Path(__file__).parents[4] / "docs" / "research" / "evidence" / "weathernext-20260801-avalon-box.json"
 ALL_FIELDS_EVIDENCE = Path(__file__).parents[4] / "docs" / "research" / "evidence" / "weathernext-20260801-all-fields-lead6-values.json"
+ALL_FIELDS_BOX_EVIDENCE = Path(__file__).parents[4] / "docs" / "research" / "evidence" / "weathernext-20260801-all-fields-lead6-avalon-box.json"
 
 
 def evidence(path: Path = EVIDENCE) -> dict:
@@ -129,6 +130,86 @@ def test_all_126_live_fields_normalize_on_their_two_native_grids(tmp_path):
     assert {sample["unit"] for sample in item["sample"]["fields"]} == {
         "(0 - 1)", "J m**-2", "K", "Pa", "m", "m s**-1"
     }
+
+
+def test_all_126_live_fields_cover_the_declared_box_on_both_native_grids():
+    item = evidence(ALL_FIELDS_BOX_EVIDENCE)
+    validate_acquisition(item)
+    assert len(item["sample"]["fields"]) == 126
+    grids = item["avalon_box_sample"]["grids"]
+    assert {name: (len(grid["latitudes"]), len(grid["longitudes"])) for name, grid in grids.items()} == {
+        "0p1": (56, 121), "0p05": (111, 241)
+    }
+    for grid in grids.values():
+        assert (grid["latitudes"][0], grid["latitudes"][-1]) == pytest.approx((45.0, 50.5))
+        assert (grid["longitudes"][0], grid["longitudes"][-1]) == pytest.approx((-58.0, -46.0))
+    assert {name: field["null_count"] for name, field in item["fields"].items() if field["null_count"]} == {
+        f"sea_surface_temperature_{stat}": 1587 for stat in ("mean", "p10", "p25", "p50", "p75", "p90")
+    }
+
+
+def test_all_field_box_reaches_real_reader_and_http_at_land_and_ocean_cells(tmp_path, monkeypatch):
+    item = evidence(ALL_FIELDS_BOX_EVIDENCE)
+    adapter = WeatherNext3StatisticsAdapter(ALL_FIELDS_BOX_EVIDENCE)
+    result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    assert len(result.artifacts) == 2 and not result.complete and not result.qc_passed
+    currents, datasets = [], {}
+    for artifact in result.artifacts:
+        datasets[artifact.logical_name] = xarray.open_zarr(
+            zarr.storage.ZipStore(str(artifact.payload_path), mode="r"), consolidated=False)
+        currents.append(CurrentArtifact(SOURCE_ID, artifact.logical_name, f"wn3-box-{artifact.logical_name}",
+                                        "unused", artifact.media_type, artifact.byte_size, artifact.provenance,
+                                        datetime.now(UTC), result.run_time, result.retrieved_at,
+                                        result.provider_run_id, "EPSG:4326"))
+    harness = HarnessStore(currents, datasets)
+    store_module = importlib.import_module("weather_api.store")
+    monkeypatch.setattr(store_module, "FIELD_BY_VARIABLE",
+                        {**store_module.FIELD_BY_VARIABLE, **{name: name for name in EXPECTED_FIELDS}})
+    from registry import fields as catalogue
+    template = catalogue.field("total_cloud_geometric")
+    units = {sample["field"]: sample["unit"] for sample in item["sample"]["fields"]}
+    monkeypatch.setattr(catalogue, "_FIELDS", {**catalogue._FIELDS, **{
+        name: dataclasses.replace(template, key=name, units=units[name], range=None,
+                                  description="Test-local WeatherNext 3 provider statistic.")
+        for name in EXPECTED_FIELDS
+    }})
+    api_module = importlib.import_module("weather_api.app")
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(api_module, "live_store", lambda: harness)
+    monkeypatch.setattr(api_module, "now", lambda: datetime(2026, 8, 1, 12, tzinfo=UTC))
+    by_field = {sample["field"]: sample for sample in item["sample"]["fields"]}
+    grids = item["avalon_box_sample"]["grids"]
+
+    sst = by_field["sea_surface_temperature_mean"]["leads"][0]["values"]
+    in_core = lambda row, column: (46.5 <= grids["0p1"]["latitudes"][row] <= 48.5
+                                   and -55.0 <= grids["0p1"]["longitudes"][column] <= -51.0)
+    land_index = next((row_index, column_index) for row_index, row in enumerate(sst)
+                      for column_index, value in enumerate(row) if in_core(row_index, column_index) and value is None)
+    ocean_index = next((row_index, column_index) for row_index, row in enumerate(sst)
+                       for column_index, value in enumerate(row) if in_core(row_index, column_index) and value is not None)
+    for row_index, column_index in (land_index, ocean_index):
+        latitude = grids["0p1"]["latitudes"][row_index]
+        longitude = grids["0p1"]["longitudes"][column_index]
+        expected = {}
+        for name, sample in by_field.items():
+            grid = grids[sample["grid"]]
+            lat_index = min(range(len(grid["latitudes"])), key=lambda index: abs(grid["latitudes"][index] - latitude))
+            lon_index = min(range(len(grid["longitudes"])), key=lambda index: abs(grid["longitudes"][index] - longitude))
+            expected[name] = sample["leads"][0]["values"][lat_index][lon_index]
+        sampled = {value.variable: value.value for value in harness.sample_point(
+            latitude, longitude, datetime(2026, 8, 1, 6, tzinfo=UTC))}
+        assert set(sampled) == set(EXPECTED_FIELDS)
+        for name, value in expected.items():
+            assert sampled[name] == (pytest.approx(value) if value is not None else None)
+        response = TestClient(api_module.app).get("/api/experiments/weather/v0/point", params={
+            "latitude": latitude, "longitude": longitude, "valid_time": "2026-08-01T06:00:00Z"})
+        assert response.status_code == 200, response.text
+        actual = {field["field"]: field for field in response.json()["fields"]
+                  if field["provenance"]["source_id"] == SOURCE_ID}
+        assert set(actual) == set(EXPECTED_FIELDS)
+        for name, value in expected.items():
+            assert actual[name]["value"] == (pytest.approx(value) if value is not None else None)
+            assert actual[name]["absence_state"] == ("null" if value is None else None)
 
 
 def test_adapter_writes_immutable_artifact_with_full_disposition_provenance(tmp_path):

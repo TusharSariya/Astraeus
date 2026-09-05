@@ -100,7 +100,10 @@ def _validate_object_identity(manifest: dict[str, Any], selected: set[str], lead
     if is_box:
         required_ancillary = {f"{prefix}/zarr.json", f"{prefix}/lat_0p1/c/0", f"{prefix}/lon_0p1/c/0",
                               f"{prefix}/lead_time/c/0", f"{prefix}/init_time/c"}
-        required_ancillary.update(f"{prefix}/datetime/c/{lead - 1}" for lead in leads)
+        if "grids" in manifest["avalon_box_sample"]:
+            required_ancillary.update({f"{prefix}/lat_0p05/c/0", f"{prefix}/lon_0p05/c/0"})
+        else:
+            required_ancillary.update(f"{prefix}/datetime/c/{lead - 1}" for lead in leads)
     for item in objects:
         path = item.get("name", item.get("object"))
         if not isinstance(path, str) or not path.startswith(f"{prefix}/") or path in paths:
@@ -132,7 +135,8 @@ def _validate_object_identity(manifest: dict[str, Any], selected: set[str], lead
                 # These two recorders deliberately retain their provider path
                 # conventions: box chunks use zero-based lead indexes while
                 # the point proof names the lead coordinate itself.
-                matching_lead = next((lead for lead in leads if chunk == (lead - 1 if is_box else lead)), None)
+                legacy_box = is_box and "grids" not in manifest["avalon_box_sample"]
+                matching_lead = next((lead for lead in leads if chunk == (lead - 1 if legacy_box else lead)), None)
                 if matching_lead is None:
                     raise WeatherNextManifestError(f"{path}: source object lead identity mismatch")
                 field_leads.append((field, matching_lead))
@@ -190,7 +194,9 @@ def validate_acquisition(manifest: dict[str, Any]) -> None:
         raise WeatherNextManifestError("request and sample leads must be equal, non-empty and unique")
     _validate_object_identity(manifest, retrieved, leads)
     valid = manifest.get("times", {}).get("valid", [])
-    if len(leads) != len(valid) or any(len(item.get("values", [])) != len(leads) for item in samples.values()):
+    box = manifest.get("avalon_box_sample")
+    if len(leads) != len(valid) or (box is None and any(
+            len(item.get("values", [])) != len(leads) for item in samples.values())):
         raise WeatherNextManifestError("lead, valid-time and value cardinalities differ")
     initialization = _time(manifest["times"]["initialization"])
     if any(_time(stamp) != initialization + timedelta(hours=lead) for lead, stamp in zip(leads, valid)):
@@ -199,45 +205,79 @@ def validate_acquisition(manifest: dict[str, Any]) -> None:
         expected_unit = _expected_unit(name)
         if item.get("unit") != expected_unit or fields[name].get("unit") != expected_unit:
             raise WeatherNextManifestError(f"{name}: native unit mismatch")
-        if not all(value is None or (isinstance(value, (int, float)) and not isinstance(value, bool) and numpy.isfinite(value))
-                   for value in item["values"]):
-            raise WeatherNextManifestError(f"{name}: non-finite or non-numeric sample value")
-        null_count = sum(value is None for value in item["values"])
-        if fields[name].get("null_count") != null_count:
-            raise WeatherNextManifestError(f"{name}: fill-mask count mismatch")
-        if name in CLOUD_FIELDS:
-            for value in item["values"]:
-                if value is not None and (not numpy.isfinite(value) or not 0 <= value <= 1):
-                    raise WeatherNextManifestError(f"{name}: invalid cloud fraction")
-    box = manifest.get("avalon_box_sample")
+        if box is None or "grids" not in box:
+            if not all(value is None or (isinstance(value, (int, float)) and not isinstance(value, bool) and numpy.isfinite(value))
+                       for value in item["values"]):
+                raise WeatherNextManifestError(f"{name}: non-finite or non-numeric sample value")
+            null_count = sum(value is None for value in item["values"])
+            if fields[name].get("null_count") != null_count:
+                raise WeatherNextManifestError(f"{name}: fill-mask count mismatch")
+            if name in CLOUD_FIELDS:
+                for value in item["values"]:
+                    if value is not None and not 0 <= value <= 1:
+                        raise WeatherNextManifestError(f"{name}: invalid cloud fraction")
     if box is not None:
-        box_items = box.get("fields", [])
+        box_items = box.get("fields", sample_items if "grids" in box else [])
         box_fields = {item["field"]: item for item in box_items}
         if len(box_fields) != len(box_items):
             raise WeatherNextManifestError("duplicate Avalon box field identity")
         if set(box_fields) != retrieved:
             raise WeatherNextManifestError("Avalon box fields and retrieved dispositions differ")
-        if not set(box_fields) <= set(CLOUD_FIELDS):
-            raise WeatherNextManifestError("Avalon box experiment accepts only supported 0.1-degree cloud statistics")
-        latitudes, longitudes = box.get("latitudes", []), box.get("longitudes", [])
-        if not latitudes or not longitudes:
-            raise WeatherNextManifestError("Avalon box has no native cells")
-        for name, coordinates in (("latitude", latitudes), ("longitude", longitudes)):
-            if any(not isinstance(value, (int, float)) or not numpy.isfinite(value) for value in coordinates):
-                raise WeatherNextManifestError(f"Avalon box {name} coordinate is invalid")
-            differences = numpy.diff(coordinates)
-            if not (numpy.all(differences > 0) and numpy.allclose(differences, 0.1, atol=5e-5)):
-                raise WeatherNextManifestError(f"Avalon box {name} coordinates must be monotonic native 0.1-degree centres")
+        native_grid_schema = "grids" in box
+        grids = box.get("grids")
+        if grids is None:
+            grids = {"0p1": {"latitudes": box.get("latitudes", []), "longitudes": box.get("longitudes", []),
+                              "native_resolution_degrees": 0.1}}
+            if not set(box_fields) <= set(CLOUD_FIELDS):
+                raise WeatherNextManifestError("legacy Avalon box accepts only supported 0.1-degree cloud statistics")
+        if set(grids) != {item.get("grid", "0p1") for item in box_items}:
+            raise WeatherNextManifestError("Avalon box native grids and fields differ")
+        if "grids" in box and box.get("bounds") != {"west": -58.0, "south": 45.0, "east": -46.0, "north": 50.5}:
+            raise WeatherNextManifestError("Avalon box bounds differ from the declared evidence box")
+        for grid_name, grid in grids.items():
+            expected_resolution = 0.1 if grid_name == "0p1" else 0.05 if grid_name == "0p05" else None
+            if expected_resolution is None or grid.get("native_resolution_degrees") != expected_resolution:
+                raise WeatherNextManifestError("Avalon box native grid identity is invalid")
+            for coordinate_name in ("latitudes", "longitudes"):
+                coordinates = grid.get(coordinate_name, [])
+                if not coordinates or any(not isinstance(value, (int, float)) or not numpy.isfinite(value) for value in coordinates):
+                    raise WeatherNextManifestError(f"Avalon box {coordinate_name} coordinate is invalid")
+                differences = numpy.diff(coordinates)
+                if not (numpy.all(differences > 0) and numpy.allclose(differences, expected_resolution, atol=5e-5)):
+                    raise WeatherNextManifestError(
+                        f"Avalon box {coordinate_name} coordinates must be monotonic native {expected_resolution}-degree centres")
+            if native_grid_schema:
+                expected_shape = (56, 121) if grid_name == "0p1" else (111, 241)
+                if (len(grid["latitudes"]), len(grid["longitudes"])) != expected_shape:
+                    raise WeatherNextManifestError(f"Avalon box {grid_name} does not contain every native cell")
+                if not (numpy.isclose(grid["latitudes"][0], 45.0, atol=5e-5)
+                        and numpy.isclose(grid["latitudes"][-1], 50.5, atol=5e-5)
+                        and numpy.isclose(grid["longitudes"][0], -58.0, atol=5e-5)
+                        and numpy.isclose(grid["longitudes"][-1], -46.0, atol=5e-5)):
+                    raise WeatherNextManifestError(f"Avalon box {grid_name} coordinate bounds are incomplete")
         for name, item in box_fields.items():
+            grid_name = item.get("grid", "0p1")
+            if grid_name != _expected_grid(name):
+                raise WeatherNextManifestError(f"{name}: native grid mismatch")
+            latitudes = grids[grid_name]["latitudes"]
+            longitudes = grids[grid_name]["longitudes"]
             if [lead.get("lead_hours") for lead in item.get("leads", [])] != leads:
                 raise WeatherNextManifestError(f"{name}: Avalon box lead identity mismatch")
+            null_count = 0
             for lead in item["leads"]:
                 values = lead.get("values", [])
                 if len(values) != len(latitudes) or any(len(row) != len(longitudes) for row in values):
                     raise WeatherNextManifestError(f"{name}: Avalon box shape mismatch")
-                if any(value is not None and (not numpy.isfinite(value) or not 0 <= value <= 1)
-                       for row in values for value in row):
-                    raise WeatherNextManifestError(f"{name}: invalid Avalon box cloud fraction")
+                for row in values:
+                    for value in row:
+                        if value is None:
+                            null_count += 1
+                        elif not isinstance(value, (int, float)) or isinstance(value, bool) or not numpy.isfinite(value):
+                            raise WeatherNextManifestError(f"{name}: non-finite or non-numeric Avalon box value")
+                        elif name in CLOUD_FIELDS and not 0 <= value <= 1:
+                            raise WeatherNextManifestError(f"{name}: invalid Avalon box cloud fraction")
+            if fields[name].get("null_count") != null_count:
+                raise WeatherNextManifestError(f"{name}: fill-mask count mismatch")
     else:
         coordinates_by_grid: dict[str, tuple[float, float]] = {}
         for name, item in samples.items():
@@ -288,11 +328,12 @@ class WeatherNext3StatisticsAdapter:
         if not any(window.covers(item) for item in valid):
             raise AdapterUnavailable("bounded WeatherNext artifact has no valid time in the requested window")
         box = manifest.get("avalon_box_sample")
-        box_fields = {item["field"]: item for item in box.get("fields", [])} if box else {}
+        box_fields = ({item["field"]: item for item in box.get("fields", manifest["sample"]["fields"])}
+                      if box else {})
         dispositions = {name: item["status"] for name, item in manifest["fields"].items()}
         groups: dict[str, list[dict[str, Any]]] = {}
         for sample in manifest["sample"]["fields"]:
-            groups.setdefault("0p1" if box else sample.get("grid", "0p1"), []).append(sample)
+            groups.setdefault(sample.get("grid", "0p1"), []).append(sample)
         artifacts = []
         for grid_name, samples in sorted(groups.items()):
             data_vars: dict[str, Any] = {}
@@ -313,8 +354,13 @@ class WeatherNext3StatisticsAdapter:
                         "period_semantics": "preceding hour ending at valid_time"}
                        if sample["field"].rsplit("_", 1)[0].endswith("_1hr") else {}),
                 })
-            latitudes = box["latitudes"] if box else [samples[0]["latitude"]]
-            longitudes = box["longitudes"] if box else [samples[0]["longitude"]]
+            if box:
+                grid = box.get("grids", {}).get(grid_name)
+                latitudes = grid["latitudes"] if grid else box["latitudes"]
+                longitudes = grid["longitudes"] if grid else box["longitudes"]
+            else:
+                latitudes = [samples[0]["latitude"]]
+                longitudes = [samples[0]["longitude"]]
             dataset = xarray.Dataset(data_vars, coords={
                 "valid_time": numpy.asarray([numpy.datetime64(item.replace(tzinfo=None), "ns") for item in valid]),
                 "latitude": latitudes, "longitude": longitudes,
@@ -347,7 +393,8 @@ class WeatherNext3StatisticsAdapter:
                 "upstream_objects": manifest["objects"], "usage": manifest.get("usage", {}),
                 "acquisition_scope": {
                     "kind": "experimental_partial_sample",
-                    "spatial_coverage": "avalon_16x16_box" if box else "single_native_cell_per_grid",
+                    "spatial_coverage": "avalon_45_50p5n_58_46w_native_grids" if box and "grids" in box
+                    else "avalon_16x16_box" if box else "single_native_cell_per_grid",
                     "lead_hours": manifest["sample"]["lead_hours"],
                     "operational_publishable": False,
                 },

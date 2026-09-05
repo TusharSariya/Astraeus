@@ -55,6 +55,28 @@ operations, decoded at most 25,934,400 bytes at once, emitted 220,942 bytes,
 and completed in 100 seconds. Source object identity checks all passed. Its
 SHA-256 is `d35a5bbb3b92deab515732ae88f92934e605a3697d4fe1aee90374c1c81e4d4c`.
 
+`evidence/weathernext-20260801-all-fields-lead6-avalon-box.json` is the
+complete bounded spatial proof. It retains every lead-6 native cell whose
+centre lies within 45.0–50.5 N, 58.0–46.0 W for all 126 fields: 56 by 121 cells
+for 114 fields on the 0.1-degree grid and 111 by 241 cells for 12 fields on the
+0.05-degree station-head grid. It received 3,150,943,978 bytes in 140
+operations, decoded at most 103,708,800 bytes at once, emitted 37,503,385
+bytes, and completed in 433 seconds. The collector held the 4 GiB received-byte
+bound and local reservation, a 128 MiB decoded bound, a 64 MiB serialized-output
+bound, and a 30-minute deadline. Every raw global chunk was deleted immediately
+after extraction. The 133 retained identities cover all 126 field chunks, root
+metadata, both latitude and longitude coordinate pairs, lead time, and
+initialization. Its SHA-256 is
+`c46e4609cf8d2b9915c78ce65b1cbe4dde6603639899655b67831154bb605ca5`.
+
+Every field retains its native unit, provider statistic, valid time, finite
+range, values and null count. Only the six sea-surface-temperature statistics
+contain nulls: each has 1,587 provider-null land cells and finite ocean cells;
+the mean spans 283.22454833984375–291.3005676269531 K. This is a spatial proof
+at one historical lead, not a cadence or operational-window proof. Its two
+temporary normalized Zarr artifacts are approximately 0.91 MiB and 2.26 MiB
+and remain outside shared storage.
+
 The all-field metadata artifact SHA-256 is
 `17fff8135223e867693acb70c0de4635d22587a6d616d08184d501ee14990e46`.
 
@@ -67,18 +89,20 @@ deterministic immutable Zarr artifacts split by native grid, and carries all
 Astraeus' real reader and HTTP point endpoint read both native-grid artifacts
 in a local harness and compare all 126 response fields with the retained point
 manifest: 120 numeric values and six explicit SST nulls. The same path compares
-all six box fields at a retained native cell. Every catalogue override is
+all six earlier box fields at a retained native cell, and compares all 126
+complete-box fields at representative land and ocean cells, including SST null
+and finite behavior. Every catalogue override is
 test-local. No production catalogue, source registry, scheduler, shared store
 or deployment configuration is changed.
 
-The all-field sample proves one point at one representative lead. The separate
-Avalon artifact proves spatial extraction only for six cloud statistics at
-three leads. Neither is described as a 126-field spatial coverage proof or as
-an operational cadence/completeness result. Both return `complete=false` and
+The complete all-field box proves spatial extraction at one representative
+historical lead. The earlier Avalon artifact proves six cloud statistics at
+three leads. Neither establishes operational cadence or full-window
+completeness. Both return `complete=false` and
 `qc_passed=false`, with explicit `experimental_partial_sample` provenance, so
 even manual passage to the actual artifact store stages without moving a
 published revision. Operational publishability remains blocked until accepted
-full spatial, temporal and cadence bounds exist.
+full temporal and cadence bounds exist.
 
 Tests refuse WN2 identity, fabricated member identity, incomplete inventory,
 statistic mismatch, invalid cloud fractions, mask-count mismatch, blocked

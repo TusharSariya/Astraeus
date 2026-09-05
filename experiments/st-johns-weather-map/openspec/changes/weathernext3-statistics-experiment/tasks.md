@@ -22,6 +22,11 @@
   artifacts. Compare all 120 numeric values and six null masks through the real
   reader and HTTP endpoint using a test-local field catalogue; compare all six
   retained box fields through the same path.
+- [x] Retain every native cell for all 126 fields at lead 6 over 45.0–50.5 N,
+  58.0–46.0 W: 56 by 121 cells on the 0.1-degree grid and 111 by 241 cells on
+  the 0.05-degree station-head grid. Preserve all values and null masks through
+  separate normalized artifacts, the real reader and HTTP endpoint at
+  representative land and ocean cells.
 - [x] Validate source identity records structurally, including exact run paths,
   generation, ETag, size, truthful verified-read mechanism, field/lead binding and box
   metadata/coordinates. Refuse identity mutations without claiming
