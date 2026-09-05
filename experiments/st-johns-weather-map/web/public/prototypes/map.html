@@ -284,6 +284,9 @@
 </div>
 
 <script>
+if (new URLSearchParams(location.search).get("stationStudy") === "1") {
+  import("./station-study.js");
+} else {
 // Test hook: a background tab pauses requestAnimationFrame and MapLibre never paints; ?bg=1 drives it from a timer instead.
 if (new URLSearchParams(location.search).get('bg') === '1') { window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 16); window.cancelAnimationFrame = id => clearTimeout(id); }
 // ---------- constants ----------
@@ -887,6 +890,7 @@ document.addEventListener('keydown', e => { if (e.target.matches('input,select,t
 
 try { const th = localStorage.getItem('astraeus-weather-theme'); if (th) focus.theme = th; } catch {}
 readUrl(); document.documentElement.dataset.theme = focus.theme; loadAll();
+}
 </script>
 </body>
 </html>
