@@ -9,8 +9,11 @@ manifest, derived-artifact and estimate variance. Admission requires
 `U + S + P + R <= 64 GiB` and compliance with each approved sub-envelope.
 
 At snapshot admission, the same equation includes already committed staging
-and the new pin's incremental bytes. Page reads do not renew or enlarge a pin.
-Unexpired promises are never evicted to admit a run.
+and the new pin's incremental bytes. Committed staging is the reserved
+complete-run upper bound for an admitted run not yet published; it is zero
+when no admission is outstanding and joins normal retained usage only after
+publication. Page reads do not renew or enlarge a pin. Unexpired promises are
+never evicted to admit a run.
 
 ## Measurement before download
 

@@ -55,7 +55,10 @@ admit a snapshot only when U + S_committed + P + new_pin_bytes + R <= H
 ```
 
 `U` excludes staged objects and extra pinned-only objects. `P` excludes either
-of the two normally retained runs. These definitions prevent double-counting.
+of the two normally retained runs. `S_committed` is the reserved complete-run
+upper bound for staging that has been admitted but not yet published; it is
+zero when no run admission is outstanding and becomes part of `U` only after
+publication. These definitions prevent double-counting.
 The projection must use a complete-run upper bound established before the full
 download, then reconcile to observed bytes after staging.
 
@@ -178,9 +181,12 @@ requester-pays and excluded by the no-charge boundary.
 All other provider request, byte and compute budgets are unknown. Provider
 limits are always hard ceilings. The remaining owner decision is the lower
 shared local direct-feed receive allowance; a proposed **128 GiB/day** would
-permit the older measured core ICON plus GFS transfer (about 96.9 GB) once per
-day, while correctly refusing their four-cycle cadence and the 259-539 GB
-single ensemble runs unless a better producer-side access path is proven.
+fit the older probe's lower-scope core ICON plus GFS transfer (about 96.9 GB)
+as an arithmetic comparison only. It does not satisfy the accepted +14-day
+planning scope or authorize a reduced field/lead acquisition. At that ceiling,
+the measured wide-planning native streams, four-cycle cadence and 259-539 GB
+single ensemble runs remain blocked unless a producer-side access path proves
+lower amplification without reducing fields, leads, members or resolution.
 This is a proposed design ceiling, not authorization to transfer 128 GiB. Before
 approval and full-field measurement, discovery uses at most 4 MiB metadata,
 64 MiB received, 256 requests and five minutes per bounded probe, then stops if
