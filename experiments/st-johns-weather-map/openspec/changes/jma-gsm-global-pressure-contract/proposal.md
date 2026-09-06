@@ -19,13 +19,13 @@ not be silently removed, interpolated, or filled from another model.
 
 Define a draft global-product pressure contract for `openmeteo-jma-gsm`:
 
-- require canonical temperature and wind at the 12 global levels exposed by
-  Open-Meteo from 1000 through 100 hPa;
-- retain producer RH and intermediary-derived dew point and cloud only at the
+- describe a candidate inventory at the 12 levels observed from the exact
+  Open-Meteo `models=jma_gsm` access path from 1000 through 100 hPa;
+- retain producer-origin RH and intermediary-derived dew point and cloud only at the
   eight levels where global GSM publishes RH;
 - account explicitly for every field at all 16 old selection levels;
 - mark 975, 950, 900 and 800 hPa unsupported by the global producer product;
-- keep 70, 50, 30, 20 and 10 hPa producer-native but intermediary-unexposed;
+- keep 70, 50, 30, 20 and 10 hPa producer-native but intermediary-dropped;
 - preserve the current 16-level consumer requirement as unsatisfied by a
   complete 12-level global-source artifact; and
 - prohibit vertical interpolation and alternate-model substitution.
@@ -39,11 +39,15 @@ force.
 
 1. Keep the current experimental contract permanently partial/deferred. Its
    16-level artifact remains incomplete and nonpublishable.
-2. Accept this source-specific global contract. Source completeness can then
-   describe complete retrieval of native global fields, while any consumer
+2. Accept this source-specific global contract together with an approved
+   response-provenance rule. Source completeness can then describe complete
+   retrieval of the candidate inventory, while any consumer
    requiring all 16 levels still refuses the source.
 
-The proposal recommends option 2 because it separates producer-product
+The proposal does not yet recommend implementation of option 2. Retaining
+option 1 is recommended until the access path supplies or an owner-approved
+rule establishes model/run identity and the intermediary transformations are
+accepted. The candidate remains useful because it separates producer-product
 completeness from consumer suitability without manufacturing values.
 
 ## Authority and evidence

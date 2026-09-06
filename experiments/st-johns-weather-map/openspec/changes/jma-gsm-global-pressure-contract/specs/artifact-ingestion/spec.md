@@ -2,7 +2,8 @@
 
 ### Requirement: JMA global pressure completeness follows the producer product
 
-The `openmeteo-jma-gsm` global pressure artifact SHALL require temperature,
+After owner acceptance of a response-provenance rule, the
+`openmeteo-jma-gsm` global pressure artifact SHALL require temperature,
 wind speed and wind direction at 1000, 925, 850, 700, 600, 500, 400, 300, 250,
 200, 150 and 100 hPa. It SHALL require producer RH and intermediary-derived dew
 point and cloud at 1000, 925, 850, 700, 600, 500, 400 and 300 hPa. It SHALL
@@ -14,14 +15,14 @@ mask. The artifact SHALL NOT interpolate those values, substitute another
 model or JMA regional product, relabel missing values, or claim a complete
 16-level profile.
 
-#### Scenario: Complete native global inventory
+#### Scenario: Complete candidate global inventory after provenance acceptance
 
 - **WHEN** every required global-product field contains a finite value at each
   required valid time and the API returns nulls at 975, 950, 900 and 800 hPa
 - **THEN** source completeness may pass for the 12-level global product, while
   the four unsupported levels and their masks remain explicit
 
-#### Scenario: A native global field is missing
+#### Scenario: A candidate global field is missing
 
 - **WHEN** temperature, wind, required RH-derived evidence, vertical velocity,
   or geopotential height is null or omitted at one of its required native
@@ -37,18 +38,22 @@ model or JMA regional product, relabel missing values, or claim a complete
 
 ### Requirement: JMA pressure provenance distinguishes production and derivation
 
-Every pressure value SHALL name JMA global GSM as producer and Open-Meteo as
-intermediary. RH SHALL retain `raw_phase_unknown`. Dew point and cloud SHALL
-identify Open-Meteo as the deriving intermediary and JMA temperature/RH as
-inputs. Open-Meteo geometric vertical velocity in `m/s` SHALL remain distinct
-from producer omega and from the canonical `Pa/s` field. Geopotential-height
-response semantics SHALL remain raw until their unit mapping is accepted.
+Every pressure value SHALL record the caller-selected `models=jma_gsm` access
+path and Open-Meteo as intermediary. It SHALL NOT claim response-level model
+or run identity when the response does not provide it. Producer-origin RH
+SHALL retain `raw_phase_unknown`. Dew point and cloud SHALL identify
+Open-Meteo as the deriving intermediary and JMA temperature/RH as inputs.
+Open-Meteo geometric vertical velocity, formatted in the requested wind-speed
+unit, SHALL be marked as derived from producer omega and temperature and remain
+distinct from the canonical `Pa/s` field. Geopotential-height response
+semantics SHALL remain intermediary-reprocessed until their conversion is
+accepted.
 
 JMA's native 70, 50, 30, 20 and 10 hPa fields SHALL be recorded as
-intermediary-unexposed and SHALL NOT be inferred from the absence of API
-arrays. Hourly values SHALL declare Open-Meteo temporal interpolation from the
-native six-hourly global forecast, and run identity SHALL remain unknown when
-the rolling response supplies no value-level run reference.
+intermediary-dropped by the pinned ingest path and SHALL NOT be inferred from
+the absence of API arrays. Hourly values SHALL record intermediary temporal
+processing; they SHALL NOT claim a specific producer run or interpolation
+method when the rolling response supplies no value-level run reference.
 
 #### Scenario: Derived dew point and cloud are retained
 
@@ -62,4 +67,3 @@ the rolling response supplies no value-level run reference.
 - **WHEN** a level is 250, 200, 150 or 100 hPa
 - **THEN** RH, dew point and cloud are explicitly unavailable while the other
   native field families retain their independent disposition
-

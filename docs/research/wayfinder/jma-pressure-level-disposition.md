@@ -57,13 +57,34 @@ lists `JMA GSM` as a model. The same page says the global GSM grid is 0.5
 degrees and that only a limited JMA dataset is available. It does not explain
 that four choices are unavailable for `jma_gsm` globally.
 
-Open-Meteo's first-party implementation at commit
+Open-Meteo's first-party implementation at current `main` commit
 [`6c45053`](https://github.com/open-meteo/open-meteo/blob/6c45053fb1ef0c049de931292a0f5cb35f14c0ba/Sources/App/JMA/JmaDownloader.swift#L573-L582)
-declares the `gsm` pressure levels separately from `msm_upper_level`; its GSM
-list excludes 975, 950, 900, and 800 hPa, while the regional upper-level list
-includes them. The downloader maps only GRIB messages actually present. This
-supports an intermediary documentation/selection limitation rather than a
-lost Astraeus array.
+contains a `JmaDomain.levels` metadata list for `gsm` with 1000, 925, 850, 700,
+500, 400, 300, 250, 200, 150 and 100 hPa. That list omits 600 hPa as well as
+the four disputed levels, so it is not evidence for a 12-level access-path
+inventory.
+
+The actual download path is different. For `gsm`, the same pinned source
+[constructs global `GSM_GPV_Rgl` filenames](https://github.com/open-meteo/open-meteo/blob/6c45053fb1ef0c049de931292a0f5cb35f14c0ba/Sources/App/JMA/JmaDownloader.swift#L80-L84),
+[streams every GRIB message and maps recognized messages](https://github.com/open-meteo/open-meteo/blob/6c45053fb1ef0c049de931292a0f5cb35f14c0ba/Sources/App/JMA/JmaDownloader.swift#L122-L142),
+and [uses the level encoded in each message](https://github.com/open-meteo/open-meteo/blob/6c45053fb1ef0c049de931292a0f5cb35f14c0ba/Sources/App/JMA/JmaDownloader.swift#L185-L233).
+No use of `JmaDomain.levels` occurs in that ingest path. It explicitly drops
+10 through 70 hPa messages because those use a different grid. Consequently,
+the pinned source path is consistent with native 600 hPa GRIB messages being
+ingested even though the metadata list omits 600. It also gives a more exact
+reason why 70/50/30/20/10 hPa are unavailable from this intermediary path.
+
+The public response does not echo the selected model, producer filename, run,
+or deployed Open-Meteo commit. The exact `models=jma_gsm` request proves what
+the caller selected, while the returned body alone cannot independently prove
+which deployed binary or producer file served it. The access-path attribution
+therefore remains bounded by that missing response provenance.
+
+The pinned reader also shows that the eight API families do not correspond to
+eight native producer fields. It [derives wind speed and direction from U/V,
+dew point from temperature/RH, cloud from RH, and geometric vertical velocity
+from omega and temperature](https://github.com/open-meteo/open-meteo/blob/6c45053fb1ef0c049de931292a0f5cb35f14c0ba/Sources/App/Controllers/VariableHourly.swift#L849-L913).
+The API fields must retain those intermediary derivations in provenance.
 
 ## Bounded current API evidence
 
@@ -82,10 +103,20 @@ Each location produced 12 all-null arrays at the four disputed levels and
 three finite arrays at 925 hPa. The result is invariant by field family, both
 valid times, and tested geography.
 
-A 16-level control at St. John's confirmed finite temperature and wind at
-1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, and 100 hPa and nulls
-only at the disputed four. RH is finite from 1000 through 300 on native levels
-and null at 250 through 100, matching the producer's field-specific inventory.
+A new 2026-09-06T06:38:06Z call requested all eight families at all 16 old
+levels in one request. Its retained effective URL includes the complete query
+and exact `models=jma_gsm` selector. The HTTP 200 body contains 128 requested
+arrays. At 06:00Z and 07:00Z, all eight families are finite at each of the eight
+RH-bearing producer levels through 300 hPa. Temperature, wind speed, wind
+direction, vertical velocity and geopotential height are also finite at
+250/200/150/100 hPa. All eight families are null at 975/950/900/800 hPa.
+
+This completes the previously missing wind-direction, vertical-velocity, dew,
+and cloud controls over the proposed levels. The response units show another
+important intermediary boundary: with the exact default-unit query, wind and
+vertical velocity are returned in `km/h`. The experiment requests
+`wind_speed_unit=ms` separately. Units belong to the request/response contract
+and are not evidence that the API value is producer-native.
 
 ## Disposition and owner decision
 
@@ -102,20 +133,26 @@ decision for `@TusharSariya` is one of these source-specific contracts:
 1. **Keep partial/deferred.** Retain the current 16-level selection, all-null
    masks at 975/950/900/800 hPa, `complete=false`, and publication refusal.
    This is the current behavior and needs no adapter change.
-2. **Propose a global-product contract.** Require canonical temperature and
-   wind only at the 12 Open-Meteo-exposed native global levels from 1000 to
+2. **Continue investigating a global-product contract.** A candidate may
+   require temperature and intermediary-derived wind at the 12 observed
+   access-path levels from 1000 to
    100 hPa: 1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, and 100.
-   Account for raw RH, derived dew point, and derived cloud only at 1000, 925,
+   Account for producer-origin RH, derived dew point, and derived cloud only at 1000, 925,
    850, 700, 600, 500, 400, and 300 hPa. Account for vertical velocity and
    geopotential height at all 12. Explicitly mark 975/950/900/800 unsupported
    by the global producer product and keep the Japan-area 16-level product as
    a distinct, geographically ineligible access path. The producer also has
-   70/50/30/20/10 hPa fields, but Open-Meteo does not advertise them in this
-   API selection; they remain intermediary-unexposed rather than required.
+   70/50/30/20/10 hPa fields, but the pinned Open-Meteo ingest path drops them;
+   they remain intermediary-dropped rather than required.
 
-Option 2 changes the experimental source contract and therefore needs owner
-authority before code or OpenSpec requirement changes. Until then,
-implementation is blocked by missing authority rather than code failure.
+The evidence now supports the 12 observed API levels, including 600 hPa, but
+does not provide response-level model/run identity or a deployed-binary
+attestation. The recommendation is therefore option 1 for current behavior.
+The adjacent OpenSpec remains a bounded draft candidate for option 2, with its
+access-path and derivation limitations explicit; it is not ready to support a
+source-completeness implementation. Option 2 changes the experimental source
+contract and needs owner authority plus a separately reviewed provenance rule
+before implementation.
 Vertical interpolation would create a derived value and needs separate
 science and provenance authority; the Japan-area product and other models do
 not replace JMA global evidence over Avalon.

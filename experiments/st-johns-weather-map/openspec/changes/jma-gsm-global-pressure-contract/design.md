@@ -17,29 +17,29 @@ whose contract requires all 16 old levels.
 
 The 16 old selection levels receive explicit dispositions:
 
-| hPa | Producer T | Producer RH | Producer U/V | Producer omega | Producer geopotential | Open-Meteo dew/cloud | Contract disposition |
-|---:|---|---|---|---|---|---|---|
-| 1000 | yes | yes | yes | yes | yes | derived from T/RH | required |
-| 975 | no | no | no | no | no | unavailable | producer-unsupported |
-| 950 | no | no | no | no | no | unavailable | producer-unsupported |
-| 925 | yes | yes | yes | yes | yes | derived from T/RH | required |
-| 900 | no | no | no | no | no | unavailable | producer-unsupported |
-| 850 | yes | yes | yes | yes | yes | derived from T/RH | required |
-| 800 | no | no | no | no | no | unavailable | producer-unsupported |
-| 700 | yes | yes | yes | yes | yes | derived from T/RH | required |
-| 600 | yes | yes | yes | yes | yes | derived from T/RH | required |
-| 500 | yes | yes | yes | yes | yes | derived from T/RH | required |
-| 400 | yes | yes | yes | yes | yes | derived from T/RH | required |
-| 300 | yes | yes | yes | yes | yes | derived from T/RH | required |
-| 250 | yes | no | yes | yes | yes | unavailable | required except RH/dew/cloud |
-| 200 | yes | no | yes | yes | yes | unavailable | required except RH/dew/cloud |
-| 150 | yes | no | yes | yes | yes | unavailable | required except RH/dew/cloud |
-| 100 | yes | no | yes | yes | yes | unavailable | required except RH/dew/cloud |
+| hPa | Temperature | RH | Dew point | Cloud | Wind speed | Wind direction | Vertical velocity | Geopotential height |
+|---:|---|---|---|---|---|---|---|---|
+| 1000 | producer-origin | producer-origin | derived T/RH | derived RH | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 975 | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
+| 950 | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
+| 925 | producer-origin | producer-origin | derived T/RH | derived RH | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 900 | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
+| 850 | producer-origin | producer-origin | derived T/RH | derived RH | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 800 | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
+| 700 | producer-origin | producer-origin | derived T/RH | derived RH | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 600 | producer-origin | producer-origin | derived T/RH | derived RH | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 500 | producer-origin | producer-origin | derived T/RH | derived RH | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 400 | producer-origin | producer-origin | derived T/RH | derived RH | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 300 | producer-origin | producer-origin | derived T/RH | derived RH | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 250 | producer-origin | unavailable | unavailable | unavailable | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 200 | producer-origin | unavailable | unavailable | unavailable | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 150 | producer-origin | unavailable | unavailable | unavailable | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
+| 100 | producer-origin | unavailable | unavailable | unavailable | derived U/V | derived U/V | converted omega/T | reprocessed producer field |
 
 JMA global also publishes temperature, U/V, omega and geopotential at 70, 50,
-30, 20 and 10 hPa. Open-Meteo's JMA endpoint does not expose those levels in
-the documented pressure selection. They are recorded as
-`intermediary_unexposed`, outside the required access-path inventory.
+30, 20 and 10 hPa. The pinned Open-Meteo ingest code explicitly drops those
+messages because they use a different grid. They are recorded as
+`intermediary_dropped`, outside the candidate access-path inventory.
 
 ## Representation and provenance
 
@@ -54,10 +54,12 @@ derivation identity, response units, and missing masks. They are retained as
 intermediary-derived evidence and are not promoted to canonical producer
 observations.
 
-JMA publishes omega on pressure surfaces. Open-Meteo returns geometric
-vertical velocity in `m/s`; it remains raw and incompatible with the existing
-canonical omega key. Geopotential/height response semantics remain raw until
-their unit mapping is accepted. Neither is silently relabelled.
+JMA publishes omega on pressure surfaces. Open-Meteo converts omega with
+temperature to geometric vertical velocity and formats it in the requested
+wind-speed unit. It remains intermediary-derived and incompatible with the
+existing canonical omega key. Open-Meteo also applies transformations to the
+producer geopotential field. Geopotential-height semantics remain
+intermediary-reprocessed until the conversion is accepted.
 
 The pressure coordinate remains hPa with `positive=down` and no vertical
 interpolation. Open-Meteo's hourly interpolation from the native six-hourly
@@ -67,7 +69,10 @@ available.
 
 ## Completeness and failure behavior
 
-Source completeness requires every value/time cell for:
+This is a candidate completeness inventory only. It cannot authorize a source
+completeness verdict until model/run identity and the transformations above
+have an owner-approved provenance rule. If that rule is later accepted,
+completeness would require every value/time cell for:
 
 - temperature, wind speed, and wind direction at 1000, 925, 850, 700, 600,
   500, 400, 300, 250, 200, 150, and 100 hPa;
@@ -90,4 +95,3 @@ check passes.
 Before acceptance there is no runtime change to roll back. If a later
 implementation is withdrawn, restore the current 16-level partial verdict and
 publication refusal; retained masks and provenance remain valid evidence.
-
