@@ -12,6 +12,8 @@
 - [x] Capture every file in a complete selected ten-minute GLM interval.
 - [x] Compare stored artifact values, units, times and revisions through the
   actual `/point` and `/layers/{layer_id}/features` HTTP routes.
+- [x] Distinguish successful empty vector HTTP readback from missing frames,
+  malformed collections and failed reads, preserving empty-observation identity.
 - [ ] Accept production source contracts, registration and scheduling (owner only).
 
 Verification:

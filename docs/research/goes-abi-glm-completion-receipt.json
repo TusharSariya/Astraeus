@@ -361,7 +361,8 @@
       "source_time": "2026-09-05T14:00:20.900000+00:00",
       "http_data_mode": "live",
       "artifact_revision": "f69266269348542224611017b6f2ea8cd6c5a6c45929de27e8ee208efcfaab19",
-      "first_feature_equal": true
+      "first_feature_equal": true,
+      "empty_observations": []
     },
     {
       "route": "/layers/noaa-goes-east-abi_dmwvf/features",
@@ -371,7 +372,8 @@
       "source_time": "2026-09-05T14:00:20.900000+00:00",
       "http_data_mode": "live",
       "artifact_revision": "18c4cad3da59e5bfb6a4e4928c42affdd22ee6fd466db1e379f10e9dd1ae2e2b",
-      "first_feature_equal": true
+      "first_feature_equal": true,
+      "empty_observations": []
     },
     {
       "route": "/layers/noaa-goes-glm-glm_lcfa/features",
@@ -379,9 +381,26 @@
       "source_feature_count": 0,
       "http_feature_count": 0,
       "source_time": "2026-09-05T14:50:00+00:00",
-      "http_data_mode": "unavailable",
+      "http_data_mode": "live",
       "artifact_revision": "fcd19a92362e5ace443cea187479eaf1b646e4a307c533d6190f24c74edfea4d",
-      "first_feature_equal": true
+      "first_feature_equal": true,
+      "empty_observations": [
+        {
+          "source_id": "noaa-goes-glm",
+          "logical_name": "glm_lcfa",
+          "revision_id": "fcd19a92362e5ace443cea187479eaf1b646e4a307c533d6190f24c74edfea4d",
+          "provider_run_id": "goes19-glm-lcfa-20262481450000-20262481459400",
+          "valid_time": "2026-09-05T14:50:00+00:00",
+          "bounds": {
+            "south": 45.0,
+            "west": -58.0,
+            "north": 50.5,
+            "east": -46.0
+          },
+          "interval_start": "2026-09-05T14:50:00+00:00",
+          "interval_end": "2026-09-05T15:00:00+00:00"
+        }
+      ]
     }
   ],
   "complete_vector_intervals": [

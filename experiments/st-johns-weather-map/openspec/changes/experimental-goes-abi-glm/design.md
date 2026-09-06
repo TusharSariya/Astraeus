@@ -32,3 +32,9 @@ ten-minute interval.
 
 All adapters remain absent from scheduler registration. Artifacts and source
 payloads are local evidence only; Git contains tests, the receipt and code.
+
+The experimental feature route distinguishes a successfully read empty vector
+frame from missing or failed data. It returns live mode and empty-observation
+source/run/revision, exact valid time, bounds and interval provenance. Only
+an exact published frame is read. Malformed GeoJSON and read failures remain
+unavailable; empty or masked gridded samples do not acquire this vector state.

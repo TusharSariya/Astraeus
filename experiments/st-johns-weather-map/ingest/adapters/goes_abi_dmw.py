@@ -6,7 +6,7 @@ Two products from the anonymous public ``noaa-goes19`` bucket:
     Cloud-tracked atmospheric motion vectors, one Full Disk file per ABI band
     per scan (C02, C07, C08, C09, C10, C14 are the bands NESDIS publishes).
 ``ABI-L2-DMWVF``
-    Clear-sky water-vapour motion vectors, bands C08 and C10.
+    Clear-sky water-vapour motion vectors, band C08.
 
 Nothing here reaches the registry. The module is deliberately absent from
 ``ingest.adapters.__init__``, calls no ``ingest.registry.register``, and every

@@ -129,10 +129,14 @@ the completion receipt.
 the first complete feature from each response matched its source artifact.
 `/layers/noaa-goes-glm-glm_lcfa/features` returned zero features for the
 observed-empty interval, matching the artifact. The compact committed receipt
-is 36172 bytes with SHA-256
-`7a2f543458e15298cf968262c35eb1ea04fd1515a88a1b1411d9db2a0ae274e5`.
-The current HTTP provenance schema does not expose an artifact revision, so
-the revision comparison remains anchored by the single supplied artifact and
-the core sampler's revision result; this experiment does not invent a new API
-field. GLM remains catalogued and unregistered, and every response remains
+is 36843 bytes with SHA-256
+`8b105022078a98d75d363081ed43ae97725ae9f5db27c6faf746c17807449056`.
+For nonempty features and point values, the existing HTTP provenance does not
+expose an artifact revision; those comparisons remain anchored by the single
+supplied artifact and the core sampler's revision result. A successfully read
+empty vector frame now returns `data_mode: live` and `empty_observations` with
+its source/run/revision, exact valid time, bounds and interval. Missing frames,
+malformed collections and failed reads remain unavailable. Root reran all three
+feature requests against the retained captured artifacts and verified all 64
+unique source/artifact digests in the completion receipt (434,424,344 bytes). GLM remains catalogued and unregistered, and every response remains
 `operational: false`.
