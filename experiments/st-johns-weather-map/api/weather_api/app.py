@@ -1623,12 +1623,11 @@ def get_layer_raster(
     style: str | None = Query(default=None, description="an upstream style name; omitted means the layer's own default"),
     crs: str = Query(default="EPSG:4326", description="EPSG:4326 (default) or EPSG:3857; the image is rendered in this projection"),
 ) -> Response:
-    """One map image, rendered upstream, with its provenance on the response.
+    """One bounded map image with its source and rendering provenance.
 
-    The image bytes are always live-proxied: no artifact in this experiment
-    contains an image, so ``X-Weather-Image-Basis`` is always ``live_proxy``
-    even when the *layer* is backed by a published artifact. What the layer's
-    own evidence rests on is reported separately as ``X-Weather-Evidence-Basis``.
+    Provider imagery is live-proxied. Registered grid layers are rendered from
+    either a published artifact or a validated selected-time demand-cache entry;
+    ``X-Weather-Image-Basis`` and ``X-Weather-Evidence-Basis`` distinguish them.
 
     The one thing this endpoint will not do is call an image an outage. A
     fully transparent PNG - radar with nothing to show, about 334 bytes - is a
@@ -1653,6 +1652,8 @@ def get_layer_raster(
         headers = image.headers(layer_id=layer_id)
         headers["X-Weather-Evidence-Basis"] = "demand_query"
         headers["X-Weather-Retrieval-Time"] = entry.fetched_at.isoformat()
+        headers["X-Weather-Upstream-Completion-Time"] = entry.fetched_at.isoformat()
+        headers["X-Weather-Content-Digest"] = entry.content_digest
         return Response(content=image.payload, media_type=image.content_type, headers=headers)
 
     grid_spec = grids.rendered_grid_spec(layer_id)

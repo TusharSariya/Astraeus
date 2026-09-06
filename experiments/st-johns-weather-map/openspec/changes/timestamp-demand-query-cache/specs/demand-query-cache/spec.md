@@ -74,7 +74,9 @@ two-run retention, source admission or operational status.
 - **THEN** one finite cached provider object listing supplies only validated `.idx` keys on the native hourly then three-hourly cadence inside the evidence window
 - **AND** a truncated, malformed, declared or structurally oversized listing fails closed without fetching a GRIB payload
 
-#### Scenario: GFS has no demand-query raster contract yet
-- **WHEN** the current layer catalogue is requested
-- **THEN** it does not advertise a GFS native raster merely because point and profile queries are available
-- **AND** native layer delivery remains an explicit #97 disposition rather than an inferred source-completion claim
+#### Scenario: GFS total geometric cloud renders from the selected cache entry
+- **WHEN** a validated selected-frame GFS cache entry contains native `TCDC:entire atmosphere` and the client requests that exact native time through the advertised demand layer
+- **THEN** the layer catalogue performs no provider request and advertises `total_cloud_geometric` as a retrieved percent capability only for that cached frame
+- **AND** the bounded raster route preserves native missing cells as transparent pixels, applies the registered geometric-cloud percent palette without smoothing, and returns source, run, native-valid, upstream-completion and content-digest provenance
+- **AND** a different field, frame, invalid bounds, unsupported CRS or oversized output fails explicitly without substituting an opacity-weighted field or a neighbouring frame
+- **AND** this single native field does not complete GFS raster or source coverage under #97 or the residual field issues

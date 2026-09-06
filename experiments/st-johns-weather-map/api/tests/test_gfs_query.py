@@ -582,7 +582,7 @@ def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
     from weather_api import gfs_query
     from weather_api.grids import RenderedGridImage
     app_module=sys.modules['weather_api.app']; valid=datetime(2026,9,6,18,tzinfo=UTC); run=valid-timedelta(hours=6); fetched=valid+timedelta(minutes=2)
-    entry=SimpleNamespace(fetched_at=fetched)
+    entry=SimpleNamespace(fetched_at=fetched, content_digest='c'*64)
     image=RenderedGridImage(b'png','image/png',valid,run,'EPSG:4326','percent','noaa-gfs','Global Forecast System','public domain','NOAA/NCEP')
     class Coordinator:
         def total_cloud_raster(self,*args,**kwargs): return image,entry
@@ -594,3 +594,5 @@ def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
     assert response.headers['x-weather-valid-time']==valid.isoformat()
     assert response.headers['x-weather-reference-time']==run.isoformat()
     assert response.headers['x-weather-retrieval-time']==fetched.isoformat()
+    assert response.headers['x-weather-upstream-completion-time']==fetched.isoformat()
+    assert response.headers['x-weather-content-digest']=='c'*64
