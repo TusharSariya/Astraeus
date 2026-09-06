@@ -36,6 +36,30 @@ a staged run from publication-peak accounting.
 - **WHEN** two operations would each fit the same currently free bytes but their combined conservative allocations would not
 - **THEN** atomic reservation admits at most the operations whose combined bounds fit and refuses the rest before transfer
 
+#### Scenario: Two processes contend for shared capacity
+- **WHEN** workers in separate processes admit operations against the same store or host filesystem
+- **THEN** one durable transaction accounts for every reservation that has not completed proven cleanup and either records every allocation for an operation or records none
+
+#### Scenario: A paused writer resumes after its deadline
+- **WHEN** an earlier worker resumes after its reservation entered revocation
+- **THEN** its fencing token cannot stage, publish or release capacity and the reservation remains charged until exclusive cleanup proves its allocations are gone
+
+#### Scenario: A host restarts with prior reservations
+- **WHEN** a worker starts with a new host epoch on a device carrying prior-epoch reservations
+- **THEN** it admits no work until it exclusively fences prior allocators, cleans their bounded workspaces and reconciles their local allocations
+
+#### Scenario: A remote upload survives its owner
+- **WHEN** a reservation deadline passes while multipart upload or incomplete staging may remain
+- **THEN** global capacity remains charged until a fenced reaper aborts or removes the remote allocation and verifies its absence
+
+#### Scenario: Revocation cleanup misses its objective
+- **WHEN** fenced cleanup has not proven every allocation absent within 15 minutes
+- **THEN** capacity remains charged, newly conflicting admission fails closed and operator recovery is required
+
+#### Scenario: Durable reservation state is unavailable
+- **WHEN** the ledger, stable host identity or lease state cannot be established before transfer
+- **THEN** admission fails closed without relying on process-local accounting
+
 ### Requirement: Source budgets preserve complete admitted products
 Every admitted product/access path SHALL have numeric provider-request and rate
 ceilings plus finite per-operation received-byte, decode-memory, temporary-disk,

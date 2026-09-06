@@ -88,6 +88,11 @@
   or multi-host ingestion is enabled. The current worker deliberately executes
   one source at a time; separate experimental capture scripts remain outside
   its reservation boundary and must continue to coordinate capacity externally.
+  A concrete database-transaction and fencing design recommends fixed,
+  nonrenewable workload deadlines followed by fenced, proven cleanup; deadline
+  expiry alone never releases capacity. Owner review must authorize that
+  package before implementation. Renewable heartbeat timing remains an
+  unmeasured future alternative.
 - [x] 5.5 Add the optional complete-operation admission seam for adapters whose
   discovery request is itself the payload: reserve declared store and local
   filesystem allocations before discovery, and hold that reservation and one

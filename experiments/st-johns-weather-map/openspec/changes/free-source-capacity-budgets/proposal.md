@@ -32,6 +32,13 @@ memory, temporary disk, runtime or concurrency.
   provider ceilings, with separate proof that source, query, transfer and
   compute charges are zero.
 - Fail closed on exhaustion without thinning, substitution or silent eviction.
+- Replace process-local reservation maps before multi-process ingestion with
+  one durable, fenced transaction covering store and host-filesystem
+  allocations. The recommendation uses accepted fixed workload deadlines but
+  continues charging capacity until a fenced reaper proves local and remote
+  allocations gone. Its proposed 15-minute cleanup objective requires owner
+  authorization; missing it fails closed into manual recovery. A renewable
+  heartbeat remains an unmeasured future alternative.
 
 No requirement in this change is accepted by the capacity answer or its
 presence here. Only `@TusharSariya` may authorize normative status under the
