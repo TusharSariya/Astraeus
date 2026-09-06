@@ -22,6 +22,7 @@ from ingest.http import (
     backoff_delay,
     parse_retry_after,
 )
+from ingest.resources import ReceivedBytesExceeded, acquisition_budget
 
 URL = "https://dd.weather.gc.ca/model_hrdps/sample.grib2"
 
@@ -235,16 +236,49 @@ def test_range_requests_send_the_header_and_reject_a_server_that_ignores_it():
 
     with build_client(handler) as client:
         assert client.get_range(URL, 100, 199) == b"partial"
-        assert client.get_range(URL, 100) == b"partial"
+        assert client.get_range(URL, 100, max_bytes=100) == b"partial"
         with pytest.raises(ValueError):
             client.get_range(URL, 200, 100)
     assert requested == ["bytes=100-199", "bytes=100-"]
+
+    with build_client(lambda request: httpx.Response(206, content=b"partial")) as client:
+        with pytest.raises(ValueError, match="finite byte ceiling"):
+            client.get_range(URL, 100)
 
     with build_client(
         lambda request: httpx.Response(200, content=b"whole file")
     ) as client:
         with pytest.raises(RetriesExhausted, match="ignored the Range header"):
             client.get_range(URL, 0, 10)
+
+
+def test_oversized_range_is_stopped_while_streaming_before_the_rest_is_read():
+    yielded: list[int] = []
+
+    class ObservedChunks(httpx.SyncByteStream):
+        def __iter__(self):
+            for index in range(100):
+                yielded.append(index)
+                yield b"x" * 1024
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(206, stream=ObservedChunks())
+
+    with build_client(handler) as client, pytest.raises(MaxBytesExceeded, match="requested"):
+        client.get_range(URL, 0, 4095)
+    assert yielded == [0, 1, 2, 3, 4]
+
+
+def test_operation_received_byte_bound_spans_multiple_streamed_requests(tmp_path: Path):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, stream=Chunked([b"x" * 1024, b"y" * 1024]))
+
+    with build_client(handler) as client, acquisition_budget(3072), pytest.raises(
+        ReceivedBytesExceeded, match="3072"
+    ):
+        client.download(URL, tmp_path / "one", max_bytes=4096, chunk_size=1024)
+        client.download(URL, tmp_path / "two", max_bytes=4096, chunk_size=1024)
+    assert not (tmp_path / "two").exists()
 
 
 def test_concatenated_ranges_stop_at_the_ceiling_and_leave_no_partial_file(

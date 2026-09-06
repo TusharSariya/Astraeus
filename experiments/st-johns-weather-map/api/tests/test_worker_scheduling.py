@@ -19,6 +19,7 @@ covered here too. Task 2.3 (the heartbeat latency write) is deliberately not.
 from __future__ import annotations
 
 import dataclasses
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -727,7 +728,7 @@ def test_short_cycle_retained_runs_skip_a_run_with_no_declared_run_time() -> Non
 def test_short_cycle_is_recorded_in_progress_after_a_successful_publish(scheduler_over_adapters) -> None:
     """The worker records the plan in the heartbeat, and never touches the
     previous run to do it."""
-    from ingest.contract import RunCandidate, RunResult
+    from ingest.contract import ResourceBounds, RunCandidate, RunResult
 
     class _Row:
         def __init__(self, run_id, run_time, end):
@@ -749,6 +750,10 @@ def test_short_cycle_is_recorded_in_progress_after_a_successful_publish(schedule
         def present_keys(self, source_id, provider_run_id):
             return set()
 
+        @contextmanager
+        def reserve_resources(self, **_kwargs):
+            yield
+
         def retained_artifacts(self, *, source_ids=None):
             self.read_calls.append(tuple(source_ids or ()))
             return [
@@ -768,6 +773,9 @@ def test_short_cycle_is_recorded_in_progress_after_a_successful_publish(schedule
                 source_id="ecmwf-ifs", provider_run_id="2026090206", run_time=IFS_06Z,
                 retrieved_at=IFS_06Z, complete=True, qc_passed=True, artifacts=[],
             )
+
+        def resource_bounds(self, candidate, window):
+            return ResourceBounds(1, 1, 0, 1)
 
     store = _Store()
     scheduler = scheduler_over_adapters((_Adapter(), get_config("ecmwf-ifs")))

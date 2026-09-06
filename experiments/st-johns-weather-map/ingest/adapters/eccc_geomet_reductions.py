@@ -122,7 +122,8 @@ def fetch_geps_reductions(
                 valid_time=valid_time,
                 reference_time=reference_time,
             )
-            payload, response_headers = http.get_bytes(
+            bounded_read = getattr(http, "get_bytes_with_headers", http.get_bytes)
+            payload, response_headers = bounded_read(
                 url, max_bytes=MAX_WCS_TIFF_BYTES
             )
             try:

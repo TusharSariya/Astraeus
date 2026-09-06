@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -45,6 +47,15 @@ class StoreUnavailable(RuntimeError):
 
 class QuotaExceeded(RuntimeError):
     """The 64 GiB hot cap would be exceeded. Fail the job, never evict a visible revision."""
+
+
+class ResourceBudgetExceeded(RuntimeError):
+    """A measured local allocation cannot fit before payload retrieval."""
+
+
+_RESERVATION_LOCK = threading.Lock()
+_STORE_RESERVATIONS: dict[tuple[str, str], int] = {}
+_FILESYSTEM_RESERVATIONS: dict[int, int] = {}
 
 
 class RunIdentityConflict(RuntimeError):
@@ -301,6 +312,61 @@ class ArtifactStore:
                 f"{_cap_label(self.config.cap_bytes)} hot storage cap would be exceeded: "
                 f"projected {projected} bytes against a cap of {self.config.cap_bytes} bytes"
             )
+
+    @contextmanager
+    def reserve_resources(
+        self,
+        *,
+        store_bytes: int,
+        filesystem_bytes: int,
+        margin_bytes: int,
+        filesystem_path: Path,
+    ) -> Iterator[None]:
+        """Atomically reserve a complete fetch against hot and local capacity.
+
+        The worker is intentionally single-process today.  The module lock
+        still makes thread-level contenders observe one shared reservation;
+        a multi-process scheduler will require a durable reservation ledger
+        before it can be enabled.
+        """
+        if min(store_bytes, filesystem_bytes) <= 0 or margin_bytes < 0:
+            raise ResourceBudgetExceeded("resource bounds are unknown or invalid")
+        path = filesystem_path.resolve()
+        device = path.stat().st_dev
+        store_key = (self.config.database_url, self.config.bucket)
+        with _RESERVATION_LOCK:
+            usage = shutil.disk_usage(path)
+            reserved_store = _STORE_RESERVATIONS.get(store_key, 0)
+            projected = self.used_bytes() + reserved_store + store_bytes
+            if projected > self.config.cap_bytes:
+                raise QuotaExceeded(
+                    f"{_cap_label(self.config.cap_bytes)} hot storage cap would be exceeded: "
+                    f"projected {projected} bytes against a cap of {self.config.cap_bytes} bytes"
+                )
+            reserved_filesystem = _FILESYSTEM_RESERVATIONS.get(device, 0)
+            filesystem_reservation = filesystem_bytes + margin_bytes
+            required = reserved_filesystem + filesystem_reservation
+            if required > usage.free:
+                raise ResourceBudgetExceeded(
+                    f"local filesystem budget exhausted: required {required} bytes "
+                    f"against {usage.free} unreserved free bytes"
+                )
+            _STORE_RESERVATIONS[store_key] = reserved_store + store_bytes
+            _FILESYSTEM_RESERVATIONS[device] = reserved_filesystem + filesystem_reservation
+        try:
+            yield
+        finally:
+            with _RESERVATION_LOCK:
+                remaining_store = _STORE_RESERVATIONS.get(store_key, 0) - store_bytes
+                remaining_filesystem = _FILESYSTEM_RESERVATIONS.get(device, 0) - filesystem_reservation
+                if remaining_store > 0:
+                    _STORE_RESERVATIONS[store_key] = remaining_store
+                else:
+                    _STORE_RESERVATIONS.pop(store_key, None)
+                if remaining_filesystem > 0:
+                    _FILESYSTEM_RESERVATIONS[device] = remaining_filesystem
+                else:
+                    _FILESYSTEM_RESERVATIONS.pop(device, None)
 
     # --- staging and publication ----------------------------------------
     def stage(self, result: RunResult, artifact: Artifact, *, run_id: str | None = None) -> StagedRevision:
