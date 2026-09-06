@@ -19,6 +19,14 @@ import type {
   SpaceWeatherReading, SpaceWeatherResponse, SpaceWeatherSeries,
 } from './types'
 
+export function demandLayerRefreshIdentity(product: string | undefined, source: DataSource, snapshot: EvidenceSnapshot): string {
+  if (product !== 'GFS' && product !== 'HRDPS') return 'unscoped:pending'
+  const sourceId = product === 'GFS' ? 'noaa-gfs' : 'eccc-hrdps'
+  const attribution = Object.values(snapshot.fieldSources).find((item) => item.sourceId === sourceId)
+  if (source !== 'live' || snapshot.selectedSourceId !== sourceId || !attribution) return `${product}:pending`
+  return `${product}:${attribution.runTime ?? 'unknown-run'}:${snapshot.validAt ?? 'unknown-valid'}:${attribution.artifactRevision ?? 'unknown-revision'}`
+}
+
 /** Scrub resolution. Five minutes is finer than the fastest layer published
  *  (radar, every six), so no layer's frames are unreachable between steps. */
 const SCRUB_STEP_MINUTES = 5
@@ -680,9 +688,7 @@ export default function App() {
   }, [])
 
   const demandLayerProduct = selectedProduct === 'GFS' || selectedProduct === 'HRDPS' ? selectedProduct : undefined
-  const demandLayerIdentity = demandLayerProduct && dataSource === 'live' && snapshot.selectedSourceId === (demandLayerProduct === 'GFS' ? 'noaa-gfs' : 'eccc-hrdps')
-    ? `${demandLayerProduct}:${snapshot.validTime ?? 'unknown'}`
-    : `${demandLayerProduct ?? 'unscoped'}:pending`
+  const demandLayerIdentity = demandLayerRefreshIdentity(demandLayerProduct, dataSource, snapshot)
 
   useEffect(() => {
     const controller = new AbortController()

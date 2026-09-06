@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from './App'
+import App, { demandLayerRefreshIdentity } from './App'
+import { normalizePoint } from './api'
 
 vi.mock('./MapPanel', () => ({
   MapPanel: ({ label, onSelect, onJumpToTime }: { label: string; onSelect: (point: unknown) => void; onJumpToTime: (date: Date) => void }) => (
@@ -423,6 +424,15 @@ describe('weather workbench fail-closed behavior', () => {
   })
 })
 
+it('keys a demand layer refresh by producer run and content revision as well as native time', () => {
+  const pointFor = (runTime: string, revision: string) => normalizePoint(apiPoint([
+    { field: 'temperature', value: 14.6, provenance: { source_id: 'noaa-gfs', product: 'GFS', provider: 'NOAA/NCEP', normalized_units: 'degC', data_mode: 'live', evidence_class: 'retrieved', run_time: runTime, artifact_revision: revision } },
+  ], { mode: 'selected', selected_source_id: 'noaa-gfs', selected_product_id: 'gfs', badge: 'GFS selected', reason: 'test' }) as never)
+  const first = demandLayerRefreshIdentity('GFS', 'live', pointFor('2026-08-29T12:00:00Z', 'demand:first'))
+  const replacement = demandLayerRefreshIdentity('GFS', 'live', pointFor('2026-08-29T18:00:00Z', 'demand:second'))
+  expect(first).not.toBe(replacement)
+})
+
 describe('story card keyboard activation', () => {
   const storyPoint = (temperature: number) => apiPoint([
     { field: 'temperature', value: temperature, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } },
@@ -808,6 +818,43 @@ describe('model row states its own coverage', () => {
     const pointIndex = events.indexOf('point:GFS')
     expect(events.indexOf('layers:GFS')).toBeLessThan(pointIndex)
     expect(events.lastIndexOf('layers:GFS')).toBeGreaterThan(pointIndex)
+  })
+
+  it('does not refresh GFS layers from an aborted older selected-time response', async () => {
+    const catalogWithGfs = {
+      ...catalogWithModels,
+      sources: [...catalogWithModels.sources, {
+        id: 'noaa-gfs', producer: 'NOAA/NCEP', product: 'GFS', state: 'implementing',
+        status_reason: 'Bounded demand query experiment.', role: 'Global deterministic forecast',
+        may_enter_consensus: false, cadence: '4 runs/day', forecast_horizon: '16 days',
+        geographic_coverage: 'Global', licence: 'Public domain', attribution: 'NOAA/NCEP',
+      }],
+    }
+    let resolveOld!: (response: Response) => void
+    let gfsPointCalls = 0
+    let gfsLayerCalls = 0
+    const baseFetch = routedFetch({ catalog: catalogWithGfs })
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/layers?product=GFS')) gfsLayerCalls += 1
+      if (url.includes('/point') && url.includes('product=GFS')) {
+        gfsPointCalls += 1
+        if (gfsPointCalls === 1) return new Promise<Response>((resolve) => { resolveOld = resolve })
+        return response({ ...apiPoint([], { mode: 'selected', selected_source_id: 'noaa-gfs', selected_product_id: 'gfs', badge: 'GFS selected', reason: 'test' }), valid_time: '2026-08-29T18:00:00Z' })
+      }
+      return baseFetch(url)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+
+    await userEvent.click(await screen.findByRole('button', { name: /GFS.*nothing ingested/ }))
+    await waitFor(() => expect(gfsPointCalls).toBe(1))
+    await userEvent.click(screen.getByRole('button', { name: 'Jump eighty minutes ahead' }))
+    await waitFor(() => expect(gfsPointCalls).toBe(2))
+    await waitFor(() => expect(screen.getByRole('button', { name: /GFS.*live query at selected time/ })).toBeInTheDocument())
+    const refreshedCalls = gfsLayerCalls
+    resolveOld(response({ ...apiPoint([], { mode: 'selected', selected_source_id: 'noaa-gfs', selected_product_id: 'gfs', badge: 'GFS selected', reason: 'old test' }), valid_time: '2026-08-29T15:00:00Z' }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(gfsLayerCalls).toBe(refreshedCalls)
   })
 })
 

@@ -259,6 +259,8 @@ function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | 
   return {
     sourceId: typeof provenance.source_id === 'string' ? provenance.source_id : null,
     product: typeof provenance.product === 'string' ? provenance.product : null,
+    runTime: text(provenance.run_time),
+    artifactRevision: text(provenance.artifact_revision),
     provider: String(provenance.provider ?? 'Unknown provider'),
     // The catalogue axis. Read from the value first, then from provenance;
     // never from `field.field`, which is an API field name and not a promise
