@@ -53,12 +53,12 @@ is never interpreted as no precipitation.
 
 ## Freshness
 
-The official Datamart naming documentation defines the filename UTC instant.
-The retained official listing on 2026-09-06 contained paired CASHR filenames at
-six-minute intervals (`00, 06, …, 54` minutes); the retained documentation also
-describes six-minute availability for the S-band radar imagery family. This
-draft therefore fixes a **six-minute expected cadence** and the following
-consumer-visible status, calculated only from `valid_time` and the request
+The [official MSC Datamart radar-image documentation](https://eccc-msc.github.io/open-data/msc-data/obs_radar/readme_radarimage-datamart_en/)
+defines the filename UTC instant and describes six-minute availability for the
+S-band radar imagery family. The retained official CASHR listing on 2026-09-06
+also contained paired names at six-minute intervals (`00, 06, …, 54` minutes).
+This draft proposes a **six-minute expected cadence** and the following
+consumer-visible policy, calculated only from `valid_time` and the request
 clock:
 
 | `now - valid_time` | Status |
@@ -68,17 +68,26 @@ clock:
 | `> 60 minutes`, future by more than 6 minutes, or no paired revision | unavailable |
 
 Eighteen minutes is three source intervals and allows one missed producer
-revision; it is not inferred from HTTP completion. Retrieval completion is
+revision; it is not inferred from HTTP completion. Sixty minutes is ten
+intervals and is the proposed availability cutoff. Retrieval completion is
 shown separately so consumers can distinguish delayed acquisition from an old
-producer image.
+producer image. These 18/60-minute thresholds are proposed policy, not an
+owner-accepted freshness guarantee.
+
+A revision-addressed byte request for a stale retained pair returns the bytes
+with metadata status `stale`; it does not masquerade as current. Safety,
+forecast, recommendation, and scoring consumers are ineligible to use stale
+or unavailable images. They must receive the normal unavailable/degraded
+result until a separate accepted rule authorizes image use.
 
 ## Retention and physical limits
 
-Retain the newest **3,360 paired revisions** (14 days at six-minute cadence),
-then delete an entire oldest pair atomically with its metadata. This is the
-current/previous policy: `current` is the newest fresh pair, and `previous` is
-the immediately preceding immutable pair; stale pairs may be read only by
-revision ID, never relabeled current.
+Use the existing **24-hour observation-history retention policy**. At a
+verified six-minute cadence it retains at most **240 paired revisions**, then
+purges an entire oldest pair and its metadata atomically. This is not a
+14-day forecast horizon. `current` is the newest fresh pair; `previous` is the
+immediately preceding immutable pair. A stale retained pair remains readable
+only by revision ID with explicit `stale` status, never as current.
 
 Each response has these hard refusal limits before decoding or publication:
 
@@ -90,22 +99,37 @@ Each response has these hard refusal limits before decoding or publication:
 | logical canvas | 4,096 × 4,096 pixels |
 | frames | exactly 1 |
 | image descriptor | positive dimensions wholly inside the logical canvas |
-| retained pair metadata and receipts | 16 KiB |
-| retained store including filesystem blocks and metadata | 4 GiB |
+| metadata/receipt size | measured and bounded before activation |
+| retained-store subquota | no new subquota is proposed |
 
 At the retained capture, the Rain/Snow bytes were 25,291 and 35,867 bytes;
 the local filesystem consumed 56 and 72 512-byte blocks (65,536 bytes total).
-The 4 GiB store reservation is deliberately based on the hard one-MiB pair
-ceiling: 3,360 pairs need 3.282 GiB of payload, leaving 0.718 GiB for receipts,
-metadata, block allocation, indexes, and deletion overlap. It fits inside the
-existing 64 GiB experiment allocation but does not authorize a capacity claim.
+That capture is evidence only, not a storage reservation. The existing 64 GiB
+allocation remains the only quota in this draft. Admission must account against
+its actual physical allocation, including every retained copy, receipt,
+metadata/index record, filesystem block, staging file, parent/child overlap,
+and deletion/promote overlap. A logical-payload multiplication cannot establish
+a physical quota or a safe subquota.
 
-Activation must measure and record one complete operation's peak physical
-allocation: listing, both streamed source files, both immutable artifacts,
-metadata/receipt writes, parent/child overlap, and delete/promote overlap.
-Activation fails closed unless that measured peak and the 4 GiB reservation are
-enforced before the first allocation; logical byte counts or post-hoc
-`getsizeof` measurements are insufficient.
+Activation must measure and record the peak physical allocation of a complete
+operation on the target runtime, including the listing, both streamed source
+files, immutable artifacts, metadata/receipt writes, all copies, and cleanup.
+It must reserve that measured bound within the existing 64 GiB allocation
+before the first allocation. Activation fails closed while the measurement,
+reservation enforcement, or retained-copy accounting is unknown; logical byte
+counts or post-hoc `getsizeof` measurements are insufficient.
+
+## Alternatives considered
+
+1. **Recommended: 24-hour observation history at verified six-minute cadence.**
+   It follows the existing observation retention policy, bounds history at 240
+   paired revisions, and preserves a revision-addressed stale audit trail.
+2. **No image history/API until the measurement and owner contract exist.**
+   This is safer if physical allocation cannot be measured or reserved, but it
+   provides no retained current/previous artifact for inspection.
+3. **Fourteen-day retention.** Rejected: that is a forecast-horizon concept,
+   not the established observation-history policy, and no source or storage
+   evidence here justifies extending radar observation retention.
 
 ## Immutable metadata and byte API
 
@@ -131,10 +155,11 @@ from metadata; the API cannot silently substitute a newer artifact.
 ## Acceptance gate
 
 Before any implementation or promotion, the owner must accept this document's
-source identity, six-minute cadence, thresholds, retention/physical reservation,
-and revision-only API. The implementing change must add an owning manifest and
-API schema, enforce the stated reservation before allocation, verify API byte
-identity and all unavailable cases, remeasure peak physical allocation on the
-target runtime, and preserve source QC as unknown. Until those gates pass, the
+source identity, proposed six-minute cadence and 18/60-minute policy,
+24-hour observation retention, measured physical reservation gate, and
+revision-only API. The implementing change must add an owning manifest and API
+schema, enforce the measured reservation before allocation, verify API byte
+identity, stale and unavailable responses, remeasure target-runtime physical
+allocation, and preserve source QC as unknown. Until those gates pass, the
 existing experiment remains unregistered, unscheduled, `operational: false`,
 and `complete: false`.
