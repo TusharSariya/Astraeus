@@ -985,15 +985,21 @@ def test_repeated_consensus_request_adds_zero_upstream_loads_per_source(monkeypa
     """Production source caches absorb the second route call before their loaders."""
     from weather_api.gfs_query import GFSQueryEntry, GFSQueryService, GFSRequestKey
     from weather_api.hrdps_query import HRDPSQueryEntry, HRDPSQueryService, HRDPSRequestKey
+    from threading import Event
     selected = now()
+    completed = []
+    release = [Event(), Event()]
 
     class CachedCoordinator:
         def __init__(self, source, value, service, key):
             self.source, self.value = source, value
             self.service, self.key = service, key
             self.upstream_calls = 0
+            self.point_calls = 0
 
         def point_fields(self, latitude, longitude, valid_time):
+            round_index = self.point_calls
+            self.point_calls += 1
             self.service.query(self.key)
             class Store(EmptyStore):
                 def sample_point(inner, *_args, **_kwargs):
@@ -1004,6 +1010,12 @@ def test_repeated_consensus_request_adds_zero_upstream_loads_per_source(monkeypa
                 "freshness": item.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0, "threshold_seconds": 3600}),
                 "quality": item.provenance.quality.model_copy(update={"status": "passed"}),
             })}) for item in fields]
+            fast_source = "noaa-gfs" if round_index == 0 else "eccc-hrdps"
+            if self.source != fast_source:
+                assert release[round_index].wait(5), "source requests must overlap"
+            completed.append(self.source)
+            if self.source == fast_source:
+                release[round_index].set()
             return fields, consensus, sources
 
     hkey = HRDPSRequestKey("https://provider/hrdps/", "run", 0, ("temperature_2m",), ())
@@ -1021,6 +1033,7 @@ def test_repeated_consensus_request_adds_zero_upstream_loads_per_source(monkeypa
     monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: hrdps)
     monkeypatch.setattr("weather_api.gfs_query.gfs_query_coordinator", lambda: gfs)
     monkeypatch.setattr("weather_api.metar_query.metar_query_service", lambda: type("NoMetar", (), {"point_fields": staticmethod(lambda *_args: (_ for _ in ()).throw(OSError()))})())
+    monkeypatch.setattr("weather_api.gefs_query.gefs_query_coordinator", lambda: type("NoGEFS", (), {"point_fields": staticmethod(lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError()))})())
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
     client = TestClient(app)
     params = {"latitude": 47.6, "longitude": -52.7, "valid_time": selected.isoformat()}
@@ -1035,6 +1048,10 @@ def test_repeated_consensus_request_adds_zero_upstream_loads_per_source(monkeypa
     assert [(item["value"], item["provenance"]["source_id"]) for item in first.json()["fields"]] == [
         (item["value"], item["provenance"]["source_id"]) for item in second.json()["fields"]
     ]
+
+    assert completed == ["noaa-gfs", "eccc-hrdps", "eccc-hrdps", "noaa-gfs"]
+    assert [item["provenance"]["source_id"] for item in first.json()["fields"]] == ["eccc-hrdps", "noaa-gfs"]
+    assert first.json()["consensus"] == second.json()["consensus"]
 
 
 @pytest.mark.parametrize("family_state,available", [("complete", True), ("partial", False), ("missing_control", False), ("failed_qc", False)])

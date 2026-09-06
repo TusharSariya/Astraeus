@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 import math
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
@@ -1233,8 +1233,10 @@ def _live_point(
         notices: list[str] = []
         with ThreadPoolExecutor(max_workers=len(calls)) as executor:
             futures = {executor.submit(call): source for source, call in calls.items()}
-            for future in as_completed(futures):
-                source = futures[future]
+            # All calls are already submitted concurrently. Consume them in
+            # declaration order so cache repeats retain identical field and
+            # contributor ordering even when sources finish in another order.
+            for future, source in futures.items():
                 try:
                     source_fields, _source_consensus, _source_ids = future.result()
                     demanded.extend(source_fields)

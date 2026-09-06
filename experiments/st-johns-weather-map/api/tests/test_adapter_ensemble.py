@@ -1692,9 +1692,25 @@ def test_gefs_missing_index_preserves_partial_family_without_invented_receipt(tm
 
 
 @pytest.mark.parametrize("failed_key", ["temperature_2m", "dew_point_2m"])
-def test_gefs_successful_range_retained_when_decode_fails(tmp_path, failed_key):
+def test_gefs_successful_range_retained_when_decode_fails(tmp_path, monkeypatch, failed_key):
     from weather_api.gefs_query import GEFSQueryService, GEFSSelectedLoader, GEFSRequestKey, GEFS_FIELDS, demand_operation_bounds, validate_normalized_payload
     from ingest.adapters.noaa_s3 import _gefs_keys_by_upstream
+    # Partial admission has exactly one output path and reads its bytes only
+    # after replacement; it must not allocate two whole ZIPs or payload copies.
+    import ingest.grib as grib
+    original_write, original_read = grib.write_zarr, Path.read_bytes
+    rewrites, reads = [], []
+    def read(path):
+        if path.name == "noaa_gefs_members.zarr.zip": reads.append(path)
+        return original_read(path)
+    def rewrite(dataset, path):
+        assert not path.exists()
+        assert not reads
+        assert not list(path.parent.glob("*.zarr.zip"))
+        rewrites.append(path)
+        return original_write(dataset, path)
+    monkeypatch.setattr(Path, "read_bytes", read)
+    monkeypatch.setattr(grib, "write_zarr", rewrite)
     upstream=next(name for name,key in _gefs_keys_by_upstream("noaa-gefs").items() if key==failed_key)
     def reader(path,**kwargs):
         if kwargs['member']=="gep30" and kwargs['upstream']==upstream:raise ValueError("explicit decoder failure fixture")
@@ -1704,9 +1720,40 @@ def test_gefs_successful_range_retained_when_decode_fails(tmp_path, failed_key):
     members=gefs_member_identifiers(get_config("noaa-gefs").ensemble)
     key=GEFSRequestKey("2026090100",run,24,"pgrb2ap5",members,GEFS_FIELDS,(("east",-40.),("north",55.),("south",40.),("west",-70.)))
     entry=GEFSQueryService(GEFSSelectedLoader(adapter,tmp_path),workspace=tmp_path,preflight=lambda _:demand_operation_bounds()).query(key)
+    assert len(rewrites) == (1 if failed_key == "temperature_2m" else 0)
+    assert len(reads) == 1
     assert any(item.get('field')==upstream and item['member']=="gep30" for item in entry.provenance['transport_receipts'])
     if failed_key=="temperature_2m":
         assert "gep30" in entry.mandatory_failures and "gep30" not in entry.members_present
     else:
         assert entry.complete and entry.optional_absences["gep30"]==(failed_key,)
     validate_normalized_payload(entry.payload,entry,tmp_path)
+
+
+@pytest.mark.parametrize("failure", ["utf8", "parser"])
+def test_gefs_completed_index_survives_content_failure(tmp_path, monkeypatch, failure):
+    import hashlib
+    import ingest.adapters.noaa_s3 as noaa
+    from weather_api.gefs_query import GEFSQueryService, GEFSSelectedLoader, GEFSRequestKey, GEFS_FIELDS, demand_operation_bounds
+    client=gefs_client()
+    original=client.get_bytes_with_receipt
+    def index(url,**kwargs):
+        body,receipt=original(url,**kwargs)
+        if '/gep30.' in url:
+            body=b'\xff' if failure=='utf8' else b'parser failure fixture'
+            receipt={**receipt,'byte_size':len(body),'sha256':hashlib.sha256(body).hexdigest()}
+        return body,receipt
+    client.get_bytes_with_receipt=index
+    original_select=noaa.select_gefs_member_records
+    def select(text,**kwargs):
+        if text=='parser failure fixture':raise ValueError('index parser failed')
+        return original_select(text,**kwargs)
+    monkeypatch.setattr(noaa,'select_gefs_member_records',select)
+    adapter=NOAAGEFSEnsembleAdapter(client=client,reader=gefs_reader,capture_transport_receipts=True)
+    run=datetime(2026,9,1,tzinfo=UTC);members=gefs_member_identifiers(get_config('noaa-gefs').ensemble)
+    key=GEFSRequestKey('2026090100',run,24,'pgrb2ap5',members,GEFS_FIELDS,(("east",-40.),("north",55.),("south",40.),("west",-70.)))
+    entry=GEFSQueryService(GEFSSelectedLoader(adapter,tmp_path),workspace=tmp_path,preflight=lambda _:demand_operation_bounds()).query(key)
+    assert len(entry.members_present)==30 and set(entry.mandatory_failures)=={'gep30'}
+    receipt,= [item for item in entry.provenance['transport_receipts'] if item['member']=='gep30']
+    assert receipt['kind']=='index' and receipt['http_status']==200
+    assert entry.provenance['transport_failures']==[]

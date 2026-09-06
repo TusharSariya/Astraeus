@@ -1043,13 +1043,14 @@ class NOAAGEFSEnsembleAdapter:
                 idx_url = f"{grib_url}.idx"
                 if self._capture_transport_receipts:
                     idx_raw, idx_receipt = client.get_bytes_with_receipt(idx_url, max_bytes=MAX_IDX_BYTES)
-                    idx_text = idx_raw.decode("utf-8")
                     transport_receipts.append({"kind": "index", "member": member, "http_status": 200, **idx_receipt})
+                    idx_text = idx_raw.decode("utf-8")
                 else:
                     idx_text = client.get_text(idx_url)
+                selection = select_gefs_member_records(idx_text, source_id=self.source_id)
             except Exception as error:
                 decode_errors.append(f"idx:{member}")
-                if self._capture_transport_receipts:
+                if self._capture_transport_receipts and not any(item["kind"]=="index" and item["member"]==member for item in transport_receipts):
                     response = getattr(error, "response", None)
                     transport_failures.append({"kind":"index", "member":member, "url":idx_url,
                         "http_status":getattr(response,"status_code",None),
@@ -1058,7 +1059,6 @@ class NOAAGEFSEnsembleAdapter:
                 _log.warning("GEFS member %s sidecar unavailable: %s", member, error)
                 continue
 
-            selection = select_gefs_member_records(idx_text, source_id=self.source_id)
             for name in selection.published:
                 if name not in published_names:
                     published_names.append(name)

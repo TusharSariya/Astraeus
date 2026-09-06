@@ -185,7 +185,6 @@ class GEFSSelectedLoader:
         with tempfile.TemporaryDirectory(dir=self.workspace) as directory:
             result = self.adapter.assemble(candidate, FetchWindow(valid_time), Path(directory))
             artifact = result.artifacts[0]
-            payload = artifact.payload_path.read_bytes()
             store = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")
             try:
                 dataset = xarray.open_zarr(store, consolidated=False)
@@ -214,10 +213,16 @@ class GEFSSelectedLoader:
             provenance=artifact.provenance
             if omitted:
                 from ingest.grib import write_zarr
-                normalized=Path(directory)/"admitted-members.zarr.zip"
-                write_zarr(dataset,normalized)
-                payload=normalized.read_bytes()
+                # The closed input is fully materialized above. Remove it
+                # before writing so the one-output disk allowance also holds
+                # for a partial family; never retain an original payload copy.
+                artifact.payload_path.unlink()
+                write_zarr(dataset, artifact.payload_path)
                 provenance={**provenance,"members":{**provenance.get("members",{}),"present":list(present),"missing":list(mandatory)}}
+            dataset.close()
+            del dataset, temperature
+            cloud = None
+            payload = artifact.payload_path.read_bytes()
             receipts = tuple(artifact.provenance.get("transport_receipts", ()))
             if not receipts:
                 raise ValueError("GEFS selected loader requires final-byte transport receipts")
