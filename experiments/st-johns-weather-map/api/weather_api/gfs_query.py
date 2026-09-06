@@ -175,6 +175,7 @@ class GFSQueryCoordinator:
         self._candidate: tuple[float, RunCandidate] | None = None
         self._indices: OrderedDict[str, tuple[float, str, Mapping[str, object] | None]] = OrderedDict()
         self._timeline: tuple[float, str, tuple[datetime, ...], Mapping[str, object]] | None = None
+        self._timeline_inflight: Future[tuple[tuple[datetime, ...], Mapping[str, object]]] | None = None
         self._prepared: dict[GFSRequestKey, RunCandidate] = {}
         self._bounded_fetch = bounded_fetch
         self._cache = GFSQueryService(self._load, clock=clock)
@@ -356,53 +357,70 @@ class GFSQueryCoordinator:
         return levels
 
     def timeline_times(self, reference: datetime) -> tuple[tuple[datetime, ...], Mapping[str, object]]:
-        """Return actual native frame keys from one bounded S3 listing."""
+        """Return actual native frame keys from one bounded, coalesced S3 listing."""
         if reference.tzinfo is None:
             raise ValueError("reference must be timezone-aware")
-        candidate = self._discover()
-        current = self._clock()
-        if self._timeline is not None and current < self._timeline[0] and self._timeline[1] == candidate.provider_run_id:
-            return self._timeline[2], self._timeline[3]
-        if candidate.run_time is None:
-            raise ValueError("GFS candidate has no producer run time")
-        date_str, cycle = str(candidate.detail["date_str"]), str(candidate.detail["cycle"])
-        prefix = f"gfs.{date_str}/{cycle}/atmos/gfs.t{cycle}z.pgrb2.0p25.f"
-        query = urlencode({"list-type": "2", "max-keys": GFS_TIMELINE_LISTING_MAX_KEYS, "prefix": prefix})
-        body, receipt = self._adapter._get_client().get_bytes_with_receipt(
-            f"{self._adapter._base_url}?{query}", max_bytes=GFS_TIMELINE_LISTING_MAX_BYTES
-        )
-        upper = body.upper()
-        if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
-            raise ValueError("GFS listing declarations are unsupported")
-        root = ElementTree.fromstring(body)
-        if root.tag.rsplit("}", 1)[-1] != "ListBucketResult":
-            raise ValueError("GFS listing has an unexpected root")
-        nodes = list(root.iter())
-        if len(nodes) > 3 * GFS_TIMELINE_LISTING_MAX_KEYS + 32:
-            raise ValueError("GFS listing exceeds structural node bound")
-        truncated = next((node.text for node in nodes if node.tag.rsplit("}", 1)[-1] == "IsTruncated"), "false")
-        if str(truncated).lower() != "false":
-            raise ValueError("GFS listing was truncated")
-        leads: set[int] = set()
-        for node in nodes:
-            if node.tag.rsplit("}", 1)[-1] != "Key" or not isinstance(node.text, str):
-                continue
-            if not node.text.startswith(prefix):
-                continue
-            match = _GFS_LISTED_LEAD.search(node.text)
-            if match:
-                lead = int(match.group(1))
-                if lead <= 384 and (lead <= 120 or lead % 3 == 0):
-                    leads.add(lead)
-        start = reference.astimezone(UTC) - timedelta(hours=24)
-        end = reference.astimezone(UTC) + timedelta(days=14)
-        times = tuple(
-            candidate.run_time + timedelta(hours=lead)
-            for lead in sorted(leads)
-            if start <= candidate.run_time + timedelta(hours=lead) <= end
-        )
-        self._timeline = (current + GFS_OBJECT_CACHE_TTL_SECONDS, candidate.provider_run_id, times, receipt)
-        return times, receipt
+        with self._lock:
+            candidate = self._discover()
+            current = self._clock()
+            if self._timeline is not None and current < self._timeline[0] and self._timeline[1] == candidate.provider_run_id:
+                return self._timeline[2], self._timeline[3]
+            future = self._timeline_inflight
+            owner = future is None
+            if owner:
+                future = Future()
+                self._timeline_inflight = future
+        assert future is not None
+        if not owner:
+            return future.result()
+        try:
+            if candidate.run_time is None:
+                raise ValueError("GFS candidate has no producer run time")
+            date_str, cycle = str(candidate.detail["date_str"]), str(candidate.detail["cycle"])
+            prefix = f"gfs.{date_str}/{cycle}/atmos/gfs.t{cycle}z.pgrb2.0p25.f"
+            query = urlencode({"list-type": "2", "max-keys": GFS_TIMELINE_LISTING_MAX_KEYS, "prefix": prefix})
+            body, receipt = self._adapter._get_client().get_bytes_with_receipt(
+                f"{self._adapter._base_url}?{query}", max_bytes=GFS_TIMELINE_LISTING_MAX_BYTES
+            )
+            upper = body.upper()
+            if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
+                raise ValueError("GFS listing declarations are unsupported")
+            root = ElementTree.fromstring(body)
+            if root.tag.rsplit("}", 1)[-1] != "ListBucketResult":
+                raise ValueError("GFS listing has an unexpected root")
+            nodes = list(root.iter())
+            if len(nodes) > 3 * GFS_TIMELINE_LISTING_MAX_KEYS + 32:
+                raise ValueError("GFS listing exceeds structural node bound")
+            truncated = next((node.text for node in nodes if node.tag.rsplit("}", 1)[-1] == "IsTruncated"), "false")
+            if str(truncated).lower() != "false":
+                raise ValueError("GFS listing was truncated")
+            leads: set[int] = set()
+            for node in nodes:
+                if node.tag.rsplit("}", 1)[-1] != "Key" or not isinstance(node.text, str) or not node.text.startswith(prefix):
+                    continue
+                match = _GFS_LISTED_LEAD.search(node.text)
+                if match:
+                    lead = int(match.group(1))
+                    if lead <= 384 and (lead <= 120 or lead % 3 == 0):
+                        leads.add(lead)
+            start = reference.astimezone(UTC) - timedelta(hours=24)
+            end = reference.astimezone(UTC) + timedelta(days=14)
+            times = tuple(
+                candidate.run_time + timedelta(hours=lead)
+                for lead in sorted(leads)
+                if start <= candidate.run_time + timedelta(hours=lead) <= end
+            )
+            result = (times, receipt)
+            with self._lock:
+                self._timeline = (current + GFS_OBJECT_CACHE_TTL_SECONDS, candidate.provider_run_id, times, receipt)
+            future.set_result(result)
+            return result
+        except BaseException as error:
+            future.set_exception(error)
+            raise
+        finally:
+            with self._lock:
+                self._timeline_inflight = None
 
     def _discover(self) -> RunCandidate:
         current = self._clock()

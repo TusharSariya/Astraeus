@@ -417,3 +417,41 @@ def test_production_loader_invokes_locked_child_and_refuses_failed_validation(tm
     assert calls[0][2].output_bytes == 64 * 1024**2
     escaped = json.dumps({"idx_text_by_lead": {3: "\x00" * MAX_IDX_BYTES}}).encode()
     assert len(escaped) <= calls[0][2].stdin_bytes
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_timeline_coalesces_eight_concurrent_listing_outcomes(fail):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    xml = b"<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>gfs.20260906/12/atmos/gfs.t12z.pgrb2.0p25.f006.idx</Key></Contents></ListBucketResult>"
+    entered, release = Event(), Event()
+
+    class Client:
+        calls = 0
+        def get_bytes_with_receipt(self, _url, *, max_bytes):
+            assert max_bytes == GFS_TIMELINE_LISTING_MAX_BYTES
+            self.calls += 1
+            entered.set()
+            assert release.wait(timeout=2)
+            if fail:
+                raise RuntimeError("listing unavailable")
+            return xml, {"bytes": len(xml)}
+
+    class Adapter:
+        _base_url = "https://example.invalid"
+        client = Client()
+        def _get_client(self): return self.client
+        def discover(self, _window):
+            return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+
+    coordinator = GFSQueryCoordinator(Adapter(), now=lambda: run_time + timedelta(hours=6))
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        calls = [pool.submit(coordinator.timeline_times, run_time + timedelta(hours=6)) for _ in range(8)]
+        assert entered.wait(timeout=2)
+        sleep(0.05)
+        release.set()
+        if fail:
+            for call in calls:
+                with pytest.raises(RuntimeError, match="listing unavailable"):
+                    call.result()
+        else:
+            assert all(call.result()[0] == (run_time + timedelta(hours=6),) for call in calls)
+    assert Adapter.client.calls == 1
