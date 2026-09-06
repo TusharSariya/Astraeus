@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from threading import Lock
 import time
 import sys
@@ -24,7 +24,7 @@ class Clock:
 
 class BoundedAdapter:
     calls = 0
-    def operation_bounds(self, _window): self.calls += 1
+    def demand_operation_bounds(self): self.calls += 1
 
 
 def client(handler): return httpx.Client(transport=httpx.MockTransport(handler))
@@ -34,7 +34,7 @@ AT=datetime(2026,9,6,12,30,tzinfo=UTC)
 
 def reports():
     return [
-        {"icaoId":"CYYT", "obsTime":int(AT.timestamp())-2700, "temp":10, "dewp":8, "wspd":10, "wdir":180,
+        {"icaoId":"CYYT", "obsTime":int(AT.timestamp())-900, "temp":10, "dewp":8, "wspd":10, "wdir":180,
          "visib":"6+", "clouds":[{"cover":"BKN", "base":20}], "wxString":"BR"},
         {"icaoId":"CYYT", "obsTime":int(AT.timestamp())-1800, "temp":11, "dewp":9, "wspd":12, "wdir":190,
          "visib":"5", "clouds":[{"cover":"OVC", "base":15}], "wxString":"FG"},
@@ -49,11 +49,25 @@ def test_canonical_response_cache_serves_multiple_timestamps_once():
         adapter=BoundedAdapter(), clock=Clock())
     first=service.entry(AT); second=service.entry(AT)
     assert len(calls)==1 and first.body_sha256==second.body_sha256
-    assert first.cache_key == ("aviationweather.gov", "metar-json", "CYYT", "one-hour-ending:2026-09-06T12:30:00Z")
-    assert "date=2026-09-06T12%3A30%3A00Z" in first.provider_url
+    assert first.cache_key == ("aviationweather.gov", "metar-json", "CYYT", "two-hours-ending:2026-09-06T13:00:00Z")
+    assert "date=2026-09-06T13%3A00%3A00Z" in first.provider_url
     assert first.request_headers["accept"] == "application/json"
     assert first.response_headers["etag"] == '"one"'
     assert 0 < first.body_bytes <= 65536
+    third=service.entry(AT.replace(minute=31))
+    assert len(calls)==1 and third.body_sha256==first.body_sha256
+    selected, observed=service.select_record(first,AT.replace(minute=10))
+    assert observed==AT.replace(minute=0)
+    assert selected["temp"]==11
+
+
+def test_exact_hour_uses_that_boundary_and_next_minute_uses_next_bucket():
+    _url,key,end=MetarQueryService.request_identity(AT.replace(minute=0))
+    assert end==AT.replace(minute=0)
+    assert key[-1]=="two-hours-ending:2026-09-06T12:00:00Z"
+    _url,key,end=MetarQueryService.request_identity(AT.replace(minute=1))
+    assert end==AT.replace(minute=0,hour=13)
+    assert key[-1]=="two-hours-ending:2026-09-06T13:00:00Z"
 
 
 def test_expiry_revalidates_without_replacing_body_acquisition():
@@ -69,6 +83,18 @@ def test_expiry_revalidates_without_replacing_body_acquisition():
     assert after.body_sha256==before.body_sha256
     assert after.transport_completed_at==before.transport_completed_at
     assert after.last_revalidation["status"]==304
+
+
+def test_cache_lru_has_finite_entry_and_exact_body_byte_limits():
+    def handler(request):
+        end=datetime.fromisoformat(request.url.params["date"].replace("Z","+00:00"))
+        return httpx.Response(200,json=[{"icaoId":"CYYT","obsTime":int(end.timestamp())-1800}],
+                              headers={"Cache-Control":"max-age=60"})
+    service=MetarQueryService(client=client(handler),adapter=BoundedAdapter(),clock=Clock())
+    for hour in range(65):
+        service.entry(datetime(2026,9,1,tzinfo=UTC)+timedelta(hours=hour))
+    assert len(service._entries)==64
+    assert sum(entry.body_bytes for entry in service._entries.values()) <= 64*65536
 
 
 def test_concurrent_success_and_failure_each_have_one_upstream_outcome():
@@ -112,7 +138,7 @@ def test_latest_before_selection_is_normalized_and_sampled_without_artifact_stor
     rows=[{"icaoId":"CYYT", "obsTime":int(observed.timestamp()), "temp":10, "dewp":8,
            "slp":1012.3, "wspd":10, "wdir":180, "visib":"6+",
            "clouds":[{"cover":"BKN", "base":20}], "wxString":"BR"}]
-    monkeypatch.setattr("ingest.adapters.awc.AWCMetarAdapter.operation_bounds", lambda *_args: None)
+    monkeypatch.setattr("ingest.adapters.awc.AWCMetarAdapter.demand_operation_bounds", lambda *_args: None)
     service=MetarQueryService(client=client(lambda _:httpx.Response(200,json=rows,
         headers={"Cache-Control":"max-age=60"})),clock=Clock())
     fields,native,entry=service.point_fields(47.627,-52.748,datetime(2026,9,6,12,30,tzinfo=UTC))

@@ -405,6 +405,9 @@ class AWCMetarAdapter:
         )
 
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        raise AdapterUnavailable("awc-metar-speci scheduled ingestion is disabled; use selected-timestamp demand queries")
+
+    def demand_operation_bounds(self) -> ResourceBounds:
         self._require_target(Path(tempfile.gettempdir()))
         try:
             self._isolated("probe", b"", FetchWindow(datetime.now(UTC)), None)

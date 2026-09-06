@@ -53,7 +53,7 @@ class MetarCacheEntry:
 
 
 class MetarQueryService:
-    """One process-local cache keyed by the canonical four-hour CYYT request."""
+    """Process-local LRU keyed by one canonical hourly CYYT request."""
 
     def __init__(self, *, client: httpx.Client | None = None,
                  adapter: AWCMetarAdapter | None = None,
@@ -70,18 +70,21 @@ class MetarQueryService:
         self._lock = threading.Lock()
 
     @staticmethod
-    def request_identity(at: datetime) -> tuple[str, tuple[str, str, str, str]]:
+    def request_identity(at: datetime) -> tuple[str, tuple[str, str, str, str], datetime]:
         if at.tzinfo is None:
             raise ValueError("METAR selected time must include an offset")
         instant = at.astimezone(UTC).replace(microsecond=0)
-        stamp = instant.isoformat().replace("+00:00", "Z")
-        url = str(httpx.URL(AWC_METAR_URL, params={"ids":"CYYT", "format":"json", "hours":"1", "date":stamp}))
-        return url, ("aviationweather.gov", "metar-json", "CYYT", f"one-hour-ending:{stamp}")
+        end = instant.replace(minute=0, second=0)
+        if instant != end:
+            end += timedelta(hours=1)
+        stamp = end.isoformat().replace("+00:00", "Z")
+        url = str(httpx.URL(AWC_METAR_URL, params={"ids":"CYYT", "format":"json", "hours":"2", "date":stamp}))
+        return url, ("aviationweather.gov", "metar-json", "CYYT", f"two-hours-ending:{stamp}"), end
 
     def _fetch(self, prior: MetarCacheEntry | None, request_url: str,
                cache_key: tuple[str, str, str, str], at: datetime) -> MetarCacheEntry:
         # The existing measured METAR allocation probe runs before any provider byte.
-        self._adapter.operation_bounds(FetchWindow(datetime.now(UTC), back_hours=4))
+        self._adapter.demand_operation_bounds()
         sent = {"Accept": "application/json", "Accept-Encoding": "identity"}
         if prior and prior.etag:
             sent["If-None-Match"] = prior.etag
@@ -126,7 +129,7 @@ class MetarQueryService:
             headers = {k.lower(): v for k, v in response.headers.items()}
             effective_url = str(response.request.url)
             effective_headers = _safe_request_headers(response.request.headers)
-        records = tuple(_decode(body, FetchWindow(at, back_hours=1, forward_hours=0)))
+        records = tuple(_decode(body, FetchWindow(at, back_hours=2, forward_hours=0)))
         max_age, ttl = _freshness(headers, completed)
         return MetarCacheEntry(records, body, hashlib.sha256(body).hexdigest(), len(body),
                                request_url, effective_url, cache_key,
@@ -135,7 +138,7 @@ class MetarQueryService:
                                max_age, headers.get("etag"))
 
     def entry(self, at: datetime) -> MetarCacheEntry:
-        request_url, cache_key = self.request_identity(at)
+        request_url, cache_key, window_end = self.request_identity(at)
         at = at.astimezone(UTC).replace(microsecond=0)
         with self._lock:
             now = self._clock()
@@ -156,7 +159,7 @@ class MetarQueryService:
         if not owner:
             return future.result()
         try:
-            replacement = self._fetch(current, request_url, cache_key, at)
+            replacement = self._fetch(current, request_url, cache_key, window_end)
         except Exception as error:
             unavailable = TafQueryUnavailable(str(error), cached=current,
                                                retry_after_seconds=getattr(error, "retry_after_seconds", 60))
@@ -177,11 +180,16 @@ class MetarQueryService:
         return replacement
 
     def point_fields(self, latitude: float, longitude: float, at: datetime):
-        from .store import LiveStore, live_point_fields
         if at.tzinfo is None:
             raise ValueError("METAR selected time must include an offset")
         at = at.astimezone(UTC)
         entry = self.entry(at)
+        row, observed = self.select_record(entry, at)
+        return self._sample_record(row, observed, entry, latitude, longitude)
+
+    @staticmethod
+    def select_record(entry: MetarCacheEntry, at: datetime) -> tuple[dict, datetime]:
+        at = at.astimezone(UTC)
         eligible = [row for row in entry.records if datetime.fromtimestamp(int(row["obsTime"]), UTC) <= at]
         if not eligible:
             raise ValueError("AWC METAR has no observation at or before the selected timestamp")
@@ -189,6 +197,11 @@ class MetarQueryService:
         observed = datetime.fromtimestamp(int(row["obsTime"]), UTC)
         if at - observed >= timedelta(hours=1):
             raise ValueError("latest AWC METAR observation is one hour old or older")
+        return row, observed
+
+    def _sample_record(self, row: dict, observed: datetime, entry: MetarCacheEntry,
+                       latitude: float, longitude: float):
+        from .store import LiveStore, live_point_fields
         raw = json.dumps([row], separators=(",", ":")).encode()
         with TemporaryDirectory(prefix="metar-demand-") as directory:
             root = Path(directory)
