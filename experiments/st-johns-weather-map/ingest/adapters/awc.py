@@ -772,7 +772,9 @@ class AWCTafAdapter:
                 run_time=run_dt,
                 urls=[self._url],
                 detail={"bounded_raw": raw, "transport_completed_at": completed.isoformat(),
-                        "transport_headers": dict(headers), "raw_group_count": int(inspected["group_count"])},
+                        "transport_headers": dict(headers), "raw_group_count": int(inspected["group_count"]),
+                        "valid_times": [datetime.fromtimestamp(int(value), tz=UTC).isoformat()
+                                        for value in inspected["valid_times"]]},
             )
         ]
 

@@ -156,7 +156,11 @@ def main() -> int:
             return 0
         taf = _decode(raw, window)
         issue_epoch = int(taf.pop("_issue_epoch"))
-        reply: dict[str, object] = {"issue_epoch": issue_epoch, "group_count": len(taf["fcsts"])}
+        reply: dict[str, object] = {
+            "issue_epoch": issue_epoch,
+            "group_count": len(taf["fcsts"]),
+            "valid_times": [int(group["timeFrom"]) for group in taf["fcsts"]],
+        }
         if sys.argv[1] == "normalize":
             output = Path(sys.argv[4])
             run_time = datetime.fromtimestamp(issue_epoch, tz=window.now.tzinfo)
