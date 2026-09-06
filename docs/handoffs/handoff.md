@@ -131,9 +131,13 @@ point, profile, and metadata availability followed in
 point delivery is in [PR212](https://github.com/TusharSariya/Astraeus/pull/212),
 and [PR215](https://github.com/TusharSariya/Astraeus/pull/215) adds native
 pressure profiles, provider-advertised timeline availability, and audit-hides
-legacy stored rasters. #208 stays open for required GFS fields and native
-selected-time raster delivery; #97 remains the owning all-source completion
-tracker. Other aviation products remain with #115 and remaining source bounds
+legacy stored rasters. [PR219](https://github.com/TusharSariya/Astraeus/pull/219)
+renders one selected-time native GFS `total_cloud_geometric` grid from the
+bounded demand cache. Its retained actual replay kept provider requests at 19
+across point, catalogue, raster, and repeat-raster calls; missing cells remained
+transparent and the current map disclosed native 18Z/run 12Z evidence. #208
+stays open for remaining GFS fields and raster dispositions; #97 remains the
+owning all-source completion tracker. Other aviation products remain with #115 and remaining source bounds
 with #159.
 
 Every subsequent source follows the current definition of done:
@@ -190,7 +194,7 @@ current main before final gates, and make conventional commits/PRs with exact
 - Root user checkout contains unrelated work and must not be mutated.
 - #196 HRDPS is merged and closed; its bounded evidence remains outside Git for audit.
 - #201 CYYT TAF is merged and closed through PR207; its provider-response cache is the source-local pattern, not a generic persistence framework.
-- #208 GFS point, native pressure profile, and provider-advertised timeline metadata are merged through PR212/PR215. Legacy stored rasters are audit-only. The next slice is one selected-time native GFS raster from the bounded cache; required field residuals remain #191/#111/#107/#85 and the all-source parent remains #97.
+- #208 GFS point, native pressure profile, provider-advertised timeline metadata, and one native geometric-total-cloud raster are merged through PR212/PR215/PR219. Legacy stored rasters are audit-only. GFS APCP, SST, AOTK, cloud-top pressure, and remaining native rasters stay open under #208/#97. The related #191/#111/#107/#85 issues currently own ECCC precipitation, ocean products, aerosol observations, and satellite cloud products respectively; they are related family tracks, not precise owners for these GFS rows. The next APCP slice requires the native interval/card choice recorded in `docs/research/wayfinder/gfs-apcp-native-intervals.md`.
 - `/private/tmp/astraeus-live-query-snapshot-api`, branch
   `execution/live-query-snapshot-api`, preserves two local API commits and is
   paused; do not merge it under the corrective sequence.
