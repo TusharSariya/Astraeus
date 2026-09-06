@@ -1,0 +1,89 @@
+{
+  "captured_at_http_date": "2026-09-06T06:38:06Z",
+  "endpoint": "https://api.open-meteo.com/v1/forecast",
+  "raw_capture_directory": "/private/tmp/astraeus-jma-143-live-repair-20260906",
+  "previous_raw_capture_directory_preserved": "/private/tmp/astraeus-jma-143-live-20260906",
+  "raw_payloads_committed": false,
+  "exact_request": {
+    "method": "GET",
+    "query": {
+      "latitude": "47.5615",
+      "longitude": "-52.7126",
+      "models": "jma_gsm",
+      "forecast_days": "1",
+      "timezone": "GMT",
+      "hourly_levels_hpa_in_order": [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200, 150, 100],
+      "hourly_families_per_level_in_order": ["temperature", "relative_humidity", "dew_point", "cloud_cover", "wind_speed", "wind_direction", "vertical_velocity", "geopotential_height"],
+      "hourly_name_rule": "{family}_{level}hPa; level-major order",
+      "unit_overrides": "none"
+    },
+    "effective_url_file": "all16-all8.url.txt",
+    "effective_url_bytes": 3140,
+    "effective_url_sha256": "7aa41cce4c16060a9fce2de4b03a4dc6d8848fb52799d9f753fa40e3b5d3400b",
+    "sanitization": "none required; request contains no credential or secret"
+  },
+  "http_completion": {
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "remote_ip": "188.40.99.226",
+    "time_total_seconds": 0.962019,
+    "response_headers_file": "all16-all8.headers",
+    "response_headers_bytes": 155,
+    "response_headers_sha256": "0934f76861f7dc29dbb065ff9198d2d09f202a8808f6d5cfe1296ca74e29beb3",
+    "response_body_file": "all16-all8.json",
+    "response_body_bytes": 22866,
+    "response_body_sha256": "c050e8c63126c2b62d147951a5976227b34fc3c84cc5674957eb6a16948cb355",
+    "transfer_metadata_file": "all16-all8.transfer.txt",
+    "transfer_metadata_bytes": 3277,
+    "transfer_metadata_sha256": "999434e686e32a740a4672c97e5eaab5b7a2362c61d92710b32534843d655330"
+  },
+  "response_identity_limit": "The body does not echo models=jma_gsm, producer filename, run identity, or deployed Open-Meteo commit. The receipt proves the exact caller selection and response completion, not an independently attested deployed model/run binding.",
+  "selected_valid_times": ["2026-09-06T06:00:00Z", "2026-09-06T07:00:00Z"],
+  "response_units": {
+    "temperature": "°C",
+    "relative_humidity": "%",
+    "dew_point": "°C",
+    "cloud_cover": "%",
+    "wind_speed": "km/h",
+    "wind_direction": "°",
+    "vertical_velocity": "km/h",
+    "geopotential_height": "m"
+  },
+  "two_time_disposition_by_level": {
+    "1000": ["finite", "finite", "finite", "finite", "finite", "finite", "finite", "finite"],
+    "975": ["null", "null", "null", "null", "null", "null", "null", "null"],
+    "950": ["null", "null", "null", "null", "null", "null", "null", "null"],
+    "925": ["finite", "finite", "finite", "finite", "finite", "finite", "finite", "finite"],
+    "900": ["null", "null", "null", "null", "null", "null", "null", "null"],
+    "850": ["finite", "finite", "finite", "finite", "finite", "finite", "finite", "finite"],
+    "800": ["null", "null", "null", "null", "null", "null", "null", "null"],
+    "700": ["finite", "finite", "finite", "finite", "finite", "finite", "finite", "finite"],
+    "600": ["finite", "finite", "finite", "finite", "finite", "finite", "finite", "finite"],
+    "500": ["finite", "finite", "finite", "finite", "finite", "finite", "finite", "finite"],
+    "400": ["finite", "finite", "finite", "finite", "finite", "finite", "finite", "finite"],
+    "300": ["finite", "finite", "finite", "finite", "finite", "finite", "finite", "finite"],
+    "250": ["finite", "null", "null", "null", "finite", "finite", "finite", "finite"],
+    "200": ["finite", "null", "null", "null", "finite", "finite", "finite", "finite"],
+    "150": ["finite", "null", "null", "null", "finite", "finite", "finite", "finite"],
+    "100": ["finite", "null", "null", "null", "finite", "finite", "finite", "finite"]
+  },
+  "disposition_array_order": ["temperature", "relative_humidity", "dew_point", "cloud_cover", "wind_speed", "wind_direction", "vertical_velocity", "geopotential_height"],
+  "disposition_rule": "Each entry describes both selected valid times; finite means both values are finite and null means both values are JSON null.",
+  "producer_artifact": {
+    "source_url": "https://www.data.jma.go.jp/developer/gpv_sample/gsm_gl.zip",
+    "scratch_directory": "/private/tmp/astraeus-jma-143-producer-20260906",
+    "zip_bytes": 26683943,
+    "zip_sha256": "dc2935c9bf2fb5056273dda8d719054931af41b029089c1ea0b3dfc37f201b75",
+    "grib_bytes": 33251093,
+    "grib_sha256": "2c9838ecd4b652e623d87ee91384c27fce4cd883ebdd4cd256a7ebed27450f1b",
+    "decoder": "ecCodes with multi-field support",
+    "result": "104 messages; 17 native global isobaric levels for height, temperature, U/V wind and vertical velocity; RH at the eight levels from 1000 through 300 hPa"
+  },
+  "pinned_intermediary_source": {
+    "repository": "https://github.com/open-meteo/open-meteo",
+    "commit": "6c45053fb1ef0c049de931292a0f5cb35f14c0ba",
+    "commit_was_current_main_at_capture": true,
+    "source_archive_scratch_directory": "/private/tmp/open-meteo-6c45053-jma-review",
+    "finding": "The gsm metadata levels list omits 600, but the gsm downloader streams global GSM_GPV_Rgl files and maps recognized messages using each encoded GRIB level without consulting that list. It explicitly drops 10-70 hPa messages. This path is consistent with native 600 hPa ingestion but does not attest which commit serves the public endpoint."
+  }
+}
