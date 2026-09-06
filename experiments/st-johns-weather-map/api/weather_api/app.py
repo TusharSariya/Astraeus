@@ -130,6 +130,7 @@ from .store import (
     unschedulable_detail,
 )
 from .models import AGED_OUT_FLAG, ENSEMBLE_STATISTIC_ENTRIES, THRESHOLD_COMPARISONS
+from .taf_query import TafQueryUnavailable, taf_query_service
 
 LOGGER = logging.getLogger(__name__)
 
@@ -2297,86 +2298,19 @@ def get_source_status() -> SourceStatusResponse:
 @app.get(f"{PREFIX}/aviation/taf")
 def get_taf(station: str, at: datetime) -> dict:
     """Return native overlapping TAF groups without composing conditions."""
-    if station.upper() != "CYYT":
-        raise HTTPException(status_code=422, detail="only the contracted CYYT TAF is available")
     if at.tzinfo is None or at.utcoffset() is None:
         raise HTTPException(status_code=422, detail="at must include a UTC offset")
-    store = live_store()
-    if store is None:
-        raise HTTPException(status_code=503, detail="live TAF evidence is unavailable")
     try:
-        artifact = next(item for item in store.current() if item.source_id == "awc-taf" and item.logical_name == "surface")
-        try:
-            dataset = store.open(artifact)
-            starts = [datetime.fromisoformat(str(value).replace("Z", "+00:00")) for value in artifact.provenance["valid_times"]]
-            ends = [datetime.fromtimestamp(int(value), tz=timezone.utc) for value in dataset.attrs["taf_period_time_to"]]
-            changes = list(dataset.attrs["taf_change_groups"])
-            probabilities = list(dataset.attrs["taf_probabilities"])
-            presence = json.loads(dataset.attrs["taf_group_presence_json"])
-            native_groups = json.loads(dataset.attrs["taf_native_groups_json"])
-            groups = []
-            for index, (start, end) in enumerate(zip(starts, ends, strict=True)):
-                if start <= at < end:
-                    values = {}
-                    for name in dataset.data_vars:
-                        value = float(dataset[name].values[index, 0, 0])
-                        values[str(name)] = None if math.isnan(value) else value
-                    canonical_presence = dict(presence[index])
-                    for name, value in values.items():
-                        if value is None and canonical_presence.get(name) == "decoded_value":
-                            canonical_presence[name] = "decoded_absence"
-                    native = native_groups[index]
-                    native_keys = {
-                        "wind_speed_kt": "wspd", "wind_direction_deg": "wdir", "wind_variable": "windVariable",
-                        "wind_gust_kt": "wgst", "visibility_sm": "visib", "weather": "wxString",
-                        "vertical_visibility_ft": "vertVis", "clouds": "clouds", "cavok": "cavok",
-                    }
-                    native_presence = {}
-                    for exposed, provider_key in native_keys.items():
-                        if exposed == "wind_variable" and native.get("wdir") == "VRB":
-                            native_presence[exposed] = "decoded_value"
-                            continue
-                        if provider_key not in native:
-                            native_presence[exposed] = "not_stated_in_change_group"
-                        elif native[provider_key] is None:
-                            native_presence[exposed] = "decoded_absence"
-                        elif native[provider_key] == []:
-                            native_presence[exposed] = "decoded_empty"
-                        else:
-                            native_presence[exposed] = "decoded_value"
-                    groups.append({"index": index, "time_from": start, "time_to": end,
-                                   "change": changes[index], "probability": probabilities[index],
-                                   "time_bec": native.get("timeBec"),
-                                   "presence": canonical_presence, "values": values,
-                                   "native": {
-                                       "wind_speed_kt": native.get("wspd"),
-                                       "wind_direction_deg": native.get("wdir") if native.get("wdir") != "VRB" else None,
-                                       "wind_variable": native.get("wdir") == "VRB" or native.get("windVariable"),
-                                       "wind_gust_kt": native.get("wgst"), "visibility_sm": native.get("visib"),
-                                       "weather": native.get("wxString"), "vertical_visibility_ft": native.get("vertVis"),
-                                       "clouds": native.get("clouds"), "cavok": native.get("cavok"),
-                                   },
-                                   "native_presence": native_presence,
-                                   "native_units": {"wind_speed_kt": "kt", "wind_direction_deg": "degree",
-                                                    "wind_gust_kt": "kt", "visibility_sm": "statute mile",
-                                                    "vertical_visibility_ft": "ft"}})
-            return {"data_mode": "live", "operational": False, "station": "CYYT", "at": at, "source_id": "awc-taf",
-                    "revision_id": str(artifact.revision_id), "run_time": artifact.run_time,
-                    "issue_time": dataset.attrs["taf_issue_time"], "valid_time_from": dataset.attrs["taf_valid_time_from"],
-                    "valid_time_to": dataset.attrs["taf_valid_time_to"], "raw_taf": dataset.attrs["raw_taf"],
-                    "quality": artifact.provenance.get("quality"),
-                    "provider_field_dispositions": json.loads(dataset.attrs["taf_provider_field_dispositions_json"]),
-                    "native_report_metadata": json.loads(dataset.attrs["taf_native_report_metadata_json"]),
-                    "groups": groups}
-        finally:
-            store.release_artifact(artifact)
-    except StopIteration:
-        raise HTTPException(status_code=404, detail="no published CYYT TAF") from None
+        return taf_query_service().query(station, at.astimezone(timezone.utc))
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except TafQueryUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
     except HTTPException:
         raise
     except Exception as error:
         LOGGER.exception("TAF evidence could not be read")
-        raise HTTPException(status_code=503, detail="published CYYT TAF could not be read") from error
+        raise HTTPException(status_code=503, detail="live CYYT TAF could not be queried") from error
 
 
 @app.post(f"{PREFIX}/refresh", response_model=Job, status_code=status.HTTP_202_ACCEPTED)

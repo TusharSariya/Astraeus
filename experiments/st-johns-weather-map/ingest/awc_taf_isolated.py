@@ -12,8 +12,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
-from ingest.adapters.awc import AWCTafAdapter
-from ingest.contract import AdapterUnavailable, FetchWindow, RunCandidate
+from ingest.contract import AdapterUnavailable, FetchWindow
 
 
 def _epoch(value: object, label: str) -> int:
@@ -143,7 +142,7 @@ def _decode(raw: bytes, window: FetchWindow) -> dict[str, object]:
 
 
 def main() -> int:
-    if len(sys.argv) != 5 or sys.argv[1] not in {"probe", "inspect", "normalize"}:
+    if len(sys.argv) != 5 or sys.argv[1] not in {"probe", "inspect"}:
         return 2
     try:
         start, end = datetime.fromisoformat(sys.argv[2]), datetime.fromisoformat(sys.argv[3])
@@ -161,14 +160,6 @@ def main() -> int:
             "group_count": len(taf["fcsts"]),
             "valid_times": [int(group["timeFrom"]) for group in taf["fcsts"]],
         }
-        if sys.argv[1] == "normalize":
-            output = Path(sys.argv[4])
-            run_time = datetime.fromtimestamp(issue_epoch, tz=window.now.tzinfo)
-            result = AWCTafAdapter().fetch(RunCandidate(f"cyyt-taf-{issue_epoch}", run_time, [], {"taf": taf}), window, output.parent)
-            (output.parent / "cyyt_taf.zarr.zip").replace(output)
-            artifact = result.artifacts[0]
-            reply.update(run_time=result.run_time.isoformat(), complete=result.complete, qc_passed=result.qc_passed,
-                         provenance=artifact.provenance, notes=result.notes)
         print(json.dumps(reply, separators=(",", ":")))
         return 0
     except Exception as error:
