@@ -11,8 +11,9 @@ import math
 import re
 import threading
 import time
+from email.utils import parsedate_to_datetime
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Mapping
 
 import httpx
@@ -46,6 +47,13 @@ _MAX_AGE = re.compile(r"(?:^|,)\s*max-age=(\d+)\s*(?:,|$)", re.I)
 
 class TafQueryUnavailable(RuntimeError):
     """No fresh, validated provider response can answer the query."""
+    def __init__(self, message: str, *, cached: "TafCacheEntry | None" = None,
+                 retry_after_seconds: int = 60) -> None:
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+        self.detail = {"reason": message, "cached_identity": cached.body_sha256 if cached else None,
+                       "cached_expires_at": cached.expires_at.isoformat() if cached else None,
+                       "values_withheld": True}
 
 
 @dataclass(frozen=True)
@@ -54,11 +62,15 @@ class TafCacheEntry:
     body_sha256: str
     body_bytes: int
     provider_url: str
+    effective_url: str
+    cache_key: tuple[str, str, str]
     request_headers: Mapping[str, str]
     response_headers: Mapping[str, str]
     transport_completed_at: datetime
     fetched_at: datetime
     expires_at_monotonic: float
+    expires_at: datetime
+    max_age: int
     etag: str | None
     last_revalidation: Mapping[str, object] | None = None
 
@@ -68,14 +80,30 @@ def _safe_request_headers(headers: Mapping[str, str]) -> dict[str, str]:
     return {key.lower(): value for key, value in headers.items() if key.lower() in allowed}
 
 
-def _max_age(headers: Mapping[str, str]) -> int:
+def _freshness(headers: Mapping[str, str], completed: datetime) -> tuple[int, int]:
     match = _MAX_AGE.search(headers.get("cache-control", ""))
     if match is None:
         raise TafQueryUnavailable("AWC TAF response has no finite max-age")
     seconds = int(match.group(1))
     if seconds <= 0 or seconds > 300:
         raise TafQueryUnavailable("AWC TAF max-age is outside the measured 1..300 second bound")
-    return seconds
+    age_text = headers.get("age", "0").strip()
+    if not age_text.isdigit():
+        raise TafQueryUnavailable("AWC TAF response has an invalid Age header")
+    age = int(age_text)
+    apparent_age = 0
+    if "date" in headers:
+        try:
+            date = parsedate_to_datetime(headers["date"])
+        except (TypeError, ValueError) as error:
+            raise TafQueryUnavailable("AWC TAF response has an invalid Date header") from error
+        if date.tzinfo is None:
+            raise TafQueryUnavailable("AWC TAF response has an invalid Date header")
+        apparent_age = max(0, math.floor((completed - date.astimezone(UTC)).total_seconds()))
+    effective_age = max(age, apparent_age)
+    if effective_age >= seconds:
+        raise TafQueryUnavailable("AWC TAF response is already expired")
+    return seconds, seconds - effective_age
 
 
 def _presence(native: dict, key: str) -> str:
@@ -133,7 +161,7 @@ def _group_values(native: dict) -> tuple[dict[str, float | None], dict[str, str]
 
 class TafQueryService:
     def __init__(self, *, client: httpx.Client | None = None, clock: Callable[[], float] = time.monotonic) -> None:
-        self._client = client or httpx.Client(headers={"User-Agent": "astraeus-weather-experiment/0.1", "Accept-Encoding": "identity"}, timeout=60, follow_redirects=True)
+        self._client = client or httpx.Client(headers={"User-Agent": "astraeus-weather-experiment/0.1", "Accept-Encoding": "identity"}, timeout=60, follow_redirects=False)
         self._clock = clock
         self._entry: TafCacheEntry | None = None
         self._condition = threading.Condition()
@@ -150,18 +178,30 @@ class TafQueryService:
         with self._client.stream("GET", AWC_TAF_URL, headers=request_headers) as response:
             completed: datetime
             if response.status_code == 304:
-                response.read()
+                body_size = sum(len(chunk) for chunk in response.iter_bytes(1024))
+                if body_size:
+                    raise TafQueryUnavailable("AWC TAF 304 unexpectedly carried a response body")
                 completed = datetime.now(UTC)
                 if prior is None:
                     raise TafQueryUnavailable("AWC returned 304 without a cached TAF")
                 headers = {k.lower(): v for k, v in response.headers.items()}
-                ttl = _max_age(headers or prior.response_headers)
+                if headers.get("etag") and headers["etag"] != prior.etag:
+                    raise TafQueryUnavailable("AWC TAF 304 changed the retained ETag")
+                freshness_headers = dict(headers)
+                freshness_headers.setdefault("cache-control", prior.response_headers.get("cache-control", ""))
+                max_age, ttl = _freshness(freshness_headers, completed)
                 revalidation = {"status": 304, "request_headers": _safe_request_headers(response.request.headers),
                                 "response_headers": headers, "transport_completed_at": completed}
                 return TafCacheEntry(**{**prior.__dict__, "expires_at_monotonic": self._clock() + ttl,
+                                        "expires_at": completed + timedelta(seconds=ttl),
+                                        "max_age": max_age,
                                         "last_revalidation": revalidation})
+            if 300 <= response.status_code < 400:
+                raise TafQueryUnavailable("AWC TAF redirect refused because it changes the canonical request")
             if response.status_code != 200:
-                raise TafQueryUnavailable(f"AWC TAF returned HTTP {response.status_code}")
+                retry = response.headers.get("retry-after", "").strip()
+                retry_seconds = int(retry) if retry.isdigit() and 1 <= int(retry) <= 300 else 60
+                raise TafQueryUnavailable(f"AWC TAF returned HTTP {response.status_code}", retry_after_seconds=retry_seconds)
             declared = response.headers.get("content-length")
             if declared is not None and (not declared.isdigit() or int(declared) > AWC_TAF_DOCUMENT_BYTES):
                 raise TafQueryUnavailable("AWC TAF response exceeds the 65536-byte ceiling")
@@ -188,10 +228,11 @@ class TafQueryService:
                 has_sky = bool(group.get("clouds")) or group.get("vertVis") is not None or bool(group.get("cavok"))
                 if group.get("wspd") is None or (group.get("wdir") is None and not variable) or (group.get("visib") is None and not group.get("cavok")) or not has_sky:
                     raise TafQueryUnavailable(f"AWC TAF group {index} is not structurally complete")
-        ttl = _max_age(headers)
+        max_age, ttl = _freshness(headers, completed)
         return TafCacheEntry(report, hashlib.sha256(body).hexdigest(), len(body), AWC_TAF_URL,
+                             str(response.request.url), ("aviationweather.gov", "taf-json", "CYYT"),
                              _safe_request_headers(response.request.headers), headers, completed, completed,
-                             self._clock() + ttl, headers.get("etag"))
+                             self._clock() + ttl, completed + timedelta(seconds=ttl), max_age, headers.get("etag"))
 
     def entry(self) -> TafCacheEntry:
         with self._condition:
@@ -201,7 +242,7 @@ class TafQueryService:
                 if self._entry is not None and now < self._entry.expires_at_monotonic:
                     return self._entry
                 if self._last_error is not None and now < self._retry_after_monotonic:
-                    raise TafQueryUnavailable(str(self._last_error))
+                    raise self._last_error
                 if not self._fetching:
                     self._fetching = True
                     self._generation += 1
@@ -210,15 +251,16 @@ class TafQueryService:
                     break
                 self._condition.wait()
                 if self._last_error is not None and self._last_error_generation > observed_generation:
-                    raise TafQueryUnavailable(str(self._last_error))
+                    raise self._last_error
         try:
             replacement = self._fetch(prior)
         except Exception as error:
-            unavailable = error if isinstance(error, TafQueryUnavailable) else TafQueryUnavailable(str(error))
+            unavailable = TafQueryUnavailable(str(error), cached=prior,
+                                               retry_after_seconds=getattr(error, "retry_after_seconds", 60))
             with self._condition:
                 self._last_error = unavailable
                 self._last_error_generation = fetch_generation
-                self._retry_after_monotonic = self._clock() + 1.0
+                self._retry_after_monotonic = self._clock() + unavailable.retry_after_seconds
                 self._fetching = False
                 self._condition.notify_all()
             raise unavailable
@@ -261,9 +303,12 @@ class TafQueryService:
                 "quality": {"status": "passed"}, "provider_field_dispositions": TAF_PROVIDER_FIELD_DISPOSITIONS,
                 "native_report_metadata": {k: v for k, v in taf.items() if k not in {"fcsts", "rawTAF"}},
                 "applicable": bool(groups), "applicability_reason": None if groups else "no native TAF group applies at this timestamp",
-                "acquisition": {"provider_url": entry.provider_url, "request_headers": dict(entry.request_headers),
+                "acquisition": {"provider_url": entry.provider_url, "effective_url": entry.effective_url,
+                                "cache_key": list(entry.cache_key), "http_status": 200,
+                                "request_headers": dict(entry.request_headers),
                                 "response_headers": dict(entry.response_headers), "transport_completed_at": entry.transport_completed_at,
                                 "fetched_at": entry.fetched_at, "body_sha256": entry.body_sha256, "body_bytes": entry.body_bytes,
+                                "expires_at": entry.expires_at, "max_age": entry.max_age,
                                 "last_revalidation": entry.last_revalidation},
                 "groups": groups}
 

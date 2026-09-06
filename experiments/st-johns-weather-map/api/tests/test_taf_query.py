@@ -79,6 +79,24 @@ def test_oversize_and_missing_finite_ttl_fail_closed():
     with pytest.raises(TafQueryUnavailable,match="finite max-age"):
         TafQueryService(client=client(lambda _:httpx.Response(200,json=report()))).entry()
 
+@pytest.mark.parametrize("age", ["bad", "-1", "60"])
+def test_age_is_validated_and_limits_remaining_freshness(age):
+    service=TafQueryService(client=client(lambda _:httpx.Response(200,json=report(),headers={"Cache-Control":"max-age=60","Age":age})),clock=Clock())
+    with pytest.raises(TafQueryUnavailable,match="Age|expired"): service.entry()
+
+def test_age_reduces_cache_lifetime_and_redirect_is_refused():
+    clock=Clock(); count=0
+    def handler(_):
+        nonlocal count; count+=1
+        return httpx.Response(200,json=report(),headers={"Cache-Control":"max-age=60","Age":"59"})
+    service=TafQueryService(client=client(handler),clock=clock); entry=service.entry()
+    assert entry.max_age==60 and entry.expires_at_monotonic==101
+    clock.value=101
+    service.entry()
+    assert count==2
+    with pytest.raises(TafQueryUnavailable,match="redirect refused"):
+        TafQueryService(client=client(lambda _:httpx.Response(302,headers={"Location":"https://example.test"}))).entry()
+
 def test_timestamp_outside_report_is_distinct_from_provider_failure():
     service=TafQueryService(client=client(lambda _:httpx.Response(200,json=report(),headers={"Cache-Control":"max-age=60"})),clock=Clock())
     response=service.query("CYYT",datetime(2026,9,7,12,tzinfo=UTC))

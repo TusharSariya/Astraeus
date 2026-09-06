@@ -2305,7 +2305,7 @@ def get_taf(station: str, at: datetime) -> dict:
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except TafQueryUnavailable as error:
-        raise HTTPException(status_code=503, detail=str(error)) from error
+        raise HTTPException(status_code=503, detail=error.detail) from error
     except HTTPException:
         raise
     except Exception as error:
