@@ -1005,6 +1005,45 @@ export async function loadLayers(product?: string, signal?: AbortSignal): Promis
   }
 }
 
+export type CapAlertsResult = {
+  warnings: string[]
+  alertsInForce: number | null
+  allBoxesSucceeded: boolean
+  emptyIsAnAnswer: boolean
+  revision: string | null
+  error: string | null
+}
+
+export async function loadCapAlerts(validTime: string, signal?: AbortSignal): Promise<CapAlertsResult> {
+  const unavailable = (error: string): CapAlertsResult => ({ warnings: [], alertsInForce: null, allBoxesSucceeded: false, emptyIsAnAnswer: false, revision: null, error })
+  try {
+    const response = await fetch(`${prefix}/layers/eccc-cap-alerts-current/features?valid_time=${encodeURIComponent(validTime)}`, { signal, headers: { Accept: 'application/geo+json,application/json' } })
+    if (!response.ok) return unavailable(`hazard feed returned ${response.status}`)
+    const body = await response.json() as { features?: unknown; content_digest?: unknown; notices?: unknown; data_mode?: unknown; alerts_in_force?: unknown; all_boxes_succeeded?: unknown; empty_is_an_answer?: unknown }
+    if (!Array.isArray(body.features)) return unavailable('hazard feed returned an incompatible schema')
+    const warnings = body.features.flatMap((feature) => {
+      if (!feature || typeof feature !== 'object') return []
+      const properties = (feature as { properties?: unknown }).properties
+      if (!properties || typeof properties !== 'object') return []
+      const value = properties as Record<string, unknown>
+      const text = [value.headline, value.description, value.event, value.identifier].find((item) => typeof item === 'string' && item.trim().length > 0)
+      return typeof text === 'string' ? [text] : []
+    })
+    const notices = Array.isArray(body.notices) ? body.notices.filter((item): item is string => typeof item === 'string') : []
+    const live = body.data_mode === 'live'
+    const alertsInForce = typeof body.alerts_in_force === 'number' && Number.isInteger(body.alerts_in_force) && body.alerts_in_force >= 0 ? body.alerts_in_force : null
+    const allBoxesSucceeded = body.all_boxes_succeeded === true
+    const emptyIsAnAnswer = body.empty_is_an_answer === true
+    if (live && (alertsInForce === null || !allBoxesSucceeded || (emptyIsAnAnswer !== (alertsInForce === 0)))) {
+      return unavailable('hazard feed returned inconsistent completeness metadata')
+    }
+    return { warnings, alertsInForce, allBoxesSucceeded, emptyIsAnAnswer, revision: typeof body.content_digest === 'string' ? body.content_digest : null, error: live ? null : notices.join(' · ') || 'hazard feed unavailable; check the issuing authority' }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    return unavailable(error instanceof Error ? error.message : 'hazard feed unavailable')
+  }
+}
+
 function isCatalogSource(value: unknown): value is CatalogSource {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<CatalogSource>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadLayerFlow, loadLayerRaster, loadLayers, loadMethods, loadProfile, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
+import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadCapAlerts, loadLayerFlow, loadLayerRaster, loadLayers, loadMethods, loadProfile, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
 
 const rasterLayer: LayerItem = {
@@ -48,6 +48,27 @@ function rasterHeaders(overrides: Record<string, string> = {}): Record<string, s
 }
 
 const pngBody = () => new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' })
+
+it('does not infer a CAP all-clear from missing presentation text', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    data_mode: 'live', alerts_in_force: 1, all_boxes_succeeded: true, empty_is_an_answer: false,
+    content_digest: 'a'.repeat(64), features: [{ type: 'Feature', properties: { identifier: 'cap-17' } }],
+  }), { status: 200 })))
+  await expect(loadCapAlerts('2026-09-06T21:00:00Z')).resolves.toMatchObject({
+    warnings: ['cap-17'], alertsInForce: 1, allBoxesSucceeded: true, emptyIsAnAnswer: false, error: null,
+  })
+})
+
+it('preserves partial CAP warnings while withholding aggregate all-clear', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    data_mode: 'unavailable', alerts_in_force: null, all_boxes_succeeded: false, empty_is_an_answer: false,
+    notices: ['east Avalon box failed'], features: [{ type: 'Feature', properties: { headline: 'Wind warning' } }],
+  }), { status: 200 })))
+  await expect(loadCapAlerts('2026-09-06T21:00:00Z')).resolves.toEqual({
+    warnings: ['Wind warning'], alertsInForce: null, allBoxesSucceeded: false, emptyIsAnAnswer: false,
+    revision: null, error: 'east Avalon box failed',
+  })
+})
 
 it('maps native level-qualified HRDPS profile fields into the expert table', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({

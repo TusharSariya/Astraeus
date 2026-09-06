@@ -915,6 +915,24 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             data_mode=DataMode.UNAVAILABLE, layers=[],
             notices=["WEATHER_DATA_MODE is not a recognized live mode; no layer can be offered"],
         )
+    if product is not None and product.upper() == "CAP":
+        from .cap_query import cap_query_service  # noqa: PLC0415
+
+        entry = cap_query_service().cached_entry()
+        if entry is None:
+            return LayersResponse(
+                data_mode=DataMode.UNAVAILABLE, layers=[],
+                notices=["ECCC CAP current-alert capability has no fresh validated cache entry; listing performed no provider request"],
+            )
+        return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
+            id="eccc-cap-alerts-current", title="ECCC current CAP alerts (selected-time demand features)",
+            kind="alert", field="alerts_in_force", product="ECCC CAP", units="count",
+            evidence_class="retrieved", family="hazard", field_key="alerts_in_force",
+            semantics="Native ECCC CAP alert polygons and text from the bounded mutable Current-Alerts response; zero is shown only after every declared Avalon box succeeds",
+            times=[entry.fetched_at], cadence_seconds=None, staleness_tolerance_seconds=max(1, int((entry.expires_at - entry.fetched_at).total_seconds())),
+            z_index=Z_INDEX_BY_KIND["alert"], evidence_basis="demand_query", group="alert",
+            raster_available=False, legend_available=False,
+        )], notices=["CAP layer listing read a fresh source-local cache entry and made no provider request"])
     if product is not None and product.upper() not in {"GFS", "HRDPS"}:
         return LayersResponse(
             data_mode=DataMode.UNAVAILABLE, layers=[],
@@ -1532,7 +1550,7 @@ def get_layer_features(
     layer_id: str,
     valid_time: datetime | None = Query(default=None, description="UTC instant; must be one the layer declares in /layers"),
 ) -> dict[str, object]:
-    """Stored values for one layer at one frame, as GeoJSON.
+    """Demand or stored values for one layer at one frame, as GeoJSON.
 
     The client picks the frame from the layer's own declared times, so this
     endpoint does not snap: an exact time with nothing stored returns an empty
@@ -1541,6 +1559,23 @@ def get_layer_features(
     moment = requested_time(valid_time)
     if fixture_mode():
         return {"type": "FeatureCollection", "data_mode": DataMode.FIXTURE.value, "operational": False, "features": [], "notices": ["fixture mode publishes no stored features"]}
+
+    if layer_id == "eccc-cap-alerts-current":
+        from .cap_query import CapQueryUnavailable, cap_query_service  # noqa: PLC0415
+
+        service = cap_query_service()
+        try:
+            return service.query(moment)
+        except CapQueryUnavailable as error:
+            if error.partial_features:
+                return service.partial_response(moment, error)
+            return {
+                "type": "FeatureCollection", "data_mode": DataMode.UNAVAILABLE.value,
+                "operational": False, "features": [], "alerts_in_force": None,
+                "all_boxes_succeeded": False, "empty_is_an_answer": False,
+                "selected_time": moment.isoformat(), "source_id": "eccc-cap-alerts",
+                "layer": "Current-Alerts", "notices": [str(error), "hazard feed unavailable; check the issuing authority"],
+            }
 
     store = live_store()
     if store is None:
@@ -2450,11 +2485,10 @@ def _flag_bool(series: SeriesData, variable: str, index: int) -> bool | None:
 
 @app.get(f"{PREFIX}/space-weather", response_model=SpaceWeatherResponse)
 def get_space_weather(at: datetime = Query(..., description="Aware selected evidence instant")) -> SpaceWeatherResponse:
-    """Selected-time demand Kp plus independently retained latest Bz.
+    """Selected-time demand Kp plus independently queried native RTSW Bz.
 
-    Kp comes from the bounded provider-response cache and never falls back to
-    retained Kp artifacts. Solar wind has not migrated in this slice and keeps
-    its separately labelled retained read. Fixture mode fails closed: no
+    Both sources use independent bounded provider-response caches and never
+    fall back to retained artifacts. Fixture mode fails closed: no
     fixture space weather exists, and none is invented.
     """
     if at.tzinfo is None:
@@ -2473,23 +2507,13 @@ def get_space_weather(at: datetime = Query(..., description="Aware selected evid
         kp_observed = _absent_series(SWPC_KP_SOURCE, str(error))
         kp_forecast = _absent_series(SWPC_KP_SOURCE, str(error))
 
-    # Solar wind has not migrated in this source-local slice. Its retained
-    # read is independent and may fail without erasing demand-backed Kp.
-    store = live_store()
-    solar_wind_data = None
-    store_notices: list[str] = []
-    if store is not None:
-        store.skipped = []
+    from .swpc_rtsw_query import SWPCRTSWUnavailable, swpc_rtsw_query_service  # noqa: PLC0415
     try:
-        if store is not None:
-            solar_wind_data = store.read_series(SWPC_RTSW_SOURCE, "solar_wind")
-    except StoreUnavailable as error:
-        store_notices.append(f"solar-wind retained store is unreachable: {error}")
-    except Exception:
-        LOGGER.exception("solar-wind series could not be read")
-        store_notices.append("the retained store raised while reading solar wind")
-
-    solar_wind = _solar_wind_latest(solar_wind_data, reference)
+        solar_wind = swpc_rtsw_query_service().latest(reference)
+        solar_wind_notice: list[str] = []
+    except (SWPCRTSWUnavailable, ValueError) as error:
+        solar_wind = _absent_solar_wind(str(error))
+        solar_wind_notice = [str(error)]
     available = kp_observed.available or kp_forecast.available or solar_wind.available
     return SpaceWeatherResponse(
         data_mode=DataMode.LIVE if available else DataMode.UNAVAILABLE,
@@ -2497,7 +2521,7 @@ def get_space_weather(at: datetime = Query(..., description="Aware selected evid
         kp_observed=kp_observed,
         kp_forecast=kp_forecast,
         solar_wind=solar_wind,
-        notices=[*(skip_notices(store) if store is not None else []), *store_notices] if available else [*store_notices, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
+        notices=solar_wind_notice if available else [*solar_wind_notice, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
     )
 
 
