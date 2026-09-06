@@ -1,16 +1,21 @@
 """Contract and failure proof for selected ECCC analysis WCS products."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+import json
+from pathlib import Path
 
 import pytest
 
-from ingest.adapters.eccc_analysis_contracts import DEFERRED_PATHS, PRODUCT_CONTRACTS, product_contract
+from ingest.adapters.eccc_analysis_contracts import DEFERRED_PATHS, PRODUCT_CONTRACTS, fetch_unresolved_product, product_contract
 from ingest.adapters.eccc_geomet_wcs import GRID_CONTRACTS, WCSResponseError, grid_contract_for
 
 
 EXPECTED = {
-    "raqdps": ("eccc-raqdps", 4, timedelta(hours=1)),
-    "rdaqa": ("eccc-rdaqa", 2, timedelta(hours=1)),
+    "raqdps_hourly": ("eccc-raqdps", 12, timedelta(hours=1)),
+    "raqdps_statistics": ("eccc-raqdps", 2, timedelta(hours=24)),
+    "rdaqa_preliminary": ("eccc-rdaqa", 6, timedelta(hours=1)),
+    "rdaqa_final": ("eccc-rdaqa", 6, timedelta(hours=1)),
+    "rdaqa_smoke": ("eccc-rdaqa", 2, timedelta(hours=1)),
     "hrdpa": ("eccc-hrdpa", 1, timedelta(hours=6)),
     "rdpa": ("eccc-rdpa", 1, timedelta(hours=6)),
     "hrepa": ("eccc-hrepa", 2, timedelta(hours=6)),
@@ -43,7 +48,8 @@ def test_current_smoke_paths_do_not_revive_standalone_firework():
 def test_each_selected_coverage_keeps_its_product_grid_identity(name):
     contract = product_contract(name)
     for field in contract.fields:
-        assert grid_contract_for(field.coverage_id) == GRID_CONTRACTS[name]
+        grid_name = "rdaqa" if name.startswith("rdaqa_") else ("raqdps" if name.startswith("raqdps_") else name)
+        assert grid_contract_for(field.coverage_id) == GRID_CONTRACTS[grid_name]
 
 
 def test_unknown_products_and_unselected_coverages_fail_closed():
@@ -66,3 +72,120 @@ def test_rdpa_does_not_inherit_rdps_crs_or_units():
     field = product_contract("rdpa").fields[0]
     assert field.disposition == "metadata-only-unresolved-epsg-102978"
     assert GRID_CONTRACTS["rdpa"].spacing_degrees == 0.090298
+
+
+def test_selected_air_quality_inventory_is_exhaustive_and_preserves_provider_spelling():
+    raqdps = {field.coverage_id for field in product_contract("raqdps_hourly").fields + product_contract("raqdps_statistics").fields}
+    assert raqdps == {
+        "RAQDPS.SFC_PM2.5", "RAQDPS.EATM_PM2.5", "RAQDPS.SFC_PM10", "RAQDPS.EATM_PM10",
+        "RAQDPS.SFC_O3", "RAQDPS.SFC_NO", "RAQDPS.SFC_NO2", "RAQDPS.SFC_SO2",
+        "RAQDPS.Sfc_PM2.5-WildfireSmokePlume", "RAQDPS.EAtm_PM2.5-WildfireSmokePlume",
+        "RAQDPS.Sfc_PM10-WildfireSmokePlume", "RAQDPS.EAtm_PM10-WildfireSmokePlume",
+        "RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg", "RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax",
+    }
+    assert {field.coverage_id for field in product_contract("rdaqa_preliminary").fields} == {
+        f"RDAQA-Prelim_10km_{name}" for name in ("PM2.5", "PM10", "O3", "NO", "NO2", "SO2")
+    }
+    assert {field.coverage_id for field in product_contract("rdaqa_final").fields} == {
+        f"RDAQA_10km_{name}" for name in ("PM2.5", "PM10", "O3", "NO", "NO2", "SO2")
+    }
+    assert {field.coverage_id for field in product_contract("rdaqa_smoke").fields} == {
+        "RDAQA-FW_10km_PM2.5", "RDAQA-FW_10km_PM10"
+    }
+
+
+def test_all_28_fields_declare_phase_vertical_scope_and_statistic_window():
+    products = ("raqdps_hourly", "raqdps_statistics", "rdaqa_preliminary", "rdaqa_final", "rdaqa_smoke")
+    rows = [(product_contract(name), field) for name in products for field in product_contract(name).fields]
+    assert len(rows) == 28
+    assert all(contract.product_phase for contract, _field in rows)
+    assert all(field.vertical_scope in {"surface", "entire_atmosphere"} for _contract, field in rows)
+    assert all(
+        field.statistic_window_hours == (24 if contract.product_phase == "forecast_statistic" else None)
+        for contract, field in rows
+    )
+
+
+def test_live_receipt_covers_every_selected_field_and_actual_http_time():
+    path = Path(__file__).parent / "fixtures/eccc_geomet_wcs/raqdps-rdaqa-2026-09-06.receipt.json"
+    receipt = json.loads(path.read_text())
+    selected = {field.coverage_id for name in ("raqdps_hourly", "raqdps_statistics", "rdaqa_preliminary", "rdaqa_final", "rdaqa_smoke") for field in product_contract(name).fields}
+    assert {row["coverage_id"] for row in receipt["rows"]} == selected
+    assert {row["coverage_id"] for row in receipt["comparisons"]} == selected
+    assert sum(row["all_cells_compared"] for row in receipt["comparisons"]) == 28_980
+    assert all(row["mismatches"] == 0 and row["harness_http_status"] == 200 for row in receipt["comparisons"])
+    assert all(row["headers"] and row["raw"]["bytes"] > 0 and len(row["raw"]["sha256"]) == 64 for row in receipt["rows"])
+    assert all(datetime.fromisoformat(row["http_completed_at"]).tzinfo is not None for row in receipt["rows"])
+    assert receipt["finite_operation_cap_bytes"] == 64 << 20
+    assert receipt["received_bytes"] == 664_819
+    assert all(row["group_complete"] is False and row["group_qc_passed"] is True for row in receipt["rows"])
+    assert all(row["product_phase"] and row["vertical_scope"] in {"surface", "entire_atmosphere"} for row in receipt["rows"])
+    assert all(
+        row["statistic_window_hours"] == (24 if row["product"] == "raqdps_statistics" else None)
+        for row in receipt["rows"]
+    )
+    by_product = {}
+    for row in receipt["rows"]:
+        by_product.setdefault(row["product"], set()).add((row["valid_time"], row["run_time"]))
+    assert all(len(times) == 1 for times in by_product.values())
+    assert by_product["raqdps_hourly"] != by_product["raqdps_statistics"]
+    assert path.stat().st_size < 100_000
+
+
+def test_full_product_fetch_uses_validator_owned_nonpublishable_verdict(tmp_path):
+    from ingest.adapters.eccc_geomet_wcs import GeoMetWCSClient
+    from test_adapter_eccc_geomet_wcs import FixtureHTTP, RUN, VALID
+    client = GeoMetWCSClient(client=FixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet", clock=lambda: VALID)
+    result = fetch_unresolved_product(client, "rdaqa_smoke", valid_time=VALID, reference_time=RUN, workdir=tmp_path)
+    assert result.complete is False and result.qc_passed is True
+    assert "canonical contracts are absent" in result.notes
+    assert result.retrieved_at == VALID
+    assert len(result.artifacts) == 2
+    assert all(artifact.provenance["operational"] is False for artifact in result.artifacts)
+    assert all(artifact.provenance["product_phase"] == "firework_contribution_analysis" for artifact in result.artifacts)
+    assert all(artifact.provenance["vertical_scope"] == "surface" for artifact in result.artifacts)
+
+@pytest.mark.parametrize(
+    ("name", "field_count"),
+    [("raqdps_hourly", 12), ("raqdps_statistics", 2), ("rdaqa_preliminary", 6),
+     ("rdaqa_final", 6), ("rdaqa_smoke", 2)],
+)
+def test_every_coherent_product_group_fetches_all_fields_before_refusal(tmp_path, name, field_count):
+    from ingest.adapters.eccc_geomet_wcs import GeoMetWCSClient
+    from test_adapter_eccc_geomet_wcs import FixtureHTTP, RUN, VALID
+
+    client = GeoMetWCSClient(
+        client=FixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet", clock=lambda: VALID
+    )
+    result = fetch_unresolved_product(
+        client, name, valid_time=VALID, reference_time=RUN, workdir=tmp_path / name
+    )
+    assert len(result.artifacts) == field_count
+    assert result.complete is False
+    assert result.retrieved_at == VALID
+    assert len({artifact.provenance["valid_time"] for artifact in result.artifacts}) == 1
+
+
+def test_product_group_with_different_selected_times_is_refused(tmp_path, monkeypatch):
+    from ingest.contract import Artifact
+    from ingest.adapters import eccc_geomet_wcs
+
+    calls = 0
+    def fake_fetch(_client, field, **kwargs):
+        nonlocal calls
+        calls += 1
+        path = tmp_path / f"{calls}.zip"
+        path.write_bytes(b"fixture")
+        hour = calls
+        return Artifact(field.variable, "application/zarr+zip", path, {
+            "valid_time": f"2026-09-05T{hour:02d}:00:00+00:00",
+            "run_time": "2026-09-05T00:00:00+00:00",
+            "http_completed_at": f"2026-09-05T12:00:0{calls}+00:00",
+        })
+
+    monkeypatch.setattr(eccc_geomet_wcs, "fetch_artifact", fake_fetch)
+    result = fetch_unresolved_product(
+        object(), "raqdps_statistics", valid_time=None, reference_time=None, workdir=tmp_path
+    )
+    assert result.complete is False
+    assert "disagree on product time identity" in result.notes

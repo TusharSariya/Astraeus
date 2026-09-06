@@ -9,7 +9,7 @@ current wildfire-smoke coverages are RAQDPS/RDAQA fields.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from ingest.adapters.eccc_geomet_wcs import CoverageField
 
@@ -22,6 +22,7 @@ class ProductContract:
     fields: tuple[CoverageField, ...]
     native_cadence: timedelta | None
     time_identity: str
+    product_phase: str | None = None
     quality_semantics: str = "unknown; producer quality flags are not exposed by this WCS coverage"
     operational: bool = False
 
@@ -35,21 +36,50 @@ class DeferredPath:
 
 
 PRODUCT_CONTRACTS = {
-    "raqdps": ProductContract(
-        "eccc-raqdps", "RAQDPS", "GeoMet WCS 2.0.1",
+    "raqdps_hourly": ProductContract(
+        "eccc-raqdps", "RAQDPS hourly", "GeoMet WCS 2.0.1",
         (
-            CoverageField("RAQDPS.SFC_PM2.5", "pm2_5_surface"),
-            CoverageField("RAQDPS.EATM_PM2.5", "pm2_5_column"),
-            CoverageField("RAQDPS.Sfc_PM2.5-WildfireSmokePlume", "raw__raqdps_smoke_pm2_5_surface"),
-            CoverageField("RAQDPS.EAtm_PM2.5-WildfireSmokePlume", "raw__raqdps_smoke_pm2_5_column"),
-        ), timedelta(hours=1), "forecast valid time plus explicit reference time",
+            CoverageField("RAQDPS.SFC_PM2.5", "pm2_5_surface", vertical_scope="surface"),
+            CoverageField("RAQDPS.EATM_PM2.5", "pm2_5_column", vertical_scope="entire_atmosphere"),
+            CoverageField("RAQDPS.SFC_PM10", "pm10_surface", vertical_scope="surface"),
+            CoverageField("RAQDPS.EATM_PM10", "raw__raqdps_pm10_column", vertical_scope="entire_atmosphere"),
+            CoverageField("RAQDPS.SFC_O3", "raw__raqdps_ozone_surface_mole_fraction", vertical_scope="surface"),
+            CoverageField("RAQDPS.SFC_NO", "raw__raqdps_nitric_oxide_surface", vertical_scope="surface"),
+            CoverageField("RAQDPS.SFC_NO2", "raw__raqdps_nitrogen_dioxide_surface_mole_fraction", vertical_scope="surface"),
+            CoverageField("RAQDPS.SFC_SO2", "raw__raqdps_sulphur_dioxide_surface_mole_fraction", vertical_scope="surface"),
+            CoverageField("RAQDPS.Sfc_PM2.5-WildfireSmokePlume", "raw__raqdps_smoke_pm2_5_surface", vertical_scope="surface"),
+            CoverageField("RAQDPS.EAtm_PM2.5-WildfireSmokePlume", "raw__raqdps_smoke_pm2_5_column", vertical_scope="entire_atmosphere"),
+            CoverageField("RAQDPS.Sfc_PM10-WildfireSmokePlume", "raw__raqdps_smoke_pm10_surface", vertical_scope="surface"),
+            CoverageField("RAQDPS.EAtm_PM10-WildfireSmokePlume", "raw__raqdps_smoke_pm10_column", vertical_scope="entire_atmosphere"),
+        ), timedelta(hours=1), "hourly forecast valid time plus explicit reference time", "forecast",
     ),
-    "rdaqa": ProductContract(
-        "eccc-rdaqa", "RDAQA preliminary and FireWork contribution analysis", "GeoMet WCS 2.0.1",
+    "raqdps_statistics": ProductContract(
+        "eccc-raqdps", "RAQDPS 24-hour smoke statistics", "GeoMet WCS 2.0.1",
         (
-            CoverageField("RDAQA-Prelim_10km_PM2.5", "raw__rdaqa_prelim_pm2_5"),
-            CoverageField("RDAQA-FW_10km_PM2.5", "raw__rdaqa_fire_contribution_pm2_5"),
-        ), timedelta(hours=1), "analysis valid time; no forecast lead",
+            CoverageField("RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg", "raw__raqdps_smoke_pm2_5_surface_24h_mean", vertical_scope="surface", statistic_window_hours=24),
+            CoverageField("RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax", "raw__raqdps_smoke_pm2_5_surface_24h_max", vertical_scope="surface", statistic_window_hours=24),
+        ), timedelta(hours=24), "24-hour statistic valid time plus explicit reference time", "forecast_statistic",
+    ),
+    "rdaqa_preliminary": ProductContract(
+        "eccc-rdaqa", "RDAQA preliminary analysis", "GeoMet WCS 2.0.1",
+        tuple(CoverageField(f"RDAQA-Prelim_10km_{provider}", f"raw__rdaqa_preliminary_{name}", vertical_scope="surface") for provider, name in (
+            ("PM2.5", "pm2_5_surface"), ("PM10", "pm10_surface"), ("O3", "ozone_surface"),
+            ("NO", "nitric_oxide_surface"), ("NO2", "nitrogen_dioxide_surface"), ("SO2", "sulphur_dioxide_surface"),
+        )), timedelta(hours=1), "preliminary analysis valid time; no forecast lead", "preliminary_analysis",
+    ),
+    "rdaqa_final": ProductContract(
+        "eccc-rdaqa", "RDAQA final analysis", "GeoMet WCS 2.0.1",
+        tuple(CoverageField(f"RDAQA_10km_{provider}", f"raw__rdaqa_final_{name}", vertical_scope="surface") for provider, name in (
+            ("PM2.5", "pm2_5_surface"), ("PM10", "pm10_surface"), ("O3", "ozone_surface"),
+            ("NO", "nitric_oxide_surface"), ("NO2", "nitrogen_dioxide_surface"), ("SO2", "sulphur_dioxide_surface"),
+        )), timedelta(hours=1), "final analysis valid time; no forecast lead", "final_analysis",
+    ),
+    "rdaqa_smoke": ProductContract(
+        "eccc-rdaqa", "RDAQA FireWork-contribution analysis", "GeoMet WCS 2.0.1",
+        (
+            CoverageField("RDAQA-FW_10km_PM2.5", "raw__rdaqa_smoke_pm2_5_surface", vertical_scope="surface"),
+            CoverageField("RDAQA-FW_10km_PM10", "raw__rdaqa_smoke_pm10_surface", vertical_scope="surface"),
+        ), timedelta(hours=1), "smoke-contribution analysis valid time; no forecast lead", "firework_contribution_analysis",
     ),
     "hrdpa": ProductContract(
         "eccc-hrdpa", "HRDPA final", "GeoMet WCS 2.0.1",
@@ -120,3 +150,50 @@ def product_contract(name: str) -> ProductContract:
         return PRODUCT_CONTRACTS[name]
     except KeyError as error:
         raise ValueError(f"unsupported ECCC analysis product: {name}") from error
+
+MANIFEST_OWNER_GATE = (
+    "canonical contracts are absent for PM10 column burden, surface gas mole fractions, "
+    "wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases"
+)
+
+
+def fetch_unresolved_product(
+    client, name: str, *, valid_time, reference_time, workdir,
+):
+    """Fetch every selected field but return a validator-owned refusal verdict.
+
+    This is the explicit experiment seam while no truthful ``RunManifest`` can
+    name every selected field. It must never be registered or published.
+    """
+    from ingest.contract import RunResult
+    from ingest.manifest import unresolved_manifest_validation
+    from ingest.adapters.eccc_geomet_wcs import fetch_artifact
+
+    contract = product_contract(name)
+    model = "raqdps" if name.startswith("raqdps_") else "rdaqa"
+    artifacts = [
+        fetch_artifact(
+            client, field, valid_time=valid_time, reference_time=reference_time,
+            workdir=workdir / field.variable, model=model, product_phase=contract.product_phase,
+        )
+        for field in contract.fields
+    ]
+    selected_valid = {artifact.provenance["valid_time"] for artifact in artifacts}
+    selected_runs = {artifact.provenance["run_time"] for artifact in artifacts}
+    if len(selected_valid) != 1 or len(selected_runs) != 1:
+        verdict = unresolved_manifest_validation(contract.source_id, "selected fields disagree on product time identity")
+    else:
+        verdict = unresolved_manifest_validation(contract.source_id, MANIFEST_OWNER_GATE)
+    retrieved_at = max(datetime.fromisoformat(artifact.provenance["http_completed_at"]) for artifact in artifacts)
+    run_time = None if selected_runs == {None} else datetime.fromisoformat(next(iter(selected_runs)))
+    return RunResult(
+        source_id=contract.source_id,
+        provider_run_id=f"{name}:{next(iter(selected_valid))}:{next(iter(selected_runs))}",
+        run_time=run_time,
+        retrieved_at=retrieved_at,
+        complete=verdict.complete,
+        qc_passed=verdict.qc_passed,
+        artifacts=artifacts,
+        native_crs="EPSG:4326",
+        notes=verdict.detail,
+    )

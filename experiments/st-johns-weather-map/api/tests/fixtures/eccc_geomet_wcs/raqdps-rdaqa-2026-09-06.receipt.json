@@ -1,0 +1,1387 @@
+{
+  "capture_class": "source-scoped staged serialization proof; not published through the normal route",
+  "capture_completed_at": "2026-09-06T04:59:45.979196+00:00",
+  "comparisons": [
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 2.1797499361042583e-09,
+      "coverage_id": "RAQDPS.SFC_PM2.5",
+      "harness_http_status": 200,
+      "harness_serialized_value": 2.1797499361042583e-09,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 1.6397000024426234e-07,
+      "coverage_id": "RAQDPS.EATM_PM2.5",
+      "harness_http_status": 200,
+      "harness_serialized_value": 1.6397000024426234e-07,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 4.015999977013962e-09,
+      "coverage_id": "RAQDPS.SFC_PM10",
+      "harness_http_status": 200,
+      "harness_serialized_value": 4.015999977013962e-09,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 2.1159999619158043e-07,
+      "coverage_id": "RAQDPS.EATM_PM10",
+      "harness_http_status": 200,
+      "harness_serialized_value": 2.1159999619158043e-07,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 3.04824006036597e-08,
+      "coverage_id": "RAQDPS.SFC_O3",
+      "harness_http_status": 200,
+      "harness_serialized_value": 3.04824006036597e-08,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RAQDPS.SFC_NO",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 2.381009556184921e-10,
+      "coverage_id": "RAQDPS.SFC_NO2",
+      "harness_http_status": 200,
+      "harness_serialized_value": 2.381009556184921e-10,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 3.90000011452063e-11,
+      "coverage_id": "RAQDPS.SFC_SO2",
+      "harness_http_status": 200,
+      "harness_serialized_value": 3.90000011452063e-11,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RAQDPS.Sfc_PM2.5-WildfireSmokePlume",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RAQDPS.EAtm_PM2.5-WildfireSmokePlume",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RAQDPS.Sfc_PM10-WildfireSmokePlume",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RAQDPS.EAtm_PM10-WildfireSmokePlume",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 2.629999995562571e-09,
+      "coverage_id": "RDAQA-Prelim_10km_PM2.5",
+      "harness_http_status": 200,
+      "harness_serialized_value": 2.629999995562571e-09,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 1.500000013088254e-09,
+      "coverage_id": "RDAQA-Prelim_10km_PM10",
+      "harness_http_status": 200,
+      "harness_serialized_value": 1.500000013088254e-09,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 3.6517498358534795e-08,
+      "coverage_id": "RDAQA-Prelim_10km_O3",
+      "harness_http_status": 200,
+      "harness_serialized_value": 3.6517498358534795e-08,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RDAQA-Prelim_10km_NO",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RDAQA-Prelim_10km_NO2",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 2.999999901276418e-11,
+      "coverage_id": "RDAQA-Prelim_10km_SO2",
+      "harness_http_status": 200,
+      "harness_serialized_value": 2.999999901276418e-11,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 4.339999915004e-09,
+      "coverage_id": "RDAQA_10km_PM2.5",
+      "harness_http_status": 200,
+      "harness_serialized_value": 4.339999915004e-09,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 3.620000077475538e-09,
+      "coverage_id": "RDAQA_10km_PM10",
+      "harness_http_status": 200,
+      "harness_serialized_value": 3.620000077475538e-09,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 3.732624875851798e-08,
+      "coverage_id": "RDAQA_10km_O3",
+      "harness_http_status": 200,
+      "harness_serialized_value": 3.732624875851798e-08,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RDAQA_10km_NO",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 0.0,
+      "coverage_id": "RDAQA_10km_NO2",
+      "harness_http_status": 200,
+      "harness_serialized_value": 0.0,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 5.599999977623504e-11,
+      "coverage_id": "RDAQA_10km_SO2",
+      "harness_http_status": 200,
+      "harness_serialized_value": 5.599999977623504e-11,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 4.339999915004e-09,
+      "coverage_id": "RDAQA-FW_10km_PM2.5",
+      "harness_http_status": 200,
+      "harness_serialized_value": 4.339999915004e-09,
+      "mismatches": 0
+    },
+    {
+      "all_cells_compared": 1035,
+      "artifact_value": 3.620000077475538e-09,
+      "coverage_id": "RDAQA-FW_10km_PM10",
+      "harness_http_status": 200,
+      "harness_serialized_value": 3.620000077475538e-09,
+      "mismatches": 0
+    }
+  ],
+  "finite_operation_cap_bytes": 67108864,
+  "received_bytes": 664819,
+  "replay": {
+    "classification": "local replay of retained raw bodies; original HTTP completion timestamps and headers preserved unchanged",
+    "code_head": "working-tree provenance fix after ec2fe93",
+    "completed_at": "2026-09-06T05:05:57.262622+00:00"
+  },
+  "rows": [
+    {
+      "artifact": {
+        "bytes": 6809,
+        "sha256": "9220cf173748833ddcd96dad5345004f0a0bd16afd7f4da2081b83421ec9945a"
+      },
+      "coverage_id": "RAQDPS.SFC_PM2.5",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.SFC_PM2.5_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:05 GMT",
+        "keep-alive": "timeout=5, max=99",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:05.430088+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "4b78663884cdb92af473d3f2cf74854ad0f57320ad2cd79af1477fcb995f659b"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "pm2_5_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6708,
+        "sha256": "3750aacbc89a731e6a2cc1aaf5f153d6c84edc579507493f67fd7797d53f52ed"
+      },
+      "coverage_id": "RAQDPS.EATM_PM2.5",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.EATM_PM2.5_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:06 GMT",
+        "keep-alive": "timeout=5, max=96",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:06.917567+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "d1dbe68eb2a9ec88a92f487f3f4dfb1350751ea8f2e0e9eb978afbfb3a5d8ddc"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "kg m-2",
+      "units_as_published": "kg/m\u00b2",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.EATM_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "pm2_5_column",
+      "vertical_scope": "entire_atmosphere"
+    },
+    {
+      "artifact": {
+        "bytes": 6693,
+        "sha256": "1085403fb79f793cc97c9aee0d73ce997e7b9bb644573c85b526630f33923f0c"
+      },
+      "coverage_id": "RAQDPS.SFC_PM10",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.SFC_PM10_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:08 GMT",
+        "keep-alive": "timeout=5, max=93",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:08.428261+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "5ba8e8c845916df2e97ea5473f78039a9698d70837a3f9d70bc3081160c6a609"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "pm10_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6754,
+        "sha256": "70155fcc2551d9843bf2b1ef7c646f42884fe23230a7d462af49d7930c774c33"
+      },
+      "coverage_id": "RAQDPS.EATM_PM10",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.EATM_PM10_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:09 GMT",
+        "keep-alive": "timeout=5, max=90",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:09.946298+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "90a2894c5b63155e042b0ec7a01959a1d612d9f636be0d4650aa40f92ff19b11"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "kg m-2",
+      "units_as_published": "kg/m\u00b2",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.EATM_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_pm10_column",
+      "vertical_scope": "entire_atmosphere"
+    },
+    {
+      "artifact": {
+        "bytes": 6721,
+        "sha256": "a89f5113603273ac81ad6352c65d4d8a3f51370bc5c41953b75c951127c6319d"
+      },
+      "coverage_id": "RAQDPS.SFC_O3",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.SFC_O3_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:11 GMT",
+        "keep-alive": "timeout=5, max=87",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:11.436513+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "32363ebc0f5ab4deeca181ec21d5e1a1d3b7a559038f6012c5023db40709409a"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_O3&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_ozone_surface_mole_fraction",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 4831,
+        "sha256": "f1693d37b1d5c529e2fd9bf5bfcf2134fce9304895dda2ad0e5a862af7298b37"
+      },
+      "coverage_id": "RAQDPS.SFC_NO",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.SFC_NO_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:12 GMT",
+        "keep-alive": "timeout=5, max=84",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:12.921344+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_NO&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_nitric_oxide_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6332,
+        "sha256": "65897b3e9ff210b9d817d77e4c0c9b61e4691c3d7599b5664397c04b7e30a836"
+      },
+      "coverage_id": "RAQDPS.SFC_NO2",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.SFC_NO2_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:14 GMT",
+        "keep-alive": "timeout=5, max=81",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:14.424556+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "be85a63d62d15baa1f75fb5da877bdeb1b3c17e1e682816faf3b2e0f893df15f"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_NO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_nitrogen_dioxide_surface_mole_fraction",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 5733,
+        "sha256": "3c3433a92224e2af3a8c0024826bf3bb14a9c507d46ff363793087a2d2af1ff3"
+      },
+      "coverage_id": "RAQDPS.SFC_SO2",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.SFC_SO2_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:15 GMT",
+        "keep-alive": "timeout=5, max=78",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:15.917924+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "e02e2c4b6e3522e097df93ed360e337d5269d0a28c70d3338d1d5921e8b6a7e8"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_SO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_sulphur_dioxide_surface_mole_fraction",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 4827,
+        "sha256": "35679bf7c181b35dd2b0ce1340da86e58f53c6286f793addd12908e113d886b6"
+      },
+      "coverage_id": "RAQDPS.Sfc_PM2.5-WildfireSmokePlume",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.Sfc_PM2.5-WildfireSmokePlume_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:17 GMT",
+        "keep-alive": "timeout=5, max=75",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:17.423893+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.Sfc_PM2.5-WildfireSmokePlume&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_smoke_pm2_5_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 4833,
+        "sha256": "1778196a53d8a8fde254f631add885bdb8fdddf4c535ac0698f8d10fba076a3f"
+      },
+      "coverage_id": "RAQDPS.EAtm_PM2.5-WildfireSmokePlume",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.EAtm_PM2.5-WildfireSmokePlume_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:18 GMT",
+        "keep-alive": "timeout=5, max=72",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:18.921510+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "kg m-2",
+      "units_as_published": "kg/m\u00b2",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.EAtm_PM2.5-WildfireSmokePlume&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_smoke_pm2_5_column",
+      "vertical_scope": "entire_atmosphere"
+    },
+    {
+      "artifact": {
+        "bytes": 4823,
+        "sha256": "3b807efc9c5fed84abe8b88af1e852513724a9235d9d545032d3ba40e1130e97"
+      },
+      "coverage_id": "RAQDPS.Sfc_PM10-WildfireSmokePlume",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.Sfc_PM10-WildfireSmokePlume_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:20 GMT",
+        "keep-alive": "timeout=5, max=69",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:20.409054+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.Sfc_PM10-WildfireSmokePlume&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_smoke_pm10_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 4829,
+        "sha256": "4bcafd9ed0bef9cf333eef0fce2e4f9d6067c399401c6ae3de68b514a9080684"
+      },
+      "coverage_id": "RAQDPS.EAtm_PM10-WildfireSmokePlume",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.EAtm_PM10-WildfireSmokePlume_2026-09-06T0000Z_PT5H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:21 GMT",
+        "keep-alive": "timeout=5, max=66",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:21.908261+00:00",
+      "product": "raqdps_hourly",
+      "product_phase": "forecast",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
+      "stored_units": "kg m-2",
+      "units_as_published": "kg/m\u00b2",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.EAtm_PM10-WildfireSmokePlume&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-06T05:00:00+00:00",
+      "variable": "raw__raqdps_smoke_pm10_column",
+      "vertical_scope": "entire_atmosphere"
+    },
+    {
+      "artifact": {
+        "bytes": 4907,
+        "sha256": "a893bab0a8f6c367174556591956d1b788202dad200615520e06ddd2613319b8"
+      },
+      "coverage_id": "RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg_2026-09-06T0000Z_PT24H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:23 GMT",
+        "keep-alive": "timeout=5, max=63",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:23.422523+00:00",
+      "product": "raqdps_statistics",
+      "product_phase": "forecast_statistic",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": 24,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-07T00%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-07T00:00:00+00:00",
+      "variable": "raw__raqdps_smoke_pm2_5_surface_24h_mean",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 4903,
+        "sha256": "400029e60953963c57739f5dc9a9f92435808290c867725477973ad2d92e6a86"
+      },
+      "coverage_id": "RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax",
+      "group_complete": false,
+      "group_notes": "eccc-raqdps: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax_2026-09-06T0000Z_PT24H.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:24 GMT",
+        "keep-alive": "timeout=5, max=60",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:24.927270+00:00",
+      "product": "raqdps_statistics",
+      "product_phase": "forecast_statistic",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": 24,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-07T00%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
+      "valid_time": "2026-09-07T00:00:00+00:00",
+      "variable": "raw__raqdps_smoke_pm2_5_surface_24h_max",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6809,
+        "sha256": "f21e5600b7ab5ea7ac065c988c74c017c6be73fccb0a29618dda42a4633158ff"
+      },
+      "coverage_id": "RDAQA-Prelim_10km_PM2.5",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA-Prelim_10km_PM2.5_2026-09-06T0300Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:26 GMT",
+        "keep-alive": "timeout=5, max=57",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:26.445775+00:00",
+      "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "19dbdf361505e15310bf737877dcc1aa1827955109f74548eb2d53b95be8696a"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
+      "valid_time": "2026-09-06T03:00:00+00:00",
+      "variable": "raw__rdaqa_preliminary_pm2_5_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6858,
+        "sha256": "c77b28b8e8baf893e8a23e830ea58cae7ac78579586009b8a453fe73988ba28d"
+      },
+      "coverage_id": "RDAQA-Prelim_10km_PM10",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA-Prelim_10km_PM10_2026-09-06T0300Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:27 GMT",
+        "keep-alive": "timeout=5, max=54",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:27.935498+00:00",
+      "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "e95c4f9b3aad1e8a4f0456c759b84631ad6794aa6cf24c2520262d1421077d97"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
+      "valid_time": "2026-09-06T03:00:00+00:00",
+      "variable": "raw__rdaqa_preliminary_pm10_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6721,
+        "sha256": "e235f7f6cdc18e039fb351ba7a989a6b3c0c7b148a5bcc41cf3be7e07de4cde3"
+      },
+      "coverage_id": "RDAQA-Prelim_10km_O3",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA-Prelim_10km_O3_2026-09-06T0300Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:29 GMT",
+        "keep-alive": "timeout=5, max=51",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:29.454488+00:00",
+      "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "69ec1afea17ae35ce93f1a682bd86edd8c186fc8dd8bcda216daa64b3ca38244"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_O3&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
+      "valid_time": "2026-09-06T03:00:00+00:00",
+      "variable": "raw__rdaqa_preliminary_ozone_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 4887,
+        "sha256": "1d735005cdc5428e78e720636e0debc0f57160734d45a26e45d9dec4d8ca35aa"
+      },
+      "coverage_id": "RDAQA-Prelim_10km_NO",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA-Prelim_10km_NO_2026-09-06T0300Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:30 GMT",
+        "keep-alive": "timeout=5, max=48",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:30.968433+00:00",
+      "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_NO&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
+      "valid_time": "2026-09-06T03:00:00+00:00",
+      "variable": "raw__rdaqa_preliminary_nitric_oxide_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 5690,
+        "sha256": "d84c69fdf27afafea3e8eb7bbfcf67c07e3e62902b6b4f6037d8752b9844e60e"
+      },
+      "coverage_id": "RDAQA-Prelim_10km_NO2",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA-Prelim_10km_NO2_2026-09-06T0300Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:32 GMT",
+        "keep-alive": "timeout=5, max=45",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:32.490089+00:00",
+      "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "7d5e35a2fec99bd789ece933e8b98da5ad72c8fab20385c321c36340ee379765"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_NO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
+      "valid_time": "2026-09-06T03:00:00+00:00",
+      "variable": "raw__rdaqa_preliminary_nitrogen_dioxide_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 5686,
+        "sha256": "7c0c5e33e9d065cec99d412374993dedb61f7b46129cb7cf9c91bae9560b1be8"
+      },
+      "coverage_id": "RDAQA-Prelim_10km_SO2",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA-Prelim_10km_SO2_2026-09-06T0300Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:33 GMT",
+        "keep-alive": "timeout=5, max=42",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:33.933613+00:00",
+      "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "3f48251cd247ef789515ea2300b03816828dc428375173c4c7000f3be4ebea7e"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_SO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
+      "valid_time": "2026-09-06T03:00:00+00:00",
+      "variable": "raw__rdaqa_preliminary_sulphur_dioxide_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6767,
+        "sha256": "cab34be9766a21e24f42bf00db9aa6a2788348d881992ab38de2d8d94a7b2d52"
+      },
+      "coverage_id": "RDAQA_10km_PM2.5",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA_10km_PM2.5_2026-09-06T0200Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:35 GMT",
+        "keep-alive": "timeout=5, max=39",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:35.439984+00:00",
+      "product": "rdaqa_final",
+      "product_phase": "final_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "d081fa89e190d97be921b72b2aaebebe2a425db0f400c5ae624bf3dd07ae4f6f"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
+      "valid_time": "2026-09-06T02:00:00+00:00",
+      "variable": "raw__rdaqa_final_pm2_5_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6890,
+        "sha256": "e575d920aa694a1ce8c52a15890cba0e7077875cafb543967cb73589d89f57e9"
+      },
+      "coverage_id": "RDAQA_10km_PM10",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA_10km_PM10_2026-09-06T0200Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:36 GMT",
+        "keep-alive": "timeout=5, max=36",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:36.940035+00:00",
+      "product": "rdaqa_final",
+      "product_phase": "final_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "666cf92f159106198e68e6106c1194b5d0b21c082c6ca048f407d664556cba1e"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
+      "valid_time": "2026-09-06T02:00:00+00:00",
+      "variable": "raw__rdaqa_final_pm10_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6692,
+        "sha256": "4e8cfe61e708ab5b8b3b95d30d31992084484bd0c27e3cc91806b0fe6f8636cb"
+      },
+      "coverage_id": "RDAQA_10km_O3",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA_10km_O3_2026-09-06T0200Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:38 GMT",
+        "keep-alive": "timeout=5, max=33",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:38.453082+00:00",
+      "product": "rdaqa_final",
+      "product_phase": "final_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "20e1ca908b2f4490eb239820c8b469ac908cd1ef1ed269c25a62fee7edb575ea"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_O3&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
+      "valid_time": "2026-09-06T02:00:00+00:00",
+      "variable": "raw__rdaqa_final_ozone_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 4857,
+        "sha256": "f48c744ea612141e3389b31af90c1f3d5a481e949db7318b1a91534bece6e011"
+      },
+      "coverage_id": "RDAQA_10km_NO",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA_10km_NO_2026-09-06T0200Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:39 GMT",
+        "keep-alive": "timeout=5, max=30",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:39.937013+00:00",
+      "product": "rdaqa_final",
+      "product_phase": "final_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_NO&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
+      "valid_time": "2026-09-06T02:00:00+00:00",
+      "variable": "raw__rdaqa_final_nitric_oxide_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 5725,
+        "sha256": "15de477396aec00899b4157cef78e23ef58c7b26c3a12d45593e2c31b4bf8397"
+      },
+      "coverage_id": "RDAQA_10km_NO2",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA_10km_NO2_2026-09-06T0200Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:41 GMT",
+        "keep-alive": "timeout=5, max=27",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:41.465427+00:00",
+      "product": "rdaqa_final",
+      "product_phase": "final_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "3b11791a016ec58ff022d47ef9017e6b2ca4ad97d377815aef6c70d10ed31afe"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_NO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
+      "valid_time": "2026-09-06T02:00:00+00:00",
+      "variable": "raw__rdaqa_final_nitrogen_dioxide_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 5987,
+        "sha256": "33911d449e50166d87d14045b0142e0fedc3a2659f8d7951069779b7e8496015"
+      },
+      "coverage_id": "RDAQA_10km_SO2",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA_10km_SO2_2026-09-06T0200Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:42 GMT",
+        "keep-alive": "timeout=5, max=24",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:43.004645+00:00",
+      "product": "rdaqa_final",
+      "product_phase": "final_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "f9cb1190a5691b25f739fa80937d4884bbb3b6b08de6ec87dd1eef24d1887350"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "mol mol-1",
+      "units_as_published": "mol/mol",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_SO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
+      "valid_time": "2026-09-06T02:00:00+00:00",
+      "variable": "raw__rdaqa_final_sulphur_dioxide_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6783,
+        "sha256": "346c126fbfe584aa5ce1de3c59dedcaca4194513bafcb077ee1d61df402a6b2d"
+      },
+      "coverage_id": "RDAQA-FW_10km_PM2.5",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA-FW_10km_PM2.5_2026-09-06T0200Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:44 GMT",
+        "keep-alive": "timeout=5, max=21",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:44.457870+00:00",
+      "product": "rdaqa_smoke",
+      "product_phase": "firework_contribution_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "d081fa89e190d97be921b72b2aaebebe2a425db0f400c5ae624bf3dd07ae4f6f"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-FW_10km_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
+      "valid_time": "2026-09-06T02:00:00+00:00",
+      "variable": "raw__rdaqa_smoke_pm2_5_surface",
+      "vertical_scope": "surface"
+    },
+    {
+      "artifact": {
+        "bytes": 6906,
+        "sha256": "1471bca2aa55d197e5184626ad56a6dc8cf546c3d3d3a6ab54031624991c9108"
+      },
+      "coverage_id": "RDAQA-FW_10km_PM10",
+      "group_complete": false,
+      "group_notes": "eccc-rdaqa: canonical contracts are absent for PM10 column burden, surface gas mole fractions, wildfire-attributable particulate mass, 24-hour smoke statistics, and RDAQA analysis phases",
+      "group_qc_passed": true,
+      "headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-disposition": "attachment; filename=\"geomet-weather_RDAQA-FW_10km_PM10_2026-09-06T0200Z.tif\"",
+        "content-type": "image/tiff",
+        "date": "Sun, 06 Sep 2026 04:59:45 GMT",
+        "keep-alive": "timeout=5, max=18",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "x-geomet-status": "200 OK"
+      },
+      "http_completed_at": "2026-09-06T04:59:45.942893+00:00",
+      "product": "rdaqa_smoke",
+      "product_phase": "firework_contribution_analysis",
+      "raw": {
+        "bytes": 4558,
+        "finite_cells": 1035,
+        "null_cells": 0,
+        "sha256": "666cf92f159106198e68e6106c1194b5d0b21c082c6ca048f407d664556cba1e"
+      },
+      "run_time": null,
+      "statistic_window_hours": null,
+      "stored_units": "kg m-3",
+      "units_as_published": "kg/m\u00b3",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-FW_10km_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
+      "valid_time": "2026-09-06T02:00:00+00:00",
+      "variable": "raw__rdaqa_smoke_pm10_surface",
+      "vertical_scope": "surface"
+    }
+  ]
+}
