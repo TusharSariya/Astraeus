@@ -168,28 +168,6 @@ def _store_with(digests: dict[str, str], monkeypatch: pytest.MonkeyPatch) -> Art
     return instance
 
 
-def test_present_keys_requires_every_published_logical_artifact(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A time held by only one field/member container is still missing."""
-    instance = ArtifactStore(StoreConfig(database_url="postgresql://unused", endpoint="http://unused", bucket="b", access_key="k", secret_key="s"))
-
-    class CoverageCursor(_Cursor):
-        def fetchall(self) -> list[tuple[dict[str, object]]]:
-            return [
-                ({"valid_times": [T0.isoformat(), (T0 + timedelta(hours=1)).isoformat()]},),
-                ({"valid_times": [T0.isoformat()]},),
-            ]
-
-    @contextmanager
-    def connection() -> Iterator[Any]:
-        class CoverageConnection(_Connection):
-            def cursor(self) -> CoverageCursor:
-                return CoverageCursor({})
-        yield CoverageConnection({})
-
-    monkeypatch.setattr(instance, "connection", connection)
-    assert instance.present_keys("eccc-hrdps", "2026090212") == {to_nanoseconds(T0)}
-
-
 def _result(path: Path) -> RunResult:
     artifact = Artifact(
         logical_name="hrdps-surface",

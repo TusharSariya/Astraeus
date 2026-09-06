@@ -475,17 +475,10 @@ class ArtifactStore:
                 (source_id, provider_run_id),
             )
             rows = cursor.fetchall()
-        # A frame is reusable only when every published logical artifact for
-        # the run carries it.  Taking the union made a surface-only time look
-        # complete when (for example) upper-air fields or an ensemble artifact
-        # were absent at that same time.  Published revisions are already
-        # complete and QC-passed, so coverage within an artifact includes its
-        # required fields/members; intersecting the artifacts preserves that
-        # guarantee at the worker cache boundary.
-        coverage = [_declared_valid_time_nanoseconds(row[0]) for row in rows]
-        if not coverage:
-            return set()
-        return set.intersection(*coverage)
+        present: set[int] = set()
+        for row in rows:
+            present.update(_declared_valid_time_nanoseconds(row[0]))
+        return present
 
     def published_digests(self, source_id: str, provider_run_id: str) -> dict[str, str]:
         """SHA-256 per logical name already published under this run key.

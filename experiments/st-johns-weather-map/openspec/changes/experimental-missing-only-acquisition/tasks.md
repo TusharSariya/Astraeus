@@ -6,7 +6,7 @@
 
 ## 2. Coverage and identity
 
-- [x] 2.1 Require time coverage across every published logical artifact.
-- [x] 2.2 Preserve provider run identity and refuse unsupported aggregate repair before payload retrieval.
+- [x] 2.1 Preserve provider run identity and refuse unsupported aggregate repair before payload retrieval.
+- [ ] 2.2 Declare expected artifact/field/member coverage without breaking time-partitioned artifacts.
 - [ ] 2.3 Define and verify immutable merge publication/API readback for aggregate time-series and field/member containers.
 - [ ] 2.4 Move rolling JSON payload retrieval out of discovery or define a persisted metadata probe that permits zero-payload full hits.
