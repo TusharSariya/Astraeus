@@ -24,6 +24,7 @@ HURRICANE_COLLECTIONS = (
     "hurricanes-error_cone-realtime",
     "hurricanes-wind_radii-realtime",
 )
+RECEIPT_HEADERS = ("content-type", "content-length", "etag", "last-modified", "date")
 
 
 def _parse_time(value: Any) -> datetime | None:
@@ -92,17 +93,26 @@ class ECCCOGCHazardAdapter:
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         documents: dict[str, dict[str, Any]] = {}
         digests: dict[str, str] = {}
+        receipts: dict[str, dict[str, Any]] = {}
         times: list[datetime] = []
         for collection in self.collections:
             url = self._url(collection)
             try:
-                raw = self._client.get_bytes(url, max_bytes=MAX_COLLECTION_BYTES)
+                raw, headers = self._client.get_bytes_with_headers(url, max_bytes=MAX_COLLECTION_BYTES)
+                completed_at = datetime.now(UTC)
                 document = json.loads(raw)
             except (MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, ValueError, TypeError, OSError) as error:
                 raise AdapterUnavailable(f"{self.source_id}: invalid or oversized {collection} response: {error}") from error
             features = _validated_features(self.source_id, collection, document)
             documents[collection] = document
             digests[collection] = hashlib.sha256(raw).hexdigest()
+            receipts[collection] = {
+                "url": url,
+                "body_bytes": len(raw),
+                "body_sha256": digests[collection],
+                "completed_at": completed_at.isoformat(),
+                "headers": {name: value for name in RECEIPT_HEADERS if (value := headers.get(name)) is not None},
+            }
             times.extend(_feature_times(features))
         observed_at = max(times) if times else None
         identity = hashlib.sha256("".join(digests[name] for name in self.collections).encode()).hexdigest()[:16]
@@ -114,6 +124,7 @@ class ECCCOGCHazardAdapter:
             detail={
                 "documents": documents,
                 "digests": digests,
+                "receipts": receipts,
                 "valid_times": [moment.isoformat() for moment in sorted(set(times))],
                 "query_window": {"start": window.start.isoformat(), "end": window.end.isoformat()},
             },
@@ -123,7 +134,13 @@ class ECCCOGCHazardAdapter:
         documents = candidate.detail.get("documents") or {}
         if set(documents) != set(self.collections):
             raise AdapterUnavailable(f"{self.source_id}: candidate is missing a required collection")
-        retrieved_at = datetime.now(UTC)
+        receipts = candidate.detail.get("receipts") or {}
+        if set(receipts) != set(self.collections):
+            raise AdapterUnavailable(f"{self.source_id}: candidate is missing a required acquisition receipt")
+        completed = [_parse_time(receipts[name].get("completed_at")) for name in self.collections]
+        if any(moment is None for moment in completed):
+            raise AdapterUnavailable(f"{self.source_id}: candidate has an invalid acquisition completion time")
+        retrieved_at = max(moment for moment in completed if moment is not None)
         validation = unresolved_manifest_validation(
             self.source_id,
             "native hazard GeoJSON has no owner-approved canonical RunManifest",
@@ -152,6 +169,7 @@ class ECCCOGCHazardAdapter:
                 "valid_times": list(candidate.detail.get("valid_times") or []),
                 "query_window": dict(candidate.detail["query_window"]),
                 "retrieved_at": retrieved_at.isoformat(),
+                "acquisition": dict(receipts[collection]),
                 "upstream_sha256": candidate.detail["digests"][collection],
                 "artifact_sha256": digest,
                 "sha256": digest,

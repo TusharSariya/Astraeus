@@ -45,6 +45,11 @@ def test_thunderstorm_preserves_all_properties_and_geometry(tmp_path):
     assert result.artifacts[0].provenance["operational"] is False
     assert result.artifacts[0].provenance["quality"]["status"] == "suspect"
     assert result.artifacts[0].provenance["quality"]["flags"] == ["manifest_unresolved"]
+    receipt = result.artifacts[0].provenance["acquisition"]
+    assert receipt["url"].endswith("/collections/thunderstorm_outlook/items?bbox=-58.0,45.0,-46.0,50.5&limit=1000&f=json")
+    assert receipt["body_bytes"] > 0
+    assert receipt["body_sha256"] == result.artifacts[0].provenance["upstream_sha256"]
+    assert result.retrieved_at.isoformat() == receipt["completed_at"]
     dispositions = result.artifacts[0].provenance["field_dispositions"]
     assert dispositions["geometry"] == "retrieved"
     assert dispositions["publication_datetime"] == "missing-in-snapshot"
@@ -74,6 +79,16 @@ def test_missing_collection_fails_closed_before_artifact_write(tmp_path):
     candidate = adapter.discover(WINDOW)[0]
     del candidate.detail["documents"][ECCCHurricaneProductsAdapter.collections[-1]]
     with pytest.raises(AdapterUnavailable, match="missing a required collection"):
+        adapter.fetch(candidate, WINDOW, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_missing_acquisition_receipt_fails_closed_before_artifact_write(tmp_path):
+    documents = {name: collection([]) for name in ECCCHurricaneProductsAdapter.collections}
+    adapter = ECCCHurricaneProductsAdapter(client(documents), base_url="https://fixture.invalid")
+    candidate = adapter.discover(WINDOW)[0]
+    del candidate.detail["receipts"][ECCCHurricaneProductsAdapter.collections[-1]]
+    with pytest.raises(AdapterUnavailable, match="missing a required acquisition receipt"):
         adapter.fetch(candidate, WINDOW, tmp_path)
     assert list(tmp_path.iterdir()) == []
 

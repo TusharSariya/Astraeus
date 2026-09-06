@@ -28,6 +28,26 @@ Because no owner-approved canonical hazard manifest exists, the manifest-owned
 verdict is `complete: false` with `manifest_unresolved`; the API has no
 published frame and invents no source time.
 
+After review identified that the original scratch capture had not retained
+response headers or per-request completion times, a new bounded capture ran
+from 2026-09-06T04:23:00.035156Z through 2026-09-06T04:23:02.115415Z. It made
+exactly five requests, each capped at 8,388,608 bytes (41,943,040-byte declared
+aggregate ceiling). The full raw bodies, selected headers, artifacts and JSON
+receipt remain together in `/tmp/eccc137-review-dc78dd9/`.
+
+| Collection | Body bytes | Body SHA-256 | Completed UTC | Response headers |
+| --- | ---: | --- | --- | --- |
+| `thunderstorm_outlook` | 892 | `6a125e265984bc2916d30d48c721bb2ed621adec86868118f02e59fec2c8dc6a` | `2026-09-06T04:23:00.277549Z` | `content-type: application/json`; `date: Sun, 06 Sep 2026 04:23:00 GMT` |
+| `hurricanes-cyclone-realtime` | 911 | `56e80a0cd0ffe9303ec9713115373aae6a98b1d548b9710512734f70e95bd178` | `2026-09-06T04:23:00.609152Z` | `content-type: application/json`; `date: Sun, 06 Sep 2026 04:23:00 GMT` |
+| `hurricanes-track-realtime` | 901 | `40941ee27cafef7aa6530b6261a5cbc6cc90602f80be2370a8ccfe3ff39b5fbe` | `2026-09-06T04:23:01.106504Z` | `content-type: application/json`; `date: Sun, 06 Sep 2026 04:23:01 GMT` |
+| `hurricanes-error_cone-realtime` | 926 | `a4b374b9b71342bb921d858d4277494a5fcbcc563254fe9558bca3d3445b0f42` | `2026-09-06T04:23:01.611670Z` | `content-type: application/json`; `date: Sun, 06 Sep 2026 04:23:01 GMT` |
+| `hurricanes-wind_radii-realtime` | 926 | `f32aeba2faeecc526e2baf18a61b6ce24833fc54824d515f07eb421e51e8566c` | `2026-09-06T04:23:02.115415Z` | `content-type: application/json`; `date: Sun, 06 Sep 2026 04:23:02 GMT` |
+
+Each receipt carries the full request URL, including the evidence-box `bbox`,
+`limit=1000`, and `f=json` query. The candidate retains the receipt unchanged;
+artifact provenance copies its collection's receipt, and the run retrieval time
+is the latest completion time across its required collection set.
+
 The existing CAP adapter live smoke resolved provider run
 `eccc-cap-alerts-20260906T033001Z`, queried its single bounded Avalon box, and
 retrieved one distinct alert in force. Validation passed all declared fields.
