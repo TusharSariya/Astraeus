@@ -65,6 +65,39 @@ def test_fresh_hit_and_concurrent_miss_add_no_provider_requests():
     assert len(calls) == 1
 
 
+def test_expired_entry_conditionally_revalidates_without_replacing_body_identity():
+    body = FIXTURE.read_bytes()
+    calls = []
+    monotonic = [0.0]
+    completed = [NOW]
+    def handler(request: httpx.Request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(200, content=body, headers={
+                "cache-control": "max-age=60", "etag": '"native-revision"',
+                "last-modified": "Sat, 05 Sep 2026 17:59:00 GMT",
+            }, request=request)
+        return httpx.Response(304, content=b"", headers={
+            "cache-control": "max-age=60", "etag": '"native-revision"',
+        }, request=request)
+    query = SWPCRTSWQueryService(
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        clock=lambda: monotonic[0], utcnow=lambda: completed[0], bounded_decode=decode,
+    )
+    first = query.entry()
+    monotonic[0] = 61.0
+    completed[0] = NOW.replace(second=31)
+    second = query.entry()
+    assert len(calls) == 2
+    assert calls[1].headers["if-none-match"] == '"native-revision"'
+    assert calls[1].headers["if-modified-since"] == "Sat, 05 Sep 2026 17:59:00 GMT"
+    assert second.body is first.body
+    assert second.acquisition.body_sha256 == first.acquisition.body_sha256
+    assert second.acquisition.transport_completed_at == first.acquisition.transport_completed_at
+    assert second.acquisition.last_revalidation is not None
+    assert second.acquisition.last_revalidation["http_status"] == 304
+
+
 def test_current_document_refuses_historical_future_and_stale_selection():
     query, _calls = service()
     with pytest.raises(SWPCRTSWUnavailable, match="acquisition context"):

@@ -18,7 +18,7 @@ import httpx
 from ingest.adapters.swpc import RTSW_MAG_URL
 from ingest.isolation import ProcessAllocationLimits, run_bounded_process
 from ingest.resources import acquisition_budget
-from ingest.space_weather import MAX_LARGE_FEED_BYTES, parse_time
+from ingest.space_weather import MAX_LARGE_FEED_BYTES
 from .models import Freshness, KpAcquisition, SolarWindLatest
 from .taf_query import TafQueryUnavailable, _freshness
 
@@ -41,7 +41,7 @@ RTSW_DECODE_LIMITS = ProcessAllocationLimits(512*1024*1024, 1024, MAX_LARGE_FEED
 
 
 def _safe_headers(headers: Mapping[str, str]) -> dict[str, str]:
-    allowed = {"accept", "accept-encoding", "user-agent"}
+    allowed = {"accept", "accept-encoding", "user-agent", "if-none-match", "if-modified-since"}
     return {key.lower(): value for key, value in headers.items() if key.lower() in allowed}
 
 
@@ -69,9 +69,43 @@ class SWPCRTSWQueryService:
         result=run_bounded_process(command=[sys.executable,"-m","weather_api.swpc_rtsw_worker","{output}",selected],stdin=body,destination=None,limits=RTSW_DECODE_LIMITS,require_output=False)
         return json.loads(result.stdout)
 
-    def _fetch(self) -> RTSWDocument:
+    def _fetch(self, prior: RTSWDocument | None = None) -> RTSWDocument:
         sent = {"Accept": "application/json", "Accept-Encoding": "identity"}
+        if prior is not None:
+            etag = prior.acquisition.response_headers.get("etag")
+            modified = prior.acquisition.response_headers.get("last-modified")
+            if etag:
+                sent["If-None-Match"] = etag
+            if modified:
+                sent["If-Modified-Since"] = modified
         with acquisition_budget(MAX_LARGE_FEED_BYTES) as received, self._client.stream("GET", RTSW_MAG_URL, headers=sent) as response:
+            if response.status_code == 304:
+                if next(response.iter_bytes(1), b""):
+                    raise SWPCRTSWUnavailable("SWPC RTSW 304 carried a body")
+                if prior is None:
+                    raise SWPCRTSWUnavailable("SWPC RTSW returned 304 without cached content")
+                response_headers = {key.lower(): value for key, value in response.headers.items()}
+                if response_headers.get("etag") and response_headers["etag"] != prior.acquisition.response_headers.get("etag"):
+                    raise SWPCRTSWUnavailable("SWPC RTSW 304 changed ETag")
+                freshness_headers = dict(response_headers)
+                freshness_headers.setdefault("cache-control", prior.acquisition.response_headers.get("cache-control", ""))
+                completed = self._utcnow()
+                try:
+                    _max_age, ttl = _freshness(freshness_headers, completed)
+                except TafQueryUnavailable as error:
+                    raise SWPCRTSWUnavailable(f"SWPC RTSW freshness invalid: {error}") from error
+                event = {
+                    "http_status": 304,
+                    "effective_url": str(response.request.url),
+                    "request_headers": _safe_headers(response.request.headers),
+                    "response_headers": response_headers,
+                    "transport_completed_at": completed.isoformat(),
+                }
+                acquisition = prior.acquisition.model_copy(update={
+                    "expires_at": completed + timedelta(seconds=ttl),
+                    "last_revalidation": event,
+                })
+                return RTSWDocument(prior.body, acquisition, self._clock() + ttl, prior.backing_bytes)
             if response.status_code != 200:
                 raise SWPCRTSWUnavailable(f"SWPC RTSW returned HTTP {response.status_code}")
             declared = response.headers.get("content-length")
@@ -125,7 +159,9 @@ class SWPCRTSWQueryService:
         if not owner:
             return future.result()
         try:
-            result = self._fetch()
+            with self._lock:
+                prior = self._entry
+            result = self._fetch(prior)
             with self._lock:
                 self._entry = result
                 self._failure = None
