@@ -157,6 +157,7 @@ class SWPCKpAdapter:
         # The worker calls this before reserving resources or issuing discovery
         # requests; reject an unmeasured allocation geometry at that boundary.
         self._require_measured_filesystem(Path(tempfile.gettempdir()))
+        self._require_bounded_runtime()
         return ResourceBounds(
             store_bytes=2 * KP_PROCESS_LIMITS.output_bytes,
             filesystem_bytes=2 * KP_PROCESS_LIMITS.output_bytes,
@@ -178,6 +179,18 @@ class SWPCKpAdapter:
             raise AdapterUnavailable(
                 f"SWPC Kp bounded writer requires measured 4096-byte filesystem blocks; got {geometry[1:]}"
             )
+
+    @staticmethod
+    def _require_bounded_runtime() -> None:
+        """Prove this runtime can lock both kernel limits before any source read."""
+        run_bounded_process(
+            command=[sys.executable, "-c", "import sys; assert len(sys.argv) == 2", "{output}"],
+            stdin=b"",
+            destination=None,
+            limits=KP_PROCESS_LIMITS,
+            timeout_seconds=5,
+            require_output=False,
+        )
 
     @staticmethod
     def _isolated(action: str, mode: str, raw: bytes, destination: Path | None):

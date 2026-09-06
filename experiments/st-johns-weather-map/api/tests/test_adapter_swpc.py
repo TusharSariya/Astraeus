@@ -52,6 +52,7 @@ def local_kp_child(monkeypatch):
         return SimpleNamespace(output_path=destination, stdout=result.stdout)
 
     monkeypatch.setattr(SWPCKpAdapter, "_isolated", staticmethod(run))
+    monkeypatch.setattr(SWPCKpAdapter, "_require_bounded_runtime", staticmethod(lambda: None))
 
 KP_OBSERVED = [
     {"time_tag": "2026-08-30T18:00:00", "Kp": 2.33, "a_running": 9, "station_count": 8},

@@ -63,7 +63,8 @@ def test_kp3h_child_refuses_any_invalid_row_without_output(mode, rows, tmp_path)
     assert not output.exists()
 
 
-def test_kp_operation_bounds_cover_both_documents_and_outputs():
+def test_kp_operation_bounds_cover_both_documents_and_outputs(monkeypatch):
+    monkeypatch.setattr(SWPCKpAdapter, "_require_bounded_runtime", staticmethod(lambda: None))
     bounds = SWPCKpAdapter().operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=timezone.utc)))
     assert bounds.received_bytes == 1024 * 1024
     assert bounds.store_bytes == 1024 * 1024
@@ -81,6 +82,14 @@ def test_kp_refuses_unmeasured_filesystem_geometry(monkeypatch, tmp_path):
     monkeypatch.setattr(os, "statvfs", lambda _path: VFS())
     with pytest.raises(AdapterUnavailable, match="requires measured 4096-byte filesystem blocks"):
         SWPCKpAdapter._require_measured_filesystem(tmp_path)
+
+
+def test_kp_operation_preflight_refuses_unsupported_kernel_before_discovery(monkeypatch):
+    def unavailable():
+        raise RuntimeError("locked limits unavailable")
+    monkeypatch.setattr(SWPCKpAdapter, "_require_bounded_runtime", staticmethod(unavailable))
+    with pytest.raises(RuntimeError, match="locked limits unavailable"):
+        SWPCKpAdapter().operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=timezone.utc)))
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="RLIMIT_AS target-runtime verification")
