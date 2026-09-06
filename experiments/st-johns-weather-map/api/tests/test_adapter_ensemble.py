@@ -1,40 +1,49 @@
-"""The four ensemble access shapes, one adapter each, no network.
+"""Ensemble access shapes, strict failures, and retained live readback.
 
 Every family here is declared **not schedulable**, so none of these adapters has
-ever run against its upstream. The fixtures below are therefore the whole of the
-evidence: fake ``.idx`` and ``.index`` text in the producers' own shapes (taken
-from ``docs/research/wayfinder/ensemble-access.md``), fake clients that answer
-from those strings, and injected readers that stand in for the GRIB and GeoTIFF
-decoders. What is being pinned is the part that does not depend on decoding: the
-member identifiers, the request shapes, the two-file assembly, the storage scope
-and the refusal to schedule.
+run through the scheduler. Fixtures pin identifiers, request shapes, assembly,
+storage scope, and failure behavior. The REPS test also builds a member
+artifact from those fixtures and reads it through the experimental HTTP API
+without making the source operational. The 2026-09-05 live capture is evidenced
+by a hand-trimmed receipt, not by a retained payload (owner decision of
+2026-09-05, issue 70).
 
 Spec-Refs: openspec/changes/ensemble-families-and-member-statistics/specs/artifact-ingestion/spec.md
 """
 
 from __future__ import annotations
 
+import importlib
+import io
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy
 import pytest
 import xarray
 import zarr
-
+from fastapi.testclient import TestClient
 from ingest.adapters import eccc_geomet_ensemble as reps_module
 from ingest.adapters.eccc_geomet_ensemble import (
-    ECCCREPSEnsembleAdapter,
     REPS_EVIDENCE_BOX,
     REPS_SCALESIZE,
+    ECCCREPSEnsembleAdapter,
+    REPSCoverageError,
     control_retrieval_for,
     coverage_id,
     coverage_params,
     coverage_url,
     declaration_for,
+    decode_reps_geotiff,
     member_identifiers,
+    pressure_coverage_id,
     stored_member_coverages,
+)
+from ingest.adapters.eccc_geomet_reductions import (
+    SELECTED_REDUCTIONS,
+    fetch_geps_reductions,
 )
 from ingest.adapters.ecmwf_opendata import (
     ECMWFAIFSEnsembleAdapter,
@@ -51,11 +60,15 @@ from ingest.adapters.noaa_s3 import (
 from ingest.contract import AdapterUnavailable, FetchWindow, RunCandidate
 from ingest.grib import CONTROL_COORD, MEMBER_DIM
 from ingest.registry import get_config, registered_adapters
-
-UTC = timezone.utc
+from ingest.store import CurrentArtifact, _declared_valid_time_nanoseconds
+from PIL import Image, TiffImagePlugin
+from weather_api import store as api_store
+from weather_api.app import app
+from weather_api.store import LiveStore
 
 #: The four families this task builds, in the owner's declared build order.
 BUILD_ORDER = ("eccc-reps", "ecmwf-aifs-ens", "ecmwf-ens", "noaa-gefs")
+api_module = importlib.import_module("weather_api.app")
 
 
 # --------------------------------------------------------------------- fixtures
@@ -111,7 +124,9 @@ class FakeClient:
     every range download writes a stub the injected reader never opens.
     """
 
-    def __init__(self, *, texts: dict[str, str] | None = None, missing: tuple[str, ...] = ()) -> None:
+    def __init__(
+        self, *, texts: dict[str, str] | None = None, missing: tuple[str, ...] = ()
+    ) -> None:
         self.texts = texts or {}
         self.missing = missing
         self.urls: list[str] = []
@@ -127,6 +142,11 @@ class FakeClient:
         self._check(url)
         return FakeResponse(b"II*\x00fake-tiff")
 
+    def get_bytes(self, url: str, *, max_bytes: int):
+        response = self.get(url)
+        assert len(response.content) <= max_bytes
+        return response.content, response.headers
+
     def get_text(self, url: str) -> str:
         self.urls.append(url)
         self._check(url)
@@ -134,7 +154,9 @@ class FakeClient:
             return self.texts[url]
         raise FileNotFoundError(f"no fixture text for {url}")
 
-    def download_ranges(self, url: str, destination: Path, ranges, *, max_bytes: int) -> int:
+    def download_ranges(
+        self, url: str, destination: Path, ranges, *, max_bytes: int
+    ) -> int:
         self.urls.append(url)
         self._check(url)
         self.ranges.append((url, list(ranges)))
@@ -148,7 +170,9 @@ def window_at(moment: datetime = datetime(2026, 9, 2, 12, tzinfo=UTC)) -> FetchW
 
 def open_artifact(payload_path: Path) -> xarray.Dataset:
     """The staged artifact, read back the way the store reads it."""
-    return xarray.open_zarr(zarr.storage.ZipStore(str(payload_path), mode="r"), consolidated=False)
+    return xarray.open_zarr(
+        zarr.storage.ZipStore(str(payload_path), mode="r"), consolidated=False
+    )
 
 
 # ------------------------------------------------- build order and registration
@@ -174,7 +198,9 @@ def test_registering_an_ensemble_adapter_does_not_make_the_family_schedulable():
         config = get_config(source_id)
         assert config.ensemble is not None
         assert config.ensemble.schedulable is False
-        assert config.ingestible is False, f"{source_id} became schedulable by being adapted"
+        assert config.ingestible is False, (
+            f"{source_id} became schedulable by being adapted"
+        )
 
 
 @pytest.mark.parametrize(
@@ -186,7 +212,9 @@ def test_registering_an_ensemble_adapter_does_not_make_the_family_schedulable():
         NOAAGEFSEnsembleAdapter(),
     ],
 )
-def test_discovery_refuses_while_the_registry_says_the_family_is_not_schedulable(adapter):
+def test_discovery_refuses_while_the_registry_says_the_family_is_not_schedulable(
+    adapter,
+):
     with pytest.raises(AdapterUnavailable) as error:
         adapter.discover(window_at())
     assert "not schedulable" in str(error.value)
@@ -216,7 +244,11 @@ def test_reps_requests_the_box_server_side_in_the_verified_shape():
     params = coverage_params("REPS.MEM.ETA_NT.01")
     assert ("REQUEST", "GetCoverage") in params
     assert ("FORMAT", "image/tiff") in params  # mandatory on this endpoint
-    assert ("SCALESIZE", REPS_SCALESIZE) in params  # native resolution, mandatory
+    assert (
+        "SCALESIZE",
+        REPS_SCALESIZE,
+    ) in params  # explicit server-resampled output shape
+    assert ("SUBSETTINGCRS", "http://www.opengis.net/def/crs/EPSG/0/4326") in params
     subsets = [value for key, value in params if key == "SUBSET"]
     assert subsets == [
         f"long({REPS_EVIDENCE_BOX['west']},{REPS_EVIDENCE_BOX['east']})",
@@ -229,17 +261,24 @@ def test_reps_requests_the_box_server_side_in_the_verified_shape():
 def test_reps_declares_no_control_retrieval_while_no_control_is_identified():
     declaration = declaration_for("eccc-reps")
     assert declaration.control is not None  # the family publishes members
-    assert declaration.control.identifier is None  # and none of them is named the control
+    assert (
+        declaration.control.identifier is None
+    )  # and none of them is named the control
     assert control_retrieval_for(declaration) is None
 
 
 def reps_adapter(client: FakeClient) -> ECCCREPSEnsembleAdapter:
-    def reader(payload: bytes, *, coverage: str):
+    def reader(payload: bytes, *, coverage: str, valid_time: datetime):
         key = next(
-            key for key, template in stored_member_coverages("eccc-reps")
+            key
+            for key, template in stored_member_coverages("eccc-reps")
             if coverage.startswith(template.split("<")[0])
         )
-        return member_field(UNITS_BY_KEY[key])
+        return member_field(UNITS_BY_KEY[key]).expand_dims(
+            valid_time=[
+                numpy.datetime64(valid_time.astimezone(UTC).replace(tzinfo=None), "ns")
+            ]
+        )
 
     return ECCCREPSEnsembleAdapter(client=client, reader=reader)
 
@@ -247,7 +286,9 @@ def reps_adapter(client: FakeClient) -> ECCCREPSEnsembleAdapter:
 def test_reps_stores_every_published_member_field_and_flags_no_control(tmp_path: Path):
     client = FakeClient()
     result = reps_adapter(client).assemble(
-        RunCandidate(provider_run_id="reps-2026090200", run_time=datetime(2026, 9, 2, tzinfo=UTC)),
+        RunCandidate(
+            provider_run_id="reps-2026090200", run_time=datetime(2026, 9, 2, tzinfo=UTC)
+        ),
         window_at(),
         tmp_path,
     )
@@ -269,15 +310,459 @@ def test_reps_stores_every_published_member_field_and_flags_no_control(tmp_path:
 def test_reps_publishes_one_member_axis_with_no_member_flagged_control(tmp_path: Path):
     client = FakeClient()
     adapter = reps_adapter(client)
-    candidate = RunCandidate(provider_run_id="reps-2026090200", run_time=datetime(2026, 9, 2, tzinfo=UTC))
+    candidate = RunCandidate(
+        provider_run_id="reps-2026090200", run_time=datetime(2026, 9, 2, tzinfo=UTC)
+    )
     adapter.assemble(candidate, window_at(), tmp_path)
 
     stacked = reps_module.stack_members(
-        {member: member_field("percent") for member in member_identifiers(declaration_for("eccc-reps"))},
+        {
+            member: member_field("percent")
+            for member in member_identifiers(declaration_for("eccc-reps"))
+        },
         control=None,
     )
     assert stacked.sizes[MEMBER_DIM] == 21
     assert not bool(stacked[CONTROL_COORD].values.any())
+
+
+def _coverage_tiff(
+    *,
+    keyed: bool = False,
+    width: int = 133,
+    height: int = 61,
+    values: numpy.ndarray | None = None,
+    nodata: object | None = None,
+    tie: tuple[float, ...] = (0.0, 0.0, 0.0, -58.0, 50.5, 0.0),
+    raster_type: int = 1,
+    scale: tuple[float, ...] | None = None,
+) -> bytes:
+    image = Image.fromarray(
+        numpy.full((height, width), 42.0, dtype=numpy.float32)
+        if values is None
+        else values,
+        mode="F",
+    )
+    tags = TiffImagePlugin.ImageFileDirectory_v2()
+    tags[33550] = scale or (12.0 / width, 5.5 / height, 0.0)
+    tags[33922] = tie
+    if keyed:
+        tags[34735] = (1, 1, 0, 2, 1025, 0, 1, raster_type, 2048, 0, 1, 4326)
+    if nodata is not None:
+        tags[42113] = nodata
+    output = io.BytesIO()
+    image.save(output, format="TIFF", tiffinfo=tags)
+    return output.getvalue()
+
+
+def test_reps_real_reader_accepts_unkeyed_geomet_output_and_records_resampling():
+    field = decode_reps_geotiff(
+        _coverage_tiff(),
+        coverage="REPS.MEM.ETA_NT.01",
+        variable="total_cloud_opacity",
+        valid_time=datetime(2026, 9, 5, 18, tzinfo=UTC),
+        bounds=REPS_EVIDENCE_BOX,
+    )
+    assert field.shape == (1, 61, 133)
+    assert tuple(field.dims) == ("valid_time", "latitude", "longitude")
+    assert field.attrs["crs_evidence"].endswith("no GeoKeyDirectoryTag")
+    assert field.attrs["resampling"] == "server_resampled_method_unknown"
+    assert (
+        float(field.sel(latitude=47.5, longitude=-52.7, method="nearest").squeeze())
+        == 42.0
+    )
+
+
+def test_reps_reader_masks_gdal_nodata_and_rejects_malformed_nodata():
+    values = numpy.full((61, 133), 42.0, dtype=numpy.float32)
+    values[3, 4] = -9999.0
+    field = decode_reps_geotiff(
+        _coverage_tiff(values=values, nodata="-9999"),
+        coverage="REPS.MEM.ETA_NT.01",
+        variable="total_cloud_opacity",
+        valid_time=datetime(2026, 9, 5, 18, tzinfo=UTC),
+        bounds=REPS_EVIDENCE_BOX,
+    )
+    assert numpy.isnan(field.values[0, 3, 4])
+    with pytest.raises(REPSCoverageError, match="malformed GDAL_NODATA"):
+        decode_reps_geotiff(
+            _coverage_tiff(nodata="missing"),
+            coverage="REPS.MEM.ETA_NT.01",
+            variable="total_cloud_opacity",
+            valid_time=datetime(2026, 9, 5, 18, tzinfo=UTC),
+            bounds=REPS_EVIDENCE_BOX,
+        )
+    with pytest.raises(REPSCoverageError, match="non-finite GDAL_NODATA"):
+        decode_reps_geotiff(
+            _coverage_tiff(nodata="nan"),
+            coverage="REPS.MEM.ETA_NT.01",
+            variable="total_cloud_opacity",
+            valid_time=datetime(2026, 9, 5, 18, tzinfo=UTC),
+            bounds=REPS_EVIDENCE_BOX,
+        )
+
+
+def test_reps_reader_honours_tiepoint_offsets_and_rejects_point_pixels():
+    offset_tie = (2.0, 3.0, 0.0, -58.0 + 2 * 12.0 / 133, 50.5 - 3 * 5.5 / 61, 0.0)
+    field = decode_reps_geotiff(
+        _coverage_tiff(keyed=True, tie=offset_tie),
+        coverage="REPS.MEM.ETA_NT.01",
+        variable="total_cloud_opacity",
+        valid_time=datetime(2026, 9, 5, 18, tzinfo=UTC),
+        bounds=REPS_EVIDENCE_BOX,
+    )
+    assert field.longitude.values[0] == pytest.approx(-58.0 + 0.5 * 12.0 / 133)
+    assert field.latitude.values[0] == pytest.approx(50.5 - 0.5 * 5.5 / 61)
+    with pytest.raises(Exception, match="RasterType"):
+        decode_reps_geotiff(
+            _coverage_tiff(keyed=True, raster_type=2),
+            coverage="REPS.MEM.ETA_NT.01",
+            variable="total_cloud_opacity",
+            valid_time=datetime(2026, 9, 5, 18, tzinfo=UTC),
+            bounds=REPS_EVIDENCE_BOX,
+        )
+
+
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"scale": (float("nan"), 5.5 / 61, 0.0)}, "scale/tie-point"),
+        ({"tie": (0.0, 0.0, 0.0, -58.0, float("inf"), 0.0)}, "scale/tie-point"),
+        ({"width": 132}, "shape"),
+    ],
+)
+def test_reps_reader_rejects_nonfinite_transform_and_wrong_shape(kwargs, message):
+    with pytest.raises(REPSCoverageError, match=message):
+        decode_reps_geotiff(
+            _coverage_tiff(**kwargs),
+            coverage="REPS.MEM.ETA_NT.01",
+            variable="total_cloud_opacity",
+            valid_time=datetime(2026, 9, 5, 18, tzinfo=UTC),
+            bounds=REPS_EVIDENCE_BOX,
+        )
+
+
+def test_reps_pressure_level_is_never_formed_when_not_advertised():
+    template = "REPS.MEM.PRES_HR.<hPa>.<member>"
+    advertised = ("REPS.MEM.PRES_HR.700.01",)
+    assert (
+        pressure_coverage_id(
+            template, level_hpa=700, member="01", advertised=advertised
+        )
+        == advertised[0]
+    )
+    with pytest.raises(Exception, match="not advertised"):
+        pressure_coverage_id(
+            template, level_hpa=775, member="01", advertised=advertised
+        )
+
+
+def test_one_missing_reps_member_makes_the_selected_family_partial(tmp_path: Path):
+    client = FakeClient(missing=("ETA_NT.07",))
+    result = reps_adapter(client).assemble(
+        RunCandidate(
+            "reps-partial",
+            datetime(2026, 9, 5, 12, tzinfo=UTC),
+            detail={"valid_time": datetime(2026, 9, 5, 18, tzinfo=UTC)},
+        ),
+        window_at(datetime(2026, 9, 5, 18, tzinfo=UTC)),
+        tmp_path,
+        selected_keys=("total_cloud_opacity", "wind_speed_10m"),
+    )
+    assert result.complete is False
+    assert (
+        "decode_error:coverage:REPS.MEM.ETA_NT.07"
+        in result.artifacts[0].provenance["quality"]["flags"]
+    )
+
+
+def test_reps_selected_subset_never_claims_whole_family_completion(tmp_path: Path):
+    result = reps_adapter(FakeClient()).assemble(
+        RunCandidate(
+            "reps-subset",
+            datetime(2026, 9, 5, 12, tzinfo=UTC),
+            detail={"valid_time": datetime(2026, 9, 5, 18, tzinfo=UTC)},
+        ),
+        window_at(datetime(2026, 9, 5, 18, tzinfo=UTC)),
+        tmp_path,
+        selected_keys=("total_cloud_opacity", "wind_speed_10m"),
+    )
+    accounting = result.artifacts[0].provenance["field_accounting"]
+    assert accounting["advertised_coverages"] == 1239
+    assert accounting["catalogued_surface_fields"] == 7
+    assert len(accounting["deferred_surface_fields"]) == 5
+    assert accounting["other_advertised_coverages_deferred"] == 1092
+    assert accounting["whole_family_complete"] is False
+    assert result.complete is False
+
+
+def test_reps_wrong_or_missing_valid_time_fails_closed(tmp_path: Path):
+    def wrong_time_reader(payload: bytes, *, coverage: str, valid_time: datetime):
+        return member_field("percent").expand_dims(
+            valid_time=[numpy.datetime64("2026-09-05T15:00:00", "ns")]
+        )
+
+    adapter = ECCCREPSEnsembleAdapter(client=FakeClient(), reader=wrong_time_reader)
+    result = adapter.assemble(
+        RunCandidate(
+            "reps-wrong-time",
+            datetime(2026, 9, 5, 12, tzinfo=UTC),
+            detail={"valid_time": datetime(2026, 9, 5, 18, tzinfo=UTC)},
+        ),
+        window_at(datetime(2026, 9, 5, 18, tzinfo=UTC)),
+        tmp_path,
+        selected_keys=("total_cloud_opacity",),
+    )
+    assert result.complete is False
+    assert any(
+        "valid_time" in flag
+        for flag in result.artifacts[0].provenance["quality"]["flags"]
+    )
+
+    class MissingTimeAdapter(ECCCREPSEnsembleAdapter):
+        pass
+
+    with pytest.raises(
+        AdapterUnavailable, match="offset-aware run_time and valid_time"
+    ):
+        MissingTimeAdapter(client=FakeClient()).assemble(
+            RunCandidate("reps-no-time", None),
+            window_at(),
+            tmp_path,
+            selected_keys=("total_cloud_opacity",),
+        )
+
+
+def test_reps_naive_or_blank_run_identity_is_refused_before_http(tmp_path: Path):
+    client = FakeClient()
+    adapter = reps_adapter(client)
+    with pytest.raises(AdapterUnavailable, match="provider_run_id"):
+        adapter.assemble(
+            RunCandidate(
+                "",
+                datetime(2026, 9, 5, 12),  # noqa: DTZ001 - intentional rejection
+                detail={"valid_time": datetime(2026, 9, 5, 18)},  # noqa: DTZ001
+            ),
+            window_at(),
+            tmp_path,
+            selected_keys=("total_cloud_opacity",),
+        )
+    assert client.urls == []
+
+
+def test_reps_request_and_artifact_preserve_exact_run_and_valid_identity(
+    tmp_path: Path,
+):
+    client = FakeClient()
+    result = reps_adapter(client).assemble(
+        RunCandidate(
+            "reps-exact",
+            datetime(2026, 9, 5, 12, tzinfo=UTC),
+            detail={"valid_time": datetime(2026, 9, 5, 18, tzinfo=UTC)},
+        ),
+        window_at(datetime(2026, 9, 5, 18, tzinfo=UTC)),
+        tmp_path,
+        selected_keys=("total_cloud_opacity",),
+    )
+    assert all("TIME=2026-09-05T18%3A00%3A00Z" in url for url in client.urls)
+    assert all(
+        "DIM_REFERENCE_TIME=2026-09-05T12%3A00%3A00Z" in url for url in client.urls
+    )
+    provenance = result.artifacts[0].provenance
+    assert provenance["provider_run_id"] == "reps-exact"
+    assert provenance["valid_times"] == ["2026-09-05T18:00:00+00:00"]
+    assert len(_declared_valid_time_nanoseconds(provenance)) == 1
+
+
+class GEPSFixtureClient:
+    def __init__(self, *, missing: str | None = None):
+        self.missing = missing
+
+    def get(self, url: str):
+        if self.missing and self.missing in url:
+            return FakeResponse(b"<ExceptionReport>NoMatch</ExceptionReport>")
+        return FakeResponse(_coverage_tiff(keyed=True, width=24, height=11))
+
+    def get_bytes(self, url: str, *, max_bytes: int):
+        response = self.get(url)
+        assert len(response.content) <= max_bytes
+        return response.content, response.headers
+
+
+def test_geps_retains_provider_reductions_without_a_member_axis(tmp_path: Path):
+    artifact = fetch_geps_reductions(
+        valid_time=datetime(2026, 9, 5, 12, tzinfo=UTC),
+        reference_time=datetime(2026, 9, 5, 0, tzinfo=UTC),
+        workdir=tmp_path,
+        client=GEPSFixtureClient(),
+    )
+    dataset = open_artifact(artifact.payload_path)
+    assert set(dataset.data_vars) == {item.variable for item in SELECTED_REDUCTIONS}
+    assert MEMBER_DIM not in dataset.dims
+    assert artifact.provenance["members_published"] is False
+    assert artifact.provenance["computed_here"] is False
+    assert artifact.provenance["provider_run_id"] == "geps-20260905T00Z-f012"
+    assert artifact.provenance["valid_times"] == ["2026-09-05T12:00:00+00:00"]
+    assert len(_declared_valid_time_nanoseconds(artifact.provenance)) == 1
+    assert artifact.provenance["field_accounting"] == {
+        "advertised_coverages": 532,
+        "selected_reductions": 5,
+        "other_advertised_coverages_deferred": 527,
+        "whole_family_complete": False,
+    }
+    assert {row["provider_statistic"] for row in artifact.provenance["reductions"]} == {
+        "mean",
+        "standard_deviation",
+        "percentile",
+        "threshold_probability",
+    }
+
+
+def test_missing_selected_geps_reduction_fails_without_an_artifact(tmp_path: Path):
+    with pytest.raises(Exception, match="not a TIFF"):
+        fetch_geps_reductions(
+            valid_time=datetime(2026, 9, 5, 12, tzinfo=UTC),
+            reference_time=datetime(2026, 9, 5, 0, tzinfo=UTC),
+            workdir=tmp_path,
+            client=GEPSFixtureClient(missing="ERSSTD"),
+        )
+    assert not (tmp_path / "eccc_geps_reductions.zarr.zip").exists()
+
+
+RECEIPT_PATH = (
+    Path(__file__).resolve().parent
+    / "fixtures/eccc_ensemble/eccc-ensemble-2026-09-05.receipt.json"
+)
+
+
+def test_live_capture_receipt_matches_the_request_shape_the_adapter_forms():
+    """The retained evidence is a receipt, not a payload.
+
+    Provider payloads were removed from history per the owner decision of
+    2026-09-05 (issue 70). What stays is request identity, byte counts,
+    checksums and times, and it has to agree with what the adapter actually
+    asks GeoMet for.
+    """
+    receipt = json.loads(RECEIPT_PATH.read_text())
+    shape = receipt["request_shape"]
+    assert shape["SCALESIZE"] == REPS_SCALESIZE
+    assert shape["SUBSET"] == [
+        f"long({REPS_EVIDENCE_BOX['west']},{REPS_EVIDENCE_BOX['east']})",
+        f"lat({REPS_EVIDENCE_BOX['south']},{REPS_EVIDENCE_BOX['north']})",
+    ]
+    params = dict(coverage_params("REPS.MEM.ETA_NT.01"))
+    assert params["SUBSETTINGCRS"] == shape["SUBSETTINGCRS"]
+    assert params["FORMAT"] == shape["FORMAT"]
+
+    rows = receipt["representative_responses"]
+    assert {row["coverage_id"] for row in rows if row["kind"] == "geps"} == {
+        item.coverage_id for item in SELECTED_REDUCTIONS
+    }
+    for row in rows:
+        assert set(row) == {
+            "kind",
+            "coverage_id",
+            "source_uri",
+            "decoded_body_bytes",
+            "sha256",
+            "retrieved_at",
+            "content_type",
+        }  # identity and integrity only; no decoded values
+        assert len(row["sha256"]) == 64
+        assert row["decoded_body_bytes"] > 0
+    assert receipt["totals"]["requests"] == 48
+    assert receipt["field_accounting"]["reps"]["advertised_coverages"] == 1239
+    for entry in receipt["rebuilt_artifacts"].values():
+        assert entry["retained_in_git"] is False
+
+
+def test_reps_member_artifact_round_trips_through_reader_and_http(
+    monkeypatch, tmp_path: Path
+):
+    # The artifact is built here from the synthetic member fixtures, in the
+    # same 21-member shape the live capture produced. No provider payload is
+    # stored in Git (owner decision of 2026-09-05, issue 70); the live capture
+    # is evidenced by the receipt table in the change proposal and by
+    # ``fixtures/eccc_ensemble/eccc-ensemble-2026-09-05.receipt.json``.
+    built = reps_adapter(FakeClient()).assemble(
+        RunCandidate(
+            "reps-20260905T12Z-f006",
+            datetime(2026, 9, 5, 12, tzinfo=UTC),
+            detail={"valid_time": datetime(2026, 9, 5, 18, tzinfo=UTC)},
+        ),
+        window_at(datetime(2026, 9, 5, 18, tzinfo=UTC)),
+        tmp_path,
+        selected_keys=("total_cloud_opacity", "wind_speed_10m"),
+    )
+    artifact_path = built.artifacts[0].payload_path
+    dataset = open_artifact(artifact_path)
+    current = CurrentArtifact(
+        source_id="eccc-reps",
+        logical_name="members",
+        revision_id="retained-reps-20260905",
+        object_key=str(artifact_path),
+        media_type="application/zarr+zip",
+        byte_size=artifact_path.stat().st_size,
+        provenance={
+            "members": {
+                "declared": 21,
+                "present": list(member_identifiers(declaration_for("eccc-reps"))),
+                "missing": [],
+                "control": None,
+            }
+        },
+        published_at=datetime(2026, 9, 5, 18, tzinfo=UTC),
+        run_time=datetime(2026, 9, 5, 12, tzinfo=UTC),
+        retrieved_at=datetime(2026, 9, 5, 18, tzinfo=UTC),
+        provider_run_id="reps-20260905T12Z-f006",
+        native_crs="EPSG:4326",
+    )
+
+    class Harness(LiveStore):
+        def __init__(self):
+            super().__init__(artifact_store=None, cache_dir=tmp_path)
+
+        def current(self):
+            return [current]
+
+        def open(self, _artifact):
+            return dataset
+
+        def assert_object_store_reachable(self):
+            pass
+
+    manifest = SimpleNamespace(
+        class_for=lambda _name: "retrieved", evidence_classes=("retrieved",)
+    )
+    monkeypatch.setattr(api_store, "artifact_manifest", lambda _artifact: manifest)
+    monkeypatch.setitem(api_store.FIELD_BY_VARIABLE, "wind_speed_10m", "wind_speed_10m")
+    harness = Harness()
+    samples = harness.sample_point(
+        47.56, -52.71, datetime(2026, 9, 5, 18, tzinfo=UTC), member="01"
+    )
+    assert {sample.variable for sample in samples} == {
+        "total_cloud_opacity",
+        "wind_speed_10m",
+    }
+    assert all(sample.value is not None for sample in samples)
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(api_module, "live_store", lambda: harness)
+    response = TestClient(app).get(
+        "/api/experiments/weather/v0/point",
+        params={
+            "latitude": 47.56,
+            "longitude": -52.71,
+            "valid_time": "2026-09-05T18:00:00Z",
+            "member": "01",
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["operational"] is False
+    assert {item["field"] for item in body["fields"]} >= {
+        "total_cloud_opacity",
+        "wind_speed_10m",
+    }
 
 
 # ------------------------------------------------------------------ 2. AIFS-ENS
@@ -348,7 +833,10 @@ def aifs_adapter(client: FakeClient) -> ECMWFAIFSEnsembleAdapter:
 
 def test_aifs_ens_assembles_two_files_into_one_member_axis(tmp_path: Path):
     client = FakeClient(
-        texts={f"{AIFS_PF_URL}.index": AIFS_PF_INDEX, f"{AIFS_CF_URL}.index": AIFS_CF_INDEX}
+        texts={
+            f"{AIFS_PF_URL}.index": AIFS_PF_INDEX,
+            f"{AIFS_CF_URL}.index": AIFS_CF_INDEX,
+        }
     )
     result = aifs_adapter(client).assemble(
         RunCandidate(
@@ -370,8 +858,12 @@ def test_aifs_ens_assembles_two_files_into_one_member_axis(tmp_path: Path):
     assert result.artifacts[0].provenance["control_file"] == AIFS_CF_URL
 
 
-def test_aifs_ens_publishes_partial_with_the_control_named_when_cf_is_missing(tmp_path: Path):
-    client = FakeClient(texts={f"{AIFS_PF_URL}.index": AIFS_PF_INDEX}, missing=("-cf.",))
+def test_aifs_ens_publishes_partial_with_the_control_named_when_cf_is_missing(
+    tmp_path: Path,
+):
+    client = FakeClient(
+        texts={f"{AIFS_PF_URL}.index": AIFS_PF_INDEX}, missing=("-cf.",)
+    )
     result = aifs_adapter(client).assemble(
         RunCandidate(
             provider_run_id="aifs-ens-2026090100",
@@ -394,7 +886,10 @@ def test_aifs_ens_publishes_partial_with_the_control_named_when_cf_is_missing(tm
 
 def test_aifs_ens_stores_only_the_catalogue_family_fields(tmp_path: Path):
     client = FakeClient(
-        texts={f"{AIFS_PF_URL}.index": AIFS_PF_INDEX, f"{AIFS_CF_URL}.index": AIFS_CF_INDEX}
+        texts={
+            f"{AIFS_PF_URL}.index": AIFS_PF_INDEX,
+            f"{AIFS_CF_URL}.index": AIFS_CF_INDEX,
+        }
     )
     result = aifs_adapter(client).assemble(
         RunCandidate(
@@ -434,7 +929,9 @@ IFS_EF_INDEX = "\n".join(
 )
 
 
-def test_ifs_ens_reports_the_control_missing_rather_than_failing_the_run(tmp_path: Path):
+def test_ifs_ens_reports_the_control_missing_rather_than_failing_the_run(
+    tmp_path: Path,
+):
     client = FakeClient(texts={f"{IFS_EF_URL}.index": IFS_EF_INDEX})
     adapter = ECMWFENSEnsembleAdapter(client=client, reader=ecmwf_reader)
 
@@ -520,7 +1017,10 @@ def gefs_client(idx: str = GEFS_IDX) -> FakeClient:
     adapter = NOAAGEFSEnsembleAdapter()
     members = gefs_member_identifiers(get_config("noaa-gefs").ensemble)
     return FakeClient(
-        texts={f"{adapter.member_url(gefs_candidate(), member)}.idx": idx for member in members}
+        texts={
+            f"{adapter.member_url(gefs_candidate(), member)}.idx": idx
+            for member in members
+        }
     )
 
 
@@ -557,7 +1057,8 @@ def test_gefs_stamps_the_averaging_window_from_the_records_own_label(tmp_path: P
 
     selection = select_gefs_member_records(GEFS_IDX)
     label = next(
-        label for _range, upstream, label in selection.wanted
+        label
+        for _range, upstream, label in selection.wanted
         if upstream.startswith("TCDC:entire atmosphere")
     )
     assert label == "18-24 hour ave fcst"
@@ -571,20 +1072,26 @@ def test_gefs_stamps_the_averaging_window_from_the_records_own_label(tmp_path: P
     assert "total_cloud_geometric" not in stored  # never under the instantaneous key
 
 
-def test_gefs_does_not_store_an_average_whose_window_the_record_leaves_unstated(tmp_path: Path):
+def test_gefs_does_not_store_an_average_whose_window_the_record_leaves_unstated(
+    tmp_path: Path,
+):
     adapter = NOAAGEFSEnsembleAdapter(
         client=gefs_client(GEFS_IDX_UNSTATED_WINDOW), reader=gefs_reader
     )
     result = adapter.assemble(gefs_candidate(), window_at(), tmp_path)
 
     provenance = result.artifacts[0].provenance
-    assert provenance["unstorable_fields"], "an unstated window must be reported, not stored"
+    assert provenance["unstorable_fields"], (
+        "an unstated window must be reported, not stored"
+    )
     assert "total_cloud_mean_6h" in provenance["storage_scope"]["not_retrieved"]
     stored = open_artifact(result.artifacts[0].payload_path)
     assert "total_cloud_mean_6h" not in stored
 
 
-def test_gefs_lists_every_other_published_record_as_available_not_stored(tmp_path: Path):
+def test_gefs_lists_every_other_published_record_as_available_not_stored(
+    tmp_path: Path,
+):
     adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader)
     result = adapter.assemble(gefs_candidate(), window_at(), tmp_path)
 

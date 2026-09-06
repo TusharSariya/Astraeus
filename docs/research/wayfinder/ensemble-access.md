@@ -220,17 +220,20 @@ across 1 239 `REPS.MEM.*` coverages plus ~534 `REPS.DIAG.*` provider
 reductions; 22 `ETA_*` surface fields, `NTAT_EI`, and a `PRES_*` set of `GZ`,
 `HR`, `TT` on 9 pressure levels plus `TT`, `HU`, `WSPD` at 40/80/120 m;
 **wind speed only, no u/v on any member**, so member wind direction is not
-retrievable; native `SCALESIZE` for the box is `long(133),lat(61)`.
+retrievable. The 2026-09-02 probe requested `SCALESIZE=long(133),lat(61)`;
+section 7 corrects the earlier native-resolution interpretation.
 
 **Access path.** GeoMet WCS 2.0.1, the request shape established in that file
-(`FORMAT` mandatory, `SUBSET` not `BBOX`, `SCALESIZE` mandatory for native
-resolution), one coverage per member per field:
+(`FORMAT` mandatory, `SUBSET` not `BBOX`), one coverage per member per field.
+The corrected request declares the geographic subsetting CRS and treats
+`SCALESIZE` as an output shape:
 
 ```
 https://geo.weather.gc.ca/geomet
   ?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage
   &COVERAGEID=REPS.MEM.ETA_NT.01
   &FORMAT=image/tiff
+  &SUBSETTINGCRS=http://www.opengis.net/def/crs/EPSG/0/4326
   &SUBSET=long(-58,-46)
   &SUBSET=lat(45,50.5)
   &SCALESIZE=long(133),lat(61)
@@ -301,3 +304,51 @@ recombined and never mixed with a statistic over a different member set.
   until that is fixed; this ticket does not fix it.
 - **No statistics were computed, no artifact published, no registry state
   changed.**
+
+---
+
+## 7. 2026-09-05 live integration update
+
+Issue 83 re-enumerated the live GeoMet WCS before acquisition. The service
+still advertises 1,239 `REPS.*` coverages and 532 `GEPS.*` coverages. REPS has
+21 coverages for each selected surface field and exact pressure identifiers at
+50, 100, 200, 250, 500, 700, 850, 925 and 1000 hPa for HR and GZ (TT also has
+40/80/120 m coverages). GEPS advertises zero `GEPS.MEM.*` coverages.
+
+`DescribeCoverage` changes the geometry interpretation recorded earlier in
+this document. REPS reports source CRS EPSG:102990 and 0.09 grid-axis offsets.
+The 133 by 61 request over 45–50.5 N, 58–46 W is an explicitly requested
+EPSG:4326 output grid, resampled by GeoMet with an undocumented method. Without
+`SUBSETTINGCRS=EPSG:4326`, GeoMet returns plausible TIFFs containing zeros for
+this geographic box because the subset coordinates are interpreted in the
+rotated source CRS. With the subsetting CRS declared, all 21 members return
+non-constant numeric cloud and wind grids. No raw provider payload is stored in
+Git (owner decision of 2026-09-05, issue 70): the exact counts, request shapes,
+byte totals and checksums are in the live capture receipt in
+`experiments/st-johns-weather-map/openspec/changes/eccc-ensemble-experimental-integration/proposal.md`,
+with a hand-trimmed machine-readable copy at
+`experiments/st-johns-weather-map/api/tests/fixtures/eccc_ensemble/eccc-ensemble-2026-09-05.receipt.json`.
+
+The current WMS title labels `REPS.MEM.*.01` as `[control member]`. That is new
+source evidence, but this experiment does not change the registry's unresolved
+control identifier or flag member 01 as control. Owner/spec resolution remains
+required before that behavior can enter an admitted path.
+
+GEPS live capabilities advertise 00/12 UTC runs, three-hour instantaneous
+steps through 384 hours, and coarser valid-time axes for windowed products. The
+integration retained issued mean, standard deviation, percentile and threshold
+probability coverages separately. It created no members and computed no
+statistics. The documented Datamart paths remain dead and were not used.
+
+The bounded selection is not whole-family completion. It retrieved 42 REPS
+coverages (two catalogued surface fields for 21 members) from 1,239 advertised;
+the other 1,197 exact IDs are accounted for under
+[Complete remaining REPS member fields and control disposition](https://github.com/TusharSariya/Astraeus/issues/147).
+It retrieved five GEPS producer reductions from 532 advertised; the other 527
+exact IDs are accounted for under
+[Complete remaining GEPS producer-reduction fields](https://github.com/TusharSariya/Astraeus/issues/148).
+The capability inventory, the 1,771-row disposition ledger and all 47 selected
+source TIFFs were captured live and are evidenced by the receipt, not retained:
+48 responses totalling 2,479,264 decoded bytes, each with its request URI, byte
+count, checksum and capture time. The capture is reproducible with
+`experiments/st-johns-weather-map/scripts/eccc_ensemble_live_evidence.py`.

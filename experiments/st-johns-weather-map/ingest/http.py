@@ -7,24 +7,26 @@ byte ceilings. Adapters never construct their own transport.
 
 from __future__ import annotations
 
+import logging
+import os
 import random
 import threading
 import time
 from collections import Counter, defaultdict
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Iterator, Mapping
+from typing import Self
 from urllib.parse import unquote, urlparse
 
-import os
 import httpx
-
-import logging
 
 _log = logging.getLogger(__name__)
 
-USER_AGENT = "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)"
+USER_AGENT = (
+    "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)"
+)
 
 RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
 DEFAULT_ATTEMPTS = 5
@@ -43,7 +45,9 @@ DEFAULT_MIN_HOST_INTERVAL_SECONDS = 0.5
 DEFAULT_TIMEOUT_SECONDS = 60.0
 
 
-def min_host_interval_from_env(default: float = DEFAULT_MIN_HOST_INTERVAL_SECONDS) -> float:
+def min_host_interval_from_env(
+    default: float = DEFAULT_MIN_HOST_INTERVAL_SECONDS,
+) -> float:
     """``WEATHER_HTTP_MIN_HOST_INTERVAL`` as seconds, else ``default``; never negative."""
     raw = os.environ.get("WEATHER_HTTP_MIN_HOST_INTERVAL", "").strip()
     if not raw:
@@ -65,7 +69,9 @@ class RetriesExhausted(RuntimeError):
 class HostRateLimiter:
     """Serialises requests per host so one provider is never hammered."""
 
-    def __init__(self, min_interval_seconds: float = DEFAULT_MIN_HOST_INTERVAL_SECONDS) -> None:
+    def __init__(
+        self, min_interval_seconds: float = DEFAULT_MIN_HOST_INTERVAL_SECONDS
+    ) -> None:
         self.min_interval_seconds = min_interval_seconds
         self._next_allowed: dict[str, float] = defaultdict(float)
         self._lock = threading.Lock()
@@ -92,7 +98,13 @@ def parse_retry_after(value: str | None) -> float | None:
     return max(0.0, seconds)
 
 
-def backoff_delay(attempt: int, *, base: float = DEFAULT_BACKOFF_SECONDS, cap: float = DEFAULT_MAX_BACKOFF_SECONDS, jitter: float | None = None) -> float:
+def backoff_delay(
+    attempt: int,
+    *,
+    base: float = DEFAULT_BACKOFF_SECONDS,
+    cap: float = DEFAULT_MAX_BACKOFF_SECONDS,
+    jitter: float | None = None,
+) -> float:
     """Exponential backoff with full jitter, so retries never synchronise."""
     ceiling = min(cap, base * (2 ** max(0, attempt - 1)))
     fraction = random.random() if jitter is None else jitter
@@ -160,19 +172,28 @@ class PoliteClient:
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> PoliteClient:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc: object) -> None:
         self.close()
 
-    def _request(self, method: str, url: str, *, headers: Mapping[str, str] | None = None, stream: bool = False):
+    def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+        stream: bool = False,
+    ):
         host = urlparse(url).netloc
         last_error: Exception | None = None
         for attempt in range(1, self.attempts + 1):
             self.limiter.wait(host)
             try:
-                request = self._client.build_request(method, url, headers=dict(headers or {}))
+                request = self._client.build_request(
+                    method, url, headers=dict(headers or {})
+                )
                 response = self._client.send(request, stream=stream)
             except httpx.TransportError as error:
                 last_error = error
@@ -186,17 +207,70 @@ class PoliteClient:
                 if response.status_code == 429:
                     _log.warning(
                         "429 from %s (attempt %d/%d, Retry-After %s, %d so far): slow down",
-                        host, attempt, self.attempts, retry_after, self.retry_counts[429],
+                        host,
+                        attempt,
+                        self.attempts,
+                        retry_after,
+                        self.retry_counts[429],
                     )
                 response.close()
-                time.sleep(retry_after if retry_after is not None else backoff_delay(attempt))
+                time.sleep(
+                    retry_after if retry_after is not None else backoff_delay(attempt)
+                )
                 continue
             response.raise_for_status()
             return response
-        raise RetriesExhausted(f"{method} {url} failed after {self.attempts} attempts") from last_error
+        raise RetriesExhausted(
+            f"{method} {url} failed after {self.attempts} attempts"
+        ) from last_error
 
-    def get(self, url: str, *, headers: Mapping[str, str] | None = None) -> httpx.Response:
+    def get(
+        self, url: str, *, headers: Mapping[str, str] | None = None
+    ) -> httpx.Response:
         return self._request("GET", url, headers=headers)
+
+    def get_bytes(
+        self,
+        url: str,
+        *,
+        max_bytes: int,
+        headers: Mapping[str, str] | None = None,
+        chunk_size: int = 1 << 16,
+    ) -> tuple[bytes, Mapping[str, str]]:
+        """Read a decoded response body under a hard byte ceiling.
+
+        The response stays streamed until each chunk has passed the ceiling,
+        so an incorrect or absent Content-Length cannot make httpx buffer an
+        unbounded body before the caller can refuse it.
+        """
+        if max_bytes <= 0:
+            raise ValueError("max_bytes must be positive")
+        response = self._request("GET", url, headers=headers, stream=True)
+        try:
+            declared = response.headers.get("Content-Length")
+            if declared is not None:
+                try:
+                    declared_bytes = int(declared)
+                except ValueError as error:
+                    raise MaxBytesExceeded(
+                        f"{url} carries an invalid Content-Length {declared!r}"
+                    ) from error
+                if declared_bytes < 0 or declared_bytes > max_bytes:
+                    raise MaxBytesExceeded(
+                        f"{url} declares {declared_bytes} bytes, above the {max_bytes} byte ceiling"
+                    )
+            chunks: list[bytes] = []
+            read = 0
+            for chunk in response.iter_bytes(chunk_size):
+                read += len(chunk)
+                if read > max_bytes:
+                    raise MaxBytesExceeded(
+                        f"{url} exceeded the {max_bytes} byte ceiling"
+                    )
+                chunks.append(chunk)
+            return b"".join(chunks), dict(response.headers)
+        finally:
+            response.close()
 
     def get_text(self, url: str) -> str:
         return self.get(url).text
@@ -228,13 +302,23 @@ class PoliteClient:
         header = f"bytes={start}-{'' if end is None else end}"
         response = self._request("GET", url, headers={"Range": header})
         if response.status_code != 206:
-            raise RetriesExhausted(f"{url} ignored the Range header (status {response.status_code})")
+            raise RetriesExhausted(
+                f"{url} ignored the Range header (status {response.status_code})"
+            )
         return response.content
 
     def list_directory(self, url: str, *, suffixes: tuple[str, ...] = ()) -> list[str]:
         return parse_directory_listing(self.get_text(url), suffixes=suffixes)
 
-    def download(self, url: str, destination: Path, *, max_bytes: int, headers: Mapping[str, str] | None = None, chunk_size: int = 1 << 20) -> int:
+    def download(
+        self,
+        url: str,
+        destination: Path,
+        *,
+        max_bytes: int,
+        headers: Mapping[str, str] | None = None,
+        chunk_size: int = 1 << 20,
+    ) -> int:
         """Stream to ``destination``, aborting mid-stream past ``max_bytes``.
 
         Aborting during the stream — not after — is what keeps a single
@@ -247,13 +331,21 @@ class PoliteClient:
         response = self._request("GET", url, headers=headers, stream=True)
         try:
             declared = response.headers.get("Content-Length")
-            if declared is not None and declared.isdigit() and int(declared) > max_bytes:
-                raise MaxBytesExceeded(f"{url} declares {declared} bytes, above the {max_bytes} byte ceiling")
+            if (
+                declared is not None
+                and declared.isdigit()
+                and int(declared) > max_bytes
+            ):
+                raise MaxBytesExceeded(
+                    f"{url} declares {declared} bytes, above the {max_bytes} byte ceiling"
+                )
             with destination.open("wb") as handle:
                 for chunk in response.iter_bytes(chunk_size):
                     written += len(chunk)
                     if written > max_bytes:
-                        raise MaxBytesExceeded(f"{url} exceeded the {max_bytes} byte ceiling")
+                        raise MaxBytesExceeded(
+                            f"{url} exceeded the {max_bytes} byte ceiling"
+                        )
                     handle.write(chunk)
         except BaseException:
             destination.unlink(missing_ok=True)
@@ -262,7 +354,14 @@ class PoliteClient:
             response.close()
         return written
 
-    def download_ranges(self, url: str, destination: Path, ranges: Iterator[tuple[int, int | None]] | list[tuple[int, int | None]], *, max_bytes: int) -> int:
+    def download_ranges(
+        self,
+        url: str,
+        destination: Path,
+        ranges: Iterator[tuple[int, int | None]] | list[tuple[int, int | None]],
+        *,
+        max_bytes: int,
+    ) -> int:
         """Concatenate selected byte ranges into one local file."""
         destination.parent.mkdir(parents=True, exist_ok=True)
         written = 0
@@ -272,7 +371,9 @@ class PoliteClient:
                     payload = self.get_range(url, start, end)
                     written += len(payload)
                     if written > max_bytes:
-                        raise MaxBytesExceeded(f"{url} range set exceeded the {max_bytes} byte ceiling")
+                        raise MaxBytesExceeded(
+                            f"{url} range set exceeded the {max_bytes} byte ceiling"
+                        )
                     handle.write(payload)
         except BaseException:
             destination.unlink(missing_ok=True)

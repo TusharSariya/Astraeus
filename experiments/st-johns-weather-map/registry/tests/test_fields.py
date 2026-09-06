@@ -174,13 +174,24 @@ class SourceMappingTests(unittest.TestCase):
             self.assertEqual("family_fields_only", scope.policy, source_id)
             self.assertTrue(fields.available_not_stored(source_id), source_id)
 
-    def test_a_subsetting_source_stores_every_published_field(self) -> None:
+    def test_a_subsetting_source_keeps_wcs_only_fields_out_of_production_storage(self) -> None:
         for source_id in ("eccc-hrdps", "eccc-rdps", "eccc-gdps"):
             scope = fields.source_scope(source_id)
             assert scope is not None
             self.assertEqual("server_side", scope.subsetting, source_id)
-            self.assertEqual("every_published_field", scope.policy, source_id)
-            self.assertEqual((), fields.available_not_stored(source_id), source_id)
+            self.assertEqual("family_fields_only", scope.policy, source_id)
+        self.assertTrue(
+            {"total_cloud_weong", "temperature_40m", "relative_humidity_120m"}
+            <= {item.key for item in fields.available_not_stored("eccc-hrdps")},
+        )
+        self.assertTrue(
+            {"seeing_class_eccc", "transparency_class_eccc", "temperature_80m"}
+            <= {item.key for item in fields.available_not_stored("eccc-rdps")},
+        )
+        self.assertIn(
+            "boundary_layer_height",
+            {item.key for item in fields.available_not_stored("eccc-gdps")},
+        )
 
     def test_available_not_stored_is_distinct_from_a_gap_the_producer_leaves(self) -> None:
         self.assertEqual("available-not-stored", fields.storage_of("noaa-gefs", "cloud_ceiling"))
