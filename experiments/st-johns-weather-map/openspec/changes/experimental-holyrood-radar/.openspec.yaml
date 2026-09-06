@@ -1,1 +1,5 @@
 schema: spec-driven
+# No accepted source/image contract exists. This isolated, nonpublishable
+# experiment records evidence and proposes a future contract without changing
+# any normative behavior.
+skip_specs: true
