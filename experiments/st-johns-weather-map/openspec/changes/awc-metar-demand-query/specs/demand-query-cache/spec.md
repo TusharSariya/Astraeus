@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: CYYT METAR requests preserve selected-time applicability
-A CYYT METAR demand query SHALL canonicalize all selections in one UTC clock hour to one bounded provider request covering the preceding two hours at the hour ceiling. It SHALL validate every returned row against that native request window and select only the latest observation at or before the selected instant with age strictly less than one hour.
+A CYYT METAR demand query SHALL map an exact UTC-hour selection to a bounded two-hour provider request ending at that instant. Selections strictly between two UTC-hour boundaries SHALL map to one two-hour request ending at the later boundary. It SHALL validate every returned row against that native request window and select only the latest observation at or before the selected instant with age strictly less than one hour.
 
 #### Scenario: A future SPECI shares the cached response
 - **WHEN** a cached response contains both a past observation and a later observation in the same canonical request window

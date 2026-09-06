@@ -53,7 +53,7 @@ class MetarCacheEntry:
 
 
 class MetarQueryService:
-    """Process-local LRU keyed by one canonical hourly CYYT request."""
+    """Process-local LRU keyed by one canonical hour-bucketed two-hour request."""
 
     def __init__(self, *, client: httpx.Client | None = None,
                  adapter: AWCMetarAdapter | None = None,

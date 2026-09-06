@@ -70,6 +70,20 @@ def test_exact_hour_uses_that_boundary_and_next_minute_uses_next_bucket():
     assert key[-1]=="two-hours-ending:2026-09-06T13:00:00Z"
 
 
+def test_early_hour_selection_keeps_prior_hour_observation_and_excludes_future():
+    selected=datetime(2026,9,6,10,5,tzinfo=UTC)
+    rows=[
+        {"icaoId":"CYYT","obsTime":int(datetime(2026,9,6,9,40,tzinfo=UTC).timestamp()),"temp":9},
+        {"icaoId":"CYYT","obsTime":int(datetime(2026,9,6,10,20,tzinfo=UTC).timestamp()),"temp":12},
+    ]
+    service=MetarQueryService(client=client(lambda _:httpx.Response(200,json=rows,
+        headers={"Cache-Control":"max-age=60"})),adapter=BoundedAdapter(),clock=Clock())
+    entry=service.entry(selected)
+    chosen,observed=service.select_record(entry,selected)
+    assert observed==datetime(2026,9,6,9,40,tzinfo=UTC)
+    assert chosen["temp"]==9
+
+
 def test_expiry_revalidates_without_replacing_body_acquisition():
     clock=Clock(); requests=[]
     def handler(request):
