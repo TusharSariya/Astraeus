@@ -1,0 +1,11 @@
+# AWC CYYT METAR resource-bound evidence
+
+Non-normative evidence for issue #159, captured 2026-09-06. The retained AWC response completed at `06:39:02.227207Z`; its seven rows occupy 3,486 bytes and have SHA-256 `e0d07144b9424c6963e0ab03d7c79e9afe5ffc77447148aae34c96cf7eda773e`. Raw bytes, full headers, measurement inputs, Linux logs, artifact, and replay proof remain outside Git under `/private/tmp/awc159-capture`.
+
+The supported Linux target refused the complete decoder at 384 MiB virtual address space. A 512 MiB trial succeeded in isolation but failed in the complete replay environment during required thread initialization. Repeated 640 MiB runs completed, so the enforced source-specific `RLIMIT_AS` is 640 MiB. This is a virtual-address-space ceiling, not a total-memory guarantee.
+
+A 64-row all-field measurement produced a 36,923-byte ZIP occupying 40,960 bytes on the measured 4096-byte filesystem. The enforced output ceiling is 65,536 bytes, already block aligned; the allocation reservation adds two overlapping 4096-byte directory allocations for the worker operation directory and child workspace. The child writes one file and atomically renames the inode, avoiding output-copy overlap.
+
+The retained live response replay produced a 35,913-byte artifact occupying 36,864 physical bytes. An independent raw decoder compared 203/203 values or masks (seven rows by 29 variables), including units and every numeric transform, before real PostgreSQL/MinIO publication. `LiveStore.sample_point` returned the same 29 variables at all seven timestamps. The accepted point HTTP route exposes exactly 27 AWC keys: 24 variables directly, while the hidden `u`/`v` inputs become registered wind speed/direction and the three hidden present-weather flags become registered `fog_state`. All 27 keys were required and all direct and derived values matched at every timestamp. A labeled synthetic HRDPS artifact was used only to open the route's existing model-plus-observations boundary and was excluded from every AWC comparison.
+
+This change preserves the existing AWC field, unit, time, quality, and delivery contracts. It adds experimental allocation enforcement and makes no normative transition.

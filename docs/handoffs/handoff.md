@@ -26,10 +26,15 @@ layouts or responsive-phone studies in this run.
 The worker-level #159 preflight and payload-discovery reservation seams merged
 through PR166 at `86355f9c81f956eb2d7a123a7e940f3ee6bb9066`.
 Scheduler-eligible adapters without measured complete-operation bounds remain
-fail-closed while source-specific memory and physical-allocation enforcement is
-implemented. #118 is closed; #123/#137 partial proofs merged in PR165/PR164 but
-their contracts remain in #167/#168; #158 awaits the owner's fragment choice;
-#133 awaits its contract/publication path and #105 is active. The owner
+fail-closed while #159 adds source-specific memory and physical-allocation
+enforcement. SWPC Kp merged in PR177 (`a71f60d`); GFZ Hp30 is the current
+bounded source slice. Active source work is #159 GFZ bounds, #115 ECCC/WMO
+aviation after AWC PR178 merged, and #143 JMA research. #116 acquisition merged
+in PR176, while its contracts and redistribution rights remain unresolved.
+#153 is released pending the owner's #179 decision. Pending owner contracts are
+#167, #168, #172, #173, #175 and #179; #158 awaits the owner's fragment choice.
+Native acquisition proofs do not establish whole-source publication or API
+completion. #118 is closed. The owner
 authorizes completed-thread reuse. The root
 orchestrator delegates implementation and independent evidence review while
 keeping claims and isolated worktrees coordinated.

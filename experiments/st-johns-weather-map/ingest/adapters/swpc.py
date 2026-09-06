@@ -31,13 +31,17 @@ Honesty rules specific to space weather:
 from __future__ import annotations
 
 import logging
+import hashlib
+import json
 import shutil
+import sys
 import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+import httpx
 import numpy
 import xarray
 
@@ -46,12 +50,15 @@ from ingest.contract import (
     MEDIA_ZARR,
     AdapterUnavailable,
     Artifact,
+    DiscoveryBounds,
     FetchWindow,
+    ResourceBounds,
     RunCandidate,
     RunResult,
 )
 from ingest.grib import write_zarr
-from ingest.http import PoliteClient
+from ingest.http import MaxBytesExceeded, PoliteClient, RetriesExhausted
+from ingest.isolation import BoundedProcessError, ProcessAllocationLimits, run_bounded_process
 from ingest.manifest import declared_classes
 from ingest.registry import register
 from ingest.space_weather import (
@@ -82,6 +89,16 @@ OVATION_URL = f"{SWPC_BASE}/json/ovation_aurora_latest.json"
 KP_STATUS_VALUES = [0, 1, 2]
 KP_STATUS_MEANINGS = "observed estimated predicted"
 _KP_STATUS_CODE = {"observed": 0, "estimated": 1, "predicted": 2}
+KP_DOCUMENT_BYTES = 512 * 1024
+KP_PROCESS_LIMITS = ProcessAllocationLimits(
+    address_space_bytes=256 * 1024 * 1024,
+    output_bytes=KP_DOCUMENT_BYTES,
+    stdin_bytes=KP_DOCUMENT_BYTES,
+    stdout_bytes=KP_DOCUMENT_BYTES,
+    stderr_bytes=64 * 1024,
+)
+KP_FILESYSTEM_MARGIN_BYTES = 4096
+KP_FILESYSTEM_BLOCK_BYTES = 4096
 
 
 #: The seam's parser and reader under the names this module has always
@@ -126,7 +143,7 @@ class SWPCKpAdapter:
     """Planetary K index: the observed series and the provider's forecast."""
 
     source_id = "noaa-swpc-kp"
-    adapter_version = "swpc-kp-v1"
+    adapter_version = "swpc-kp-isolated-v2"
 
     def __init__(self, client: PoliteClient | None = None, observed_url: str = KP_OBSERVED_URL, forecast_url: str = KP_FORECAST_URL) -> None:
         self._client = client
@@ -136,48 +153,144 @@ class SWPCKpAdapter:
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
 
+    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        # The worker calls this before reserving resources or issuing discovery
+        # requests; reject an unmeasured allocation geometry at that boundary.
+        self._require_measured_filesystem(Path(tempfile.gettempdir()))
+        self._require_bounded_runtime()
+        return ResourceBounds(
+            store_bytes=2 * KP_PROCESS_LIMITS.output_bytes,
+            filesystem_bytes=2 * KP_PROCESS_LIMITS.output_bytes,
+            margin_bytes=2 * KP_FILESYSTEM_MARGIN_BYTES,
+            received_bytes=2 * KP_PROCESS_LIMITS.stdin_bytes,
+        )
+
+    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
+        return DiscoveryBounds(received_bytes=self.operation_bounds(window).received_bytes)
+
+    def resource_bounds(self, _candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
+        return self.operation_bounds(window)
+
+    @staticmethod
+    def _require_measured_filesystem(path: Path) -> None:
+        """Fail closed unless the target matches the measured Linux allocation geometry."""
+        geometry = path.stat().st_dev, path.stat().st_blksize, __import__("os").statvfs(path).f_frsize
+        if geometry[1:] != (KP_FILESYSTEM_BLOCK_BYTES, KP_FILESYSTEM_BLOCK_BYTES):
+            raise AdapterUnavailable(
+                f"SWPC Kp bounded writer requires measured 4096-byte filesystem blocks; got {geometry[1:]}"
+            )
+
+    @staticmethod
+    def _require_bounded_runtime() -> None:
+        """Prove this runtime can lock both kernel limits before any source read."""
+        run_bounded_process(
+            command=[sys.executable, "-c", "import sys; assert len(sys.argv) == 2", "{output}"],
+            stdin=b"",
+            destination=None,
+            limits=KP_PROCESS_LIMITS,
+            timeout_seconds=5,
+            require_output=False,
+        )
+
+    @staticmethod
+    def _isolated(action: str, mode: str, raw: bytes, destination: Path | None):
+        package_root = Path(__file__).resolve().parents[2]
+        launcher = (
+            "import sys; "
+            f"sys.path.insert(0, {str(package_root)!r}); "
+            "from ingest.kp3h_isolated import main; raise SystemExit(main())"
+        )
+        return run_bounded_process(
+            command=[sys.executable, "-c", launcher, action, mode, "{output}"],
+            stdin=raw,
+            destination=destination,
+            limits=KP_PROCESS_LIMITS,
+            timeout_seconds=30,
+            require_output=action == "normalize",
+        )
+
+    @staticmethod
+    def _receipt(url: str, raw: bytes, headers: Mapping[str, str], completed_at: datetime) -> FeedReceipt:
+        return FeedReceipt(
+            url=url,
+            byte_count=len(raw),
+            sha256=hashlib.sha256(raw).hexdigest(),
+            captured_at=completed_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            last_modified=headers.get("Last-Modified") or headers.get("last-modified"),
+        )
+
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         client = self._get_client()
         try:
-            observed = _records(client.get(self._observed_url).json(), required=("time_tag", "Kp"))
-        except Exception as error:
+            observed_raw, observed_headers, observed_completed = client.get_bytes_with_headers_completed(
+                self._observed_url, max_bytes=KP_PROCESS_LIMITS.stdin_bytes
+            )
+            observed_metadata = json.loads(self._isolated("inspect", "observed", observed_raw, None).stdout)
+        except (BoundedProcessError, MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
             raise AdapterUnavailable(f"SWPC Kp endpoint unavailable: {error}") from error
-        if not observed:
-            raise AdapterUnavailable("SWPC Kp returned no observed records")
 
         # The forecast feed failing must not stop the observed series.
-        forecast: list[dict[str, Any]] = []
+        forecast_raw: bytes | None = None
+        forecast_receipt: FeedReceipt | None = None
+        forecast_completed: datetime | None = None
+        forecast_times: list[datetime] = []
         forecast_error = ""
         try:
-            forecast = _records(client.get(self._forecast_url).json(), required=("time_tag", "kp", "observed"))
-        except Exception as error:
+            forecast_raw, forecast_headers, forecast_completed = client.get_bytes_with_headers_completed(
+                self._forecast_url, max_bytes=KP_PROCESS_LIMITS.stdin_bytes
+            )
+            forecast_metadata = json.loads(self._isolated("inspect", "forecast", forecast_raw, None).stdout)
+            forecast_times = [stamp for value in forecast_metadata["times"] if (stamp := _parse_time(value)) is not None]
+            if len(forecast_times) != forecast_metadata["count"]:
+                raise ValueError("isolated forecast inspection returned invalid times")
+            forecast_receipt = self._receipt(self._forecast_url, forecast_raw, forecast_headers, forecast_completed)
+        except (BoundedProcessError, KeyError, MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
             forecast_error = str(error)
             _log.warning("SWPC Kp forecast endpoint unavailable: %s", error)
 
-        newest = max((t for t in (_parse_time(r.get("time_tag")) for r in observed) if t is not None), default=None)
-        if newest is None:
-            raise AdapterUnavailable("SWPC Kp observed records carry no parseable time_tag")
+        observed_times = [stamp for value in observed_metadata["times"] if (stamp := _parse_time(value)) is not None]
+        if not observed_times or len(observed_times) != observed_metadata["count"]:
+            raise AdapterUnavailable("isolated observed Kp inspection returned invalid times")
+        newest = observed_times[-1]
         return [
             RunCandidate(
                 provider_run_id=f"swpc-kp-{newest.strftime('%Y%m%d%H%M')}",
                 run_time=newest,
                 urls=[self._observed_url, self._forecast_url],
-                detail={"observed": observed, "forecast": forecast, "forecast_error": forecast_error},
+                detail={
+                    "observed_raw": observed_raw,
+                    "observed_receipt": self._receipt(self._observed_url, observed_raw, observed_headers, observed_completed),
+                    "observed_completed": observed_completed,
+                    "observed_times": [format_time(stamp) for stamp in observed_times],
+                    "forecast_raw": forecast_raw,
+                    "forecast_receipt": forecast_receipt,
+                    "forecast_completed": forecast_completed if forecast_receipt is not None else None,
+                    "forecast_times": [format_time(stamp) for stamp in forecast_times],
+                    "forecast_error": forecast_error,
+                },
             )
         ]
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
-        observed = candidate.detail.get("observed") or []
-        forecast = candidate.detail.get("forecast") or []
-        if not observed:
-            raise AdapterUnavailable("SWPC Kp fetch carried no observed records")
+        workdir.mkdir(parents=True, exist_ok=True)
+        self._require_measured_filesystem(workdir)
+        observed_raw = candidate.detail.get("observed_raw")
+        observed_receipt = candidate.detail.get("observed_receipt")
+        forecast_raw = candidate.detail.get("forecast_raw")
+        forecast_receipt = candidate.detail.get("forecast_receipt")
+        if not isinstance(observed_raw, bytes) or not isinstance(observed_receipt, FeedReceipt):
+            raise AdapterUnavailable("SWPC Kp fetch carried no bounded observed document or receipt")
 
-        retrieved_at = datetime.now(UTC)
+        completed = [value for value in (candidate.detail.get("observed_completed"), candidate.detail.get("forecast_completed"))
+                     if isinstance(value, datetime)]
+        if not completed:
+            raise AdapterUnavailable("SWPC Kp fetch carried no transport completion time")
+        retrieved_at = max(completed)
         artifacts: list[Artifact] = []
         notes: list[str] = []
         complete = True
 
-        def provenance(quality: dict[str, Any], coverage: dict[str, Any], product: str) -> dict[str, Any]:
+        def provenance(quality: dict[str, Any], coverage: dict[str, Any], product: str, receipt: FeedReceipt) -> dict[str, Any]:
             return {
                 "source_id": self.source_id,
                 "producer": "NOAA Space Weather Prediction Center",
@@ -187,54 +300,39 @@ class SWPCKpAdapter:
                 "adapter_version": self.adapter_version,
                 "quality": quality,
                 "coverage": coverage,
+                "receipts": [receipt.as_dict()],
                 # The planetary indices as SWPC issued them.
                 **declared_classes(["retrieved"]),
             }
 
-        observed_rows = sorted(
-            ((t, r) for t, r in (((_parse_time(r.get("time_tag"))), r) for r in observed) if t is not None),
-            key=lambda item: item[0],
-        )
-        times = [t for t, _ in observed_rows]
-        kp_values = numpy.array([_float_or_nan(r.get("Kp")) for _, r in observed_rows])
-        a_values = numpy.array([_float_or_nan(r.get("a_running")) for _, r in observed_rows])
-        dataset = _series_dataset(
-            times,
-            {
-                "kp_index": (kp_values, {"units": "dimensionless", "original_units": "Kp index", "long_name": "planetary K index, 3-hourly, as retrieved"}),
-                "a_running": (a_values, {"units": "dimensionless", "original_units": "a index", "long_name": "running a index, as retrieved"}),
-            },
-            {"source": "SWPC planetary K index (observed series)"},
-        )
-        quality, coverage = _series_quality("kp_index", kp_values)
+        times = [_parse_time(value) for value in candidate.detail.get("observed_times") or []]
+        if not times or any(stamp is None for stamp in times):
+            raise AdapterUnavailable("SWPC Kp fetch carried no observed times")
+        valid_times = [stamp for stamp in times if stamp is not None]
         observed_path = workdir / "swpc_kp_observed.zarr.zip"
-        write_zarr(dataset, observed_path)
-        artifacts.append(Artifact("kp_observed", MEDIA_ZARR, observed_path, provenance(quality, coverage, "Planetary K index (observed)")))
-        notes.append(f"{len(times)} observed Kp records")
-        complete = complete and quality["status"] == "passed"
+        try:
+            self._isolated("normalize", "observed", observed_raw, observed_path)
+        except BoundedProcessError as error:
+            raise AdapterUnavailable(f"SWPC observed Kp isolated normalization failed: {error}") from error
+        quality = {"status": "passed", "flags": [], "detail": f"all {len(valid_times)} observed rows passed isolated validation"}
+        coverage = {"status": "complete", "fraction": 1.0}
+        artifacts.append(Artifact("kp_observed", MEDIA_ZARR, observed_path, provenance(quality, coverage, "Planetary K index (observed)", observed_receipt)))
+        notes.append(f"{len(valid_times)} observed Kp records")
 
-        forecast_rows = sorted(
-            ((t, r) for t, r in (((_parse_time(r.get("time_tag"))), r) for r in forecast) if t is not None),
-            key=lambda item: item[0],
-        )
-        if forecast_rows:
-            f_times = [t for t, _ in forecast_rows]
-            f_values = numpy.array([_float_or_nan(r.get("kp")) for _, r in forecast_rows])
-            statuses = numpy.array([
-                float(_KP_STATUS_CODE.get(str(r.get("observed", "")).strip().lower(), numpy.nan)) for _, r in forecast_rows
-            ])
-            f_dataset = _series_dataset(
-                f_times,
-                {
-                    "kp_index": (f_values, {"units": "dimensionless", "original_units": "Kp index", "long_name": "planetary K index outlook, as retrieved; see kp_status per value"}),
-                    "kp_status": (statuses, {"units": "flag", "original_units": "provider status string", "flag_values": KP_STATUS_VALUES, "flag_meanings": KP_STATUS_MEANINGS}),
-                },
-                {"source": "SWPC planetary K index forecast; per-value status is the provider's own"},
-            )
-            f_quality, f_coverage = _series_quality("kp_index", f_values)
+        if isinstance(forecast_raw, bytes) and isinstance(forecast_receipt, FeedReceipt):
+            f_times = [_parse_time(value) for value in candidate.detail.get("forecast_times") or []]
+            if not f_times or any(stamp is None for stamp in f_times):
+                observed_path.unlink(missing_ok=True)
+                raise AdapterUnavailable("SWPC Kp fetch carried invalid forecast times")
             forecast_path = workdir / "swpc_kp_forecast.zarr.zip"
-            write_zarr(f_dataset, forecast_path)
-            artifacts.append(Artifact("kp_forecast", MEDIA_ZARR, forecast_path, provenance(f_quality, f_coverage, "Planetary K index (3-day outlook, per-value status)")))
+            try:
+                self._isolated("normalize", "forecast", forecast_raw, forecast_path)
+            except BoundedProcessError as error:
+                observed_path.unlink(missing_ok=True)
+                raise AdapterUnavailable(f"SWPC forecast Kp isolated normalization failed: {error}") from error
+            f_quality = {"status": "passed", "flags": [], "detail": f"all {len(f_times)} forecast rows passed isolated validation"}
+            f_coverage = {"status": "complete", "fraction": 1.0}
+            artifacts.append(Artifact("kp_forecast", MEDIA_ZARR, forecast_path, provenance(f_quality, f_coverage, "Planetary K index (3-day outlook, per-value status)", forecast_receipt)))
             notes.append(f"{len(f_times)} forecast Kp records with provider status")
         else:
             reason = candidate.detail.get("forecast_error") or "forecast feed returned no records"
