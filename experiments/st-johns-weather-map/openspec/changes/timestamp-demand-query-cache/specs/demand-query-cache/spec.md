@@ -2,8 +2,8 @@
 
 ### Requirement: A source query is driven by the selected timestamp
 For the isolated experiment, a source query SHALL resolve the client's aware
-selected timestamp to a provider-native valid time and retrieve only the
-bounded data required for that selection. It SHALL NOT prefetch a complete run
+selected timestamp to a provider-native valid time and retrieve the smallest
+bounded provider-native response capable of answering that selection. It SHALL NOT prefetch a complete run
 or substitute a neighbouring timestamp merely to fill a cache.
 
 #### Scenario: A provider publishes on a three-hour cadence
@@ -11,10 +11,13 @@ or substitute a neighbouring timestamp merely to fill a cache.
 - **THEN** the query returns an explicit unsupported-time outcome and does not fetch or interpolate adjacent frames
 
 ### Requirement: The query cache prevents duplicate provider traffic
-A cache entry SHALL be keyed by provider, product, native source/run/valid-time
-identity, selected eligible fields and geography. A fresh hit SHALL issue zero
-provider payload requests. Concurrent identical misses or revalidations SHALL
-coalesce to one bounded upstream operation.
+A lookup and coalescing key SHALL identify the canonical provider request:
+provider, product, exact endpoint/query, selectors, eligible fields and
+geography as applicable. Native source/run/valid/content identity learned from
+the response SHALL be stored in the entry and returned provenance rather than
+assumed before fetch. A fresh hit SHALL issue zero provider payload requests.
+Concurrent identical misses or revalidations SHALL coalesce to one bounded
+upstream operation.
 
 #### Scenario: Two clients request the same missing selection
 - **WHEN** both requests resolve to the same canonical provider request key

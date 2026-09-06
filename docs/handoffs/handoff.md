@@ -112,8 +112,8 @@ IDs.
 the existing client already presents CYYT TAF evidence, while this adapter still
 fails closed before provider payload retrieval. It must extend only measured AWC
 bounds that the TAF endpoint and body actually support, preserve every eligible
-TAF field and change-group disposition, and prove normal refresh through
-artifact, real API and the existing Brief/Workbench. Other aviation products
+TAF field and change-group disposition, and prove the demand-query cache through
+the real API and existing Workbench. Other aviation products
 remain with #115; remaining source bounds remain with #159.
 
 Every subsequent source follows the current definition of done:
@@ -121,7 +121,7 @@ Every subsequent source follows the current definition of done:
 1. Enumerate all eligible product fields and exact dispositions; do not hide a family behind a selected sample.
 2. Resolve the selected timestamp to the provider's native valid time and bound discovery, network, decode memory/files and response size before payload retrieval.
 3. Preserve source/product/run identity, native units, geometry, masks, QC, missingness and provider publication/valid/retrieval times.
-4. On a cache miss, fetch only the native data needed for the selected timestamp, normalize it and return it; cache hits issue zero provider payload and concurrent identical misses deduplicate.
+4. On a cache miss, fetch the smallest provider-native response that can answer the selected timestamp, normalize it and return it; cache hits issue zero provider payload and concurrent identical misses deduplicate.
 5. Enforce a source-specific freshness TTL and return explicit unavailable/unsupported/expired states without nearest-time substitution.
 6. Prove retained raw-to-normalized-to-real API values and existing-client consumption, plus malformed, oversized, timeout, cache-expiry and concurrency cases.
 7. Pass relevant API, registry/profile, strict OpenSpec, specctl and CI gates, followed by independent evidence review.
