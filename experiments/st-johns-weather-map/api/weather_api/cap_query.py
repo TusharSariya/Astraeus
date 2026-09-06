@@ -29,10 +29,11 @@ CAP_FAILURE_BACKOFF_SECONDS = 30.0
 class CapQueryUnavailable(RuntimeError):
     """The mutable current-alert document cannot truthfully answer the query."""
 
-    def __init__(self, message: str, *, partial_features: Sequence[Mapping[str, object]] = (), completed_receipts: Sequence[Mapping[str, object]] = ()) -> None:
+    def __init__(self, message: str, *, partial_features: Sequence[Mapping[str, object]] = (), completed_receipts: Sequence[Mapping[str, object]] = (), envelope: Mapping[str, object] | None = None) -> None:
         super().__init__(message)
         self.partial_features = tuple(dict(item) for item in partial_features)
         self.completed_receipts = tuple(dict(item) for item in completed_receipts)
+        self.envelope = dict(envelope) if envelope is not None else None
 
 
 @dataclass(frozen=True)
@@ -117,6 +118,18 @@ def _validate_collection(document: object) -> list[dict[str, object]]:
                     raise CapQueryUnavailable(f"ECCC CAP feature {index} has invalid native {name}")
         checked.append(dict(feature))
     return checked
+
+
+def _validated_envelope(document: Mapping[str, object]) -> dict[str, object]:
+    if document.get("name") != "Current-Alerts":
+        raise CapQueryUnavailable("ECCC CAP response has an unexpected collection name")
+    crs = document.get("crs")
+    if not isinstance(crs, Mapping) or crs.get("type") != "name":
+        raise CapQueryUnavailable("ECCC CAP response has no supported CRS declaration")
+    properties = crs.get("properties")
+    if not isinstance(properties, Mapping) or not isinstance(properties.get("name"), str) or not properties["name"].strip():
+        raise CapQueryUnavailable("ECCC CAP response has no supported CRS name")
+    return {"name": document["name"], "crs": dict(crs)}
 
 
 def _validate_geometry(geometry: object, index: int) -> None:
@@ -260,6 +273,7 @@ class CAPQueryService:
     def _fetch(self) -> CAPCacheEntry:
         merged: dict[str, dict[str, object]] = {}
         receipts: list[Mapping[str, object]] = []
+        envelope: dict[str, object] | None = None
         encoded_total = 0
         with acquisition_budget(len(self.key.urls) * CAP_DOCUMENT_MAX_BYTES):
             for url in self.key.urls:
@@ -270,16 +284,21 @@ class CAPQueryService:
                     receipts.append(receipt)
                     document = json.loads(raw)
                     features = _validate_collection(document)
+                    current_envelope = _validated_envelope(document)
+                    if envelope is None:
+                        envelope = current_envelope
+                    elif json.dumps(envelope, sort_keys=True) != json.dumps(current_envelope, sort_keys=True):
+                        raise CapQueryUnavailable("ECCC CAP declared boxes returned incompatible name or CRS envelopes")
                 except Exception as error:
-                    raise CapQueryUnavailable(f"ECCC CAP declared-box query failed: {error}", partial_features=merged.values(), completed_receipts=receipts) from error
+                    raise CapQueryUnavailable(f"ECCC CAP declared-box query failed: {error}", partial_features=merged.values(), completed_receipts=receipts, envelope=envelope) from error
                 encoded_total += len(raw)
                 if encoded_total > CAP_CACHE_MAX_BYTES:
-                    raise CapQueryUnavailable("ECCC CAP combined response exceeds the cache byte ceiling", partial_features=merged.values(), completed_receipts=receipts)
+                    raise CapQueryUnavailable("ECCC CAP combined response exceeds the cache byte ceiling", partial_features=merged.values(), completed_receipts=receipts, envelope=envelope)
                 for feature in features:
                     key = _feature_key(feature)
                     prior = merged.get(key)
                     if prior is not None and json.dumps(prior, sort_keys=True) != json.dumps(feature, sort_keys=True):
-                        raise CapQueryUnavailable(f"ECCC CAP identifier {key!r} conflicts across declared boxes", partial_features=merged.values(), completed_receipts=receipts)
+                        raise CapQueryUnavailable(f"ECCC CAP identifier {key!r} conflicts across declared boxes", partial_features=merged.values(), completed_receipts=receipts, envelope=envelope)
                     if prior is None:
                         merged[key] = feature
         if len(receipts) != len(self.key.urls):
@@ -298,7 +317,7 @@ class CAPQueryService:
         fetched_at = max(item for item in completed_values if item is not None)
         ttl_values = [_max_age(item.get("response_headers", {}), fetched_at)[1] for item in receipts]
         ttl = min(ttl_values)
-        collection = {"type": "FeatureCollection", "features": list(merged.values())}
+        collection = {"type": "FeatureCollection", **(envelope or {}), "features": list(merged.values())}
         canonical = json.dumps(collection, sort_keys=True, separators=(",", ":")).encode()
         digest = hashlib.sha256(canonical).hexdigest()
         backing = len(canonical) + sum(len(json.dumps(item, default=str)) for item in receipts)
@@ -357,7 +376,8 @@ class CAPQueryService:
             else:
                 excluded[_feature_key(feature)] = reason
         return {
-            "type": "FeatureCollection", "features": selected, "data_mode": "live", "operational": False,
+            "type": "FeatureCollection", "name": entry.feature_collection.get("name"), "crs": entry.feature_collection.get("crs"),
+            "features": selected, "data_mode": "live", "operational": False,
             "alerts_in_force": len(selected), "all_boxes_succeeded": True, "empty_is_an_answer": not selected,
             "selected_time": selected_at.isoformat(), "retrieved_at": entry.fetched_at.isoformat(),
             "expires_at": entry.expires_at.isoformat(), "content_digest": entry.content_digest,
@@ -375,7 +395,7 @@ class CAPQueryService:
         selected_at = selected_at.astimezone(UTC)
         features = [dict(item) for item in error.partial_features if _applies(item, selected_at)[0]]
         return {
-            "type": "FeatureCollection", "features": features, "data_mode": "unavailable", "operational": False,
+            "type": "FeatureCollection", **(error.envelope or {}), "features": features, "data_mode": "unavailable", "operational": False,
             "alerts_in_force": None, "all_boxes_succeeded": False, "empty_is_an_answer": False,
             "selected_time": selected_at.isoformat(), "source_id": "eccc-cap-alerts", "layer": ALERTS_LAYER,
             "notices": [str(error), "one or more declared Avalon boxes failed; no aggregate all-clear is available"],

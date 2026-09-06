@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
@@ -415,6 +415,13 @@ export default function App() {
   const [layerNotices, setLayerNotices] = useState<string[]>([])
   const [layersError, setLayersError] = useState<string | null>(null)
   const [layersLoading, setLayersLoading] = useState(true)
+  const [capWarnings, setCapWarnings] = useState<string[]>([])
+  const [capError, setCapError] = useState<string | null>(null)
+  const [capRevision, setCapRevision] = useState<string | null>(null)
+  const [capAlertsInForce, setCapAlertsInForce] = useState<number | null>(null)
+  const [capAllBoxesSucceeded, setCapAllBoxesSucceeded] = useState(false)
+  const [capEmptyIsAnAnswer, setCapEmptyIsAnAnswer] = useState(false)
+  const [capLoading, setCapLoading] = useState(true)
   const [selections, setSelections] = useState<LayerSelection[]>([])
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null)
   const [timelineNotice, setTimelineNotice] = useState<string | null>(null)
@@ -693,16 +700,38 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController()
     setLayersLoading(true)
-    loadLayers(demandLayerProduct, controller.signal).then((result) => {
+    Promise.all([loadLayers(demandLayerProduct, controller.signal), loadLayers('CAP', controller.signal)]).then(([result, cap]) => {
       if (!controller.signal.aborted) {
-        setLayers(result.layers)
-        setLayerNotices(result.notices)
-        setLayersError(result.error)
+        setLayers([...result.layers.filter((item) => item.id !== 'eccc-cap-alerts-current'), ...cap.layers.filter((item) => item.id === 'eccc-cap-alerts-current')])
+        setLayerNotices([...result.notices, ...cap.notices])
+        setLayersError(result.error ?? cap.error)
         setLayersLoading(false)
       }
     }).catch(() => undefined)
     return () => controller.abort()
-  }, [demandLayerIdentity]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [demandLayerIdentity, capRevision]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setCapWarnings([])
+    setCapError(null)
+    setCapAlertsInForce(null)
+    setCapAllBoxesSucceeded(false)
+    setCapEmptyIsAnAnswer(false)
+    setCapLoading(true)
+    loadCapAlerts(validTime.toISOString(), controller.signal).then((result) => {
+      if (!controller.signal.aborted) {
+        setCapWarnings(result.warnings)
+        setCapError(result.error)
+        setCapRevision(result.revision)
+        setCapAlertsInForce(result.alertsInForce)
+        setCapAllBoxesSucceeded(result.allBoxesSucceeded)
+        setCapEmptyIsAnAnswer(result.emptyIsAnAnswer)
+        setCapLoading(false)
+      }
+    }).catch(() => undefined)
+    return () => controller.abort()
+  }, [validTimeIso])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1374,11 +1403,13 @@ export default function App() {
               </div>
               <div className="warning">
                 <span>{dataSource === 'fixture' ? 'Fixture hazard example' : 'Hazard evidence'}</span>
-                <strong>{snapshot.warnings[0] ?? 'Hazard feed unavailable'}</strong>
-                {snapshot.warnings.length > 1 && <ul className="warning-list">{snapshot.warnings.slice(1).map((text) => <li key={text}>{text}</li>)}</ul>}
-                <small>{snapshot.warnings.length === 0
-                  ? 'No alert evidence was returned. Absence here is not an all-clear; check the issuing authority.'
-                  : 'Always check the issuing authority before decisions.'}</small>
+                <strong>{capWarnings[0] ?? (capAlertsInForce !== null && capAlertsInForce > 0 ? `${capAlertsInForce} current alert${capAlertsInForce === 1 ? '' : 's'}; see the issuing authority for native text` : null) ?? (dataSource === 'fixture' ? snapshot.warnings[0] : null) ?? (capLoading ? 'Hazard feed loading' : capAllBoxesSucceeded && capEmptyIsAnAnswer && capAlertsInForce === 0 ? 'No alert is in force in the successfully queried Avalon domain' : 'Hazard feed unavailable')}</strong>
+                {capWarnings.length > 1 && <ul className="warning-list">{capWarnings.slice(1).map((text) => <li key={text}>{text}</li>)}</ul>}
+                <small>{capError
+                  ? `${capError}. Absence here is not an all-clear; check the issuing authority.`
+                  : (capAllBoxesSucceeded && capEmptyIsAnAnswer && capAlertsInForce === 0
+                      ? 'Every declared Avalon alert query returned successfully with no current CAP feature; check the issuing authority before decisions.'
+                      : 'Always check the issuing authority before decisions.')}</small>
               </div>
             </section>
               {stripFooter}

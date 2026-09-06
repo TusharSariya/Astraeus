@@ -79,7 +79,12 @@ BOXES = (
 
 
 def collection(*features: dict) -> dict:
-    return {"type": "FeatureCollection", "features": list(features)}
+    return {
+        "type": "FeatureCollection",
+        "name": "Current-Alerts",
+        "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"}},
+        "features": list(features),
+    }
 
 
 def test_every_box_success_preserves_native_features_and_filters_exact_validity():
@@ -95,6 +100,8 @@ def test_every_box_success_preserves_native_features_and_filters_exact_validity(
     assert response["features"][0]["properties"]["description"] == "Verbatim description current"
     assert set(response["excluded_features"]) == {"future", "expired"}
     assert len(response["acquisition"]) == 2
+    assert response["name"] == "Current-Alerts"
+    assert response["crs"]["properties"]["name"].endswith("CRS84")
 
 
 def test_successful_empty_every_box_is_zero_but_partial_failure_never_all_clear():
@@ -146,6 +153,16 @@ def test_malformed_collection_is_unavailable(payload):
         CAPQueryService(client=Client([payload, collection()]), boxes=BOXES, clock=Clock()).query(NOW)
     assert len(caught.value.completed_receipts) == 1
     assert caught.value.completed_receipts[0]["byte_size"] > 0
+
+
+def test_provider_envelope_is_required_and_must_match_across_boxes():
+    missing = {"type": "FeatureCollection", "features": []}
+    with pytest.raises(CapQueryUnavailable, match="collection name"):
+        CAPQueryService(client=Client([missing, collection()]), boxes=BOXES, clock=Clock()).query(NOW)
+    changed = collection()
+    changed["crs"] = {"type": "name", "properties": {"name": "EPSG:4326"}}
+    with pytest.raises(CapQueryUnavailable, match="incompatible"):
+        CAPQueryService(client=Client([collection(), changed]), boxes=BOXES, clock=Clock()).query(NOW)
 
 
 def test_conflicting_duplicate_identity_and_bad_receipt_fail_closed():
@@ -212,7 +229,8 @@ def test_geometry_boxes_and_completion_require_exact_bounded_shapes():
 
 def test_demand_features_route_bypasses_artifact_store_and_preserves_partial_warning(monkeypatch):
     warning = feature("warning", sent="2026-09-06T20:00:00Z", effective="2026-09-06T20:00:00Z", expires="2026-09-06T22:00:00Z")
-    error = CapQueryUnavailable("east Avalon box failed", partial_features=[warning])
+    envelope = {"name": "Current-Alerts", "crs": collection()["crs"]}
+    error = CapQueryUnavailable("east Avalon box failed", partial_features=[warning], envelope=envelope)
     class Service:
         def query(self, _moment):
             raise error
@@ -229,6 +247,8 @@ def test_demand_features_route_bypasses_artifact_store_and_preserves_partial_war
     assert payload["data_mode"] == "unavailable"
     assert payload["alerts_in_force"] is None and payload["all_boxes_succeeded"] is False
     assert payload["features"] == [warning]
+    assert payload["name"] == "Current-Alerts"
+    assert payload["crs"] == envelope["crs"]
     assert "no aggregate all-clear" in payload["notices"][1]
 
 
