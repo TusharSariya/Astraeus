@@ -1,6 +1,6 @@
 # Design
 
-## Recommended option A: structural manifest plus snapshot lookup
+## Recommended decision: structural manifest plus snapshot lookup
 
 Add an optional `native_geojson` branch to `RunManifest`, mutually exclusive
 with canonical `fields`. Existing field manifests and `validate_run` behavior
@@ -65,6 +65,25 @@ headers. Fetch must carry the discovery receipt unchanged. The run retrieval
 time is the latest completion among all required receipts. Replay never
 reconstructs a timestamp or header.
 
+### Measured storage consequence and admission boundary
+
+The retained five-collection ECCC capture measured 4,556 received bytes in
+total (892, 911, 901, 926 and 926 bytes). Two immutable revisions of bodies at
+that observed size consume 9,112 bytes; staging a replacement beside them
+raises the body-only peak to 13,668 bytes, about 0.00002% of the accepted 64
+GiB hot-store ceiling. The populated alert sample was 13,801 bytes, showing
+that seasonal empty snapshots are not a sizing proxy for active events.
+
+The recommendation therefore does not turn those samples into capacity
+limits. Each source must declare and enforce received, stored, filesystem and
+margin bounds before activation. The current experimental five-collection
+HTTP ceiling is 5 x 8 MiB = 40 MiB received per operation; it is a refusal
+ceiling, not proof of serialized-artifact or filesystem peak. Activation stays
+blocked until measurements bound those additional copies and the admission
+calculation proves that the complete staged operation plus two retained
+revisions fits the 64 GiB quota. This keeps the contract decision independent
+from an unsupported capacity promise.
+
 ### Publication, API lookup and retention
 
 Validated artifacts stage and publish through the existing single run
@@ -87,7 +106,15 @@ are never retained because their requested window overlaps the evidence
 window. Staged-debris cleanup, digest verification and row-before-object purge
 ordering remain unchanged.
 
-## Alternatives
+This recommendation is one indivisible contract choice. Approval means that
+`qc_passed` remains the shared validator's computed publication-safety gate,
+while provenance separately and explicitly reports `format_valid`,
+`scope: structural_format`, and `provider_qc: unknown`. It also means that a
+source-time-less document is addressed only by immutable snapshot identity and
+uses the existing latest-and-previous complete-run retention rule. Retrieval
+time remains receipt provenance and is never eligible as a frame time.
+
+## Valid alternatives
 
 ### Option B: map native properties into canonical fields
 
@@ -103,18 +130,10 @@ acquisition evidence but cannot expose the provider's structured product to a
 user. Choose it if native-document delivery is outside Astraeus's intended
 evidence model.
 
-### Option D: use retrieval time as a frame
+## Owner decision
 
-This fits the current frame endpoint but falsely states when the provider's
-guidance was valid. Reject: an HTTP completion time is provenance about our
-request, not a producer observation.
-
-## Owner decisions
-
-1. Approve Option A, choose another option, or keep the current unresolved
-   state.
-2. Confirm that `qc_passed` may mean the computed publication-safety gate when
-   provenance separately states `scope: structural_format` and
-   `provider_qc: unknown`; otherwise approve a wider verdict-model rename.
-3. Confirm snapshot lookup by immutable provider-run identity and the existing
-   latest-and-previous retention rule for source-time-less snapshots.
+Approve the recommended contract above as one package, or leave native
+GeoJSON nonpublishable under Option C. Option B remains available only after a
+separate science and registry contract. Retrieval time is excluded as a valid
+alternative because it contradicts the source-time rule rather than expressing
+a viable design tradeoff.
