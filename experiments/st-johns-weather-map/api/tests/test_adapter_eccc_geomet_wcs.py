@@ -88,7 +88,7 @@ def _tiff(
 
 
 def _description(coverage_id: str = FIELD.coverage_id) -> bytes:
-    spacing = 0.0225 if coverage_id.startswith("HRDPS") else (0.15 if coverage_id.startswith("GDPS") else 0.090298)
+    spacing = 0.0225 if coverage_id.startswith("HRDPS") else (0.15 if coverage_id.startswith("GDPS") else (0.09 if coverage_id.startswith(("RAQDPS", "RDAQA")) else 0.090298))
     return f"""<wcs:CoverageDescriptions xmlns:wcs='http://www.opengis.net/wcs/2.0'
  xmlns:gml='http://www.opengis.net/gml/3.2'><wcs:CoverageDescription>
 <gml:boundedBy><gml:Envelope srsName='http://www.opengis.net/def/crs/EPSG/0/4326'

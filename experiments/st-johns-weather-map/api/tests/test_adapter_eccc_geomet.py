@@ -342,6 +342,9 @@ def test_capabilities_are_cached_so_one_cycle_asks_once():
         ("Radar precipitation rate for rain [mm/h]", "mm/h", "mm h-1"),
         ("RDPS - Wind direction at 10m above surface [deg true]", "deg true", "degree"),
         (LIGHTNING_TITLE, "flash/km²/min", "flash km-2 min-1"),
+        ("RAQDPS - Surface PM2.5 [kg/m³]", "kg/m³", "kg m-3"),
+        ("RAQDPS - Column PM10 [kg/m²]", "kg/m²", "kg m-2"),
+        ("RAQDPS - Surface ozone [mol/mol]", "mol/mol", "mol mol-1"),
     ],
 )
 def test_recognised_units_are_normalized_in_spelling_only(title, raw, canonical):

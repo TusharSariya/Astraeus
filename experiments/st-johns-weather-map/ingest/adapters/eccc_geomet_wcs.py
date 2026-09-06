@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Iterator, Mapping, Sequence
+from typing import Callable, Iterable, Iterator, Mapping, Sequence
 from urllib.parse import urlencode
 
 import numpy
@@ -135,6 +135,8 @@ class FetchReceipt:
     selected_valid_time: datetime
     requested_reference_time: datetime | None
     selected_reference_time: datetime | None
+    http_completed_at: datetime
+    response_headers: Mapping[str, str]
 
     def __iter__(self) -> Iterator[Path | str]:
         """Retain the original ``path, url = fetch(...)`` convenience."""
@@ -250,6 +252,7 @@ class GeoMetWCSClient:
     client: PoliteClient | None = None
     base_url: str = GEOMET_BASE_URL.rstrip("/")
     scratch_dir: Path | None = None
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC)
 
     def __post_init__(self) -> None:
         self._owned = None
@@ -344,7 +347,14 @@ class GeoMetWCSClient:
             "DIM_REFERENCE_TIME": None if advertised_run is None else advertised_run.isoformat().replace("+00:00", "Z"),
         }
         url = self._url("GetCoverage", **{key: value for key, value in params.items() if value is not None})
-        self._http().download(url, destination, max_bytes=MAX_COVERAGE_BYTES)
+        http = self._http()
+        if hasattr(http, "get_bytes_with_headers"):
+            body, response_headers = http.get_bytes_with_headers(url, max_bytes=MAX_COVERAGE_BYTES)
+            destination.write_bytes(body)
+        else:  # compact fixture transports implement the historical download seam
+            http.download(url, destination, max_bytes=MAX_COVERAGE_BYTES)
+            response_headers = {}
+        http_completed_at = self.clock().astimezone(UTC)
         head = destination.read_bytes()[:4096]
         with destination.open("rb") as stream:
             signature = stream.read(4)
@@ -359,6 +369,8 @@ class GeoMetWCSClient:
             selected_valid_time=advertised_time,
             requested_reference_time=reference_time,
             selected_reference_time=advertised_run,
+            http_completed_at=http_completed_at,
+            response_headers=response_headers,
         )
 
     def fetch_many(self, fields: Sequence[CoverageField], **kwargs: object) -> list[FetchReceipt]:
@@ -480,6 +492,8 @@ def fetch_artifact(
         "requested_run_time": None if receipt.requested_reference_time is None else receipt.requested_reference_time.astimezone(UTC).isoformat(),
         "run_time": None if receipt.selected_reference_time is None else receipt.selected_reference_time.astimezone(UTC).isoformat(),
         "run_identity_status": "requested_unverified" if receipt.selected_reference_time is not None else "unknown",
+        "http_completed_at": receipt.http_completed_at.isoformat(),
+        "http_response_headers": dict(receipt.response_headers),
         "request_crs": "EPSG:4326",
         "stored_crs": "EPSG:4326",
         "stored_geometry": "rectilinear_grid",

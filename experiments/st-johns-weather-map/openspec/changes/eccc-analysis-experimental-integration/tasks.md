@@ -28,3 +28,11 @@
 
 - [ ] 4.1 Obtain owner acceptance of each source contract before production
       registry, scheduler, API capability, or normative status changes.
+
+## Issue #133 native RAQDPS/RDAQA acquisition
+
+- [x] Enumerate all selected live RAQDPS and RDAQA WCS fields, units, levels, phases, run/valid-time identity, and unsupported catalogue mappings.
+- [x] Preserve actual HTTP completion time, response headers, raw hashes, geometry, and units in each isolated artifact.
+- [x] Prove every selected raw grid against normalized storage and actual point-API HTTP readback.
+- [ ] Owner accepts canonical PM10-column, gas mole-fraction, smoke-attribution, time-average, and RDAQA analysis-phase field contracts before a full RunManifest can publish.
+- [ ] Only after acceptance: add the canonical mappings, validate the complete product with `validate_run`, and consider registration separately.

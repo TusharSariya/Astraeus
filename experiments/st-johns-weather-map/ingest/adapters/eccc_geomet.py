@@ -155,6 +155,9 @@ CANONICAL_BY_GEOMET_UNIT = {
     # rather than dropped: the quantity counts flashes, and a bare ``km-2 min-1``
     # would read as a density of something unspecified.
     "flash/km²/min": "flash km-2 min-1",
+    "kg/m³": "kg m-3",
+    "kg/m²": "kg m-2",
+    "mol/mol": "mol mol-1",
 }
 
 
