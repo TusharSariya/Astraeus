@@ -72,3 +72,71 @@ GLM empty artifacts both hash to
 `fcd19a92362e5ace443cea187479eaf1b646e4a307c533d6190f24c74edfea4d`;
 the DMWF artifact hashes to
 `87463896441e2bb59ecb0a89810cfc57417a3b2d4021df95161077f04750363d`.
+
+## Completion capture
+
+Captured 2026-09-05 from the same anonymous HTTPS endpoint. Discovery again
+used `list-type=2`, product/hour `prefix` and `max-keys=1000`. The completion
+operation was capped at 4 GiB in aggregate; adapter ceilings remained 64 MiB
+per gridded file, 4 MiB per DMWF file, 2 MiB per DMWVF file and 2 MiB per GLM
+file. Temporary source and artifact bytes were removed after verification.
+
+The native COD/CPS DQF is a CF bit field, not an enumerated whole-value flag.
+The adapter verified its `flag_masks`, `flag_values` and `flag_meanings`, then
+required exactly one day/night branch and a clear degraded-quality bit. The
+14:50 UTC daylight scan yielded 98 readable CODF cells and 108 readable
+COD2KMF cells in the evidence box:
+
+| Product | Bytes | Source SHA-256 | Artifact revision | URL |
+|---|---:|---|---|---|
+| ABI-L2-CODF | 6825571 | `44017a740d28af9e3685203f04b856ebdd8b1d677f882480f8df8b5ac1d56d5c` | `b284e8ffcd3fa76bbf4403c2298b74f7d60611998a867840eabcc9c3f4f70847` | https://noaa-goes19.s3.amazonaws.com/ABI-L2-CODF/2026/248/14/OR_ABI-L2-CODF-M6_G19_s20262481450209_e20262481459517_c20262481503508.nc |
+| ABI-L2-COD2KMF | 24926948 | `ee2584c28838e2006142ecee6a008940d21cdb32d9f34e9b66a90ae9cd2527ea` | `11afafe0cd36508e55878e2d963051092c907f320e35c6659f61038ffcc7a169` | https://noaa-goes19.s3.amazonaws.com/ABI-L2-COD2KMF/2026/248/14/OR_ABI-L2-COD2KMF-M6_G19_s20262481450209_e20262481459517_c20262481503503.nc |
+| ABI-L2-CPSF | 26837207 | `e57584882158dccf4154f15810bf4fb3dacb7973afc546eb67cc99e97a69467a` | `4474bc86e7af261e4a94770704113376a91eb73d66f15e322eacea70af10e67f` | https://noaa-goes19.s3.amazonaws.com/ABI-L2-CPSF/2026/248/14/OR_ABI-L2-CPSF-M6_G19_s20262481450209_e20262481459517_c20262481503505.nc |
+
+CPSF had 108 in-box cells whose algorithm and quality bits passed, but its CPS
+value was fill at every one. Fourteen additional daylight scans at 10:50 to
+18:50 UTC across September 3-5 produced the same result. Those 15 files totalled
+384722543 bytes. Every immutable key, byte count and source SHA is retained in
+`goes-abi-glm-completion-receipt.json`.
+This is an evidence-backed `retrieved-no-usable-native-quality-cell`
+disposition. No degraded CPS value is served as a substitute.
+
+One complete 14:00 UTC scan was retrieved for both DMW products. DMWF contained
+all published C02/C07/C08/C09/C10/C14 files and 422 in-box, producer-good
+vectors. DMWVF contained its published C08 file and one in-box, producer-good
+vector. Three consecutive day/hour listings confirmed that DMWVF publishes
+C08, not the previously assumed C08/C10 set. Their artifact revisions are
+`f69266269348542224611017b6f2ea8cd6c5a6c45929de27e8ee208efcfaab19`
+and `18c4cad3da59e5bfb6a4e4928c42affdd22ee6fd466db1e379f10e9dd1ae2e2b`.
+
+The complete GLM interval covers 2026-09-05 14:50:00 through 15:00:00 UTC:
+all thirty 20-second files were retrieved and decoded. They contained 8,534
+flashes, 171,201 groups and 334,443 events globally, and zero at all three
+levels in the evidence box. The empty GeoJSON artifact revision is
+`fcd19a92362e5ace443cea187479eaf1b646e4a307c533d6190f24c74edfea4d`.
+The seven DMW and thirty GLM source files totalled 14561263 bytes. Their exact
+URL, byte count and SHA are retained in the completion receipt.
+
+Actual FastAPI `TestClient` requests against the production routes and the
+captured artifacts compared 12 `/point` values and all their units and valid
+times byte-for-byte/equivalently after the declared ACTPF flag decoding. CODF
+and COD2KMF were among those comparisons. Their artifact revisions were fixed
+on the only artifacts supplied to the route. Every comparison is retained in
+the completion receipt.
+
+`/layers/noaa-goes-east-abi_dmwf/features` returned all 422 stored features and
+`/layers/noaa-goes-east-abi_dmwvf/features` returned the one stored feature;
+the first complete feature from each response matched its source artifact.
+`/layers/noaa-goes-glm-glm_lcfa/features` returned zero features for the
+observed-empty interval, matching the artifact. The compact committed receipt
+is 36843 bytes with SHA-256
+`8b105022078a98d75d363081ed43ae97725ae9f5db27c6faf746c17807449056`.
+For nonempty features and point values, the existing HTTP provenance does not
+expose an artifact revision; those comparisons remain anchored by the single
+supplied artifact and the core sampler's revision result. A successfully read
+empty vector frame now returns `data_mode: live` and `empty_observations` with
+its source/run/revision, exact valid time, bounds and interval. Missing frames,
+malformed collections and failed reads remain unavailable. Root reran all three
+feature requests against the retained captured artifacts and verified all 64
+unique source/artifact digests in the completion receipt (434,424,344 bytes). GLM remains catalogued and unregistered, and every response remains
+`operational: false`.

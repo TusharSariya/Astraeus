@@ -6,7 +6,7 @@ import numpy
 import pytest
 import xarray
 
-from ingest.adapters.goes_abi_dmw import DMWF_PRODUCT, parse_dmw_key, read_band_vectors
+from ingest.adapters.goes_abi_dmw import DMWF_BANDS, DMWVF_BANDS, DMWF_PRODUCT, parse_dmw_key, read_band_vectors
 from ingest.adapters.goes_glm import FieldOfViewRefusal, parse_glm_key, read_detections
 
 BOUNDS = {"south": 45.0, "west": -58.0, "north": 50.5, "east": -46.0}
@@ -76,3 +76,8 @@ def test_point_product_key_parsers_are_product_and_platform_exact():
     glm = "GLM-L2-LCFA/2026/248/20/OR_GLM-L2-LCFA_G19_s20262482030200_e20262482030400_c20262482030420.nc"
     assert parse_glm_key(glm) == "20262482030200"
     assert parse_glm_key(glm.replace("G19", "G18")) is None
+
+
+def test_complete_dmw_band_inventories_match_the_public_product_hierarchy():
+    assert DMWF_BANDS == ("C02", "C07", "C08", "C09", "C10", "C14")
+    assert DMWVF_BANDS == ("C08",)

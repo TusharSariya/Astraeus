@@ -37,7 +37,17 @@ def _granule(path: Path, product_id: str, *, bad_units: bool = False, pressure: 
         variables[field.native] = xarray.DataArray(values, dims=dims, attrs={"units": "wrong" if bad_units and index == 0 else field.native_units, "long_name": field.native})
     quality = numpy.zeros((len(y), len(x)), dtype="int8")
     quality[5, 5] = 1
-    variables[product.quality] = xarray.DataArray(quality, dims=("y", "x"), attrs={"units": "1", "flag_values": [0, 1], "flag_meanings": "good bad"})
+    quality_attrs = {"units": "1", "flag_values": [0, 1], "flag_meanings": "good bad"}
+    if product.quality_is_cod_bitfield:
+        quality.fill(2)
+        quality[5, 5] = 6
+        quality_attrs = {
+            "units": "1",
+            "flag_masks": [1, 1, 2, 2, 4, 4],
+            "flag_values": [0, 1, 0, 2, 0, 4],
+            "flag_meanings": "day_algorithm_pixel_qf not_day_algorithm_pixel_qf night_algorithm_pixel_qf not_night_algorithm_pixel_qf good_quality_qf degraded_quality_qf",
+        }
+    variables[product.quality] = xarray.DataArray(quality, dims=("y", "x"), attrs=quality_attrs)
     coords: dict[str, object] = {"x": x, "y": y}
     if product_id in {"ABI-L2-LVMPF", "ABI-L2-LVTPF"}:
         coords["pressure"] = xarray.DataArray(pressure, dims=("pressure",), attrs={"units": "hPa"})
@@ -53,7 +63,7 @@ def test_every_selected_gridded_product_maps_native_fields(product_id: str, tmp_
     assert stats["covers_bounds"]
     assert stats["coverage_cells"] > 0
     assert {field.canonical for field in product.fields} <= set(dataset.data_vars)
-    assert dataset["quality_flag"].attrs["flag_meanings"] == "good bad"
+    assert dataset["quality_flag"].attrs["flag_meanings"]
     for field in product.fields:
         assert dataset[field.canonical].attrs["units"] == field.units
         assert numpy.isfinite(dataset[field.canonical]).any()
@@ -65,6 +75,27 @@ def test_bad_quality_pixel_is_preserved_as_flag_but_not_readable_value(tmp_path:
     bad = dataset["quality_flag"].values == 1
     assert bad.any()
     assert numpy.isnan(dataset["cloud_top_temperature"].values[bad]).all()
+
+
+def test_cod_quality_is_decoded_from_declared_bits(tmp_path: Path):
+    product = PRODUCTS["ABI-L2-CODF"]
+    dataset, stats = crop_product(_granule(tmp_path / "cod.nc", product.product_id), product, bounds=BOUNDS)
+    assert stats["good_quality_cells"] > 0
+    degraded = dataset["quality_flag"].values == 6
+    assert degraded.any()
+    assert numpy.isnan(dataset["cloud_optical_depth"].values[degraded]).all()
+    assert dataset["quality_flag"].attrs["flag_masks"] == [1, 1, 2, 2, 4, 4]
+
+
+def test_cod_quality_refuses_an_undeclared_bit_layout(tmp_path: Path):
+    product = PRODUCTS["ABI-L2-CODF"]
+    path = _granule(tmp_path / "cod.nc", product.product_id)
+    with xarray.open_dataset(path) as opened:
+        changed = opened.load()
+    changed["DQF"].attrs.pop("flag_masks")
+    changed.to_netcdf(path, mode="w")
+    with pytest.raises(ValueError, match="does not declare"):
+        crop_product(path, product, bounds=BOUNDS)
 
 
 def test_native_unit_and_identity_mismatches_fail_closed(tmp_path: Path):

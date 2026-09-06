@@ -510,6 +510,8 @@ class LayerCoverage:
     sites: list[tuple[float, float]]
     #: True when latitude and longitude both vary, i.e. a real field.
     gridded: bool
+    #: Successfully read empty vector artifacts at the requested exact frame.
+    empty_observations: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1380,7 +1382,7 @@ class LiveStore:
             gridded=False,
         )
 
-    def _geojson_features(self, artifact: Any, valid_time: datetime) -> list[dict[str, Any]]:
+    def _geojson_features(self, artifact: Any, valid_time: datetime) -> list[dict[str, Any]] | None:
         """The stored features, stamped with the frame they were asked for.
 
         The geometry is passed through exactly as published; only provenance is
@@ -1389,13 +1391,16 @@ class LiveStore:
         """
         try:
             document = self._read_geojson(artifact)
+            if document.get("type") != "FeatureCollection" or not isinstance(document.get("features"), list):
+                raise ValueError("stored vector artifact is not a GeoJSON FeatureCollection")
         except Exception as error:
             self._record_skip(artifact, error)
-            return []
+            return None
         collected: list[dict[str, Any]] = []
         for feature in document.get("features") or []:
-            if not isinstance(feature, dict):
-                continue
+            if not isinstance(feature, dict) or feature.get("type") != "Feature":
+                self._record_skip(artifact, ValueError("stored collection contains an invalid feature"))
+                return None
             properties = dict(feature.get("properties") or {})
             properties.update(
                 {
@@ -1427,7 +1432,26 @@ class LiveStore:
         features: list[dict[str, Any]] = []
         for artifact in artifacts:
             if _is_geojson(artifact.media_type):
-                features.extend(self._geojson_features(artifact, valid_time))
+                artifact_coverage = self._geojson_coverage(artifact)
+                if artifact_coverage is None or valid_time not in artifact_coverage.times:
+                    continue
+                stored = self._geojson_features(artifact, valid_time)
+                if stored is None:
+                    continue
+                features.extend(stored)
+                if not stored:
+                    provenance = dict(artifact.provenance or {})
+                    observation = {
+                        "source_id": artifact.source_id,
+                        "logical_name": artifact.logical_name,
+                        "revision_id": str(artifact.revision_id),
+                        "provider_run_id": artifact.provider_run_id,
+                        "valid_time": valid_time.isoformat(),
+                        "bounds": provenance.get("bounds"),
+                        "interval_start": provenance.get("interval_start"),
+                        "interval_end": provenance.get("interval_end"),
+                    }
+                    coverage = replace(coverage, empty_observations=(*coverage.empty_observations, observation))
                 continue
             try:
                 dataset = self.open(artifact)
