@@ -10,7 +10,7 @@ import xarray
 import json
 import zipfile
 
-from weather_api.gfs_query import GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey
+from weather_api.gfs_query import GFS_TIMELINE_LISTING_MAX_BYTES, GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey
 from ingest.contract import Artifact, RunCandidate, RunResult
 from ingest.adapters.noaa_s3 import MAX_IDX_BYTES
 from ingest.grib import write_zarr
@@ -323,6 +323,58 @@ def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_
     assert response.fields[0].provenance.run_stale is False
     assert response.fields[0].provenance.run_stale_reason is None
     assert any("no temporal interpolation" in notice for notice in response.notices)
+
+
+def test_timeline_lists_actual_native_keys_once_without_fetching_grib_payloads():
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    keys = [0, 120, 121, 123, 342, 384, 385]
+    xml = "<ListBucketResult><IsTruncated>false</IsTruncated>" + "".join(
+        f"<Contents><Key>gfs.20260906/12/atmos/gfs.t12z.pgrb2.0p25.f{lead:03d}.idx</Key></Contents>" for lead in keys
+    ) + "</ListBucketResult>"
+
+    class Client:
+        calls = []
+        def get_bytes_with_receipt(self, url, *, max_bytes):
+            self.calls.append((url, max_bytes))
+            return xml.encode(), {"url": url, "bytes": len(xml), "completed_at": run_time.isoformat()}
+
+    class Adapter:
+        _base_url = "https://example.invalid"
+        client = Client()
+        def _get_client(self): return self.client
+        def discover(self, _window):
+            return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+
+    coordinator = GFSQueryCoordinator(Adapter(), now=lambda: run_time + timedelta(hours=6))
+    first, receipt = coordinator.timeline_times(run_time + timedelta(hours=6))
+    second, repeated_receipt = coordinator.timeline_times(run_time + timedelta(hours=6))
+
+    # f121 is not on the post-f120 native three-hour cadence. f384 is a real
+    # provider lead but falls beyond 14 days from this six-hour-old request.
+    assert first == tuple(run_time + timedelta(hours=lead) for lead in (0, 120, 123, 342))
+    assert second == first
+    assert repeated_receipt == receipt
+    assert len(Adapter.client.calls) == 1
+    assert Adapter.client.calls[0][1] == GFS_TIMELINE_LISTING_MAX_BYTES
+    assert "list-type=2" in Adapter.client.calls[0][0]
+
+
+@pytest.mark.parametrize("xml", [
+    "<ListBucketResult><IsTruncated>true</IsTruncated></ListBucketResult>",
+    "<!DOCTYPE x [<!ENTITY y 'z'>]><ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>",
+])
+def test_timeline_refuses_incomplete_or_declared_xml(xml):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    class Client:
+        def get_bytes_with_receipt(self, _url, *, max_bytes):
+            assert max_bytes == GFS_TIMELINE_LISTING_MAX_BYTES
+            return xml.encode(), {}
+    class Adapter:
+        _base_url = "https://example.invalid"
+        def _get_client(self): return Client()
+        def discover(self, _window): return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+    with pytest.raises(ValueError):
+        GFSQueryCoordinator(Adapter(), now=lambda: run_time).timeline_times(run_time)
 
 
 def test_production_loader_invokes_locked_child_and_refuses_failed_validation(tmp_path, monkeypatch):

@@ -62,3 +62,19 @@ two-run retention, source admission or operational status.
 - **WHEN** the user selects GFS and `/point` returns a live GFS response for the selected timestamp
 - **THEN** the existing weather interface displays the returned values and source provenance and labels the model `live query at selected time`
 - **AND** it does not infer availability from the retained-ingestion status endpoint
+
+#### Scenario: GFS profile uses the selected native frame
+- **WHEN** the Workbench requests a GFS profile for its selected timestamp
+- **THEN** `/profile` uses the same bounded selected-frame cache entry and returns only pressure levels actually present
+- **AND** pressure-level temperature and mixed-phase humidity preserve their native evidence while wind speed and direction identify the registered component derivation
+- **AND** the response keeps the requested timestamp at top level and names the actual native timestamp without interpolation
+
+#### Scenario: GFS timeline discovery retrieves metadata only
+- **WHEN** the current timeline needs the selected GFS cycle's available native frames
+- **THEN** one finite cached provider object listing supplies only validated `.idx` keys on the native hourly then three-hourly cadence inside the evidence window
+- **AND** a truncated, malformed, declared or structurally oversized listing fails closed without fetching a GRIB payload
+
+#### Scenario: GFS has no demand-query raster contract yet
+- **WHEN** the current layer catalogue is requested
+- **THEN** it does not advertise a GFS native raster merely because point and profile queries are available
+- **AND** native layer delivery remains an explicit #97 disposition rather than an inferred source-completion claim
