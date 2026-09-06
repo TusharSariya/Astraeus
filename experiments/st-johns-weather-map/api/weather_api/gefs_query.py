@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Callable, Mapping
-from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, gefs_member_identifiers
+from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, NOAA_GEFS_S3_BASE, gefs_member_identifiers
 from ingest.adapters.noaa_s3 import NOAAGEFSEnsembleAdapter
 from ingest.contract import FetchWindow, ResourceBounds, RunCandidate
 from ingest.registry import get_config
@@ -45,10 +45,11 @@ def enforce_platform_bounds(workspace: Path):
     return bounds
 @dataclass(frozen=True)
 class GEFSRequestKey:
-    run_id:str; run_time:datetime; lead:int; product_set:str; members:tuple[str,...]; fields:tuple[str,...]; bounds:tuple[tuple[str,float],...]
+    run_id:str; run_time:datetime; lead:int; product_set:str; members:tuple[str,...]; fields:tuple[str,...]; bounds:tuple[tuple[str,float],...]; endpoint:str=NOAA_GEFS_S3_BASE
     def validate(self):
         if self.run_time.tzinfo is None or self.run_time.utcoffset()!=timedelta(0): raise ValueError("GEFS run time must be aware UTC")
         if self.run_id!=self.run_time.strftime("%Y%m%d%H"): raise ValueError("GEFS run identity must match run time")
+        if self.endpoint.rstrip("/")!=NOAA_GEFS_S3_BASE: raise ValueError("GEFS endpoint is not the approved NOAA origin")
         if self.product_set!=GEFS_PRODUCT_SET: raise ValueError("GEFS product set is not declared")
         if self.members!=declared_members(): raise ValueError("GEFS request must preserve all 31 declared member identities")
         if self.fields!=GEFS_FIELDS: raise ValueError("GEFS request must use the seven registered fields")
@@ -169,7 +170,7 @@ class GEFSBoundedLoader:
         self.workspace, self.runner = workspace, runner or run_bounded_process
     def __call__(self,key:GEFSRequestKey)->GEFSQueryEntry:
         import sys, zipfile
-        request=json.dumps({"run_id":key.run_id,"run_time":key.run_time.isoformat(),"lead":key.lead,"product_set":key.product_set,"members":key.members,"fields":key.fields,"bounds":key.bounds},sort_keys=True).encode()
+        request=json.dumps({"run_id":key.run_id,"run_time":key.run_time.isoformat(),"lead":key.lead,"product_set":key.product_set,"members":key.members,"fields":key.fields,"bounds":key.bounds,"endpoint":key.endpoint},sort_keys=True).encode()
         with tempfile.TemporaryDirectory(prefix="gefs-parent-",dir=self.workspace) as directory:
             bundle_path=Path(directory)/"gefs-result.zip"
             self.runner(command=[sys.executable,"-m","weather_api.gefs_query_worker","{output}"],stdin=request,destination=bundle_path,limits=GEFS_CHILD_LIMITS,timeout_seconds=600)

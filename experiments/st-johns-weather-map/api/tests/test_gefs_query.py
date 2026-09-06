@@ -136,3 +136,9 @@ def test_bounded_loader_refuses_untyped_manifest(tmp_path):
    bundle.writestr("result.json",json.dumps({"members_present":"all"})); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
  with pytest.raises(ValueError,match="invalid types"):
   GEFSBoundedLoader(tmp_path,runner=runner)(key())
+
+def test_unapproved_endpoint_refuses_before_loader():
+ bad=GEFSRequestKey(key().run_id,RUN,6,"pgrb2ap5",declared_members(),GEFS_FIELDS,BOX,"https://evil.invalid")
+ calls=[]; service=GEFSQueryService(lambda k:calls.append(k) or entry(k),preflight=lambda _:demand_operation_bounds())
+ with pytest.raises(ValueError,match="approved NOAA origin"):service.query(bad)
+ assert calls==[]

@@ -7,7 +7,7 @@ from weather_api.gefs_query import GEFSRequestKey, GEFSSelectedLoader, GEFS_OUTP
 
 def main():
  output=Path(sys.argv[1]); request=json.loads(sys.stdin.buffer.read())
- key=GEFSRequestKey(request["run_id"],datetime.fromisoformat(request["run_time"]),int(request["lead"]),request["product_set"],tuple(request["members"]),tuple(request["fields"]),tuple((n,float(v)) for n,v in request["bounds"]))
+ key=GEFSRequestKey(request["run_id"],datetime.fromisoformat(request["run_time"]),int(request["lead"]),request["product_set"],tuple(request["members"]),tuple(request["fields"]),tuple((n,float(v)) for n,v in request["bounds"]),request["endpoint"])
  key.validate()
  if shutil.disk_usage(output.parent).free<GEFS_OUTPUT_ALLOWANCE_BYTES: raise RuntimeError("GEFS child workspace is below its output allowance")
  with tempfile.TemporaryDirectory(prefix="gefs-child-",dir=output.parent) as directory:
