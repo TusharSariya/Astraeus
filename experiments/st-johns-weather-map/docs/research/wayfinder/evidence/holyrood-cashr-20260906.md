@@ -35,3 +35,18 @@ cd experiments/st-johns-weather-map/api
 uv run pytest tests/test_experimental_holyrood_radar.py tests/test_adapter_eccc_hazards.py -q
 # 15 passed
 ```
+
+After the final `source_qc` fix at commit `2987989`, the retained adapter bodies
+were replayed without network access. Compact proof is retained at
+`/tmp/holyrood105-capture/adapter-run-final-proof.json`; its replay timestamp is
+`2026-09-06T05:17:41.082003Z`. The two output hashes remain byte-for-byte equal
+to the captured bodies (`071cbba7...` rain and `2ff7a12d...` snow), and the
+original image HTTP completion timestamps remain `05:03:50.495439Z` and
+`05:03:51.050950Z`. Both artifact provenance records now carry
+`source_qc.status: unknown`, `quality.status: suspect`, `operational: false`,
+and image-only coverage. The returned run remains `complete: false`; its
+`qc_passed: true` reports only that the deliberately unresolved manifest
+validator executed, not provider source quality. The 05:00Z replay listing was
+minimally reconstructed from the retained provider-run identity because that
+exact listing response was not retained; it is labeled as reconstructed in the
+proof and is not presented as a second capture.
