@@ -705,7 +705,7 @@ export default function App() {
     }).catch(() => undefined)
 
     if (mode === 'expert') {
-      loadProfile(location, validTimeIso, controller.signal).then((prof) => {
+      loadProfile(location, validTimeIso, selectedProduct ?? undefined, controller.signal).then((prof) => {
         setProfile(prof)
       }).catch(() => undefined)
     }

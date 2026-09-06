@@ -19,6 +19,10 @@ from ingest.adapters.eccc_datamart import (
     ECCCDataMartAdapter,
     HRDPS_ADAPTER,
     HRDPS_FILE_BYTES,
+    HRDPS_PROFILE_VARS,
+    HRDPS_STEERING_VARS,
+    HRDPS_OMEGA_VARS,
+    HRDPS_THERMO_VARS,
 )
 from ingest.contract import FetchWindow, RunCandidate
 
@@ -27,10 +31,17 @@ HRDPS_POINT_FIELDS = (
     "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure",
     "total_cloud_opacity",
 )
+HRDPS_PROFILE_FIELDS = tuple(dict.fromkeys((
+    *HRDPS_PROFILE_VARS,
+    *HRDPS_STEERING_VARS,
+    *HRDPS_OMEGA_VARS,
+    *HRDPS_THERMO_VARS,
+)))
 HRDPS_CACHE_TTL_SECONDS = 600.0
 HRDPS_CACHE_MAX_ENTRIES = 4
 HRDPS_CACHE_MAX_BYTES = 64 * 1024 * 1024
 HRDPS_SELECTED_RECEIVED_BYTES = len(HRDPS_POINT_FIELDS) * HRDPS_FILE_BYTES
+HRDPS_FAILURE_BACKOFF_SECONDS = 60.0
 _COORDINATOR: "HRDPSQueryCoordinator | None" = None
 
 
@@ -70,6 +81,7 @@ class HRDPSQueryService:
         self._lock = threading.Lock()
         self._entries: OrderedDict[HRDPSRequestKey, tuple[float, HRDPSQueryEntry]] = OrderedDict()
         self._inflight: dict[HRDPSRequestKey, Future[HRDPSQueryEntry]] = {}
+        self._failures: dict[HRDPSRequestKey, tuple[float, BaseException]] = {}
 
     def query(self, key: HRDPSRequestKey) -> HRDPSQueryEntry:
         with self._lock:
@@ -79,6 +91,10 @@ class HRDPSQueryService:
                 self._entries.move_to_end(key)
                 return cached[1]
             self._entries.pop(key, None)
+            failure = self._failures.get(key)
+            if failure and now < failure[0]:
+                raise failure[1]
+            self._failures.pop(key, None)
             future = self._inflight.get(key)
             owner = future is None
             if owner:
@@ -100,6 +116,8 @@ class HRDPSQueryService:
             future.set_result(entry)
             return entry
         except BaseException as error:
+            with self._lock:
+                self._failures[key] = (self._clock() + HRDPS_FAILURE_BACKOFF_SECONDS, error)
             future.set_exception(error)
             raise
         finally:
@@ -118,10 +136,16 @@ class HRDPSQueryCoordinator:
         self._lock = threading.Lock()
         self._cache = HRDPSQueryService(self._load, clock=clock)
 
-    def query(self, selected_time: datetime) -> HRDPSQueryEntry:
+    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = HRDPS_POINT_FIELDS) -> HRDPSQueryEntry:
         if selected_time.tzinfo is None:
             raise ValueError("HRDPS selected time must include an offset")
-        selected_time = selected_time.astimezone(UTC)
+        requested_time = selected_time.astimezone(UTC)
+        selected_time = requested_time.replace(minute=0, second=0, microsecond=0)
+        if requested_time - selected_time >= timedelta(hours=1):  # defensive; floor is always under one hour
+            raise ValueError("HRDPS latest native time is too old for the selection")
+        # This gate precedes even bounded directory discovery: listings are
+        # provider payload too, so an unsupported runtime never opens one.
+        self._adapter.operation_bounds(FetchWindow(now=selected_time, back_hours=0, forward_hours=0))
         with self._lock:
             candidate = self._discover(selected_time)
             assert candidate.run_time is not None
@@ -133,7 +157,7 @@ class HRDPSQueryCoordinator:
             if lead not in available or not 0 <= lead < 25:
                 raise ValueError("HRDPS has no exact native lead for the selection")
             key = HRDPSRequestKey(str(candidate.detail["cycle_url"]), candidate.provider_run_id,
-                                  lead, HRDPS_POINT_FIELDS, tuple(sorted(AVALON_CORE_BOUNDS.items())))
+                                  lead, tuple(fields), tuple(sorted(AVALON_CORE_BOUNDS.items())))
             self._prepared[key] = candidate
             try:
                 return self._cache.query(key)
@@ -142,7 +166,26 @@ class HRDPSQueryCoordinator:
 
     def point_fields(self, latitude: float, longitude: float, selected_time: datetime):
         from .store import LiveStore, live_point_fields
-        entry = self.query(selected_time)
+        entry = self.query(selected_time, fields=HRDPS_POINT_FIELDS)
+        samples, sampler = self._samples(entry, latitude, longitude)
+        class Samples:
+            skipped, unmodelled = sampler.skipped, sampler.unmodelled
+            @staticmethod
+            def sample_point(*_args, **_kwargs): return samples
+        return live_point_fields(Samples(), latitude, longitude, entry.valid_time)
+
+    def profile_levels(self, latitude: float, longitude: float, selected_time: datetime, pressures):
+        from .store import live_profile_levels
+        entry = self.query(selected_time, fields=HRDPS_PROFILE_FIELDS)
+        samples, sampler = self._samples(entry, latitude, longitude)
+        class Samples:
+            skipped, unmodelled = sampler.skipped, sampler.unmodelled
+            @staticmethod
+            def sample_point(*_args, **_kwargs): return samples
+        return live_profile_levels(Samples(), latitude, longitude, entry.valid_time, pressures)
+
+    @staticmethod
+    def _samples(entry: HRDPSQueryEntry, latitude: float, longitude: float):
         with tempfile.TemporaryDirectory(prefix="hrdps-demand-read-") as directory:
             path = Path(directory) / "surface.zarr.zip"
             path.write_bytes(entry.payload)
@@ -160,11 +203,7 @@ class HRDPSQueryCoordinator:
                 samples = sampler._sample_dataset(dataset, artifact, latitude, longitude, entry.valid_time)
             finally:
                 dataset.close(); zipped.close()
-        class Samples:
-            skipped, unmodelled = sampler.skipped, sampler.unmodelled
-            @staticmethod
-            def sample_point(*_args, **_kwargs): return samples
-        return live_point_fields(Samples(), latitude, longitude, entry.valid_time)
+        return samples, sampler
 
     def _discover(self, selected_time: datetime) -> RunCandidate:
         now = self._clock()
@@ -188,6 +227,10 @@ class HRDPSQueryCoordinator:
         candidate = self._prepared[key]
         assert candidate.run_time is not None
         selected = candidate.run_time + timedelta(hours=key.lead)
+        # The full-run measurement is deliberately reused as a conservative
+        # pre-payload platform gate until a smaller selected-field envelope is
+        # independently measured. Different keys are serialised by the
+        # coordinator lock, while cached ZIPs count against the finite cache.
         with tempfile.TemporaryDirectory(prefix="hrdps-demand-") as directory:
             result = self._adapter.fetch_selected(candidate, selected, Path(directory), fields=key.fields)
             artifact = result.artifacts[0]

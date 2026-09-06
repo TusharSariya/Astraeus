@@ -1089,13 +1089,14 @@ def _live_point(
                 notices=["eccc-hrdps returned no validated native value for the selected point"],
                 source_id="eccc-hrdps", product="HRDPS",
             )
+        actual_time = fields[0].provenance.valid_time
         return PointResponse(
             data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
             selection=Selection(mode="fallback", selected_source_id="eccc-hrdps",
                                 selected_product_id="hrdps", badge="HRDPS selected model",
-                                reason=f"Selected HRDPS native timestep {time.isoformat()}"),
+                                reason=f"Selected HRDPS native timestep {actual_time.isoformat()}"),
             fields=fields,
-            notices=[f"HRDPS values are from exact native timestep {time.isoformat()}; no temporal interpolation was applied"],
+            notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied"],
         )
 
     store = live_store()
@@ -2255,6 +2256,7 @@ def get_profile(
     latitude: float = Query(default=47.5615, ge=-90, le=90),
     longitude: float = Query(default=-52.7126, ge=-180, le=180),
     valid_time: datetime | None = None,
+    product: str | None = None,
 ) -> ProfileResponse:
     require_core_coverage(latitude, longitude)
     time = requested_time(valid_time)
@@ -2267,6 +2269,17 @@ def get_profile(
             levels=unavailable_profile_levels(time, PROFILE_PRESSURES, flags=[flag, *flags], last_valid_time=last_valid_time),
             notices=[*notices, reason],
         )
+
+    if product and product.upper() == "HRDPS":
+        try:
+            from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+            levels = hrdps_query_coordinator().profile_levels(latitude, longitude, time, PROFILE_PRESSURES)
+        except Exception as error:
+            LOGGER.exception("HRDPS demand profile failed for %s", time.isoformat())
+            return unavailable(f"HRDPS selected profile is unavailable: {type(error).__name__}", "demand_query_unavailable:eccc-hrdps", [])
+        return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude,
+                               valid_time=time, levels=levels,
+                               notices=["HRDPS pressure fields were fetched for this selected native timestep only"])
 
     store = live_store()
     if store is None:

@@ -671,10 +671,11 @@ export async function loadPoint(location: LocationPoint, validTime?: string, pro
   }
 }
 
-export async function loadProfile(location: LocationPoint, validTime?: string, signal?: AbortSignal): Promise<import('./types').ProfileResponse | null> {
+export async function loadProfile(location: LocationPoint, validTime?: string, product?: string, signal?: AbortSignal): Promise<import('./types').ProfileResponse | null> {
   try {
     const params = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude) })
     if (validTime) params.set('valid_time', validTime)
+    if (product) params.set('product', product)
     const response = await fetch(`${prefix}/profile?${params}`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) return null
     const data: unknown = await response.json()

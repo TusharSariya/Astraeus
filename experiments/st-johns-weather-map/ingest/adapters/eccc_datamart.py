@@ -518,9 +518,6 @@ class ECCCDataMartAdapter:
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
         if self.source_id != "eccc-hrdps":
             raise AdapterUnavailable(f"{self.source_id}: complete-operation bounds are not measured")
-        raise AdapterUnavailable("eccc-hrdps is served only by the selected-timestamp demand query")
-        # The historical full-run path remains below as retained measurement
-        # documentation; it is unreachable by the scheduler after migration.
         memory_limit = Path("/sys/fs/cgroup/memory.max")
         try:
             raw_limit = memory_limit.read_text().strip()

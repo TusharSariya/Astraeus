@@ -11,6 +11,7 @@ from ingest.contract import RunCandidate
 from weather_api.hrdps_query import (
     HRDPS_POINT_FIELDS,
     HRDPSQueryEntry,
+    HRDPSQueryCoordinator,
     HRDPSQueryService,
     HRDPSRequestKey,
 )
@@ -112,3 +113,36 @@ def test_hrdps_point_demand_bypasses_artifact_store(monkeypatch) -> None:
     body = response.json()
     assert body["data_mode"] == "unavailable"
     assert "demand_query_empty:eccc-hrdps" in body["fields"][0]["provenance"]["quality"]["flags"]
+
+
+def test_coordinator_preflights_before_discovery() -> None:
+    class Adapter:
+        def operation_bounds(self, _window):
+            raise RuntimeError("unsupported runtime")
+        def discover(self, _window):
+            pytest.fail("provider discovery happened before platform preflight")
+
+    coordinator = HRDPSQueryCoordinator(adapter=Adapter())
+    with pytest.raises(RuntimeError, match="unsupported runtime"):
+        coordinator.query(datetime(2026, 9, 6, 14, 22, tzinfo=UTC))
+
+
+def test_failure_is_coalesced_and_backed_off() -> None:
+    calls = 0
+    current = 0.0
+
+    def fail(_request):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("provider unavailable")
+
+    service = HRDPSQueryService(fail, clock=lambda: current)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(service.query, key()) for _ in range(8)]
+        for future in futures:
+            with pytest.raises(RuntimeError, match="provider unavailable"):
+                future.result()
+    assert calls == 1
+    with pytest.raises(RuntimeError, match="provider unavailable"):
+        service.query(key())
+    assert calls == 1
