@@ -29,6 +29,12 @@ def test_store_identity_excludes_credentials_and_survives_rotation():
     assert first._store_key()==rotated._store_key()
     assert all(secret not in first._store_key() for secret in ("alice","first","key","secret"))
 
+def test_api_package_has_no_durable_mutation_calls():
+    api_root=Path(__file__).parents[1]/"weather_api"
+    source="\n".join(path.read_text() for path in api_root.glob("*.py"))
+    for capability in ("acquire_resource_reservation(","begin_reservation_cleanup(","release_clean_reservation("):
+        assert capability not in source
+
 def test_reaper_refuses_a_ledger_path_outside_approved_root(tmp_path):
     approved=tmp_path/"approved"; approved.mkdir()
     outside=tmp_path/"must-survive"; outside.mkdir()

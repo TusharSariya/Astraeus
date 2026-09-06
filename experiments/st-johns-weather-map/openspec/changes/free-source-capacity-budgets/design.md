@@ -88,8 +88,10 @@ after every crash. A renewable short lease could reduce detection time, but a
 scheduler-pause and database-outage evidence; even then, expiry must enter
 `revoking` and retain capacity until fenced cleanup proves allocations gone.
 
-Allocation targets use the hot-store database URL and bucket as the global
-store identity. Local filesystem rows additionally use a configured stable
+Allocation targets use a SHA-256 digest of the credential-free database
+endpoint/database name and object-store endpoint/bucket as the global store
+identity. Credentials never enter the ledger, and rotating them does not
+create a second capacity domain. Local filesystem rows additionally use a configured stable
 worker-host identity and filesystem device identity; a transient process ID is
 not sufficient. Multi-host workers cannot reserve another host's local disk.
 Missing stable identity, unavailable ledger database, ambiguous lease state,
@@ -105,6 +107,14 @@ An unreachable host's local reservation cannot consume another host's local
 target, but its global object-store reservation remains charged until central
 cleanup proves every remote allocation absent. Host clocks and process-liveness
 observations are supporting evidence only; they never authorize release.
+
+The migration revokes `PUBLIC EXECUTE` from every reservation, cleanup, and
+publication mutation function. The current Compose experiment still supplies
+the API and worker with the database-owner credential, so database-level
+least-privilege separation is not yet proven. The API contains no call to
+these mutation functions. Snapshot and fragment wiring
+must remain blocked until a follow-up migration supplies distinct API-reader
+and worker-writer roles; this implementation does not claim that boundary.
 
 ## Evidence limitations
 
