@@ -260,6 +260,38 @@ def test_unconfigured_mode_fails_closed(data_mode):
     assert any("fails closed" in notice for notice in payload["notices"])
 
 
+def test_demand_kp_survives_retained_solar_wind_store_failure(monkeypatch, data_mode):
+    """The independent demand result is never erased by the legacy store."""
+    reference = datetime.now(UTC).replace(second=0, microsecond=0)
+    kp_store = StubStore([kp_observed_pair(reference), kp_forecast_pair(reference)])
+
+    class DemandKp:
+        def series(self, at):
+            return (
+                api_module._kp_series(kp_store.read_series("noaa-swpc-kp", "kp_observed"), at, with_status=False, name="kp_observed"),
+                api_module._kp_series(kp_store.read_series("noaa-swpc-kp", "kp_forecast"), at, with_status=True, name="kp_forecast"),
+            )
+
+    class RaisingStore:
+        skipped = []
+
+        def read_series(self, *_args):
+            raise RuntimeError("retained store unavailable")
+
+    data_mode("live")
+    monkeypatch.setattr(kp_query_module, "swpc_kp_query_service", lambda: DemandKp())
+    monkeypatch.setattr(api_module, "live_store", lambda: RaisingStore())
+
+    response = space_weather(reference)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["data_mode"] == "live"
+    assert payload["kp_observed"]["available"] is True
+    assert payload["kp_forecast"]["available"] is True
+    assert payload["solar_wind"]["available"] is False
+    assert any("retained store raised" in notice for notice in payload["notices"])
+
+
 # --- planetary quantities never reach /point --------------------------------
 
 
