@@ -824,7 +824,7 @@ export const LAYER_GROUP_LABELS: Record<LayerGroup, string> = {
   alert: 'Alerts',
   forecast_proxy: 'Forecast · live proxy',
   published_model: 'Published model grids',
-  rendered_grid: 'Rendered grids (drawn here from stored model data)',
+  rendered_grid: 'Rendered grids',
   unknown: 'Undeclared group',
 }
 

@@ -540,7 +540,7 @@ describe('layer grouping shared by the drawer and the coverage rows', () => {
     }
     expect(layerGroup(strata)).toBe('rendered_grid')
     expect(LAYER_GROUP_ORDER.indexOf('rendered_grid')).toBeGreaterThan(LAYER_GROUP_ORDER.indexOf('published_model'))
-    expect(LAYER_GROUP_LABELS.rendered_grid).toBe('Rendered grids (drawn here from stored model data)')
+    expect(LAYER_GROUP_LABELS.rendered_grid).toBe('Rendered grids')
     // Without the declaration it stays a published model grid: the group is
     // never inferred from the id.
     expect(layerGroup({ ...strata, group: undefined })).toBe('published_model')

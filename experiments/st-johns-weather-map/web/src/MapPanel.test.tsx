@@ -1104,7 +1104,7 @@ describe('MapPanel layer drawer', () => {
       evidence_basis: 'published_artifact', raster_available: true, legend_available: true, group: 'rendered_grid',
     }
     render(panel({ layers: [strata], selections: [{ id: strata.id, visible: true, opacity: 0.85 }] }))
-    const group = screen.getByRole('group', { name: 'Rendered grids (drawn here from stored model data)' })
+    const group = screen.getByRole('group', { name: 'Rendered grids' })
     expect(within(group).getByRole('checkbox', { name: /low cloud cover/ })).toBeChecked()
     // The legend is OUR colormap and must not be captioned as a provider's.
     expect(screen.getByText(/Rendering colormap, served by this experiment/)).toBeInTheDocument()

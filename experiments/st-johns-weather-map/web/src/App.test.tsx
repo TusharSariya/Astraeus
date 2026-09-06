@@ -1005,7 +1005,7 @@ describe('rendered-grid coverage rows', () => {
     await openStory()
 
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
-    const group = within(ribbon).getByRole('group', { name: 'Rendered grids (drawn here from stored model data) · 3 layers' })
+    const group = within(ribbon).getByRole('group', { name: 'Rendered grids · 3 layers' })
     expect(within(group).getAllByRole('button')).toHaveLength(3)
     // The rows toggle like any other layer.
     await userEvent.click(within(group).getByRole('button', { name: /low cloud cover/ }))
