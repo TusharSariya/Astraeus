@@ -105,7 +105,8 @@ def test_periodic_worker_maintenance_purges_without_a_restart(tmp_path, monkeypa
     from ingest.derive import cloud_motion, weong_layer
     calls = []
     backing = SimpleNamespace(prune=lambda: calls.append('prune'),
-                              purge_outside_window=lambda: calls.append('purge'))
+                              purge_outside_window=lambda: calls.append('purge'),
+                              reconcile_durable_reservations=lambda _path: 0)
     monkeypatch.setattr(runtime, '_store', lambda: backing)
     monkeypatch.setattr(runtime, 'heartbeat_path', lambda: tmp_path / 'heartbeat')
     monkeypatch.setattr(scheduler, 'reconcile_on_start', lambda store: SimpleNamespace(detail='test', may_fetch=True))

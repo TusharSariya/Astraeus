@@ -32,12 +32,20 @@ memory, temporary disk, runtime or concurrency.
   provider ceilings, with separate proof that source, query, transfer and
   compute charges are zero.
 - Fail closed on exhaustion without thinning, substitution or silent eviction.
+- Replace process-local reservation maps before multi-process ingestion with
+  one durable, fenced transaction covering store and host-filesystem
+  allocations. On 2026-09-06 the owner selected this experimental package:
+  fixed 15-minute task/snapshot and two-hour ingestion deadlines, continued
+  charging until a fenced reaper proves local and remote allocations gone,
+  and a 15-minute cleanup objective whose miss fails closed into manual
+  recovery. A renewable heartbeat remains an unmeasured future alternative.
 
 No requirement in this change is accepted by the capacity answer or its
 presence here. Only `@TusharSariya` may authorize normative status under the
-separate governance transition. Production implementation waits for that
-authorization. Product-specific measurement continues in the acquisition
-tickets without admitting unmeasured sources.
+separate governance transition. The selected durable-ledger implementation
+remains inside the experimental weather stack and does not transition this
+draft to normative status. Product-specific measurement continues in the
+acquisition tickets without admitting unmeasured sources.
 
 ## Evidence
 

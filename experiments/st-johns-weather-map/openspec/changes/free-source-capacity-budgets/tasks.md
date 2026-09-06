@@ -84,10 +84,18 @@
   from each acquisition ticket before that adapter is scheduled. No current
   registered adapter may infer these values from generic constants or a
   percentage.
-- [ ] 5.4 Replace the process-local reservation ledger before any multi-process
+- [x] 5.4 Replace the process-local reservation ledger before any multi-process
   or multi-host ingestion is enabled. The current worker deliberately executes
   one source at a time; separate experimental capture scripts remain outside
   its reservation boundary and must continue to coordinate capacity externally.
+  The owner selected the database-transaction and fencing package on
+  2026-09-06: fixed, nonrenewable 15-minute task/snapshot and two-hour ingestion
+  deadlines followed by fenced, proven cleanup. Deadline expiry enters
+  `revoking` and never releases capacity. Verify with
+  `make test-sql` and `cd api && uv run pytest -q
+  tests/test_durable_reservations.py tests/test_ingest_store.py
+  tests/test_worker_outcomes.py`. Renewable heartbeat timing remains an
+  unmeasured future alternative.
 - [x] 5.5 Add the optional complete-operation admission seam for adapters whose
   discovery request is itself the payload: reserve declared store and local
   filesystem allocations before discovery, and hold that reservation and one

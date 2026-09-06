@@ -167,7 +167,10 @@ def _store():
         return None
 
 
-def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callable[[], None] | None = None) -> SourceOutcome:
+def run_source(
+    adapter, config, store, *, reference: datetime,
+    heartbeat: Callable[[], None] | None = None, workload_kind: str = "ingestion",
+) -> SourceOutcome:
     """Admit payload-bearing discovery before delegating the source run."""
     from ingest.contract import FetchWindow, ResourceBounds  # noqa: PLC0415
     from ingest.resources import ReceivedBytesExceeded, acquisition_budget  # noqa: PLC0415
@@ -177,7 +180,10 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
         return SourceOutcome(config.source_id, "failed", "resource preflight failed: no artifact store is available")
     operation_method = getattr(adapter, "operation_bounds", None)
     if operation_method is None:
-        return _run_source(adapter, config, store, reference=reference, heartbeat=heartbeat)
+        return _run_source(
+            adapter, config, store, reference=reference, heartbeat=heartbeat,
+            workload_kind=workload_kind,
+        )
     try:
         bounds = operation_method(FetchWindow(now=reference))
         if not isinstance(bounds, ResourceBounds):
@@ -188,11 +194,12 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
             filesystem_bytes=bounds.filesystem_bytes,
             margin_bytes=bounds.margin_bytes,
             filesystem_path=Path(tempfile.gettempdir()),
+            workload_kind=workload_kind,
         )
-        with reservation, acquisition_budget(bounds.received_bytes):
+        with reservation as lease, acquisition_budget(bounds.received_bytes):
             return _run_source(
                 adapter, config, store, reference=reference, heartbeat=heartbeat,
-                admitted_bounds=bounds,
+                admitted_bounds=bounds, admitted_reservation=lease,
             )
     except QuotaExceeded as error:
         return SourceOutcome(config.source_id, "failed", f"quota_exceeded during pre-discovery admission: {error}")
@@ -207,7 +214,7 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
 def _run_source(
     adapter, config, store, *, reference: datetime,
     heartbeat: Callable[[], None] | None = None,
-    admitted_bounds=None,
+    admitted_bounds=None, admitted_reservation=None, workload_kind: str = "ingestion",
 ) -> SourceOutcome:
     """Discover, fetch, stage and publish one source. Never raises."""
     from ingest.contract import AdapterUnavailable, DiscoveryBounds, FetchWindow, ResourceBounds  # noqa: PLC0415
@@ -286,36 +293,46 @@ def _run_source(
                 filesystem_bytes=bounds.filesystem_bytes,
                 margin_bytes=bounds.margin_bytes,
                 filesystem_path=Path(tempfile.gettempdir()),
+                workload_kind=workload_kind,
             )
             budget_context = acquisition_budget(bounds.received_bytes)
-        with reservation, budget_context, tempfile.TemporaryDirectory(prefix=f"{config.source_id}-") as workdir:
-            if heartbeat is not None:
-                heartbeat()
-            phase = "payload retrieval"
-            result = adapter.fetch(candidate, window, Path(workdir))
-            phase = "resource reconciliation"
-            observed_filesystem = directory_bytes(Path(workdir))
-            if observed_filesystem > bounds.filesystem_bytes:
-                raise ResourceBudgetExceeded(
-                    f"temporary/extraction output used {observed_filesystem} bytes, "
-                    f"above its {bounds.filesystem_bytes} byte bound"
-                )
-            observed_store = sum(artifact.byte_size for artifact in result.artifacts)
-            if observed_store > bounds.store_bytes:
-                raise ResourceBudgetExceeded(
-                    f"staged artifacts require {observed_store} bytes, above their "
-                    f"{bounds.store_bytes} byte bound"
-                )
-            if heartbeat is not None:
-                heartbeat()
-            phase = "publication"
-            store.upsert_source(
-                source_id=config.source_id, producer=config.producer, product=config.product,
-                registry_status=config.registry_status,
-                adapter_version=str(getattr(adapter, "adapter_version", "unversioned")),
-                metadata={"bounds": dict(config.bounds), "variables": list(config.variables)},
+        with reservation as reserved, budget_context:
+            lease = admitted_reservation or reserved
+            workspace_context = (
+                nullcontext(lease.workspace_path)
+                if lease is not None
+                else tempfile.TemporaryDirectory(prefix=f"{config.source_id}-")
             )
-            published = store.stage_and_publish(result)
+            with workspace_context as workspace:
+                workdir = Path(workspace)
+                workdir.mkdir(mode=0o700, exist_ok=True)
+                if heartbeat is not None:
+                    heartbeat()
+                phase = "payload retrieval"
+                result = adapter.fetch(candidate, window, Path(workdir))
+                phase = "resource reconciliation"
+                observed_filesystem = directory_bytes(Path(workdir))
+                if observed_filesystem > bounds.filesystem_bytes:
+                    raise ResourceBudgetExceeded(
+                        f"temporary/extraction output used {observed_filesystem} bytes, "
+                        f"above its {bounds.filesystem_bytes} byte bound"
+                    )
+                observed_store = sum(artifact.byte_size for artifact in result.artifacts)
+                if observed_store > bounds.store_bytes:
+                    raise ResourceBudgetExceeded(
+                        f"staged artifacts require {observed_store} bytes, above their "
+                        f"{bounds.store_bytes} byte bound"
+                    )
+                if heartbeat is not None:
+                    heartbeat()
+                phase = "publication"
+                store.upsert_source(
+                    source_id=config.source_id, producer=config.producer, product=config.product,
+                    registry_status=config.registry_status,
+                    adapter_version=str(getattr(adapter, "adapter_version", "unversioned")),
+                    metadata={"bounds": dict(config.bounds), "variables": list(config.variables)},
+                )
+                published = store.stage_and_publish(result)
     except AdapterUnavailable as error:
         return SourceOutcome(config.source_id, "cancelled", f"candidate unusable: {error}")
     except RunIdentityConflict as error:
@@ -671,7 +688,7 @@ class Scheduler:
                 continue
             if heartbeat is not None:
                 heartbeat()
-            outcome = run_source(adapter, config, self._store, reference=reference, heartbeat=heartbeat)
+            outcome = run_source(adapter, config, self._store, reference=reference, heartbeat=heartbeat, workload_kind="task")
             self._record_progress(outcome)
             outcomes.append(outcome)
             # Same rule as `cycle`: an on-demand refresh that republishes a
@@ -709,6 +726,13 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
     previous_document = read_heartbeat(path)
     write_heartbeat(path)
     store = _store()
+    if store is not None:
+        try:
+            cleaned = store.reconcile_durable_reservations(Path(tempfile.gettempdir()))
+            log(f"durable reservation reconciliation: cleaned {cleaned} prior-epoch reservation(s)")
+        except Exception as error:
+            log(f"durable reservation reconciliation failed closed: {error!r}")
+            return 1
     # Reconcile the retained window before scheduling anything: sweep
     # abandoned staging, purge what left the window, then let the sources ask
     # what is missing. The store is never cleared on start.

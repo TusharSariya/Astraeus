@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import hashlib
 import os
+import socket
 import shutil
-import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator, Sequence
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from .contract import Artifact, RunResult
@@ -53,9 +54,25 @@ class ResourceBudgetExceeded(RuntimeError):
     """A measured local allocation cannot fit before payload retrieval."""
 
 
-_RESERVATION_LOCK = threading.Lock()
-_STORE_RESERVATIONS: dict[tuple[str, str], int] = {}
-_FILESYSTEM_RESERVATIONS: dict[int, int] = {}
+class ReservationLost(ResourceBudgetExceeded):
+    """A durable operation fence is stale, expired, or unavailable."""
+
+
+TASK_DEADLINE = timedelta(minutes=15)
+INGESTION_DEADLINE = timedelta(hours=2)
+CLEANUP_OBJECTIVE = timedelta(minutes=15)
+
+
+@dataclass(frozen=True)
+class ReservationIdentity:
+    operation_id: str
+    fencing_token: int
+    owner_id: str
+    host_id: str
+    host_epoch: str
+    device_id: str
+    workspace_path: Path
+    deadline_at: datetime
 
 
 class RunIdentityConflict(RuntimeError):
@@ -219,6 +236,112 @@ class ArtifactStore:
     def __init__(self, config: StoreConfig) -> None:
         self.config = config
         self._client: Any = None
+        self._active_reservation: ReservationIdentity | None = None
+        self._host_epoch = os.environ.get("WEATHER_WORKER_HOST_EPOCH") or str(uuid4())
+        self._host_lock: Any = None
+
+    def _store_key(self) -> str:
+        """Return a stable, non-secret identity for the physical hot store."""
+        database = urlsplit(self.config.database_url)
+        endpoint = urlsplit(self.config.endpoint)
+        identity = "|".join((
+            database.hostname or "", str(database.port or ""), database.path.lstrip("/"),
+            endpoint.scheme.lower(), endpoint.hostname or "", str(endpoint.port or ""),
+            endpoint.path.rstrip("/"), self.config.bucket,
+        ))
+        return hashlib.sha256(identity.encode()).hexdigest()
+
+    @staticmethod
+    def _approved_workspace(root: Path, operation_id: str, candidate: Path) -> Path:
+        expected = root.resolve() / f"weather-reservation-{operation_id}"
+        if candidate.is_symlink() or candidate.resolve() != expected or expected.parent != root.resolve():
+            raise ReservationLost("reservation workspace is outside the approved root; capacity remains charged")
+        return expected
+
+    def reconcile_durable_reservations(self, filesystem_path: Path) -> int:
+        """Exclusively fence and clean prior-epoch allocations on this host.
+
+        The advisory ledger fence protects publication. The process-lifetime
+        filesystem lock proves that an earlier same-host allocator has stopped
+        before its workspace is removed. If the lock or cleanup cannot be
+        proved, startup fails and every reservation remains charged.
+        """
+        import fcntl  # Linux worker target; absence fails closed
+
+        host_id = os.environ.get("WEATHER_WORKER_HOST_ID")
+        lock_dir_raw = os.environ.get("WEATHER_RESERVATION_LOCK_DIR")
+        if not host_id or not lock_dir_raw:
+            raise ResourceBudgetExceeded("stable host identity and shared reservation lock directory are required")
+        path = filesystem_path.resolve()
+        device = str(path.stat().st_dev)
+        lock_dir = Path(lock_dir_raw)
+        lock_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        lock_name = hashlib.sha256(f"{host_id}|{device}".encode()).hexdigest()
+        lock_path = lock_dir / f"{lock_name}.lock"
+        handle = lock_path.open("a+")
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            handle.close()
+            raise ResourceBudgetExceeded("a prior same-host allocator still owns the durable cleanup lock") from error
+        self._host_lock = handle
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.revoke_expired_reservations()")
+            cursor.execute(
+                "UPDATE weather_experiment.resource_reservations SET state='revoking',"
+                "revoking_at=coalesce(revoking_at,clock_timestamp()),detail='prior host epoch fenced at startup' "
+                "WHERE host_id=%s AND device_id=%s AND host_epoch<>%s AND state='active'",
+                (host_id, device, self._host_epoch),
+            )
+            cursor.execute(
+                "SELECT operation_id,fencing_token,owner_id,host_id,host_epoch,device_id,workspace_path,deadline_at "
+                "FROM weather_experiment.resource_reservations WHERE host_id=%s AND device_id=%s "
+                "AND host_epoch<>%s AND state='revoking' FOR UPDATE",
+                (host_id, device, self._host_epoch),
+            )
+            rows = list(cursor.fetchall())
+        for row in rows:
+            reservation = ReservationIdentity(
+                str(row[0]), int(row[1]), str(row[2]), str(row[3]), str(row[4]), str(row[5]), Path(row[6]), row[7]
+            )
+            self.reap_reservation(reservation, allocator_stopped=True, workspace_root=path)
+        return len(rows)
+
+    def reap_reservation(
+        self, reservation: ReservationIdentity, *, allocator_stopped: bool, workspace_root: Path
+    ) -> None:
+        """Clean one fenced reservation; proof that its allocator stopped is mandatory."""
+        if not allocator_stopped:
+            raise ReservationLost("allocator stop was not proven; capacity remains charged")
+        workspace = self._approved_workspace(workspace_root, reservation.operation_id, reservation.workspace_path)
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.begin_reservation_cleanup(%s,%s)",
+                           (reservation.operation_id, reservation.fencing_token))
+        try:
+            shutil.rmtree(workspace)
+        except FileNotFoundError:
+            pass
+        except Exception as error:
+            self._mark_revoking(reservation, f"local cleanup failed: {error}")
+            raise ReservationLost("local cleanup failed; capacity remains charged") from error
+        if workspace.exists():
+            raise ReservationLost("local cleanup could not be verified; capacity remains charged")
+        self._cleanup_remote_reservation(reservation)
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM weather_experiment.artifact_revisions WHERE reservation_operation_id=%s "
+                "AND reservation_fencing_token=%s AND state IN ('staged','rejected')",
+                (reservation.operation_id, reservation.fencing_token),
+            )
+            cursor.execute(
+                "UPDATE weather_experiment.resource_reservations SET state='releasable',cleanup_verified_at=clock_timestamp() "
+                "WHERE operation_id=%s AND fencing_token=%s AND state='revoking' RETURNING operation_id",
+                (reservation.operation_id, reservation.fencing_token),
+            )
+            if cursor.fetchone() is None:
+                raise ReservationLost("cleanup fence changed; capacity remains charged")
+            cursor.execute("SELECT weather_experiment.release_clean_reservation(%s,%s)",
+                           (reservation.operation_id, reservation.fencing_token))
 
     # --- connections -----------------------------------------------------
     @contextmanager
@@ -321,52 +444,146 @@ class ArtifactStore:
         filesystem_bytes: int,
         margin_bytes: int,
         filesystem_path: Path,
-    ) -> Iterator[None]:
-        """Atomically reserve a complete fetch against hot and local capacity.
+        workload_kind: str = "ingestion",
+        owner_id: str | None = None,
+        host_id: str | None = None,
+        host_epoch: str | None = None,
+    ) -> Iterator[ReservationIdentity]:
+        """Atomically reserve hot and local capacity in the durable ledger.
 
-        The worker is intentionally single-process today.  The module lock
-        still makes thread-level contenders observe one shared reservation;
-        a multi-process scheduler will require a durable reservation ledger
-        before it can be enabled.
+        Deadline expiry revokes the fence but never releases capacity. This
+        context releases only after its caller has stopped and both its private
+        workspace and unpublished remote objects have been removed.
         """
         if min(store_bytes, filesystem_bytes) <= 0 or margin_bytes < 0:
             raise ResourceBudgetExceeded("resource bounds are unknown or invalid")
+        if workload_kind not in {"task", "ingestion", "snapshot"}:
+            raise ResourceBudgetExceeded(f"unknown reservation workload kind {workload_kind!r}")
         path = filesystem_path.resolve()
-        device = path.stat().st_dev
-        store_key = (self.config.database_url, self.config.bucket)
-        with _RESERVATION_LOCK:
-            usage = shutil.disk_usage(path)
-            reserved_store = _STORE_RESERVATIONS.get(store_key, 0)
-            projected = self.used_bytes() + reserved_store + store_bytes
-            if projected > self.config.cap_bytes:
-                raise QuotaExceeded(
-                    f"{_cap_label(self.config.cap_bytes)} hot storage cap would be exceeded: "
-                    f"projected {projected} bytes against a cap of {self.config.cap_bytes} bytes"
-                )
-            reserved_filesystem = _FILESYSTEM_RESERVATIONS.get(device, 0)
-            filesystem_reservation = filesystem_bytes + margin_bytes
-            required = reserved_filesystem + filesystem_reservation
-            if required > usage.free:
-                raise ResourceBudgetExceeded(
-                    f"local filesystem budget exhausted: required {required} bytes "
-                    f"against {usage.free} unreserved free bytes"
-                )
-            _STORE_RESERVATIONS[store_key] = reserved_store + store_bytes
-            _FILESYSTEM_RESERVATIONS[device] = reserved_filesystem + filesystem_reservation
+        device = str(path.stat().st_dev)
+        stable_host = host_id or os.environ.get("WEATHER_WORKER_HOST_ID")
+        epoch = host_epoch or self._host_epoch
+        if not stable_host or not epoch:
+            raise ResourceBudgetExceeded("stable worker host identity and host epoch are required")
+        operation_id = str(uuid4())
+        owner = owner_id or f"{stable_host}:{socket.gethostname()}:{os.getpid()}"
+        workspace = path / f"weather-reservation-{operation_id}"
+        store_key = self._store_key()
+        usage = shutil.disk_usage(path)
         try:
-            yield
+            with self.connection() as connection, connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT fencing_token,deadline_at FROM weather_experiment.acquire_resource_reservation("
+                    "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (operation_id, owner, stable_host, epoch, device, str(workspace), workload_kind, store_key,
+                     store_bytes, filesystem_bytes, margin_bytes, self.config.cap_bytes, usage.free),
+                )
+                token, deadline = cursor.fetchone()
+        except (QuotaExceeded, ResourceBudgetExceeded):
+            raise
+        except Exception as error:
+            message = str(error)
+            if "hot storage quota exhausted" in message:
+                raise QuotaExceeded(message) from error
+            if "local filesystem budget exhausted" in message:
+                raise ResourceBudgetExceeded(message) from error
+            raise StoreUnavailable(f"durable resource ledger unavailable: {error}") from error
+        identity = ReservationIdentity(operation_id, int(token), owner, stable_host, epoch, device, workspace, deadline)
+        self._active_reservation = identity
+        active_error: BaseException | None = None
+        try:
+            yield identity
+        except BaseException as error:
+            active_error = error
+            raise
         finally:
-            with _RESERVATION_LOCK:
-                remaining_store = _STORE_RESERVATIONS.get(store_key, 0) - store_bytes
-                remaining_filesystem = _FILESYSTEM_RESERVATIONS.get(device, 0) - filesystem_reservation
-                if remaining_store > 0:
-                    _STORE_RESERVATIONS[store_key] = remaining_store
-                else:
-                    _STORE_RESERVATIONS.pop(store_key, None)
-                if remaining_filesystem > 0:
-                    _FILESYSTEM_RESERVATIONS[device] = remaining_filesystem
-                else:
-                    _FILESYSTEM_RESERVATIONS.pop(device, None)
+            self._active_reservation = None
+            try:
+                self._finish_reservation(identity)
+            except Exception:
+                if active_error is None:
+                    raise
+
+    def _cleanup_remote_reservation(self, reservation: ReservationIdentity) -> None:
+        """Remove unpublished objects/uploads while preserving published evidence."""
+        prefix = f"{STAGING_PREFIX}/{reservation.operation_id}/"
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT object_key FROM weather_experiment.artifact_revisions WHERE reservation_operation_id=%s "
+                "AND reservation_fencing_token=%s AND state IN ('published','superseded')",
+                (reservation.operation_id, reservation.fencing_token),
+            )
+            retained = {str(row[0]) for row in cursor.fetchall()}
+        continuation: str | None = None
+        while True:
+            kwargs = {"Bucket": self.config.bucket, "Prefix": prefix}
+            if continuation is not None:
+                kwargs["ContinuationToken"] = continuation
+            page = self.s3.list_objects_v2(**kwargs)
+            for item in page.get("Contents") or ():
+                key = str(item["Key"])
+                if key not in retained:
+                    self.s3.delete_object(Bucket=self.config.bucket, Key=key)
+            if not page.get("IsTruncated"):
+                break
+            continuation = str(page["NextContinuationToken"])
+        uploads = self.s3.list_multipart_uploads(Bucket=self.config.bucket, Prefix=prefix)
+        for upload in uploads.get("Uploads") or ():
+            self.s3.abort_multipart_upload(
+                Bucket=self.config.bucket, Key=str(upload["Key"]), UploadId=str(upload["UploadId"])
+            )
+        # A second listing proves deletion rather than trusting delete replies.
+        remaining = self.s3.list_objects_v2(Bucket=self.config.bucket, Prefix=prefix)
+        pending = self.s3.list_multipart_uploads(Bucket=self.config.bucket, Prefix=prefix, MaxUploads=1)
+        unexpected = {str(item["Key"]) for item in remaining.get("Contents") or ()} - retained
+        if unexpected or pending.get("Uploads"):
+            raise ReservationLost("remote allocation remains after cleanup")
+
+    def _finish_reservation(self, reservation: ReservationIdentity) -> None:
+        """Release only after local and remote temporary allocation is absent."""
+        try:
+            shutil.rmtree(reservation.workspace_path)
+        except FileNotFoundError:
+            pass
+        except Exception as error:
+            self._mark_revoking(reservation, f"local cleanup failed: {error}")
+            raise ReservationLost("local workspace cleanup failed; capacity remains charged") from error
+        if reservation.workspace_path.exists():
+            self._mark_revoking(reservation, "local workspace cleanup could not be verified")
+            raise ReservationLost("local workspace cleanup could not be verified; capacity remains charged")
+        try:
+            self._cleanup_remote_reservation(reservation)
+        except Exception as error:
+            self._mark_revoking(reservation, f"remote cleanup failed: {error}")
+            raise ReservationLost("remote cleanup could not be verified; capacity remains charged") from error
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.assert_active_reservation(%s,%s)", (reservation.operation_id, reservation.fencing_token))
+            cursor.execute(
+                "DELETE FROM weather_experiment.artifact_revisions WHERE reservation_operation_id=%s "
+                "AND reservation_fencing_token=%s AND state IN ('staged','rejected')",
+                (reservation.operation_id, reservation.fencing_token),
+            )
+            cursor.execute(
+                "UPDATE weather_experiment.resource_reservations SET state='released',"
+                "cleanup_started_at=coalesce(cleanup_started_at,clock_timestamp()),cleanup_verified_at=clock_timestamp(),"
+                "released_at=clock_timestamp(),detail='owner stopped; local and remote cleanup verified' "
+                "WHERE operation_id=%s AND fencing_token=%s AND state='active' RETURNING operation_id",
+                (reservation.operation_id, reservation.fencing_token),
+            )
+            if cursor.fetchone() is None:
+                raise ReservationLost("reservation could not be released; capacity remains charged")
+
+    def _mark_revoking(self, reservation: ReservationIdentity, detail: str) -> None:
+        try:
+            with self.connection() as connection, connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE weather_experiment.resource_reservations SET state='revoking',"
+                    "revoking_at=coalesce(revoking_at,clock_timestamp()),cleanup_started_at=coalesce(cleanup_started_at,clock_timestamp()),"
+                    "detail=%s WHERE operation_id=%s AND fencing_token=%s AND state <> 'released'",
+                    (detail, reservation.operation_id, reservation.fencing_token),
+                )
+        except Exception:
+            pass
 
     # --- staging and publication ----------------------------------------
     def stage(self, result: RunResult, artifact: Artifact, *, run_id: str | None = None) -> StagedRevision:
@@ -378,11 +595,18 @@ class ArtifactStore:
         import json  # noqa: PLC0415
 
         assert_classes_declared(artifact)
+        reservation = self._active_reservation
+        if reservation is None:
+            raise ReservationLost("staging requires an active durable reservation")
         run = run_id or self.record_run(result)
         byte_size = artifact.byte_size
-        self.check_projection(byte_size)
+        # The whole result was admitted by the durable reservation before any
+        # payload. Re-checking used+artifact here would double-count it.
         digest = sha256_of(artifact.payload_path)
-        object_key = f"{STAGING_PREFIX}/{result.source_id}/{result.provider_run_id}/{uuid4().hex}/{artifact.logical_name}"
+        object_key = (
+            f"{STAGING_PREFIX}/{reservation.operation_id}/{result.source_id}/"
+            f"{result.provider_run_id}/{uuid4().hex}/{artifact.logical_name}"
+        )
         with artifact.payload_path.open("rb") as handle:
             self.s3.put_object(Bucket=self.config.bucket, Key=object_key, Body=handle, ContentType=artifact.media_type)
         provenance = {**artifact.provenance, "object_key": object_key, "sha256": digest, "media_type": artifact.media_type}
@@ -390,11 +614,13 @@ class ArtifactStore:
             cursor.execute(
                 """
                 INSERT INTO weather_experiment.artifact_revisions
-                    (run_id, logical_name, object_key, media_type, byte_size, sha256, state, complete, qc_passed, provenance)
-                VALUES (%s, %s, %s, %s, %s, %s, 'staged', %s, %s, %s::jsonb)
+                    (run_id, logical_name, object_key, media_type, byte_size, sha256, state, complete, qc_passed, provenance,
+                     reservation_operation_id, reservation_fencing_token)
+                VALUES (%s, %s, %s, %s, %s, %s, 'staged', %s, %s, %s::jsonb, %s, %s)
                 RETURNING revision_id
                 """,
-                (run, artifact.logical_name, object_key, artifact.media_type, byte_size, digest, result.complete, result.qc_passed, json.dumps(provenance, default=str)),
+                (run, artifact.logical_name, object_key, artifact.media_type, byte_size, digest, result.complete, result.qc_passed,
+                 json.dumps(provenance, default=str), reservation.operation_id, reservation.fencing_token),
             )
             revision_id = str(cursor.fetchone()[0])
         return StagedRevision(revision_id, run, artifact.logical_name, object_key, byte_size, digest)
@@ -415,8 +641,14 @@ class ArtifactStore:
         complete and QC-passed, so a failed manifest validation leaves the prior
         ``current_artifacts`` pointer exactly where it was.
         """
+        reservation = self._active_reservation
+        if reservation is None:
+            raise ReservationLost("publication requires an active durable reservation")
         with self.connection() as connection, connection.cursor() as cursor:
-            cursor.execute("SELECT weather_experiment.publish_run(%s)", (run_id,))
+            cursor.execute(
+                "SELECT weather_experiment.publish_run(%s,%s,%s)",
+                (run_id, reservation.operation_id, reservation.fencing_token),
+            )
             row = cursor.fetchone()
             return int(row[0]) if row else 0
 

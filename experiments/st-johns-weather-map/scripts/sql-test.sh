@@ -75,5 +75,29 @@ for proof in "$ROOT"/infra/postgres/tests/*.sql; do
   fi
 done
 
+# Two independent PostgreSQL clients race for one host/device budget. The
+# ledger transaction must admit exactly one complete operation row.
+docker exec "$CONTAINER" psql -U weather -d weather -v ON_ERROR_STOP=1 -qAtc \
+  "SELECT * FROM weather_experiment.acquire_resource_reservation(gen_random_uuid(),'process-a','race-host',gen_random_uuid(),'9','/tmp/a','task','race-store',1,700,0,1000000000,1000)" \
+  >/tmp/weather-ledger-race-a.log 2>&1 & race_a=$!
+docker exec "$CONTAINER" psql -U weather -d weather -v ON_ERROR_STOP=1 -qAtc \
+  "SELECT * FROM weather_experiment.acquire_resource_reservation(gen_random_uuid(),'process-b','race-host',gen_random_uuid(),'9','/tmp/b','task','race-store',1,700,0,1000000000,1000)" \
+  >/tmp/weather-ledger-race-b.log 2>&1 & race_b=$!
+race_success=0
+wait "$race_a" && race_success=$((race_success + 1)) || true
+wait "$race_b" && race_success=$((race_success + 1)) || true
+if [ "$race_success" -ne 1 ]; then
+  cat /tmp/weather-ledger-race-a.log /tmp/weather-ledger-race-b.log
+  echo "SQL INVARIANTS FAILED: concurrent durable admission accepted $race_success clients"
+  exit 1
+fi
+race_rows=$(docker exec "$CONTAINER" psql -U weather -d weather -tAc \
+  "SELECT count(*) FROM weather_experiment.resource_reservations WHERE host_id='race-host' AND device_id='9'")
+if [ "$race_rows" -ne 1 ]; then
+  echo "SQL INVARIANTS FAILED: concurrent durable admission recorded $race_rows rows"
+  exit 1
+fi
+echo "PASS  two independent database clients atomically admit exactly one contender"
+
 echo
 echo "all storage invariants hold"

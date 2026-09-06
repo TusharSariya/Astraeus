@@ -28,6 +28,7 @@ from ingest.store import (
     ArtifactStore,
     QuotaExceeded,
     ResourceBudgetExceeded,
+    ReservationIdentity,
     StoreConfig,
     StoreUnavailable,
 )
@@ -364,6 +365,11 @@ def test_never_completes_does_not_accumulate_staged_bytes_across_cycles(tmp_path
     )
 
     instance = ArtifactStore(StoreConfig(database_url="postgresql://x", endpoint="http://x", bucket="b", access_key="", secret_key=""))
+    instance._active_reservation = ReservationIdentity(
+        "00000000-0000-0000-0000-000000000001", 1, "test", "test-host",
+        "00000000-0000-0000-0000-000000000002", "1", tmp_path / "workspace",
+        datetime(2099, 1, 1, tzinfo=UTC),
+    )
     instance._client = _RecordingS3(events)
     monkeypatch.setattr(instance, "connection", _connection_factory(events))
     monkeypatch.setattr(instance, "used_bytes", lambda: (events.append(("used_bytes", None)), 0)[1])
