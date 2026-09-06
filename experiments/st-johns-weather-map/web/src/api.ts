@@ -49,6 +49,18 @@ export interface ApiPointResponse {
     selected_product_id?: string | null
   }
   fields: ApiEvidenceField[]
+  consensus?: {
+    available: boolean
+    value: number | null
+    units: string
+    evidence_class: string
+    method: string
+    contributors: string[]
+    inputs: ApiEvidenceField[]
+    ensemble_witnesses: string[]
+    centre_range: [number, number] | null
+    reason: string
+  } | null
   /** One entry per unordered pair of served members within a family. Optional:
    *  an API that does not serve it yet leaves every pair unstated, and an
    *  unstated pair is refused a difference exactly as a non-comparable one is. */
@@ -487,15 +499,51 @@ export function nonPrimarySourceIds(sources: CatalogSource[]): ReadonlySet<strin
   return new Set(sources.filter((source) => source.display_primary === false).map((source) => source.id))
 }
 
+function validConsensusSummary(value: ApiPointResponse['consensus'], fields: ApiEvidenceField[]): boolean {
+  if (!value || value.available !== true || value.units !== 'degC'
+    || value.evidence_class !== 'derived_here' || value.method !== 'equal_weight_mean_of_deterministic_centres'
+    || typeof value.value !== 'number' || !Number.isFinite(value.value)) return false
+  const ids = (items: unknown): items is string[] => Array.isArray(items)
+    && items.every(item => typeof item === 'string' && item.length > 0) && new Set(items).size === items.length
+  if (!ids(value.contributors) || value.contributors.length < 2 || !ids(value.ensemble_witnesses)
+    || value.ensemble_witnesses.length === 0 || value.contributors.some(id => value.ensemble_witnesses.includes(id))) return false
+  if (!Array.isArray(value.centre_range) || value.centre_range.length !== 2
+    || !value.centre_range.every(item => typeof item === 'number' && Number.isFinite(item))
+    || value.value < value.centre_range[0] || value.value > value.centre_range[1]) return false
+  const witnesses = value.ensemble_witnesses.every(source => fields.some(field => {
+    const provenance = field.provenance
+    if (source !== 'noaa-gefs' || field.field !== 'temperature' || typeof field.value !== 'number' || !Number.isFinite(field.value)
+      || provenance?.source_id !== source || provenance.evidence_class !== 'derived_here' || provenance.run_stale !== false) return false
+    const ensemble = ensembleProvenanceOf(provenance.ensemble)
+    const quality = provenance.quality as { status?: unknown } | undefined
+    const freshness = provenance.freshness as { status?: unknown } | undefined
+    return ensemble?.statistic === 'ensemble_mean' && ensemble.memberSet?.partial === false
+      && ensemble.memberSet.controlIncluded === true && ensemble.memberSet.membersDeclared === 31
+      && ensemble.memberSet.membersUsed === 31 && quality?.status === 'passed' && freshness?.status === 'fresh'
+  }))
+  return witnesses && Array.isArray(value.inputs) && value.inputs.length === value.contributors.length
+    && value.inputs.every((input, index) => input && input.field === 'temperature'
+      && typeof input.value === 'number' && Number.isFinite(input.value)
+      && input.provenance?.source_id === value.contributors[index]
+      && input.provenance.evidence_class === 'retrieved'
+      && input.provenance.normalized_units === 'degC'
+      && input.provenance.member == null
+      && fields.some(field => field.field === input.field && field.value === input.value
+        && JSON.stringify(field.provenance) === JSON.stringify(input.provenance)))
+}
+
 export function normalizePoint(point: ApiPointResponse, options: NormalizeOptions = {}): EvidenceSnapshot {
   const nonPrimarySources = options.nonPrimarySources ?? EMPTY_SOURCES
   // The response names the product it answered with. The old code inferred the
   // mode from whichever `temperature` field came first, which on the blended
   // response is the METAR observation, so the header and the number disagreed.
-  const selectedProductId = typeof point.selection.selected_product_id === 'string' ? point.selection.selected_product_id : null
-  const selectedSourceId = typeof point.selection.selected_source_id === 'string' ? point.selection.selected_source_id : null
+  const requestedConsensus = point.selection.mode === 'consensus'
+  const validConsensus = validConsensusSummary(point.consensus, point.fields)
+  const invalidConsensus = requestedConsensus && !validConsensus
+  const selectedProductId = !invalidConsensus && typeof point.selection.selected_product_id === 'string' ? point.selection.selected_product_id : null
+  const selectedSourceId = !invalidConsensus && typeof point.selection.selected_source_id === 'string' ? point.selection.selected_source_id : null
   const selectedProduct = (selectedProductId ?? '').toUpperCase()
-  const selectionMode = point.selection.mode === 'consensus' ? 'consensus'
+  const selectionMode = invalidConsensus ? 'unavailable' : requestedConsensus ? 'consensus'
     : point.selection.mode === 'evidence_only' ? 'unavailable'
       : selectedProduct === 'HRDPS' ? 'hrdps'
         : selectedProduct === 'RDPS' ? 'rdps' : 'unavailable'
@@ -565,6 +613,26 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
       .filter((entry): entry is FieldAlternative => entry !== null)
     if (alternatives.length > 0) fieldAlternatives[name] = alternatives
   })
+  // This summary is computed by the server's existing consensus policy.
+  // A consensus badge must never fall through to an individual member/model.
+  const consensus = point.consensus
+  const consensusValue = validConsensus && consensus ? consensus.value : null
+  if (requestedConsensus) {
+    delete fieldSources.temperature
+    fieldModes.temperature = consensusValue === null ? 'unavailable' : toDataMode(point.data_mode)
+    if (consensusValue !== null && consensus) {
+      const attribution = attributionOf({ field: 'temperature', value: consensusValue, provenance: {
+        source_id: 'multi-centre', provider: 'Astraeus', product: 'Experimental consensus',
+        data_mode: point.data_mode, evidence_class: consensus.evidence_class,
+        normalized_units: consensus.units, derivation: consensus.method,
+        derivation_inputs: consensus.inputs.map(input => ({
+          ...input.provenance, field: input.field, units: input.provenance?.normalized_units,
+        })),
+      } })
+      if (attribution) fieldSources.temperature = attribution
+      notices.push(`Consensus temperature uses ${consensus.contributors.join(', ')}; ${consensus.ensemble_witnesses.join(', ')} supplies ensemble evidence and does not enter the mean.`)
+    }
+  }
   // Every served value, in response order, whether or not a metric renders it
   // and whether or not it may be a reading. The family view is built from
   // this: a member the response carried must appear under its family even when
@@ -592,7 +660,7 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
     notices,
     comparability: parseComparability(point.comparability),
     mode: selectionMode,
-    selectionBadge: typeof point.selection.badge === 'string' && point.selection.badge.trim() ? point.selection.badge : null,
+    selectionBadge: invalidConsensus ? 'Consensus unavailable' : typeof point.selection.badge === 'string' && point.selection.badge.trim() ? point.selection.badge : null,
     selectedProductId,
     selectedSourceId,
     dataMode: toDataMode(point.data_mode),
@@ -600,7 +668,7 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
     fieldSources,
     issuedAt: new Date().toISOString(),
     validAt: point.valid_time,
-    temperatureC: numericField(fields, 'temperature', selectedSourceId),
+    temperatureC: requestedConsensus ? consensusValue : numericField(fields, 'temperature', selectedSourceId),
     dewPointC: numericField(fields, 'dew_point', selectedSourceId),
     relativeHumidityPct: numericField(fields, 'relative_humidity', selectedSourceId),
     windKmh: speedKmh(fields, 'wind_speed', selectedSourceId),

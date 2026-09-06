@@ -380,14 +380,14 @@ class PoliteClient:
 
     def get_range(self, url: str, start: int, end: int | None = None, *, max_bytes: int | None = None) -> bytes:
         """Fetch one byte range. GRIB2 ``.idx`` subsetting depends on this."""
-        payload, _request_headers, _response_headers, _completed = self.get_range_with_headers_completed(
+        payload, _request_headers, _response_headers, _completed, _effective_url = self.get_range_with_headers_completed(
             url, start, end, max_bytes=max_bytes
         )
         return payload
 
     def get_range_with_headers_completed(
         self, url: str, start: int, end: int | None = None, *, max_bytes: int | None = None
-    ) -> tuple[bytes, dict[str, str], dict[str, str], datetime]:
+    ) -> tuple[bytes, dict[str, str], dict[str, str], datetime, str]:
         """Fetch one range and retain its exact transport receipt."""
         if start < 0 or (end is not None and end < start):
             raise ValueError("invalid byte range")
@@ -441,7 +441,7 @@ class PoliteClient:
             raise MaxBytesExceeded(
                 f"{url} returned {len(payload)} bytes for Content-Range {content_range!r}"
             )
-        return payload, _effective_request_headers(response), dict(response.headers), completed
+        return payload, _effective_request_headers(response), dict(response.headers), completed, str(response.request.url)
 
     def list_directory(
         self, url: str, *, suffixes: tuple[str, ...] = (), max_bytes: int | None = None
@@ -557,7 +557,7 @@ class PoliteClient:
         try:
             with destination.open("wb") as handle:
                 for start, end in ranges:
-                    payload, request_headers, response_headers, completed = self.get_range_with_headers_completed(
+                    payload, request_headers, response_headers, completed, effective_url = self.get_range_with_headers_completed(
                         url, start, end, max_bytes=max_bytes - written
                     )
                     written += len(payload)
@@ -566,6 +566,7 @@ class PoliteClient:
                     handle.write(payload)
                     receipts.append({
                         "url": url,
+                        "effective_url": effective_url,
                         "request_headers": request_headers,
                         "response_headers": response_headers,
                         "completed_at": completed.isoformat(),

@@ -1060,11 +1060,16 @@ export default function App() {
     : null
 
   const fallbackBadge = (
+    <>
         <section className={`fallback-badge evidence-surface ${snapshot.mode}`} aria-label="Forecast selection">
           <span className="signal-bars" aria-hidden="true"><i /><i /><i /></span>
           <div><small>Selected forecast</small><strong>{selectionLabel}</strong></div>
           {snapshot.validAt ? <time dateTime={snapshot.validAt}>Valid {new Date(snapshot.validAt).toLocaleString('en-CA', { timeZone: 'America/St_Johns', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</time> : <span className="unknown-time">Valid time unknown</span>}
         </section>
+        {snapshot.notices.length > 0 && <aside className="evidence-surface" aria-label="Point evidence notices">
+          {snapshot.notices.map((notice, index) => <p key={`${index}:${notice}`}>{notice}</p>)}
+        </aside>}
+    </>
   )
 
   const stripFooter = (

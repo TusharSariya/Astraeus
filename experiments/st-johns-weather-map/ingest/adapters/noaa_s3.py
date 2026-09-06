@@ -783,6 +783,21 @@ NOAA_GEFS_S3_BASE = "https://noaa-gefs-pds.s3.amazonaws.com"
 #: The three product sets GEFS publishes, and only these three. The family
 #: fields all live in `pgrb2ap5`, the 0.5 degree primary set.
 GEFS_PRIMARY_SET = "pgrb2ap5"
+GEFS_FILENAME_PRODUCT = "pgrb2a.0p50"
+GEFS_FILENAME_PRODUCTS = {
+    "pgrb2ap5": "pgrb2a.0p50",
+    "pgrb2bp5": "pgrb2b.0p50",
+    "pgrb2sp25": "pgrb2s.0p25",
+}
+
+
+def gefs_member_url(*, date_str: str, cycle: str, lead: int, member: str,
+                    base_url: str = NOAA_GEFS_S3_BASE, product_set: str = GEFS_PRIMARY_SET) -> str:
+    """Canonical NOAA GEFS member URL: directory and filename use distinct IDs."""
+    return (
+        f"{base_url.rstrip('/')}/gefs.{date_str}/{cycle}/atmos/{product_set}/"
+        f"{member}.t{cycle}z.{GEFS_FILENAME_PRODUCTS[product_set]}.f{lead:03d}"
+    )
 
 #: ``TCDC:entire atmosphere`` is a time average at every lead in every GEFS
 #: product set - `0-3 hour ave fcst` at f003, `18-24` at f024 - confirmed at
@@ -880,8 +895,31 @@ def _gefs_refusing_reader(path: Path, *, upstream: str, member: str, bounds: Map
     """Decode one member's record, cropping the global field to the box locally."""
     from ingest.grib import open_grib  # noqa: PLC0415
 
-    param = upstream.split(":", 1)[0].lower()
-    decoded = open_grib(path, filter_by_keys={"shortName": param})
+    # The byte range is already one exact provider index record.  GRIB's
+    # upstream parameter token is not necessarily cfgrib's shortName (TMP at
+    # 2 m is `t2m`, RH is `r2`), so applying it as a second filter can turn a
+    # valid selected record into an empty dataset.
+    decoded = open_grib(path)
+    variables = list(decoded.data_vars.values())
+    expected = {
+        "TMP:2 m above ground": ("2t", "heightAboveGround", "instant", 2.0),
+        "RH:2 m above ground": ("2r", "heightAboveGround", "instant", 2.0),
+        "UGRD:10 m above ground": ("10u", "heightAboveGround", "instant", 10.0),
+        "VGRD:10 m above ground": ("10v", "heightAboveGround", "instant", 10.0),
+        "PRMSL:mean sea level": ("prmsl", "meanSea", "instant", None),
+    }
+    identity = expected.get(upstream)
+    if upstream.startswith("TCDC:entire atmosphere"):
+        identity = ("tcc", "atmosphere", "avg", None)
+    if len(variables) != 1 or identity is None:
+        raise ValueError(f"decoded GEFS record does not have one declared field for {upstream}")
+    variable = variables[0]
+    short_name, level_type, step_type, level_value = identity
+    if (variable.attrs.get("GRIB_shortName"), variable.attrs.get("GRIB_typeOfLevel"),
+            variable.attrs.get("GRIB_stepType")) != (short_name, level_type, step_type):
+        raise ValueError(f"decoded GEFS record identity does not match {upstream}")
+    if level_value is not None and (level_type not in variable.coords or float(variable.coords[level_type]) != level_value):
+        raise ValueError(f"decoded GEFS record level does not match {upstream}")
     normalized = normalize_units(crop_to_bbox(decoded, bounds))
     names = [str(name) for name in normalized.data_vars]
     if not names:
@@ -914,12 +952,14 @@ class NOAAGEFSEnsembleAdapter:
         client: PoliteClient | None = None,
         reader: Any = _gefs_refusing_reader,
         product_set: str = GEFS_PRIMARY_SET,
+        capture_transport_receipts: bool = False,
     ) -> None:
         self._base_url = base_url
         self._bounds = dict(bounds)
         self._client = client
         self._reader = reader
         self._product_set = product_set
+        self._capture_transport_receipts = capture_transport_receipts
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
@@ -975,10 +1015,11 @@ class NOAAGEFSEnsembleAdapter:
         date_str = str(candidate.detail.get("date_str", ""))
         cycle = str(candidate.detail.get("cycle", ""))
         lead = int(candidate.detail.get("lead_hours", 0))
-        return (
-            f"{self._base_url}/gefs.{date_str}/{cycle}/atmos/{self._product_set}/"
-            f"{member}.t{cycle}z.{self._product_set}.f{lead:03d}"
-        )
+        try:
+            return gefs_member_url(date_str=date_str, cycle=cycle, lead=lead, member=member,
+                                   base_url=self._base_url, product_set=self._product_set)
+        except KeyError as error:
+            raise AdapterUnavailable(f"GEFS product set {self._product_set!r} is not declared") from error
 
     def assemble(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         declaration = self.declaration()
@@ -993,17 +1034,31 @@ class NOAAGEFSEnsembleAdapter:
         retrieved_names: list[str] = []
         decode_errors: list[str] = []
         unstorable: list[str] = []
+        transport_receipts: list[dict[str, object]] = []
+        transport_failures: list[dict[str, object]] = []
 
         for member in members:
             grib_url = self.member_url(candidate, member)
             try:
-                idx_text = client.get_text(f"{grib_url}.idx")
+                idx_url = f"{grib_url}.idx"
+                if self._capture_transport_receipts:
+                    idx_raw, idx_receipt = client.get_bytes_with_receipt(idx_url, max_bytes=MAX_IDX_BYTES)
+                    transport_receipts.append({"kind": "index", "member": member, "http_status": 200, **idx_receipt})
+                    idx_text = idx_raw.decode("utf-8")
+                else:
+                    idx_text = client.get_text(idx_url)
+                selection = select_gefs_member_records(idx_text, source_id=self.source_id)
             except Exception as error:
                 decode_errors.append(f"idx:{member}")
+                if self._capture_transport_receipts and not any(item["kind"]=="index" and item["member"]==member for item in transport_receipts):
+                    response = getattr(error, "response", None)
+                    transport_failures.append({"kind":"index", "member":member, "url":idx_url,
+                        "http_status":getattr(response,"status_code",None),
+                        "attempt_finished_at":datetime.now(UTC).isoformat(),
+                        "error_type":type(error).__name__, "body_retained":False})
                 _log.warning("GEFS member %s sidecar unavailable: %s", member, error)
                 continue
 
-            selection = select_gefs_member_records(idx_text, source_id=self.source_id)
             for name in selection.published:
                 if name not in published_names:
                     published_names.append(name)
@@ -1011,9 +1066,15 @@ class NOAAGEFSEnsembleAdapter:
             for byte_range, upstream, label in selection.wanted:
                 local = workdir / f"{member}.{upstream.replace(':', '_').replace(' ', '_')}.grib2"
                 try:
-                    client.download_ranges(
-                        grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES
-                    )
+                    if self._capture_transport_receipts:
+                        _, receipts = client.download_ranges_with_receipts(
+                            grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES
+                        )
+                        transport_receipts.extend({"kind": "range", "member": member, "field": upstream,
+                                                   "range_start": byte_range.start, "range_end": byte_range.end,
+                                                   "http_status": 206, **receipt} for receipt in receipts)
+                    else:
+                        client.download_ranges(grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES)
                     field = self._reader(local, upstream=upstream, member=member, bounds=self._bounds)
                 except Exception as error:
                     decode_errors.append(f"member:{member}:{upstream}")
@@ -1063,9 +1124,16 @@ class NOAAGEFSEnsembleAdapter:
                 if upstream in by_name
             }
             if by_member:
-                stacked[key] = stack_members(by_member, control=control)
+                # Align missing optional/member fields by label first. A
+                # per-field boolean control coordinate would otherwise align
+                # an absent member to NaN and conflict with another field's
+                # explicit False flag while combining the family.
+                stacked[key] = stack_members(by_member, control=control).drop_vars("control")
 
         dataset = xarray.Dataset(stacked)
+        dataset = dataset.assign_coords(control=("member", [str(member)==control for member in dataset.coords["member"].values])).expand_dims(
+            valid_time=[numpy.datetime64(window.now.astimezone(timezone.utc).replace(tzinfo=None), "ns")]
+        )
         manifest = self.manifest()
         validation = validate_run(
             manifest,
@@ -1082,6 +1150,8 @@ class NOAAGEFSEnsembleAdapter:
             "source_id": self.source_id,
             "producer": "NOAA / NCEP",
             "product": f"Global Ensemble Forecast System ({self._product_set})",
+            "provider_run_id": candidate.provider_run_id,
+            "run_time": candidate.run_time.isoformat() if candidate.run_time else None,
             "family": declaration.family,
             "adapter_version": self.adapter_version,
             "subsetting": declaration.subsetting,
@@ -1091,6 +1161,8 @@ class NOAAGEFSEnsembleAdapter:
             "coverage": validation.as_coverage(),
             "members": validation.as_members(),
             "storage_scope": validation.as_storage_scope(),
+            "transport_receipts": transport_receipts,
+            "transport_failures": transport_failures,
             **manifest.as_manifest_block(),
         }
 

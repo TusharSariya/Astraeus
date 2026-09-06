@@ -276,7 +276,7 @@ describe('a refused derivation and an unmodelled artifact read as unavailable', 
       },
     }], [notice])))
     render(<App />)
-    await waitFor(() => expect(screen.getByText(/provenance could not be modelled/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText(/provenance could not be modelled/).length).toBeGreaterThan(0))
   })
 
   it('says the response gave no reason rather than inventing one', async () => {

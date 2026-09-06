@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 import math
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
@@ -1227,13 +1227,16 @@ def _live_point(
         calls = {
             "eccc-hrdps": lambda: __import__("weather_api.hrdps_query", fromlist=["hrdps_query_coordinator"]).hrdps_query_coordinator().point_fields(latitude, longitude, time),
             "noaa-gfs": lambda: __import__("weather_api.gfs_query", fromlist=["gfs_query_coordinator"]).gfs_query_coordinator().point_fields(latitude, longitude, time),
+            "noaa-gefs": lambda: __import__("weather_api.gefs_query", fromlist=["gefs_query_coordinator"]).gefs_query_coordinator().point_fields(latitude, longitude, time, statistic="ensemble_mean"),
         }
         demanded: list[EvidenceField] = []
         notices: list[str] = []
         with ThreadPoolExecutor(max_workers=len(calls)) as executor:
             futures = {executor.submit(call): source for source, call in calls.items()}
-            for future in as_completed(futures):
-                source = futures[future]
+            # All calls are already submitted concurrently. Consume them in
+            # declaration order so cache repeats retain identical field and
+            # contributor ordering even when sources finish in another order.
+            for future, source in futures.items():
                 try:
                     source_fields, _source_consensus, _source_ids = future.result()
                     demanded.extend(source_fields)
@@ -1278,6 +1281,30 @@ def _live_point(
             fields=fields + observations,
             notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
         )
+    if product and product.upper() == "GEFS":
+        try:
+            from .gefs_query import gefs_query_coordinator
+            fields, _consensus, _sources = gefs_query_coordinator().point_fields(
+                latitude, longitude, time, member=member, statistic=statistic,
+                quantile=quantile, threshold=threshold, comparison=comparison,
+            )
+        except Exception as error:
+            LOGGER.exception("GEFS demand point failed")
+            return _unavailable_point(latitude, longitude, time,
+                reason=f"GEFS selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:noaa-gefs"],
+                notices=["noaa-gefs could not retrieve and validate the selected native member family"],
+                source_id="noaa-gefs", product="GEFS")
+        if not fields:
+            return _unavailable_point(latitude, longitude, time,
+                reason="GEFS member axis requires a member or registered statistic",
+                flags=["ensemble_axis_unaddressed:noaa-gefs"],
+                notices=["Choose a native GEFS member or a registered ensemble statistic; no implicit member average was used"],
+                source_id="noaa-gefs", product="GEFS")
+        return PointResponse(data_mode=DataMode.LIVE,latitude=latitude,longitude=longitude,valid_time=time,
+            selection=Selection(mode="fallback",selected_source_id="noaa-gefs",selected_product_id="gefs",
+                badge="GEFS selected ensemble",reason="Selected GEFS native member family"),fields=fields,
+            notices=["GEFS members remain separate and preserve provider member identities; no member averaging was substituted"])
     if product and product.upper() == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
@@ -1338,6 +1365,15 @@ def _live_point(
             )
         live_hrdps = "eccc-hrdps" in eligible_temperature_sources
         mode, badge, reason = select_fallback(consensus.available, hrdps_fresh=live_hrdps, rdps_fresh=False)
+        from .models import PointConsensus
+        summary = PointConsensus(
+            available=consensus.available, value=consensus.value,
+            centre_range=consensus.centre_range, contributors=list(consensus.contributors),
+            inputs=[next(field for field in fields if field.field == "temperature"
+                    and field.provenance.source_id == source) for source in consensus.contributors],
+            ensemble_witnesses=[candidate.source_id for candidate in consensus_candidates_from_fields(fields)
+                                if candidate.is_ensemble], reason=consensus.reason,
+        )
         return PointResponse(
             data_mode=DataMode.LIVE,
             latitude=latitude, longitude=longitude, valid_time=time,
@@ -1346,7 +1382,7 @@ def _live_point(
                 selected_product_id="experimental-consensus" if mode == "consensus" else ("hrdps" if live_hrdps else None),
                 badge=badge, reason=reason,
             ),
-            fields=fields,
+            fields=fields, consensus=summary,
             notices=[*consensus_notices, *demand_notices, "Consensus acquisition used demand sources only; no retained forecast artifact was read"],
         )
     store = live_store()

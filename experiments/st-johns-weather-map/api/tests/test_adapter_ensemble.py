@@ -56,7 +56,9 @@ from ingest.adapters.ecmwf_opendata import (
     select_member_ranges,
 )
 from ingest.adapters.noaa_s3 import (
+    ATLANTIC_CONTEXT_BOUNDS,
     NOAAGEFSEnsembleAdapter,
+    _gefs_refusing_reader,
     gefs_member_identifiers,
     select_gefs_member_records,
 )
@@ -157,6 +159,15 @@ class FakeClient:
             return self.texts[url]
         raise FileNotFoundError(f"no fixture text for {url}")
 
+    def get_bytes_with_receipt(self, url: str, *, max_bytes: int):
+        import hashlib
+        body = self.texts[url].encode()
+        assert len(body) <= max_bytes
+        self.urls.append(url)
+        return body, {"url": url, "request_headers": {"user-agent": "fixture"},
+                      "response_headers": {}, "completed_at": "2026-09-01T00:00:01+00:00",
+                      "byte_size": len(body), "sha256": hashlib.sha256(body).hexdigest()}
+
     def download_ranges(
         self, url: str, destination: Path, ranges, *, max_bytes: int
     ) -> int:
@@ -165,6 +176,14 @@ class FakeClient:
         self.ranges.append((url, list(ranges)))
         destination.write_bytes(b"GRIB-stub")
         return sum(end - start + 1 for start, end in self.ranges[-1][1])
+
+    def download_ranges_with_receipts(self, url, destination, ranges, *, max_bytes):
+        import hashlib
+        written = self.download_ranges(url, destination, ranges, max_bytes=max_bytes)
+        body = destination.read_bytes()
+        return written, [{"url": url, "effective_url": url, "request_headers": {"range": f"bytes={self.ranges[-1][1][0][0]}-{self.ranges[-1][1][0][1]}", "user-agent": "fixture"},
+                          "response_headers": {"Content-Range": f"bytes {self.ranges[-1][1][0][0]}-{self.ranges[-1][1][0][1]}/*"}, "completed_at": "2026-09-01T00:00:02+00:00",
+                          "byte_size": self.ranges[-1][1][0][1]-self.ranges[-1][1][0][0]+1, "sha256": hashlib.sha256(body).hexdigest()}]
 
 
 def window_at(moment: datetime = datetime(2026, 9, 2, 12, tzinfo=UTC)) -> FetchWindow:
@@ -1433,7 +1452,7 @@ def gefs_reader(path, *, upstream: str, member: str, bounds):
         "VGRD:10 m above ground": "wind_v_10m",
         "TCDC:entire atmosphere (n-n+6 hour ave fcst)": "total_cloud_mean_6h",
     }
-    return member_field(UNITS_BY_KEY[keys[upstream]])
+    return member_field(UNITS_BY_KEY[keys[upstream]]).assign_coords(valid_time=datetime(2026, 9, 2, tzinfo=UTC).replace(tzinfo=None))
 
 
 def gefs_candidate() -> RunCandidate:
@@ -1462,6 +1481,40 @@ def test_gefs_members_are_the_providers_own_file_names():
     assert len(members) == 31
 
 
+def test_gefs_member_url_preserves_injectable_base_and_declared_product_set():
+    adapter = NOAAGEFSEnsembleAdapter(base_url="https://fixture.invalid/root", product_set="pgrb2bp5")
+    assert adapter.member_url(gefs_candidate(), "gec00") == (
+        "https://fixture.invalid/root/gefs.20260901/00/atmos/pgrb2bp5/"
+        "gec00.t00z.pgrb2b.0p50.f024"
+    )
+
+
+def test_gefs_reader_refuses_wrong_exact_record_identity(monkeypatch, tmp_path):
+    import xarray as xr
+    wrong = xr.Dataset({"u10": xr.DataArray(
+        [[1.0]], dims=("latitude", "longitude"),
+        coords={"latitude": [47.0], "longitude": [-52.0], "heightAboveGround": 10.0},
+        attrs={"GRIB_shortName": "10u", "GRIB_typeOfLevel": "heightAboveGround", "GRIB_stepType": "instant"},
+    )})
+    monkeypatch.setattr("ingest.grib.open_grib", lambda *_args, **_kwargs: wrong)
+    with pytest.raises(ValueError, match="identity does not match"):
+        _gefs_refusing_reader(tmp_path / "record", upstream="TMP:2 m above ground", member="gec00", bounds=ATLANTIC_CONTEXT_BOUNDS)
+
+
+@pytest.mark.parametrize("upstream,short_name,level_type,step_type,level_value", [
+    ("TCDC:entire atmosphere (0-6 hour ave fcst)", "tcc", "atmosphere", "instant", None),
+    ("TMP:2 m above ground", "2t", "heightAboveGround", "instant", 10.0),
+])
+def test_gefs_reader_refuses_wrong_step_or_scalar_level(monkeypatch, tmp_path, upstream, short_name, level_type, step_type, level_value):
+    import xarray as xr
+    coords={"latitude":[47.0],"longitude":[-52.0]}
+    if level_value is not None: coords[level_type]=level_value
+    wrong=xr.Dataset({"field":xr.DataArray([[1.0]],dims=("latitude","longitude"),coords=coords,attrs={"GRIB_shortName":short_name,"GRIB_typeOfLevel":level_type,"GRIB_stepType":step_type})})
+    monkeypatch.setattr("ingest.grib.open_grib",lambda *_args,**_kwargs:wrong)
+    with pytest.raises(ValueError,match="does not match"):
+        _gefs_refusing_reader(tmp_path/"record",upstream=upstream,member="gec00",bounds=ATLANTIC_CONTEXT_BOUNDS)
+
+
 def test_gefs_selection_is_restricted_to_the_catalogue_family_fields():
     selection = select_gefs_member_records(GEFS_IDX)
     stored = {upstream for _range, upstream, _label in selection.wanted}
@@ -1483,7 +1536,7 @@ def test_gefs_selection_is_restricted_to_the_catalogue_family_fields():
 
 
 def test_gefs_stamps_the_averaging_window_from_the_records_own_label(tmp_path: Path):
-    adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader)
+    adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader, capture_transport_receipts=True)
     result = adapter.assemble(gefs_candidate(), window_at(), tmp_path)
 
     selection = select_gefs_member_records(GEFS_IDX)
@@ -1546,3 +1599,161 @@ def test_gefs_publishes_one_member_axis_with_the_control_flagged(tmp_path: Path)
     flags = stored[CONTROL_COORD].values
     assert flags.sum() == 1  # exactly the control, never a defaulted member
     assert stored[MEMBER_DIM].values[flags][0] == "gec00"
+
+
+def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Path):
+    from datetime import timedelta
+    from weather_api.gefs_query import GEFS_FIELDS, GEFSQueryCoordinator, GEFSRequestKey, GEFSQueryService, GEFSSelectedLoader, demand_operation_bounds, validate_normalized_payload
+    adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader, capture_transport_receipts=True)
+    run = datetime(2026, 9, 1, tzinfo=UTC)
+    members = gefs_member_identifiers(get_config("noaa-gefs").ensemble)
+    key = GEFSRequestKey("2026090100", run, 24, "pgrb2ap5", members, GEFS_FIELDS,
+                         (("east", -40.0), ("north", 55.0), ("south", 40.0), ("west", -70.0)))
+    loads = []
+    loader = GEFSSelectedLoader(adapter, tmp_path)
+    service = GEFSQueryService(lambda request: loads.append(request) or loader(request),
+                               workspace=tmp_path, preflight=lambda _workspace: demand_operation_bounds())
+    first = service.query(key)
+    second = service.query(key)
+    assert second is first and loads == [key]
+    assert first.members_present == members and first.mandatory_failures == {}
+    assert first.optional_absences == {}
+    assert set(first.cloud_intervals) == set(members)
+    assert set(first.cloud_intervals.values()) == {(run + timedelta(hours=18), run + timedelta(hours=24))}
+    assert first.complete is True and first.backing_bytes > len(first.payload)
+    validate_normalized_payload(first.payload, first, tmp_path)
+    receipts = first.provenance["transport_receipts"]
+    assert len(receipts) == 31 * 8
+    assert max(item["completed_at"] for item in receipts) == "2026-09-01T00:00:02+00:00"
+    coordinator = GEFSQueryCoordinator(service, workspace=tmp_path)
+    coordinator.request_key = lambda _selected: key
+    fields, _consensus, sources = coordinator.point_fields(47.5, -52.5, run + timedelta(hours=24), member="gec00")
+    temperatures = [field for field in fields if field.field == "temperature"]
+    assert len(temperatures) == 1
+    assert [field.provenance.member for field in temperatures] == ["gec00"]
+    assert temperatures[0].provenance.member_control is True
+    assert all(field.provenance.ensemble.statistic is None for field in temperatures)
+    assert sources == ["noaa-gefs"] and loads == [key]
+    statistic_fields, _, _ = coordinator.point_fields(47.5, -52.5, run + timedelta(hours=24), statistic="ensemble_mean")
+    mean_temperature = next(field for field in statistic_fields if field.field == "temperature" and field.provenance.ensemble.statistic == "ensemble_mean")
+    assert mean_temperature.provenance.evidence_class == "derived_here"
+    mean_temperature = mean_temperature.model_copy(update={"provenance": mean_temperature.provenance.model_copy(update={
+        "run_stale": False,
+        "freshness": mean_temperature.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0}),
+    })})
+    from weather_api.store import consensus_candidates_from_fields
+    witness = consensus_candidates_from_fields([mean_temperature])
+    assert len(witness) == 1 and witness[0].is_ensemble is True
+    from weather_api.science import ConsensusCandidate, build_consensus
+    deterministic = [
+        ConsensusCandidate("eccc-hrdps", "ECCC", "deterministic_forecast", 9.0, is_eccc_regional=True),
+        ConsensusCandidate("noaa-gfs", "NOAA", "deterministic_forecast", 11.0),
+    ]
+    consensus = build_consensus([*deterministic, *witness])
+    assert consensus.available is True and consensus.value == 10.0
+    assert consensus.contributors == ("eccc-hrdps", "noaa-gfs")
+    partial_set = mean_temperature.provenance.ensemble.member_set.model_copy(update={"members_used": 30, "members_missing": ["gep30"], "partial": True})
+    partial_ensemble = mean_temperature.provenance.ensemble.model_copy(update={"member_set": partial_set})
+    partial_field = mean_temperature.model_copy(update={"provenance": mean_temperature.provenance.model_copy(update={"ensemble": partial_ensemble})})
+    assert consensus_candidates_from_fields([partial_field]) == []
+    assert build_consensus([*deterministic, *consensus_candidates_from_fields([partial_field])]).available is False
+
+    for mutation in ("missing_control", "failed_qc", "stale"):
+        provenance = mean_temperature.provenance
+        if mutation == "missing_control":
+            member_set = provenance.ensemble.member_set.model_copy(update={"control_included": False})
+            provenance = provenance.model_copy(update={"ensemble": provenance.ensemble.model_copy(update={"member_set": member_set})})
+        elif mutation == "failed_qc":
+            provenance = provenance.model_copy(update={"quality": provenance.quality.model_copy(update={"status": "failed"})})
+        else:
+            provenance = provenance.model_copy(update={"run_stale": True})
+        assert consensus_candidates_from_fields([mean_temperature.model_copy(update={"provenance": provenance})]) == []
+
+
+@pytest.mark.parametrize("missing", ["gec00", "gep30"])
+def test_gefs_missing_index_preserves_partial_family_without_invented_receipt(tmp_path, missing):
+    from weather_api.gefs_query import GEFSQueryService, GEFSSelectedLoader, GEFSRequestKey, GEFS_FIELDS, demand_operation_bounds, validate_normalized_payload
+    client = gefs_client()
+    adapter = NOAAGEFSEnsembleAdapter(client=client, reader=gefs_reader, capture_transport_receipts=True)
+    url=adapter.member_url(gefs_candidate(),missing)+".idx"
+    del client.texts[url]  # completed local failure, no provider status or retained body
+    run=datetime(2026,9,1,tzinfo=UTC)
+    members=gefs_member_identifiers(get_config("noaa-gefs").ensemble)
+    key=GEFSRequestKey("2026090100",run,24,"pgrb2ap5",members,GEFS_FIELDS,(("east",-40.),("north",55.),("south",40.),("west",-70.)))
+    service=GEFSQueryService(GEFSSelectedLoader(adapter,tmp_path),workspace=tmp_path,preflight=lambda _:demand_operation_bounds())
+    entry=service.query(key)
+    assert len(entry.members_present)==30 and missing not in entry.members_present
+    assert set(entry.mandatory_failures)=={missing} and not entry.complete
+    assert not any(item['member']==missing for item in entry.provenance['transport_receipts'])
+    failure,=entry.provenance['transport_failures']
+    assert failure['member']==missing and failure['url']==url
+    assert failure['http_status'] is None and failure['body_retained'] is False
+    validate_normalized_payload(entry.payload,entry,tmp_path)
+
+
+@pytest.mark.parametrize("failed_key", ["temperature_2m", "dew_point_2m"])
+def test_gefs_successful_range_retained_when_decode_fails(tmp_path, monkeypatch, failed_key):
+    from weather_api.gefs_query import GEFSQueryService, GEFSSelectedLoader, GEFSRequestKey, GEFS_FIELDS, demand_operation_bounds, validate_normalized_payload
+    from ingest.adapters.noaa_s3 import _gefs_keys_by_upstream
+    # Partial admission has exactly one output path and reads its bytes only
+    # after replacement; it must not allocate two whole ZIPs or payload copies.
+    import ingest.grib as grib
+    original_write, original_read = grib.write_zarr, Path.read_bytes
+    rewrites, reads = [], []
+    def read(path):
+        if path.name == "noaa_gefs_members.zarr.zip": reads.append(path)
+        return original_read(path)
+    def rewrite(dataset, path):
+        assert not path.exists()
+        assert not reads
+        assert not list(path.parent.glob("*.zarr.zip"))
+        rewrites.append(path)
+        return original_write(dataset, path)
+    monkeypatch.setattr(Path, "read_bytes", read)
+    monkeypatch.setattr(grib, "write_zarr", rewrite)
+    upstream=next(name for name,key in _gefs_keys_by_upstream("noaa-gefs").items() if key==failed_key)
+    def reader(path,**kwargs):
+        if kwargs['member']=="gep30" and kwargs['upstream']==upstream:raise ValueError("explicit decoder failure fixture")
+        return gefs_reader(path,**kwargs)
+    adapter=NOAAGEFSEnsembleAdapter(client=gefs_client(),reader=reader,capture_transport_receipts=True)
+    run=datetime(2026,9,1,tzinfo=UTC)
+    members=gefs_member_identifiers(get_config("noaa-gefs").ensemble)
+    key=GEFSRequestKey("2026090100",run,24,"pgrb2ap5",members,GEFS_FIELDS,(("east",-40.),("north",55.),("south",40.),("west",-70.)))
+    entry=GEFSQueryService(GEFSSelectedLoader(adapter,tmp_path),workspace=tmp_path,preflight=lambda _:demand_operation_bounds()).query(key)
+    assert len(rewrites) == (1 if failed_key == "temperature_2m" else 0)
+    assert len(reads) == 1
+    assert any(item.get('field')==upstream and item['member']=="gep30" for item in entry.provenance['transport_receipts'])
+    if failed_key=="temperature_2m":
+        assert "gep30" in entry.mandatory_failures and "gep30" not in entry.members_present
+    else:
+        assert entry.complete and entry.optional_absences["gep30"]==(failed_key,)
+    validate_normalized_payload(entry.payload,entry,tmp_path)
+
+
+@pytest.mark.parametrize("failure", ["utf8", "parser"])
+def test_gefs_completed_index_survives_content_failure(tmp_path, monkeypatch, failure):
+    import hashlib
+    import ingest.adapters.noaa_s3 as noaa
+    from weather_api.gefs_query import GEFSQueryService, GEFSSelectedLoader, GEFSRequestKey, GEFS_FIELDS, demand_operation_bounds
+    client=gefs_client()
+    original=client.get_bytes_with_receipt
+    def index(url,**kwargs):
+        body,receipt=original(url,**kwargs)
+        if '/gep30.' in url:
+            body=b'\xff' if failure=='utf8' else b'parser failure fixture'
+            receipt={**receipt,'byte_size':len(body),'sha256':hashlib.sha256(body).hexdigest()}
+        return body,receipt
+    client.get_bytes_with_receipt=index
+    original_select=noaa.select_gefs_member_records
+    def select(text,**kwargs):
+        if text=='parser failure fixture':raise ValueError('index parser failed')
+        return original_select(text,**kwargs)
+    monkeypatch.setattr(noaa,'select_gefs_member_records',select)
+    adapter=NOAAGEFSEnsembleAdapter(client=client,reader=gefs_reader,capture_transport_receipts=True)
+    run=datetime(2026,9,1,tzinfo=UTC);members=gefs_member_identifiers(get_config('noaa-gefs').ensemble)
+    key=GEFSRequestKey('2026090100',run,24,'pgrb2ap5',members,GEFS_FIELDS,(("east",-40.),("north",55.),("south",40.),("west",-70.)))
+    entry=GEFSQueryService(GEFSSelectedLoader(adapter,tmp_path),workspace=tmp_path,preflight=lambda _:demand_operation_bounds()).query(key)
+    assert len(entry.members_present)==30 and set(entry.mandatory_failures)=={'gep30'}
+    receipt,= [item for item in entry.provenance['transport_receipts'] if item['member']=='gep30']
+    assert receipt['kind']=='index' and receipt['http_status']==200
+    assert entry.provenance['transport_failures']==[]
