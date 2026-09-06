@@ -1,0 +1,2046 @@
+{
+  "schema_version": 1,
+  "producer_product": "hrdps-weong-2.5km",
+  "historical_ids": [
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_AirTemp",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_air_temp"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Temperature [°C]",
+        "semantic_quantity": "Temperature",
+        "published_unit": "°C",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "thermodynamic_profile",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_BlowingSnow-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_blowing_snow_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of blowing snow [%]",
+        "semantic_quantity": "Probability of blowing snow",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_BlowingSnowPresence",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_blowing_snow_presence"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Presence of blowing snow",
+        "semantic_quantity": "Presence of blowing snow",
+        "published_unit": null,
+        "published_unit_status": "not_stated_in_wms_title_unresolved",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_DewPointTemp",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_dew_point_temp"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Dew point temperature [°C]",
+        "semantic_quantity": "Dew point temperature",
+        "published_unit": "°C",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "thermodynamic_profile",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_DominantPrecipType",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_dominant_precip_type"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Dominant precipitation type",
+        "semantic_quantity": "Dominant precipitation type",
+        "published_unit": null,
+        "published_unit_status": "not_stated_in_wms_title_unresolved",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_Drizzle-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_drizzle_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of drizzle [%]",
+        "semantic_quantity": "Probability of drizzle",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "unresolved_provider_quantity",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_FreezingDrizzle-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_freezing_drizzle_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of freezing drizzle [%]",
+        "semantic_quantity": "Probability of freezing drizzle",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "unresolved_provider_quantity",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_FreezingPrecip-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_freezing_precip_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of freezing precipitation [%]",
+        "semantic_quantity": "Probability of freezing precipitation",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_FreezingPrecipCondAmt",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_freezing_precip_cond_amt"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Conditional amount of freezing precipitation [mm]",
+        "semantic_quantity": "Conditional amount of freezing precipitation",
+        "published_unit": "mm",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_FreezingRain-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_freezing_rain_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of freezing rain [%]",
+        "semantic_quantity": "Probability of freezing rain",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_IceFogVisibility",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_ice_fog_visibility"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Visibility through ice fog [m]",
+        "semantic_quantity": "Visibility through ice fog",
+        "published_unit": "m",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "cloud_visibility_astronomy",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_IcePellets-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_ice_pellets_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of ice pellets [%]",
+        "semantic_quantity": "Probability of ice pellets",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "land_ocean_ice",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_IcePelletsCondAmt",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_ice_pellets_cond_amt"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Conditional amount of solid ice pellets [m]",
+        "semantic_quantity": "Conditional amount of solid ice pellets",
+        "published_unit": "m",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "land_ocean_ice",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_InstantPrecipType",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_instant_precip_type"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Instantaneous precipitation type",
+        "semantic_quantity": "Instantaneous precipitation type",
+        "published_unit": null,
+        "published_unit_status": "not_stated_in_wms_title_unresolved",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_LandWater-Proportion",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_land_water_proportion"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Land/water proportion",
+        "semantic_quantity": "Land/water proportion",
+        "published_unit": null,
+        "published_unit_status": "not_stated_in_wms_title_unresolved",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "land_ocean_ice",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_LiquidFogVisibility",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_liquid_fog_visibility"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Visibility through liquid fog [m]",
+        "semantic_quantity": "Visibility through liquid fog",
+        "published_unit": "m",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "cloud_visibility_astronomy",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_LiquidPrecip-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_liquid_precip_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of liquid precipitation [%]",
+        "semantic_quantity": "Probability of liquid precipitation",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_LiquidPrecipCondAmt",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_liquid_precip_cond_amt"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Conditional amount of liquid precipitation [m]",
+        "semantic_quantity": "Conditional amount of liquid precipitation",
+        "published_unit": "m",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_Orography",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_orography"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Model orography [m]",
+        "semantic_quantity": "Model orography",
+        "published_unit": "m",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "unresolved_provider_quantity",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_Precip-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_precip_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of precipitation [%]",
+        "semantic_quantity": "Probability of precipitation",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_PrecipCharacter",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_precip_character"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Character of precipitation",
+        "semantic_quantity": "Character of precipitation",
+        "published_unit": null,
+        "published_unit_status": "not_stated_in_wms_title_unresolved",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_PrecipCondAmt",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_precip_cond_amt"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Conditional amount of precipitation [m]",
+        "semantic_quantity": "Conditional amount of precipitation",
+        "published_unit": "m",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_Rain-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_rain_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of rain [%]",
+        "semantic_quantity": "Probability of rain",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_SecondMostCommonPrecipType",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_second_most_common_precip_type"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - The second most common precipitation type",
+        "semantic_quantity": "The second most common precipitation type",
+        "published_unit": null,
+        "published_unit_status": "not_stated_in_wms_title_unresolved",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_SkyState",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_sky_state"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Sky state day/night (combined cloud cover and opacity)",
+        "semantic_quantity": "Sky state day/night (combined cloud cover and opacity)",
+        "published_unit": null,
+        "published_unit_status": "not_stated_in_wms_title_unresolved",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "cloud_visibility_astronomy",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_Snow-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_snow_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of snow [%]",
+        "semantic_quantity": "Probability of snow",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_SnowLevelHeight",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_snow_level_height"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Height of snow level [m]",
+        "semantic_quantity": "Height of snow level",
+        "published_unit": "m",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_SnowSqualls-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_snow_squalls_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of snow squalls [%]",
+        "semantic_quantity": "Probability of snow squalls",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_SolidSnowCondAmt",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_solid_snow_cond_amt"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Conditional amount of solid snow [m]",
+        "semantic_quantity": "Conditional amount of solid snow",
+        "published_unit": "m",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_Thunderstorm-Prob",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_thunderstorm_prob"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Probability of thunderstorm occurence [%]",
+        "semantic_quantity": "Probability of thunderstorm occurence",
+        "published_unit": "%",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "convective_diagnostic",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_TotalPrecipIntensityIndex",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_total_precip_intensity_index"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Total precipitation intensity index",
+        "semantic_quantity": "Total precipitation intensity index",
+        "published_unit": null,
+        "published_unit_status": "not_stated_in_wms_title_unresolved",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "precipitation_hydrology",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_WindDir",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_wind_dir"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Wind direction [deg true]",
+        "semantic_quantity": "Wind direction",
+        "published_unit": "deg true",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "wind_profile",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_WindGust",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_wind_gust"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Gust [m/s]",
+        "semantic_quantity": "Gust",
+        "published_unit": "m/s",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "unresolved_provider_quantity",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    },
+    {
+      "coverage_id": "HRDPS-WEonG_2.5km_WindSpeed",
+      "producer": "Environment and Climate Change Canada / Meteorological Service of Canada",
+      "producer_product": "hrdps-weong-2.5km",
+      "historical_2026_09_05": {
+        "advertised": true,
+        "selection": "advertised-selected-capability",
+        "proposed_variable": "weong_wind_speed"
+      },
+      "current_2026_09_06": {
+        "advertised_wcs": true,
+        "wms_metadata_present": true,
+        "title": "HRDPS-WEonG - Wind speed [m/s]",
+        "semantic_quantity": "Wind speed",
+        "published_unit": "m/s",
+        "published_unit_status": "verbatim_bracketed_wms_title",
+        "level": null,
+        "level_status": "no_vertical_level_stated_in_wms_title",
+        "topic": "wind_profile",
+        "geography": {
+          "west": -152.768527,
+          "south": 27.284015,
+          "east": -40.693803,
+          "north": 70.616483
+        },
+        "time": {
+          "extent": "2026-09-06T07:00:00Z/2026-09-08T06:00:00Z/PT1H",
+          "default": "2026-09-06T12:00:00Z",
+          "units": "ISO8601"
+        },
+        "reference_time": {
+          "extent": "2026-09-04T18:00:00Z/2026-09-06T06:00:00Z/PT6H",
+          "default": "2026-09-06T06:00:00Z",
+          "units": "ISO8601"
+        },
+        "provider_identifier": "urn:x-msc-smc:md:weather-meteo::nwep.weong-hrdps"
+      },
+      "access": {
+        "metadata": "GeoMet WMS 1.3.0 GetCapabilities",
+        "numeric_values": "GeoMet WCS 2.0.1 GetCoverage",
+        "credential": "none advertised",
+        "fees": "none advertised",
+        "licence": "Environment and Climate Change Canada Data Server End-use Licence",
+        "licence_url": "https://eccc-msc.github.io/open-data/licence/readme_en/"
+      },
+      "representation": {
+        "kind": "numeric_coverage",
+        "model_native_grid": false,
+        "server_rectified_or_resampled": true,
+        "rendered_image": false,
+        "reason": "GeoMet WCS serves a rectified coverage and supports server clipping, reprojection and scaling; it is not the producer model's native GRIB grid."
+      },
+      "disposition": "covered_by_issue_79_experimental_acquisition",
+      "linked_issues": [
+        79,
+        141,
+        97
+      ],
+      "disposition_reason": "Issue 79 retrieved this selected ID once; issue 141 owns source identity, field-window and semantic admission, and issue 97 owns final coverage verification."
+    }
+  ]
+}
