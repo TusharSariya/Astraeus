@@ -49,6 +49,9 @@ def validate_fragment_invariants(fragment: dict) -> None:
     interval = fragment["valid_time_or_interval"]
     if isinstance(interval, dict) and parse(interval["end"]) <= parse(interval["start"]):
         raise ValueError("fragment interval end must follow start")
+    bounds = fragment["geography"]["bounds"]
+    if bounds["west"] >= bounds["east"] or bounds["south"] >= bounds["north"]:
+        raise ValueError("fragment geography bounds must have positive extent")
 
 
 def resolve_map_frame(times: list[str], selected: str) -> str | None:
@@ -130,6 +133,10 @@ class LiveQueryContractTests(unittest.TestCase):
         validator("expected_fragment").validate(reversed_interval)
         with self.assertRaisesRegex(ValueError, "follow start"):
             validate_fragment_invariants(reversed_interval)
+        reversed_bounds = {**fragment, "geography": {"crs": "EPSG:4326", "bounds": {"west": -51, "south": 49, "east": -54, "north": 46}}}
+        validator("expected_fragment").validate(reversed_bounds)
+        with self.assertRaisesRegex(ValueError, "positive extent"):
+            validate_fragment_invariants(reversed_bounds)
 
     def test_expired_snapshot_can_remain_charged_while_revoking(self) -> None:
         snapshot = {"snapshot_id": "snap-old", "selection": SELECTION, "selected_at": "2026-09-06T12:00:00Z", "expires_at": "2026-09-06T12:15:00Z", "state": "expired", "operation_id": "12345678-1234-5678-9234-567812345678", "fencing_token": 4, "reservation_state": "revoking", "reserved_bytes": 8192, "revision_set": {"manifest_revisions": [], "registry_revision": "r", "field_catalogue_revision": "f", "derivation_versions": {}, "inventory_revision": "i"}}

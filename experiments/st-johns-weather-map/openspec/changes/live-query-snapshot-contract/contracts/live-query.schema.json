@@ -36,8 +36,8 @@
             "additionalProperties": false,
             "required": ["key", "units", "level"],
             "properties": {
-              "key": {"type": "string"},
-              "units": {"type": "string"},
+              "key": {"type": "string", "minLength": 1},
+              "units": {"type": "string", "minLength": 1},
               "level": {"type": ["string", "null"]}
             }
           }
@@ -47,7 +47,7 @@
           "additionalProperties": false,
           "required": ["crs", "bounds"],
           "properties": {
-            "crs": {"type": "string"},
+            "crs": {"type": "string", "minLength": 1},
             "bounds": {
               "type": "object",
               "additionalProperties": false,
@@ -112,24 +112,24 @@
       "properties": {
         "baseline_snapshot_id": {"type": "string", "minLength": 1},
         "selection": {"$ref": "#/$defs/selection"},
-        "requested_source_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "requested_source_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "canonical_selection_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
       }
     },
     "source_outcome": {
       "type": "object", "additionalProperties": false,
       "required": ["source_id", "state", "manifest_revision", "fragment_outcomes"],
-      "properties": {"source_id": {"type": "string"}, "state": {"enum": ["succeeded", "failed", "cancelled"]}, "manifest_revision": {"type": ["string", "null"]}, "fragment_outcomes": {"type": "array", "items": {"$ref": "#/$defs/fragment_outcome"}}}
+      "properties": {"source_id": {"type": "string", "minLength": 1}, "state": {"enum": ["succeeded", "failed", "cancelled"]}, "manifest_revision": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}, "fragment_outcomes": {"type": "array", "items": {"$ref": "#/$defs/fragment_outcome"}}}
     },
     "fragment_outcome": {
       "type": "object",
       "additionalProperties": false,
       "required": ["source_id", "fragment_key", "outcome", "manifest_revision"],
       "properties": {
-        "source_id": {"type": "string"},
-        "fragment_key": {"type": "string"},
+        "source_id": {"type": "string", "minLength": 1},
+        "fragment_key": {"type": "string", "minLength": 1},
         "outcome": {"enum": ["cache_hit", "published", "nothing_available", "blocked", "retrieval_failed", "quota_exceeded", "upstream_budget_exhausted"]},
-        "manifest_revision": {"type": ["string", "null"]}
+        "manifest_revision": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
       }
     },
     "refresh_job": {
