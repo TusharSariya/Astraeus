@@ -7,8 +7,8 @@ import type { CatalogResult, CatalogSource, CloudLayerReading, ComparabilityPair
 
 const prefix = '/api/experiments/weather/v0'
 
-export interface TafGroup { index: number; time_from: string; time_to: string; change: string; probability: number | null; presence: Record<string, string>; values: Record<string, number | null> }
-export interface TafResponse { data_mode: string; station: string; at: string; source_id: string; revision_id: string; run_time: string; issue_time: string; valid_time_from: number; valid_time_to: number; raw_taf: string; groups: TafGroup[] }
+export interface TafGroup { index: number; time_from: string; time_to: string; time_bec: number | null; change: string; probability: number | null; presence: Record<string, string>; values: Record<string, number | null>; native: Record<string, unknown>; native_presence: Record<string, string>; native_units: Record<string, string> }
+export interface TafResponse { data_mode: string; operational: false; station: string; at: string; source_id: string; revision_id: string; run_time: string; issue_time: string; valid_time_from: number; valid_time_to: number; raw_taf: string; native_report_metadata: Record<string, unknown>; groups: TafGroup[] }
 
 export async function loadTaf(at: string, signal?: AbortSignal): Promise<TafResponse | null> {
   const response = await fetch(`${prefix}/aviation/taf?station=CYYT&at=${encodeURIComponent(at)}`, { signal, headers: { Accept: 'application/json' } })

@@ -14,7 +14,9 @@ WINDOW = FetchWindow(datetime(2026, 9, 6, 12, tzinfo=UTC), back_hours=3, forward
 
 
 def report(*groups):
-    return [{"icaoId": "CYYT", "issueTime": "2026-09-06T11:41:00Z", "validTimeFrom": 1788696000,
+    return [{"icaoId": "CYYT", "issueTime": "2026-09-06T11:41:00Z", "bulletinTime": "2026-09-06T11:00:00Z",
+             "dbPopTime": "2026-09-06T11:41:27Z", "lat": 47.627, "lon": -52.748, "elev": 128,
+             "mostRecent": 1, "prior": 3, "name": "St Johns Intl", "remarks": "", "validTimeFrom": 1788696000,
              "validTimeTo": 1788782400, "rawTAF": "TAF CYYT 061141Z 0612/0712",
              "fcsts": list(groups)}]
 
@@ -73,6 +75,13 @@ def test_strict_decoder_rejects_invalid_present_fields(mutation):
 def test_strict_decoder_accepts_variable_direction():
     decoded = _decode(payload(report(group(wdir="VRB"))), WINDOW)
     assert decoded["fcsts"][0]["wdir"] == "VRB"
+
+
+def test_strict_decoder_requires_first_prevailing_group_at_structural_gate():
+    stamp = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    result = validate_taf_structure({}, [(stamp, group(fcstChange="TEMPO", clouds=[{"cover": "OVC", "base": 400}]))], [])
+    assert not result.complete
+    assert "first_group_not_prevailing" in result.detail
 
 
 def test_structural_validation_accepts_vrb_but_refuses_empty_sky_declaration():

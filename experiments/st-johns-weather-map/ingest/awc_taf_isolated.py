@@ -58,9 +58,26 @@ def _decode(raw: bytes, window: FetchWindow) -> dict[str, object]:
         raise AdapterUnavailable(f"AWC TAF report has unsupported keys: {sorted(unknown_report)}")
     if taf.get("icaoId") != "CYYT" or not isinstance(taf.get("rawTAF"), str) or not taf["rawTAF"].strip():
         raise AdapterUnavailable("AWC TAF report has invalid identity or raw report")
-    issue = datetime.fromisoformat(str(taf.get("issueTime", "")).replace("Z", "+00:00"))
-    if issue.tzinfo is None:
-        raise AdapterUnavailable("AWC TAF issueTime is not timezone-aware")
+    parsed_times = {}
+    for key in ("issueTime", "bulletinTime", "dbPopTime"):
+        try:
+            parsed_times[key] = datetime.fromisoformat(str(taf.get(key, "")).replace("Z", "+00:00"))
+        except ValueError as error:
+            raise AdapterUnavailable(f"AWC TAF {key} is invalid") from error
+        if parsed_times[key].tzinfo is None:
+            raise AdapterUnavailable(f"AWC TAF {key} is not timezone-aware")
+    issue = parsed_times["issueTime"]
+    latitude = _finite_number(taf.get("lat"), "lat", minimum=-90, maximum=90)
+    longitude = _finite_number(taf.get("lon"), "lon", minimum=-180, maximum=180)
+    _finite_number(taf.get("elev"), "elev", minimum=-500, maximum=9000)
+    if abs(latitude - 47.627) > 0.1 or abs(longitude - (-52.748)) > 0.1:
+        raise AdapterUnavailable("AWC TAF report is outside the measured CYYT station position")
+    for key in ("name", "remarks"):
+        if taf.get(key) is not None and not isinstance(taf[key], str):
+            raise AdapterUnavailable(f"AWC TAF has invalid {key}")
+    for key in ("mostRecent", "prior"):
+        if isinstance(taf.get(key), bool) or not isinstance(taf.get(key), int):
+            raise AdapterUnavailable(f"AWC TAF has invalid {key}")
     valid_from = _epoch(taf.get("validTimeFrom"), "validTimeFrom")
     valid_to = _epoch(taf.get("validTimeTo"), "validTimeTo")
     if valid_to <= valid_from:
@@ -91,6 +108,8 @@ def _decode(raw: bytes, window: FetchWindow) -> dict[str, object]:
         probability = group.get("probability")
         if probability is not None:
             _finite_number(probability, f"group {index} probability", maximum=100)
+            if probability not in {30, 40}:
+                raise AdapterUnavailable(f"AWC TAF group {index} has unsupported probability")
             if change != "PROB":
                 raise AdapterUnavailable(f"AWC TAF group {index} probability is not a PROB group")
         if change == "PROB" and probability is None:
@@ -103,6 +122,12 @@ def _decode(raw: bytes, window: FetchWindow) -> dict[str, object]:
             _finite_number(direction, f"group {index} wdir", maximum=360)
         if group.get("wxString") is not None and not isinstance(group["wxString"], str):
             raise AdapterUnavailable(f"AWC TAF group {index} has invalid wxString")
+        for key in ("altim", "notDecoded", "wshearDir", "wshearHgt", "wshearSpd"):
+            if group.get(key) is not None:
+                raise AdapterUnavailable(f"AWC TAF group {index} populated unsupported {key}")
+        for key in ("temp", "icgTurb"):
+            if group.get(key) not in (None, []):
+                raise AdapterUnavailable(f"AWC TAF group {index} populated unsupported {key}")
         clouds = group.get("clouds")
         if clouds is not None and (not isinstance(clouds, list) or len(clouds) > 6):
             raise AdapterUnavailable(f"AWC TAF group {index} has unsupported cloud layers")

@@ -1320,11 +1320,13 @@ export default function App() {
           <section className="taf-panel evidence-surface" aria-labelledby="taf-heading">
             <div className="section-head"><span>TAF</span><div><small>CYYT · native conditional groups</small><h2 id="taf-heading">Terminal forecast</h2></div></div>
             {tafError ? <p role="status">TAF unavailable: {tafError}</p> : taf === null ? <p role="status">No published CYYT TAF covers this instant.</p> : <>
-              <p><strong>Issued {nlTime(taf.issue_time)} NT</strong> · {taf.source_id} · revision {taf.revision_id.slice(0, 8)}</p>
+              <p><strong>Issued {nlTime(taf.issue_time)} NT</strong> · valid {nlTime(new Date(taf.valid_time_from * 1000).toISOString())}–{nlTime(new Date(taf.valid_time_to * 1000).toISOString())} NT · {taf.source_id} · revision {taf.revision_id.slice(0, 8)}</p>
               <code>{taf.raw_taf}</code>
               {taf.groups.length === 0 ? <p role="status">No native group interval contains this instant.</p> : <ol className="taf-groups">{taf.groups.map((group) => <li key={group.index}>
                 <strong>{group.change || 'Prevailing'}{group.probability === null ? '' : ` · ${group.probability}%`}</strong>
                 <time>{nlTime(group.time_from)}–{nlTime(group.time_to)} NT</time>
+                {group.time_bec === null ? null : <small>Becomes at {nlTime(new Date(group.time_bec * 1000).toISOString())} NT</small>}
+                <dl>{Object.entries(group.native).map(([name, value]) => <div key={`native-${name}`}><dt>{name}</dt><dd>{value === null || value === '' || value === false ? group.native_presence[name] : typeof value === 'object' ? JSON.stringify(value) : String(value)}{value === null || value === false ? '' : ` ${group.native_units[name] ?? ''}`}</dd></div>)}</dl>
                 <dl>{Object.entries(group.values).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value === null ? group.presence[name] ?? 'missing' : value}</dd></div>)}</dl>
               </li>)}</ol>}
               <small>Groups are shown separately. Values are not inherited or merged into Brief.</small>

@@ -677,7 +677,9 @@ def validate_taf_structure(
     errors = list(decode_errors)
     for index, (_stamp, group) in enumerate(groups):
         change = str(group.get("fcstChange") or "").upper()
-        if index != 0 and change != "FM":
+        if index == 0 and change:
+            errors.append("first_group_not_prevailing")
+        if change not in {"", "FM"}:
             continue
         if group.get("wspd") is None:
             errors.append(f"self_contained_wind_speed@{index}")
@@ -924,7 +926,12 @@ class AWCTafAdapter:
                 "taf_change_groups": [item[1].get("fcstChange") or "" for item in valid_fcsts],
                 "taf_probabilities": [item[1].get("probability") for item in valid_fcsts],
                 "taf_group_presence_json": json.dumps(group_presence, separators=(",", ":")),
+                "taf_native_groups_json": json.dumps(valid_fcsts and [item[1] for item in valid_fcsts], separators=(",", ":")),
                 "taf_provider_field_dispositions_json": json.dumps(TAF_PROVIDER_FIELD_DISPOSITIONS, separators=(",", ":"), sort_keys=True),
+                "taf_native_report_metadata_json": json.dumps({
+                    key: value for key, value in taf.items()
+                    if key not in {"fcsts", "rawTAF", "_issue_epoch"}
+                }, separators=(",", ":"), sort_keys=True),
             },
         )
 
@@ -950,6 +957,8 @@ class AWCTafAdapter:
                               "valid_time_from": int(taf["validTimeFrom"]), "valid_time_to": int(taf["validTimeTo"]),
                               "forecast_group_count": len(valid_fcsts)},
             "provider_field_dispositions": TAF_PROVIDER_FIELD_DISPOSITIONS,
+            "native_report_metadata": {key: value for key, value in taf.items()
+                                       if key not in {"fcsts", "rawTAF", "_issue_epoch"}},
             # A report is retrieved exactly as the station coded it; the
             # manifest is what says so, so the declaration comes from there
             # rather than being written out again here.
