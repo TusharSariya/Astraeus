@@ -230,6 +230,16 @@ def test_a_regular_grid_still_takes_the_rectilinear_path():
     assert sample.sampled_latitude is not None
 
 
+def test_sample_reports_the_selected_native_time_instead_of_the_request():
+    grid = artifact(source_id="noaa-gfs", logical_name="surface")
+    store = StubStore([(grid, rectilinear())])
+    requested = STAMP.replace(minute=30)
+
+    sample = store.sample_point(LATITUDE, LONGITUDE, requested)[0]
+
+    assert sample.valid_time == STAMP
+
+
 def test_the_nearest_cell_helper_returns_positional_indexers_for_one_cell():
     dataset = rotated()
     found = _nearest_curvilinear_cell(dataset, "latitude", "longitude", LATITUDE, LONGITUDE)

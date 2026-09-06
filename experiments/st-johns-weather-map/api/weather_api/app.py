@@ -1238,13 +1238,17 @@ def get_layer_features(
     notices = skip_notices(store)
     if coverage is None:
         raise HTTPException(status_code=404, detail=f"no layer {layer_id!r} is currently published")
-    if not features:
+    observed_empty = bool(coverage.empty_observations)
+    if observed_empty:
+        notices.append("the stored observation contains zero features at this published frame")
+    elif not features:
         notices.append(f"{layer_id} publishes no stored value at {moment.isoformat()}; nothing has been substituted")
     return {
         "type": "FeatureCollection",
-        "data_mode": (DataMode.LIVE if features else DataMode.UNAVAILABLE).value,
+        "data_mode": (DataMode.LIVE if features or observed_empty else DataMode.UNAVAILABLE).value,
         "operational": False,
         "features": features,
+        "empty_observations": list(coverage.empty_observations),
         "notices": notices,
     }
 

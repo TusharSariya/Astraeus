@@ -275,9 +275,8 @@ class ReachSchemaTests(unittest.TestCase):
         report = audit.summary(registry())
         self.assertEqual(35, report["reach_declared"])
         self.assertEqual([], report["latency_measured"])
-        # Base 21 adapters plus nine space-weather adapters. SST contributes
-        # two reach declarations but its capture readers remain unregistered.
-        self.assertEqual(30, len(report["adapter_source_ids"]))
+        # Base 21 plus nine space-weather identities and isolated GOES GLM.
+        self.assertEqual(31, len(report["adapter_source_ids"]))
 
 
 if __name__ == "__main__":

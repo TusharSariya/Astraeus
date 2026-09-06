@@ -104,6 +104,20 @@ CLOUD_LAYER_VARIABLES = tuple(
 )
 FIELD_BY_VARIABLE.update({name: name for name in CLOUD_LAYER_VARIABLES})
 
+# GOES-19 ABI L2+ experiment fields. Each name is a canonical catalogue key;
+# quality_flag remains in the artifact for provenance/QC and is deliberately
+# absent here, so it cannot be mistaken for a physical reading.
+GOES_ABI_L2_FIELDS = (
+    "cloud_fraction_layer_1", "cloud_fraction_layer_2", "cloud_fraction_layer_3",
+    "cloud_fraction_layer_4", "cloud_fraction_layer_5", "cloud_fraction_total_satellite",
+    "cloud_layer_flag", "cloud_top_phase",
+    "cloud_top_temperature", "cloud_optical_depth", "cloud_particle_size",
+    "convective_available_potential_energy", "lifted_index", "total_totals_index",
+    "showalter_index", "k_index", "sea_surface_skin_temperature",
+    "relative_humidity_pressure", "temperature_pressure", "precipitation_rate",
+)
+FIELD_BY_VARIABLE.update({name: name for name in GOES_ABI_L2_FIELDS})
+
 # The upper-air wind components must pass the sampling filter to reach the
 # derivation below, so they map to themselves here; DERIVATION_INPUTS then
 # keeps them out of the served fields, exactly like the 10 m components.
@@ -515,6 +529,8 @@ class LayerCoverage:
     sites: list[tuple[float, float]]
     #: True when latitude and longitude both vary, i.e. a real field.
     gridded: bool
+    #: Successfully read empty vector artifacts at the requested exact frame.
+    empty_observations: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1062,6 +1078,12 @@ class LiveStore:
             distance = _corrected_distance_degrees(latitude, longitude, cell_latitude, cell_longitude)
             sample_method = "rectilinear"
 
+        selected_valid_time = valid_time
+        if time_name is not None:
+            import pandas  # noqa: PLC0415
+
+            selected_valid_time = pandas.Timestamp(located[time_name].values).to_pydatetime().replace(tzinfo=UTC)
+
         provenance = dict(artifact.provenance or {})
         level = provenance.get("vertical_level", "surface" if pressure is None else f"{pressure} hPa")
         if manifest is None:
@@ -1103,7 +1125,7 @@ class LiveStore:
                 "units": str(attrs.get("units", "unknown")),
                 "evidence_class": evidence_class,
                 "level": variable_level(name, str(level)),
-                "valid_time": valid_time,
+                "valid_time": selected_valid_time,
                 "run_time": artifact.run_time,
                 "retrieved_at": artifact.retrieved_at,
                 "native_crs": artifact.native_crs or provenance.get("native_crs", "unknown"),
@@ -1440,7 +1462,7 @@ class LiveStore:
             gridded=False,
         )
 
-    def _geojson_features(self, artifact: Any, valid_time: datetime) -> list[dict[str, Any]]:
+    def _geojson_features(self, artifact: Any, valid_time: datetime) -> list[dict[str, Any]] | None:
         """The stored features, stamped with the frame they were asked for.
 
         The geometry is passed through exactly as published; only provenance is
@@ -1449,13 +1471,16 @@ class LiveStore:
         """
         try:
             document = self._read_geojson(artifact)
+            if document.get("type") != "FeatureCollection" or not isinstance(document.get("features"), list):
+                raise ValueError("stored vector artifact is not a GeoJSON FeatureCollection")
         except Exception as error:
             self._record_skip(artifact, error)
-            return []
+            return None
         collected: list[dict[str, Any]] = []
         for feature in document.get("features") or []:
-            if not isinstance(feature, dict):
-                continue
+            if not isinstance(feature, dict) or feature.get("type") != "Feature":
+                self._record_skip(artifact, ValueError("stored collection contains an invalid feature"))
+                return None
             properties = dict(feature.get("properties") or {})
             properties.update(
                 {
@@ -1487,7 +1512,26 @@ class LiveStore:
         features: list[dict[str, Any]] = []
         for artifact in artifacts:
             if _is_geojson(artifact.media_type):
-                features.extend(self._geojson_features(artifact, valid_time))
+                artifact_coverage = self._geojson_coverage(artifact)
+                if artifact_coverage is None or valid_time not in artifact_coverage.times:
+                    continue
+                stored = self._geojson_features(artifact, valid_time)
+                if stored is None:
+                    continue
+                features.extend(stored)
+                if not stored:
+                    provenance = dict(artifact.provenance or {})
+                    observation = {
+                        "source_id": artifact.source_id,
+                        "logical_name": artifact.logical_name,
+                        "revision_id": str(artifact.revision_id),
+                        "provider_run_id": artifact.provider_run_id,
+                        "valid_time": valid_time.isoformat(),
+                        "bounds": provenance.get("bounds"),
+                        "interval_start": provenance.get("interval_start"),
+                        "interval_end": provenance.get("interval_end"),
+                    }
+                    coverage = replace(coverage, empty_observations=(*coverage.empty_observations, observation))
                 continue
             try:
                 dataset = self.open(artifact)

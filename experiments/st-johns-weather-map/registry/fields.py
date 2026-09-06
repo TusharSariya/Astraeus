@@ -133,6 +133,10 @@ FAMILIES: list[dict[str, Any]] = [
             "observed_layer": "An observer's reported cover for one reported cloud layer.",
             "derived_repair": "A derived-here repair of a producer's column cover; never the producer's value.",
             "scene_class": "A categorical clear/cloudy scene classification, not a fraction.",
+            "satellite_column": (
+                "Satellite-retrieved whole-column cloud fraction from a layered product; neither "
+                "opacity-weighted nor geometric overlap."
+            ),
         },
     },
     {
@@ -150,6 +154,34 @@ FAMILIES: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "cloud_microphysics",
+        "title": "Cloud microphysics",
+        "note": (
+            "Phase, optical depth and particle size retrieved from a satellite cloud algorithm. "
+            "Each is the output of its own retrieval method and is not comparable across "
+            "different algorithms or instruments; none of these is validated against an "
+            "in-situ or ground-based measurement in this deployment."
+        ),
+        "groups": {
+            "phase": "Categorical cloud-top thermodynamic phase from a satellite retrieval.",
+            "optical_depth": "Cloud optical depth from a satellite retrieval, daytime only.",
+            "particle_size": "Cloud particle effective size from a satellite retrieval, daytime only.",
+        },
+    },
+    {
+        "name": "stability",
+        "title": "Convective stability",
+        "note": (
+            "CAPE and four stability indices from a satellite sounding retrieval. The indices are "
+            "on different numeric scales from each other and from CAPE, and must never share an "
+            "axis or a colour ramp."
+        ),
+        "groups": {
+            "energy": "Convective available potential energy from a sounding retrieval.",
+            "index": "A stability index on its own numeric scale; never compared across index types.",
+        },
+    },
+    {
         "name": "temperature",
         "title": "Temperature",
         "note": (
@@ -163,6 +195,7 @@ FAMILIES: list[dict[str, Any]] = [
             "air": "Air temperature at a stated height or pressure level.",
             "skin": "Aggregate land surface skin temperature.",
             "radiative": "Aggregate surface radiative temperature; not verified equal to skin.",
+            "cloud_top": "Satellite-retrieved radiative temperature of the cloud top.",
         },
     },
     {
@@ -201,6 +234,7 @@ FAMILIES: list[dict[str, Any]] = [
             "speed": "Scalar horizontal wind speed.",
             "direction": "Bearing the wind comes from, meteorological convention.",
             "gust": "Peak gust over the producer's own reporting interval.",
+            "satellite_vector": "Cloud-tracked motion vector at the producer-retrieved pressure.",
         },
     },
     {
@@ -403,6 +437,10 @@ FAMILIES: list[dict[str, Any]] = [
         ),
         "groups": {
             "sea_surface_temperature": "Temperature of the sea surface layer.",
+            "sea_surface_skin_temperature": (
+                "Satellite-retrieved radiometric skin temperature of the sea surface; a different "
+                "measurement from a modelled or buoy-reported bulk sea surface temperature."
+            ),
             "sea_surface_temperature_uncertainty": "Producer-published uncertainty for an analysed SST cell.",
             "sea_surface_temperature_mask": "Producer-published surface-type mask retained as quality metadata.",
             "wave_height": "Height statistic of the combined sea state.",
@@ -587,6 +625,14 @@ FIELDS: list[dict[str, Any]] = [
        "Wind direction at 80 m.", standard_name="wind_from_direction", value_range=(0.0, 360.0)),
     _f("wind_direction_120m", "wind direction", "degree", "wind", "120 m", "direction",
        "Wind direction at 120 m.", standard_name="wind_from_direction", value_range=(0.0, 360.0)),
+    _f("satellite_motion_wind_speed", "satellite-derived motion wind speed", "m s-1", "wind",
+       "retrieved pressure", "satellite_vector",
+       "GOES ABI cloud or clear-sky water-vapour tracer motion-vector speed; each feature carries "
+       "its producer-retrieved pressure and quality flag.", standard_name="wind_speed"),
+    _f("satellite_motion_wind_direction", "satellite-derived motion wind direction", "degree",
+       "wind", "retrieved pressure", "satellite_vector",
+       "GOES ABI tracer motion vector's meteorological from-direction.",
+       standard_name="wind_from_direction", value_range=(0.0, 360.0)),
     _f("wind_u_pressure", "eastward wind component", "m s-1", "wind", "pressure levels", "component",
        "Eastward wind on pressure surfaces: one field with a level coordinate. Written "
        "level-expanded as wind_u_<hPa>hPa by the GRIB adapters.", standard_name="eastward_wind",
@@ -712,6 +758,44 @@ FIELDS: list[dict[str, Any]] = [
        "The satellite retrieval's own confidence that the scene is cloudy. Not a cover fraction: "
        "a certainly-cloudy thin cirrus scene reads 100 here and near zero in opacity-weighted "
        "cover.", value_range=(0.0, 100.0)),
+    _f("cloud_fraction_total_satellite", "satellite total cloud fraction", "percent", "cloud_cover",
+       "column", "satellite_column",
+       "Whole-column cloud fraction (GOES ABI Cloud Cover Layers TCF), a producer diagnostic "
+       "computed from the same layered cloud-top retrieval as cloud_fraction_layer_1..5, not an "
+       "independent whole-column measurement. Neither opacity-weighted (ECCC GEM NT) nor a "
+       "geometric maximum-random overlap (GFS, ECMWF, ICON); never share a ramp or axis with "
+       "either.", value_range=(0.0, 100.0)),
+    _f("cloud_layer_flag", "cloud layer flag", "code", "cloud_cover", "column", "scene_class",
+       "The GOES ABI Cloud Cover Layers product's own per-pixel cloud-layer flag (CL): a "
+       "categorical code, not a fraction, and never averaged or interpolated."),
+
+    # --- cloud microphysics -------------------------------------------------
+    _f("cloud_top_phase", "cloud top thermodynamic phase", "code", "cloud_microphysics", "cloud top",
+       "phase",
+       "GOES ABI Cloud Top Phase retrieval (ACTPF Phase): a per-pixel categorical code (0 clear "
+       "sky, 1 liquid water, 2 supercooled liquid water, 3 mixed phase, 4 ice, 5 unknown). A "
+       "classification, not a measured quantity, and not comparable across retrieval algorithms."),
+    _f("cloud_optical_depth", "cloud optical depth", "1", "cloud_microphysics", "cloud column",
+       "optical_depth",
+       "GOES ABI daytime DCOMP cloud optical depth retrieval (CODF COD), dimensionless. Valid "
+       "only for sunlit pixels; night pixels are flagged and carry no retrieval. Not comparable "
+       "across different optical-depth retrieval methods."),
+    _f("cloud_particle_size", "cloud particle effective size", "um", "cloud_microphysics",
+       "cloud top", "particle_size",
+       "GOES ABI cloud particle effective size retrieval (CPSF PSD), micrometres. A daytime "
+       "DCOMP companion to cloud_optical_depth and comparably retrieval-method-dependent."),
+
+    # --- satellite stability retrievals -----------------------------------
+    _f("convective_available_potential_energy", "convective available potential energy", "J kg-1",
+       "stability", "column", "energy", "GOES ABI Derived Stability Indices CAPE retrieval."),
+    _f("lifted_index", "lifted index", "K", "stability", "column", "index",
+       "GOES ABI Derived Stability Indices lifted index; its own scale is retained."),
+    _f("total_totals_index", "total totals index", "K", "stability", "column", "index",
+       "GOES ABI Derived Stability Indices total totals index; not comparable to another index."),
+    _f("showalter_index", "Showalter index", "K", "stability", "column", "index",
+       "GOES ABI Derived Stability Indices Showalter index; not comparable to another index."),
+    _f("k_index", "K-index", "K", "stability", "column", "index",
+       "GOES ABI Derived Stability Indices K-index; not comparable to another index."),
 
     # --- cloud geometry ----------------------------------------------------
     _f("cloud_top_height", "cloud top height", "m", "cloud_geometry", "cloud top", "satellite_top",
@@ -720,6 +804,9 @@ FIELDS: list[dict[str, Any]] = [
     _f("cloud_top_pressure", "cloud top pressure", "hPa", "cloud_geometry", "cloud top",
        "satellite_top", "Retrieved pressure of the cloud top (GOES ABI CTP).",
        standard_name="air_pressure_at_cloud_top"),
+    _f("cloud_top_temperature", "cloud top temperature", "K", "temperature", "cloud top",
+       "cloud_top", "GOES ABI radiatively retrieved cloud-top temperature.",
+       standard_name="air_temperature_at_cloud_top"),
     _f("cloud_ceiling", "cloud ceiling height", "m", "cloud_geometry", "ceiling", "observed_base",
        "Height above ground of the lowest broken or overcast layer.",
        standard_name="cloud_base_altitude"),
@@ -946,6 +1033,10 @@ FIELDS: list[dict[str, Any]] = [
        "Temperature of the sea surface layer. A modelled bulk SST and a satellite skin SST are "
        "different measurements of a stratified surface.",
        standard_name="sea_surface_temperature"),
+    _f("sea_surface_skin_temperature", "sea surface skin temperature", "K", "marine",
+       "sea surface skin", "sea_surface_skin_temperature",
+       "Satellite-retrieved radiometric skin temperature. It remains distinct from modelled "
+       "or in-situ bulk sea-surface temperature.", standard_name="sea_surface_skin_temperature"),
     _f("sea_surface_temperature_uncertainty", "sea surface temperature analysis uncertainty", "degC", "marine", "sea surface",
        "sea_surface_temperature_uncertainty",
        "Producer-published standard error of an analysed SST cell. It is uncertainty metadata, not another SST estimate.",
@@ -1489,19 +1580,34 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
         "Derived from the mask's class confidence, as retrieved."),
     _sf("noaa-goes-east", "cloud_top_height", "ABI-L2-ACHAF", "stored",
         "NOAA Provisional maturity; the disclosure travels with every value."),
-    _sf("noaa-goes-east", "cloud_fraction_layer_1", "ABI-L2-CCLF", "available-not-stored",
-        "The layered cloud fraction product is published hourly at 10 km, about 2 MB per hour, "
-        "and is not fetched yet."),
-    _sf("noaa-goes-east", "cloud_fraction_layer_2", "ABI-L2-CCLF", "available-not-stored",
-        "As layer 1."),
-    _sf("noaa-goes-east", "cloud_fraction_layer_3", "ABI-L2-CCLF", "available-not-stored",
-        "As layer 1."),
-    _sf("noaa-goes-east", "cloud_fraction_layer_4", "ABI-L2-CCLF", "available-not-stored",
-        "As layer 1."),
-    _sf("noaa-goes-east", "cloud_fraction_layer_5", "ABI-L2-CCLF", "available-not-stored",
-        "As layer 1."),
-    _sf("noaa-goes-east", "precipitable_water", "ABI-L2-TPWF", "available-not-stored",
-        "Total precipitable water, 6 granules an hour at 10 km, not fetched."),
+    *[_sf("noaa-goes-east", f"cloud_fraction_layer_{index}", f"ABI-L2-CCLF CF{index}", "stored",
+          "Hourly 10 km native fixed-grid producer diagnostic, cropped without interpolation.") for index in range(1, 6)],
+    _sf("noaa-goes-east", "cloud_fraction_total_satellite", "ABI-L2-CCLF TCF", "stored",
+        "Producer total from the layered product; distinct from model overlap/opacity totals."),
+    _sf("noaa-goes-east", "cloud_layer_flag", "ABI-L2-CCLF CL", "stored", "Categorical producer flag."),
+    _sf("noaa-goes-east", "cloud_top_phase", "ABI-L2-ACTPF Phase", "stored", "DQF travels beside the phase."),
+    _sf("noaa-goes-east", "cloud_top_temperature", "ABI-L2-ACHTF TEMP", "stored", "Kelvin, DQF-gated."),
+    _sf("noaa-goes-east", "cloud_optical_depth", "ABI-L2-CODF/COD2KMF COD", "stored",
+        "Both native resolutions are independently retrievable and keep distinct logical artifacts."),
+    _sf("noaa-goes-east", "cloud_particle_size", "ABI-L2-CPSF CPS", "stored", "Micrometres, DQF-gated."),
+    _sf("noaa-goes-east", "precipitable_water", "ABI-L2-TPWF TPW", "stored",
+        "Native millimetres are dimensionally identical to kg m-2 and stored in catalogue units."),
+    _sf("noaa-goes-east", "relative_humidity_pressure", "ABI-L2-LVMPF LVM", "stored",
+        "101 producer pressure levels; only producer-good retrievals are readable."),
+    _sf("noaa-goes-east", "temperature_pressure", "ABI-L2-LVTPF LVT", "stored",
+        "101 producer pressure levels; Kelvin is normalized to degC."),
+    _sf("noaa-goes-east", "lifted_index", "ABI-L2-DSIF LI", "stored", "Producer stability retrieval."),
+    _sf("noaa-goes-east", "convective_available_potential_energy", "ABI-L2-DSIF CAPE", "stored", "Producer stability retrieval."),
+    _sf("noaa-goes-east", "total_totals_index", "ABI-L2-DSIF TT", "stored", "Producer stability retrieval."),
+    _sf("noaa-goes-east", "showalter_index", "ABI-L2-DSIF SI", "stored", "Producer stability retrieval."),
+    _sf("noaa-goes-east", "k_index", "ABI-L2-DSIF KI", "stored", "Producer stability retrieval."),
+    _sf("noaa-goes-east", "sea_surface_skin_temperature", "ABI-L2-SSTF SST", "stored",
+        "Hourly radiometric skin temperature, distinct from bulk SST."),
+    _sf("noaa-goes-east", "precipitation_rate", "ABI-L2-RRQPEF RRQPE", "stored", "Instantaneous satellite QPE."),
+    _sf("noaa-goes-east", "satellite_motion_wind_speed", "ABI-L2-DMWF/DMWVF wind_speed", "stored",
+        "Sparse point vectors; band, pressure, tracer temperature, geometry and DQF travel per feature."),
+    _sf("noaa-goes-east", "satellite_motion_wind_direction", "ABI-L2-DMWF/DMWVF wind_direction", "stored",
+        "Meteorological from-direction; empty in-box DMWVF is retained as an empty detection."),
     _sf("noaa-goes-east", "cloud_top_pressure", "ABI-L2-CTPF", "available-not-stored",
         "Published at 10 km and not fetched."),
 
