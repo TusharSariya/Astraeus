@@ -1,0 +1,38 @@
+{
+  "capture_scope": "bounded AWC CYYT METAR allocation evidence",
+  "raw": {
+    "bytes": 3486,
+    "sha256": "e0d07144b9424c6963e0ab03d7c79e9afe5ffc77447148aae34c96cf7eda773e",
+    "transport_completed_at": "2026-09-06T06:39:02.227207+00:00",
+    "rows": 7
+  },
+  "artifact": {
+    "bytes": 35913,
+    "physical_bytes": 36864,
+    "sha256": "a65b8841e308cf498803dfd8be2a66e91f24f7fbb92742bbd6a6a9c83b2b7117"
+  },
+  "readback": {
+    "store_rows": 7,
+    "store_fields_per_row": 29,
+    "http_rows": 7,
+    "http_exposed_fields_per_row": 27,
+    "all_exposed_values_equal": true,
+    "route_support": "labeled synthetic HRDPS artifact only opens the accepted point route; excluded from AWC comparisons"
+  },
+  "maximum_row_measurement": {
+    "input_bytes": 26999,
+    "input_sha256": "921c9f8852f4eb9b680c7519923703d337955cc690f49c7d1ae1b49805f2a2a8",
+    "rows": 64,
+    "artifact_bytes": 36923,
+    "artifact_physical_bytes": 40960
+  },
+  "limits": {
+    "address_space_bytes": 671088640,
+    "received_bytes": 65536,
+    "artifact_bytes": 65536,
+    "stdout_bytes": 65536,
+    "stderr_bytes": 16384,
+    "filesystem_block_bytes": 4096
+  },
+  "scratch": "/private/tmp/awc159-capture"
+}

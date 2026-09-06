@@ -7,7 +7,12 @@ into Zarr point artifacts.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
+import os
+import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,12 +26,15 @@ from ingest.contract import (
     Adapter,
     AdapterUnavailable,
     Artifact,
+    DiscoveryBounds,
     FetchWindow,
     RunCandidate,
     RunResult,
+    ResourceBounds,
 )
 from ingest.grib import RH_PHASE_LIQUID_WATER, write_zarr
 from ingest.http import PoliteClient
+from ingest.isolation import ProcessAllocationLimits, run_bounded_process
 from ingest.manifest import RequiredField, RunManifest, validate_run
 from ingest.registry import register
 
@@ -50,6 +58,16 @@ AWC_RH_PHASE_BASIS = (
 
 AWC_METAR_URL = "https://aviationweather.gov/api/data/metar?ids=CYYT&format=json&hours=4"
 AWC_TAF_URL = "https://aviationweather.gov/api/data/taf?ids=CYYT&format=json"
+AWC_METAR_DOCUMENT_BYTES = 64 * 1024
+AWC_METAR_ARTIFACT_BYTES = 64 * 1024
+AWC_METAR_FILESYSTEM_BLOCK_BYTES = 4096
+AWC_METAR_LIMITS = ProcessAllocationLimits(
+    address_space_bytes=640 * 1024 * 1024,
+    output_bytes=AWC_METAR_ARTIFACT_BYTES,
+    stdin_bytes=AWC_METAR_DOCUMENT_BYTES,
+    stdout_bytes=64 * 1024,
+    stderr_bytes=16 * 1024,
+)
 
 # A METAR is a human-coded report: pressure, visibility, cloud and a variable
 # wind direction are all legitimately absent from a valid observation, so they
@@ -357,46 +375,102 @@ class AWCMetarAdapter:
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
 
+    @staticmethod
+    def _require_target(path: Path) -> None:
+        stat = path.stat()
+        vfs = os.statvfs(path)
+        if (stat.st_blksize, vfs.f_frsize) != (AWC_METAR_FILESYSTEM_BLOCK_BYTES,) * 2:
+            raise AdapterUnavailable(
+                "AWC METAR bounded writer requires measured 4096-byte filesystem blocks; "
+                f"got {(stat.st_blksize, vfs.f_frsize)}"
+            )
+
+    @staticmethod
+    def _isolated(action: str, raw: bytes, window: FetchWindow, destination: Path | None):
+        root = Path(__file__).resolve().parents[2]
+        launcher = (
+            "import sys; "
+            f"sys.path.insert(0, {str(root)!r}); "
+            "from ingest.awc_metar_isolated import main; raise SystemExit(main())"
+        )
+        return run_bounded_process(
+            command=[
+                sys.executable, "-c", launcher, action,
+                window.start.isoformat(), window.end.isoformat(), "{output}",
+            ],
+            stdin=raw,
+            destination=destination,
+            limits=AWC_METAR_LIMITS,
+            require_output=action == "normalize",
+        )
+
+    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        self._require_target(Path(tempfile.gettempdir()))
+        try:
+            self._isolated("probe", b"", FetchWindow(datetime.now(UTC)), None)
+        except Exception as error:
+            raise AdapterUnavailable(f"AWC METAR bounded runtime unavailable: {error}") from error
+        return ResourceBounds(
+            AWC_METAR_ARTIFACT_BYTES,
+            AWC_METAR_ARTIFACT_BYTES,
+            AWC_METAR_FILESYSTEM_BLOCK_BYTES,
+            AWC_METAR_DOCUMENT_BYTES,
+        )
+
+    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
+        return DiscoveryBounds(self.operation_bounds(window).received_bytes)
+
+    def resource_bounds(self, _candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
+        return self.operation_bounds(window)
+
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         client = self._get_client()
         try:
-            response = client.get(self._url)
-            data = response.json()
+            raw, headers, completed = client.get_bytes_with_headers_completed(
+                self._url, max_bytes=AWC_METAR_DOCUMENT_BYTES, headers={"Accept-Encoding": "identity"}
+            )
+            inspected = json.loads(self._isolated("inspect", raw, window, None).stdout)
         except Exception as error:
             raise AdapterUnavailable(f"AWC METAR endpoint unavailable: {error}") from error
-        if not isinstance(data, list) or not data:
-            raise AdapterUnavailable("AWC METAR returned empty record list")
-
-        # Sort newest-first by obsTime
-        def record_time(rec: dict[str, Any]) -> int:
-            obs = rec.get("obsTime")
-            if isinstance(obs, (int, float)):
-                return int(obs)
-            return 0
-
-        sorted_records = sorted(data, key=record_time, reverse=True)
-        newest = sorted_records[0]
-        obs_time = newest.get("obsTime")
-        run_dt = datetime.fromtimestamp(obs_time, tz=UTC) if obs_time else window.now
-        run_id = f"cyyt-metar-{int(obs_time)}" if obs_time else f"cyyt-metar-{int(window.now.timestamp())}"
+        obs_time = int(inspected["newest"])
+        run_dt = datetime.fromtimestamp(obs_time, tz=UTC)
+        run_id = f"cyyt-metar-{obs_time}"
 
         return [
             RunCandidate(
                 provider_run_id=run_id,
                 run_time=run_dt,
                 urls=[self._url],
-                detail={"records": sorted_records},
+                detail={"bounded_raw": raw, "transport_completed_at": completed.isoformat(),
+                        "transport_headers": dict(headers), "raw_row_count": int(inspected["count"])},
             )
         ]
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+        raw = candidate.detail.get("bounded_raw")
+        if isinstance(raw, bytes):
+            destination = workdir / "cyyt_metar.zarr.zip"
+            try:
+                reply = json.loads(self._isolated("normalize", raw, window, destination).stdout)
+            except Exception as error:
+                raise AdapterUnavailable(f"AWC METAR bounded decode unavailable: {error}") from error
+            provenance = dict(reply["provenance"])
+            provenance["acquisition"] = {
+                "url": self._url,
+                "body_bytes": len(raw),
+                "body_sha256": hashlib.sha256(raw).hexdigest(),
+                "transport_completed_at": candidate.detail["transport_completed_at"],
+                "headers": candidate.detail["transport_headers"],
+            }
+            return RunResult(
+                self.source_id, candidate.provider_run_id, datetime.fromisoformat(reply["run_time"]),
+                datetime.fromisoformat(candidate.detail["transport_completed_at"]), bool(reply["complete"]),
+                bool(reply["qc_passed"]), [Artifact("surface", MEDIA_ZARR, destination, provenance)],
+                "EPSG:4326", str(reply["notes"]),
+            )
         records = candidate.detail.get("records", [])
         if not records:
-            client = self._get_client()
-            try:
-                records = client.get(self._url).json()
-            except Exception as error:
-                raise AdapterUnavailable(f"Failed to fetch AWC METAR: {error}") from error
+            raise AdapterUnavailable("AWC METAR candidate has no bounded retained response")
 
         # Filter to records falling within fetch window
         valid_records: list[tuple[datetime, dict[str, Any]]] = []
