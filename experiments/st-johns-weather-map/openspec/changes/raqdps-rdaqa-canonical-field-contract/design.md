@@ -21,7 +21,42 @@ The recommendation keeps existing keys wherever their dimensions and meaning alr
 | wildfire-attributed surface PM2.5 24-hour mean | `wildfire_smoke_pm2_5_surface_24h_mean` | `kg m-3` | new |
 | wildfire-attributed surface PM2.5 24-hour maximum | `wildfire_smoke_pm2_5_surface_24h_max` | `kg m-3` | new |
 
-GeoMet publishes O3, NO, NO2 and SO2 as `mol/mol`. The normalizer multiplies finite values by exactly 1,000,000,000 to store `nmol mol-1`, retaining `original_units: mol mol-1` and the scale factor in provenance. This dimensionless SI-prefix conversion permits reuse of the existing ozone key and comparison with ppb-class station mole fractions. It does not use temperature, pressure or molecular mass and never converts a mole fraction to a mass concentration. Existing `ozone_surface`, `nitrogen_dioxide_surface`, `sulphur_dioxide_surface` and `carbon_monoxide_surface` mass keys remain distinct and unused by these coverages.
+GeoMet publishes O3, NO, NO2 and SO2 as `mol/mol`. The normalizer multiplies finite values deterministically by exactly 1,000,000,000 to store `nmol mol-1`, retaining `original_units: mol mol-1` and the scale factor in provenance. Missing cells remain missing and non-finite decoded values are refused. Verification compares against the same declared operation with zero relative tolerance and an absolute tolerance of one ULP of the expected binary64 result; it does not claim decimal scaling is bitwise lossless. This dimensionless SI-prefix conversion permits reuse of the existing ozone key and comparison with ppb-class station mole fractions. It does not use temperature, pressure or molecular mass and never converts a mole fraction to a mass concentration. Existing `ozone_surface`, `nitrogen_dioxide_surface`, `sulphur_dioxide_surface` and `carbon_monoxide_surface` mass keys remain distinct and unused by these coverages.
+
+## Exact selected coverage mapping and manifest order
+
+The row order below is the mandatory manifest field order and canonical artifact-digest order within each phase. Identity hashes the ordered sequence of `(coverage_id, canonical_key, artifact_digest)` tuples; map or filesystem iteration cannot change it.
+
+| Phase | Exact GeoMet coverage id | Canonical key |
+| --- | --- | --- |
+| `forecast` | `RAQDPS.SFC_PM2.5` | `pm2_5_surface` |
+| `forecast` | `RAQDPS.EATM_PM2.5` | `pm2_5_column` |
+| `forecast` | `RAQDPS.SFC_PM10` | `pm10_surface` |
+| `forecast` | `RAQDPS.EATM_PM10` | `pm10_column` |
+| `forecast` | `RAQDPS.SFC_O3` | `ozone_surface_mole_fraction` |
+| `forecast` | `RAQDPS.SFC_NO` | `nitric_oxide_surface_mole_fraction` |
+| `forecast` | `RAQDPS.SFC_NO2` | `nitrogen_dioxide_surface_mole_fraction` |
+| `forecast` | `RAQDPS.SFC_SO2` | `sulphur_dioxide_surface_mole_fraction` |
+| `forecast` | `RAQDPS.Sfc_PM2.5-WildfireSmokePlume` | `wildfire_smoke_pm2_5_surface` |
+| `forecast` | `RAQDPS.EAtm_PM2.5-WildfireSmokePlume` | `wildfire_smoke_pm2_5_column` |
+| `forecast` | `RAQDPS.Sfc_PM10-WildfireSmokePlume` | `wildfire_smoke_pm10_surface` |
+| `forecast` | `RAQDPS.EAtm_PM10-WildfireSmokePlume` | `wildfire_smoke_pm10_column` |
+| `forecast_statistic` | `RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg` | `wildfire_smoke_pm2_5_surface_24h_mean` |
+| `forecast_statistic` | `RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax` | `wildfire_smoke_pm2_5_surface_24h_max` |
+| `preliminary` | `RDAQA-Prelim_10km_PM2.5` | `pm2_5_surface` |
+| `preliminary` | `RDAQA-Prelim_10km_PM10` | `pm10_surface` |
+| `preliminary` | `RDAQA-Prelim_10km_O3` | `ozone_surface_mole_fraction` |
+| `preliminary` | `RDAQA-Prelim_10km_NO` | `nitric_oxide_surface_mole_fraction` |
+| `preliminary` | `RDAQA-Prelim_10km_NO2` | `nitrogen_dioxide_surface_mole_fraction` |
+| `preliminary` | `RDAQA-Prelim_10km_SO2` | `sulphur_dioxide_surface_mole_fraction` |
+| `final` | `RDAQA_10km_PM2.5` | `pm2_5_surface` |
+| `final` | `RDAQA_10km_PM10` | `pm10_surface` |
+| `final` | `RDAQA_10km_O3` | `ozone_surface_mole_fraction` |
+| `final` | `RDAQA_10km_NO` | `nitric_oxide_surface_mole_fraction` |
+| `final` | `RDAQA_10km_NO2` | `nitrogen_dioxide_surface_mole_fraction` |
+| `final` | `RDAQA_10km_SO2` | `sulphur_dioxide_surface_mole_fraction` |
+| `firework_contribution` | `RDAQA-FW_10km_PM2.5` | `wildfire_smoke_pm2_5_surface` |
+| `firework_contribution` | `RDAQA-FW_10km_PM10` | `wildfire_smoke_pm10_surface` |
 
 ## Required attributes and phase identity
 
@@ -37,7 +72,7 @@ Required `product_phase` values are:
 - RDAQA final analysis: `final`;
 - RDAQA FireWork contribution: `firework_contribution`.
 
-RAQDPS requires the provider reference time and forecast valid time. RDAQA is a PT0H analysis: it carries the provider analysis valid time, `run_time: null`, and no invented forecast lead. Its immutable provider-run identity contains source id, product phase, valid time and the ordered artifact digests. Preliminary, final and FireWork contribution can therefore never overwrite or satisfy one another.
+RAQDPS requires the provider reference time and forecast valid time. RDAQA is a PT0H analysis: it carries the provider analysis valid time, `run_time: null`, and no invented forecast lead. Its immutable provider-run identity contains source id, product phase, valid time and artifact digests in the mandatory table order above. Preliminary, final and FireWork contribution can therefore never overwrite or satisfy one another.
 
 ## Complete atomic products
 

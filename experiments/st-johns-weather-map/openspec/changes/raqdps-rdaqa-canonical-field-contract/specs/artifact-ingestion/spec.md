@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Product phase is part of RAQDPS and RDAQA run identity
-Every selected artifact and manifest SHALL declare one approved `product_phase`: `forecast`, `forecast_statistic`, `preliminary`, `final`, or `firework_contribution`. RAQDPS SHALL retain provider reference and valid times. RDAQA SHALL retain its provider analysis valid time with `run_time: null` and no invented forecast lead. RDAQA immutable identity SHALL include source id, phase, valid time and ordered artifact digests.
+Every selected artifact and manifest SHALL declare one approved `product_phase`: `forecast`, `forecast_statistic`, `preliminary`, `final`, or `firework_contribution`. RAQDPS SHALL retain provider reference and valid times. RDAQA SHALL retain its provider analysis valid time with `run_time: null` and no invented forecast lead. RDAQA immutable identity SHALL include source id, phase, valid time and artifact digests in the manifest's mandatory field order.
 
 #### Scenario: Preliminary and final share an analysis valid time
 - **WHEN** complete preliminary and final products exist at the same valid time
