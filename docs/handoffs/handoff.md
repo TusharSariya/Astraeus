@@ -210,12 +210,14 @@ current main before final gates, and make conventional commits/PRs with exact
   was empty, so nonempty presentation remains contract-fixture evidence until a
   real warning is observed. #137 stays open for broader hazards, and #84 remains
   the active GEFS source track.
-- #228 is the active `noaa-swpc-rtsw` magnetic-field demand migration under
-  #89/#70/#97. It replaces only the retained solar-wind read in the existing
-  `/space-weather` and Sky/Brief path with a bounded selected-time cache while
-  preserving all interleaved native spacecraft and quality flags. Plasma,
-  propagated wind, historical products, OVATION and local magnetometer access
-  are unchanged.
+- #228 merged through PR229 (`bbea8d4`) as the bounded
+  `noaa-swpc-rtsw` magnetic-field demand migration. It replaces only the
+  retained solar-wind read in the existing `/space-weather` and Sky/Brief path
+  with a selected-time source-local cache while preserving every native
+  spacecraft and quality field. #89 was already closed for its bounded
+  experimental source-acquisition scope; #70 and #97 remain open for their
+  broader delivery and final-coverage obligations. Plasma, propagated wind,
+  historical products, OVATION and local magnetometer access are unchanged.
 - `/private/tmp/astraeus-live-query-snapshot-api`, branch
   `execution/live-query-snapshot-api`, preserves two local API commits and is
   paused; do not merge it under the corrective sequence.
