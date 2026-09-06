@@ -106,7 +106,7 @@ const liveSpaceWeather = {
   notices: [],
 }
 
-function routedFetch(routes: { point?: unknown; profile?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown; spaceWeather?: unknown; methods?: unknown }) {
+function routedFetch(routes: { point?: unknown; profile?: unknown; layers?: unknown; cap?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown; spaceWeather?: unknown; methods?: unknown }) {
   return vi.fn(async (url: string) => {
     if (url.includes('/methods')) return response(routes.methods ?? { default_method: 'baseline', methods: [], notices: [] })
     if (url.includes('/space-weather')) return response(routes.spaceWeather ?? liveSpaceWeather)
@@ -114,6 +114,7 @@ function routedFetch(routes: { point?: unknown; profile?: unknown; layers?: unkn
     if (url.includes('/sources/status')) return response(routes.sources ?? sourceStatus)
     if (url.includes('/profile')) return response(routes.profile ?? { valid_time: '2026-09-06T19:00:00Z', levels: [] })
     if (url.includes('/point')) return response(routes.point ?? apiPoint())
+    if (url.includes('/layers/eccc-cap-alerts-current/features')) return response(routes.cap ?? { data_mode: 'live', alerts_in_force: 0, all_boxes_succeeded: true, empty_is_an_answer: true, features: [] })
     if (url.includes('/layers')) return response(routes.layers ?? emptyLayers)
     if (url.includes('/catalog')) return response(routes.catalog ?? emptyCatalog)
     if (url.includes('/timeline')) return response(routes.timeline ?? emptyTimeline)
@@ -129,6 +130,57 @@ async function openStory() {
 
 describe('weather workbench fail-closed behavior', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('API offline'))))
+
+  it('shows a partial CAP warning together with the incomplete-domain notice', async () => {
+    vi.stubGlobal('fetch', routedFetch({ cap: {
+      data_mode: 'unavailable', alerts_in_force: null, all_boxes_succeeded: false, empty_is_an_answer: false,
+      notices: ['east Avalon box failed; no aggregate all-clear is available'],
+      features: [{ type: 'Feature', properties: { headline: 'Wind warning' } }],
+    } }))
+    render(<App />)
+    expect(await screen.findByText('Wind warning')).toBeInTheDocument()
+    expect(await screen.findByText(/east Avalon box failed; no aggregate all-clear is available/)).toBeInTheDocument()
+  })
+
+  it('shows retrieved zero only when every CAP box succeeded', async () => {
+    vi.stubGlobal('fetch', routedFetch({ cap: {
+      data_mode: 'live', alerts_in_force: 0, all_boxes_succeeded: true, empty_is_an_answer: true,
+      content_digest: 'b'.repeat(64), features: [],
+    } }))
+    render(<App />)
+    expect(await screen.findByText('No alert is in force in the successfully queried Avalon domain')).toBeInTheDocument()
+    expect(screen.getByText(/Every declared Avalon alert query returned successfully/)).toBeInTheDocument()
+  })
+
+  it('clears prior CAP evidence while a new selected-time request is pending', async () => {
+    let capCall = 0
+    let resolveSecond!: (value: Response) => void
+    const fetchMock = routedFetch({})
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (!url.includes('/layers/eccc-cap-alerts-current/features')) return fetchMock(url)
+      capCall += 1
+      if (capCall === 1) return response({ data_mode: 'live', alerts_in_force: 1, all_boxes_succeeded: true, empty_is_an_answer: false, features: [{ type: 'Feature', properties: { headline: 'Old warning' } }] })
+      return await new Promise<Response>((resolve) => { resolveSecond = resolve })
+    }))
+    render(<App />)
+    expect(await screen.findByText('Old warning')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Jump ten minutes back' }))
+    expect(await screen.findByText('Hazard feed loading')).toBeInTheDocument()
+    expect(screen.queryByText('Old warning')).not.toBeInTheDocument()
+    resolveSecond(response({ data_mode: 'live', alerts_in_force: 0, all_boxes_succeeded: true, empty_is_an_answer: true, features: [] }))
+    expect(await screen.findByText('No alert is in force in the successfully queried Avalon domain')).toBeInTheDocument()
+  })
+
+  it('does not present an unrelated live point warning as CAP hazard evidence', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      point: { ...apiPoint(), warnings: ['Model point warning unrelated to CAP'] },
+      cap: { data_mode: 'unavailable', alerts_in_force: null, all_boxes_succeeded: false, empty_is_an_answer: false, notices: ['CAP provider unavailable'], features: [] },
+    }))
+    render(<App />)
+    expect(await screen.findByText('Hazard feed unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('Model point warning unrelated to CAP')).not.toBeInTheDocument()
+    expect(screen.getByText(/CAP provider unavailable/)).toBeInTheDocument()
+  })
 
   it('renders level-qualified HRDPS values when the expert profile response completes', async () => {
     vi.stubGlobal('fetch', routedFetch({

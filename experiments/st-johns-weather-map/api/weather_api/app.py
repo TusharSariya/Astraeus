@@ -915,6 +915,24 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             data_mode=DataMode.UNAVAILABLE, layers=[],
             notices=["WEATHER_DATA_MODE is not a recognized live mode; no layer can be offered"],
         )
+    if product is not None and product.upper() == "CAP":
+        from .cap_query import cap_query_service  # noqa: PLC0415
+
+        entry = cap_query_service().cached_entry()
+        if entry is None:
+            return LayersResponse(
+                data_mode=DataMode.UNAVAILABLE, layers=[],
+                notices=["ECCC CAP current-alert capability has no fresh validated cache entry; listing performed no provider request"],
+            )
+        return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
+            id="eccc-cap-alerts-current", title="ECCC current CAP alerts (selected-time demand features)",
+            kind="alert", field="alerts_in_force", product="ECCC CAP", units="count",
+            evidence_class="retrieved", family="hazard", field_key="alerts_in_force",
+            semantics="Native ECCC CAP alert polygons and text from the bounded mutable Current-Alerts response; zero is shown only after every declared Avalon box succeeds",
+            times=[entry.fetched_at], cadence_seconds=None, staleness_tolerance_seconds=max(1, int((entry.expires_at - entry.fetched_at).total_seconds())),
+            z_index=Z_INDEX_BY_KIND["alert"], evidence_basis="demand_query", group="alert",
+            raster_available=False, legend_available=False,
+        )], notices=["CAP layer listing read a fresh source-local cache entry and made no provider request"])
     if product is not None and product.upper() not in {"GFS", "HRDPS"}:
         return LayersResponse(
             data_mode=DataMode.UNAVAILABLE, layers=[],
@@ -1498,7 +1516,7 @@ def get_layer_features(
     layer_id: str,
     valid_time: datetime | None = Query(default=None, description="UTC instant; must be one the layer declares in /layers"),
 ) -> dict[str, object]:
-    """Stored values for one layer at one frame, as GeoJSON.
+    """Demand or stored values for one layer at one frame, as GeoJSON.
 
     The client picks the frame from the layer's own declared times, so this
     endpoint does not snap: an exact time with nothing stored returns an empty
@@ -1507,6 +1525,23 @@ def get_layer_features(
     moment = requested_time(valid_time)
     if fixture_mode():
         return {"type": "FeatureCollection", "data_mode": DataMode.FIXTURE.value, "operational": False, "features": [], "notices": ["fixture mode publishes no stored features"]}
+
+    if layer_id == "eccc-cap-alerts-current":
+        from .cap_query import CapQueryUnavailable, cap_query_service  # noqa: PLC0415
+
+        service = cap_query_service()
+        try:
+            return service.query(moment)
+        except CapQueryUnavailable as error:
+            if error.partial_features:
+                return service.partial_response(moment, error)
+            return {
+                "type": "FeatureCollection", "data_mode": DataMode.UNAVAILABLE.value,
+                "operational": False, "features": [], "alerts_in_force": None,
+                "all_boxes_succeeded": False, "empty_is_an_answer": False,
+                "selected_time": moment.isoformat(), "source_id": "eccc-cap-alerts",
+                "layer": "Current-Alerts", "notices": [str(error), "hazard feed unavailable; check the issuing authority"],
+            }
 
     store = live_store()
     if store is None:
