@@ -4,7 +4,7 @@ from pathlib import Path
 import httpx,pytest
 from ingest.contract import AdapterUnavailable,FetchWindow
 from ingest.experimental.awc_aviation import AWCAviationNativeAdapter,URLS,MAX_DECODED
-from ingest.http import PoliteClient,USER_AGENT
+from ingest.http import MaxBytesExceeded,PoliteClient,RetriesExhausted,USER_AGENT
 UTC=timezone.utc; W=FetchWindow(datetime(2026,9,6,tzinfo=UTC))
 def client(data):
  c=PoliteClient(min_host_interval_seconds=0,attempts=1)
@@ -27,4 +27,31 @@ def test_partial_write_cleanup(tmp_path,monkeypatch):
   return old(p,b)
  monkeypatch.setattr(Path,'write_bytes',bad)
  with pytest.raises(OSError):a.fetch(a.discover(W)[0],W,tmp_path)
+ assert list(tmp_path.iterdir())==[]
+
+@pytest.mark.parametrize('error',[
+ MaxBytesExceeded('too large'),
+ RetriesExhausted('retry budget exhausted'),
+ httpx.ConnectError('transport failed'),
+ httpx.HTTPStatusError('upstream rejected request',request=httpx.Request('GET','https://aviationweather.gov'),response=httpx.Response(503)),
+])
+def test_network_failures_are_unavailable_and_clean_tracked_files(tmp_path,error):
+ class FailingSecondRead:
+  calls=0
+  def get_bytes_with_headers_completed(self,url,*,max_bytes):
+   self.calls+=1
+   if self.calls==2: raise error
+   return good(),{},datetime(2026,9,6,1,tzinfo=UTC)
+ a=AWCAviationNativeAdapter(FailingSecondRead())
+ with pytest.raises(AdapterUnavailable,match='unavailable sigmet'):
+  a.fetch(a.discover(W)[0],W,tmp_path)
+ assert list(tmp_path.iterdir())==[]
+
+def test_completion_aware_read_is_required(tmp_path):
+ class LegacyClient:
+  def get_bytes_with_headers(self,url,*,max_bytes):
+   return good(),{}
+ a=AWCAviationNativeAdapter(LegacyClient())
+ with pytest.raises(AttributeError,match='get_bytes_with_headers_completed'):
+  a.fetch(a.discover(W)[0],W,tmp_path)
  assert list(tmp_path.iterdir())==[]
