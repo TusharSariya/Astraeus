@@ -537,7 +537,12 @@ class ECCCDataMartAdapter:
         temporary = Path(tempfile.gettempdir())
         geometry = os.statvfs(temporary)
         capacity = geometry.f_blocks * geometry.f_frsize
-        physical = 2 * HRDPS_DEMAND_CACHE_BYTES + min(download_parallelism(), field_count) * HRDPS_FILE_BYTES
+        # fetch() retains every selected GRIB until its decode pass begins, so
+        # the complete-operation reservation must charge all requested files,
+        # not only the concurrently open transfer slots.  The two cache-sized
+        # allowances cover the private writer workspace and promoted ZIP; the
+        # existing margin covers measured filesystem/block variance.
+        physical = 2 * HRDPS_DEMAND_CACHE_BYTES + field_count * HRDPS_FILE_BYTES
         if capacity > 3 * 1024 * 1024 * 1024:
             raise AdapterUnavailable("HRDPS demand temporary filesystem lacks the enforced 3 GiB ceiling")
         if geometry.f_bavail * geometry.f_frsize < physical + HRDPS_MARGIN_BYTES:

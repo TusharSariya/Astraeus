@@ -180,6 +180,49 @@ def test_ordinary_selection_resolves_latest_native_hour() -> None:
     assert set(HRDPS_POINT_FIELDS) != set(profile_fields)
 
 
+def test_timeline_discovery_advertises_native_hours_without_loading_fields() -> None:
+    run = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    candidate = RunCandidate("2026090612", run, [], {
+        "cycle_url": "https://example/12/", "available_hours": ["000", "001", "024", "025"]
+    })
+
+    class Adapter:
+        def demand_operation_bounds(self, field_count):
+            assert field_count == 1
+        def discover(self, _window):
+            return [candidate]
+
+    class Coordinator(HRDPSQueryCoordinator):
+        def _load(self, _request):
+            pytest.fail("timeline discovery fetched a selected-field payload")
+
+    assert Coordinator(adapter=Adapter()).timeline_times(run) == (
+        run, run + timedelta(hours=1), run + timedelta(hours=24)
+    )
+
+
+def test_live_timeline_uses_hrdps_demand_availability_without_artifact_store(monkeypatch) -> None:
+    reference = datetime(2026, 9, 6, 14, tzinfo=UTC)
+
+    class Coordinator:
+        @staticmethod
+        def timeline_times(_selected):
+            return (reference.replace(minute=0), reference.replace(minute=0) + timedelta(hours=1))
+
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(app_module, "now", lambda: reference)
+    monkeypatch.setattr(app_module, "live_store", lambda: None)
+    monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: Coordinator())
+    response = TestClient(app_module.app).get(f"{app_module.PREFIX}/timeline")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data_mode"] == "live"
+    by_time = {datetime.fromisoformat(item["valid_time_utc"]): item for item in body["items"]}
+    assert by_time[reference.replace(minute=0)]["available_products"] == ["eccc-hrdps"]
+    assert by_time[reference.replace(minute=0) + timedelta(hours=1)]["available_products"] == ["eccc-hrdps"]
+    assert any("provider-advertised demand availability" in item for item in body["notices"])
+
+
 def test_real_zarr_sampler_serves_point_and_profile(tmp_path: Path, monkeypatch) -> None:
     valid = datetime(2026, 9, 6, 14, tzinfo=UTC)
     dataset = xr.Dataset(

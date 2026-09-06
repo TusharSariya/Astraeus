@@ -442,9 +442,27 @@ def get_timeline() -> TimelineResponse:
         fixture_items = [item.model_copy(update={"tier": tier_of(item.valid_time_utc, reference)}) for item in timeline(reference)]
         return TimelineResponse(data_mode=DataMode.FIXTURE, start=start, end=end, items=fixture_items, boundary=boundary, tiers=tiers)
 
+    demand_products: dict[datetime, list[str]] = {}
+    demand_notices: list[str] = []
+    try:
+        from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+        for stamp in hrdps_query_coordinator().timeline_times(reference):
+            if start <= stamp <= end:
+                demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-hrdps")
+    except Exception as error:  # noqa: BLE001 - a provider miss is an unavailable source, not a route failure
+        demand_notices.append(
+            f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
+        )
+
     store = live_store()
     if store is None:
-        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["no live artifact store is reachable; no hour can be said to have a published product"])
+        if demand_products:
+            return TimelineResponse(
+                data_mode=DataMode.LIVE, start=start, end=end,
+                items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
+                notices=[*demand_notices, "persistent artifact coverage is unavailable; HRDPS hours are provider-advertised demand availability"],
+            )
+        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=[*demand_notices, "no live artifact store is reachable; no hour can be said to have a published product"])
     try:
         coverage = store.published_products()
     except Exception:
@@ -453,12 +471,12 @@ def get_timeline() -> TimelineResponse:
         # out: with the store unreadable, either claim would be a guess.
         return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["the live artifact store raised while resolving published coverage"])
 
-    notices = skip_notices(store)
+    notices = [*demand_notices, *skip_notices(store)]
     aged_out, aged_out_notices = _aged_out_sources(store)
     notices.extend(aged_out_notices)
     coverage_at, coverage_resolved, coverage_notices = _resolved_coverage(store, reference)
     notices.extend(coverage_notices)
-    if not coverage:
+    if not coverage and not demand_products:
         return TimelineResponse(
             data_mode=DataMode.UNAVAILABLE, start=start, end=end,
             items=_window_items(reference, aged_out=aged_out, coverage_at=coverage_at, coverage_resolved=coverage_resolved),
@@ -477,6 +495,11 @@ def get_timeline() -> TimelineResponse:
             # the frame's own time stays exact in /layers.
             hour = _floor_to_hour(stamp)
             bucket = products_at.setdefault(hour, [])
+            if source_id not in bucket:
+                bucket.append(source_id)
+    for hour, source_ids in demand_products.items():
+        bucket = products_at.setdefault(hour, [])
+        for source_id in source_ids:
             if source_id not in bucket:
                 bucket.append(source_id)
     # A source with coverage is not aged out, whatever the record says it once

@@ -168,6 +168,26 @@ class HRDPSQueryCoordinator:
             finally:
                 self._prepared.pop(key, None)
 
+    def timeline_times(self, selected_time: datetime) -> tuple[datetime, ...]:
+        """Return the bounded native times advertised by the latest eligible run.
+
+        This is directory discovery only.  It does not fetch GRIB payloads or
+        populate the selected-field cache; individual point/profile requests
+        still fetch only their requested native lead and fields.
+        """
+        if selected_time.tzinfo is None:
+            raise ValueError("HRDPS selected time must include an offset")
+        selected_hour = selected_time.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+        self._adapter.demand_operation_bounds(1)
+        with self._lock:
+            candidate = self._discover(selected_hour)
+        assert candidate.run_time is not None
+        return tuple(
+            candidate.run_time + timedelta(hours=int(lead))
+            for lead in candidate.detail.get("available_hours", ())
+            if 0 <= int(lead) < 25
+        )
+
     def point_fields(self, latitude: float, longitude: float, selected_time: datetime):
         from .store import LiveStore, live_point_fields
         entry = self.query(selected_time, fields=HRDPS_POINT_FIELDS)

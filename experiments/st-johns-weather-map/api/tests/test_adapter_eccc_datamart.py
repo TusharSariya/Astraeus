@@ -123,10 +123,36 @@ def test_hrdps_demand_bounds_require_kernel_memory_and_filesystem_caps(monkeypat
     monkeypatch.setattr("ingest.adapters.eccc_datamart.os.statvfs", lambda _path: geometry)
     bounds = adapter.demand_operation_bounds(7)
     assert bounds.store_bytes == 64 * 1024**2
-    assert bounds.filesystem_bytes == 2 * 64 * 1024**2 + 6 * 10 * 1024**2
+    assert bounds.filesystem_bytes == 2 * 64 * 1024**2 + 7 * 10 * 1024**2
     assert bounds.margin_bytes == HRDPS_MARGIN_BYTES
     with pytest.raises(AdapterUnavailable, match="scheduled full-run ingestion is disabled"):
         adapter.operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=UTC)))
+
+
+def test_hrdps_demand_bounds_charge_every_retained_profile_file(monkeypatch, tmp_path):
+    adapter = make_adapter(make_mock_client({}))
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.tempfile.gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(Path, "read_text", lambda _self: str(4 * 1024**3))
+    block = 4096
+    physical = 2 * 64 * 1024**2 + 19 * 10 * 1024**2
+    required = physical + HRDPS_MARGIN_BYTES
+    monkeypatch.setattr(
+        "ingest.adapters.eccc_datamart.os.statvfs",
+        lambda _path: type("Geometry", (), {
+            "f_blocks": 3 * 1024**3 // block, "f_bavail": required // block,
+            "f_frsize": block,
+        })(),
+    )
+    assert adapter.demand_operation_bounds(19).filesystem_bytes == physical
+    monkeypatch.setattr(
+        "ingest.adapters.eccc_datamart.os.statvfs",
+        lambda _path: type("Geometry", (), {
+            "f_blocks": 3 * 1024**3 // block, "f_bavail": required // block - 1,
+            "f_frsize": block,
+        })(),
+    )
+    with pytest.raises(AdapterUnavailable, match="cannot hold"):
+        adapter.demand_operation_bounds(19)
 
 
 @pytest.mark.parametrize("memory_limit", ["max", str(2 * 1024**3), str(3 * 1024**3), str(5 * 1024**3)])
