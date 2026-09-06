@@ -85,6 +85,11 @@ FIELD_BY_VARIABLE = {
     # can never pass the sampling filter and appear here; they are served only
     # by /space-weather via read_series.
     "aurora_probability": "aurora_probability",
+    # Producer-specific Level-4 SST analyses and their own uncertainty/mask.
+    # These are raw evidence fields; no fog state is inferred from them.
+    "sea_surface_temperature": "sea_surface_temperature",
+    "sea_surface_temperature_uncertainty": "sea_surface_temperature_uncertainty",
+    "sea_surface_temperature_mask": "sea_surface_temperature_mask",
 }
 
 # METAR/TAF cloud layers, published per layer as retrieved (cover code, cover
@@ -2192,6 +2197,7 @@ def _build_live_provenance(
         intermediary=provenance.get("intermediary", getattr(config, "intermediary", None)),
         intermediary_method=provenance.get("intermediary_method", getattr(config, "intermediary_method", None)),
         adapter_version=str(provenance.get("adapter_version", "unknown")),
+        artifact_revision=sample.revision_id,
         sampled_latitude=sample.sampled_latitude,
         sampled_longitude=sample.sampled_longitude,
         sample_distance_km=sample.sample_distance_km,

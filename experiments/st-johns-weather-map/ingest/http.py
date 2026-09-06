@@ -201,6 +201,26 @@ class PoliteClient:
     def get_text(self, url: str) -> str:
         return self.get(url).text
 
+    def get_bytes(self, url: str, *, max_bytes: int, chunk_size: int = 1 << 20) -> bytes:
+        """Read a small response into memory under the same hard ceiling as downloads."""
+        if max_bytes <= 0:
+            raise ValueError("max_bytes must be positive")
+        response = self._request("GET", url, stream=True)
+        chunks: list[bytes] = []
+        total = 0
+        try:
+            declared = response.headers.get("Content-Length")
+            if declared is not None and declared.isdigit() and int(declared) > max_bytes:
+                raise MaxBytesExceeded(f"{url} declares {declared} bytes, above the {max_bytes} byte ceiling")
+            for chunk in response.iter_bytes(chunk_size):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise MaxBytesExceeded(f"{url} exceeded the {max_bytes} byte ceiling")
+                chunks.append(chunk)
+        finally:
+            response.close()
+        return b"".join(chunks)
+
     def get_range(self, url: str, start: int, end: int | None = None) -> bytes:
         """Fetch one byte range. GRIB2 ``.idx`` subsetting depends on this."""
         if start < 0 or (end is not None and end < start):
