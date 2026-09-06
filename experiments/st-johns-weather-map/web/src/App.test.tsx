@@ -30,7 +30,7 @@ const classed = (fields: unknown[]): unknown[] => fields.map((field) => {
   return { ...record, provenance: { ...provenance, evidence_class: 'retrieved' } }
 })
 
-const apiPoint = (fields: unknown[] = [], selection = { mode: 'fallback', badge: 'HRDPS primary - consensus unavailable', reason: 'test' }, dataMode: string | null = 'live') => {
+const apiPoint = (fields: unknown[] = [], selection: Record<string, unknown> = { mode: 'fallback', badge: 'HRDPS primary - consensus unavailable', reason: 'test' }, dataMode: string | null = 'live') => {
   const body: Record<string, unknown> = { latitude: 47.6186, longitude: -52.7519, valid_time: '2026-08-29T15:00:00Z', selection, fields: classed(fields) }
   if (dataMode !== null) body.data_mode = dataMode
   return body
@@ -715,6 +715,30 @@ describe('model row states its own coverage', () => {
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
     await userEvent.click(reps)
     expect(reps).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('uses the successful demand response for a selected model instead of claiming nothing was ingested', async () => {
+    const catalogWithGfs = {
+      ...catalogWithModels,
+      sources: [...catalogWithModels.sources, {
+        id: 'noaa-gfs', producer: 'NOAA/NCEP', product: 'GFS', state: 'implementing',
+        status_reason: 'Bounded demand query experiment.', role: 'Global deterministic forecast',
+        may_enter_consensus: false, cadence: '4 runs/day', forecast_horizon: '16 days',
+        geographic_coverage: 'Global', licence: 'Public domain', attribution: 'NOAA/NCEP',
+      }],
+    }
+    const gfsPoint = apiPoint(
+      [{ field: 'temperature', value: 14.6, provenance: { source_id: 'noaa-gfs', product: 'GFS', provider: 'NOAA/NCEP', normalized_units: 'degC', data_mode: 'live' } }],
+      { mode: 'selected', selected_source_id: 'noaa-gfs', selected_product_id: 'gfs', badge: 'GFS selected', reason: 'explicit product selection' },
+    )
+    vi.stubGlobal('fetch', routedFetch({ catalog: catalogWithGfs, point: gfsPoint }))
+    render(<App />)
+
+    const gfs = await screen.findByRole('button', { name: /GFS.*nothing ingested/ })
+    await userEvent.click(gfs)
+    const live = await screen.findByRole('button', { name: /GFS.*live query at selected time/ })
+    expect(live).toHaveAttribute('aria-pressed', 'true')
+    expect(live).not.toHaveClass('model-unavailable')
   })
 })
 

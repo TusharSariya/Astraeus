@@ -322,6 +322,38 @@ class PoliteClient:
         finally:
             response.close()
 
+    def get_bytes_with_receipt(
+        self, url: str, *, max_bytes: int, chunk_size: int = 1 << 16
+    ) -> tuple[bytes, dict[str, object]]:
+        """Read a bounded body and retain effective transport identity."""
+        if max_bytes <= 0:
+            raise ValueError("max_bytes must be positive")
+        response = self._request("GET", url, stream=True)
+        try:
+            declared = response.headers.get("Content-Length")
+            if declared is not None and (not declared.isdigit() or int(declared) > max_bytes):
+                raise MaxBytesExceeded(f"{url} carries invalid or oversized Content-Length {declared!r}")
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in response.iter_bytes(chunk_size):
+                charge_received(len(chunk))
+                total += len(chunk)
+                if total > max_bytes:
+                    raise MaxBytesExceeded(f"{url} exceeded the {max_bytes} byte ceiling")
+                chunks.append(chunk)
+            completed = datetime.now(timezone.utc)
+            payload = b"".join(chunks)
+            return payload, {
+                "url": str(response.request.url),
+                "request_headers": _effective_request_headers(response),
+                "response_headers": dict(response.headers),
+                "completed_at": completed.isoformat(),
+                "byte_size": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+        finally:
+            response.close()
+
     def get_text(self, url: str) -> str:
         return self.get(url).text
 
@@ -348,6 +380,15 @@ class PoliteClient:
 
     def get_range(self, url: str, start: int, end: int | None = None, *, max_bytes: int | None = None) -> bytes:
         """Fetch one byte range. GRIB2 ``.idx`` subsetting depends on this."""
+        payload, _request_headers, _response_headers, _completed = self.get_range_with_headers_completed(
+            url, start, end, max_bytes=max_bytes
+        )
+        return payload
+
+    def get_range_with_headers_completed(
+        self, url: str, start: int, end: int | None = None, *, max_bytes: int | None = None
+    ) -> tuple[bytes, dict[str, str], dict[str, str], datetime]:
+        """Fetch one range and retain its exact transport receipt."""
         if start < 0 or (end is not None and end < start):
             raise ValueError("invalid byte range")
         expected = None if end is None else end - start + 1
@@ -361,7 +402,8 @@ class PoliteClient:
         if ceiling is None or ceiling <= 0:
             raise ValueError("an open-ended range requires a positive finite byte ceiling")
         header = f"bytes={start}-{'' if end is None else end}"
-        response = self._request("GET", url, headers={"Range": header}, stream=True)
+        request_headers = {"Range": header, "Accept-Encoding": "identity", "User-Agent": USER_AGENT}
+        response = self._request("GET", url, headers=request_headers, stream=True)
         if response.status_code != 206:
             response.close()
             raise RetriesExhausted(
@@ -391,6 +433,7 @@ class PoliteClient:
                 if read > ceiling:
                     raise MaxBytesExceeded(f"{url} returned more than the requested {ceiling}-byte range")
                 chunks.append(chunk)
+            completed = datetime.now(timezone.utc)
         finally:
             response.close()
         payload = b"".join(chunks)
@@ -398,7 +441,7 @@ class PoliteClient:
             raise MaxBytesExceeded(
                 f"{url} returned {len(payload)} bytes for Content-Range {content_range!r}"
             )
-        return payload
+        return payload, _effective_request_headers(response), dict(response.headers), completed
 
     def list_directory(
         self, url: str, *, suffixes: tuple[str, ...] = (), max_bytes: int | None = None
@@ -493,19 +536,43 @@ class PoliteClient:
         max_bytes: int,
     ) -> int:
         """Concatenate selected byte ranges into one local file."""
+        written, receipts = self.download_ranges_with_receipts(
+            url, destination, ranges, max_bytes=max_bytes
+        )
+        self.last_range_receipts = receipts
+        return written
+
+    def download_ranges_with_receipts(
+        self,
+        url: str,
+        destination: Path,
+        ranges: Iterator[tuple[int, int | None]] | list[tuple[int, int | None]],
+        *,
+        max_bytes: int,
+    ) -> tuple[int, list[dict[str, object]]]:
+        """Concatenate ranges and return one final-byte receipt per request."""
         destination.parent.mkdir(parents=True, exist_ok=True)
         written = 0
+        receipts: list[dict[str, object]] = []
         try:
             with destination.open("wb") as handle:
                 for start, end in ranges:
-                    payload = self.get_range(url, start, end, max_bytes=max_bytes - written)
+                    payload, request_headers, response_headers, completed = self.get_range_with_headers_completed(
+                        url, start, end, max_bytes=max_bytes - written
+                    )
                     written += len(payload)
                     if written > max_bytes:
-                        raise MaxBytesExceeded(
-                            f"{url} range set exceeded the {max_bytes} byte ceiling"
-                        )
+                        raise MaxBytesExceeded(f"{url} range set exceeded the {max_bytes} byte ceiling")
                     handle.write(payload)
+                    receipts.append({
+                        "url": url,
+                        "request_headers": request_headers,
+                        "response_headers": response_headers,
+                        "completed_at": completed.isoformat(),
+                        "byte_size": len(payload),
+                        "sha256": hashlib.sha256(payload).hexdigest(),
+                    })
         except BaseException:
             destination.unlink(missing_ok=True)
             raise
-        return written
+        return written, receipts

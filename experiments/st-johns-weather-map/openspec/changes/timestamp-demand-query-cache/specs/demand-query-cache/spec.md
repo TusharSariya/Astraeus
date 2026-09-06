@@ -10,6 +10,11 @@ or substitute a neighbouring timestamp merely to fill a cache.
 - **WHEN** the selected timestamp is not a native valid time and the source contract does not define interval applicability
 - **THEN** the query returns an explicit unsupported-time outcome and does not fetch or interpolate adjacent frames
 
+#### Scenario: GFS answers an ordinary selected instant
+- **WHEN** the selected instant has a GFS native frame at or before it with age strictly less than one hour
+- **THEN** the query fetches only that frame's required indexed byte ranges and returns the requested instant together with the actual native valid time and age
+- **AND** it refuses a future frame, a frame exactly one hour old, and a post-f120 three-hour gap that has no qualifying frame
+
 ### Requirement: The query cache prevents duplicate provider traffic
 A lookup and coalescing key SHALL identify the canonical provider request:
 provider, product, exact endpoint/query, selectors, eligible fields and
@@ -22,6 +27,10 @@ upstream operation.
 #### Scenario: Two clients request the same missing selection
 - **WHEN** both requests resolve to the same canonical provider request key
 - **THEN** one upstream operation runs and both responses cite the same fetched content identity
+
+#### Scenario: A repeated GFS point query hits the cache
+- **WHEN** an identical selected run, lead, field set and geography is queried while its validated entry is fresh
+- **THEN** the second `/point` response issues zero additional discovery, index or range requests and preserves the first response's run, native valid time, retrieval completion and content identity
 
 ### Requirement: Freshness and failure remain explicit
 Each source SHALL derive a finite freshness interval from its provider contract
@@ -43,3 +52,13 @@ two-run retention, source admission or operational status.
 #### Scenario: A cached response is served
 - **WHEN** a fresh cache entry satisfies the exact canonical request
 - **THEN** the response carries the same native evidence identity and retrieval provenance as the validated fill and is labelled experimental
+
+#### Scenario: GFS decoding is isolated and validated before caching
+- **WHEN** a GFS cache miss decodes selected indexed ranges
+- **THEN** the decode runs under enforced process, output, input, stdout, stderr and workspace limits
+- **AND** the parent validates the source, run, native time, manifest completeness, QC result, logical artifact names, ZIP members and aggregate byte size before admitting the entry
+
+#### Scenario: The current client displays a demand-query result
+- **WHEN** the user selects GFS and `/point` returns a live GFS response for the selected timestamp
+- **THEN** the existing weather interface displays the returned values and source provenance and labels the model `live query at selected time`
+- **AND** it does not infer availability from the retained-ingestion status endpoint

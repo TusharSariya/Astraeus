@@ -795,23 +795,31 @@ export default function App() {
   const selectionLabel = snapshot.selectionBadge
     ?? (selectedProduct === null ? badgeCopy[snapshot.mode] : `${selectedProduct} requested \u00b7 ${badgeCopy[snapshot.mode]}`)
 
-  /** What this deployment has actually ingested for a model, from
+  /** What the current response proves for a model. Demand-query products use
+   *  the selected response itself; retained products continue to use
    *  `/sources/status` and `/timeline`. The registry's cadence and horizon
    *  prose is provider documentation and moves to the tooltip, labelled so. */
   const coverageOf = useCallback((source: CatalogSource): { text: string; unavailable: boolean } => {
+    const product = pointProductFor(source)
+    const isSelected = product !== null && selectedProduct === product
+    if (isSelected && dataSource === 'loading') return { text: 'querying selected time\u2026', unavailable: false }
+    if (isSelected && dataSource === 'live' && snapshot.selectedSourceId === source.id) {
+      return { text: 'live query at selected time', unavailable: false }
+    }
+    if (isSelected && dataSource === 'unavailable') return { text: 'unavailable at selected time', unavailable: true }
     if (sourceStatuses === null) return { text: sourceStatusError ? 'ingestion status unreadable' : 'checking ingestion\u2026', unavailable: false }
     const status = sourceStatuses.find((row) => row.source_id === source.id)
     if (!status || status.data_mode !== 'live') return { text: 'nothing ingested', unavailable: true }
     if (!timeline || timeline.data_mode === 'unavailable') return { text: 'ingested; published hours unavailable', unavailable: false }
-    const product = (pointProductFor(source) ?? '').toLowerCase()
+    const productToken = (product ?? '').toLowerCase()
     const hours = timeline.items
-      .filter((item) => item.available_products.some((token) => token === source.id || token.toLowerCase() === product))
+      .filter((item) => item.available_products.some((token) => token === source.id || token.toLowerCase() === productToken))
       .map((item) => new Date(item.valid_time_utc).getTime())
       .filter((stamp) => !Number.isNaN(stamp))
     if (hours.length === 0) return { text: 'ingested; no hour in this window', unavailable: false }
     const lead = Math.round((Math.max(...hours) - reference.getTime()) / 3600_000)
     return { text: `covers to ${lead >= 0 ? '+' : ''}${lead} h`, unavailable: false }
-  }, [sourceStatuses, sourceStatusError, timeline, reference])
+  }, [sourceStatuses, sourceStatusError, timeline, reference, selectedProduct, dataSource, snapshot.selectedSourceId])
 
   const requestGps = () => {
     if (!navigator.geolocation) {

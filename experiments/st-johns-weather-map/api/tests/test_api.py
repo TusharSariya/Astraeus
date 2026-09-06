@@ -479,6 +479,12 @@ def test_product_selection_never_claims_a_source_that_published_nothing(monkeypa
                 _sample("awc-metar-speci", "cloud_layer_1_base", 609.6, "m", valid_time),
             ]
 
+    class UnavailableGFS:
+        def point_fields(self, *_args, **_kwargs):
+            raise OSError("provider unavailable")
+
+    import weather_api.gfs_query as gfs_query
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: UnavailableGFS())
     use_live_store(monkeypatch, data_mode, HrdpsWithNeighbours())
     hrdps = client.get(f"{PREFIX}/point", params={"product": "HRDPS"}).json()
     assert hrdps["data_mode"] == "live"
@@ -503,7 +509,7 @@ def test_product_selection_never_claims_a_source_that_published_nothing(monkeypa
     assert 9.25 not in {item["value"] for item in payload["fields"]}
     assert any("noaa-gfs" in notice for notice in payload["notices"])
     assert all(item["provenance"]["source_id"] == "noaa-gfs" for item in payload["fields"])
-    assert any("no_published_artifact:noaa-gfs" in item["provenance"]["quality"]["flags"] for item in payload["fields"])
+    assert any("demand_query_unavailable:noaa-gfs" in item["provenance"]["quality"]["flags"] for item in payload["fields"])
 
     # An unknown product is still refused outright.
     assert client.get(f"{PREFIX}/point", params={"product": "NOPE"}).status_code == 422

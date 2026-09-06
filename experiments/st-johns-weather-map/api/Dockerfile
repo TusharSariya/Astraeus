@@ -10,6 +10,9 @@ ENV PATH="/app/api/.venv/bin:${PATH}" \
     PYTHONPATH=/app
 
 COPY api/pyproject.toml api/uv.lock ./
+# Timestamp-demand model queries decode one selected native GRIB response in
+# the API's locked child process, so this image needs the same pinned ecCodes
+# runtime as the worker.  The derive extra remains worker-only.
 RUN uv sync --frozen --no-dev --no-install-project --extra grib
 COPY ingest /app/ingest
 # The catalogue modules only, not the tests or fixtures: ``weather_api.models``

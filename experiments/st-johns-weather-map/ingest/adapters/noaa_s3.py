@@ -66,6 +66,45 @@ MAX_LEAD_HOURS = 36
 # explicit unavailability rather than a quietly short run.
 GFS_HOURLY_LEAD_LIMIT = 120
 GFS_PRODUCT_LEAD_LIMIT = 384
+MAX_IDX_BYTES = 2 * 1024 * 1024
+GFS_SELECTED_TIME_MAX_AGE = timedelta(hours=1)
+
+
+def gfs_native_lead(run_time: datetime, selected_time: datetime) -> int:
+    """Resolve an exact selected instant to one published GFS lead."""
+    if run_time.tzinfo is None or selected_time.tzinfo is None:
+        raise AdapterUnavailable("GFS run and selected times must be timezone-aware")
+    seconds = (selected_time.astimezone(UTC) - run_time.astimezone(UTC)).total_seconds()
+    if seconds < 0 or seconds % 3600:
+        raise AdapterUnavailable("selected time is not an exact GFS valid hour")
+    lead = int(seconds // 3600)
+    if lead > GFS_PRODUCT_LEAD_LIMIT:
+        raise AdapterUnavailable(f"selected time needs GFS lead +{lead} h beyond +{GFS_PRODUCT_LEAD_LIMIT} h")
+    if lead > GFS_HOURLY_LEAD_LIMIT and lead % 3:
+        raise AdapterUnavailable("selected time is not on the native three-hour GFS cadence")
+    return lead
+
+
+def gfs_native_time_at_or_before(run_time: datetime, selected_time: datetime) -> datetime:
+    """Resolve an ordinary selected instant to the latest recent native frame."""
+    if run_time.tzinfo is None or selected_time.tzinfo is None:
+        raise AdapterUnavailable("GFS run and selected times must be timezone-aware")
+    elapsed = selected_time.astimezone(UTC) - run_time.astimezone(UTC)
+    if elapsed.total_seconds() < 0:
+        raise AdapterUnavailable("selected time precedes the GFS producer run")
+    elapsed_hours = int(elapsed.total_seconds() // 3600)
+    if elapsed_hours <= GFS_HOURLY_LEAD_LIMIT:
+        lead = elapsed_hours
+    else:
+        lead = GFS_HOURLY_LEAD_LIMIT + 3 * ((elapsed_hours - GFS_HOURLY_LEAD_LIMIT) // 3)
+    native_time = run_time.astimezone(UTC) + timedelta(hours=lead)
+    age = selected_time.astimezone(UTC) - native_time
+    if age >= GFS_SELECTED_TIME_MAX_AGE:
+        raise AdapterUnavailable(
+            f"latest GFS frame is {int(age.total_seconds())} seconds old; selected-time limit is strictly under one hour"
+        )
+    gfs_native_lead(run_time, native_time)
+    return native_time
 
 # The exact (parameter, level) pairs this adapter reads, matched against the
 # .idx sidecar. Selecting on the parameter name alone is how this adapter
@@ -347,7 +386,7 @@ class NOAAS3Adapter:
         bounds: Mapping[str, float] = ATLANTIC_CONTEXT_BOUNDS,
         client: PoliteClient | None = None,
         max_lead_hours: int = MAX_LEAD_HOURS,
-        product_lead_limit: int = GFS_HOURLY_LEAD_LIMIT,
+        product_lead_limit: int = GFS_PRODUCT_LEAD_LIMIT,
     ) -> None:
         self._base_url = base_url
         self._bounds = dict(bounds)
@@ -375,8 +414,12 @@ class NOAAS3Adapter:
 
                 idx_url = f"{self._base_url}/gfs.{date_str}/{cycle_str}/atmos/gfs.t{cycle_str}z.pgrb2.0p25.f000.idx"
                 try:
-                    resp = client.get(idx_url)
-                    if resp.status_code == 200 and resp.text.strip():
+                    if hasattr(client, "get_bytes_with_receipt"):
+                        idx_bytes, discovery_receipt = client.get_bytes_with_receipt(idx_url, max_bytes=MAX_IDX_BYTES)
+                    else:
+                        idx_bytes = client.get_bytes(idx_url, max_bytes=MAX_IDX_BYTES)
+                        discovery_receipt = None
+                    if idx_bytes.strip():
                         candidates.append(
                             RunCandidate(
                                 provider_run_id=f"gfs-{date_str}{cycle_str}",
@@ -386,6 +429,7 @@ class NOAAS3Adapter:
                                     "date_str": date_str,
                                     "cycle": cycle_str,
                                     "run_dt": run_dt,
+                                    "discovery_receipt": discovery_receipt,
                                     # Expected instants use the same bounded lead
                                     # schedule as fetch; availability is checked
                                     # there, never inferred from this declaration.
@@ -407,12 +451,34 @@ class NOAAS3Adapter:
             raise AdapterUnavailable("No recent NOAA GFS runs found on AWS S3")
         return candidates
 
+    def fetch_selected(
+        self,
+        candidate: RunCandidate,
+        selected_time: datetime,
+        workdir: Path,
+    ) -> RunResult:
+        """Fetch exactly one provider-native GFS instant for a demand query."""
+        if candidate.run_time is None:
+            raise AdapterUnavailable("GFS demand query requires a producer run time")
+        native_time = gfs_native_time_at_or_before(candidate.run_time, selected_time)
+        lead = gfs_native_lead(candidate.run_time, native_time)
+        selected = RunCandidate(
+            provider_run_id=candidate.provider_run_id,
+            run_time=candidate.run_time,
+            urls=list(candidate.urls),
+            detail={**candidate.detail, "requested_leads": (lead,)},
+        )
+        return self.fetch(
+            selected,
+            FetchWindow(now=native_time, back_hours=0, forward_hours=0),
+            workdir,
+        )
+
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         client = self._get_client()
         date_str = candidate.detail.get("date_str")
         cycle_str = candidate.detail.get("cycle")
         run_dt = candidate.run_time or window.now
-        retrieved_at = datetime.now(UTC)
 
         if not date_str or not cycle_str:
             date_str = run_dt.strftime("%Y%m%d")
@@ -430,8 +496,11 @@ class NOAAS3Adapter:
 
         hourly_datasets: list[xarray.Dataset] = []
         decode_errors: list[str] = []
+        transport_receipts: list[dict[str, object]] = []
 
-        for lead_h in range(self._max_lead_hours + 1):
+        requested_leads = candidate.detail.get("requested_leads")
+        lead_hours = tuple(requested_leads) if requested_leads is not None else tuple(range(self._max_lead_hours + 1))
+        for lead_h in lead_hours:
             valid_time = run_dt + timedelta(hours=lead_h)
             if not window.covers(valid_time):
                 continue
@@ -442,7 +511,10 @@ class NOAAS3Adapter:
             idx_url = f"{grib_url}.idx"
 
             try:
-                idx_text = client.get_text(idx_url)
+                retained_indices = candidate.detail.get("idx_text_by_lead", {})
+                idx_text = retained_indices.get(lead_h)
+                if idx_text is None:
+                    idx_text = client.get_bytes(idx_url, max_bytes=MAX_IDX_BYTES).decode("utf-8")
             except Exception as error:
                 decode_errors.append(f"idx:{idx_url}")
                 _log.warning("Missing GFS idx sidecar at %s: %s", idx_url, error)
@@ -466,6 +538,7 @@ class NOAAS3Adapter:
                     [r.as_tuple() for r in ranges],
                     max_bytes=MAX_BYTES_PER_LEAD,
                 )
+                transport_receipts.extend(getattr(client, "last_range_receipts", ()))
                 _log.info("GFS %s: fetched %d bytes across %d ranges", base_filename, fetched_bytes, len(ranges))
             except Exception as error:
                 decode_errors.append(f"download:{base_filename}")
@@ -560,13 +633,18 @@ class NOAAS3Adapter:
         manifest = RunManifest(
             source_id=GFS_MANIFEST.source_id,
             fields=GFS_MANIFEST.fields,
-            required_valid_times=required_leads(window, run_dt, max_lead_hours=self._max_lead_hours),
+            required_valid_times=(
+                tuple(run_dt + timedelta(hours=int(lead)) for lead in lead_hours if window.covers(run_dt + timedelta(hours=int(lead))))
+                if requested_leads is not None
+                else required_leads(window, run_dt, max_lead_hours=self._max_lead_hours)
+            ),
             bounds=self._bounds,
         )
         validation = validate_run(manifest, combined, window=window, decode_errors=decode_errors)
 
         provenance = {
             "source_id": self.source_id,
+            "run_time": run_dt.isoformat(),
             "producer": "NOAA / NCEP",
             "product": "Global Forecast System (GFS 0.25 deg)",
             "native_resolution": "0.25 deg (~25 km)",
@@ -577,6 +655,11 @@ class NOAAS3Adapter:
             # Both artifacts below are GFS's own published cells, so the one
             # declaration covers the surface set and the jet-level winds.
             **manifest.as_manifest_block(),
+            "http_range_receipts": transport_receipts,
+            "http_index_receipts": [
+                item for item in (candidate.detail.get("idx_receipts_by_lead") or {}).values() if item is not None
+            ],
+            "http_discovery_receipt": candidate.detail.get("discovery_receipt"),
         }
 
         # The run is validated as one dataset, then written as two artifacts:
@@ -614,7 +697,10 @@ class NOAAS3Adapter:
             source_id=self.source_id,
             provider_run_id=candidate.provider_run_id,
             run_time=run_dt,
-            retrieved_at=retrieved_at,
+            retrieved_at=max(
+                (datetime.fromisoformat(str(item["completed_at"])) for item in transport_receipts),
+                default=datetime.now(UTC),
+            ),
             complete=validation.complete,
             qc_passed=validation.qc_passed,
             artifacts=artifacts,
