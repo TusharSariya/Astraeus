@@ -8,6 +8,9 @@ versions and absence inventory. `/timeline`, `/layers` and `/point` SHALL accept
 only that opaque snapshot identity and SHALL answer from the fixed revision set.
 They SHALL NOT contact an upstream provider. A continuation that changes the
 selection SHALL be refused.
+The snapshot envelope SHALL expose its durable `operation_id`, fencing token,
+reservation state and reserved bytes so capacity remains observable through
+expiry and cleanup rather than disappearing when the read deadline passes.
 
 #### Scenario: Publication occurs between reads
 - **WHEN** a new manifest publishes after the snapshot's `/timeline` response and before its `/point` response

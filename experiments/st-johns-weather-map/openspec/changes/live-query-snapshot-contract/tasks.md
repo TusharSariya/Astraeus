@@ -18,7 +18,7 @@ normative transition under `GOV-SPEC-002`.
   logical artifact, conflicting digest, partial failure and concurrent repair.
 - [ ] 3.1 Extend durable refresh jobs with canonical selection idempotency and
   per-source/per-fragment outcomes without allowing read routes upstream.
-- [ ] 3.2 Integrate issue #173 operation UUID/fencing verification and durable
+- [ ] 3.2 Integrate issue #173 `operation_id`/`fencing_token` verification and durable
   capacity reservations before transfer, staging and snapshot admission.
 - [ ] 3.3 Prove expiry remains charged through revocation and is released only
   after fenced remote/local cleanup; stale owners cannot publish or release.

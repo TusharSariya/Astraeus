@@ -15,8 +15,9 @@ An opaque snapshot id is the only wire identity. It is supplied to `/timeline`,
 database server records `selected_at` and the immutable `expires_at =
 selected_at + 15 minutes`. No read, status check or refresh renews either time.
 
-The response envelope adds `snapshot_id`, `selected_at`, `expires_at` and
-`snapshot_state`. `snapshot_state` is `current`, `changed`, `expired` or
+The response envelope adds `snapshot_id`, `selected_at`, `expires_at`,
+`snapshot_state`, `operation_id`, `fencing_token`, `reservation_state` and
+`reserved_bytes`. `snapshot_state` is `current`, `changed`, `expired` or
 `unavailable`. `changed` means relevant current manifests or interpretation
 versions differ from the snapshot; it does not mutate the answer. An expired
 snapshot returns a restart-required error and is never described as current.
@@ -73,7 +74,14 @@ fragment passes decode, manifest and integrity validation, one database
 transaction publishes a new immutable manifest that references the complete
 fragment set. A crash or any failed fragment leaves the prior manifest visible.
 
-Acquisition and snapshot pins use the durable allocator owned by issue #173.
+Acquisition and snapshot pins use the durable allocator owned by issue #173:
+`weather_experiment.resource_reservations`, keyed by `operation_id uuid` and
+monotonic `fencing_token bigint`, with `task`, `ingestion` and `snapshot` kinds
+and `active`, `revoking`, `releasable`, `released` states. The store seam is
+`ArtifactStore.reserve_resources(...) -> contextmanager[ReservationIdentity]`;
+snapshot admission uses `workload_kind="snapshot"`. Staged rows carry
+`reservation_operation_id` and `reservation_fencing_token`, and publication
+calls `publish_run(run_id, operation_id, fencing_token)`.
 The allocator reserves before provider payload, fragment staging or snapshot
 admission. Publication verifies the operation UUID and fencing token. Expiry
 enters revocation; all global and host-local capacity remains charged until the

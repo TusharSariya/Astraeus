@@ -22,6 +22,24 @@ owner selections as a proposed OpenSpec change. It does not claim acceptance,
 implementation, source admission, operational status, or completion of the
 later five-view application.
 
+## Decision provenance and status
+
+In the September 6 session, the owner selected cache plus fetch-on-miss,
+immutable fragments plus atomic manifests, the existing working application as
+the immediate finish line, asynchronous progress with explicit refresh, one
+revision set for Map/timeline/point, a fixed nonrenewing 15-minute snapshot,
+the 64 GiB hot quota, and issue #173's durable reservation behavior including
+continued charging after expiry until cleanup. The same session directed the
+proposal to adopt the previously selected Map at-or-before/under-one-hour rule
+and the implemented 24-hour-back/14-day-ahead window, then explicitly said
+“ok begin” for execution. These statements authorize this detailed
+experimental proposal. They do not authorize scientific/source admission,
+`operational: true`, or an agent-authored acceptance transition.
+
+This change remains proposed until independent review records that provenance
+and the repository's `spec-status-approved` transition metadata. Only the owner
+can mark it accepted under `GOV-SPEC-002`.
+
 ## What changes
 
 - The current client opens one selection snapshot and supplies its opaque id to
