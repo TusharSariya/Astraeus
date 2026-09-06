@@ -876,6 +876,11 @@ def get_layers() -> LayersResponse:
             data_mode=DataMode.FIXTURE,
             layers=[_unattributed_layer(layer, FIXTURE_RUN_REASON) for layer in LAYERS],
         )
+    if response_mode() is DataMode.UNAVAILABLE:
+        return LayersResponse(
+            data_mode=DataMode.UNAVAILABLE, layers=[],
+            notices=["WEATHER_DATA_MODE is not a recognized live mode; no layer can be offered"],
+        )
 
     store = live_store()
     if store is None:

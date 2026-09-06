@@ -1645,13 +1645,13 @@ def configured_mode() -> str:
     """
     global _data_mode
     if _data_mode is None:
-        raw = os.environ.get(DATA_MODE_ENV, "").strip().lower()
-        if raw not in {LIVE_MODE, FIXTURE_MODE}:
-            if raw:
-                LOGGER.error("%s=%r is not %r or %r; failing closed to %s", DATA_MODE_ENV, raw, LIVE_MODE, FIXTURE_MODE, UNAVAILABLE_MODE)
+        supplied = os.environ.get(DATA_MODE_ENV, "")
+        raw = supplied if supplied in {LIVE_MODE, FIXTURE_MODE} else UNAVAILABLE_MODE
+        if raw == UNAVAILABLE_MODE:
+            if supplied:
+                LOGGER.error("%s=%r is not %r or %r; failing closed to %s", DATA_MODE_ENV, supplied, LIVE_MODE, FIXTURE_MODE, UNAVAILABLE_MODE)
             else:
                 LOGGER.error("%s is unset; failing closed to %s", DATA_MODE_ENV, UNAVAILABLE_MODE)
-            raw = UNAVAILABLE_MODE
         _data_mode = raw
     return _data_mode
 
