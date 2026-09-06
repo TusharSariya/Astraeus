@@ -362,6 +362,7 @@ def test_timeline_lists_actual_native_keys_once_without_fetching_grib_payloads()
 @pytest.mark.parametrize("xml", [
     "<ListBucketResult><IsTruncated>true</IsTruncated></ListBucketResult>",
     "<!DOCTYPE x [<!ENTITY y 'z'>]><ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>",
+    "<unexpected><IsTruncated>false</IsTruncated></unexpected>",
 ])
 def test_timeline_refuses_incomplete_or_declared_xml(xml):
     run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)

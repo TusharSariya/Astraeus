@@ -375,6 +375,8 @@ class GFSQueryCoordinator:
         if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
             raise ValueError("GFS listing declarations are unsupported")
         root = ElementTree.fromstring(body)
+        if root.tag.rsplit("}", 1)[-1] != "ListBucketResult":
+            raise ValueError("GFS listing has an unexpected root")
         nodes = list(root.iter())
         if len(nodes) > 3 * GFS_TIMELINE_LISTING_MAX_KEYS + 32:
             raise ValueError("GFS listing exceeds structural node bound")
@@ -384,6 +386,8 @@ class GFSQueryCoordinator:
         leads: set[int] = set()
         for node in nodes:
             if node.tag.rsplit("}", 1)[-1] != "Key" or not isinstance(node.text, str):
+                continue
+            if not node.text.startswith(prefix):
                 continue
             match = _GFS_LISTED_LEAD.search(node.text)
             if match:
