@@ -452,7 +452,7 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
         )
 
     selected_product = product.upper() if product else None
-    if selected_product not in {None, "HRDPS", "GFS"}:
+    if selected_product not in {None, "HRDPS", "RDPS", "GFS"}:
         return TimelineResponse(
             data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference),
             boundary=boundary, tiers=tiers,
@@ -471,6 +471,16 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
             demand_notices.append(
                 f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
             )
+    if selected_product == "RDPS":
+        try:
+            from .rdps_query import rdps_query_coordinator  # noqa: PLC0415
+            for stamp in rdps_query_coordinator().timeline_times(reference):
+                if start <= stamp <= end:
+                    demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-rdps")
+        except Exception as error:  # noqa: BLE001 - a provider miss is an unavailable source, not a route failure
+            demand_notices.append(
+                f"eccc-rdps demand availability could not be resolved: {type(error).__name__}"
+            )
     if selected_product == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
@@ -483,6 +493,12 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
                 f"noaa-gfs demand availability could not be resolved: {type(error).__name__}"
             )
 
+    if selected_product == "RDPS":
+        return TimelineResponse(
+            data_mode=DataMode.LIVE if demand_products else DataMode.UNAVAILABLE,
+            start=start, end=end, items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
+            notices=[*demand_notices, "RDPS provider-advertised demand availability is metadata only; no GRIB prefetch or retained artifact coverage"],
+        )
     store = live_store()
     if store is None:
         if demand_products:
@@ -1139,7 +1155,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
         item for item in layers
         if not (
             item.evidence_basis == wms.PUBLISHED_ARTIFACT
-            and (item.id.startswith("eccc-hrdps-") or item.id.startswith("noaa-gfs-"))
+            and (item.id.startswith("eccc-hrdps-") or item.id.startswith("eccc-rdps-") or item.id.startswith("noaa-gfs-"))
         )
     ]
 
@@ -1281,6 +1297,38 @@ def _live_point(
                                 reason=f"Selected HRDPS native timestep {actual_time.isoformat()}"),
             fields=fields + observations,
             notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
+        )
+    if product and product.upper() == "RDPS":
+        try:
+            from .rdps_query import rdps_query_coordinator  # noqa: PLC0415
+
+            fields, _consensus, _sources = rdps_query_coordinator().point_fields(latitude, longitude, time)
+        except Exception as error:
+            LOGGER.exception("RDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason=f"RDPS selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:eccc-rdps"],
+                notices=["eccc-rdps could not retrieve and validate the exact selected native timestep"],
+                source_id="eccc-rdps", product="RDPS",
+            )
+        if not fields:
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason="RDPS has no native value at this coordinate and selected timestamp",
+                flags=["demand_query_empty:eccc-rdps"],
+                notices=["eccc-rdps returned no validated native value for the selected point"],
+                source_id="eccc-rdps", product="RDPS",
+            )
+        actual_time = fields[0].provenance.valid_time
+        observations, observation_notices = demand_metar()
+        return PointResponse(
+            data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+            selection=Selection(mode="fallback", selected_source_id="eccc-rdps",
+                                selected_product_id="rdps", badge="RDPS selected model",
+                                reason=f"Selected RDPS native timestep {actual_time.isoformat()}"),
+            fields=fields + observations,
+            notices=[f"RDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
         )
     if product and product.upper() == "GEFS":
         try:
@@ -2678,6 +2726,17 @@ def get_profile(
         return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude,
                                valid_time=native_time, levels=levels,
                                notices=[f"HRDPS pressure fields were fetched for native timestep {native_time.isoformat()} only"])
+
+    if product and product.upper() == "RDPS":
+        try:
+            from .rdps_query import rdps_query_coordinator  # noqa: PLC0415
+            levels, native_time = rdps_query_coordinator().profile_levels(latitude, longitude, time, PROFILE_PRESSURES)
+        except Exception as error:
+            LOGGER.exception("RDPS demand profile failed for %s", time.isoformat())
+            return unavailable(f"RDPS selected profile is unavailable: {type(error).__name__}", "demand_query_unavailable:eccc-rdps", [])
+        return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude,
+                               valid_time=native_time, levels=levels,
+                               notices=[f"RDPS pressure fields were fetched for native timestep {native_time.isoformat()} only"])
 
     store = live_store()
     if store is None:

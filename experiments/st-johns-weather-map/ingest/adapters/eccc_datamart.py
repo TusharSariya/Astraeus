@@ -336,6 +336,17 @@ RDPS_VARS = {
     **RDPS_PROFILE_VARS,
 }
 
+# Demand wind uses the producer's native speed and true-north direction;
+# native U/V are grid-relative and cannot feed the existing earth-relative
+# component derivation without a separately declared vector transform.
+RDPS_DEMAND_VARS = {**RDPS_VARS,
+    "wind_speed_10m": ("WindSpeed", "AGL-10m"),
+    "wind_direction_10m": ("WindDir", "AGL-10m"),
+    **{f"wind_{kind}_{level}hPa": (token, f"IsbL-{level:04d}")
+       for level in STEERING_LEVELS_HPA
+       for kind, token in (("speed", "WindSpeed"), ("direction", "WindDir"))},
+}
+
 # GDPS variable map (CamelCase upstream naming)
 GDPS_VARS = {
     "temperature_2m": ("AirTemp", "AGL-2m"),
@@ -351,6 +362,9 @@ CANONICAL_FIELD_UNITS = {
     "temperature_2m": ("degC", "2 m"),
     "dew_point_2m": ("degC", "2 m"),
     "relative_humidity_2m": ("percent", "2 m"),
+    "wind_speed_10m": ("m s-1", "10 m"),
+    "wind_direction_10m": ("degree", "10 m"),
+    **{f"wind_{kind}_{level}hPa": (unit, f"{level} hPa") for level in STEERING_LEVELS_HPA for kind, unit in (("speed", "m s-1"), ("direction", "degree"))},
     "wind_u_10m": ("m s-1", "10 m"),
     "wind_v_10m": ("m s-1", "10 m"),
     "mean_sea_level_pressure": ("hPa", "mean sea level"),
@@ -525,6 +539,24 @@ class ECCCDataMartAdapter:
 
     def demand_operation_bounds(self, field_count: int) -> ResourceBounds:
         """Conservative one-native-lead envelope, checked before discovery."""
+        if self.source_id == "eccc-rdps":
+            import sys
+            if sys.platform != "linux" or not 0 < field_count <= len(RDPS_DEMAND_VARS):
+                raise AdapterUnavailable("RDPS demand requires Linux bounded child and declared fields")
+            try:
+                memory = int(Path("/sys/fs/cgroup/memory.max").read_text().strip())
+            except (OSError, ValueError) as error:
+                raise AdapterUnavailable("RDPS requires bounded aggregate cgroup memory") from error
+            if memory != HRDPS_MEMORY_LIMIT_BYTES:
+                raise AdapterUnavailable("RDPS requires the measured 4 GiB aggregate cgroup ceiling")
+            geometry = os.statvfs(tempfile.gettempdir())
+            if geometry.f_blocks * geometry.f_frsize > 3 * 1024 * 1024 * 1024:
+                raise AdapterUnavailable("RDPS requires a finite 3 GiB temporary filesystem")
+            physical = field_count * HRDPS_FILE_BYTES + 32 * 1024 * 1024
+            if __import__("shutil").disk_usage(tempfile.gettempdir()).free < physical:
+                raise AdapterUnavailable("RDPS demand lacks its finite workspace allowance")
+            return ResourceBounds(16 * 1024 * 1024, physical, 16 * 1024 * 1024,
+                                  (HRDPS_DISCOVERY_REQUESTS + 1) * HRDPS_LISTING_BYTES + field_count * HRDPS_FILE_BYTES)
         if self.source_id != "eccc-hrdps" or not 0 < field_count <= len(HRDPS_VARS):
             raise AdapterUnavailable("HRDPS demand field count is outside the declared source set")
         memory_limit = Path("/sys/fs/cgroup/memory.max")
@@ -725,7 +757,7 @@ class ECCCDataMartAdapter:
         lead = int(lead_seconds // 3600)
         lead_token = f"{lead:03d}"
         available = tuple(str(value) for value in candidate.detail.get("available_hours", ()))
-        if lead_token not in available or lead >= HRDPS_MAX_LEADS:
+        if lead_token not in available or lead >= (85 if self.source_id == "eccc-rdps" else HRDPS_MAX_LEADS):
             raise AdapterUnavailable(f"{self.source_id}: selected native lead {lead_token} is unavailable")
         unknown = set(fields) - set(self.var_map)
         if unknown:
@@ -765,7 +797,7 @@ class ECCCDataMartAdapter:
         if run_time is None:
             raise AdapterUnavailable(f"{self.source_id}: candidate has no run time derived from its filenames")
 
-        target_hours = [f"{hour:03d}" for hour in range(25) if f"{hour:03d}" in available_hours]
+        target_hours = [f"{hour:03d}" for hour in range(85 if self.source_id == "eccc-rdps" else 25) if f"{hour:03d}" in available_hours]
         if not target_hours:
             raise AdapterUnavailable(f"No target forecast hours available for {candidate.provider_run_id}")
 
@@ -792,7 +824,11 @@ class ECCCDataMartAdapter:
             planned: list[tuple[str, str, str, Path]] = []
             for canonical_name, (eccc_var, level) in self.var_map.items():
                 match_file = None
-                for fname in file_list:
+                if self.source_id == "eccc-rdps" and self._capture_transport_receipts:
+                    variable_level = "Pressure_MSL" if canonical_name == "mean_sea_level_pressure" else f"{eccc_var}_{level}"
+                    expected = f"{run_time:%Y%m%dT%HZ}_MSC_RDPS_{variable_level}_RLatLon0.09_PT{hour_str}H.grib2"
+                    match_file = expected if expected in file_list else None
+                for fname in (() if self.source_id == "eccc-rdps" and self._capture_transport_receipts else file_list):
                     if f"_{eccc_var}_" in fname and (f"_{level}_" in fname or f"_{level}." in fname or level in fname):
                         match_file = fname
                         break
@@ -819,7 +855,7 @@ class ECCCDataMartAdapter:
             # httpx.Client, one locked limiter).
             fetched: dict[str, Path] = {}
             if planned:
-                with ThreadPoolExecutor(max_workers=max(1, min(download_parallelism(), len(planned)))) as pool:
+                with ThreadPoolExecutor(max_workers=1 if self.source_id == "eccc-rdps" else max(1, min(download_parallelism(), len(planned)))) as pool:
                     futures = {
                         pool.submit(
                             client.download_with_receipt if self._capture_transport_receipts else client.download,
@@ -866,6 +902,8 @@ class ECCCDataMartAdapter:
                         if canonical_name == "total_cloud_opacity"
                         else open_grib(local_grib)
                     )
+                    if self.source_id == "eccc-rdps" and self._capture_transport_receipts:
+                        _validate_rdps_message(local_grib, run_time, valid_time, canonical_name)
                     decoded = crop_to_bbox(opened, self.bounds)
                     if canonical_name == "total_cloud_opacity" and not _cloud_units_declared(decoded):
                         decode_errors.append(f"undeclared_units:{match_file}")
@@ -889,6 +927,11 @@ class ECCCDataMartAdapter:
                     # FileNotFoundError. The crop already bounded this to the
                     # Avalon window, so what is held is one small field.
                     field = strip_message_scalars(decoded[data_var_names[0]].load()).copy(deep=True)
+                    if self.source_id == "eccc-rdps" and canonical_name.startswith("wind_direction_"):
+                        if field.attrs.get("units") != "Degree true":
+                            raise ValueError("RDPS native direction has undeclared true-north units")
+                        field.attrs.update(original_units="Degree true", units="degree",
+                                           direction_basis="producer-native true north")
                     if canonical_name.startswith("relative_humidity_"):
                         # GRIB2 0/1/1 codes no saturation-phase key, so the
                         # convention cannot be read off the message; it was
@@ -947,6 +990,7 @@ class ECCCDataMartAdapter:
             "native_resolution": self.grid_token,
             "native_crs": "EPSG:4326",
             "adapter_version": self.adapter_version,
+            "original_units": {name: str(combined[name].attrs.get("original_units", combined[name].attrs.get("GRIB_units", combined[name].attrs.get("units", "unknown")))) for name in combined.data_vars},
             "run_time": run_time.isoformat(),
             # Cache planning and retained-run coverage consume the exact
             # frames this artifact proved. Omitting them made a same-run
@@ -970,6 +1014,8 @@ class ECCCDataMartAdapter:
                 "filesystem_margin_bytes": HRDPS_MARGIN_BYTES,
                 "memory_cgroup_bytes": HRDPS_MEMORY_LIMIT_BYTES,
             }
+        if self.source_id == "eccc-rdps":
+            provenance["wind_component_basis"] = "native rotated-grid i/j; demand reads producer-native WindSpeed/WindDir"
         if transport_receipts:
             provenance["transport_receipts"] = sorted(transport_receipts, key=lambda item: str(item["field"]))
 
@@ -994,6 +1040,54 @@ class ECCCDataMartAdapter:
                 f"from {provenance['datamart_path'] or 'an unrecorded Datamart path'}; {validation.detail}"
             ),
         )
+
+
+def _validate_rdps_message(path: Path, run: datetime, valid: datetime, field: str) -> None:
+    """Validate bounded actual native geometry and temporal identity before materialization."""
+    import eccodes
+    with path.open("rb") as stream:
+        handle = eccodes.codes_grib_new_from_file(stream)
+        if handle is None:
+            raise ValueError("RDPS missing GRIB message")
+        try:
+            if (eccodes.codes_get(handle, "gridType") != "rotated_ll"
+                or eccodes.codes_get(handle, "Ni") != 1140
+                or eccodes.codes_get(handle, "Nj") != 1045
+                or eccodes.codes_get(handle, "numberOfPoints") != 1140 * 1045):
+                raise ValueError("RDPS native grid differs from measured geometry")
+            for prefix, stamp in (("data", run), ("validity", valid)):
+                if (eccodes.codes_get(handle, prefix + "Date") != int(stamp.strftime("%Y%m%d"))
+                    or eccodes.codes_get(handle, prefix + "Time") != int(stamp.strftime("%H%M"))):
+                    raise ValueError("RDPS message run or valid time mismatch")
+            identities = {"temperature": (0, 0), "dew_point": (0, 6), "relative_humidity": (1, 1),
+                          "wind_speed": (2, 1), "wind_direction": (2, 0), "geopotential_height": (3, 5),
+                          "omega": (2, 8), "mean_sea_level_pressure": (3, 1), "total_cloud_opacity": (6, 1)}
+            family = next((name for name in identities if field == name or field.startswith(name + "_")), None)
+            if family is None:
+                raise ValueError("RDPS selected field has no coded identity contract")
+            category, number = identities[family]
+            if (eccodes.codes_get_long(handle, "discipline") != 0
+                or eccodes.codes_get_long(handle, "parameterCategory") != category
+                or eccodes.codes_get_long(handle, "parameterNumber") != number):
+                raise ValueError("RDPS selected parameter identity mismatch")
+            if field.endswith("hPa"):
+                surface, level = 100, int(field.rsplit("_", 1)[1][:-3])
+            elif field.endswith("2m"):
+                surface, level = 103, 2
+            elif field.endswith("10m"):
+                surface, level = 103, 10
+            else:
+                surface, level = (101 if family == "mean_sea_level_pressure" else 1), 0
+            if eccodes.codes_get_long(handle, "typeOfFirstFixedSurface") != surface or eccodes.codes_get(handle, "level") != level:
+                raise ValueError("RDPS selected vertical identity mismatch")
+            if eccodes.codes_get(handle, "stepType") != "instant":
+                raise ValueError("RDPS selected field is not instantaneous")
+        finally:
+            eccodes.codes_release(handle)
+        extra = eccodes.codes_grib_new_from_file(stream)
+        if extra is not None:
+            eccodes.codes_release(extra)
+            raise ValueError("RDPS selected object contains multiple messages")
 
 
 HRDPS_ADAPTER = register(

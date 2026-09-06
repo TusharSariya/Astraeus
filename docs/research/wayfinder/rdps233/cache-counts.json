@@ -1,0 +1,38 @@
+[
+  {
+    "name": "point",
+    "all": 18,
+    "rdps": 16,
+    "grib": 6
+  },
+  {
+    "name": "point-repeat",
+    "all": 19,
+    "rdps": 16,
+    "grib": 6
+  },
+  {
+    "name": "profile",
+    "all": 40,
+    "rdps": 36,
+    "grib": 25
+  },
+  {
+    "name": "profile-repeat",
+    "all": 41,
+    "rdps": 36,
+    "grib": 25
+  },
+  {
+    "name": "timeline",
+    "all": 42,
+    "rdps": 36,
+    "grib": 25
+  },
+  {
+    "name": "timeline-repeat",
+    "all": 43,
+    "rdps": 36,
+    "grib": 25
+  }
+]
