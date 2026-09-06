@@ -453,6 +453,16 @@ def get_timeline() -> TimelineResponse:
         demand_notices.append(
             f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
         )
+    try:
+        from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+        stamps, _receipt = gfs_query_coordinator().timeline_times(reference)
+        for stamp in stamps:
+            if start <= stamp <= end:
+                demand_products.setdefault(_floor_to_hour(stamp), []).append("noaa-gfs")
+    except Exception as error:  # noqa: BLE001 - an unavailable listing must not fail the shared route
+        demand_notices.append(
+            f"noaa-gfs demand availability could not be resolved: {type(error).__name__}"
+        )
 
     store = live_store()
     if store is None:
@@ -460,7 +470,7 @@ def get_timeline() -> TimelineResponse:
             return TimelineResponse(
                 data_mode=DataMode.LIVE, start=start, end=end,
                 items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
-                notices=[*demand_notices, "persistent artifact coverage is unavailable; HRDPS hours are provider-advertised demand availability"],
+                notices=[*demand_notices, "persistent artifact coverage is unavailable; provider-advertised demand availability covers only the listed demand-source hours"],
             )
         return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=[*demand_notices, "no live artifact store is reachable; no hour can be said to have a published product"])
     try:
@@ -471,7 +481,7 @@ def get_timeline() -> TimelineResponse:
             return TimelineResponse(
                 data_mode=DataMode.LIVE, start=start, end=end,
                 items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
-                notices=[*demand_notices, "the legacy artifact store raised; HRDPS hours are provider-advertised demand availability"],
+                notices=[*demand_notices, "the legacy artifact store raised; provider-advertised demand availability covers only the listed demand-source hours"],
             )
         # No hour is said to hold a product AND no hour is said to have aged
         # out: with the store unreadable, either claim would be a guess.

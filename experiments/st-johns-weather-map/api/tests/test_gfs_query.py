@@ -460,3 +460,34 @@ def test_timeline_coalesces_eight_concurrent_listing_outcomes(fail):
 def test_only_legacy_published_gfs_layers_are_hidden_from_demand_catalogue():
     assert hides_legacy_published_gfs_layer("noaa-gfs") is True
     assert hides_legacy_published_gfs_layer("eccc-hrdps") is False
+
+
+def test_shared_timeline_includes_only_provider_listed_gfs_hours(monkeypatch):
+    import sys
+    from weather_api import gfs_query, hrdps_query
+    from weather_api.app import get_timeline
+
+    reference = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    native = reference - timedelta(minutes=17)
+
+    class GFS:
+        def timeline_times(self, _reference):
+            return ((native,), {"bytes": 123})
+
+    class HRDPS:
+        def timeline_times(self, _reference):
+            return ()
+
+    app_module = sys.modules["weather_api.app"]
+    monkeypatch.setattr(app_module, "now", lambda: reference)
+    monkeypatch.setattr(app_module, "fixture_mode", lambda: False)
+    monkeypatch.setattr(app_module, "live_store", lambda: None)
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: GFS())
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: HRDPS())
+
+    response = get_timeline()
+
+    assert response.data_mode.value == "live"
+    item = next(item for item in response.items if item.valid_time_utc == native.replace(minute=0, second=0, microsecond=0))
+    assert item.available_products == ["noaa-gfs"]
+    assert any("provider-advertised demand availability" in notice for notice in response.notices)
