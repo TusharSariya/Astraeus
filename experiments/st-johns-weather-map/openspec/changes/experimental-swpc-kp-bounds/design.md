@@ -19,8 +19,10 @@ The 2026-09-06 bounded capture retained outside Git contains 57 observed rows
 (4401 bytes, SHA-256 `8a0913f35f9e0e2316ec7ac8cc837b332ca1c4904e39c442999bd1d9b8f2c88d`)
 and 81 forecast rows (6910 bytes, SHA-256
 `01c0be6ac8ca8b8b1a8bafeb4651d8b4a3df481993cff3bd6e21de638eee6374`).
-Linux replay preserved every timestamp, Kp, running-a value, and provider
-forecast status through the isolated artifacts. Synthetic documents immediately
+Linux replay published both actual ZIPs through an isolated PostgreSQL database
+and MinIO object keys, then preserved every timestamp, Kp, running-a value, and
+provider forecast status through `LiveStore.read_series` and the real HTTP
+space-weather route (57 observed and 81 forecast readings). Synthetic documents immediately
 below 512 KiB produced 6553 observed and 6096 forecast rows under the same
 limits. Raw data and replay artifacts remain in `/tmp/swpc-kp159-study` for
 independent review.
