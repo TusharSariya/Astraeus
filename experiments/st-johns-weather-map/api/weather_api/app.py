@@ -2321,6 +2321,10 @@ def get_taf(station: str, at: datetime) -> dict:
                     for name in dataset.data_vars:
                         value = float(dataset[name].values[index, 0, 0])
                         values[str(name)] = None if math.isnan(value) else value
+                    canonical_presence = dict(presence[index])
+                    for name, value in values.items():
+                        if value is None and canonical_presence.get(name) == "decoded_value":
+                            canonical_presence[name] = "decoded_absence"
                     native = native_groups[index]
                     native_keys = {
                         "wind_speed_kt": "wspd", "wind_direction_deg": "wdir", "wind_variable": "windVariable",
@@ -2343,7 +2347,7 @@ def get_taf(station: str, at: datetime) -> dict:
                     groups.append({"index": index, "time_from": start, "time_to": end,
                                    "change": changes[index], "probability": probabilities[index],
                                    "time_bec": native.get("timeBec"),
-                                   "presence": presence[index], "values": values,
+                                   "presence": canonical_presence, "values": values,
                                    "native": {
                                        "wind_speed_kt": native.get("wspd"),
                                        "wind_direction_deg": native.get("wdir") if native.get("wdir") != "VRB" else None,

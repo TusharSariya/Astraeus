@@ -21,10 +21,12 @@ class TafStore:
                         "quality": {"status": "passed"}},
         )
         values = numpy.array([[[10.0]], [[numpy.nan]]])
-        self.dataset = xarray.Dataset({"wind_gust_10m": (("valid_time", "latitude", "longitude"), values)}, attrs={
+        cloud = numpy.array([[[numpy.nan]], [[50.0]]])
+        self.dataset = xarray.Dataset({"wind_gust_10m": (("valid_time", "latitude", "longitude"), values),
+                                       "total_cloud_okta": (("valid_time", "latitude", "longitude"), cloud)}, attrs={
             "taf_period_time_to": [1788714000, 1788714000], "taf_change_groups": ["", "TEMPO"],
             "taf_probabilities": [None, 30],
-            "taf_group_presence_json": '[{"wind_gust_10m":"decoded_value"},{"wind_gust_10m":"not_stated_in_change_group"}]',
+            "taf_group_presence_json": '[{"wind_gust_10m":"decoded_value","total_cloud_okta":"decoded_value"},{"wind_gust_10m":"not_stated_in_change_group","total_cloud_okta":"decoded_value"}]',
             "taf_native_groups_json": '[{"wspd":20,"wdir":"VRB","wgst":30,"visib":"1/4","wxString":"FG","vertVis":100,"clouds":[{"cover":"OVX","base":null}]},{"wspd":null,"wdir":null,"wgst":null,"visib":"2","wxString":"BR","vertVis":null,"clouds":[]}]',
             "taf_native_report_metadata_json": '{"icaoId":"CYYT","elev":128}',
             "taf_provider_field_dispositions_json": '{"wgst":"published_as_wind_gust"}',
@@ -54,6 +56,8 @@ def test_taf_route_preserves_overlapping_sparse_groups_and_releases(monkeypatch)
     assert groups[0]["native"]["wind_speed_kt"] == 20
     assert groups[0]["native"]["weather"] == "FG"
     assert groups[0]["native"]["vertical_visibility_ft"] == 100
+    assert groups[0]["values"]["total_cloud_okta"] is None
+    assert groups[0]["presence"]["total_cloud_okta"] == "decoded_absence"
     assert groups[0]["native_presence"]["wind_variable"] == "decoded_value"
     assert response.json()["operational"] is False
     assert response.json()["native_report_metadata"]["elev"] == 128
