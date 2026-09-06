@@ -98,6 +98,17 @@ class ResourceBounds:
 
 
 @dataclass(frozen=True)
+class DiscoveryBounds:
+    """Measured bytes permitted while enumerating candidate metadata."""
+
+    received_bytes: int
+
+    def validate(self) -> None:
+        if isinstance(self.received_bytes, bool) or not isinstance(self.received_bytes, int) or self.received_bytes <= 0:
+            raise ValueError("discovery received-byte bound must be a positive integer")
+
+
+@dataclass(frozen=True)
 class Artifact:
     """A normalized artifact staged locally, ready for MinIO upload.
 
@@ -145,6 +156,9 @@ class Adapter(Protocol):
     """Discovery and retrieval for exactly one registry source id."""
 
     source_id: str
+
+    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
+        """Return a measured finite metadata bound before discovery requests."""
 
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         """Return usable upstream runs, newest first. Must not download bulk."""

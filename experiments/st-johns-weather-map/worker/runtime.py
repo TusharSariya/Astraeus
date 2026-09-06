@@ -169,16 +169,31 @@ def _store():
 
 def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callable[[], None] | None = None) -> SourceOutcome:
     """Discover, fetch, stage and publish one source. Never raises."""
-    from ingest.contract import AdapterUnavailable, FetchWindow, ResourceBounds  # noqa: PLC0415
+    from ingest.contract import AdapterUnavailable, DiscoveryBounds, FetchWindow, ResourceBounds  # noqa: PLC0415
     from ingest.scheduler import plan_fetch  # noqa: PLC0415
     from ingest.resources import ReceivedBytesExceeded, acquisition_budget, directory_bytes  # noqa: PLC0415
     from ingest.store import QuotaExceeded, ResourceBudgetExceeded, RunIdentityConflict, StoreUnavailable  # noqa: PLC0415
 
     window = FetchWindow(now=reference)
+    if store is None:
+        return SourceOutcome(config.source_id, "failed", "resource preflight failed: no artifact store is available")
     try:
-        candidates = adapter.discover(window)
+        discovery_method = getattr(adapter, "discovery_bounds", None)
+        if discovery_method is None:
+            raise ResourceBudgetExceeded("discovery resource bounds are unknown")
+        discovery_bounds = discovery_method(window)
+        if not isinstance(discovery_bounds, DiscoveryBounds):
+            raise ResourceBudgetExceeded("discovery resource bounds are unknown or invalid")
+        try:
+            discovery_bounds.validate()
+        except ValueError as error:
+            raise ResourceBudgetExceeded(str(error)) from error
+        with acquisition_budget(discovery_bounds.received_bytes):
+            candidates = adapter.discover(window)
     except AdapterUnavailable as error:
         return SourceOutcome(config.source_id, "cancelled", f"nothing usable upstream: {error}")
+    except (ResourceBudgetExceeded, ReceivedBytesExceeded) as error:
+        return SourceOutcome(config.source_id, "failed", f"upstream_budget_exhausted during discovery: {error}")
     except Exception as error:
         return SourceOutcome(config.source_id, "failed", f"discovery failed: {error!r}")
     if not candidates:
@@ -196,8 +211,6 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
             return SourceOutcome(config.source_id, "failed", f"the store could not be asked what is present: {error!r}")
         if plan.satisfied:
             return SourceOutcome(config.source_id, "succeeded", plan.reason, 0)
-    if store is None:
-        return SourceOutcome(config.source_id, "failed", "resource preflight failed: no artifact store is available")
     phase = "resource preflight"
     try:
         bounds_method = getattr(adapter, "resource_bounds", None)

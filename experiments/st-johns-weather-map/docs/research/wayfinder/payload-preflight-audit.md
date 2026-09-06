@@ -12,14 +12,21 @@ time. The check therefore did not reserve a complete run before network reads,
 did not account for temporary/decode space and was not atomic across competing
 operations.
 
+Several adapters retrieve JSON feeds or indexes during `discover`, so guarding
+only `fetch` would still permit payload bytes before admission. Discovery now
+requires its own measured received-byte bound before any request; unknown
+discovery bounds fail closed. Retry and terminal error bodies count against the
+active discovery or fetch operation instead of disappearing from accounting.
+
 `PoliteClient.download` and the active `get_bytes` implementation streamed with
 per-call byte ceilings and removed partial files. `download_ranges` called
 `get_range`, which used a buffered response; an ignored or oversized range
 could therefore enter memory in full before the aggregate ceiling ran. A
 second `get_bytes` definition shadowed the headers-returning implementation
-expected by two WCS paths. Generic `get` and `get_text` remain suitable for
-bounded discovery only; inside an admitted operation they now consume the
-operation-wide received-byte budget while streaming.
+expected by two WCS paths. Generic `get` and `get_text` consume the active
+discovery or fetch budget while streaming. Range reads refuse before the
+request when the requested bytes do not fit the remaining budget, then require
+the response `Content-Range` and body length to match the request.
 
 ## Admission result
 
@@ -28,8 +35,9 @@ registry scheduler gate: `awc-metar-speci`, `awc-taf`, `dwd-icon-global`,
 `eccc-aqhi`, `eccc-cap-alerts`, `eccc-gdps`, `eccc-hrdps`, `eccc-lightning`,
 `eccc-radar`, `eccc-rdps`, `eccc-swob`, `ecmwf-ifs`, `noaa-gfs`,
 `noaa-goes-east`, `noaa-swpc-kp`, `noaa-swpc-ovation` and `noaa-swpc-rtsw`.
-None supplies a measured complete-operation `ResourceBounds` declaration at
-this revision. The repaired worker therefore refuses their payload retrieval
+None supplies measured `DiscoveryBounds` or a complete-operation
+`ResourceBounds` declaration at this revision. The repaired worker therefore
+refuses their upstream retrieval
 with `upstream_budget_exhausted` until their acquisition tickets provide
 source-specific measured store, filesystem, margin and received-byte bounds.
 Existing per-response constants are useful lower-level controls but do not
@@ -38,7 +46,8 @@ a generic percentage.
 
 ## Enforcement boundary and remaining work
 
-The single worker reserves projected hot-store bytes and local filesystem bytes
+The single worker applies the measured discovery byte bound, then reserves
+projected hot-store bytes and local filesystem bytes
 plus the adapter's measured margin before `fetch`. Reservations are atomic
 among operations in that process. Actual received bytes are counted across
 streamed, ordinary and byte-range HTTP reads. Temporary/extraction output and

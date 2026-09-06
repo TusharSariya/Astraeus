@@ -19,7 +19,7 @@ from typing import Any, Iterator, Sequence
 
 import pytest
 
-from ingest.contract import Artifact, ResourceBounds, RunCandidate, RunResult
+from ingest.contract import Artifact, DiscoveryBounds, ResourceBounds, RunCandidate, RunResult
 from ingest.manifest import declared_classes
 from ingest.scheduler import SATISFIED_REASON
 from ingest.store import (
@@ -64,6 +64,9 @@ class _Adapter:
             provider_run_id="2026090212", run_time=T0,
             detail={"valid_times": [moment.isoformat() for moment in self._times]},
         )]
+
+    def discovery_bounds(self, window: Any) -> DiscoveryBounds:
+        return DiscoveryBounds(received_bytes=1024)
 
     def fetch(self, candidate: Any, window: Any, workdir: Path) -> RunResult:
         self.fetched += 1
@@ -170,6 +173,18 @@ def test_unknown_resource_bounds_refuse_before_payload_retrieval(tmp_path: Path)
 
     assert outcome.state == "failed"
     assert "upstream_budget_exhausted" in outcome.detail
+    assert adapter.fetched == 0
+
+
+def test_unknown_discovery_bounds_refuse_before_any_upstream_request(tmp_path: Path) -> None:
+    adapter = _Adapter(result=_result(tmp_path))
+    adapter.discovery_bounds = None
+    adapter.discover = lambda _window: pytest.fail("discovery must not start without a measured bound")
+
+    outcome = run_source(adapter, _Config(), _Store(), reference=T0)
+
+    assert outcome.state == "failed"
+    assert "upstream_budget_exhausted during discovery" in outcome.detail
     assert adapter.fetched == 0
 
 

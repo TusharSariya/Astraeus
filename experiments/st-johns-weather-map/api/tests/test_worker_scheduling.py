@@ -423,16 +423,20 @@ def test_scheduler_poll_cycle_puts_the_source_back_at_its_next_poll(scheduler_ov
     """One full cycle over an adapter with nothing upstream: the outcome is a
     cancelled that names the poll, and the next attempt is the poll, not the
     next run."""
-    from ingest.contract import AdapterUnavailable
+    from ingest.contract import AdapterUnavailable, DiscoveryBounds
 
     class Empty:
         source_id = "eccc-gdps"
         adapter_version = "test"
 
+        def discovery_bounds(self, window):
+            return DiscoveryBounds(1)
+
         def discover(self, window):
             raise AdapterUnavailable("no populated run cycle")
 
     scheduler = scheduler_over_adapters((Empty(), get_config("eccc-gdps")))
+    scheduler._store = object()
     outcomes = scheduler.cycle(force=True)
     assert [item.state for item in outcomes] == ["cancelled"]
     assert "polling for run" in outcomes[0].detail
@@ -728,7 +732,7 @@ def test_short_cycle_retained_runs_skip_a_run_with_no_declared_run_time() -> Non
 def test_short_cycle_is_recorded_in_progress_after_a_successful_publish(scheduler_over_adapters) -> None:
     """The worker records the plan in the heartbeat, and never touches the
     previous run to do it."""
-    from ingest.contract import ResourceBounds, RunCandidate, RunResult
+    from ingest.contract import DiscoveryBounds, ResourceBounds, RunCandidate, RunResult
 
     class _Row:
         def __init__(self, run_id, run_time, end):
@@ -767,6 +771,9 @@ def test_short_cycle_is_recorded_in_progress_after_a_successful_publish(schedule
 
         def discover(self, window):
             return [RunCandidate(provider_run_id="2026090206", run_time=IFS_06Z)]
+
+        def discovery_bounds(self, window):
+            return DiscoveryBounds(1)
 
         def fetch(self, candidate, window, workdir):
             return RunResult(
