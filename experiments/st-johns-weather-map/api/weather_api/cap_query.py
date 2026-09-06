@@ -269,6 +269,7 @@ class CAPQueryService:
         self._inflight: Future[CAPCacheEntry] | None = None
         self._last_error: CapQueryUnavailable | None = None
         self._retry_after = 0.0
+        self._completed_provider_requests = 0
 
     def _fetch(self) -> CAPCacheEntry:
         merged: dict[str, dict[str, object]] = {}
@@ -282,6 +283,8 @@ class CAPQueryService:
                     if receipt.get("byte_size") != len(raw) or receipt.get("sha256") != hashlib.sha256(raw).hexdigest():
                         raise CapQueryUnavailable("ECCC CAP transport receipt does not match the response body")
                     receipts.append(receipt)
+                    with self._lock:
+                        self._completed_provider_requests += 1
                     document = json.loads(raw)
                     features = _validate_collection(document)
                     current_envelope = _validated_envelope(document)
@@ -375,6 +378,8 @@ class CAPQueryService:
                 selected.append(dict(feature))
             else:
                 excluded[_feature_key(feature)] = reason
+        with self._lock:
+            completed_provider_requests = self._completed_provider_requests
         return {
             "type": "FeatureCollection", "name": entry.feature_collection.get("name"), "crs": entry.feature_collection.get("crs"),
             "features": selected, "data_mode": "live", "operational": False,
@@ -382,6 +387,7 @@ class CAPQueryService:
             "selected_time": selected_at.isoformat(), "retrieved_at": entry.fetched_at.isoformat(),
             "expires_at": entry.expires_at.isoformat(), "content_digest": entry.content_digest,
             "acquisition": list(entry.receipts), "excluded_features": excluded,
+            "completed_provider_requests": completed_provider_requests,
             "source_id": "eccc-cap-alerts", "layer": ALERTS_LAYER,
         }
 
