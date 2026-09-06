@@ -10,6 +10,8 @@ import csv
 import hashlib
 import json
 import re
+from math import isfinite
+from urllib.parse import urlsplit
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from io import StringIO
@@ -63,12 +65,48 @@ def _wfs_inventory(body: bytes) -> tuple[dict[str, Any], dict[str, str]]:
             raise AdapterUnavailable(f"eccc-cwfis-fire: WFS feature {index} is invalid")
         properties = feature.get("properties")
         geometry = feature.get("geometry")
-        if not isinstance(properties, Mapping) or (geometry is not None and not isinstance(geometry, Mapping)):
+        if not isinstance(properties, Mapping) or not _valid_geometry(geometry):
             raise AdapterUnavailable(f"eccc-cwfis-fire: WFS feature {index} has invalid properties or geometry")
         fields.update(str(key) for key in properties)
     inventory = {"geometry": "retrieved" if document["features"] else "observed-empty", **{key: "retrieved" for key in sorted(fields)}}
     snapshot = {key: document[key] for key in ("numberMatched", "numberReturned", "timeStamp") if key in document}
     return {"document": document, "snapshot": snapshot}, inventory
+
+
+def _valid_geometry(geometry: object) -> bool:
+    if geometry is None:
+        return True
+    if not isinstance(geometry, Mapping) or not isinstance(geometry.get("type"), str):
+        return False
+    geometry_type = geometry["type"]
+    if geometry_type == "GeometryCollection":
+        members = geometry.get("geometries")
+        return isinstance(members, list) and all(_valid_geometry(member) for member in members)
+    if geometry_type not in {"Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"}:
+        return False
+    coordinates = geometry.get("coordinates")
+    if not isinstance(coordinates, list) or not coordinates:
+        return False
+    def position(value: object) -> bool:
+        return isinstance(value, list) and len(value) >= 2 and all(isinstance(item, (int, float)) and not isinstance(item, bool) and isfinite(item) for item in value)
+    def depth(value: object, levels: int) -> bool:
+        if levels == 0:
+            return position(value)
+        return isinstance(value, list) and bool(value) and all(depth(item, levels - 1) for item in value)
+    return depth(coordinates, {"Point": 0, "MultiPoint": 1, "LineString": 1, "MultiLineString": 2, "Polygon": 2, "MultiPolygon": 3}[geometry_type])
+
+
+def _safe_firms_path(value: object) -> str | None:
+    if not isinstance(value, str) or any(character in value for character in ("%", "\\", "?", "#")):
+        return None
+    parsed = urlsplit(value)
+    if parsed.scheme or parsed.netloc or parsed.query or parsed.fragment or parsed.path != value:
+        return None
+    if not re.fullmatch(r"/data/active_fire(?:/[A-Za-z0-9._-]+)+_Canada_24h\.csv", value):
+        return None
+    if any(part in {"", ".", ".."} for part in value.split("/")[1:]):
+        return None
+    return value
 
 
 def _csv_inventory(body: bytes) -> tuple[list[str], int]:
@@ -138,6 +176,7 @@ class CWFISFireProductsAdapter:
         validation = unresolved_manifest_validation(self.source_id, "native fire source fields have no owner-approved field, unit, mask, or API contract")
         workdir.mkdir(parents=True, exist_ok=True)
         artifacts: list[Artifact] = []
+        outputs: list[Path] = []
         completions: list[datetime] = []
         try:
             for kind, url, maximum in requests:
@@ -157,6 +196,7 @@ class CWFISFireProductsAdapter:
                     inventory = {field: "retrieved" for field in fields}
                     suffix, media = ".csv", "text/csv"
                 output = workdir / f"{kind}{suffix}"
+                outputs.append(output)
                 output.write_bytes(body)
                 digest = hashlib.sha256(body).hexdigest()
                 artifacts.append(Artifact(kind, media, output, {
@@ -174,7 +214,8 @@ class CWFISFireProductsAdapter:
                 }))
                 completions.append(completed)
         except BaseException:
-            for artifact in artifacts: artifact.payload_path.unlink(missing_ok=True)
+            for output in outputs:
+                output.unlink(missing_ok=True)
             raise
         return RunResult(source_id=self.source_id, provider_run_id=candidate.provider_run_id, run_time=candidate.run_time,
                          retrieved_at=max(completions), complete=validation.complete, qc_passed=validation.qc_passed,
@@ -217,8 +258,9 @@ class FIRMSActiveFireDownloadsAdapter:
         for sensor in self._sensors:
             regions = document["csv"].get(sensor)
             options = regions.get("Canada") if isinstance(regions, Mapping) else None
-            selected = [path for path in options if isinstance(path, str) and path.endswith("_Canada_24h.csv")] if isinstance(options, list) else []
-            if len(selected) != 1 or not selected[0].startswith("/data/active_fire/") or ".." in selected[0]:
+            selected = [_safe_firms_path(path) for path in options] if isinstance(options, list) else []
+            selected = [path for path in selected if path is not None]
+            if len(selected) != 1:
                 raise AdapterUnavailable(f"{self.source_id}: public index has no safe Canada 24-hour CSV for {sensor}")
             paths[sensor] = selected[0]
         return [RunCandidate(provider_run_id="firms-public-canada-24h", run_time=None,
@@ -232,11 +274,12 @@ class FIRMSActiveFireDownloadsAdapter:
         validation = unresolved_manifest_validation(self.source_id, "native FIRMS fields have no owner-approved field, unit, mask, or API contract")
         workdir.mkdir(parents=True, exist_ok=True)
         artifacts: list[Artifact] = []
+        outputs: list[Path] = []
         completions: list[datetime] = []
         try:
             for sensor in self._sensors:
                 path = paths[sensor]
-                if not isinstance(path, str) or not path.startswith("/data/active_fire/") or ".." in path:
+                if _safe_firms_path(path) is None:
                     raise AdapterUnavailable(f"{self.source_id}: unsafe public CSV path")
                 url = f"{self._origin}{path}"
                 try:
@@ -245,6 +288,7 @@ class FIRMSActiveFireDownloadsAdapter:
                     raise AdapterUnavailable(f"{self.source_id}: unavailable {sensor} CSV: {error}") from error
                 fields, rows = _csv_inventory(body)
                 output = workdir / f"firms_{sensor}.csv"
+                outputs.append(output)
                 output.write_bytes(body)
                 digest = hashlib.sha256(body).hexdigest()
                 artifacts.append(Artifact(f"firms_{sensor}_canada_24h", "text/csv", output, {
@@ -261,8 +305,8 @@ class FIRMSActiveFireDownloadsAdapter:
                 }))
                 completions.append(completed)
         except BaseException:
-            for artifact in artifacts:
-                artifact.payload_path.unlink(missing_ok=True)
+            for output in outputs:
+                output.unlink(missing_ok=True)
             raise
         return RunResult(source_id=self.source_id, provider_run_id=candidate.provider_run_id, run_time=None,
                          retrieved_at=max(completions), complete=validation.complete, qc_passed=validation.qc_passed,

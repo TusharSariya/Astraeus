@@ -141,3 +141,41 @@ def test_receipts_use_transport_completion_when_available(tmp_path: Path) -> Non
     result = adapter.fetch(adapter.discover(WINDOW)[0], WINDOW, tmp_path)
     assert result.retrieved_at == completed
     assert all(item.provenance["acquisition"]["response"]["completed_at"] == completed.isoformat() for item in result.artifacts)
+
+@pytest.mark.parametrize("geometry", [{}, {"type": "Point"}, {"type": "Point", "coordinates": [47.5]}, {"type": "GeometryCollection"}])
+def test_wfs_rejects_structurally_invalid_geometry_before_writing(tmp_path: Path, geometry: object) -> None:
+    wfs = json.dumps({"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {}, "geometry": geometry}]}).encode()
+    adapter = CWFISFireProductsAdapter(client=client(wfs=wfs, hotspot=b"lat,lon\n47.5,-52.7\n", cffeps=b"lat,lon\n47.5,-52.7\n"), downloads="https://fixture.invalid/hotspots", wfs="https://fixture.invalid/ows")
+    with pytest.raises(AdapterUnavailable, match="invalid properties or geometry"):
+        adapter.fetch(adapter.discover(WINDOW)[0], WINDOW, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_partial_artifact_write_is_removed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    wfs = json.dumps({"type": "FeatureCollection", "features": []}).encode()
+    adapter = CWFISFireProductsAdapter(client=client(wfs=wfs, hotspot=b"lat,lon\n47.5,-52.7\n", cffeps=b"lat,lon\n47.5,-52.7\n"), downloads="https://fixture.invalid/hotspots", wfs="https://fixture.invalid/ows")
+    original = Path.write_bytes
+    def partial_write(path: Path, body: bytes) -> int:
+        if path.name == "daily_hotspots.csv":
+            original(path, b"partial")
+            raise OSError("injected partial write")
+        return original(path, body)
+    monkeypatch.setattr(Path, "write_bytes", partial_write)
+    with pytest.raises(OSError, match="injected partial"):
+        adapter.fetch(adapter.discover(WINDOW)[0], WINDOW, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("unsafe_path", [
+    "/data/active_fire/%2e%2e/modis_Canada_24h.csv",
+    "/data/active_fire/dir\\modis_Canada_24h.csv",
+    "/data/active_fire/modis_Canada_24h.csv?x=1",
+    "/data/active_fire/modis_Canada_24h.csv#fragment",
+])
+def test_public_firms_index_rejects_encoded_or_nonpath_escape(unsafe_path: str) -> None:
+    from ingest.experimental.fire_products import FIRMSActiveFireDownloadsAdapter
+    index = json.loads(firms_index())
+    index["csv"]["modis"]["Canada"] = [unsafe_path]
+    adapter = FIRMSActiveFireDownloadsAdapter(client=firms_client(index=json.dumps(index).encode(), rows={}), index="https://fixture.invalid/api/active_fire_files/all?format=json", origin="https://fixture.invalid")
+    with pytest.raises(AdapterUnavailable, match="safe Canada"):
+        adapter.discover(WINDOW)
