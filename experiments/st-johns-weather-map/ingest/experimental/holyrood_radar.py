@@ -68,6 +68,14 @@ def _gif_metadata(body: bytes) -> dict[str, int]:
             offset += 1
         elif marker == 0x2C:
             if offset + 9 > len(body): raise ValueError("truncated GIF image descriptor")
+            left = int.from_bytes(body[offset:offset + 2], "little")
+            top = int.from_bytes(body[offset + 2:offset + 4], "little")
+            frame_width = int.from_bytes(body[offset + 4:offset + 6], "little")
+            frame_height = int.from_bytes(body[offset + 6:offset + 8], "little")
+            if not frame_width or not frame_height:
+                raise ValueError("GIF image descriptor has zero width or height")
+            if left + frame_width > width or top + frame_height > height:
+                raise ValueError("GIF image descriptor extends outside the logical canvas")
             packed = body[offset + 8]
             offset += 9
             if packed & 0x80: offset += 3 * (2 ** ((packed & 0x07) + 1))
@@ -179,7 +187,12 @@ class HolyroodDPQPEAdapter:
                     "raw_volume": "unsupported_no_verified_public_path",
                     "contingency_composite": "excluded_not_native_cashr",
                 },
-                "quality": validation.as_quality(), "coverage": {"status": "image-only", "station": "CASHR"},
+                # The validator's QC verdict is only the structural manifest
+                # gate.  ECCC supplies no provider quality flag in this GIF,
+                # so it remains unknown rather than inheriting that verdict.
+                "quality": validation.as_quality(),
+                "source_qc": {"status": "unknown", "flags": ["provider_quality_not_exposed_in_rendered_gif"]},
+                "coverage": {"status": "image-only", "station": "CASHR"},
                 "operational": False, "adapter_version": self.adapter_version,
                 **declared_classes(["retrieved"]),
                 }))

@@ -21,6 +21,9 @@ time.
 
 There is no owner-approved canonical `RunManifest` or API representation for a
 rendered native radar image. `unresolved_manifest_validation` makes every run
-`complete: false` and `qc_passed: false`; worker publication and layer/API
-frames are therefore refused. The local artifact readback is verification of
-bytes and provenance, never a data product claim.
+`complete: false`; worker publication and layer/API frames are therefore
+refused. Its `qc_passed` value is a structural validation verdict only and is
+not a provider-quality assertion. Each artifact separately records
+`source_qc.status: unknown`, because the GIF exposes no provider quality flag.
+The local artifact readback is verification of bytes and provenance, never a
+data product claim.

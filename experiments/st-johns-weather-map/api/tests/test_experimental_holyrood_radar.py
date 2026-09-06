@@ -43,6 +43,7 @@ def test_paired_native_gifs_are_immutable_but_unpublishable(tmp_path: Path) -> N
     assert all(item.provenance["image"] == {"width": 1, "height": 1, "frames": 1} for item in result.artifacts)
     assert all(item.provenance["operational"] is False for item in result.artifacts)
     assert all(item.provenance["quality"]["flags"] == ["manifest_unresolved"] for item in result.artifacts)
+    assert all(item.provenance["source_qc"]["status"] == "unknown" for item in result.artifacts)
     assert all(item.provenance["field_dispositions"]["raw_volume"].startswith("unsupported") for item in result.artifacts)
     assert all(item.provenance["field_dispositions"]["contingency_composite"].startswith("excluded") for item in result.artifacts)
     assert all(item.provenance["upstream_sha256"] == item.provenance["artifact_sha256"] for item in result.artifacts)
@@ -57,4 +58,23 @@ def test_missing_pair_bad_gif_and_oversize_fail_closed(tmp_path: Path) -> None:
     huge = HolyroodDPQPEAdapter(client({"listing": listing(RAIN, SNOW), RAIN: GIF + b"x" * MAX_IMAGE_BYTES, SNOW: GIF}), base_url="https://fixture.invalid/CASHR")
     with pytest.raises(AdapterUnavailable, match="unavailable rain"):
         huge.fetch(huge.discover(WINDOW)[0], WINDOW, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda data: data.__setitem__(20, 1),  # frame left=1 makes 1px frame exceed 1px canvas
+        lambda data: data.__setitem__(slice(24, 26), b"\x00\x00"),  # frame width=0
+    ],
+)
+def test_gif_descriptor_must_fit_the_nonzero_logical_canvas(tmp_path: Path, mutate) -> None:
+    malformed = bytearray(GIF)
+    mutate(malformed)
+    adapter = HolyroodDPQPEAdapter(
+        client({"listing": listing(RAIN, SNOW), RAIN: bytes(malformed), SNOW: GIF}),
+        base_url="https://fixture.invalid/CASHR",
+    )
+    with pytest.raises(AdapterUnavailable, match="complete bounded GIF"):
+        adapter.fetch(adapter.discover(WINDOW)[0], WINDOW, tmp_path)
     assert list(tmp_path.iterdir()) == []
