@@ -105,12 +105,13 @@ const liveSpaceWeather = {
   notices: [],
 }
 
-function routedFetch(routes: { point?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown; spaceWeather?: unknown; methods?: unknown }) {
+function routedFetch(routes: { point?: unknown; profile?: unknown; layers?: unknown; catalog?: unknown; timeline?: unknown; sources?: unknown; astronomy?: unknown; spaceWeather?: unknown; methods?: unknown }) {
   return vi.fn(async (url: string) => {
     if (url.includes('/methods')) return response(routes.methods ?? { default_method: 'baseline', methods: [], notices: [] })
     if (url.includes('/space-weather')) return response(routes.spaceWeather ?? liveSpaceWeather)
     if (url.includes('/astronomy')) return response(routes.astronomy ?? liveAstronomy)
     if (url.includes('/sources/status')) return response(routes.sources ?? sourceStatus)
+    if (url.includes('/profile')) return response(routes.profile ?? { valid_time: NOW, levels: [] })
     if (url.includes('/point')) return response(routes.point ?? apiPoint())
     if (url.includes('/layers')) return response(routes.layers ?? emptyLayers)
     if (url.includes('/catalog')) return response(routes.catalog ?? emptyCatalog)
@@ -127,6 +128,61 @@ async function openStory() {
 
 describe('weather workbench fail-closed behavior', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('API offline'))))
+
+  it('renders level-qualified HRDPS values when the expert profile response completes', async () => {
+    vi.stubGlobal('fetch', routedFetch({
+      profile: {
+        valid_time: '2026-09-06T19:00:00Z',
+        levels: [{ pressure_hpa: 850, fields: [
+          { field: 'temperature_850hPa', value: 9.8 },
+          { field: 'relative_humidity_850hPa', value: 99.7 },
+        ] }],
+      },
+    }))
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
+    await userEvent.click(await screen.findByText('Humidity & cloud profile'))
+    expect(await screen.findByRole('cell', { name: '9.8°C' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: '99.7%' })).toBeInTheDocument()
+  })
+
+  it('does not let an aborted profile response erase the newer selection', async () => {
+    let resolveOld!: (response: Response) => void
+    let profileCalls = 0
+    const fetchMock = routedFetch({})
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/profile')) {
+        profileCalls += 1
+        if (profileCalls === 1) return new Promise<Response>((resolve) => { resolveOld = resolve })
+        return response({ valid_time: '2026-09-06T19:00:00Z', levels: [{ pressure_hpa: 850, fields: [
+          { field: 'temperature_850hPa', value: 9.8 },
+          { field: 'relative_humidity_850hPa', value: 99.7 },
+        ] }] })
+      }
+      if (url.includes('/methods')) return response({ default_method: 'baseline', methods: [], notices: [] })
+      if (url.includes('/space-weather')) return response(liveSpaceWeather)
+      if (url.includes('/astronomy')) return response(liveAstronomy)
+      if (url.includes('/sources/status')) return response(sourceStatus)
+      if (url.includes('/point')) return response(apiPoint())
+      if (url.includes('/layers')) return response(emptyLayers)
+      if (url.includes('/catalog')) return response(emptyCatalog)
+      if (url.includes('/timeline')) return response(emptyTimeline)
+      return response({})
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
+    await waitFor(() => expect(profileCalls).toBe(1))
+    const latitude = screen.getByRole('textbox', { name: 'Latitude' })
+    await userEvent.clear(latitude)
+    await userEvent.type(latitude, '47.62')
+    await userEvent.click(screen.getByRole('button', { name: 'Go' }))
+    await userEvent.click(await screen.findByText('Humidity & cloud profile'))
+    expect(await screen.findByRole('cell', { name: '9.8°C' })).toBeInTheDocument()
+    resolveOld(response({ valid_time: '2026-09-06T18:00:00Z', levels: [] }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.getByRole('cell', { name: '9.8°C' })).toBeInTheDocument()
+  })
 
   it('shows unavailable unknown evidence on API outage instead of fixtures', async () => {
     render(<App />)

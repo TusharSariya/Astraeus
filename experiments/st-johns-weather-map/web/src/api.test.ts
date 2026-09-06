@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadLayerFlow, loadLayerRaster, loadMethods, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
+import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadLayerFlow, loadLayerRaster, loadMethods, loadProfile, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
 
 const rasterLayer: LayerItem = {
@@ -39,6 +39,25 @@ function rasterHeaders(overrides: Record<string, string> = {}): Record<string, s
 }
 
 const pngBody = () => new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' })
+
+it('maps native level-qualified HRDPS profile fields into the expert table', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    valid_time: '2026-09-06T19:00:00Z',
+    levels: [{ pressure_hpa: 850, fields: [
+      { field: 'temperature_850hPa', value: 9.8 },
+      { field: 'relative_humidity_850hPa', value: 99.7 },
+      { field: 'geopotential_height_850hPa', value: 1394.5 },
+    ] }],
+  }), { status: 200, headers: { 'content-type': 'application/json' } })))
+  await expect(loadProfile(
+    { id: 'cyyt', name: 'CYYT', latitude: 47.6, longitude: -52.7 },
+    '2026-09-06T19:00:00Z', 'HRDPS',
+  )).resolves.toEqual({
+    valid_time: '2026-09-06T19:00:00Z',
+    levels: [{ pressure_hpa: 850, temperature_c: 9.8, dew_point_c: null,
+      relative_humidity_pct: 99.7, wind_speed_ms: null }],
+  })
+})
 
 describe('raster request contract', () => {
   // The endpoint takes `south`, `west`, `north` and `east` as separate query
