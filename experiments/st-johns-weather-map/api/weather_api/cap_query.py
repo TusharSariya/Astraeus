@@ -124,23 +124,38 @@ def _validate_geometry(geometry: object, index: int) -> None:
     if not isinstance(coordinates, list) or not coordinates:
         raise CapQueryUnavailable(f"ECCC CAP feature {index} geometry has no coordinates")
     points = 0
-    def walk(value: object) -> None:
+    def position(value: object) -> tuple[float, float]:
         nonlocal points
-        if isinstance(value, list) and len(value) == 2 and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value):
-            lon, lat = float(value[0]), float(value[1])
-            if not all(math.isfinite(item) for item in (lon, lat)) or not (-180 <= lon <= 180 and -90 <= lat <= 90):
-                raise CapQueryUnavailable(f"ECCC CAP feature {index} geometry coordinate is invalid")
-            points += 1
-            if points > 100_000:
-                raise CapQueryUnavailable(f"ECCC CAP feature {index} geometry exceeds the coordinate ceiling")
-            return
+        if not (isinstance(value, list) and len(value) >= 2 and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value[:2])):
+            raise CapQueryUnavailable(f"ECCC CAP feature {index} geometry position is invalid")
+        lon, lat = float(value[0]), float(value[1])
+        if not all(math.isfinite(item) for item in (lon, lat)) or not (-180 <= lon <= 180 and -90 <= lat <= 90):
+            raise CapQueryUnavailable(f"ECCC CAP feature {index} geometry coordinate is invalid")
+        points += 1
+        if points > 100_000:
+            raise CapQueryUnavailable(f"ECCC CAP feature {index} geometry exceeds the coordinate ceiling")
+        return lon, lat
+
+    def ring(value: object) -> None:
+        if not isinstance(value, list) or len(value) < 4:
+            raise CapQueryUnavailable(f"ECCC CAP feature {index} polygon ring is too short")
+        parsed = [position(item) for item in value]
+        if parsed[0] != parsed[-1]:
+            raise CapQueryUnavailable(f"ECCC CAP feature {index} polygon ring is not closed")
+
+    def polygon(value: object) -> None:
         if not isinstance(value, list) or not value:
-            raise CapQueryUnavailable(f"ECCC CAP feature {index} geometry nesting is invalid")
-        for child in value:
-            walk(child)
-    walk(coordinates)
-    if points < 4:
-        raise CapQueryUnavailable(f"ECCC CAP feature {index} polygon is not a closed ring")
+            raise CapQueryUnavailable(f"ECCC CAP feature {index} polygon has no rings")
+        for item in value:
+            ring(item)
+
+    if geometry["type"] == "Polygon":
+        polygon(coordinates)
+    else:
+        if not isinstance(coordinates, list) or not coordinates:
+            raise CapQueryUnavailable(f"ECCC CAP feature {index} multipolygon has no polygons")
+        for item in coordinates:
+            polygon(item)
 
 
 def _max_age(headers: Mapping[str, object], completed: datetime) -> tuple[int, int]:
@@ -206,6 +221,15 @@ class CAPQueryService:
         self._boxes = tuple(dict(box) for box in (boxes or avalon_probe_boxes()))
         if not 1 <= len(self._boxes) <= CAP_MAX_BOXES:
             raise ValueError("ECCC CAP query requires 1..4 declared Avalon boxes")
+        if len({tuple(sorted(box.items())) for box in self._boxes}) != len(self._boxes):
+            raise ValueError("ECCC CAP declared boxes must be unique")
+        for box in self._boxes:
+            if set(box) != {"south", "west", "north", "east"}:
+                raise ValueError("ECCC CAP box must contain south, west, north and east")
+            if any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) for value in box.values()):
+                raise ValueError("ECCC CAP box coordinates must be finite numbers")
+            if not (-90 <= box["south"] < box["north"] <= 90 and -180 <= box["west"] < box["east"] <= 180):
+                raise ValueError("ECCC CAP box must be ordered south-west to north-east")
         geomet = GeoMetClient(client=self._client)
         urls = []
         for box in self._boxes:
@@ -252,7 +276,15 @@ class CAPQueryService:
                         merged[key] = feature
         if len(receipts) != len(self.key.urls):
             raise CapQueryUnavailable("ECCC CAP did not complete every declared box", partial_features=merged.values())
-        completed_values = [_parse_time(item.get("completed_at")) for item in receipts]
+        completed_values = []
+        for item in receipts:
+            raw_completed = item.get("completed_at")
+            parsed_completed = _parse_time(raw_completed)
+            try:
+                has_offset = datetime.fromisoformat(str(raw_completed).replace("Z", "+00:00")).tzinfo is not None
+            except ValueError:
+                has_offset = False
+            completed_values.append(parsed_completed if has_offset else None)
         if any(item is None for item in completed_values):
             raise CapQueryUnavailable("ECCC CAP receipt has no valid final-byte completion")
         fetched_at = max(item for item in completed_values if item is not None)

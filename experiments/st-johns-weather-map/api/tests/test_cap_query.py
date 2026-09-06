@@ -172,3 +172,22 @@ def test_failed_miss_has_finite_negative_backoff():
     clock.value += 31
     assert service.query(NOW)["alerts_in_force"] == 0
     assert client.calls == 3
+
+
+def test_geometry_boxes_and_completion_require_exact_bounded_shapes():
+    valid = feature("valid", sent="2026-09-06T20:00:00Z", effective="2026-09-06T20:00:00Z", expires="2026-09-06T22:00:00Z")
+    open_ring = {**valid, "geometry": {"type": "Polygon", "coordinates": [[[-53, 47], [-52, 47], [-52, 48], [-53, 48]]]}}
+    with pytest.raises(CapQueryUnavailable, match="ring is not closed"):
+        CAPQueryService(client=Client([collection(open_ring), collection()]), boxes=BOXES, clock=Clock()).query(NOW)
+    with pytest.raises(ValueError, match="ordered"):
+        CAPQueryService(client=Client([]), boxes=({"south": 48, "west": -54, "north": 47, "east": -52},), clock=Clock())
+
+    client = Client([collection(valid), collection()])
+    original = client.get_bytes_with_receipt
+    def naive(url, *, max_bytes):
+        body, receipt = original(url, max_bytes=max_bytes)
+        receipt["completed_at"] = "2026-09-06T21:00:00"
+        return body, receipt
+    client.get_bytes_with_receipt = naive
+    with pytest.raises(CapQueryUnavailable, match="final-byte completion"):
+        CAPQueryService(client=client, boxes=BOXES, clock=Clock()).query(NOW)
