@@ -48,6 +48,15 @@ def test_get_endpoints(endpoint):
     assert response.json()["operational"] is False
 
 
+def test_layers_refuse_an_unknown_demand_product(monkeypatch):
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    response = client.get(f"{PREFIX}/layers", params={"product": "NOAA"})
+    assert response.status_code == 200
+    assert response.json()["data_mode"] == "unavailable"
+    assert response.json()["layers"] == []
+    assert response.json()["notices"] == ["NOAA has no timestamp-demand layer implementation"]
+
+
 def test_catalog_is_the_whole_registry_and_never_claims_an_active_source():
     """The catalogue is ``registry/source_data.py``, not a hand-written subset.
 

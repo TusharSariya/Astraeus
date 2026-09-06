@@ -902,7 +902,7 @@ def _proxied_forecast_layers() -> tuple[list[Layer], list[str]]:
 
 
 @app.get(f"{PREFIX}/layers", response_model=LayersResponse)
-def get_layers() -> LayersResponse:
+def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     if fixture_mode():
         return LayersResponse(
             data_mode=DataMode.FIXTURE,
@@ -912,6 +912,11 @@ def get_layers() -> LayersResponse:
         return LayersResponse(
             data_mode=DataMode.UNAVAILABLE, layers=[],
             notices=["WEATHER_DATA_MODE is not a recognized live mode; no layer can be offered"],
+        )
+    if product is not None and product.upper() not in {"GFS", "HRDPS"}:
+        return LayersResponse(
+            data_mode=DataMode.UNAVAILABLE, layers=[],
+            notices=[f"{product} has no timestamp-demand layer implementation"],
         )
 
     store = live_store()

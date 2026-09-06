@@ -655,12 +655,6 @@ export default function App() {
       setCatalog(result.sources)
       setCatalogError(result.error)
     }).catch(() => undefined)
-    loadLayers(controller.signal).then((result) => {
-      setLayers(result.layers)
-      setLayerNotices(result.notices)
-      setLayersError(result.error)
-      setLayersLoading(false)
-    }).catch(() => undefined)
     // Station markers are drawn from a hardcoded picker list, so this is the
     // only thing that can say whether anything has actually been ingested for
     // one. Until it answers, every station reads as coverage unknown.
@@ -684,6 +678,21 @@ export default function App() {
     }).catch(() => undefined)
     return () => controller.abort()
   }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setLayersLoading(true)
+    const demandProduct = selectedProduct === 'GFS' || selectedProduct === 'HRDPS' ? selectedProduct : undefined
+    loadLayers(demandProduct, controller.signal).then((result) => {
+      if (!controller.signal.aborted) {
+        setLayers(result.layers)
+        setLayerNotices(result.notices)
+        setLayersError(result.error)
+        setLayersLoading(false)
+      }
+    }).catch(() => undefined)
+    return () => controller.abort()
+  }, [selectedProduct])
 
   useEffect(() => {
     const controller = new AbortController()

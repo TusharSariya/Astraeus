@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadLayerFlow, loadLayerRaster, loadMethods, loadProfile, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
+import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadLayerFlow, loadLayerRaster, loadLayers, loadMethods, loadProfile, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
 
 const rasterLayer: LayerItem = {
@@ -891,5 +891,21 @@ describe('published-frame markers', () => {
     expect(markers).toHaveLength(1)
     expect(markers[0].time).toBe('2026-08-30T03:00:00Z')
     expect(reported).toEqual([])
+  })
+})
+
+describe('timestamp-demand layer catalogue', () => {
+  it('requests layers for the selected source and explains the demand-query basis', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data_mode: 'live', layers: [], notices: [] }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await loadLayers('GFS')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/layers?product=GFS'),
+      expect.objectContaining({ headers: { Accept: 'application/json' } }),
+    )
+    expect(describeEvidenceBasis('demand_query')).toMatch(/selected timestamp/i)
+    expect(describeEvidenceBasis('demand_query')).toMatch(/native grid/i)
   })
 })
