@@ -984,6 +984,9 @@ class Layer(StrictModel):
     product: str
     units: str
     semantics: str
+    evidence_class: EvidenceClass | None = None
+    family: str | None = None
+    field_key: str | None = None
     #: Exactly the valid times this layer published, at its own cadence. Empty
     #: means the artifact carries no time coordinate, never that it covers all
     #: hours: a client must not synthesise frames for a layer that declared none.

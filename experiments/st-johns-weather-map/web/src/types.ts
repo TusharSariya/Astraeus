@@ -156,6 +156,7 @@ export interface FieldAttribution {
   product: string | null
   /** Native producer run and exact demand content revision, when declared. */
   runTime: string | null
+  validTime: string | null
   artifactRevision: string | null
   provider: string
   /** The catalogue key this value was served under, verbatim. Null when the

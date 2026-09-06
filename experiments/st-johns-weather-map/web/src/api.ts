@@ -260,6 +260,7 @@ function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | 
     sourceId: typeof provenance.source_id === 'string' ? provenance.source_id : null,
     product: typeof provenance.product === 'string' ? provenance.product : null,
     runTime: text(provenance.run_time),
+    validTime: text(provenance.valid_time),
     artifactRevision: text(provenance.artifact_revision),
     provider: String(provenance.provider ?? 'Unknown provider'),
     // The catalogue axis. Read from the value first, then from provenance;

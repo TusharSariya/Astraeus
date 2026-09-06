@@ -24,7 +24,7 @@ export function demandLayerRefreshIdentity(product: string | undefined, source: 
   const sourceId = product === 'GFS' ? 'noaa-gfs' : 'eccc-hrdps'
   const attribution = Object.values(snapshot.fieldSources).find((item) => item.sourceId === sourceId)
   if (source !== 'live' || snapshot.selectedSourceId !== sourceId || !attribution) return `${product}:pending`
-  return `${product}:${attribution.runTime ?? 'unknown-run'}:${snapshot.validAt ?? 'unknown-valid'}:${attribution.artifactRevision ?? 'unknown-revision'}`
+  return `${product}:${attribution.runTime ?? 'unknown-run'}:${attribution.validTime ?? 'unknown-valid'}:${attribution.artifactRevision ?? 'unknown-revision'}`
 }
 
 /** Scrub resolution. Five minutes is finer than the fastest layer published

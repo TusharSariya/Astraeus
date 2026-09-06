@@ -426,7 +426,7 @@ describe('weather workbench fail-closed behavior', () => {
 
 it('keys a demand layer refresh by producer run and content revision as well as native time', () => {
   const pointFor = (runTime: string, revision: string) => normalizePoint(apiPoint([
-    { field: 'temperature', value: 14.6, provenance: { source_id: 'noaa-gfs', product: 'GFS', provider: 'NOAA/NCEP', normalized_units: 'degC', data_mode: 'live', evidence_class: 'retrieved', run_time: runTime, artifact_revision: revision } },
+    { field: 'temperature', value: 14.6, provenance: { source_id: 'noaa-gfs', product: 'GFS', provider: 'NOAA/NCEP', normalized_units: 'degC', data_mode: 'live', evidence_class: 'retrieved', run_time: runTime, valid_time: '2026-08-29T18:00:00Z', artifact_revision: revision } },
   ], { mode: 'selected', selected_source_id: 'noaa-gfs', selected_product_id: 'gfs', badge: 'GFS selected', reason: 'test' }) as never)
   const first = demandLayerRefreshIdentity('GFS', 'live', pointFor('2026-08-29T12:00:00Z', 'demand:first'))
   const replacement = demandLayerRefreshIdentity('GFS', 'live', pointFor('2026-08-29T18:00:00Z', 'demand:second'))

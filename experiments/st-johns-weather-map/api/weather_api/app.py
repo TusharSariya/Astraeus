@@ -927,6 +927,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
         return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
             id="noaa-gfs-demand-total-cloud", title="GFS total cloud (selected-time native grid)",
             kind="raster", field="total_cloud_geometric", product="GFS", units="percent",
+            evidence_class="retrieved", family="cloud_cover", field_key="total_cloud_geometric",
             semantics="NOAA GFS entire-atmosphere geometric total cloud rendered here from the selected native grid; nearest cell, never interpolated or compared as opacity",
             times=list(times), cadence_seconds=None, staleness_tolerance_seconds=3600,
             z_index=Z_INDEX_BY_KIND["raster"], evidence_basis="demand_query", group="rendered_grid",
