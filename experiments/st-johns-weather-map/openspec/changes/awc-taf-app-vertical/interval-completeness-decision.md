@@ -48,18 +48,22 @@ groups, rather than a regular timestamp grid:
   `timeTo`, `timeBec`, change label and probability.
 - A group is applicable when its half-open native interval intersects the
   requested evidence window. Its native start MUST NOT be clamped or replaced.
-- Require the initial prevailing group and every FM group to carry the complete
-  mandatory field set.
-- Permit BECMG, TEMPO and probability groups to omit unchanged fields. Record
-  each omission as `not_stated_in_change_group`, distinct from an unknown or
-  malformed value.
+- Require the initial prevailing group and every FM group to carry decoded wind
+  speed/direction, visibility and sky. CAVOK satisfies its combined
+  visibility/weather/sky meaning; null weather is decoded absence and gust is
+  optional.
+- Permit BECMG, TEMPO and probability groups to omit unchanged fields. AWC may
+  expand inherited values in its decoded JSON, so mark populated keys
+  `decoded_value`, explicit nulls `decoded_absence`, and only missing keys
+  `not_stated_in_change_group`. Do not claim whether a decoded value was
+  repeated in the raw coded group.
 - Do not materialize inherited values in the artifact or API. A later explicit
   composition contract may compute a prevailing-at-instant view, but this
   source slice publishes the sparse native groups only.
 - Structural completeness requires one valid CYYT report, aware issue time,
-  increasing overall validity, 1–32 valid ordered groups, a complete prevailing
-  group, complete FM groups, and valid syntax/units for every field that is
-  present. It does not use the generic per-cell `0.9` coverage ratio.
+  increasing overall validity, 1–32 valid ordered groups, the exact
+  self-contained group fields above, and valid syntax/units for every field
+  that is present. It does not use the generic per-cell `0.9` coverage ratio.
 - Any malformed identity, time, group, field, unit, unknown cloud vocabulary or
   unsupported seventh cloud layer fails the whole run.
 
@@ -80,8 +84,9 @@ same one-way `ValidationResult` and publication remains fail closed.
 
 ## Required owner resolution
 
-Accept or reject the recommended sparse interval/group contract. Acceptance
-authorizes a source-specific structural validator and native sparse API/read
-path; it does not authorize inheritance, interpolation, change-transition
+Accept or reject the recommended sparse interval/group contract and the
+read-only `/aviation/taf` plus Workbench group-card disclosure defined by the
+executable delta. Acceptance authorizes a source-specific structural validator;
+it does not authorize inheritance, interpolation, change-transition
 timing, aviation decision support, operational status, or any other aviation
 family expansion.
