@@ -43,7 +43,7 @@ All artifacts and identity companions required by one reference revision SHALL b
 
 Each reference source contract SHALL select `coverage_interval` or `effective_table`; `frame_window` is allowed only with primary evidence that the source publishes frames. A consumer interval SHALL be fully covered. Provider expiry SHALL make current data immediately unavailable without predecessor fallback. A source without provider expiry SHALL remain unavailable until its accepted contract declares `max_age`.
 
-Each atomic acquisition SHALL reserve no more than 64 MiB before retrieval. At most one current and seven superseded revisions per source SHALL be retained. Superseded revisions SHALL be non-routable and evicted after 30 days; a ninth revision SHALL evict the oldest eligible predecessor first. Admission SHALL use the projected retained set under the unchanged global 64 GiB quota and SHALL refuse acquisition rather than evict the sole unexpired current revision.
+Each source contract SHALL declare measured per-revision acquisition and stored bounds, reserved before retrieval. All retained reference inputs SHALL fit within one 64 MiB aggregate sub-budget inside the unchanged 64 GiB hot-store quota. At most one current and seven superseded revisions per source SHALL be retained. Superseded revisions SHALL be non-routable and evicted after 30 days; a ninth revision SHALL evict the oldest eligible predecessor first. Admission SHALL use the projected retained set under the unchanged global 64 GiB quota and SHALL refuse acquisition rather than evict the sole unexpired current revision.
 
 #### Scenario: Ninth revision arrives
 
@@ -57,7 +57,7 @@ Each atomic acquisition SHALL reserve no more than 64 MiB before retrieval. At m
 
 #### Scenario: Quota cannot admit replacement
 
-- **WHEN** eligible predecessor eviction cannot fit the projected revision group under the global quota
+- **WHEN** eligible predecessor eviction cannot fit the projected retained reference set under the 64 MiB aggregate sub-budget or global quota
 - **THEN** acquisition is refused and the sole unexpired current revision remains current
 
 #### Scenario: Provider publishes no expiry
