@@ -9,6 +9,16 @@ finite enforced byte ceiling. The Linux worker SHALL enforce a finite memory
 cgroup and temporary filesystem ceiling. Unsupported enforcement SHALL refuse
 before discovery. No missing or oversized response may be replaced or thinned.
 
+For this measured slice the complete-operation ceilings are 12,673,089,536
+received bytes, 2,952,790,016 temporary-filesystem bytes, 536,870,912 staged
+store bytes and a 134,217,728-byte filesystem margin. Each directory listing is
+limited to 2,097,152 bytes, each GRIB response to 10,485,760 bytes, discovery to
+four cycles on each of two dates, and the selected run to 25 lead times and 48
+mapped fields. The worker cgroup SHALL have the measured 4,294,967,296-byte
+ceiling; its `/tmp` filesystem SHALL have a capacity no larger than 3 GiB and
+enough available bytes for the
+temporary-filesystem reservation plus margin.
+
 #### Scenario: A continental crop retains a full-grid coordinate allocation
 
 - **WHEN** a cropped field still shares memory with either full-grid coordinate
@@ -18,6 +28,11 @@ before discovery. No missing or oversized response may be replaced or thinned.
 
 - **WHEN** the durable store reservation, temporary filesystem, memory cgroup, listing or payload ceiling cannot cover the complete operation
 - **THEN** HRDPS is refused before publication and the previous revision remains readable
+
+#### Scenario: A listing advertises an unbounded shape
+
+- **WHEN** either dated directory advertises more than four cycles, or a listing or selected GRIB exceeds its byte ceiling
+- **THEN** the adapter refuses the operation without thinning cycles, fields or lead times
 
 ### Requirement: HRDPS uses the existing application evidence path
 
@@ -52,3 +67,25 @@ live-proxy rasters SHALL NOT substitute for artifact-backed evidence.
 
 - **WHEN** a retained HRDPS field covers the requested valid time
 - **THEN** timeline, point and profile responses preserve its provider run time and each sampled field's catalogue vertical level
+
+#### Scenario: Publication metadata closes after retrieval
+
+- **WHEN** the last selected HRDPS message has been received and decoded
+- **THEN** the artifact records all 25 exact valid times and the provider run time, and retrieval time is captured after that final decode
+
+#### Scenario: A retained legacy revision lacks exact frame metadata
+
+- **WHEN** a retained HRDPS revision predates exact `run_time` and `valid_times` provenance
+- **THEN** readers recover its exact frame coordinates from the integrity-checked immutable Zarr and derive its run time from the PT000 frame, without interpolating database span edges or modifying the revision
+
+### Requirement: Preserved experiment volumes accept the current source-state vocabulary
+
+The local migration path SHALL replace the historical source-state check with
+the closed vocabulary used by the current registry while retaining accepted
+legacy values needed by existing rows. It SHALL preserve those rows and SHALL
+NOT promote any source to `operational`.
+
+#### Scenario: The migration is applied again
+
+- **WHEN** the source-state migration runs on an already upgraded preserved volume
+- **THEN** its constraint is recreated successfully, legacy rows remain unchanged and `implemented-unverified` publication metadata is accepted
