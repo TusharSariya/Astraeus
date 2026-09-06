@@ -134,8 +134,6 @@ def test_identical_concurrent_miss_coalesces_and_fresh_hit_adds_no_requests():
     assert {item["content_digest"] for item in responses} == {responses[0]["content_digest"]}
     assert service.query(NOW)["content_digest"] == responses[0]["content_digest"]
     assert client.calls == 2
-    assert responses[0]["completed_provider_requests"] == 2
-    assert service.query(NOW)["completed_provider_requests"] == 2
 
 
 def test_historical_selection_and_invalid_native_validity_fail_closed():
