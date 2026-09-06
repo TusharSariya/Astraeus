@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 
 import weather_api.app  # noqa: F401
 import weather_api.swpc_kp_query as kp_query_module
+import weather_api.swpc_rtsw_query as rtsw_query_module
 from ingest.store import CurrentArtifact
 from weather_api.app import PREFIX, app
 from weather_api.fixtures import now
@@ -145,6 +146,10 @@ def use_store(monkeypatch, data_mode, store) -> None:
                 api_module._kp_series(store.read_series("noaa-swpc-kp", "kp_forecast"), at, with_status=True, name="kp_forecast"),
             )
     monkeypatch.setattr(kp_query_module, "swpc_kp_query_service", lambda: DemandKp())
+    class DemandRTSW:
+        def latest(self, at):
+            return api_module._solar_wind_latest(store.read_series("noaa-swpc-rtsw", "solar_wind"), at)
+    monkeypatch.setattr(rtsw_query_module, "swpc_rtsw_query_service", lambda: DemandRTSW())
 
 
 def full_store(reference: datetime) -> StubStore:
@@ -260,8 +265,8 @@ def test_unconfigured_mode_fails_closed(data_mode):
     assert any("fails closed" in notice for notice in payload["notices"])
 
 
-def test_demand_kp_survives_retained_solar_wind_store_failure(monkeypatch, data_mode):
-    """The independent demand result is never erased by the legacy store."""
+def test_demand_kp_survives_solar_wind_demand_failure(monkeypatch, data_mode):
+    """One independent demand source never erases the other."""
     reference = datetime.now(UTC).replace(second=0, microsecond=0)
     kp_store = StubStore([kp_observed_pair(reference), kp_forecast_pair(reference)])
 
@@ -272,15 +277,14 @@ def test_demand_kp_survives_retained_solar_wind_store_failure(monkeypatch, data_
                 api_module._kp_series(kp_store.read_series("noaa-swpc-kp", "kp_forecast"), at, with_status=True, name="kp_forecast"),
             )
 
-    class RaisingStore:
-        skipped = []
-
-        def read_series(self, *_args):
-            raise RuntimeError("retained store unavailable")
+    class FailedRTSW:
+        def latest(self, _at):
+            raise rtsw_query_module.SWPCRTSWUnavailable("RTSW unavailable")
 
     data_mode("live")
     monkeypatch.setattr(kp_query_module, "swpc_kp_query_service", lambda: DemandKp())
-    monkeypatch.setattr(api_module, "live_store", lambda: RaisingStore())
+    monkeypatch.setattr(rtsw_query_module, "swpc_rtsw_query_service", lambda: FailedRTSW())
+    monkeypatch.setattr(api_module, "live_store", lambda: (_ for _ in ()).throw(AssertionError("retained store must not be read")))
 
     response = space_weather(reference)
     assert response.status_code == 200
@@ -289,7 +293,7 @@ def test_demand_kp_survives_retained_solar_wind_store_failure(monkeypatch, data_
     assert payload["kp_observed"]["available"] is True
     assert payload["kp_forecast"]["available"] is True
     assert payload["solar_wind"]["available"] is False
-    assert any("retained store raised" in notice for notice in payload["notices"])
+    assert any("RTSW unavailable" in notice for notice in payload["notices"])
 
 
 # --- planetary quantities never reach /point --------------------------------

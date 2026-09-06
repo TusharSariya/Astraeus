@@ -137,3 +137,29 @@ scheduled refresh, or substitute the current document for historical evidence.
 - **WHEN** the bounded provider response has no Cache-Control freshness, ETag, Last-Modified, or Expires header, as observed on 2026-09-06
 - **THEN** the experiment uses a finite 60-second source-local policy ceiling and performs a complete bounded 200 retrieval after expiry
 - **AND** it does not invent a conditional validator or serve an expired response as current
+
+### Requirement: SWPC RTSW magnetic rows are queried without retained artifacts
+The isolated experiment SHALL obtain the current `rtsw_mag_1m.json` document
+through one canonical bounded and coalesced source cache. Every native row,
+spacecraft label, magnetic value, active/manual flag and quality flag SHALL be
+validated and retained in the cache with completed transport provenance. The
+focused `/space-weather` response SHALL NOT read a retained solar-wind artifact.
+
+#### Scenario: A selected current-context instant has native Bz
+- **WHEN** one or more finite native Bz rows exist at or before the aware selected instant
+- **THEN** the newest exact native minute is served with Bz and Bt in nT, its feed-declared spacecraft, active and overall-quality values, measurement time and acquisition identity
+- **AND** exactly one spacecraft marked active is preferred; zero or multiple active spacecraft use a disclosed deterministic native-label fallback
+- **AND** no interpolation, propagation, localization, stale carry-forward or invented spacecraft identity occurs
+
+#### Scenario: The retained store or the independent Kp feed fails
+- **WHEN** RTSW succeeds while Kp fails, or Kp succeeds while RTSW fails
+- **THEN** the successful source remains visible and the failed source is explicitly unavailable
+- **AND** the demand RTSW path never reads ArtifactStore
+
+#### Scenario: RTSW document validation fails
+- **WHEN** any row is malformed, omits a declared native field, duplicates a time/spacecraft identity, has an invalid numeric/flag value, exceeds the byte envelope or the newest applicable Bz is stale
+- **THEN** the document is unavailable and no row is silently dropped or converted to zero
+
+#### Scenario: Identical RTSW misses are concurrent
+- **WHEN** multiple selected-time requests resolve to the same canonical current document
+- **THEN** one bounded provider request runs and a fresh repeat adds no provider request
