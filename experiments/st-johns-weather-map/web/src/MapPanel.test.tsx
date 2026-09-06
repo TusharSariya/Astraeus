@@ -268,9 +268,9 @@ describe('MapPanel station coverage', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('separates stations with a live ingested source from those without, in text', () => {
+  it('separates stations with a live response-backed source from those without, in text', () => {
     render(panel())
-    expect(screen.getByText(/live ingested source awc-metar-speci, awc-taf/i)).toBeInTheDocument()
+    expect(screen.getByText(/source status reports awc-metar-speci, awc-taf as live/i)).toBeInTheDocument()
     expect(screen.getByText(/smartatlantic-st-johns is catalogued but reported no live retrieval/i)).toBeInTheDocument()
     expect(screen.getByText(/no registry source declares coverage of this place/i)).toBeInTheDocument()
   })
@@ -278,7 +278,7 @@ describe('MapPanel station coverage', () => {
   it('reports coverage as unknown, never as absent, when the status endpoint could not be read', () => {
     render(panel({ sourceStatuses: null }))
     expect(screen.getAllByText(/source status could not be read/i).length).toBe(2)
-    expect(screen.queryByText(/live ingested source/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/live response-backed source/i)).not.toBeInTheDocument()
   })
 
   it('declares every glyph the labels use, keeps the apostrophe in place names, and favours the selected station in collisions', () => {
@@ -295,7 +295,7 @@ describe('MapPanel station coverage', () => {
     expect(props.characterSet).toContain('\u2019')
     expect(props.characterSet).toContain('\u00b7')
     const cyyt = props.data.find((d) => d.id === 'cyyt')!
-    expect(props.getText(cyyt)).toBe('CYYT \u00b7 live source')
+    expect(props.getText(cyyt)).toBe('CYYT \u00b7 status-reported live source')
     expect(props.getText(props.data.find((d) => d.id === 'sma-sj')!)).toMatch(/St\. John\u2019s/)
     expect(props.extensions.some((extension) => extension?.constructor?.name === 'CollisionFilterExtension')).toBe(true)
     expect(props.getCollisionPriority(cyyt)).toBeGreaterThan(props.getCollisionPriority({ id: 'cape-spear' }))

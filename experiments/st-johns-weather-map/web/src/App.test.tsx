@@ -488,13 +488,13 @@ describe('story card keyboard activation', () => {
 })
 
 describe('station markers and live-source coverage', () => {
-  it('says in the picker which stations have a live ingested source and which do not', async () => {
+  it('distinguishes status-reported live stations from current response evidence', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
     render(<App />)
     expect(await screen.findByRole('option', { name: /CYYT.*live source/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /SmartAtlantic.*no live retrieval/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Cape Spear.*no ingested source/i })).toBeInTheDocument()
-    expect(await screen.findByText(/A live ingested source stands behind 1 of 3 stations/i)).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Cape Spear.*no eligible source/i })).toBeInTheDocument()
+    expect(await screen.findByText(/Source status separately reports 1 station as live without evidence in the selected response/i)).toBeInTheDocument()
   })
 
   it('shows coverage as unknown, never as live, when the status endpoint fails', async () => {
@@ -1064,13 +1064,13 @@ describe('station picker is grouped by live-source coverage', () => {
     render(<App />)
     await screen.findByRole('option', { name: /CYYT.*live source/i })
     const groups = within(picker()).getAllByRole('group').map((group) => (group as HTMLOptGroupElement).label)
-    expect(groups).toEqual(['Live ingested source', 'No ingested source (place to query)'])
-    const live = within(picker()).getByRole('group', { name: 'Live ingested source' })
+    expect(groups).toEqual(['Status-reported live source', 'No eligible response-backed source (place to query)'])
+    const live = within(picker()).getByRole('group', { name: 'Status-reported live source' })
     expect(within(live).getAllByRole('option')).toHaveLength(1)
     expect(within(live).getByRole('option', { name: /CYYT/ })).toBeInTheDocument()
-    const query = within(picker()).getByRole('group', { name: 'No ingested source (place to query)' })
+    const query = within(picker()).getByRole('group', { name: 'No eligible response-backed source (place to query)' })
     expect(within(query).getByRole('option', { name: /SmartAtlantic.*no live retrieval/i })).toBeInTheDocument()
-    expect(within(query).getByRole('option', { name: /Cape Spear.*no ingested source/i })).toBeInTheDocument()
+    expect(within(query).getByRole('option', { name: /Cape Spear.*no eligible source/i })).toBeInTheDocument()
     // The placeholder stays outside every group and stays disabled.
     expect(screen.getByRole('option', { name: 'Custom map point' }).closest('optgroup')).toBeNull()
     expect(screen.getByRole('option', { name: 'Custom map point' })).toBeDisabled()
@@ -1091,8 +1091,8 @@ describe('station picker is grouped by live-source coverage', () => {
     render(<App />)
     await screen.findByText(/Live-source coverage unknown: source status returned 503/i)
     const groups = within(picker()).getAllByRole('group').map((group) => (group as HTMLOptGroupElement).label)
-    expect(groups).toEqual(['Live-source coverage unknown', 'No ingested source (place to query)'])
-    expect(within(picker()).queryByRole('group', { name: 'Live ingested source' })).not.toBeInTheDocument()
+    expect(groups).toEqual(['Live-source coverage unknown', 'No eligible response-backed source (place to query)'])
+    expect(within(picker()).queryByRole('group', { name: 'Live response-backed source' })).not.toBeInTheDocument()
   })
 })
 

@@ -335,6 +335,35 @@ class EnsembleProvenance(StrictModel):
         return self
 
 
+class NativeReportIdentity(StrictModel):
+    """Bounded identity for one provider report behind a demand value."""
+
+    station_id: str
+    provider_report_id: int | str | None = None
+    report_type: str | None = None
+    observation_time: datetime
+    report_time: datetime | None = None
+    receipt_time: datetime | None = None
+    raw_report_sha256: str | None = None
+    provider_station_name: str | None = None
+    provider_latitude: float | None = None
+    provider_longitude: float | None = None
+    provider_elevation_m: float | None = None
+    flight_category: str | None = None
+    quality_code: float | None = None
+    #: Provider-native values needed to audit source fields that have no
+    #: canonical point field. The raw report text is represented by its digest
+    #: above, so one report cannot multiply arbitrary text across every field.
+    native_metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("observation_time", "report_time", "receipt_time")
+    @classmethod
+    def require_report_time_offset(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            raise ValueError("native report timestamps must include an offset")
+        return value
+
+
 class Provenance(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
@@ -390,6 +419,7 @@ class Provenance(StrictModel):
     intermediary: str | None = None
     intermediary_method: str | None = None
     adapter_version: str
+    native_report: NativeReportIdentity | None = None
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
     #: echoing the request back would overstate where the reading came from.

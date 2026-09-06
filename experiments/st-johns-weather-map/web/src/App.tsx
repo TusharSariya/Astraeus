@@ -801,23 +801,31 @@ export default function App() {
   const mapEvidence = useMemo(() => [...evidenceRows(snapshot, humidityGap), ...ensembleTextRows(snapshot)], [snapshot, humidityGap])
   const shownCloudLayers = useMemo(() => filterCloudLayers(snapshot.cloudLayers, cloudBands), [snapshot.cloudLayers, cloudBands])
   const anyBandOff = !cloudBands.low || !cloudBands.middle || !cloudBands.high
-  const stationOptions = useMemo(() => stations.map((station) => ({ station, coverage: stationCoverage(station, sourceStatuses) })), [sourceStatuses])
+  const responseSourceIds = useMemo(() => new Set(
+    Object.values(snapshot.fieldSources).map((source) => source.sourceId).filter((id): id is string => id !== null),
+  ), [snapshot.fieldSources])
+  const stationOptions = useMemo(() => stations.map((station) => ({
+    station, coverage: stationCoverage(station, sourceStatuses, responseSourceIds),
+  })), [responseSourceIds, sourceStatuses])
   /** The picker's groups, in the words the marker and the text alternative
    *  use. A station whose coverage could not be read is neither live nor a
    *  bare place to query, so it gets its own group rather than either claim. */
   const stationGroups = useMemo(() => {
     const groups: Array<{ label: string; entries: typeof stationOptions }> = [
-      { label: 'Live ingested source', entries: stationOptions.filter(({ coverage }) => coverage.state === 'live') },
+      { label: 'Live response-backed source', entries: stationOptions.filter(({ coverage }) => coverage.state === 'live') },
+      { label: 'Status-reported live source', entries: stationOptions.filter(({ coverage }) => coverage.state === 'status-live') },
       { label: 'Live-source coverage unknown', entries: stationOptions.filter(({ coverage }) => coverage.state === 'unknown') },
-      { label: 'No ingested source (place to query)', entries: stationOptions.filter(({ coverage }) => coverage.state !== 'live' && coverage.state !== 'unknown') },
+      { label: 'No eligible response-backed source (place to query)', entries: stationOptions.filter(({ coverage }) => !['live', 'status-live', 'unknown'].includes(coverage.state)) },
     ]
     return groups.filter(({ entries }) => entries.length > 0)
   }, [stationOptions])
   const stationCoverageNotice = useMemo(() => {
     if (sourceStatusError) return `Live-source coverage unknown: ${sourceStatusError}. No station is being shown as live.`
-    if (sourceStatuses === null) return 'Checking which stations have a live ingested source…'
+    if (sourceStatuses === null) return 'Checking which stations have live response-backed evidence…'
     const live = stationOptions.filter(({ coverage }) => coverage.state === 'live').length
-    return `A live ingested source stands behind ${live} of ${stationOptions.length} stations; the rest are places you can query, not stations reporting to this deployment.`
+    const statusLive = stationOptions.filter(({ coverage }) => coverage.state === 'status-live').length
+    const statusNote = statusLive > 0 ? ` Source status separately reports ${statusLive} station${statusLive === 1 ? '' : 's'} as live without evidence in the selected response.` : ''
+    return `A live response-backed source stands behind ${live} of ${stationOptions.length} stations; the rest are places you can query, not stations reporting to this deployment.${statusNote}`
   }, [sourceStatusError, sourceStatuses, stationOptions])
 
   // The header names the product the response answered with, in the response's
@@ -1046,6 +1054,7 @@ export default function App() {
                 layerNotices={layerNotices}
                 evidence={mapEvidence}
                 sourceStatuses={sourceStatuses}
+                responseSourceIds={responseSourceIds}
                 theme={theme}
               />
               {storyOpen && (
@@ -1483,6 +1492,7 @@ export default function App() {
                 layerNotices={layerNotices}
                 evidence={mapEvidence}
                 sourceStatuses={sourceStatuses}
+                responseSourceIds={responseSourceIds}
                 theme={theme}
               />
               <section className="comparison-unavailable"><strong>Pane B unavailable</strong><p>No second response-backed field is loaded. Comparison is not inferred.</p></section>

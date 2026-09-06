@@ -68,6 +68,9 @@ interface MapPanelProps {
   /** `/sources/status` rows, or `null` when the endpoint could not be read.
    *  The only thing permitted to say a station marker has a live source. */
   sourceStatuses: SourceStatusItem[] | null
+  /** Source ids actually carried by the current point response. Demand-query
+   * sources are live evidence even though no ingestion status row exists. */
+  responseSourceIds?: ReadonlySet<string>
   theme?: Theme
   /** Defaults closed in the product. Exposed only so isolated render tests can
    * exercise the dense drawer contents without repeating an opening click. */
@@ -216,7 +219,7 @@ function stationLayers(
       updateTriggers: { getFillColor: [selected.id] },
     }),
     // The marker is a location picker, so every station gets a pin — but a pin
-    // reads as coverage. A station with a live ingested source behind it is a
+    // reads as coverage. A station with live response-backed evidence is a
     // filled disc; one without is an open ring. The distinction is a glyph, not
     // a hue, and it is repeated verbatim in the on-canvas label, the picker
     // options and the text alternative below, so it never rests on colour.
@@ -365,7 +368,7 @@ function describeAppliedOptions(applied: string[] | undefined): string {
 export function MapPanel({
   label, field, comparison, selected, onSelect, validTime, reference, interpolate,
   interpolationMethod = DEFAULT_INTERPOLATION_METHOD, methodStatus = {}, fixtureMode = false,
-  layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, theme = 'dark', initialDrawerOpen = false,
+  layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, responseSourceIds, theme = 'dark', initialDrawerOpen = false,
 }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -479,7 +482,10 @@ export function MapPanel({
 
   // Held in a ref as well as a memo: the map setup effect runs once and closes
   // over whatever coverage was known then, which is usually "still loading".
-  const coverageFor = useCallback((point: LocationPoint) => stationCoverage(point, sourceStatuses), [sourceStatuses])
+  const coverageFor = useCallback(
+    (point: LocationPoint) => stationCoverage(point, sourceStatuses, responseSourceIds),
+    [responseSourceIds, sourceStatuses],
+  )
   const coverageRef = useRef(coverageFor)
   coverageRef.current = coverageFor
   const pickerCoverage = useMemo(

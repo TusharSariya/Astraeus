@@ -48,7 +48,7 @@ def test_declared_limits_cover_enforced_channels(monkeypatch, tmp_path: Path) ->
     monkeypatch.setattr(AWCMetarAdapter, "_require_target", staticmethod(lambda _path: None))
     monkeypatch.setattr(AWCMetarAdapter, "_isolated", staticmethod(
         lambda action, raw, window, destination: object()))
-    bounds = AWCMetarAdapter().operation_bounds(WINDOW)
+    bounds = AWCMetarAdapter().demand_operation_bounds()
     assert bounds.received_bytes == AWC_METAR_DOCUMENT_BYTES
     assert bounds.store_bytes == bounds.filesystem_bytes == AWC_METAR_ARTIFACT_BYTES
     assert bounds.margin_bytes == 8192
@@ -56,3 +56,8 @@ def test_declared_limits_cover_enforced_channels(monkeypatch, tmp_path: Path) ->
     # coexist with the child output. The atomic rename does not create a
     # second output inode, so the complete physical reservation is exact.
     assert bounds.filesystem_bytes + bounds.margin_bytes == 65536 + 4096 + 4096
+
+
+def test_scheduled_metar_ingestion_is_disabled_before_discovery() -> None:
+    with pytest.raises(AdapterUnavailable, match="selected-timestamp demand"):
+        AWCMetarAdapter().operation_bounds(WINDOW)
