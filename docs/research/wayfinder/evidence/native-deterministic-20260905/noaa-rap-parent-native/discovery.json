@@ -1,0 +1,11 @@
+{
+  "index_sha256": "9acbcc04c82b2c7b3016f3ee905b828f9de5db2d214568cf1e51dba1f02b9298",
+  "raw_bytes": 133310,
+  "raw_sha256": "2ab82e2c2f14600e368ab8405cd593d48a722b997ee39a18f6e9e6668a07d328",
+  "provider_run_id": "2026090516",
+  "run_time": "2026-09-05T16:00:00+00:00",
+  "urls": [
+    "https://noaa-rap-pds.s3.amazonaws.com/rap.20260905/rap.t16z.awp130pgrbf00.grib2",
+    "https://noaa-rap-pds.s3.amazonaws.com/rap.20260905/rap.t16z.awp130pgrbf00.grib2.idx"
+  ]
+}
