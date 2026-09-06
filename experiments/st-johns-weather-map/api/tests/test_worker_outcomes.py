@@ -217,6 +217,44 @@ def test_resource_refusal_precedes_payload_retrieval(tmp_path: Path) -> None:
     assert adapter.fetched == 0
 
 
+def test_payload_bearing_discovery_is_reserved_before_its_first_byte(tmp_path: Path) -> None:
+    class _PayloadDiscovery(_Adapter):
+        def operation_bounds(self, window: Any) -> ResourceBounds:
+            return self.resource_bounds(None, window)
+
+        def discover(self, window: Any) -> list[RunCandidate]:
+            assert store.events == ["reserved"]
+            return super().discover(window)
+
+    store = _Store()
+    adapter = _PayloadDiscovery(result=_result(tmp_path))
+
+    outcome = run_source(adapter, _Config(), store, reference=T0)
+
+    assert outcome.state == "succeeded"
+    assert store.events == ["reserved", "released"]
+
+
+def test_payload_discovery_never_starts_when_complete_admission_fails(tmp_path: Path) -> None:
+    class _PayloadDiscovery(_Adapter):
+        def operation_bounds(self, window: Any) -> ResourceBounds:
+            return self.resource_bounds(None, window)
+
+        def discover(self, window: Any) -> list[RunCandidate]:
+            pytest.fail("payload discovery must remain behind admission")
+
+    class _RefusingStore(_Store):
+        @contextmanager
+        def reserve_resources(self, **_kwargs: Any) -> Iterator[None]:
+            raise ResourceBudgetExceeded("local capacity exhausted")
+            yield
+
+    outcome = run_source(_PayloadDiscovery(result=_result(tmp_path)), _Config(), _RefusingStore(), reference=T0)
+
+    assert outcome.state == "failed"
+    assert "pre-discovery admission" in outcome.detail
+
+
 def test_underestimated_temporary_output_is_cleaned_and_never_published(tmp_path: Path) -> None:
     class _Underestimated(_Adapter):
         def resource_bounds(self, candidate: Any, window: Any) -> ResourceBounds:

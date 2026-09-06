@@ -88,6 +88,30 @@ def test_schema_drift_and_stale_http_200_fail_closed():
         SWPCKp1mAdapter(client=client(stale)).discover(WINDOW)
 
 
+@pytest.mark.parametrize(
+    ("row", "message"),
+    [
+        ({"time_tag": "bad", "kp_index": 1, "estimated_kp": 1, "kp": "1Z"}, "unparseable time_tag"),
+        ({"time_tag": "2026-09-05T19:58:00", "kp_index": "bad", "estimated_kp": 1, "kp": "1Z"}, "invalid kp_index"),
+        ({"time_tag": "2026-09-05T19:58:00", "kp_index": 1, "estimated_kp": 1, "kp": "new"}, "unsupported kp code"),
+        ({"time_tag": "2026-09-05T19:58:00", "kp_index": 1, "estimated_kp": 1}, "without thinning"),
+    ],
+)
+def test_kp1m_refuses_every_malformed_raw_row_without_thinning(row, message):
+    with pytest.raises(AdapterUnavailable, match=message):
+        SWPCKp1mAdapter(client=client([row])).discover(WINDOW)
+
+
+@pytest.mark.parametrize("field", ["kp_index", "estimated_kp"])
+@pytest.mark.parametrize("value", ["NaN", "Infinity", "-Infinity"])
+def test_kp1m_refuses_non_finite_numeric_rows(field, value):
+    row = {"time_tag": "2026-09-05T19:58:00", "kp_index": 1, "estimated_kp": 1, "kp": "1Z"}
+    row[field] = value
+
+    with pytest.raises(AdapterUnavailable, match=f"non-finite {field}"):
+        SWPCKp1mAdapter(client=client([row])).discover(WINDOW)
+
+
 def test_alert_collision_at_one_issue_instant_fails_closed():
     payload = [
         {"product_id": "A", "issue_datetime": "2026-09-05 19:58:00", "message": "one"},

@@ -96,9 +96,9 @@ def fetch_json(
     """
     workdir.mkdir(parents=True, exist_ok=True)
     scratch = workdir / f".feed-{hashlib.sha1(url.encode()).hexdigest()}.json"
-    captured_at = datetime.now(UTC)
     try:
         _written, headers = client.download_with_headers(url, scratch, max_bytes=max_bytes)
+        captured_at = datetime.now(UTC)
         last_modified = headers.get("Last-Modified") or headers.get("last-modified")
         body = scratch.read_bytes()
     except MaxBytesExceeded as error:
