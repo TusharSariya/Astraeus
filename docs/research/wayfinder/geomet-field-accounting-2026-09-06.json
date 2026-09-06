@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-06T06:30:01Z",
+  "generated_at": "2026-09-06T12:00:01Z",
   "scope": "Issue 145 reconciliation of the 1,289 GeoMet deterministic-family IDs captured on 2026-09-05",
   "authority": "Non-normative provider research; no source admission or production capability claim",
   "source_receipts": {
@@ -9,19 +9,148 @@
       "sha256": "6eb2997bd6f4397a12f68286323286b053b54130bee6412fe26d3ebc44afb3d1",
       "record_count": 1289
     },
-    "current_wcs": {
-      "requested_at": "2026-09-06",
+    "previous_wcs_snapshot": {
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCapabilities",
+      "query": [
+        [
+          "SERVICE",
+          "WCS"
+        ],
+        [
+          "VERSION",
+          "2.0.1"
+        ],
+        [
+          "REQUEST",
+          "GetCapabilities"
+        ]
+      ],
+      "client_completion": "unknown",
+      "server_date_header": "Sun, 06 Sep 2026 06:54:59 GMT",
       "update_sequence": "2026-09-06T06:30:01Z",
       "sha256": "4d5126be17ab115e6b0312db9369f181c1631ab437921d401b55e3a238d9c7a0",
-      "bytes": 1090094,
+      "bytes": 1090094
+    },
+    "previous_wms_snapshot": {
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities",
+      "query": [
+        [
+          "SERVICE",
+          "WMS"
+        ],
+        [
+          "VERSION",
+          "1.3.0"
+        ],
+        [
+          "REQUEST",
+          "GetCapabilities"
+        ]
+      ],
+      "client_completion": "unknown",
+      "server_date_header": "Sun, 06 Sep 2026 06:54:59 GMT",
+      "update_sequence": "2026-09-06T06:15:01Z",
+      "sha256": "330a2c744bd47fac5e02ab3b6d0c1c94e779b1129728c7707ad9e66c6c4aed85",
+      "bytes": 37105809
+    },
+    "capture_operation": {
+      "operation_received_byte_cap": 54525952,
+      "operation_received_bytes": 38198480,
+      "scratch_free_bytes_before": 38479654912,
+      "scratch_free_bytes_after": 38451228672,
+      "retry_counts": {}
+    },
+    "current_wcs": {
+      "client_final_byte_completed_at": "2026-09-06T12:26:37.502141+00:00",
+      "decoded_body_bytes": 1090094,
+      "host": "geo.weather.gc.ca",
+      "http_result": "successful_2xx_response",
+      "max_decoded_body_bytes": 2097152,
+      "path": "/geomet",
+      "query": [
+        [
+          "SERVICE",
+          "WCS"
+        ],
+        [
+          "VERSION",
+          "2.0.1"
+        ],
+        [
+          "REQUEST",
+          "GetCapabilities"
+        ]
+      ],
+      "request_headers": {
+        "Accept-Encoding": "gzip",
+        "User-Agent": "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)"
+      },
+      "response_headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-encoding": "gzip",
+        "content-type": "text/xml; charset=UTF-8",
+        "date": "Sun, 06 Sep 2026 12:26:31 GMT",
+        "keep-alive": "timeout=5, max=100",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "vary": "Accept-Encoding",
+        "x-geomet-status": "200 OK"
+      },
+      "scheme": "https",
+      "sha256": "3c56b615f15b35913773d683b5caac596eb757b56880f5c8f937b6d9a53456c2",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCapabilities",
+      "update_sequence": "2026-09-06T12:00:01Z",
       "coverage_count": 5589
     },
     "current_wms": {
-      "requested_at": "2026-09-06",
-      "update_sequence": "2026-09-06T06:15:01Z",
+      "client_final_byte_completed_at": "2026-09-06T12:26:38.021203+00:00",
+      "decoded_body_bytes": 37108386,
+      "host": "geo.weather.gc.ca",
+      "http_result": "successful_2xx_response",
+      "max_decoded_body_bytes": 52428800,
+      "path": "/geomet",
+      "query": [
+        [
+          "SERVICE",
+          "WMS"
+        ],
+        [
+          "VERSION",
+          "1.3.0"
+        ],
+        [
+          "REQUEST",
+          "GetCapabilities"
+        ]
+      ],
+      "request_headers": {
+        "Accept-Encoding": "gzip",
+        "User-Agent": "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)"
+      },
+      "response_headers": {
+        "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "access-control-allow-methods": "POST, GET, OPTIONS",
+        "access-control-allow-origin": "*",
+        "connection": "Keep-Alive",
+        "content-encoding": "gzip",
+        "content-type": "application/xml",
+        "date": "Sun, 06 Sep 2026 12:26:37 GMT",
+        "keep-alive": "timeout=5, max=99",
+        "server": "Apache",
+        "strict-transport-security": "max-age=63072000; preload, max-age=63072000; preload",
+        "transfer-encoding": "chunked",
+        "vary": "Accept-Encoding",
+        "x-geomet-status": "200 OK"
+      },
+      "scheme": "https",
+      "sha256": "a1dbb4f985403167ce2bbe76b0a87649072b27148eff832714d981039149bfdd",
+      "url": "https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities",
+      "update_sequence": "2026-09-06T12:00:01Z",
       "service_title": "MSC GeoMet — GeoMet-Weather 2.40.3",
-      "sha256": "330a2c744bd47fac5e02ab3b6d0c1c94e779b1129728c7707ad9e66c6c4aed85",
-      "bytes": 37105809,
       "named_layer_count": 7071
     }
   },
@@ -61,43 +190,43 @@
       "producer_product": "gdps-15km",
       "path": "geomet-field-accounting-2026-09-06-gdps-15km.json",
       "records": 386,
-      "sha256": "3248018885665615b0c93c97f6f21b1f93d836767e0377ac3d709d52714e466f"
+      "sha256": "ac3c4e4032ecedc465b0599a4e20755a8f9728e0c06ad35a670877ae9c68db26"
     },
     {
       "producer_product": "gdps-geml-25km",
       "path": "geomet-field-accounting-2026-09-06-gdps-geml-25km.json",
       "records": 54,
-      "sha256": "dfed866394684b2db42e37ee39afd135986f992260b5515f97bf16b6c582da71"
+      "sha256": "08abbd8c1c3b4b9df88dd9319c7abc91613eba325e661a823e5218cbbe667d8b"
     },
     {
       "producer_product": "gdps-weong-15km",
       "path": "geomet-field-accounting-2026-09-06-gdps-weong-15km.json",
       "records": 34,
-      "sha256": "5ec5a31cb020dea28d8883a33895dc09c6046d7314b84fe637ad027cba5d4b8f"
+      "sha256": "8fa42a6d308ba115cc77ed11f980e2e2a1707b0ad1b60b8b5a0eaca6a43d5ff2"
     },
     {
       "producer_product": "hrdps-continental-2.5km",
       "path": "geomet-field-accounting-2026-09-06-hrdps-continental-2.5km.json",
       "records": 343,
-      "sha256": "fdba2c4d87461fba6e735ae06d3aa67ab1ff5123db668264f5a0bda8cfd59415"
+      "sha256": "1c36ec4c6340cffbe1c4b2f7e16b1c48baec92279e8c7844cefb70e5fb3ee3f3"
     },
     {
       "producer_product": "hrdps-weong-2.5km",
       "path": "geomet-field-accounting-2026-09-06-hrdps-weong-2.5km.json",
       "records": 34,
-      "sha256": "c0636a5fbafb29e1984401548bb283f362ad6cb0eec7f895a3ae7a926379fe1b"
+      "sha256": "b9712cad3578e0082d9917ecb35ff5150c337cdfa403c1e0249aa84b79c5076d"
     },
     {
       "producer_product": "rdps-10km",
       "path": "geomet-field-accounting-2026-09-06-rdps-10km.json",
       "records": 404,
-      "sha256": "190f8ccd2f336128906cce8d0965929bfa0729294e9eb958ee6c215d1ebeff27"
+      "sha256": "81dbfcb37d7bedd9d3a2f12bb4ae9f264cd7906e9f4929d017b04103ea943b8a"
     },
     {
       "producer_product": "rdps-weong-10km",
       "path": "geomet-field-accounting-2026-09-06-rdps-weong-10km.json",
       "records": 34,
-      "sha256": "9d612f1b6e610d9b77a5ade1352cf2d59f4ad235c1d8ae976873bc89fd40b68e"
+      "sha256": "525330f2f809d5ceea77f356371e3e55451da05e59c0220c9bb24e6e7995dc84"
     }
   ],
   "new_current_ids": []

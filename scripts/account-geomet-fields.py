@@ -170,10 +170,16 @@ def main() -> None:
     parser.add_argument("--historical", type=Path, required=True)
     parser.add_argument("--wcs", type=Path, required=True)
     parser.add_argument("--wms", type=Path, required=True)
+    parser.add_argument("--capture-receipt", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
     historical_doc = json.loads(args.historical.read_text())
+    capture_receipt = json.loads(args.capture_receipt.read_text())
+    for name, path in (("wcs", args.wcs), ("wms", args.wms)):
+        receipt = capture_receipt["captures"][name]
+        if receipt["sha256"] != sha256(path) or receipt["decoded_body_bytes"] != path.stat().st_size:
+            raise ValueError(f"{name} capability input does not match its capture receipt")
     historical = {row["coverage_id"]: row for row in historical_doc["full_family_inventory"]}
     current_wcs, wcs_sequence = parse_wcs(args.wcs)
     wms, wms_sequence, service_title = parse_wms(args.wms)
@@ -264,8 +270,26 @@ def main() -> None:
         "authority": "Non-normative provider research; no source admission or production capability claim",
         "source_receipts": {
             "historical_ledger": {"captured_at": historical_doc.get("retrieved_at"), "sha256": sha256(args.historical), "record_count": len(historical)},
-            "current_wcs": {"requested_at": "2026-09-06", "update_sequence": wcs_sequence, "sha256": sha256(args.wcs), "bytes": args.wcs.stat().st_size, "coverage_count": len(current_wcs)},
-            "current_wms": {"requested_at": "2026-09-06", "update_sequence": wms_sequence, "service_title": service_title, "sha256": sha256(args.wms), "bytes": args.wms.stat().st_size, "named_layer_count": len(wms)},
+            "previous_wcs_snapshot": {"url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCapabilities", "query": [["SERVICE", "WCS"], ["VERSION", "2.0.1"], ["REQUEST", "GetCapabilities"]], "client_completion": "unknown", "server_date_header": "Sun, 06 Sep 2026 06:54:59 GMT", "update_sequence": "2026-09-06T06:30:01Z", "sha256": "4d5126be17ab115e6b0312db9369f181c1631ab437921d401b55e3a238d9c7a0", "bytes": 1090094},
+            "previous_wms_snapshot": {"url": "https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities", "query": [["SERVICE", "WMS"], ["VERSION", "1.3.0"], ["REQUEST", "GetCapabilities"]], "client_completion": "unknown", "server_date_header": "Sun, 06 Sep 2026 06:54:59 GMT", "update_sequence": "2026-09-06T06:15:01Z", "sha256": "330a2c744bd47fac5e02ab3b6d0c1c94e779b1129728c7707ad9e66c6c4aed85", "bytes": 37105809},
+            "capture_operation": {
+                "operation_received_byte_cap": capture_receipt["operation_received_byte_cap"],
+                "operation_received_bytes": capture_receipt["operation_received_bytes"],
+                "scratch_free_bytes_before": capture_receipt["scratch_free_bytes_before"],
+                "scratch_free_bytes_after": capture_receipt["scratch_free_bytes_after"],
+                "retry_counts": capture_receipt["retry_counts"],
+            },
+            "current_wcs": {
+                **{key: value for key, value in capture_receipt["captures"]["wcs"].items() if key != "scratch_path"},
+                "update_sequence": wcs_sequence,
+                "coverage_count": len(current_wcs),
+            },
+            "current_wms": {
+                **{key: value for key, value in capture_receipt["captures"]["wms"].items() if key != "scratch_path"},
+                "update_sequence": wms_sequence,
+                "service_title": service_title,
+                "named_layer_count": len(wms),
+            },
         },
         "accounting": {"historical_ids": len(rows), "historical_selected": sum(row["historical_2026_09_05"]["selection"] == "advertised-selected-capability" for row in rows), "historical_deferred": sum(row["historical_2026_09_05"]["selection"] == "advertised-capability-only-deferred" for row in rows), "current_family_ids": len(current_family), "removed_historical_ids": sum(not row["current_2026_09_06"]["advertised_wcs"] for row in rows), "new_current_ids": len(additions), "dispositions": dict(sorted(counts.items()))},
         "existing_issue_boundaries": {

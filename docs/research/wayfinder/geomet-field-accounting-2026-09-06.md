@@ -43,13 +43,27 @@ retrieved.
 
 ## Current source receipts
 
-Both capability requests completed with HTTP 200 at 2026-09-06 06:54:59 UTC.
-The raw responses and headers remained in scratch space and are not committed.
+The earlier capture recorded the server's `Date` header (`06:54:59 UTC`) but
+did not record when the client received its final byte. Its client completion
+is therefore explicitly unknown. A replacement capture used the repository's
+`PoliteClient.get_bytes_with_headers_completed` path and records the actual
+final-byte completion separately from the server `Date` header. The exact URLs,
+ordered query parameters, request and response headers, byte ceilings, decoded
+byte counts and digests are preserved in the compact JSON receipt. Raw bodies
+and the full scratch receipt remain outside Git.
 
-| Request | Content type | Bytes | Service update sequence | SHA-256 |
-|---|---|---:|---|---|
-| WCS 2.0.1 `GetCapabilities` | `text/xml; charset=UTF-8` | 1,090,094 | `2026-09-06T06:30:01Z` | `4d5126be17ab115e6b0312db9369f181c1631ab437921d401b55e3a238d9c7a0` |
-| WMS 1.3.0 `GetCapabilities` | `application/xml` | 37,105,809 | `2026-09-06T06:15:01Z` | `330a2c744bd47fac5e02ab3b6d0c1c94e779b1129728c7707ad9e66c6c4aed85` |
+| Request | Exact URL | Final byte received (UTC) | Bytes | Service update sequence | SHA-256 |
+|---|---|---|---:|---|---|
+| WCS 2.0.1 `GetCapabilities` | `https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCapabilities` | `2026-09-06T12:26:37.502141Z` | 1,090,094 | `2026-09-06T12:00:01Z` | `3c56b615f15b35913773d683b5caac596eb757b56880f5c8f937b6d9a53456c2` |
+| WMS 1.3.0 `GetCapabilities` | `https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities` | `2026-09-06T12:26:38.021203Z` | 37,108,386 | `2026-09-06T12:00:01Z` | `a1dbb4f985403167ce2bbe76b0a87649072b27148eff832714d981039149bfdd` |
+
+The two reads consumed 38,198,480 decoded bytes under a 54,525,952-byte
+operation bound. Scratch free space measured 38,479,654,912 bytes before and
+38,451,228,672 bytes after the operation. Neither request retried. Regeneration
+against this replacement snapshot still finds all 1,289 historical IDs and no
+new or removed ID within the same seven historical producer families. Field
+titles, units, levels, geography, identifiers and dispositions are unchanged;
+only provider-advertised time and reference-time dimensions advanced.
 
 WCS advertises 5,589 coverages and WMS advertises 7,071 named layers. The WMS
 service identifies itself as `GeoMet-Weather 2.40.3`. ECCC's official
@@ -185,8 +199,9 @@ WCS/WMS capability snapshots:
 ```text
 python3 scripts/account-geomet-fields.py \
   --historical /private/tmp/geomet-wcs-historical-2026-09-05.json \
-  --wcs /private/tmp/geomet-wcs-current.xml \
-  --wms /private/tmp/geomet-wms-current.xml \
+  --wcs /private/tmp/geomet-wcs-completion-aware-2026-09-06.xml \
+  --wms /private/tmp/geomet-wms-completion-aware-2026-09-06.xml \
+  --capture-receipt /private/tmp/geomet-completion-aware-receipt-2026-09-06.json \
   --output docs/research/wayfinder/geomet-field-accounting-2026-09-06.json
 ```
 
