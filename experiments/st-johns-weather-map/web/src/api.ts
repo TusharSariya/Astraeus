@@ -625,6 +625,9 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
         source_id: 'multi-centre', provider: 'Astraeus', product: 'Experimental consensus',
         data_mode: point.data_mode, evidence_class: consensus.evidence_class,
         normalized_units: consensus.units, derivation: consensus.method,
+        derivation_inputs: consensus.inputs.map(input => ({
+          ...input.provenance, field: input.field, units: input.provenance?.normalized_units,
+        })),
       } })
       if (attribution) fieldSources.temperature = attribution
       notices.push(`Consensus temperature uses ${consensus.contributors.join(', ')}; ${consensus.ensemble_witnesses.join(', ')} supplies ensemble evidence and does not enter the mean.`)

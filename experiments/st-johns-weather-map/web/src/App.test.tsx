@@ -139,6 +139,15 @@ async function openStory() {
 describe('weather workbench fail-closed behavior', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('API offline'))))
 
+  it('shows point provenance notices in Brief and Workbench', async () => {
+    const notice = 'Synthetic contract fixture only; no provider evidence.'
+    vi.stubGlobal('fetch', routedFetch({ point: { ...apiPoint(), notices: [notice] } }))
+    render(<App />)
+    expect(await screen.findByText(notice)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
+    expect(screen.getByText(notice)).toBeInTheDocument()
+  })
+
   it('shows a partial CAP warning together with the incomplete-domain notice', async () => {
     vi.stubGlobal('fetch', routedFetch({ cap: {
       data_mode: 'unavailable', alerts_in_force: null, all_boxes_succeeded: false, empty_is_an_answer: false,

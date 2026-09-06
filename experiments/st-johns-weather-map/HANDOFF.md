@@ -139,3 +139,15 @@ Completion requires at least one active source in every applicable category: det
 
 Start with Gate 1. Run the baseline first, inspect the current files, then assign Terra-low agents for API truth, ingestion/storage integrity, and UI truth. Have an adversarial reviewer inspect the combined diff before Gate 2. Report blockers instead of manufacturing values or changing registry status.
 
+
+
+## GEFS selected-time demand integration (#84, operational false)
+
+The `gefs-member-demand` change now maps selected time to a bounded canonical
+request, retains member and transport identities, and exposes the existing
+computed consensus through a typed summary. Native 31-member replay remains
+QC-suspect because dew point is absent, so it truthfully selects the HRDPS
+fallback. A separately labelled synthetic fixture proves the positive 10°C
+Consensus mapping without giving GEFS a deterministic vote. See
+`openspec/changes/gefs-member-demand/verification.md` for exact gates and retained
+evidence. No full-run archive, bulk ingestion, or normative promotion is implied.

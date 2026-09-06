@@ -1,3 +1,6 @@
+import { createElement } from 'react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { DerivedEvidenceDetails } from './EvidenceClassBadge'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadCapAlerts, loadLayerFlow, loadLayerRaster, loadLayers, loadMethods, loadProfile, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
@@ -934,7 +937,7 @@ describe('timestamp-demand layer catalogue', () => {
 
 
 function consensusFixture(): ApiPointResponse {
-  const inputs = ['eccc-hrdps', 'noaa-gfs'].map((source, index) => ({ field: 'temperature', value: index ? 11 : 9, provenance: { source_id: source, evidence_class: 'retrieved', normalized_units: 'degC' } }))
+  const inputs = ['eccc-hrdps', 'noaa-gfs'].map((source, index) => ({ field: 'temperature', value: index ? 11 : 9, provenance: { source_id: source, evidence_class: 'retrieved', normalized_units: 'degC', valid_time: '2026-09-06T18:00:00Z', quality: { status: 'passed' } } }))
   return { data_mode: 'live', valid_time: '2026-09-06T18:00:00Z',
     selection: { mode: 'consensus', badge: 'Experimental consensus', selected_source_id: 'multi-centre', selected_product_id: 'experimental-consensus' },
     fields: [...inputs, { field: 'temperature', value: 100, provenance: { source_id: 'noaa-gefs', evidence_class: 'derived_here', normalized_units: 'degC', run_stale: false, quality: { status: 'passed' }, freshness: { status: 'fresh' }, ensemble: { family: 'GEFS', statistic: 'ensemble_mean', computed_here: true, member_set: { family: 'GEFS', source_id: 'noaa-gefs', members_declared: 31, members_used: 31, members_missing: [], partial: false, control_included: true } } } }],
@@ -947,6 +950,12 @@ it('renders exact server consensus value with separate attribution and unchanged
   expect(result.fieldSources.temperature.sourceId).toBe('multi-centre')
   expect(result.fieldSources.temperature.evidenceClass).toBe('derived_here')
   expect(result.servedFields.map(field => field.value)).toEqual([9, 11, 100])
+  expect(result.fieldSources.temperature.derivationInputs.map(input => input.sourceId)).toEqual(['eccc-hrdps', 'noaa-gfs'])
+  render(createElement(DerivedEvidenceDetails, { label: 'Temperature', attribution: result.fieldSources.temperature }))
+  fireEvent.click(screen.getByText('Temperature: inputs and method'))
+  expect(screen.getByText(/eccc-hrdps · 2026-09-06T18:00:00Z · quality passed/)).toBeVisible()
+  expect(screen.getByText(/noaa-gfs · 2026-09-06T18:00:00Z · quality passed/)).toBeVisible()
+  expect(screen.queryByText('The response listed no inputs for this derived value.')).not.toBeInTheDocument()
   expect(result.notices.some(notice => notice.includes('noaa-gefs supplies ensemble evidence and does not enter the mean'))).toBe(true)
 })
 it.each([
