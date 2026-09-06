@@ -783,6 +783,21 @@ NOAA_GEFS_S3_BASE = "https://noaa-gefs-pds.s3.amazonaws.com"
 #: The three product sets GEFS publishes, and only these three. The family
 #: fields all live in `pgrb2ap5`, the 0.5 degree primary set.
 GEFS_PRIMARY_SET = "pgrb2ap5"
+GEFS_FILENAME_PRODUCT = "pgrb2a.0p50"
+GEFS_FILENAME_PRODUCTS = {
+    "pgrb2ap5": "pgrb2a.0p50",
+    "pgrb2bp5": "pgrb2b.0p50",
+    "pgrb2sp25": "pgrb2s.0p25",
+}
+
+
+def gefs_member_url(*, date_str: str, cycle: str, lead: int, member: str,
+                    base_url: str = NOAA_GEFS_S3_BASE, product_set: str = GEFS_PRIMARY_SET) -> str:
+    """Canonical NOAA GEFS member URL: directory and filename use distinct IDs."""
+    return (
+        f"{base_url.rstrip('/')}/gefs.{date_str}/{cycle}/atmos/{product_set}/"
+        f"{member}.t{cycle}z.{GEFS_FILENAME_PRODUCTS[product_set]}.f{lead:03d}"
+    )
 
 #: ``TCDC:entire atmosphere`` is a time average at every lead in every GEFS
 #: product set - `0-3 hour ave fcst` at f003, `18-24` at f024 - confirmed at
@@ -977,10 +992,11 @@ class NOAAGEFSEnsembleAdapter:
         date_str = str(candidate.detail.get("date_str", ""))
         cycle = str(candidate.detail.get("cycle", ""))
         lead = int(candidate.detail.get("lead_hours", 0))
-        return (
-            f"{self._base_url}/gefs.{date_str}/{cycle}/atmos/{self._product_set}/"
-            f"{member}.t{cycle}z.{self._product_set}.f{lead:03d}"
-        )
+        try:
+            return gefs_member_url(date_str=date_str, cycle=cycle, lead=lead, member=member,
+                                   base_url=self._base_url, product_set=self._product_set)
+        except KeyError as error:
+            raise AdapterUnavailable(f"GEFS product set {self._product_set!r} is not declared") from error
 
     def assemble(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         declaration = self.declaration()

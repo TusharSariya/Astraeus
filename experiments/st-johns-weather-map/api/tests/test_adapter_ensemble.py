@@ -1479,6 +1479,14 @@ def test_gefs_members_are_the_providers_own_file_names():
     assert len(members) == 31
 
 
+def test_gefs_member_url_preserves_injectable_base_and_declared_product_set():
+    adapter = NOAAGEFSEnsembleAdapter(base_url="https://fixture.invalid/root", product_set="pgrb2bp5")
+    assert adapter.member_url(gefs_candidate(), "gec00") == (
+        "https://fixture.invalid/root/gefs.20260901/00/atmos/pgrb2bp5/"
+        "gec00.t00z.pgrb2b.0p50.f024"
+    )
+
+
 def test_gefs_selection_is_restricted_to_the_catalogue_family_fields():
     selection = select_gefs_member_records(GEFS_IDX)
     stored = {upstream for _range, upstream, _label in selection.wanted}

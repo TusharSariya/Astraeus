@@ -11,7 +11,7 @@ def key(lead=6):return GEFSRequestKey("2026090612",RUN,lead,"pgrb2ap5",declared_
 def entry(k,**kw):
  present=kw.get("present",k.members); optional=kw.get("optional",{}); by_field={field:upstream for upstream,field in _gefs_keys_by_upstream("noaa-gefs").items()}; receipts=[]
  for member in k.members:
-  stem=f"{k.endpoint}/gefs.{k.run_time:%Y%m%d}/{k.run_time:%H}/atmos/{k.product_set}/{member}.t{k.run_time:%H}z.{k.product_set}.f{k.lead:03d}"
+  stem=gefs_member_url(date_str=k.run_time.strftime("%Y%m%d"),cycle=k.run_time.strftime("%H"),lead=k.lead,member=member)
   receipts.append({"kind":"index","member":member,"http_status":200,"url":stem+".idx","request_headers":{},"response_headers":{},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":"a"*64})
   if member in present:
    for field in GEFS_FIELDS:
@@ -25,6 +25,9 @@ def test_identity_and_cadence_refuse_before_loader():
  with pytest.raises(ValueError,match="31 declared"):s.query(GEFSRequestKey("2026090612",RUN,6,"pgrb2ap5",declared_members()[:-1],GEFS_FIELDS,BOX))
  with pytest.raises(ValueError,match="three-hour"):s.query(key(5))
  assert calls==[]
+def test_canonical_control_and_perturbed_member_urls_use_native_filename_token():
+ assert gefs_member_url(date_str="20260906",cycle="12",lead=6,member="gec00")=="https://noaa-gefs-pds.s3.amazonaws.com/gefs.20260906/12/atmos/pgrb2ap5/gec00.t12z.pgrb2a.0p50.f006"
+ assert gefs_member_url(date_str="20260906",cycle="12",lead=6,member="gep30").endswith("/gep30.t12z.pgrb2a.0p50.f006")
 def test_coalesced_miss_and_hit_load_once():
  calls=[]; s=GEFSQueryService(lambda k:calls.append(k) or entry(k),preflight=lambda _workspace:demand_operation_bounds())
  with ThreadPoolExecutor(max_workers=4) as p: results=list(p.map(lambda _:s.query(key()),range(4)))

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Callable, Mapping
-from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, NOAA_GEFS_S3_BASE, _gefs_keys_by_upstream, gefs_member_identifiers
+from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, NOAA_GEFS_S3_BASE, _gefs_keys_by_upstream, gefs_member_identifiers, gefs_member_url
 from ingest.adapters.noaa_s3 import NOAAGEFSEnsembleAdapter
 from ingest.contract import FetchWindow, ResourceBounds, RunCandidate
 from ingest.registry import get_config
@@ -88,7 +88,7 @@ class GEFSQueryEntry:
         seen_idx=set(); seen_ranges=set()
         for receipt in receipts:
             if not isinstance(receipt,dict) or receipt.get("member") not in self.key.members: raise ValueError("GEFS receipt has invalid member identity")
-            member=str(receipt["member"]); stem=f"{self.key.endpoint}/gefs.{self.key.run_time:%Y%m%d}/{self.key.run_time:%H}/atmos/{self.key.product_set}/{member}.t{self.key.run_time:%H}z.{self.key.product_set}.f{self.key.lead:03d}"
+            member=str(receipt["member"]); stem=gefs_member_url(date_str=self.key.run_time.strftime("%Y%m%d"),cycle=self.key.run_time.strftime("%H"),lead=self.key.lead,member=member)
             if receipt.get("kind")=="index":
                 if receipt.get("url")!=stem+".idx" or receipt.get("http_status")!=200: raise ValueError("GEFS index receipt has invalid request identity")
                 if not 0<receipt.get("byte_size",0)<=GEFS_IDX_BYTES: raise ValueError("GEFS index receipt exceeds its byte ceiling")
