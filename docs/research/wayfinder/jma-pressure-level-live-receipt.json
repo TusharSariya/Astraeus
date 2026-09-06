@@ -1,0 +1,52 @@
+{
+  "captured_at_http_date": "2026-09-06T06:16:25Z",
+  "endpoint": "https://api.open-meteo.com/v1/forecast",
+  "model_selector": "jma_gsm",
+  "raw_capture_directory": "/private/tmp/astraeus-jma-143-live-20260906",
+  "raw_payloads_committed": false,
+  "producer_artifact": {
+    "source_url": "https://www.data.jma.go.jp/developer/gpv_sample/gsm_gl.zip",
+    "scratch_directory": "/private/tmp/astraeus-jma-143-producer-20260906",
+    "zip_bytes": 26683943,
+    "zip_sha256": "dc2935c9bf2fb5056273dda8d719054931af41b029089c1ea0b3dfc37f201b75",
+    "grib_bytes": 33251093,
+    "grib_sha256": "2c9838ecd4b652e623d87ee91384c27fce4cd883ebdd4cd256a7ebed27450f1b",
+    "decoder": "ecCodes with multi-field support",
+    "result": "104 messages; 17 native global isobaric levels for height, temperature, U/V wind and vertical velocity; RH at the eight levels from 1000 through 300 hPa"
+  },
+  "requests": [
+    {
+      "name": "stjohns_all_eight_families",
+      "coordinates": [[47.5615, -52.7126]],
+      "levels_hpa": [975, 950, 925, 900, 800],
+      "fields": ["temperature", "relative_humidity", "dew_point", "cloud_cover", "wind_speed", "wind_direction", "vertical_velocity", "geopotential_height"],
+      "valid_times": ["2026-09-06T06:00:00Z", "2026-09-06T07:00:00Z"],
+      "http_status": 200,
+      "response_bytes": 2818,
+      "response_sha256": "03ad90a87670a259c3d7afd6ef30af102eecfb81151ae2f6b6938cc781d4cc72",
+      "result": "all eight families finite at 925 hPa and all null at 975, 950, 900, and 800 hPa"
+    },
+    {
+      "name": "three_location_canonical_control",
+      "coordinates": [[47.5615, -52.7126], [35.6762, 139.6503], [0.0, 0.0]],
+      "levels_hpa": [975, 950, 925, 900, 800],
+      "fields": ["temperature", "wind_speed", "wind_direction"],
+      "valid_times": ["2026-09-06T06:00:00Z", "2026-09-06T07:00:00Z"],
+      "http_status": 200,
+      "response_bytes": 3531,
+      "response_sha256": "87e8284bd89b4ad12dba6c0a54a23d0e8906ba7a0d5d7105cf35cb7af859b1af",
+      "result": "at each location 12 disputed-level arrays are all null and all three 925 hPa controls are finite"
+    },
+    {
+      "name": "stjohns_native_level_control",
+      "coordinates": [[47.5615, -52.7126]],
+      "levels_hpa": [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300, 250, 200, 150, 100],
+      "fields": ["temperature", "relative_humidity", "wind_speed", "geopotential_height"],
+      "valid_times": ["2026-09-06T06:00:00Z", "2026-09-06T07:00:00Z"],
+      "http_status": 200,
+      "response_bytes": 4528,
+      "response_sha256": "d1fc8f60f897ae581cea7ab0e291c324e51510bfdc1da0d66a5fa4557df020e3",
+      "result": "native global levels are finite by field inventory; disputed four are null"
+    }
+  ]
+}
