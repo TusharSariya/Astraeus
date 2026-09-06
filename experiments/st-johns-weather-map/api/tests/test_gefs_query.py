@@ -118,3 +118,21 @@ def test_selected_loader_refuses_receiptless_adapter_before_provider_io(tmp_path
   def get_text(self,*_args): pytest.fail("provider I/O occurred")
  with pytest.raises(ValueError,match="receipt capture"):
   GEFSSelectedLoader(NOAAGEFSEnsembleAdapter(client=Client()),tmp_path)
+
+def test_bounded_loader_refuses_compressed_bundle_before_read(tmp_path):
+ import json,zipfile
+ def runner(**kwargs):
+  output=kwargs["destination"]
+  with zipfile.ZipFile(output,"w",compression=zipfile.ZIP_DEFLATED) as bundle:
+   bundle.writestr("result.json",json.dumps({})); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
+ with pytest.raises(ValueError,match="unencrypted stored"):
+  GEFSBoundedLoader(tmp_path,runner=runner)(key())
+
+def test_bounded_loader_refuses_untyped_manifest(tmp_path):
+ import json,zipfile
+ def runner(**kwargs):
+  output=kwargs["destination"]
+  with zipfile.ZipFile(output,"w",compression=zipfile.ZIP_STORED) as bundle:
+   bundle.writestr("result.json",json.dumps({"members_present":"all"})); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
+ with pytest.raises(ValueError,match="invalid types"):
+  GEFSBoundedLoader(tmp_path,runner=runner)(key())

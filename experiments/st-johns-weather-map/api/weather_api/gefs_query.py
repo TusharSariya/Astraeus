@@ -175,8 +175,13 @@ class GEFSBoundedLoader:
             self.runner(command=[sys.executable,"-m","weather_api.gefs_query_worker","{output}"],stdin=request,destination=bundle_path,limits=GEFS_CHILD_LIMITS,timeout_seconds=600)
             with zipfile.ZipFile(bundle_path) as bundle:
                 if set(bundle.namelist())!={"result.json","artifacts/noaa_gefs_members.zarr.zip"}: raise ValueError("GEFS child returned unexpected bundle members")
-                if sum(item.file_size for item in bundle.infolist())>GEFS_CHILD_LIMITS.output_bytes: raise ValueError("GEFS child bundle exceeds output allowance")
+                infos=bundle.infolist()
+                if len(infos)!=2 or any(item.flag_bits&1 or item.compress_type!=zipfile.ZIP_STORED or item.file_size!=item.compress_size for item in infos): raise ValueError("GEFS child bundle must contain two unencrypted stored members")
+                if sum(item.file_size for item in infos)>GEFS_CHILD_LIMITS.output_bytes: raise ValueError("GEFS child bundle exceeds output allowance")
+                if bundle.testzip() is not None: raise ValueError("GEFS child bundle failed CRC validation")
                 info=json.loads(bundle.read("result.json")); payload=bundle.read("artifacts/noaa_gefs_members.zarr.zip")
+            if not isinstance(info,dict) or not isinstance(info.get("members_present"),list) or not isinstance(info.get("mandatory_failures"),dict) or not isinstance(info.get("optional_absences"),dict) or not isinstance(info.get("cloud_intervals"),dict) or not isinstance(info.get("provenance"),dict): raise ValueError("GEFS child manifest has invalid types")
             if info["run_id"]!=key.run_id or datetime.fromisoformat(info["run_time"])!=key.run_time or int(info["lead"])!=key.lead: raise ValueError("GEFS child returned different run identity")
+            if info["provenance"].get("source_id")!="noaa-gefs": raise ValueError("GEFS child returned a different source identity")
             intervals={member:(datetime.fromisoformat(pair[0]),datetime.fromisoformat(pair[1])) for member,pair in info["cloud_intervals"].items()}
             return GEFSQueryEntry(key,datetime.fromisoformat(info["valid_time"]),datetime.fromisoformat(info["fetched_at"]),tuple(info["members_present"]),info["mandatory_failures"],{m:tuple(v) for m,v in info["optional_absences"].items()},payload,info["provenance"],intervals)
