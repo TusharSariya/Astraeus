@@ -302,6 +302,7 @@ def test_immutable_artifact_reads_back_through_real_artifact_reader_and_point_ap
 
     store = LiveStore(ArtifactStore(), tmp_path / "cache")
     monkeypatch.setenv("WEATHER_DATA_MODE", "live"); monkeypatch.setattr(api_module, "live_store", lambda: store)
+    monkeypatch.setattr(api_module, "now", lambda: datetime(2026, 9, 5, 1, 0, tzinfo=UTC))
     monkeypatch.setitem(api_module.PRODUCT_SOURCE_IDS, "JMA-GSM-EXPERIMENT", "openmeteo-jma-gsm")
     response = TestClient(app).get(f"{PREFIX}/point", params={"product": "JMA-GSM-EXPERIMENT", "valid_time": "2026-09-05T01:00:00Z"})
     assert response.status_code == 200
