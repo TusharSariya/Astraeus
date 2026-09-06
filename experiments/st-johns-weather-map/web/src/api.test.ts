@@ -910,3 +910,44 @@ describe('timestamp-demand layer catalogue', () => {
     expect(describeEvidenceBasis('demand_query')).toMatch(/native grid/i)
   })
 })
+
+
+function consensusFixture(): ApiPointResponse {
+  const inputs = ['eccc-hrdps', 'noaa-gfs'].map((source, index) => ({ field: 'temperature', value: index ? 11 : 9, provenance: { source_id: source, evidence_class: 'retrieved', normalized_units: 'degC' } }))
+  return { data_mode: 'live', valid_time: '2026-09-06T18:00:00Z',
+    selection: { mode: 'consensus', badge: 'Experimental consensus', selected_source_id: 'multi-centre', selected_product_id: 'experimental-consensus' },
+    fields: [...inputs, { field: 'temperature', value: 100, provenance: { source_id: 'noaa-gefs', evidence_class: 'derived_here', normalized_units: 'degC', run_stale: false, quality: { status: 'passed' }, freshness: { status: 'fresh' }, ensemble: { family: 'GEFS', statistic: 'ensemble_mean', computed_here: true, member_set: { family: 'GEFS', source_id: 'noaa-gefs', members_declared: 31, members_used: 31, members_missing: [], partial: false, control_included: true } } } }],
+    consensus: { available: true, value: 10, units: 'degC', evidence_class: 'derived_here', method: 'equal_weight_mean_of_deterministic_centres', contributors: ['eccc-hrdps', 'noaa-gfs'], inputs, ensemble_witnesses: ['noaa-gefs'], centre_range: [9, 11], reason: 'minimum evidence met' },
+  }
+}
+it('renders exact server consensus value with separate attribution and unchanged native readings', () => {
+  const result = normalizePoint(consensusFixture())
+  expect(result.temperatureC).toBe(10)
+  expect(result.fieldSources.temperature.sourceId).toBe('multi-centre')
+  expect(result.fieldSources.temperature.evidenceClass).toBe('derived_here')
+  expect(result.servedFields.map(field => field.value)).toEqual([9, 11, 100])
+  expect(result.notices.some(notice => notice.includes('noaa-gefs supplies ensemble evidence and does not enter the mean'))).toBe(true)
+})
+it.each([
+  null, { available: false }, { value: Infinity }, { units: 'K' }, { evidence_class: 'retrieved' },
+  { method: 'invented' }, { contributors: 'eccc-hrdps' }, { ensemble_witnesses: null },
+  { contributors: ['noaa-gefs', 'eccc-hrdps'] }, { inputs: {} }, { centre_range: [11, 9] },
+])('refuses malformed consensus summary %j without native substitution', (mutation) => {
+  const valid = consensusFixture()
+  expect(normalizePoint(valid).temperatureC).toBe(10)
+  const point = { ...valid, consensus: mutation === null ? null : { ...valid.consensus, ...mutation } } as unknown as ApiPointResponse
+  const result = normalizePoint(point)
+  expect(result.temperatureC).toBeNull()
+  expect(result.fieldSources.temperature).toBeUndefined()
+  expect(result.mode).toBe('unavailable')
+  expect(result.selectionBadge).toBe('Consensus unavailable')
+})
+it.each(['changed_native', 'missing_witness', 'partial_witness', 'failed_witness'])('binds summary to actual served inputs and witness: %s', (mutation) => {
+  const point = consensusFixture()
+  if (mutation === 'changed_native') point.fields[0] = { ...point.fields[0], value: 2 }
+  if (mutation === 'missing_witness') point.fields.pop()
+  if (mutation === 'partial_witness') point.fields[2] = { ...point.fields[2], provenance: { ...point.fields[2].provenance, ensemble: { family: 'GEFS', statistic: 'ensemble_mean', member_set: { family: 'GEFS', source_id: 'noaa-gefs', members_declared: 31, members_used: 30, partial: true, control_included: true } } } }
+  if (mutation === 'failed_witness') point.fields[2] = { ...point.fields[2], provenance: { ...point.fields[2].provenance, quality: { status: 'failed' } } }
+  expect(normalizePoint(point).temperatureC).toBeNull()
+  expect(normalizePoint(point).mode).toBe('unavailable')
+})

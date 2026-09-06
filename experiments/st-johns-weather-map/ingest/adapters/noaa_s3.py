@@ -1035,6 +1035,7 @@ class NOAAGEFSEnsembleAdapter:
         decode_errors: list[str] = []
         unstorable: list[str] = []
         transport_receipts: list[dict[str, object]] = []
+        transport_failures: list[dict[str, object]] = []
 
         for member in members:
             grib_url = self.member_url(candidate, member)
@@ -1048,6 +1049,12 @@ class NOAAGEFSEnsembleAdapter:
                     idx_text = client.get_text(idx_url)
             except Exception as error:
                 decode_errors.append(f"idx:{member}")
+                if self._capture_transport_receipts:
+                    response = getattr(error, "response", None)
+                    transport_failures.append({"kind":"index", "member":member, "url":idx_url,
+                        "http_status":getattr(response,"status_code",None),
+                        "attempt_finished_at":datetime.now(UTC).isoformat(),
+                        "error_type":type(error).__name__, "body_retained":False})
                 _log.warning("GEFS member %s sidecar unavailable: %s", member, error)
                 continue
 
@@ -1117,9 +1124,14 @@ class NOAAGEFSEnsembleAdapter:
                 if upstream in by_name
             }
             if by_member:
-                stacked[key] = stack_members(by_member, control=control)
+                # Align missing optional/member fields by label first. A
+                # per-field boolean control coordinate would otherwise align
+                # an absent member to NaN and conflict with another field's
+                # explicit False flag while combining the family.
+                stacked[key] = stack_members(by_member, control=control).drop_vars("control")
 
-        dataset = xarray.Dataset(stacked).expand_dims(
+        dataset = xarray.Dataset(stacked)
+        dataset = dataset.assign_coords(control=("member", [str(member)==control for member in dataset.coords["member"].values])).expand_dims(
             valid_time=[numpy.datetime64(window.now.astimezone(timezone.utc).replace(tzinfo=None), "ns")]
         )
         manifest = self.manifest()
@@ -1150,6 +1162,7 @@ class NOAAGEFSEnsembleAdapter:
             "members": validation.as_members(),
             "storage_scope": validation.as_storage_scope(),
             "transport_receipts": transport_receipts,
+            "transport_failures": transport_failures,
             **manifest.as_manifest_block(),
         }
 

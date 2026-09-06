@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { differenceOptions } from './FieldFamilyPanel'
 import { normalizePoint, type ApiPointResponse } from './api'
 import { ensembleMemberOptions, ensembleRowsOf, ensembleTextRows, groupEnsembleRows, isAveragedField } from './Ensemble'
 
@@ -289,4 +290,18 @@ describe('the panel and the text alternative, rendered', () => {
     expect(select).toBeDisabled()
     expect(screen.getAllByText('No ensemble member in returned provenance').length).toBeGreaterThan(0)
   })
+})
+
+
+it('preserves native member run and distinguishes control and perturbed difference options', () => {
+  const native = { ...controlField, key: 'temperature_2m', field: 'temperature', provenance: { ...controlField.provenance, source_id: 'noaa-gefs', run_time: '2026-09-06T12:00:00Z', member: 'gec00', member_control: true, ensemble: { family: 'GEFS', statistic: null, computed_here: false, member_set: null } } }
+  const perturbed = { ...native, provenance: { ...native.provenance, member: 'gep01', member_control: false } }
+  const snapshot = normalizePoint(point([native, perturbed]))
+  const rows = ensembleRowsOf(snapshot.servedFields)
+  expect(rows[0].text).toContain('run 2026-09-06T12:00:00Z · member gec00 (control)')
+  expect(rows[0].text).not.toContain('member set unknown')
+  const options = differenceOptions(snapshot)
+  expect(options[0].label).toContain('member gec00 (control)')
+  expect(options[1].label).toContain('member gep01')
+  expect(options[0].label).not.toBe(options[1].label)
 })

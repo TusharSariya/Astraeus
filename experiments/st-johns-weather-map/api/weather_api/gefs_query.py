@@ -3,7 +3,7 @@ from __future__ import annotations
 import json, math, os, re, tempfile, threading, time
 from collections import OrderedDict
 from concurrent.futures import Future
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Callable, Mapping
@@ -16,6 +16,8 @@ GEFS_FIELDS=("temperature_2m","dew_point_2m","relative_humidity_2m","wind_u_10m"
 GEFS_MEMBER_COUNT=31; GEFS_IDX_BYTES=1024*1024; GEFS_CACHE_MAX_BYTES=704*1024**2
 GEFS_OUTPUT_ALLOWANCE_BYTES=GEFS_CACHE_MAX_BYTES; GEFS_MARGIN_BYTES=128*1024**2
 GEFS_PRODUCT_SET="pgrb2ap5"; GEFS_MAX_LEAD=384
+GEFS_DISCOVERY_ATTEMPTS = 2
+GEFS_DISCOVERY_BYTES = GEFS_DISCOVERY_ATTEMPTS * GEFS_IDX_BYTES
 _COORDINATOR = None
 
 def members_with_values(field) -> tuple[str, ...]:
@@ -33,7 +35,7 @@ GEFS_MEMORY_LIMIT_BYTES=4*1024**3; GEFS_TEMP_LIMIT_BYTES=3*1024**3
 def declared_members(): return gefs_member_identifiers(get_config("noaa-gefs").ensemble)
 def demand_operation_bounds():
     raw=GEFS_MEMBER_COUNT*len(GEFS_FIELDS)*MAX_GEFS_MEMBER_BYTES; idx=GEFS_MEMBER_COUNT*GEFS_IDX_BYTES
-    return ResourceBounds(GEFS_CACHE_MAX_BYTES,raw+idx+GEFS_OUTPUT_ALLOWANCE_BYTES,GEFS_MARGIN_BYTES,raw+idx)
+    return ResourceBounds(GEFS_CACHE_MAX_BYTES,raw+idx+GEFS_DISCOVERY_BYTES+GEFS_OUTPUT_ALLOWANCE_BYTES,GEFS_MARGIN_BYTES,raw+idx+GEFS_DISCOVERY_BYTES)
 def enforce_platform_bounds(workspace: Path):
     bounds=demand_operation_bounds(); bounds.validate()
     try: memory=int(Path("/sys/fs/cgroup/memory.max").read_text().strip())
@@ -48,10 +50,12 @@ def enforce_platform_bounds(workspace: Path):
 @dataclass(frozen=True)
 class GEFSRequestKey:
     run_id:str; run_time:datetime; lead:int; product_set:str; members:tuple[str,...]; fields:tuple[str,...]; bounds:tuple[tuple[str,float],...]; endpoint:str=NOAA_GEFS_S3_BASE
+    availability_sha256: str | None = None
     def validate(self):
         if self.run_time.tzinfo is None or self.run_time.utcoffset()!=timedelta(0): raise ValueError("GEFS run time must be aware UTC")
         if self.run_id!=self.run_time.strftime("%Y%m%d%H"): raise ValueError("GEFS run identity must match run time")
         if self.endpoint.rstrip("/")!=NOAA_GEFS_S3_BASE: raise ValueError("GEFS endpoint is not the approved NOAA origin")
+        if self.availability_sha256 is not None and not re.fullmatch(r"[0-9a-f]{64}",self.availability_sha256): raise ValueError("GEFS availability digest is invalid")
         if self.product_set!=GEFS_PRODUCT_SET: raise ValueError("GEFS product set is not declared")
         if self.members!=declared_members(): raise ValueError("GEFS request must preserve all 31 declared member identities")
         if self.fields!=GEFS_FIELDS: raise ValueError("GEFS request must use the seven registered fields")
@@ -97,7 +101,7 @@ class GEFSQueryEntry:
                 seen_idx.add(member)
             elif receipt.get("kind")=="range":
                 field=receipt.get("field"); start=receipt.get("range_start"); requested_end=receipt.get("range_end")
-                if (member,field) not in expected_ranges or receipt.get("url")!=stem or receipt.get("http_status")!=206 or not isinstance(start,int) or (requested_end is not None and (not isinstance(requested_end,int) or requested_end<start)): raise ValueError("GEFS range receipt has invalid request identity")
+                if field not in upstream_by_field.values() or receipt.get("url")!=stem or receipt.get("http_status")!=206 or not isinstance(start,int) or (requested_end is not None and (not isinstance(requested_end,int) or requested_end<start)): raise ValueError("GEFS range receipt has invalid request identity")
                 if receipt.get("effective_url")!=stem: raise ValueError("GEFS range request redirected from its canonical URL")
                 header={str(k).lower():str(v) for k,v in receipt.get("request_headers",{}).items()}.get("range")
                 expected_header=f"bytes={start}-" if requested_end is None else f"bytes={start}-{requested_end}"
@@ -112,12 +116,30 @@ class GEFSQueryEntry:
             completed=datetime.fromisoformat(str(receipt.get("completed_at")))
             if not isinstance(receipt.get("request_headers"),dict) or not isinstance(receipt.get("response_headers"),dict) or any(not isinstance(k,str) or not isinstance(v,str) for mapping in (receipt["request_headers"],receipt["response_headers"]) for k,v in mapping.items()): raise ValueError("GEFS transport headers must be string mappings")
             if completed.tzinfo is None or completed.utcoffset()!=timedelta(0) or not isinstance(receipt.get("byte_size"),int) or receipt["byte_size"]<=0 or not re.fullmatch(r"[0-9a-f]{64}",str(receipt.get("sha256"))): raise ValueError("GEFS receipt has invalid completion or body identity")
-        if seen_idx!=set(self.key.members) or seen_ranges!=expected_ranges or len(receipts)!=len(seen_idx)+len(seen_ranges): raise ValueError("GEFS receipts do not correspond exactly to represented requests")
+        failed_indices=set()
+        failures=self.provenance.get("transport_failures",[])
+        if not isinstance(failures,list): raise ValueError("GEFS transport failures must be a list")
+        for failure in failures:
+            if not isinstance(failure,dict): raise ValueError("GEFS transport failure is invalid")
+            member=failure.get("member")
+            stem=gefs_member_url(date_str=self.key.run_time.strftime("%Y%m%d"),cycle=self.key.run_time.strftime("%H"),lead=self.key.lead,member=member) if member in self.key.members else None
+            finished=datetime.fromisoformat(str(failure.get("attempt_finished_at")))
+            status=failure.get("http_status")
+            if failure.get("kind")!="index" or member not in absent or member in failed_indices or member in seen_idx or failure.get("url")!=stem+".idx" or failure.get("body_retained") is not False or not failure.get("error_type") or (status is not None and (type(status) is not int or not 400<=status<=599)) or finished.tzinfo is None or finished.utcoffset()!=timedelta(0):
+                raise ValueError("GEFS failed index attempt does not match an absent member")
+            failed_indices.add(member)
+        if seen_idx|failed_indices!=set(self.key.members) or not expected_ranges<=seen_ranges or any(member not in seen_idx for member,_ in seen_ranges) or len(receipts)!=len(seen_idx)+len(seen_ranges): raise ValueError("GEFS receipts do not correspond exactly to represented requests")
         if self.fetched_at!=max(datetime.fromisoformat(str(item["completed_at"])) for item in receipts): raise ValueError("GEFS fetched time must equal final transport completion")
+        if self.key.availability_sha256 is not None:
+            receipt = self.provenance.get("availability_receipt")
+            url = gefs_member_url(date_str=self.key.run_time.strftime("%Y%m%d"),cycle=self.key.run_time.strftime("%H"),lead=self.key.lead,member="gec00")+".idx"
+            validate_availability_receipt(receipt, url, self.key.availability_sha256)
+            if next(item for item in receipts if item["kind"]=="index" and item["member"]=="gec00")["sha256"] != self.key.availability_sha256:
+                raise ValueError("GEFS selected control index changed since discovery")
 class GEFSQueryService:
     def __init__(self,loader:Callable[[GEFSRequestKey],GEFSQueryEntry],*,workspace:Path=Path("/work"),preflight=enforce_platform_bounds,clock=time.monotonic):
         self.loader,self.workspace,self.preflight,self.clock=loader,workspace,preflight,clock; self.lock=threading.Lock(); self.entries=OrderedDict(); self.inflight={}; self.failures={}
-    def query(self,key):
+    def query(self,key, *, availability_receipt=None):
         key.validate()
         with self.lock:
             now=self.clock(); cached=self.entries.get(key); failure=self.failures.get(key); future=self.inflight.get(key); owner=future is None
@@ -127,6 +149,8 @@ class GEFSQueryService:
         if not owner:return future.result()
         try:
             bounds=self.preflight(self.workspace); bounds.validate(); entry=self.loader(key)
+            if availability_receipt is not None:
+                entry=replace(entry,provenance={**entry.provenance,"availability_receipt":availability_receipt})
             if entry.key!=key: raise ValueError("GEFS loader changed request identity")
             entry.validate()
             if not 0<entry.backing_bytes<=GEFS_CACHE_MAX_BYTES: raise ValueError("GEFS cache entry exceeds finite byte ceiling")
@@ -167,6 +191,9 @@ class GEFSSelectedLoader:
                 dataset = xarray.open_zarr(store, consolidated=False)
                 temperature = dataset["temperature_2m"]
                 present = members_with_values(temperature)
+                omitted = tuple(str(value) for value in temperature.coords["member"].values) != present
+                if omitted:
+                    dataset=dataset.sel(member=list(present)).load()
                 mandatory = {member: "temperature_2m unavailable after bounded decode" for member in key.members if member not in present}
                 optional: dict[str, tuple[str, ...]] = {}
                 for member in present:
@@ -184,12 +211,19 @@ class GEFSSelectedLoader:
                         intervals[member] = (valid_time - timedelta(hours=hours), valid_time)
             finally:
                 store.close()
+            provenance=artifact.provenance
+            if omitted:
+                from ingest.grib import write_zarr
+                normalized=Path(directory)/"admitted-members.zarr.zip"
+                write_zarr(dataset,normalized)
+                payload=normalized.read_bytes()
+                provenance={**provenance,"members":{**provenance.get("members",{}),"present":list(present),"missing":list(mandatory)}}
             receipts = tuple(artifact.provenance.get("transport_receipts", ()))
             if not receipts:
                 raise ValueError("GEFS selected loader requires final-byte transport receipts")
             fetched_at = max(datetime.fromisoformat(str(item["completed_at"])) for item in receipts)
             return GEFSQueryEntry(key, valid_time, fetched_at, present, mandatory, optional,
-                                  payload, artifact.provenance, intervals)
+                                  payload, provenance, intervals)
 
 GEFS_CHILD_LIMITS = __import__("ingest.isolation",fromlist=["ProcessAllocationLimits"]).ProcessAllocationLimits(
     address_space_bytes=GEFS_MEMORY_LIMIT_BYTES, output_bytes=GEFS_OUTPUT_ALLOWANCE_BYTES,
@@ -247,40 +281,116 @@ def validate_normalized_payload(payload:bytes,entry:GEFSQueryEntry,workspace:Pat
             members=tuple(str(value) for value in dataset["temperature_2m"].coords["member"].values)
             if members!=entry.members_present: raise ValueError("GEFS normalized member order disagrees with manifest")
             control=dataset["temperature_2m"].coords.get("control")
-            if not members or members[0]!="gec00" or control is None or not bool(control.values[0]) or any(bool(value) for value in control.values[1:]): raise ValueError("GEFS normalized control identity is invalid")
+            if not members or control is None or tuple(bool(value) for value in control.values) != tuple(member == "gec00" for member in members): raise ValueError("GEFS normalized control identity is invalid")
             if entry.provenance.get("source_id")!="noaa-gefs" or entry.provenance.get("provider_run_id")!=entry.key.run_id or datetime.fromisoformat(str(entry.provenance.get("run_time")))!=entry.key.run_time or entry.provenance.get("product")!=f"Global Ensemble Forecast System ({entry.key.product_set})" or entry.provenance.get("quality",{}).get("status") not in {"passed","suspect"}: raise ValueError("GEFS normalized provenance or QC is invalid")
         finally:
             store.close()
 
 
+def validate_availability_receipt(receipt, url: str, digest: str):
+    if not isinstance(receipt,dict) or receipt.get("url")!=url or receipt.get("effective_url")!=url or receipt.get("http_status")!=200 or receipt.get("sha256")!=digest:
+        raise ValueError("GEFS availability receipt has invalid transport identity")
+    if type(receipt.get("byte_size")) is not int or not 0<receipt["byte_size"]<=GEFS_IDX_BYTES:
+        raise ValueError("GEFS availability receipt exceeds the byte bound")
+    for name in ("request_headers","response_headers"):
+        headers=receipt.get(name)
+        if not isinstance(headers,dict) or any(not isinstance(k,str) or not isinstance(v,str) for k,v in headers.items()):
+            raise ValueError("GEFS availability receipt headers are invalid")
+    completed=datetime.fromisoformat(str(receipt.get("completed_at")))
+    if completed.tzinfo is None or completed.utcoffset()!=timedelta(0):
+        raise ValueError("GEFS availability completion must be aware UTC")
+
+
+def fetch_discovery_index(url: str):
+    """One bounded GET, no redirect or retry hidden inside the request count."""
+    import hashlib
+    import httpx
+    try:
+        with httpx.Client(timeout=30, follow_redirects=False, headers={"Accept-Encoding": "identity"}) as client:
+            with client.stream("GET", url) as response:
+                if response.status_code != 200 or str(response.url) != url:
+                    raise ValueError("GEFS discovery did not return the canonical index")
+                size = response.headers.get("content-length")
+                if size is not None and (not size.isdigit() or int(size) > GEFS_IDX_BYTES):
+                    raise ValueError("GEFS discovery content length exceeds its bound")
+                body = bytearray()
+                for chunk in response.iter_raw(64*1024):
+                    if len(body)+len(chunk) > GEFS_IDX_BYTES:
+                        raise ValueError("GEFS discovery index exceeds its bound")
+                    body.extend(chunk)
+                completed = datetime.now(UTC)
+                return bytes(body), {"url": url, "effective_url":str(response.url), "http_status": 200,
+                    "request_headers": dict(response.request.headers),
+                    "response_headers": dict(response.headers),
+                    "completed_at": completed.isoformat(), "byte_size": len(body),
+                    "sha256": hashlib.sha256(body).hexdigest()}
+    except httpx.HTTPError as error:
+        raise OSError("GEFS discovery transport failed") from error
+
+
 class GEFSQueryCoordinator:
     """Resolve selected time and expose the cached native member family."""
-    def __init__(self, service: GEFSQueryService | None = None, *, workspace: Path = Path("/work")):
+    def __init__(self, service: GEFSQueryService | None = None, *, workspace: Path = Path("/tmp"),
+                 now=lambda: datetime.now(UTC), clock=time.monotonic, discover_index=None):
         self.service = service or GEFSQueryService(GEFSBoundedLoader(workspace), workspace=workspace)
+        self._now, self._clock = now, clock
+        self._discover_index = discover_index or fetch_discovery_index
+        self._discovery_lock = threading.RLock()
+        self._discovery = None
+        self._discovery_failure = None
 
-    @staticmethod
-    def request_key(selected_time: datetime) -> GEFSRequestKey:
+    def request_key(self, selected_time: datetime) -> GEFSRequestKey:
         if selected_time.tzinfo is None:
             raise ValueError("GEFS selected time must be aware")
         selected = selected_time.astimezone(UTC)
-        config = get_config("noaa-gefs")
-        latency = config.publication_latency
-        if latency is None or latency.estimate_seconds is None:
-            raise ValueError("GEFS publication latency is undeclared")
-        available = selected - timedelta(seconds=latency.estimate_seconds)
+        available = min(selected, self._now().astimezone(UTC))
         cycle = (available.hour // 6) * 6
         run = available.replace(hour=cycle, minute=0, second=0, microsecond=0)
-        elapsed = int((selected - run).total_seconds() // 3600)
-        lead = (elapsed // 3) * 3
-        valid = run + timedelta(hours=lead)
-        if lead < 0 or lead > GEFS_MAX_LEAD or not timedelta(0) <= selected-valid < timedelta(hours=3):
-            raise ValueError("GEFS selection has no applicable native lead")
-        return GEFSRequestKey(run.strftime("%Y%m%d%H"), run, lead, GEFS_PRODUCT_SET,
-                              declared_members(), GEFS_FIELDS,
-                              (("east",-46.0),("north",50.5),("south",45.0),("west",-58.0)))
+        lead = int((selected-run).total_seconds() // (3*3600))*3
+        identity = (run, lead)
+        with self._discovery_lock:
+            current = self._clock()
+            if self._discovery and self._discovery[0] == identity and current < self._discovery[1]:
+                return self._discovery[2]
+            if self._discovery_failure and self._discovery_failure[0] == identity and current < self._discovery_failure[1]:
+                raise ValueError("GEFS control-index discovery is in failure backoff")
+            # Reserve the complete operation before even the first control index.
+            self.service.preflight(self.service.workspace).validate()
+            for offset in range(GEFS_DISCOVERY_ATTEMPTS):
+                candidate_run = run-timedelta(hours=6*offset)
+                candidate_lead = lead+6*offset
+                if not 0 <= candidate_lead <= GEFS_MAX_LEAD:
+                    break
+                key = GEFSRequestKey(candidate_run.strftime("%Y%m%d%H"), candidate_run,
+                    candidate_lead, GEFS_PRODUCT_SET, declared_members(), GEFS_FIELDS,
+                    (("east",-46.0),("north",50.5),("south",45.0),("west",-58.0)))
+                key.validate()
+                url = gefs_member_url(date_str=candidate_run.strftime("%Y%m%d"),
+                    cycle=candidate_run.strftime("%H"), lead=candidate_lead, member="gec00")+".idx"
+                try:
+                    body, receipt = self._discover_index(url)
+                    import hashlib
+                    from ingest.adapters.noaa_s3 import select_gefs_member_records
+                    if not 0 < len(body) <= GEFS_IDX_BYTES or receipt.get("url") != url or receipt.get("byte_size") != len(body) or receipt.get("sha256") != hashlib.sha256(body).hexdigest():
+                        raise ValueError("GEFS discovery body identity is invalid")
+                    validate_availability_receipt(receipt,url,hashlib.sha256(body).hexdigest())
+                    selection = select_gefs_member_records(body.decode("utf-8"))
+                    if not any(upstream == "TMP:2 m above ground" for _, upstream, _ in selection.wanted):
+                        raise ValueError("GEFS control index lacks mandatory temperature")
+                except (OSError, ValueError):
+                    continue
+                key=replace(key,availability_sha256=receipt["sha256"])
+                self._discovery = (identity, self._clock()+600, key, receipt)
+                self._discovery_failure = None
+                return key
+            self._discovery_failure = (identity, self._clock()+60)
+            raise ValueError("GEFS has no available eligible control index within bounded discovery")
 
     def query(self, selected_time: datetime) -> GEFSQueryEntry:
-        return self.service.query(self.request_key(selected_time))
+        with self._discovery_lock:
+            key=self.request_key(selected_time)
+            receipt=self._discovery[3] if self._discovery is not None else None
+            return self.service.query(key,availability_receipt=receipt)
 
     def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *,
                      member: str | None = None, statistic: str | None = None,

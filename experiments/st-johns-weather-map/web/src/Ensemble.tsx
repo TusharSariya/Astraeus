@@ -83,10 +83,10 @@ export function ensembleRowsOf(servedFields: ServedFieldValue[]): EnsembleRow[] 
         ? (ensemble.computedHere ? 'statistic' : 'provider_reduction')
         : 'member'
     const family = ensemble.family
-    const run = ensemble.memberSet?.runTime ?? 'run unknown'
+    const run = field.attribution.runTime ?? ensemble.memberSet?.runTime ?? 'unknown'
     const nameOrStat = memberOrStatisticLabel(field)
-    const setLabel = memberSetLabel(ensemble.memberSet)
-    const parts = [family, `run ${run}`, nameOrStat, setLabel]
+    const parts = [family, `run ${run}`, nameOrStat]
+    if (isStatistic || ensemble.memberSet) parts.push(memberSetLabel(ensemble.memberSet))
     // A refused statistic makes neither claim — it was never computed and
     // never a provider reduction, so "computed here" or "provider's own"
     // would misstate what happened. Its own refusal reason stands in for both.

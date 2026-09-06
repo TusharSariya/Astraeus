@@ -24,3 +24,19 @@ The `total_cloud_mean_6h` record SHALL preserve the exact provider-declared aver
 - **WHEN** an admitted member has temperature but lacks one of the other six registered records
 - **THEN** the member remains admitted and that field names the member-specific absence
 - **AND** the response does not imply that the optional field used all 31 members
+
+
+### Requirement: GEFS availability uses a bounded exact control index
+The operational-false implementation SHALL probe the selected native lead in at most two cycles, starting at the latest six-hour cycle at or before min(selected instant, acquisition clock), then its predecessor. A latency estimate SHALL NOT prove availability or skip a successfully published eligible cycle. The successful index receipt and SHA-256 SHALL bind the canonical request key and cached family. Before I/O the envelope SHALL reserve two additional one-MiB index bodies. Resolution SHALL use a one-entry 600-second cache and 60-second failure backoff. A fresh identical query SHALL add zero discovery, index, range or decode operations.
+
+Failed member-index attempts SHALL be recorded separately from completed-body receipts, with known status (or null), attempt completion, error type and body-not-retained disposition. Successful range receipts SHALL survive subsequent decode failure. Missing mandatory temperature SHALL exclude that member; optional field absence SHALL remain explicit. Existing family QC and storage-scope judgments SHALL remain unchanged.
+
+### Requirement: The response carries the existing consensus result separately
+The point response MAY carry a typed consensus summary with availability, server-computed temperature in degC, fixed method, derived-here class, centre range, deterministic contributor IDs, full input evidence, ensemble-witness IDs and refusal reason. It SHALL equal the existing `build_consensus` result over its served fields. Inputs and witnesses SHALL bind to that response. Ensembles SHALL NOT contribute numerically.
+
+The client SHALL show the summary temperature under Consensus only when shape, fixed method/class, input binding and eligible witness binding validate. Missing, unavailable, malformed or unbound summaries SHALL show consensus unavailable without native temperature substitution. The client SHALL NOT recalculate the authoritative mean. Ensemble rows and difference selectors SHALL preserve each served native run, member, control and statistic identity; missing set metadata SHALL NOT erase a member's known run.
+
+#### Scenario: Actual native replay is suspect
+- **WHEN** retained f006 contains31 members but DPT absence makes original storage-scope QC suspect
+- **THEN** the API retains suspect and Consensus remains unavailable
+- **AND** positive Consensus display verification uses separately labelled synthetic contract fixtures

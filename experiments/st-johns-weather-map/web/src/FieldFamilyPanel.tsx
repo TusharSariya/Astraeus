@@ -164,7 +164,7 @@ export function FieldFamilyGroups({ snapshot }: { snapshot: EvidenceSnapshot }) 
           {group.note && <p className="family-note">{group.note}</p>}
           <ul className="family-members">
             {group.members.map((member, position) => (
-              <MemberRow key={`${member.field}-${member.attribution.sourceId ?? position}`} member={member} index={index} />
+              <MemberRow key={`${member.field}-${member.attribution.sourceId ?? position}-${member.attribution.member ?? member.attribution.ensemble?.statistic ?? position}`} member={member} index={index} />
             ))}
           </ul>
         </section>
@@ -219,13 +219,17 @@ interface DifferenceOption {
   member: ServedFieldValue
 }
 
-function differenceOptions(snapshot: EvidenceSnapshot): DifferenceOption[] {
+export function differenceOptions(snapshot: EvidenceSnapshot): DifferenceOption[] {
   return snapshot.servedFields
     .map((member, position) => {
       const key = member.attribution.fieldKey
       if (!key) return null
       const source = member.attribution.sourceId ?? member.attribution.product ?? member.attribution.provider
-      return { id: `${position}`, key, label: `${key} · ${source}`, member }
+      const identity = member.attribution.member !== null
+        ? `member ${member.attribution.member}${member.attribution.memberControl ? ' (control)' : ''}`
+        : member.attribution.ensemble?.statistic
+      const run = member.attribution.runTime
+      return { id: `${position}`, key, label: [key, source, identity, run ? `run ${run}` : null].filter(Boolean).join(' · '), member }
     })
     .filter((option): option is DifferenceOption => option !== null)
 }

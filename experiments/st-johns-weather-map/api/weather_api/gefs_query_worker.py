@@ -11,7 +11,8 @@ def main():
  key.validate()
  if shutil.disk_usage(output.parent).free<GEFS_OUTPUT_ALLOWANCE_BYTES: raise RuntimeError("GEFS child workspace is below its output allowance")
  with tempfile.TemporaryDirectory(prefix="gefs-child-",dir=output.parent) as directory:
-  client = None
+  from ingest.http import PoliteClient
+  client = PoliteClient(attempts=1)
   replay = os.environ.get("GEFS_REPLAY_EVIDENCE_DIR")
   evidence = os.environ.get("GEFS_CAPTURE_EVIDENCE_DIR")
   if replay and evidence:
@@ -22,7 +23,7 @@ def main():
   elif evidence:
    from ingest.http import PoliteClient
    from weather_api.gefs_capture import GEFSAuditClient
-   client = GEFSAuditClient(PoliteClient(), Path(evidence))
+   client = GEFSAuditClient(PoliteClient(attempts=1), Path(evidence))
   entry=GEFSSelectedLoader(NOAAGEFSEnsembleAdapter(client=client,bounds=dict(key.bounds),capture_transport_receipts=True),Path(directory))(key)
   if replay:
    client.assert_complete()

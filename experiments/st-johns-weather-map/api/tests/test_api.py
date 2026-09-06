@@ -1035,3 +1035,69 @@ def test_repeated_consensus_request_adds_zero_upstream_loads_per_source(monkeypa
     assert [(item["value"], item["provenance"]["source_id"]) for item in first.json()["fields"]] == [
         (item["value"], item["provenance"]["source_id"]) for item in second.json()["fields"]
     ]
+
+
+@pytest.mark.parametrize("family_state,available", [("complete", True), ("partial", False), ("missing_control", False), ("failed_qc", False)])
+def test_consensus_route_requires_eligible_ensemble_without_counting_its_mean(monkeypatch, data_mode, family_state, available):
+    from weather_api.models import EnsembleMemberSet, EnsembleProvenance
+    import weather_api.gefs_query as gefs_query
+    import weather_api.gfs_query as gfs_query
+    import weather_api.hrdps_query as hrdps_query
+    import weather_api.metar_query as metar_query
+    selected = now()
+    class Demand:
+        def __init__(self, source, value): self.source, self.value = source, value
+        def point_fields(self, latitude, longitude, valid_time, **kwargs):
+            class Store(EmptyStore):
+                def sample_point(inner, *_args, **_kwargs):
+                    return [_sample(self.source, "temperature_2m", self.value, "degC", valid_time)]
+            fields, _, _ = live_point_fields(Store(), latitude, longitude, valid_time)
+            field = fields[0]
+            updates = {"run_stale": False,
+                "freshness": field.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0}),
+                "quality": field.provenance.quality.model_copy(update={"status": "passed"})}
+            if self.source == "noaa-gefs":
+                assert kwargs == {"statistic": "ensemble_mean"}
+                partial = family_state in {"partial", "missing_control"}
+                updates.update(evidence_class="derived_here", derivation="ensemble_mean", ensemble=EnsembleProvenance(
+                    family="GEFS", statistic="ensemble_mean", computed_here=True,
+                    member_set=EnsembleMemberSet(family="GEFS", source_id=self.source, run_time=selected,
+                        members_declared=31, members_used=30 if partial else 31,
+                        members_missing=["gec00" if family_state=="missing_control" else "gep30"] if partial else [],
+                        control_included=family_state!="missing_control", partial=partial)))
+                if family_state == "failed_qc":
+                    updates["quality"] = field.provenance.quality.model_copy(update={"status": "failed"})
+            return [field.model_copy(update={"provenance": field.provenance.model_copy(update=updates)})], None, [self.source]
+    class NoMetar:
+        def point_fields(self, *_args): raise OSError("no observation in isolated route test")
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: Demand("eccc-hrdps", 9.0))
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: Demand("noaa-gfs", 11.0))
+    monkeypatch.setattr(gefs_query, "gefs_query_coordinator", lambda: Demand("noaa-gefs", 100.0))
+    monkeypatch.setattr(metar_query, "metar_query_service", lambda: NoMetar())
+    monkeypatch.setattr(api_module, "live_store", lambda: (_ for _ in ()).throw(AssertionError("store fallback")))
+    data_mode("live")
+    response=client.get(f"{PREFIX}/point", params={"valid_time": selected.isoformat(), "product": "consensus"})
+    assert response.status_code == 200
+    payload=response.json()
+    assert payload["operational"] is False
+    assert payload["consensus"]["available"] is available
+    if available:
+        assert payload["consensus"]["value"] == 10.0
+        assert set(payload["consensus"]["contributors"]) == {"eccc-hrdps", "noaa-gfs"}
+    else:
+        assert payload["consensus"]["value"] is None
+        assert payload["selection"]["selected_source_id"] == "eccc-hrdps"
+    ensemble=next(item for item in payload["fields"] if item["provenance"]["source_id"]=="noaa-gefs")
+    assert ensemble["value"] == 100.0 and ensemble["provenance"]["evidence_class"] == "derived_here"
+    if available:
+        import copy
+        from pydantic import ValidationError
+        from weather_api.models import PointResponse
+        for mutation in ("value", "range", "input", "witness", "unavailable"):
+            changed=copy.deepcopy(payload)
+            if mutation=="value":changed["consensus"]["value"]=9.5
+            if mutation=="range":changed["consensus"]["centre_range"]=[8,12]
+            if mutation=="input":changed["consensus"]["inputs"][0]["value"]=2.0
+            if mutation=="witness":changed["consensus"]["ensemble_witnesses"]=[]
+            if mutation=="unavailable":changed["consensus"]["available"]=False
+            with pytest.raises(ValidationError):PointResponse.model_validate(changed)

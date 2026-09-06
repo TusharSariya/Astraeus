@@ -1345,6 +1345,15 @@ def _live_point(
             )
         live_hrdps = "eccc-hrdps" in eligible_temperature_sources
         mode, badge, reason = select_fallback(consensus.available, hrdps_fresh=live_hrdps, rdps_fresh=False)
+        from .models import PointConsensus
+        summary = PointConsensus(
+            available=consensus.available, value=consensus.value,
+            centre_range=consensus.centre_range, contributors=list(consensus.contributors),
+            inputs=[next(field for field in fields if field.field == "temperature"
+                    and field.provenance.source_id == source) for source in consensus.contributors],
+            ensemble_witnesses=[candidate.source_id for candidate in consensus_candidates_from_fields(fields)
+                                if candidate.is_ensemble], reason=consensus.reason,
+        )
         return PointResponse(
             data_mode=DataMode.LIVE,
             latitude=latitude, longitude=longitude, valid_time=time,
@@ -1353,7 +1362,7 @@ def _live_point(
                 selected_product_id="experimental-consensus" if mode == "consensus" else ("hrdps" if live_hrdps else None),
                 badge=badge, reason=reason,
             ),
-            fields=fields,
+            fields=fields, consensus=summary,
             notices=[*consensus_notices, *demand_notices, "Consensus acquisition used demand sources only; no retained forecast artifact was read"],
         )
     store = live_store()

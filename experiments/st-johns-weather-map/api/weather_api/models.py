@@ -1203,6 +1203,35 @@ class Selection(StrictModel):
     reason: str
 
 
+class PointConsensus(StrictModel):
+    """Existing centre calculation, separate from every provider reading."""
+    available: bool
+    value: float | None
+    units: Literal["degC"] = "degC"
+    evidence_class: Literal["derived_here"] = "derived_here"
+    method: Literal["equal_weight_mean_of_deterministic_centres"] = "equal_weight_mean_of_deterministic_centres"
+    centre_range: tuple[float, float] | None
+    contributors: list[str]
+    inputs: list[EvidenceField]
+    ensemble_witnesses: list[str]
+    reason: str
+
+    @model_validator(mode="after")
+    def require_consistent_result(self):
+        import math
+        if not self.available:
+            if self.value is not None or self.centre_range is not None or self.contributors or self.inputs:
+                raise ValueError("unavailable consensus cannot contain a numeric result or contributors")
+            return self
+        if self.value is None or not math.isfinite(self.value) or self.centre_range is None or not all(math.isfinite(v) for v in self.centre_range) or not self.centre_range[0] <= self.value <= self.centre_range[1]:
+            raise ValueError("available consensus requires a finite value inside its centre range")
+        if len(set(self.contributors)) != len(self.contributors) or len(self.contributors)<2 or not self.ensemble_witnesses or set(self.contributors)&set(self.ensemble_witnesses):
+            raise ValueError("consensus requires distinct deterministic contributors and ensemble witnesses")
+        if [field.provenance.source_id for field in self.inputs] != self.contributors or any(field.field!="temperature" or field.value is None or field.provenance.evidence_class!="retrieved" or field.provenance.member is not None or field.provenance.normalized_units!="degC" for field in self.inputs):
+            raise ValueError("consensus inputs must preserve each deterministic temperature reading")
+        return self
+
+
 class PointResponse(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
@@ -1211,7 +1240,25 @@ class PointResponse(StrictModel):
     valid_time: datetime
     selection: Selection
     fields: list[EvidenceField]
+    consensus: PointConsensus | None = None
     notices: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def bind_consensus_to_served_evidence(self):
+        if self.consensus is None:
+            return self
+        from .science import build_consensus
+        from .store import consensus_candidates_from_fields
+        candidates=consensus_candidates_from_fields(self.fields)
+        expected=build_consensus(candidates)
+        summary=self.consensus
+        if (summary.available, summary.value, summary.centre_range, tuple(summary.contributors), summary.reason) != (expected.available, expected.value, expected.centre_range, expected.contributors, expected.reason):
+            raise ValueError("consensus summary must equal the authoritative calculation over served evidence")
+        if summary.ensemble_witnesses != [item.source_id for item in candidates if item.is_ensemble] or any(field not in self.fields for field in summary.inputs):
+            raise ValueError("consensus summary inputs and witnesses must bind to served evidence")
+        if (self.selection.mode == "consensus") != summary.available:
+            raise ValueError("consensus selection must match summary availability")
+        return self
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -12,14 +12,14 @@ def entry(k,**kw):
  present=kw.get("present",k.members); optional=kw.get("optional",{}); by_field={field:upstream for upstream,field in _gefs_keys_by_upstream("noaa-gefs").items()}; receipts=[]
  for member in k.members:
   stem=gefs_member_url(date_str=k.run_time.strftime("%Y%m%d"),cycle=k.run_time.strftime("%H"),lead=k.lead,member=member)
-  receipts.append({"kind":"index","member":member,"http_status":200,"url":stem+".idx","request_headers":{},"response_headers":{},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":"a"*64})
+  receipts.append({"kind":"index","member":member,"http_status":200,"url":stem+".idx","request_headers":{},"response_headers":{},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":k.availability_sha256 if member=="gec00" and k.availability_sha256 else "a"*64})
   if member in present:
    for field in GEFS_FIELDS:
     if field=="temperature_2m" or field not in optional.get(member,()): receipts.append({"kind":"range","member":member,"field":by_field[field],"range_start":0,"range_end":0,"http_status":206,"url":stem,"effective_url":stem,"request_headers":{"range":"bytes=0-0"},"response_headers":{"Content-Range":"bytes 0-0/12345"},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":"b"*64})
- return GEFSQueryEntry(k,RUN+timedelta(hours=k.lead),RUN,present,kw.get("mandatory",{}),optional,b"zarr",{"transport_receipts":receipts},kw.get("intervals",{m:(RUN+timedelta(hours=max(0,k.lead-(3 if k.lead==3 else 6))),RUN+timedelta(hours=k.lead)) for m in present if "total_cloud_mean_6h" not in optional.get(m,())}))
+ return GEFSQueryEntry(k,k.run_time+timedelta(hours=k.lead),RUN,present,kw.get("mandatory",{}),optional,b"zarr",{"transport_receipts":receipts},kw.get("intervals",{m:(k.run_time+timedelta(hours=max(0,k.lead-(3 if k.lead==3 else 6))),k.run_time+timedelta(hours=k.lead)) for m in present if "total_cloud_mean_6h" not in optional.get(m,())}))
 def test_bounds_charge_all_member_fields_indices_and_output():
  b=demand_operation_bounds(); raw=31*7*MAX_GEFS_MEMBER_BYTES; idx=31*GEFS_IDX_BYTES
- assert b.received_bytes==raw+idx and b.filesystem_bytes==raw+idx+GEFS_OUTPUT_ALLOWANCE_BYTES; b.validate()
+ assert b.received_bytes==raw+idx+GEFS_DISCOVERY_BYTES and b.filesystem_bytes==raw+idx+GEFS_DISCOVERY_BYTES+GEFS_OUTPUT_ALLOWANCE_BYTES; b.validate()
 def test_identity_and_cadence_refuse_before_loader():
  calls=[]; s=GEFSQueryService(lambda k:calls.append(k) or entry(k),preflight=lambda _workspace:demand_operation_bounds())
  with pytest.raises(ValueError,match="31 declared"):s.query(GEFSRequestKey("2026090612",RUN,6,"pgrb2ap5",declared_members()[:-1],GEFS_FIELDS,BOX))
@@ -177,3 +177,58 @@ def test_last_record_open_range_uses_returned_numeric_end_and_cap():
  target["response_headers"]={"Content-Range":"bytes 0-10/11"}
  with pytest.raises(ValueError,match="byte count"):
   value.validate()
+
+
+def discovery_body(url):
+ import hashlib
+ body=b"1:0:d=2026090612:TMP:2 m above ground:6 hour fcst:\n"
+ return body,{"url":url,"effective_url":url,"http_status":200,"request_headers":{},"response_headers":{},"completed_at":RUN.isoformat(),"byte_size":len(body),"sha256":hashlib.sha256(body).hexdigest()}
+
+@pytest.mark.parametrize("offset,expected_run,expected_lead", [
+ (0,"2026090618",0),(-24,"2026090518",0),(14*24,"2026090618",336),
+])
+def test_discovery_anchors_future_to_now_and_preserves_native_lead(offset,expected_run,expected_lead):
+ calls=[]; selected=RUN+timedelta(hours=6+offset)
+ service=GEFSQueryService(lambda k:entry(k),preflight=lambda _:demand_operation_bounds())
+ coordinator=GEFSQueryCoordinator(service,now=lambda:RUN+timedelta(hours=6),discover_index=lambda url:calls.append(url) or discovery_body(url))
+ resolved=coordinator.request_key(selected)
+ assert (resolved.run_id,resolved.lead)==(expected_run,expected_lead)
+ assert timedelta(0)<=selected-(resolved.run_time+timedelta(hours=resolved.lead))<timedelta(hours=3)
+ assert coordinator.request_key(selected)==resolved and len(calls)==1
+
+
+def test_discovery_tries_only_two_indices_and_caches_failure_without_loading():
+ calls=[]; loads=[]; clock=[0.0]
+ def absent(url): calls.append(url); raise OSError("no such run")
+ service=GEFSQueryService(lambda k:loads.append(k),preflight=lambda _:demand_operation_bounds())
+ coordinator=GEFSQueryCoordinator(service,now=lambda:RUN+timedelta(hours=6),clock=lambda:clock[0],discover_index=absent)
+ for _ in range(2):
+  with pytest.raises(ValueError):coordinator.query(RUN+timedelta(hours=6))
+ assert len(calls)==2 and loads==[]
+ assert calls[0].endswith("gec00.t18z.pgrb2a.0p50.f000.idx")
+ assert calls[1].endswith("gec00.t12z.pgrb2a.0p50.f006.idx")
+ clock[0]=61
+ with pytest.raises(ValueError):coordinator.query(RUN+timedelta(hours=6))
+ assert len(calls)==4
+
+
+def test_discovery_failure_falls_back_to_confirmed_index_and_repeat_has_zero_io():
+ calls=[]; loads=[]
+ def discover(url):
+  calls.append(url)
+  if len(calls)==1:raise OSError("publication pending")
+  return discovery_body(url)
+ service=GEFSQueryService(lambda k:loads.append(k) or entry(k),preflight=lambda _:demand_operation_bounds())
+ coordinator=GEFSQueryCoordinator(service,now=lambda:RUN+timedelta(hours=6),discover_index=discover)
+ first=coordinator.query(RUN+timedelta(hours=6))
+ assert first.key.run_id=="2026090612" and first.key.lead==6
+ assert coordinator.query(RUN+timedelta(hours=6)) is first
+ assert len(calls)==2 and len(loads)==1
+ assert first.provenance["availability_receipt"]["sha256"] == first.key.availability_sha256
+
+
+def test_discovery_is_refused_before_any_io_when_platform_bound_is_unavailable():
+ def refuse(_):raise RuntimeError("platform unavailable")
+ service=GEFSQueryService(lambda _:pytest.fail("load"),preflight=refuse)
+ coordinator=GEFSQueryCoordinator(service,discover_index=lambda _:pytest.fail("discovery"))
+ with pytest.raises(RuntimeError,match="platform unavailable"):coordinator.query(RUN)

@@ -1657,3 +1657,56 @@ def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Pat
     partial_field = mean_temperature.model_copy(update={"provenance": mean_temperature.provenance.model_copy(update={"ensemble": partial_ensemble})})
     assert consensus_candidates_from_fields([partial_field]) == []
     assert build_consensus([*deterministic, *consensus_candidates_from_fields([partial_field])]).available is False
+
+    for mutation in ("missing_control", "failed_qc", "stale"):
+        provenance = mean_temperature.provenance
+        if mutation == "missing_control":
+            member_set = provenance.ensemble.member_set.model_copy(update={"control_included": False})
+            provenance = provenance.model_copy(update={"ensemble": provenance.ensemble.model_copy(update={"member_set": member_set})})
+        elif mutation == "failed_qc":
+            provenance = provenance.model_copy(update={"quality": provenance.quality.model_copy(update={"status": "failed"})})
+        else:
+            provenance = provenance.model_copy(update={"run_stale": True})
+        assert consensus_candidates_from_fields([mean_temperature.model_copy(update={"provenance": provenance})]) == []
+
+
+@pytest.mark.parametrize("missing", ["gec00", "gep30"])
+def test_gefs_missing_index_preserves_partial_family_without_invented_receipt(tmp_path, missing):
+    from weather_api.gefs_query import GEFSQueryService, GEFSSelectedLoader, GEFSRequestKey, GEFS_FIELDS, demand_operation_bounds, validate_normalized_payload
+    client = gefs_client()
+    adapter = NOAAGEFSEnsembleAdapter(client=client, reader=gefs_reader, capture_transport_receipts=True)
+    url=adapter.member_url(gefs_candidate(),missing)+".idx"
+    del client.texts[url]  # completed local failure, no provider status or retained body
+    run=datetime(2026,9,1,tzinfo=UTC)
+    members=gefs_member_identifiers(get_config("noaa-gefs").ensemble)
+    key=GEFSRequestKey("2026090100",run,24,"pgrb2ap5",members,GEFS_FIELDS,(("east",-40.),("north",55.),("south",40.),("west",-70.)))
+    service=GEFSQueryService(GEFSSelectedLoader(adapter,tmp_path),workspace=tmp_path,preflight=lambda _:demand_operation_bounds())
+    entry=service.query(key)
+    assert len(entry.members_present)==30 and missing not in entry.members_present
+    assert set(entry.mandatory_failures)=={missing} and not entry.complete
+    assert not any(item['member']==missing for item in entry.provenance['transport_receipts'])
+    failure,=entry.provenance['transport_failures']
+    assert failure['member']==missing and failure['url']==url
+    assert failure['http_status'] is None and failure['body_retained'] is False
+    validate_normalized_payload(entry.payload,entry,tmp_path)
+
+
+@pytest.mark.parametrize("failed_key", ["temperature_2m", "dew_point_2m"])
+def test_gefs_successful_range_retained_when_decode_fails(tmp_path, failed_key):
+    from weather_api.gefs_query import GEFSQueryService, GEFSSelectedLoader, GEFSRequestKey, GEFS_FIELDS, demand_operation_bounds, validate_normalized_payload
+    from ingest.adapters.noaa_s3 import _gefs_keys_by_upstream
+    upstream=next(name for name,key in _gefs_keys_by_upstream("noaa-gefs").items() if key==failed_key)
+    def reader(path,**kwargs):
+        if kwargs['member']=="gep30" and kwargs['upstream']==upstream:raise ValueError("explicit decoder failure fixture")
+        return gefs_reader(path,**kwargs)
+    adapter=NOAAGEFSEnsembleAdapter(client=gefs_client(),reader=reader,capture_transport_receipts=True)
+    run=datetime(2026,9,1,tzinfo=UTC)
+    members=gefs_member_identifiers(get_config("noaa-gefs").ensemble)
+    key=GEFSRequestKey("2026090100",run,24,"pgrb2ap5",members,GEFS_FIELDS,(("east",-40.),("north",55.),("south",40.),("west",-70.)))
+    entry=GEFSQueryService(GEFSSelectedLoader(adapter,tmp_path),workspace=tmp_path,preflight=lambda _:demand_operation_bounds()).query(key)
+    assert any(item.get('field')==upstream and item['member']=="gep30" for item in entry.provenance['transport_receipts'])
+    if failed_key=="temperature_2m":
+        assert "gep30" in entry.mandatory_failures and "gep30" not in entry.members_present
+    else:
+        assert entry.complete and entry.optional_absences["gep30"]==(failed_key,)
+    validate_normalized_payload(entry.payload,entry,tmp_path)
