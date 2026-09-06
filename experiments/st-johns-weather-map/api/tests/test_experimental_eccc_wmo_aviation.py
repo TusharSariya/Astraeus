@@ -251,12 +251,13 @@ def test_fd_transport_completion_and_partial_write_cleanup(tmp_path: Path, monke
     assert list(tmp_path.iterdir()) == []
 
 
-def test_declared_operation_bounds_cover_all_listings_and_artifacts(monkeypatch) -> None:
-    iwxxm = ECCCIWXXMAviationNativeAdapter(client(iwxxm_handler), base_url="https://fixture.invalid/iwxxm")
-    fd = ECCCWMOFDBulletinNativeAdapter(client(fd_handler), archive="https://fixture.invalid", day="20260906")
-    iwxxm_bounds = iwxxm.operation_bounds(WINDOW)
-    fd_bounds = fd.operation_bounds(WINDOW)
-    iwxxm_bounds.validate()
-    fd_bounds.validate()
-    assert iwxxm_bounds.store_bytes == 2 * MAX_IWXXM
-    assert fd_bounds.store_bytes == 3 * 256 * 1024
+def test_xml_inventory_retains_every_path_attribute_and_text(tmp_path: Path) -> None:
+    adapter = ECCCIWXXMAviationNativeAdapter(client(iwxxm_handler), base_url="https://fixture.invalid/iwxxm")
+    result = adapter.fetch(adapter.discover(WINDOW)[0], WINDOW, tmp_path)
+    for artifact in result.artifacts:
+        inventory = artifact.provenance["native_element_inventory"]
+        assert len(inventory) == sum(artifact.provenance["element_qname_counts"].values())
+        assert all(set(row) == {"path", "qname", "attributes", "text"} for row in inventory)
+    taf_rows = result.artifacts[0].provenance["native_element_inventory"]
+    assert any(row["text"] == "CYYT" for row in taf_rows)
+    assert any(row["attributes"] for row in taf_rows)

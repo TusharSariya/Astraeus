@@ -17,16 +17,8 @@ import xml.etree.ElementTree as ET
 
 import httpx
 
-from ingest.contract import (
-    AdapterUnavailable,
-    Artifact,
-    DiscoveryBounds,
-    FetchWindow,
-    ResourceBounds,
-    RunCandidate,
-    RunResult,
-)
-from ingest.experimental.eccc_local_products import _inventory, _xml
+from ingest.contract import AdapterUnavailable, Artifact, FetchWindow, RunCandidate, RunResult
+from ingest.experimental.eccc_local_products import _xml
 from ingest.http import MaxBytesExceeded, PoliteClient, RetriesExhausted, parse_directory_listing
 from ingest.manifest import declared_classes, unresolved_manifest_validation
 
@@ -104,11 +96,29 @@ def _xml_shape(root: ET.Element) -> dict[str, Any]:
             times.append({"element": element.tag, "value": text})
     if not any(_local_name(item["element"]) == "timePosition" for item in times):
         raise AdapterUnavailable("eccc-iwxxm-aviation-native: no aware native timePosition")
+    inventory: list[dict[str, Any]] = []
+
+    def visit(element: ET.Element, path: str) -> None:
+        local = _local_name(element.tag)
+        here = f"{path}/{local}"
+        inventory.append({
+            "path": here,
+            "qname": element.tag,
+            "attributes": dict(sorted(element.attrib.items())),
+            "text": (element.text or "").strip(),
+        })
+        seen: dict[str, int] = {}
+        for child in element:
+            child_local = _local_name(child.tag)
+            seen[child_local] = seen.get(child_local, 0) + 1
+            visit(child, f"{here}[{child_local}:{seen[child_local]}]")
+
+    visit(root, "")
     return {
         "element_qname_counts": dict(sorted(elements.items())),
         "attribute_qname_counts": dict(sorted(attributes.items())),
         "native_times": times,
-        "native_element_inventory": _inventory(root),
+        "native_element_inventory": inventory,
     }
 
 
@@ -119,16 +129,6 @@ class ECCCIWXXMAviationNativeAdapter:
     def __init__(self, client: PoliteClient | None = None, *, base_url: str = IWXXM_BASE) -> None:
         self._client = client or PoliteClient()
         self._base = base_url.rstrip("/")
-
-    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
-        received = 2 * (MAX_HOURS + 1) * MAX_LISTING + 2 * MAX_IWXXM
-        return ResourceBounds(2 * MAX_IWXXM, 2 * MAX_IWXXM, 8192, received)
-
-    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
-        return DiscoveryBounds(self.operation_bounds(window).received_bytes)
-
-    def resource_bounds(self, _candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
-        return self.operation_bounds(window)
 
     def discover(self, _window: FetchWindow) -> list[RunCandidate]:
         selections = (
@@ -266,16 +266,6 @@ class ECCCWMOFDBulletinNativeAdapter:
         self._client = client or PoliteClient()
         self._archive = archive.rstrip("/")
         self._day = day
-
-    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
-        received = (MAX_HOURS + 1) * MAX_LISTING + MAX_BULLETINS * MAX_BULLETIN
-        return ResourceBounds(MAX_BULLETINS * MAX_BULLETIN, MAX_BULLETINS * MAX_BULLETIN, 8192, received)
-
-    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
-        return DiscoveryBounds(self.operation_bounds(window).received_bytes)
-
-    def resource_bounds(self, _candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
-        return self.operation_bounds(window)
 
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         day = self._day or window.now.astimezone(UTC).strftime("%Y%m%d")

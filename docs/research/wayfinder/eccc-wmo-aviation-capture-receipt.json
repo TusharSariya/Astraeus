@@ -3,6 +3,12 @@
   "complete": false,
   "source_qc": "unknown",
   "scratch_receipt": "/private/tmp/astraeus-eccc-wmo-aviation-capture-20260906T0730Z/capture-receipt.json",
+  "inventory_replay": {
+    "kind": "labeled replay of retained exact raw bytes; no new transport event",
+    "scratch_proof": "/private/tmp/astraeus-eccc-wmo-aviation-capture-20260906T0730Z/full-inventory-replay-proof.json",
+    "bytes": 281827,
+    "sha256": "ad0ef9b26a2d7ed2f03edc3aee15c58b392ebc9ee2e4758a73df775e987332dd"
+  },
   "artifacts": [
     {
       "logical_name": "taf-cyyt",
@@ -11,7 +17,7 @@
       "sha256": "02a0207c082c0b4093b5c434b0c5592bc95f946e47a1902585d8f3470e0b2e87",
       "artifact_revision": "sha256:02a0207c082c0b4093b5c434b0c5592bc95f946e47a1902585d8f3470e0b2e87",
       "transport_completed_at": "2026-09-06T06:21:05.651464+00:00",
-      "inventory": {"element_occurrences": 307, "element_qnames": 41, "attribute_occurrences": 204, "attribute_qnames": 12, "native_time_occurrences": 34}
+      "inventory": {"element_occurrences": 307, "element_qnames": 41, "attribute_occurrences": 204, "attribute_qnames": 12, "native_time_occurrences": 34, "full_inventory_sha256": "c003f177e2746938ac79121016bb3e5d2c70f2e7f8047a4ad8f9936c25978544"}
     },
     {
       "logical_name": "sigmet-czqx",
@@ -20,7 +26,7 @@
       "sha256": "7d6da0c5f75295dba7662f3aaa08a08a4cbe1878054d9e58d7224390f5d81180",
       "artifact_revision": "sha256:7d6da0c5f75295dba7662f3aaa08a08a4cbe1878054d9e58d7224390f5d81180",
       "transport_completed_at": "2026-09-06T06:21:06.092315+00:00",
-      "inventory": {"element_occurrences": 46, "element_qnames": 29, "attribute_occurrences": 15, "attribute_qnames": 5, "native_time_occurrences": 5}
+      "inventory": {"element_occurrences": 46, "element_qnames": 29, "attribute_occurrences": 15, "attribute_qnames": 5, "native_time_occurrences": 5, "full_inventory_sha256": "bc9ec7fa23fcb89531db382fe655fe52503e2df1e521fb2d21a9e2a26a8b2172"}
     },
     {
       "logical_name": "fdcn01",
@@ -29,7 +35,7 @@
       "sha256": "96a92b9a4513130fcf333dc11c6e0dc1396d484a8ff99a08ab42c7cba949b66d",
       "artifact_revision": "sha256:96a92b9a4513130fcf333dc11c6e0dc1396d484a8ff99a08ab42c7cba949b66d",
       "transport_completed_at": "2026-09-06T06:21:07.158917+00:00",
-      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"]}
+      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"], "full_inventory_sha256": "4bfc9f9275efde39efcfaa5e0dddd3e4fbfa241953264dcb78a8d799122735fc"}
     },
     {
       "logical_name": "fdcn02",
@@ -38,7 +44,7 @@
       "sha256": "0e0d8f0688c07153086c144e1f76f0957d48493b96bacd19f7e426edc7497e74",
       "artifact_revision": "sha256:0e0d8f0688c07153086c144e1f76f0957d48493b96bacd19f7e426edc7497e74",
       "transport_completed_at": "2026-09-06T06:21:07.658689+00:00",
-      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"]}
+      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"], "full_inventory_sha256": "8858daa85acf0806519ff49d5e0c76263cbe54f71d45346773bfd755f2349717"}
     },
     {
       "logical_name": "fdcn03",
@@ -47,7 +53,7 @@
       "sha256": "8d9d8258fae3e509edfb906bf305b5467135d46346aa8909496965fa2c43416d",
       "artifact_revision": "sha256:8d9d8258fae3e509edfb906bf305b5467135d46346aa8909496965fa2c43416d",
       "transport_completed_at": "2026-09-06T06:21:08.159479+00:00",
-      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"]}
+      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"], "full_inventory_sha256": "c63870867b14949750d7dc8e6dd4ff7a6f2d51744c6899d2997c38b3890d9b7f"}
     }
   ]
 }
