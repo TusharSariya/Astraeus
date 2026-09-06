@@ -11,7 +11,7 @@ import sys
 import zipfile
 from collections import OrderedDict
 from concurrent.futures import Future
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -257,6 +257,96 @@ class GFSQueryCoordinator:
                 return samples
 
         return live_point_fields(_Samples(), latitude, longitude, entry.valid_time)
+
+    def profile_levels(self, latitude: float, longitude: float, selected_time: datetime, pressures: tuple[int, ...]) -> list[Any]:
+        """Answer the existing pressure-level profile from one cached frame."""
+        from .store import (  # noqa: PLC0415
+            WIND_METHOD,
+            LiveStore,
+            _derived_evidence_field,
+            _registered_wind,
+            live_profile_levels,
+        )
+        from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS  # noqa: PLC0415
+
+        entry = self.query(selected_time)
+        by_pressure: dict[int, list[Any]] = {}
+        with tempfile.TemporaryDirectory(prefix="gfs-demand-profile-") as directory:
+            sampler = LiveStore.__new__(LiveStore)
+            sampler.skipped = []
+            sampler.unmodelled = []
+            for index, logical_name in enumerate(entry.values["logical_names"]):
+                path = Path(directory) / f"{logical_name}.zarr.zip"
+                path.write_bytes(entry.payloads[index])
+                import xarray  # noqa: PLC0415
+                import zarr  # noqa: PLC0415
+
+                zipped = zarr.storage.ZipStore(str(path), mode="r")
+                dataset = xarray.open_zarr(zipped, consolidated=False)
+                try:
+                    provenance = dict(entry.provenance[logical_name])
+                    provenance.setdefault("run_time", entry.run_time.isoformat())
+                    artifact = SimpleNamespace(
+                        source_id="noaa-gfs",
+                        logical_name=logical_name,
+                        revision_id=f"demand:{entry.content_digest}:{logical_name}",
+                        provenance=provenance,
+                        run_time=entry.run_time,
+                        retrieved_at=entry.fetched_at,
+                        native_crs=provenance.get("native_crs", "EPSG:4326"),
+                    )
+                    for pressure in pressures:
+                        found = sampler._sample_dataset(dataset, artifact, latitude, longitude, entry.valid_time, pressure=pressure)
+                        if found:
+                            by_pressure.setdefault(pressure, []).extend(found)
+                finally:
+                    dataset.close()
+                    zipped.close()
+
+        class _Samples:
+            skipped = sampler.skipped
+            unmodelled = sampler.unmodelled
+
+            @staticmethod
+            def sample_profile(*_args: object, **_kwargs: object) -> dict[int, list[Any]]:
+                return by_pressure
+
+        levels = live_profile_levels(_Samples(), latitude, longitude, entry.valid_time, pressures)
+        for level in levels:
+            samples = {sample.variable: sample for sample in by_pressure.get(level.pressure_hpa, [])}
+            suffix = f"_{level.pressure_hpa}hPa"
+            u_name, v_name = f"wind_u{suffix}", f"wind_v{suffix}"
+            u, v = samples.get(u_name), samples.get(v_name)
+            # Pressure-level components are derivation inputs, not standalone
+            # profile readings. The profile exposes the same registered wind
+            # representation as its existing fixture and UI contract.
+            level.fields = [
+                field.model_copy(update={"field": "temperature"}) if field.key == "temperature_pressure"
+                else field.model_copy(update={"field": "relative_humidity"}) if field.key == "relative_humidity_pressure"
+                else field
+                for field in level.fields
+                if field.field not in {u_name, v_name}
+            ]
+            if u is not None and v is not None and u.value is not None and v.value is not None:
+                speed, direction = _registered_wind(u.value, v.value)
+                for name, derived, units in (
+                    ("wind_speed", speed, WIND_SPEED_UNITS),
+                    ("wind_direction", direction, WIND_DIRECTION_UNITS),
+                ):
+                    level.fields.append(
+                        _derived_evidence_field(
+                            _Samples(),
+                            field_name=name,
+                            basis=replace(u, variable=name, value=derived.value, units=units),
+                            inputs=[(u_name, u), (v_name, v)],
+                            method=WIND_METHOD,
+                            value=derived.value,
+                            derivation=derived.derivation,
+                            derivation_version=derived.version,
+                            reference=datetime.now(UTC),
+                        )
+                    )
+        return levels
 
     def _discover(self) -> RunCandidate:
         current = self._clock()

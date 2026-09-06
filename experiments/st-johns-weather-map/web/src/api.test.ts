@@ -20,6 +20,15 @@ const rasterLayer: LayerItem = {
 
 const bounds = { west: -55.2, south: 46.2, east: -50.8, north: 48.8, widthPx: 1024.4, heightPx: 768.6 }
 
+it('addresses the selected product when loading a pressure profile', async () => {
+  const fetchMock = vi.fn(async (_url: string) => new Response(JSON.stringify({ valid_time: '2026-09-06T15:00:00Z', levels: [] }), { status: 200 }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  await loadProfile({ id: 'test', name: 'Test', latitude: 47.56, longitude: -52.71, kind: 'map' }, '2026-09-06T15:17:00Z', undefined, 'GFS')
+
+  expect(String(fetchMock.mock.calls[0][0])).toContain('product=GFS')
+})
+
 /** The provenance headers the endpoint actually returns, verified live against
  *  `/layers/geomet-live-hrdps-tt/raster`. */
 function rasterHeaders(overrides: Record<string, string> = {}): Record<string, string> {

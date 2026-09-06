@@ -14,6 +14,7 @@ from weather_api.gfs_query import GFSQueryCoordinator, GFSQueryEntry, GFSQuerySe
 from ingest.contract import Artifact, RunCandidate, RunResult
 from ingest.adapters.noaa_s3 import MAX_IDX_BYTES
 from ingest.grib import write_zarr
+from ingest.grib import RH_PHASE_MIXED_LINEAR_253K_273K
 
 UTC = timezone.utc
 KEY = GFSRequestKey(
@@ -222,6 +223,60 @@ def test_cached_native_payload_uses_existing_point_evidence_builder(tmp_path):
     assert temperature.provenance.run_stale is False
     assert temperature.provenance.run_stale_reason is None
     assert sources == ["noaa-gfs"]
+
+
+def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, monkeypatch):
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    valid_time = run_time + timedelta(hours=3)
+    path = tmp_path / "surface.zarr.zip"
+    variables = {}
+    for pressure, temperature, humidity in ((850, 8.0, 81.0), (700, -3.0, 76.0), (500, -18.5, 72.0)):
+        variables[f"temperature_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[temperature]]], {"units": "degC"})
+        variables[f"relative_humidity_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[humidity]]], {"units": "percent", "rh_phase_convention": RH_PHASE_MIXED_LINEAR_253K_273K})
+        variables[f"wind_u_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[3.0]]], {"units": "m s-1"})
+        variables[f"wind_v_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[4.0]]], {"units": "m s-1"})
+    dataset = xarray.Dataset(
+        variables,
+        coords={"valid_time": [valid_time.replace(tzinfo=None)], "latitude": [47.56], "longitude": [-52.71]},
+    )
+    write_zarr(dataset, path)
+    provenance = {
+        "source_id": "noaa-gfs", "producer": "NOAA / NCEP", "product": "Global Forecast System",
+        "native_resolution": "0.25 deg", "native_crs": "EPSG:4326", "adapter_version": "test",
+        "quality": {"status": "passed", "flags": []},
+        "coverage": {"status": "complete", "expected": len(variables), "present": len(variables)},
+        "evidence_classes": ["retrieved"],
+    }
+    cached = GFSQueryEntry(
+        KEY, run_time, valid_time, valid_time + timedelta(minutes=2), "b" * 64,
+        {"logical_names": ["surface"]}, {"surface": provenance}, (path.read_bytes(),),
+    )
+    coordinator = object.__new__(GFSQueryCoordinator)
+    coordinator.query = lambda _selected: cached
+
+    levels = coordinator.profile_levels(47.5615, -52.7126, valid_time, (850, 700, 500, 300))
+
+    assert [level.pressure_hpa for level in levels] == [850, 700, 500]
+    assert 1000 not in [level.pressure_hpa for level in levels]
+    fields = {field.field: field for field in levels[-1].fields}
+    assert fields["temperature"].value == -18.5
+    assert fields["relative_humidity"].value == 72.0
+    assert fields["relative_humidity"].phase == "mixed"
+    assert fields["wind_speed"].value == 5.0
+    assert fields["wind_speed"].provenance.evidence_class == "derived_here"
+    assert fields["temperature"].provenance.valid_time == valid_time
+    assert fields["temperature"].provenance.run_time == run_time
+
+    import weather_api.gfs_query as gfs_query
+    from weather_api.app import get_profile
+
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: coordinator)
+    response = get_profile(47.5615, -52.7126, valid_time, "GFS")
+    assert response.data_mode.value == "live"
+    assert [level.pressure_hpa for level in response.levels] == [850, 700, 500]
+    assert response.valid_time == valid_time
+    assert "native timestep" in response.notices[0]
 
 
 def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_path, monkeypatch):

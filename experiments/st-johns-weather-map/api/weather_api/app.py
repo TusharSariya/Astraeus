@@ -1161,7 +1161,7 @@ def _live_point(
             fields=fields,
             notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied"],
         )
-    if product and product.upper() in {"GFS", "NOAA"}:
+    if product and product.upper() == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
 
@@ -2363,12 +2363,41 @@ def get_profile(
     latitude: float = Query(default=47.5615, ge=-90, le=90),
     longitude: float = Query(default=-52.7126, ge=-180, le=180),
     valid_time: datetime | None = None,
-    product: str | None = None,
+    product: str | None = Query(default=None),
 ) -> ProfileResponse:
     require_core_coverage(latitude, longitude)
     time = requested_time(valid_time)
     if fixture_mode():
         return ProfileResponse(data_mode=DataMode.FIXTURE, latitude=latitude, longitude=longitude, valid_time=time, levels=profile_levels(time))
+
+    if product and product.upper() == "GFS":
+        try:
+            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+
+            levels = gfs_query_coordinator().profile_levels(latitude, longitude, time, PROFILE_PRESSURES)
+        except Exception as error:
+            LOGGER.exception("GFS demand profile failed at %s,%s for %s", latitude, longitude, time.isoformat())
+            return ProfileResponse(
+                data_mode=DataMode.UNAVAILABLE,
+                latitude=latitude,
+                longitude=longitude,
+                valid_time=time,
+                levels=unavailable_profile_levels(time, PROFILE_PRESSURES, flags=["demand_query_unavailable:noaa-gfs"]),
+                notices=[f"GFS selected timestamp is unavailable: {type(error).__name__}"],
+            )
+        actual_time = levels[0].fields[0].provenance.valid_time if levels and levels[0].fields else None
+        return ProfileResponse(
+            data_mode=DataMode.LIVE if levels else DataMode.UNAVAILABLE,
+            latitude=latitude,
+            longitude=longitude,
+            valid_time=time,
+            levels=levels or unavailable_profile_levels(time, PROFILE_PRESSURES, flags=["demand_query_empty:noaa-gfs"]),
+            notices=(
+                [f"GFS profile values are from native timestep {actual_time.isoformat()}; no temporal interpolation was applied"]
+                if actual_time is not None
+                else ["GFS returned no validated pressure-level values for the selected timestamp"]
+            ),
+        )
 
     def unavailable(reason: str, flag: str, notices: list[str], *, flags: Sequence[str] = (), last_valid_time: datetime | None = None) -> ProfileResponse:
         return ProfileResponse(
