@@ -82,8 +82,8 @@ METAR_MANIFEST = RunManifest(
         RequiredField("mean_sea_level_pressure", "hPa", level="mean sea level", optional=True),
         RequiredField("visibility", "m", optional=True),
         RequiredField("total_cloud_okta", "percent", level="column", optional=True),
-        RequiredField("wind_u_10m", "m s-1", level="10 m", optional=True),
-        RequiredField("wind_v_10m", "m s-1", level="10 m", optional=True),
+        RequiredField("wind_speed_10m", "m s-1", level="10 m", optional=True),
+        RequiredField("wind_direction_10m", "degree", level="10 m", optional=True),
         # Per-layer cloud and the present-weather flags are published as
         # retrieved (see ``parse_cloud_layers`` / ``parse_present_weather``).
         # Only the first slot and the fog flag are declared: they pin the units
@@ -405,6 +405,9 @@ class AWCMetarAdapter:
         )
 
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        raise AdapterUnavailable("awc-metar-speci scheduled ingestion is disabled; use selected-timestamp demand queries")
+
+    def demand_operation_bounds(self) -> ResourceBounds:
         self._require_target(Path(tempfile.gettempdir()))
         try:
             self._isolated("probe", b"", FetchWindow(datetime.now(UTC)), None)
@@ -501,8 +504,9 @@ class AWCMetarAdapter:
         pres_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
         vis_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
         cloud_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
-        wind_u_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
-        wind_v_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
+        wind_speed_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
+        wind_direction_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
+        wind_gust_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
         layer_arrays = _cloud_layer_arrays(n_times)
         # 0 is a retrieved absence (the group was read and carried no FG/BR),
         # which is why these start at 0 rather than NaN.
@@ -556,10 +560,18 @@ class AWCMetarAdapter:
             if c is not None:
                 cloud_arr[i, 0, 0] = c
 
-            u, v = parse_wind_components(rec.get("wspd"), rec.get("wdir"))
-            if u is not None and v is not None:
-                wind_u_arr[i, 0, 0] = u
-                wind_v_arr[i, 0, 0] = v
+            speed = rec.get("wspd")
+            if speed is not None:
+                wind_speed_arr[i, 0, 0] = float(speed) * 0.514444
+            direction = rec.get("wdir")
+            if isinstance(direction, (int, float)) and not isinstance(direction, bool):
+                wind_direction_arr[i, 0, 0] = float(direction)
+            gust = rec.get("wgst")
+            if gust is not None:
+                try:
+                    wind_gust_arr[i, 0, 0] = float(gust) * 0.514444
+                except (TypeError, ValueError):
+                    decode_errors.append(f"wind_gust@{stamp}")
 
         dataset = xarray.Dataset(
             {
@@ -584,8 +596,9 @@ class AWCMetarAdapter:
                 "mean_sea_level_pressure": (("valid_time", "latitude", "longitude"), pres_arr, {"units": "hPa", "original_units": "hPa"}),
                 "visibility": (("valid_time", "latitude", "longitude"), vis_arr, {"units": "m", "original_units": "SM"}),
                 "total_cloud_okta": (("valid_time", "latitude", "longitude"), cloud_arr, {"units": "percent", "original_units": "okta_fraction"}),
-                "wind_u_10m": (("valid_time", "latitude", "longitude"), wind_u_arr, {"units": "m s-1", "original_units": "kt"}),
-                "wind_v_10m": (("valid_time", "latitude", "longitude"), wind_v_arr, {"units": "m s-1", "original_units": "kt"}),
+                "wind_speed_10m": (("valid_time", "latitude", "longitude"), wind_speed_arr, {"units": "m s-1", "original_units": "kt"}),
+                "wind_direction_10m": (("valid_time", "latitude", "longitude"), wind_direction_arr, {"units": "degree", "original_units": "degree"}),
+                "wind_gust_10m": (("valid_time", "latitude", "longitude"), wind_gust_arr, {"units": "m s-1", "original_units": "kt"}),
                 **_cloud_layer_data_vars(layer_arrays, "METAR"),
                 **_present_weather_data_vars(fog_arr, fog_vicinity_arr, mist_arr),
             },
