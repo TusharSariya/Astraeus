@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from ingest.http import DEFAULT_MIN_HOST_INTERVAL_SECONDS, PoliteClient, USER_AGENT, min_host_interval_from_env
+from ingest.http import DEFAULT_MIN_HOST_INTERVAL_SECONDS, MaxBytesExceeded, PoliteClient, USER_AGENT, min_host_interval_from_env
 
 
 def _client(handler, *, attempts: int = 3) -> PoliteClient:
@@ -66,3 +66,10 @@ def test_the_counter_is_shared_across_threads(tmp_path: Path, monkeypatch: pytes
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(lambda i: client.download(f"https://dd.weather.gc.ca/{i}.grib2", tmp_path / f"{i}.grib2", max_bytes=64), range(8)))
     assert client.retry_counts[429] == 8
+
+
+def test_bounded_in_memory_response_is_abandoned_at_the_ceiling():
+    client = _client(lambda request: httpx.Response(200, content=b"metadata"))
+    assert client.get_bytes("https://example.test/meta", max_bytes=8) == b"metadata"
+    with pytest.raises(MaxBytesExceeded):
+        client.get_bytes("https://example.test/meta", max_bytes=7)

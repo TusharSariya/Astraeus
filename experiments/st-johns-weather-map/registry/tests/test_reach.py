@@ -273,12 +273,10 @@ class ReachSchemaTests(unittest.TestCase):
 
     def test_reach_summary_counts_the_records_that_declare_one(self) -> None:
         report = audit.summary(registry())
-        self.assertEqual(25, report["reach_declared"])
+        self.assertEqual(27, report["reach_declared"])
         self.assertEqual([], report["latency_measured"])
-        # 17 adapters after horizon-tiers, plus the four ensemble adapters
-        # (eccc-reps, ecmwf-aifs-ens, ecmwf-ens, noaa-gefs) registered by
-        # ensemble-families-and-member-statistics, none schedulable.
-        # and the isolated GOES GLM acquisition adapter.
+        # Base 21 adapter identities plus the isolated GOES GLM class found
+        # by the static audit. SST adds two reach declarations, no adapters.
         self.assertEqual(22, len(report["adapter_source_ids"]))
 
 

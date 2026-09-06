@@ -117,6 +117,12 @@ def test_a_sampled_value_carries_the_class_its_artifact_declared():
     assert {sample.evidence_class for sample in store.sample_point(*ST_JOHNS, VALID_TIME)} == {"reprocessed"}
 
 
+def test_live_value_exposes_the_immutable_artifact_revision():
+    store = StubStore([(artifact(revision_id="revision-content-sha"), dataset())])
+    fields, _consensus, _sources = live_point_fields(store, *ST_JOHNS, VALID_TIME)
+    assert fields[0].provenance.artifact_revision == "revision-content-sha"
+
+
 # --- provenance isolation --------------------------------------------------
 
 def test_provenance_isolation_keeps_one_unmodelled_artifact_from_failing_the_response():

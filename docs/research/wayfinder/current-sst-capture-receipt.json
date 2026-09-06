@@ -1,0 +1,30 @@
+{
+  "capture_reference_utc": "2026-09-06T00:15:40.126794Z",
+  "bounds": {"south": 45.0, "west": -58.0, "north": 50.5, "east": -46.0},
+  "ostia": {
+    "capture_time": "2026-09-06T00:15:17.751851Z",
+    "valid_time": "2026-09-04T00:00:00Z",
+    "objects": [
+      {"path": ".zmetadata", "bytes": 11656, "sha256": "d4b2b8776d8955f2ff958d0642e25b8754332e63efad62385d766eaac36b6a28"},
+      {"path": "time/1", "bytes": 1646, "sha256": "719e4aaf8950e0500f11a2096839e0458a1dc9af12c1573be743de461a4d36f9"},
+      {"path": "latitude/0", "bytes": 3151, "sha256": "b64754961585a3e272592120fb2496e02892c7a27b291d40c3109168fcf8493a"},
+      {"path": "longitude/0", "bytes": 4180, "sha256": "a76b6eacd3830c8cfd3a46e6e4cb69618c5183f240057e3855746e5c0b24efda"},
+      {"path": "analysed_sst/7186.2.2", "bytes": 1005432, "sha256": "f05fdf3c0611f7a127ef53d0d1f8a7867693eaf2cea799fa0f3851b61c576c41"},
+      {"path": "analysis_error/7186.2.2", "bytes": 423282, "sha256": "76bab6890498e2f0f280fdc0ef25adba10c256927abdf7a174acc66b0709ae09"},
+      {"path": "mask/7186.2.2", "bytes": 22411, "sha256": "7580036d86247d3269d4cd5e995fc2c5caa44cf022385ce45db8fe00b54c66d5"}
+    ],
+    "base_url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/",
+    "artifact": {"bytes": 65695, "sha256": "0330fdaa1bd4c67db0869c6f70083eeeabb35e4d528aa2b91a9d1a3f4a61f6b9", "revision": "ostia-20260904-0330fdaa1bd4c67d"},
+    "api_replay_reference_utc": "2026-09-04T12:00:00Z"
+  },
+  "oisst": {
+    "capture_time": "2026-09-06T00:15:20.011383Z",
+    "valid_time": "2026-09-04T12:00:00Z",
+    "url": "https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/202609/oisst-avhrr-v02r01.20260904_preliminary.nc",
+    "source": {"bytes": 1554546, "sha256": "3b4dc26f7d551e487dca794b38621d51fa91517d652eb9f1e9597a6736ead72d"},
+    "container_disposition": {"sst": "normalized", "err": "normalized", "anom": "available-not-stored", "ice": "available-not-stored"},
+    "artifact": {"bytes": 11561, "sha256": "536d1ecdbb3b522ca73c373af7e11d094fec9e5ac4e9f9b9e7a5c2b739a8cffd", "revision": "oisst-20260904-preliminary-536d1ecdbb3b522c"},
+    "api_replay_reference_utc": "2026-09-05T00:00:00Z"
+  },
+  "live_now": {"result": "unavailable", "reason": "both latest analyses fall outside the unchanged 24-hour observation window"}
+}

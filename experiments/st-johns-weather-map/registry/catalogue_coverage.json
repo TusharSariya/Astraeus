@@ -220,6 +220,10 @@
       "eccc-riops",
       "eccc-gdwps"
     ],
+    "Current OSTIA and NOAA OISST SST analyses": [
+      "metoffice-ostia-sst",
+      "noaa-oisst-v2-1"
+    ],
     "Coast Guard NAVWARN": [
       "ccg-navwarn"
     ],
