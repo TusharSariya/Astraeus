@@ -10,9 +10,10 @@ import tempfile
 from collections import OrderedDict
 from concurrent.futures import Future
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Callable, Mapping
+from types import SimpleNamespace
+from typing import Any, Callable, Mapping
 
 from ingest.adapters.noaa_s3 import (
     GFS_IDX_SELECTORS,
@@ -28,6 +29,7 @@ from ingest.contract import FetchWindow, RunCandidate
 GFS_OBJECT_CACHE_TTL_SECONDS = 600.0
 GFS_CACHE_MAX_ENTRIES = 4
 GFS_CACHE_MAX_BYTES = 256 * 1024 * 1024
+_COORDINATOR: GFSQueryCoordinator | None = None
 
 @dataclass(frozen=True)
 class GFSRequestKey:
@@ -189,6 +191,58 @@ class GFSQueryCoordinator:
             finally:
                 self._prepared.pop(key, None)
 
+    def point_fields(self, latitude: float, longitude: float, selected_time: datetime) -> tuple[list[Any], Any, list[str]]:
+        """Answer one point through the existing evidence/provenance builder.
+
+        Demand payloads remain memory-resident cache entries.  They are opened
+        only for this request and presented to the existing sampler as native
+        retrieved artifacts; no ArtifactStore row or current revision is
+        invented for the live-query path.
+        """
+        from .store import LiveStore, live_point_fields  # noqa: PLC0415
+
+        entry = self.query(selected_time)
+        samples = []
+        with tempfile.TemporaryDirectory(prefix="gfs-demand-read-") as directory:
+            sampler = LiveStore.__new__(LiveStore)
+            sampler.skipped = []
+            sampler.unmodelled = []
+            for index, logical_name in enumerate(entry.values["logical_names"]):
+                path = Path(directory) / f"{logical_name}.zarr.zip"
+                path.write_bytes(entry.payloads[index])
+                import xarray  # noqa: PLC0415
+                import zarr  # noqa: PLC0415
+
+                zipped = zarr.storage.ZipStore(str(path), mode="r")
+                dataset = xarray.open_zarr(zipped, consolidated=False)
+                try:
+                    provenance = dict(entry.provenance[logical_name])
+                    artifact = SimpleNamespace(
+                        source_id="noaa-gfs",
+                        logical_name=logical_name,
+                        revision_id=f"demand:{entry.content_digest}:{logical_name}",
+                        provenance=provenance,
+                        run_time=entry.run_time,
+                        retrieved_at=entry.fetched_at,
+                        native_crs=provenance.get("native_crs", "EPSG:4326"),
+                    )
+                    samples.extend(
+                        sampler._sample_dataset(dataset, artifact, latitude, longitude, entry.valid_time)
+                    )
+                finally:
+                    dataset.close()
+                    zipped.close()
+
+        class _Samples:
+            skipped = sampler.skipped
+            unmodelled = sampler.unmodelled
+
+            @staticmethod
+            def sample_point(*_args: object, **_kwargs: object) -> list[Any]:
+                return samples
+
+        return live_point_fields(_Samples(), latitude, longitude, entry.valid_time)
+
     def _discover(self) -> RunCandidate:
         current = self._clock()
         if self._candidate is not None and current < self._candidate[0]:
@@ -232,3 +286,11 @@ class GFSQueryCoordinator:
         lead = int(key.grib_url.rsplit(".f", 1)[1])
         assert candidate.run_time is not None
         return candidate.run_time + timedelta(hours=lead)
+
+
+def gfs_query_coordinator() -> GFSQueryCoordinator:
+    """Process-local demand cache used by the public point route."""
+    global _COORDINATOR
+    if _COORDINATOR is None:
+        _COORDINATOR = GFSQueryCoordinator(now=lambda: datetime.now(UTC))
+    return _COORDINATOR

@@ -6,10 +6,12 @@ from threading import Event
 from time import sleep
 
 import pytest
+import xarray
 
 from weather_api.gfs_query import GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey
 from ingest.contract import Artifact, RunCandidate, RunResult
 from ingest.adapters.noaa_s3 import MAX_IDX_BYTES
+from ingest.grib import write_zarr
 
 UTC = timezone.utc
 KEY = GFSRequestKey(
@@ -174,3 +176,73 @@ def test_coordinator_fetches_one_native_lead_then_serves_exact_cache_hit(tmp_pat
     assert adapter.fetches == [run_time + timedelta(hours=3)]
     assert len(adapter.client.calls) == 1
     assert adapter.client.calls[0][1] == MAX_IDX_BYTES
+
+
+def test_cached_native_payload_uses_existing_point_evidence_builder(tmp_path):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    valid_time = run_time + timedelta(hours=3)
+    path = tmp_path / "surface.zarr.zip"
+    dataset = xarray.Dataset(
+        {"temperature_2m": (("valid_time", "latitude", "longitude"), [[[14.25]]], {"units": "degC"})},
+        coords={"valid_time": [valid_time.replace(tzinfo=None)], "latitude": [47.56], "longitude": [-52.71]},
+    )
+    write_zarr(dataset, path)
+    provenance = {
+        "source_id": "noaa-gfs", "producer": "NOAA / NCEP", "product": "Global Forecast System",
+        "native_resolution": "0.25 deg", "native_crs": "EPSG:4326", "adapter_version": "test",
+        "quality": {"status": "passed", "flags": []},
+        "coverage": {"status": "complete", "expected": 1, "present": 1},
+        "evidence_classes": ["retrieved"],
+    }
+    cached = GFSQueryEntry(
+        KEY, run_time, valid_time, valid_time + timedelta(minutes=2), "b" * 64,
+        {"logical_names": ["surface"]}, {"surface": provenance}, (path.read_bytes(),),
+    )
+    coordinator = object.__new__(GFSQueryCoordinator)
+    coordinator.query = lambda _selected: cached
+
+    fields, _consensus, sources = coordinator.point_fields(47.5615, -52.7126, valid_time)
+
+    temperature = next(item for item in fields if item.field == "temperature")
+    assert temperature.value == 14.25
+    assert temperature.provenance.source_id == "noaa-gfs"
+    assert temperature.provenance.valid_time == valid_time
+    assert temperature.provenance.run_time == run_time
+    assert sources == ["noaa-gfs"]
+
+
+def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_path, monkeypatch):
+    from weather_api.app import _live_point
+    import weather_api.gfs_query as gfs_query
+
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    valid_time = run_time + timedelta(hours=3)
+    path = tmp_path / "surface.zarr.zip"
+    write_zarr(
+        xarray.Dataset(
+            {"temperature_2m": (("valid_time", "latitude", "longitude"), [[[14.25]]], {"units": "degC"})},
+            coords={"valid_time": [valid_time.replace(tzinfo=None)], "latitude": [47.56], "longitude": [-52.71]},
+        ),
+        path,
+    )
+    provenance = {
+        "source_id": "noaa-gfs", "producer": "NOAA / NCEP", "product": "Global Forecast System",
+        "native_resolution": "0.25 deg", "native_crs": "EPSG:4326", "adapter_version": "test",
+        "quality": {"status": "passed", "flags": []},
+        "coverage": {"status": "complete", "expected": 1, "present": 1},
+        "evidence_classes": ["retrieved"],
+    }
+    cached = GFSQueryEntry(
+        KEY, run_time, valid_time, valid_time + timedelta(minutes=2), "b" * 64,
+        {"logical_names": ["surface"]}, {"surface": provenance}, (path.read_bytes(),),
+    )
+    coordinator = object.__new__(GFSQueryCoordinator)
+    coordinator.query = lambda _selected: cached
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: coordinator)
+
+    response = _live_point(47.5615, -52.7126, valid_time + timedelta(minutes=17), "GFS")
+
+    assert response.data_mode.value == "live"
+    assert response.selection.selected_source_id == "noaa-gfs"
+    assert response.fields[0].provenance.valid_time == valid_time
+    assert any("no temporal interpolation" in notice for notice in response.notices)
