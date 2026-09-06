@@ -679,11 +679,15 @@ export default function App() {
     return () => controller.abort()
   }, [])
 
+  const demandLayerProduct = selectedProduct === 'GFS' || selectedProduct === 'HRDPS' ? selectedProduct : undefined
+  const demandLayerIdentity = demandLayerProduct && dataSource === 'live' && snapshot.selectedSourceId === (demandLayerProduct === 'GFS' ? 'noaa-gfs' : 'eccc-hrdps')
+    ? `${demandLayerProduct}:${snapshot.validTime ?? 'unknown'}`
+    : `${demandLayerProduct ?? 'unscoped'}:pending`
+
   useEffect(() => {
     const controller = new AbortController()
     setLayersLoading(true)
-    const demandProduct = selectedProduct === 'GFS' || selectedProduct === 'HRDPS' ? selectedProduct : undefined
-    loadLayers(demandProduct, controller.signal).then((result) => {
+    loadLayers(demandLayerProduct, controller.signal).then((result) => {
       if (!controller.signal.aborted) {
         setLayers(result.layers)
         setLayerNotices(result.notices)
@@ -692,7 +696,7 @@ export default function App() {
       }
     }).catch(() => undefined)
     return () => controller.abort()
-  }, [selectedProduct])
+  }, [demandLayerIdentity]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const controller = new AbortController()
@@ -716,9 +720,11 @@ export default function App() {
     setSnapshot(unavailableSnapshot)
 
     loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources, member: selectedMember }).then((result) => {
-      setSnapshot(result.snapshot)
-      setDataSource(result.source)
-      setSourceError(result.error ?? '')
+      if (!controller.signal.aborted) {
+        setSnapshot(result.snapshot)
+        setDataSource(result.source)
+        setSourceError(result.error ?? '')
+      }
     }).catch(() => undefined)
 
     if (mode === 'expert') {

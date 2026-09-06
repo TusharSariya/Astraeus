@@ -789,7 +789,14 @@ describe('model row states its own coverage', () => {
       [{ field: 'temperature', value: 14.6, provenance: { source_id: 'noaa-gfs', product: 'GFS', provider: 'NOAA/NCEP', normalized_units: 'degC', data_mode: 'live' } }],
       { mode: 'selected', selected_source_id: 'noaa-gfs', selected_product_id: 'gfs', badge: 'GFS selected', reason: 'explicit product selection' },
     )
-    vi.stubGlobal('fetch', routedFetch({ catalog: catalogWithGfs, point: gfsPoint }))
+    const baseFetch = routedFetch({ catalog: catalogWithGfs, point: gfsPoint })
+    const events: string[] = []
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/point') && url.includes('product=GFS')) events.push('point:GFS')
+      if (url.includes('/layers?product=GFS')) events.push('layers:GFS')
+      return baseFetch(url)
+    })
+    vi.stubGlobal('fetch', fetchMock)
     render(<App />)
 
     const gfs = await screen.findByRole('button', { name: /GFS.*nothing ingested/ })
@@ -797,6 +804,10 @@ describe('model row states its own coverage', () => {
     const live = await screen.findByRole('button', { name: /GFS.*live query at selected time/ })
     expect(live).toHaveAttribute('aria-pressed', 'true')
     expect(live).not.toHaveClass('model-unavailable')
+    await vi.waitFor(() => expect(events.filter((event) => event === 'layers:GFS').length).toBeGreaterThanOrEqual(2))
+    const pointIndex = events.indexOf('point:GFS')
+    expect(events.indexOf('layers:GFS')).toBeLessThan(pointIndex)
+    expect(events.lastIndexOf('layers:GFS')).toBeGreaterThan(pointIndex)
   })
 })
 
