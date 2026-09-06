@@ -506,6 +506,7 @@ class AWCMetarAdapter:
         cloud_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
         wind_u_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
         wind_v_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
+        wind_gust_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
         layer_arrays = _cloud_layer_arrays(n_times)
         # 0 is a retrieved absence (the group was read and carried no FG/BR),
         # which is why these start at 0 rather than NaN.
@@ -563,6 +564,12 @@ class AWCMetarAdapter:
             if u is not None and v is not None:
                 wind_u_arr[i, 0, 0] = u
                 wind_v_arr[i, 0, 0] = v
+            gust = rec.get("wgst")
+            if gust is not None:
+                try:
+                    wind_gust_arr[i, 0, 0] = float(gust) * 0.514444
+                except (TypeError, ValueError):
+                    decode_errors.append(f"wind_gust@{stamp}")
 
         dataset = xarray.Dataset(
             {
@@ -589,6 +596,7 @@ class AWCMetarAdapter:
                 "total_cloud_okta": (("valid_time", "latitude", "longitude"), cloud_arr, {"units": "percent", "original_units": "okta_fraction"}),
                 "wind_u_10m": (("valid_time", "latitude", "longitude"), wind_u_arr, {"units": "m s-1", "original_units": "kt"}),
                 "wind_v_10m": (("valid_time", "latitude", "longitude"), wind_v_arr, {"units": "m s-1", "original_units": "kt"}),
+                "wind_gust_10m": (("valid_time", "latitude", "longitude"), wind_gust_arr, {"units": "m s-1", "original_units": "kt"}),
                 **_cloud_layer_data_vars(layer_arrays, "METAR"),
                 **_present_weather_data_vars(fog_arr, fog_vicinity_arr, mist_arr),
             },

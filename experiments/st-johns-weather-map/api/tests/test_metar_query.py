@@ -1,5 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+import json
+import hashlib
 from threading import Lock
 import time
 import sys
@@ -13,6 +15,8 @@ from weather_api.metar_query import MetarQueryService
 from weather_api.taf_query import TafQueryUnavailable
 from weather_api.fixtures import point_fields
 from weather_api.models import DataMode
+from ingest.awc_metar_isolated import _decode
+from ingest.contract import AdapterUnavailable, FetchWindow
 
 app_module=importlib.import_module("weather_api.app")
 
@@ -151,7 +155,11 @@ def test_latest_before_selection_is_normalized_and_sampled_without_artifact_stor
     observed=datetime(2026,9,6,12,tzinfo=UTC)
     rows=[{"icaoId":"CYYT", "obsTime":int(observed.timestamp()), "temp":10, "dewp":8,
            "slp":1012.3, "wspd":10, "wdir":180, "visib":"6+",
-           "clouds":[{"cover":"BKN", "base":20}], "wxString":"BR"}]
+           "wgst":20, "clouds":[{"cover":"BKN", "base":20}], "wxString":"BR",
+           "metarId":42, "metarType":"METAR", "rawOb":"METAR CYYT TEST",
+           "reportTime":"2026-09-06T12:00:00Z", "receiptTime":"2026-09-06T12:01:00Z",
+           "name":"St Johns Intl", "lat":47.627, "lon":-52.748, "elev":128,
+           "fltCat":"MVFR", "qcField":0}]
     monkeypatch.setattr("ingest.adapters.awc.AWCMetarAdapter.demand_operation_bounds", lambda *_args: None)
     service=MetarQueryService(client=client(lambda _:httpx.Response(200,json=rows,
         headers={"Cache-Control":"max-age=60"})),clock=Clock())
@@ -162,8 +170,14 @@ def test_latest_before_selection_is_normalized_and_sampled_without_artifact_stor
     assert by_name["dew_point"].value==8
     assert by_name["visibility"].value==pytest.approx(9656.064)
     assert by_name["wind_speed"].value==pytest.approx(5.1)
+    assert by_name["wind_gust"].value==pytest.approx(10.28888)
     assert by_name["fog_state"].value=="unknown"
     assert all(field.provenance.source_id=="awc-metar-speci" for field in fields)
+    identity=by_name["temperature"].provenance.native_report
+    assert identity.provider_report_id==42
+    assert identity.report_type=="METAR"
+    assert identity.raw_report_sha256==hashlib.sha256(b"METAR CYYT TEST").hexdigest()
+    assert identity.receipt_time==datetime(2026,9,6,12,1,tzinfo=UTC)
 
 
 def test_future_and_one_hour_old_observations_are_refused():
@@ -176,6 +190,35 @@ def test_future_and_one_hour_old_observations_are_refused():
         headers={"Cache-Control":"max-age=60"})),adapter=BoundedAdapter(),clock=Clock())
     with pytest.raises(ValueError,match="one hour"):
         service.point_fields(47.627,-52.748,observed.replace(hour=13))
+
+
+@pytest.mark.parametrize("change, detail", [
+    ({"unexpected":"value"}, "unsupported keys"),
+    ({"visib":"opaque"}, "invalid visib"),
+    ({"clouds":[]}, None),
+    ({"clouds":[{"cover":"ALIEN", "base":20}]}, "invalid cloud cover"),
+    ({"reportTime":"not-a-time"}, "invalid reportTime"),
+    ({"lat":91}, "invalid lat"),
+    ({"wdir":"sideways"}, "invalid wdir"),
+])
+def test_complete_native_row_vocabulary_is_validated(change, detail):
+    row=reports()[0] | change
+    window=FetchWindow(AT.replace(hour=13),back_hours=2,forward_hours=0)
+    raw=json.dumps([row]).encode()
+    if detail is None:
+        assert _decode(raw,window)==[row]
+    else:
+        with pytest.raises(AdapterUnavailable,match=detail): _decode(raw,window)
+
+
+def test_variable_wind_direction_and_native_metadata_are_preserved():
+    row=reports()[0] | {
+        "wdir":"VRB", "rawOb":"METAR CYYT TEST", "reportTime":"2026-09-06T12:15:00Z",
+        "receiptTime":"2026-09-06T12:16:00Z", "metarType":"METAR", "name":"St Johns Intl",
+        "lat":47.627, "lon":-52.748, "elev":128, "altim":1004.1, "fltCat":"MVFR", "qcField":0,
+    }
+    window=FetchWindow(AT.replace(hour=13),back_hours=2,forward_hours=0)
+    assert _decode(json.dumps([row]).encode(),window)[0]==row
 
 
 def test_default_point_uses_demand_metar_when_legacy_store_is_unreachable(monkeypatch):

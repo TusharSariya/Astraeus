@@ -18,6 +18,7 @@ import httpx
 from ingest.adapters.awc import AWCMetarAdapter, AWC_METAR_DOCUMENT_BYTES
 from ingest.awc_metar_isolated import _decode
 from ingest.contract import FetchWindow, RunCandidate
+from .models import NativeReportIdentity
 from .taf_query import TafQueryUnavailable, _freshness as _taf_freshness, _safe_request_headers
 
 AWC_METAR_URL = "https://aviationweather.gov/api/data/metar"
@@ -247,6 +248,27 @@ class MetarQueryService:
             @staticmethod
             def sample_point(*_args, **_kwargs): return samples
         fields, _consensus, _sources = live_point_fields(Samples(), latitude, longitude, observed)
+        def optional_time(key: str) -> datetime | None:
+            value = row.get(key)
+            return datetime.fromisoformat(value.replace("Z", "+00:00")) if isinstance(value, str) else None
+        raw_report = row.get("rawOb")
+        report = NativeReportIdentity(
+            station_id="CYYT", provider_report_id=row.get("metarId") if isinstance(row.get("metarId"), (int, str)) else None,
+            report_type=row.get("metarType") if isinstance(row.get("metarType"), str) else None,
+            observation_time=observed, report_time=optional_time("reportTime"), receipt_time=optional_time("receiptTime"),
+            raw_report_sha256=hashlib.sha256(raw_report.encode()).hexdigest() if isinstance(raw_report, str) else None,
+            provider_station_name=row.get("name") if isinstance(row.get("name"), str) else None,
+            provider_latitude=float(row["lat"]) if row.get("lat") is not None else None,
+            provider_longitude=float(row["lon"]) if row.get("lon") is not None else None,
+            provider_elevation_m=float(row["elev"]) if row.get("elev") is not None else None,
+            flight_category=row.get("fltCat") if isinstance(row.get("fltCat"), str) else None,
+            quality_code=float(row["qcField"]) if row.get("qcField") is not None else None,
+            native_metadata={key: row[key] for key in (
+                "altim", "cover", "clouds", "dewp", "slp", "temp", "vertVis",
+                "visib", "wdir", "wgst", "wspd", "wxString",
+            ) if key in row},
+        )
+        fields = [field.model_copy(update={"provenance": field.provenance.model_copy(update={"native_report": report})}) for field in fields]
         return fields, observed, entry
 
 

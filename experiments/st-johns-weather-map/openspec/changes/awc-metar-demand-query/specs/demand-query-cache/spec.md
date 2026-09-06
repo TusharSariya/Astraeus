@@ -21,6 +21,12 @@ The cache SHALL retain at most 64 complete responses and 4 MiB of response bodie
 ### Requirement: METAR observations do not depend on retained artifacts
 The default point response and explicitly selected forecast responses SHALL obtain current CYYT METAR evidence from the demand cache, preserve `awc-metar-speci`, observation time, units, native missingness, report identity, response digest, and transport completion, and SHALL NOT fall back to a retained METAR artifact. Scheduled METAR acquisition SHALL fail before discovery after the replacement path is verified.
 
+Report identity SHALL include station, optional provider report id, native observation/report/receipt times, report type, raw-report digest, provider station metadata, flight category, and provider QC code where present. The finite native weather, cloud, visibility, wind, gust, pressure, and altimeter values SHALL remain auditable beside their canonical fields; a native value without an accepted canonical mapping SHALL remain labelled native metadata and SHALL NOT be relabelled as another quantity.
+
 #### Scenario: The artifact store is unavailable
 - **WHEN** a validated METAR demand result exists and no forecast store is reachable
 - **THEN** `/point` returns the METAR evidence with an evidence-only selection and states that no forecast model is available
+
+#### Scenario: An altimeter value accompanies mean sea-level pressure
+- **WHEN** the selected AWC row contains both `altim` and `slp`
+- **THEN** `slp` supplies mean sea-level pressure and `altim` remains labelled native altimeter metadata rather than being silently dropped or relabelled
