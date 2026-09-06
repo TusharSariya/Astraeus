@@ -1114,6 +1114,23 @@ describe('MapPanel layer drawer', () => {
     expect(screen.queryByText(/rendered live by the provider/)).not.toBeInTheDocument()
   })
 
+  it('describes a demand grid as a bounded cache entry rather than a stored artifact', async () => {
+    const demand: LayerItem = {
+      id: 'noaa-gfs-demand-total-cloud', title: 'GFS total cloud (selected-time native grid)',
+      kind: 'raster', field: 'total_cloud_geometric', product: 'GFS', units: 'percent',
+      semantics: 'native geometric total cloud', times: ['2026-08-30T04:00:00Z'], cadence_seconds: null,
+      staleness_tolerance_seconds: 3600, evidence_basis: 'demand_query', raster_available: true,
+      legend_available: false, group: 'rendered_grid', evidence_class: 'retrieved', family: 'cloud_cover',
+    }
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse({
+      'X-Weather-Evidence-Basis': 'demand_query', 'X-Weather-Image-Basis': 'rendered_grid',
+      'X-Weather-Source-Id': 'noaa-gfs',
+    }, ['X-Weather-Wms-Layer'])))
+    render(panel({ layers: [demand], selections: [{ id: demand.id, visible: true, opacity: 0.85 }] }))
+    expect((await screen.findAllByText(/bounded selected-time noaa-gfs cache entry/i)).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/stored noaa-gfs artifact/i)).not.toBeInTheDocument()
+  })
+
   it('shows a stored grid that has no map image as a disabled row with the one reason, and no contradicting sentence', () => {
     vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
     render(panel({ layers: [storedGrid], selections: [{ id: storedGrid.id, visible: true, opacity: 0.85 }] }))
