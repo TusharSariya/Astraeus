@@ -128,6 +128,7 @@ FIELD_BY_VARIABLE.update({name: name for name in ("wind_u_200hPa", "wind_v_200hP
 # this only lets a retained immutable artifact prove frame-exact readback.
 FIELD_BY_VARIABLE.update({name: name for name in (
     "aerosol_optical_depth_550nm", "pm2_5_surface", "pm10_surface", "ozone_surface",
+    "pm2_5_surface_24h_mean", "ozone_surface_mole_fraction",
     "nitrogen_dioxide_surface", "sulphur_dioxide_surface", "carbon_monoxide_surface", "dust_surface",
     "downward_shortwave_flux_hour_mean", "downward_shortwave_flux_instant",
     "direct_shortwave_flux_hour_mean", "direct_shortwave_flux_instant",
