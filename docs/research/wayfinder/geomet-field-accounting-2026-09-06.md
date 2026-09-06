@@ -113,83 +113,20 @@ ingestion.
   [#148](https://github.com/TusharSariya/Astraeus/issues/148) own REPS members
   and GEPS producer reductions. Those ensemble families are excluded here.
 
-## Candidate child issue bodies
+## Created follow-up issues
 
-Root should create and wire only the children it accepts after review. In each
-body, “accounting rows” means rows whose `disposition` and `producer_product`
-match the stated filter.
+Every focused deferred family is now an open child of map #70 and a native blocker of #97. Each implementation issue is also blocked by #141 for source identity, field-window, semantic, and admission decisions. This preserves all eligible catalogued source fields in scope independently of the current UI field set.
 
-### Complete remaining HRDPS vertical fields (195 IDs)
+- [#187](https://github.com/TusharSariya/Astraeus/issues/187): 195 HRDPS vertical fields.
+- [#188](https://github.com/TusharSariya/Astraeus/issues/188): 214 RDPS vertical fields.
+- [#189](https://github.com/TusharSariya/Astraeus/issues/189): 221 GDPS vertical fields.
+- [#190](https://github.com/TusharSariya/Astraeus/issues/190): 36 convective diagnostics.
+- [#191](https://github.com/TusharSariya/Astraeus/issues/191): 99 precipitation and hydrology fields.
+- [#192](https://github.com/TusharSariya/Astraeus/issues/192): 56 surface-energy, land, and ocean fields.
+- [#193](https://github.com/TusharSariya/Astraeus/issues/193): 83 surface-state and visibility fields.
+- [#194](https://github.com/TusharSariya/Astraeus/issues/194): the distinct-product decision for all 54 GDPS-GEML fields.
 
-> Implement bounded experimental acquisition and explicit disposition for the
-> 195 current `hrdps-continental-2.5km` accounting rows classified
-> `candidate_child_vertical_thermodynamics` (123) or
-> `candidate_child_vertical_wind_and_dynamics` (72). Preserve each exact level,
-> title, unit, valid/reference time, mask and server-rectified geometry. Compare
-> the native HRDPS public path field by field before choosing WCS; never call a
-> WCS `SCALESIZE` result model-native. Process finite batches of at most 64
-> fields and keep measured storage within the available physical margin.
->
-> Reuse #79 acquisition/geometry evidence. Block on #141 for source identity,
-> field windows or missing semantics and on #97 for final integrated coverage.
-> Exclude the 245 #79 fields, unitless rows, WEonG, RDPS/GDPS, analyses and
-> ensembles. Prove selected fields with bounded provider values, immutable
-> artifact, reader/API numeric and null readback, timestamps, masks, negative
-> paths and exact commands. Keep `operational: false`; no status promotion.
-
-### Complete remaining RDPS vertical fields (214 IDs)
-
-> Apply the HRDPS child contract to the 214 current `rdps-10km` rows classified
-> `candidate_child_vertical_thermodynamics` (137) or
-> `candidate_child_vertical_wind_and_dynamics` (77). Preserve RDPS semantics
-> independently; do not map a same-looking HRDPS/GDPS field by name alone.
-> Reuse #79, block on #141 and #97, batch at most 64 fields per operation, and
-> exclude selected, unitless, surface/column, analysis and ensemble fields.
-
-### Complete remaining GDPS vertical fields (221 IDs)
-
-> Apply the HRDPS child contract to the 221 current `gdps-15km` rows classified
-> `candidate_child_vertical_thermodynamics` (136) or
-> `candidate_child_vertical_wind_and_dynamics` (85). Keep the 54 GDPS-GEML
-> rows outside this child pending their distinct product decision. Reuse #79,
-> block on #141 and #97, batch at most 64 fields per operation, and exclude
-> selected, unitless, surface/column, analysis and ensemble fields.
-
-### Complete deterministic convective diagnostics (36 IDs)
-
-> Account for and acquire only rows classified
-> `candidate_child_convective_diagnostics`: GDPS 17, HRDPS 2 and RDPS 17.
-> Preserve each provider-issued diagnostic and unit without inventing ranking,
-> thresholds or equivalence across models. Reuse #79 geometry/acquisition,
-> block semantic/admission decisions on #141 and final coverage on #97, and
-> prove bounded values through artifact and reader/API including missingness.
-
-### Complete deterministic precipitation and hydrology fields (99 IDs)
-
-> Account for and acquire only rows classified
-> `candidate_child_precipitation_and_hydrology`: GDPS 35, HRDPS 30 and RDPS
-> 34. Preserve amount, phase, accumulation and interval semantics exactly; do
-> not derive rates or merge windows. This does not duplicate HRDPA/HREPA #134
-> or RDPA #136. Reuse #79, block on #141 and #97, and verify bounded real values,
-> masks, times, immutable artifacts, reader/API readback and negative paths.
-
-### Complete deterministic surface-energy, land and ocean fields (56 IDs)
-
-> Account for and acquire only rows classified
-> `candidate_child_surface_energy_land_ocean`: GDPS 18, HRDPS 19 and RDPS 19.
-> Preserve radiation windows/directions and land/ocean/ice quantities exactly;
-> compare native producer fields before WCS and do not invent conversions. This
-> does not duplicate HRDLPS/CaLDAS #135. Reuse #79, block on #141 and #97, and
-> verify bounded upstream values through artifact and reader/API paths.
-
-### Complete deterministic surface-state and visibility fields (83 IDs)
-
-> Account for and acquire only rows classified
-> `candidate_child_surface_state_and_visibility`: GDPS 31, HRDPS 14 and RDPS
-> 38. Preserve exact titles, units, levels and visibility/cloud meanings; no
-> scoring or favorable interpretation follows from acquisition. Reuse #79,
-> block on #141 and #97, compare native producer access, and verify bounded real
-> values through immutable artifact and reader/API numeric/null paths.
+The 86 rows with unstated unit or class semantics remain directly owned by #141. The 245 selected rows remain owned by #79. Together these paths account for all 1,289 IDs and all 1,044 deferred IDs.
 
 ## Reproduction
 

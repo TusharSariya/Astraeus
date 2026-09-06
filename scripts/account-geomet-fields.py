@@ -149,20 +149,20 @@ def route(prior: dict, current: bool, meaning: str | None, unit: str | None, lev
     if unit is None:
         return "blocked_by_issue_141_unstated_unit_or_class_semantics", [141, 97], "The current WMS title states no bracketed unit. Preserve the provider title and values without abbreviation-based inference; issue 141 must resolve semantics before field admission."
     if product == "gdps-geml-25km":
-        return "needs_gdps_geml_product_disposition", [145, 141, 97], "This is the separate GDPS-GEML 25 km product. Owner review must establish relevance versus the current GDPS product before any implementation child."
+        return "needs_gdps_geml_product_disposition", [194, 141, 97], "This is the separate GDPS-GEML 25 km product. Owner review must establish relevance versus the current GDPS product before any implementation child."
     value_topic = topic(meaning)
     is_vertical = lev is not None and lev["kind"] in {"pressure", "pressure_interval", "height"}
     if is_vertical and value_topic == "thermodynamic_profile":
-        return "candidate_child_vertical_thermodynamics", [145, 141, 97], "Use the exact stated level and unit in a bounded thermodynamic-profile child; compare native producer access before choosing the server-rectified WCS path."
+        return "candidate_child_vertical_thermodynamics", [{"hrdps-continental-2.5km": 187, "rdps-10km": 188, "gdps-15km": 189}[product], 141, 97], "Use the exact stated level and unit in a bounded thermodynamic-profile child; compare native producer access before choosing the server-rectified WCS path."
     if is_vertical and value_topic in {"wind_profile", "unresolved_provider_quantity"}:
-        return "candidate_child_vertical_wind_and_dynamics", [145, 141, 97], "Use the exact stated level and unit in a bounded wind/dynamics child; compare native producer access before choosing the server-rectified WCS path."
+        return "candidate_child_vertical_wind_and_dynamics", [{"hrdps-continental-2.5km": 187, "rdps-10km": 188, "gdps-15km": 189}[product], 141, 97], "Use the exact stated level and unit in a bounded wind/dynamics child; compare native producer access before choosing the server-rectified WCS path."
     if value_topic == "convective_diagnostic":
-        return "candidate_child_convective_diagnostics", [145, 141, 97], "Keep the provider diagnostic as issued in a focused convective-diagnostics child; do not infer ranking or thresholds."
+        return "candidate_child_convective_diagnostics", [190, 141, 97], "Keep the provider diagnostic as issued in a focused convective-diagnostics child; do not infer ranking or thresholds."
     if value_topic == "precipitation_hydrology":
-        return "candidate_child_precipitation_and_hydrology", [145, 141, 97], "Preserve stated accumulation or quantity semantics in a focused precipitation/hydrology child; do not derive rates from amounts."
+        return "candidate_child_precipitation_and_hydrology", [191, 141, 97], "Preserve stated accumulation or quantity semantics in a focused precipitation/hydrology child; do not derive rates from amounts."
     if value_topic in {"radiation_surface_energy", "land_ocean_ice", "human_exposure_diagnostic"}:
-        return "candidate_child_surface_energy_land_ocean", [145, 141, 97], "Preserve the exact provider quantity in a focused surface-energy/land/ocean child; no conversions or scoring admission are implied."
-    return "candidate_child_surface_state_and_visibility", [145, 141, 97], "Preserve the exact provider quantity in a focused surface-state/visibility child; compare native producer access before choosing WCS."
+        return "candidate_child_surface_energy_land_ocean", [192, 141, 97], "Preserve the exact provider quantity in a focused surface-energy/land/ocean child; no conversions or scoring admission are implied."
+    return "candidate_child_surface_state_and_visibility", [193, 141, 97], "Preserve the exact provider quantity in a focused surface-state/visibility child; compare native producer access before choosing WCS."
 
 
 def main() -> None:
