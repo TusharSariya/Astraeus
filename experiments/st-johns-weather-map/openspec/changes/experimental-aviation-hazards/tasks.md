@@ -1,7 +1,7 @@
 # Tasks
 
-- [ ] Establish official access, license/terms and product identities.
-- [ ] Capture bounded native artifacts and receipts for eligible public paths.
-- [ ] Inventory fields and dispositions without canonical translation.
-- [ ] Verify decode, resource ceilings, cleanup and nonpublication.
+- [x] Establish official access, license/terms and product identities.
+- [x] Capture bounded native artifacts and receipts for eligible public paths.
+- [x] Inventory fields and dispositions without canonical translation.
+- [x] Verify decode, resource ceilings, cleanup and nonpublication.
 - [ ] Draft owner contracts for unresolved manifest/API semantics.
