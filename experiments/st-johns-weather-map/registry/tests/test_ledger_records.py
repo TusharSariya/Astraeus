@@ -334,6 +334,12 @@ class LedgerRecordTests(unittest.TestCase):
         self.assertEqual("Open-Meteo", wave["intermediary"]["name"])
         self.assertIn("NCEP", wave["producer"])
         self.assertFalse(wave["display_primary"])
+        self.assertIn("selected-hour Marine API adapter", wave["integration"]["client"])
+        self.assertNotIn("meta.json", wave["integration"]["client"])
+        self.assertIn("does not expose a producer-run identifier", wave["schema_version"])
+        self.assertIn("retrieval time captured immediately after the final response byte", wave["freshness_threshold"])
+        self.assertIn("bounded in-memory cache", wave["caching"])
+        self.assertIn("never served as a fallback", wave["archival"])
 
         self.assertIn(
             "cell_selection=sea is mandatory; the default nearest cell over a coastal point is land and returns null",

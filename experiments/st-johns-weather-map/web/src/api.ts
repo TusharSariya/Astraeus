@@ -870,6 +870,7 @@ export const POINT_PRODUCT_BY_SOURCE_ID: Record<string, string> = {
   'eccc-rdps': 'RDPS',
   'eccc-reps': 'REPS',
   'noaa-gfs': 'GFS',
+  'openmeteo-gfs-wave': 'GFS Wave',
   'ecmwf-ifs': 'IFS',
   'dwd-icon-global': 'ICON',
 }

@@ -142,6 +142,13 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "temperature_850hPa", "temperature_700hPa", "temperature_500hPa",
         "precipitable_water",
     ),
+    # Open-Meteo's reprocessed NCEP GFS-Wave point response.  It remains
+    # source-local evidence rather than an atmospheric forecast candidate.
+    "openmeteo-gfs-wave": (
+        "significant_wave_height", "wave_period", "wave_direction",
+        "swell_height", "swell_wave_period", "swell_wave_direction",
+        "wind_wave_height", "wind_wave_period", "wind_wave_direction",
+    ),
     # Global GRIB feeds: geometric overlap cloud, not ECCC's opacity-weighted
     # quantity. Stated per source so nothing inherits a cloud key that means
     # something else.

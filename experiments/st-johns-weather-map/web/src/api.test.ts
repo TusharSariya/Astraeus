@@ -457,12 +457,27 @@ describe('product selection predicate', () => {
   it('offers a source the point endpoint accepts even though no source is ever active', () => {
     expect(pointProductFor(source('eccc-hrdps', 'implementing'))).toBe('HRDPS')
     expect(pointProductFor(source('eccc-rdps', 'credential_required'))).toBe('RDPS')
+    expect(pointProductFor(source('openmeteo-gfs-wave', 'implementing'))).toBe('GFS Wave')
   })
 
   it('offers nothing for a source the point endpoint has no product value for', () => {
     // `/point?product=` answers 422 for these; a button for one could never work.
     expect(pointProductFor(source('eccc-radar', 'implementing'))).toBeNull()
     expect(pointProductFor(source('smartatlantic-st-johns', 'implementing'))).toBeNull()
+  })
+
+  it('carries the Open-Meteo GFS-Wave response into the existing marine card mapping', () => {
+    const snapshot = normalizePoint({
+      data_mode: 'live', valid_time: '2026-09-06T20:00:00Z',
+      selection: { mode: 'evidence_only', selected_source_id: null, selected_product_id: null, badge: 'GFS-Wave sea-state evidence' },
+      fields: [{
+        field: 'wave_height', value: 3.52,
+        provenance: { source_id: 'openmeteo-gfs-wave', provider: 'NOAA NCEP', product: 'GFS-Wave 0.16 degree via Open-Meteo', normalized_units: 'm', data_mode: 'live', intermediary: 'Open-Meteo', run_time: null, evidence_class: 'reprocessed', display_primary_eligible: false },
+      }],
+    } as ApiPointResponse)
+    expect(snapshot.marine.waveHeightM).toBeNull()
+    expect(snapshot.selectedSourceId).toBeNull()
+    expect(snapshot.servedFields.find((field) => field.field === 'wave_height')?.value).toBe(3.52)
   })
 })
 

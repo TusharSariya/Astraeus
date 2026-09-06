@@ -43,7 +43,7 @@ export interface FieldCatalogueCopy {
 export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
   "version": "1.0.0",
   "asOf": "2026-09-02",
-  "fingerprint": "b63b59d7c09943bdb429019292b4a650c918ad95e931dd55307740b3f95302a9",
+  "fingerprint": "56291abe05a1880c08bc5a6f5927a30a10e0dcdbfafac0239d1f9838cd35f9e7",
   "families": [
     {
       "name": "air_quality",
@@ -163,6 +163,8 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "wave_direction": "Mean direction of the sea state.",
         "wave_height": "Height statistic of the combined sea state.",
         "wave_partition": "Height of one partition of the sea state.",
+        "wave_partition_direction": "Mean from-direction of a wind-wave or swell partition.",
+        "wave_partition_period": "Period of a wind-wave or swell partition, as the producer defines it.",
         "wave_period": "Mean or peak period of the sea state."
       }
     },
@@ -1554,6 +1556,24 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Significant height of the swell partition."
     },
     {
+      "key": "swell_wave_direction",
+      "family": "marine",
+      "quantity": "swell wave direction",
+      "units": "degree",
+      "level": "sea surface",
+      "comparabilityGroup": "wave_partition_direction",
+      "description": "From-direction of the swell partition."
+    },
+    {
+      "key": "swell_wave_period",
+      "family": "marine",
+      "quantity": "swell wave period",
+      "units": "s",
+      "level": "sea surface",
+      "comparabilityGroup": "wave_partition_period",
+      "description": "Period of the swell partition, as the producer defines it."
+    },
+    {
       "key": "temperature_120m",
       "family": "temperature",
       "quantity": "air temperature",
@@ -1878,6 +1898,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Northward wind on pressure surfaces, level-expanded as wind_v_<hPa>hPa."
     },
     {
+      "key": "wind_wave_direction",
+      "family": "marine",
+      "quantity": "wind wave direction",
+      "units": "degree",
+      "level": "sea surface",
+      "comparabilityGroup": "wave_partition_direction",
+      "description": "From-direction of the wind-sea partition."
+    },
+    {
       "key": "wind_wave_height",
       "family": "marine",
       "quantity": "wind wave height",
@@ -1885,6 +1914,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "sea surface",
       "comparabilityGroup": "wave_partition",
       "description": "Significant height of the wind-sea partition."
+    },
+    {
+      "key": "wind_wave_period",
+      "family": "marine",
+      "quantity": "wind wave period",
+      "units": "s",
+      "level": "sea surface",
+      "comparabilityGroup": "wave_partition_period",
+      "description": "Period of the wind-sea partition, as the producer defines it."
     },
     {
       "key": "xray_flux_long",
