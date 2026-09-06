@@ -1727,6 +1727,38 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/space-weather?at='))).toHaveLength(before)
   })
 
+  it('clears solar-wind evidence while scrubbing and ignores an aborted older response', async () => {
+    let resolveOld!: (response: Response) => void
+    let calls = 0
+    const fetchMock = routedFetch({})
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/space-weather')) {
+        calls += 1
+        if (calls === 1) return new Promise<Response>((resolve) => { resolveOld = resolve })
+        return response(liveSpaceWeather)
+      }
+      if (url.includes('/methods')) return response({ default_method: 'baseline', methods: [], notices: [] })
+      if (url.includes('/astronomy')) return response(liveAstronomy)
+      if (url.includes('/sources/status')) return response(sourceStatus)
+      if (url.includes('/point')) return response(apiPoint())
+      if (url.includes('/layers')) return response(emptyLayers)
+      if (url.includes('/catalog')) return response(emptyCatalog)
+      if (url.includes('/timeline')) return response(emptyTimeline)
+      return response({})
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await waitFor(() => expect(calls).toBe(1))
+    expect(screen.getByText(/Space weather unavailable: loading selected-time space weather/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '-1h' }))
+    await waitFor(() => expect(calls).toBe(2))
+    expect(await screen.findByText('-4.1 nT')).toBeInTheDocument()
+    resolveOld(response({ ...liveSpaceWeather, solar_wind: { ...liveSpaceWeather.solar_wind, bz_gsm_nt: -9.9 } }))
+    await act(async () => { await Promise.resolve() })
+    expect(screen.getByText('-4.1 nT')).toBeInTheDocument()
+    expect(screen.queryByText('-9.9 nT')).not.toBeInTheDocument()
+  })
+
   it('doubles and halves the speed within the ladder, clamping at both ends', async () => {
     const frame = driveFrames()
     vi.stubGlobal('fetch', routedFetch({}))

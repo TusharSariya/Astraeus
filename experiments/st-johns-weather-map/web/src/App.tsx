@@ -735,6 +735,8 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController()
+    setSpaceWeather(null)
+    setSpaceWeatherNotice('loading selected-time space weather')
     if (!spaceWeatherEvidenceAt) return () => controller.abort()
     const timer = window.setTimeout(() => {
       loadSpaceWeather(new Date(spaceWeatherEvidenceAt), controller.signal).then((result) => {
@@ -742,7 +744,12 @@ export default function App() {
           setSpaceWeather(result.spaceWeather)
           setSpaceWeatherNotice(result.error)
         }
-      }).catch(() => undefined)
+      }).catch((error) => {
+        if (!controller.signal.aborted) {
+          setSpaceWeather(null)
+          setSpaceWeatherNotice(error instanceof Error ? error.message : 'space-weather fetch failed')
+        }
+      })
     }, 250)
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [spaceWeatherEvidenceAt])
