@@ -247,3 +247,28 @@ def test_default_point_uses_demand_metar_when_legacy_store_is_unreachable(monkey
     assert body["data_mode"]=="live"
     assert [item["provenance"]["source_id"] for item in body["fields"]]==["awc-metar-speci"]
     assert body["selection"]["mode"]=="evidence_only"
+
+
+def test_default_point_keeps_demand_metar_when_legacy_store_raises(monkeypatch):
+    at=datetime(2026,9,6,12,30,tzinfo=UTC)
+    field=point_fields(at)[0][0]
+    field=field.model_copy(update={"provenance":field.provenance.model_copy(update={
+        "data_mode":DataMode.LIVE, "source_id":"awc-metar-speci", "product":"CYYT METAR/SPECI",
+        "valid_time":at.replace(minute=0), "retrieval_time":at,
+    })})
+    class Service:
+        @staticmethod
+        def point_fields(*_args): return [field], at.replace(minute=0), object()
+    class RaisingStore:
+        def sample_point(self,*_args,**_kwargs): raise RuntimeError("legacy store broken")
+    monkeypatch.setenv("WEATHER_DATA_MODE","live")
+    monkeypatch.setattr("weather_api.metar_query.metar_query_service",lambda:Service())
+    monkeypatch.setattr(app_module,"live_store",lambda:RaisingStore())
+    response=TestClient(app_module.app).get(f"{app_module.PREFIX}/point",params={
+        "latitude":47.627,"longitude":-52.748,"valid_time":at.isoformat(),
+    })
+    assert response.status_code==200
+    body=response.json()
+    assert body["data_mode"]=="live" and body["selection"]["mode"]=="evidence_only"
+    assert [item["provenance"]["source_id"] for item in body["fields"]]==["awc-metar-speci"]
+    assert "no retained field was used" in body["notices"][0]

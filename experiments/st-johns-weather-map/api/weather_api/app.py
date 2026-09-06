@@ -1272,6 +1272,13 @@ def _live_point(
         )
     except Exception:
         LOGGER.exception("live point sampling failed at %s,%s for %s", latitude, longitude, time.isoformat())
+        if demand_observations:
+            return PointResponse(
+                data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+                selection=unavailable_selection("the forecast store raised; current METAR observation is shown separately"),
+                fields=demand_observations,
+                notices=["the legacy artifact store raised while sampling; no retained field was used", *demand_notices],
+            )
         return _unavailable_point(latitude, longitude, time, reason="the live artifact store raised while sampling", flags=["live_store_error"], notices=["the live artifact store raised while sampling published artifacts"])
 
     fields = [item for item in fields if item.provenance.source_id != "awc-metar-speci"] + demand_observations
