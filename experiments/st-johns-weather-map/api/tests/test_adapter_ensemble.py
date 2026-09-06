@@ -157,6 +157,15 @@ class FakeClient:
             return self.texts[url]
         raise FileNotFoundError(f"no fixture text for {url}")
 
+    def get_bytes_with_receipt(self, url: str, *, max_bytes: int):
+        import hashlib
+        body = self.texts[url].encode()
+        assert len(body) <= max_bytes
+        self.urls.append(url)
+        return body, {"url": url, "request_headers": {"user-agent": "fixture"},
+                      "response_headers": {}, "completed_at": "2026-09-01T00:00:01+00:00",
+                      "byte_size": len(body), "sha256": hashlib.sha256(body).hexdigest()}
+
     def download_ranges(
         self, url: str, destination: Path, ranges, *, max_bytes: int
     ) -> int:
@@ -165,6 +174,14 @@ class FakeClient:
         self.ranges.append((url, list(ranges)))
         destination.write_bytes(b"GRIB-stub")
         return sum(end - start + 1 for start, end in self.ranges[-1][1])
+
+    def download_ranges_with_receipts(self, url, destination, ranges, *, max_bytes):
+        import hashlib
+        written = self.download_ranges(url, destination, ranges, max_bytes=max_bytes)
+        body = destination.read_bytes()
+        return written, [{"url": url, "request_headers": {"range": "bytes=fixture", "user-agent": "fixture"},
+                          "response_headers": {}, "completed_at": "2026-09-01T00:00:02+00:00",
+                          "byte_size": len(body), "sha256": hashlib.sha256(body).hexdigest()}]
 
 
 def window_at(moment: datetime = datetime(2026, 9, 2, 12, tzinfo=UTC)) -> FetchWindow:
@@ -1483,7 +1500,7 @@ def test_gefs_selection_is_restricted_to_the_catalogue_family_fields():
 
 
 def test_gefs_stamps_the_averaging_window_from_the_records_own_label(tmp_path: Path):
-    adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader)
+    adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader, capture_transport_receipts=True)
     result = adapter.assemble(gefs_candidate(), window_at(), tmp_path)
 
     selection = select_gefs_member_records(GEFS_IDX)
@@ -1551,7 +1568,7 @@ def test_gefs_publishes_one_member_axis_with_the_control_flagged(tmp_path: Path)
 def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Path):
     from datetime import timedelta
     from weather_api.gefs_query import GEFS_FIELDS, GEFSRequestKey, GEFSQueryService, GEFSSelectedLoader, demand_operation_bounds
-    adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader)
+    adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader, capture_transport_receipts=True)
     run = datetime(2026, 9, 1, tzinfo=UTC)
     members = gefs_member_identifiers(get_config("noaa-gefs").ensemble)
     key = GEFSRequestKey("2026090100", run, 24, "pgrb2ap5", members, GEFS_FIELDS,
@@ -1568,3 +1585,6 @@ def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Pat
     assert set(first.cloud_intervals) == set(members)
     assert set(first.cloud_intervals.values()) == {(run + timedelta(hours=18), run + timedelta(hours=24))}
     assert first.complete is True and first.backing_bytes > len(first.payload)
+    receipts = first.provenance["transport_receipts"]
+    assert len(receipts) == 31 * 8
+    assert max(item["completed_at"] for item in receipts) == "2026-09-01T00:00:02+00:00"

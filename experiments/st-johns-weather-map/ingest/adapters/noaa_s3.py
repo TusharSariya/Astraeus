@@ -914,12 +914,14 @@ class NOAAGEFSEnsembleAdapter:
         client: PoliteClient | None = None,
         reader: Any = _gefs_refusing_reader,
         product_set: str = GEFS_PRIMARY_SET,
+        capture_transport_receipts: bool = False,
     ) -> None:
         self._base_url = base_url
         self._bounds = dict(bounds)
         self._client = client
         self._reader = reader
         self._product_set = product_set
+        self._capture_transport_receipts = capture_transport_receipts
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
@@ -993,11 +995,18 @@ class NOAAGEFSEnsembleAdapter:
         retrieved_names: list[str] = []
         decode_errors: list[str] = []
         unstorable: list[str] = []
+        transport_receipts: list[dict[str, object]] = []
 
         for member in members:
             grib_url = self.member_url(candidate, member)
             try:
-                idx_text = client.get_text(f"{grib_url}.idx")
+                idx_url = f"{grib_url}.idx"
+                if self._capture_transport_receipts:
+                    idx_raw, idx_receipt = client.get_bytes_with_receipt(idx_url, max_bytes=MAX_IDX_BYTES)
+                    idx_text = idx_raw.decode("utf-8")
+                    transport_receipts.append({"kind": "index", "member": member, **idx_receipt})
+                else:
+                    idx_text = client.get_text(idx_url)
             except Exception as error:
                 decode_errors.append(f"idx:{member}")
                 _log.warning("GEFS member %s sidecar unavailable: %s", member, error)
@@ -1011,9 +1020,13 @@ class NOAAGEFSEnsembleAdapter:
             for byte_range, upstream, label in selection.wanted:
                 local = workdir / f"{member}.{upstream.replace(':', '_').replace(' ', '_')}.grib2"
                 try:
-                    client.download_ranges(
-                        grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES
-                    )
+                    if self._capture_transport_receipts:
+                        _, receipts = client.download_ranges_with_receipts(
+                            grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES
+                        )
+                        transport_receipts.extend({"kind": "range", "member": member, "field": upstream, **receipt} for receipt in receipts)
+                    else:
+                        client.download_ranges(grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES)
                     field = self._reader(local, upstream=upstream, member=member, bounds=self._bounds)
                 except Exception as error:
                     decode_errors.append(f"member:{member}:{upstream}")
@@ -1091,6 +1104,7 @@ class NOAAGEFSEnsembleAdapter:
             "coverage": validation.as_coverage(),
             "members": validation.as_members(),
             "storage_scope": validation.as_storage_scope(),
+            "transport_receipts": transport_receipts,
             **manifest.as_manifest_block(),
         }
 

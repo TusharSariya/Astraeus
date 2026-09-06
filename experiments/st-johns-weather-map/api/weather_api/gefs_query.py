@@ -148,5 +148,9 @@ class GEFSSelectedLoader:
                         intervals[member] = (valid_time - timedelta(hours=hours), valid_time)
             finally:
                 store.close()
-            return GEFSQueryEntry(key, valid_time, result.retrieved_at, present, mandatory, optional,
+            receipts = tuple(artifact.provenance.get("transport_receipts", ()))
+            if not receipts:
+                raise ValueError("GEFS selected loader requires final-byte transport receipts")
+            fetched_at = max(datetime.fromisoformat(str(item["completed_at"])) for item in receipts)
+            return GEFSQueryEntry(key, valid_time, fetched_at, present, mandatory, optional,
                                   payload, artifact.provenance, intervals)
