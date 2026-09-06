@@ -10,7 +10,7 @@ import xarray
 import json
 import zipfile
 
-from weather_api.gfs_query import GFS_TIMELINE_LISTING_MAX_BYTES, GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey
+from weather_api.gfs_query import GFS_TIMELINE_LISTING_MAX_BYTES, GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey, hides_legacy_published_gfs_layer
 from ingest.contract import Artifact, RunCandidate, RunResult
 from ingest.adapters.noaa_s3 import MAX_IDX_BYTES
 from ingest.grib import write_zarr
@@ -455,3 +455,8 @@ def test_timeline_coalesces_eight_concurrent_listing_outcomes(fail):
         else:
             assert all(call.result()[0] == (run_time + timedelta(hours=6),) for call in calls)
     assert Adapter.client.calls == 1
+
+
+def test_only_legacy_published_gfs_layers_are_hidden_from_demand_catalogue():
+    assert hides_legacy_published_gfs_layer("noaa-gfs") is True
+    assert hides_legacy_published_gfs_layer("eccc-hrdps") is False

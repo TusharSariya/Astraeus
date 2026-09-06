@@ -941,6 +941,13 @@ def get_layers() -> LayersResponse:
     notices = skip_notices(store)
     layers: list[Layer] = []
     for artifact in artifacts:
+        from .gfs_query import hides_legacy_published_gfs_layer  # noqa: PLC0415
+        if hides_legacy_published_gfs_layer(artifact.source_id):
+            notices.append(
+                f"{artifact.source_id}-{artifact.logical_name} is retained for audit but is not a current demand-query raster; "
+                "native GFS raster delivery remains unavailable"
+            )
+            continue
         if goes_satellite.claims(artifact):
             # The cloud-mask artifact is offered once, by the satellite
             # module below, with its real semantics; the generic entry would

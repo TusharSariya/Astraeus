@@ -157,6 +157,11 @@ class GFSQueryService:
             return future.result()
 
 
+def hides_legacy_published_gfs_layer(source_id: str) -> bool:
+    """Keep pre-demand GFS artifacts audit-readable without advertising them as live layers."""
+    return source_id == "noaa-gfs"
+
+
 class GFSQueryCoordinator:
     """Resolve one selection and load one exact GFS object-range request."""
 

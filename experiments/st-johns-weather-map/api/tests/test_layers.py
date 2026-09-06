@@ -46,9 +46,9 @@ client = TestClient(app)
 
 #: A six-hourly forecast source with a registry record, so the cadence behind
 #: every verdict below is declared rather than invented here.
-FORECAST_SOURCE = "noaa-gfs"
+FORECAST_SOURCE = "eccc-rdps"
 LOGICAL = "surface"
-LAYER_ID = "noaa-gfs-surface"
+LAYER_ID = f"{FORECAST_SOURCE}-surface"
 SIX_HOURS = 21600
 
 REFERENCE = datetime(2026, 9, 2, 12, 0, tzinfo=UTC)
@@ -191,6 +191,15 @@ def layers_from(monkeypatch, data_mode, store) -> dict[str, dict[str, Any]]:
 
 
 # --- the rule itself ------------------------------------------------------
+
+def test_legacy_published_gfs_artifact_is_audit_only_not_a_demand_layer(monkeypatch, data_mode):
+    store = FakeStore([run_of(REFERENCE - timedelta(hours=6), source_id="noaa-gfs")])
+
+    layers, payload = layers_from(monkeypatch, data_mode, store)
+
+    assert LAYER_ID not in layers
+    assert any("retained for audit" in notice and "raster delivery remains unavailable" in notice for notice in payload["notices"])
+
 
 def test_run_stale_is_more_than_twice_the_declared_cadence():
     """Twice the cadence: one missed run is a delay, two is a stopped source."""
