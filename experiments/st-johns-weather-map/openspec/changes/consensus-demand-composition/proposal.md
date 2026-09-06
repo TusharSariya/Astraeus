@@ -18,3 +18,15 @@ minimum-evidence rule. The response therefore truthfully selects fresh HRDPS as
 primary while keeping GFS visible as independent supporting evidence. This is
 an acquisition change only; it creates no new blend science or operational
 promotion.
+
+## Verification
+
+- Exact demand composition preserves HRDPS and GFS field provenance while the
+  unchanged consensus policy reports minimum evidence unmet and selects fresh
+  HRDPS as primary.
+- A cold browser readback shows HRDPS, GFS, and METAR response-backed evidence
+  together without retained-artifact substitution.
+- Production HRDPS and GFS cache services load once on the first composed
+  request and add zero loader calls for an identical immediate repeat.
+- The complete API suite passes with retained artifact readers still covered as
+  audit paths and explicitly excluded from default BLEND acquisition.
