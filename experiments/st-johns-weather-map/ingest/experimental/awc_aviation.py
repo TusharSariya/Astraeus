@@ -16,7 +16,10 @@ def _read(body:bytes)->tuple[list[str],int,int]:
    total+=len(chunk)
    if total>MAX_DECODED: raise ValueError('decoded ceiling')
    chunks.append(chunk)
-  raw=b''.join(chunks); rows=csv.reader(StringIO(raw.decode('utf-8'))); header=next(rows); count=sum(1 for _ in rows)
+  raw=b''.join(chunks); rows=csv.reader(StringIO(raw.decode('utf-8'))); header=next(rows); count=0
+  for row in rows:
+   if len(row)!=len(header): raise ValueError('CSV row width')
+   count+=1
  except Exception as e: raise AdapterUnavailable(f'awc aviation: invalid bounded gzip CSV: {e}') from e
  if not header: raise AdapterUnavailable('awc aviation: empty CSV header')
  return header,count,len(raw)
