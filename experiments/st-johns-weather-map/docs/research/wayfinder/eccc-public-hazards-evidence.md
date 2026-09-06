@@ -17,6 +17,14 @@ digests. Fixture-backed live-store HTTP readback preserved the feature
 properties, named `eccc-thunderstorm-outlooks`, returned `data_mode: live`, and
 kept `operational: false`.
 
+The existing CAP adapter live smoke resolved provider run
+`eccc-cap-alerts-20260906T033001Z`, queried its single bounded Avalon box, and
+retrieved one distinct alert in force. Validation passed all declared fields.
+The normalized count artifact was 4,297 bytes with SHA-256
+`2673f51ffcc0f4a99d7b570acb40c02f72c452825cc1a7fb76dbc6f9b39ada2d`;
+the verbatim feature artifact was 3,287 bytes with SHA-256
+`21168e2fe369fa8db47323f1563c210b4c708a36da5c998127913b09ddf4ad11`.
+
 Official documentation identifies thunderstorm outlook GeoJSON as experimental
 and amendment-bearing, hurricane prediction as four active structured layers
 plus the response zone, and SCRIBE as hourly 12-hour integrated-nowcasting

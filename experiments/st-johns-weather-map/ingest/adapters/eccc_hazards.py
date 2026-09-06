@@ -52,11 +52,17 @@ class ECCCOGCHazardAdapter:
     adapter_version = "eccc-ogc-hazards-v1"
     collections: tuple[str, ...] = ()
     product = ""
+    source_key = ""
     advertised_fields: tuple[str, ...] = ()
 
     def __init__(self, client: PoliteClient | None = None, *, base_url: str = BASE) -> None:
         self._client = client or PoliteClient()
         self._base_url = base_url.rstrip("/")
+
+    @property
+    def source_id(self) -> str:
+        """Experimental identity; static registry discovery intentionally excludes it."""
+        return self.source_key
 
     def _url(self, collection: str) -> str:
         box = EVIDENCE_BOX_BOUNDS
@@ -141,7 +147,7 @@ class ECCCOGCHazardAdapter:
 
 
 class ECCCThunderstormOutlookAdapter(ECCCOGCHazardAdapter):
-    source_id = "eccc-thunderstorm-outlooks"
+    source_key = "eccc-thunderstorm-outlooks"
     product = "Thunderstorm Outlooks (experimental GeoJSON)"
     collections = ("thunderstorm_outlook",)
     advertised_fields = (
@@ -155,7 +161,7 @@ class ECCCThunderstormOutlookAdapter(ECCCOGCHazardAdapter):
 
 
 class ECCCHurricaneProductsAdapter(ECCCOGCHazardAdapter):
-    source_id = "eccc-hurricane-products"
+    source_key = "eccc-hurricane-products"
     product = "Canadian Hurricane Centre structured prediction products"
     collections = HURRICANE_COLLECTIONS
     advertised_fields = (
