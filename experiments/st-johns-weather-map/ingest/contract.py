@@ -83,7 +83,6 @@ class ResourceBounds:
     filesystem_bytes: int
     margin_bytes: int
     received_bytes: int
-    retained_memory_bytes: int = 0
 
     def validate(self) -> None:
         for name, value in (
@@ -91,7 +90,6 @@ class ResourceBounds:
             ("filesystem_bytes", self.filesystem_bytes),
             ("margin_bytes", self.margin_bytes),
             ("received_bytes", self.received_bytes),
-            ("retained_memory_bytes", self.retained_memory_bytes),
         ):
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ValueError(f"resource bound {name} must be a non-negative integer")

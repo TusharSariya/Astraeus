@@ -67,34 +67,27 @@ requires measured margin and unknown bounds to fail closed, and removes the
 artificial daily download ceiling. This repair does not change registry states,
 enable adapters, promote OpenSpec status or set `operational: true`.
 
-## First payload-bearing discovery measurement
+## Payload-bearing discovery continuation
 
-The isolated `noaa-swpc-kp-1m` adapter is the first complete-operation example.
-Its endpoint has no separate metadata object: the one bounded JSON response is
-both discovery evidence and the fetch input. Complete hot-store and local
-filesystem capacity is therefore reserved before `discover`; that reservation
-and the operation-wide received-byte counter remain held through publication.
-The decoded rows stay in the candidate and `fetch` performs no second request.
+Some small observation APIs expose no metadata-only request: discovery receives
+the complete response and fetch normalizes the retained document. The worker
+now has an optional seam that reserves the complete declared store and local
+filesystem allocation before such discovery and holds one received-byte budget
+through publication. No adapter is admitted by this change. In particular,
+`noaa-swpc-kp-1m` remains blocked: a 27,925-byte bounded sample on 2026-09-06
+does not prove a pre-allocation Python JSON decode-memory bound or physical
+filesystem peak, and its capture receipt was not retained for independent
+review. Post-hoc object sizing and logical Zarr byte counts were rejected as
+insufficient evidence.
 
-A bounded live read on 2026-09-06 received 27,925 bytes and 358 records from
-the Kp-1m endpoint
-(`sha256:8e3fad57b946c87aef24989d78bbbc9a25f74a55baa041f59356d33b6ee8b12b`).
-No response body was retained. Admission deliberately uses the existing full
-512 KiB SWPC small-feed ceiling rather than extrapolating that sample.
-
-The minimum compact encoding containing all four required keys is 56 bytes,
-so a conforming 512 KiB document cannot contain more than 9,362 records. The
-normalized output has four eight-byte arrays per record (time and three data
-variables). Its directory/archive allocation is therefore twice the array
-bytes plus a 16 KiB metadata envelope measured by the maximal-row synthetic
-fixture: 631,936 bytes. The bounded writer checks every directory-store write,
-then computes the exact ZIP_STORED headers and payload size and refuses before
-creating the archive if directory plus archive would cross that allocation.
-The maximal 9,362-row fixture produced a 22,567-byte archive. Margin is zero
-because the declared filesystem allocation already includes both simultaneous
-copies and exact container records; it is not a percentage or free-space
-allowance. A record above the wire-derived count is refused, never truncated.
-The maximal candidate graph with distinct numeric and string values measured
-3,878,579 bytes under the runtime's recursive `sys.getsizeof` accounting. Its
-retained-memory admission is 4 MiB; the worker refuses the candidate before
-fetch when that measured envelope is crossed.
+A replacement bounded capture retained its review material under
+`/tmp/kp159-20260906/`: decoded raw response, response headers, receipt,
+rebuilt artifact and HTTP/artifact comparison. The request completed at
+2026-09-06T04:25:02Z with 28,003 bytes and 359 rows; raw SHA-256 is
+`c60893f906fdcf5eada86433673f6dbcfff0d52cd5dc765a9995425ef3699c3c`.
+The 5,548-byte artifact SHA-256 is
+`f71275adf2db00e739773e66ecd0913f631e35d3e5f7c168a1dd4a59a25b1b63`.
+The final HTTP row and artifact both carry 2026-09-06T04:21:00Z, Kp index 0,
+estimated Kp 0.0 and provider code `0Z` (stored flag 0). This verifies content
+and receipt plumbing only; it does not remove the decode-memory and physical
+allocation blockers above or activate the adapter.

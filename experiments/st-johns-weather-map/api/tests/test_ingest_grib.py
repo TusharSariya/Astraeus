@@ -28,7 +28,6 @@ from ingest.grib import (
     selected_bytes,
     stack_members,
     strip_message_scalars,
-    write_zarr,
     subset_ranges,
 )
 
@@ -529,25 +528,3 @@ def test_a_field_whose_record_states_no_averaging_window_is_not_stamped():
         declare_time_average(variable, window_label="24 hour fcst")
     assert "cell_methods" not in variable.attrs
     assert "averaging_window_hours" not in variable.attrs
-
-
-def test_bounded_zarr_writer_refuses_directory_before_crossing_cap(tmp_path):
-    dataset = xarray.Dataset({"value": (("x",), numpy.arange(1024, dtype="float64"))})
-    destination = tmp_path / "bounded.zarr.zip"
-
-    with pytest.raises(GribError, match="work bound"):
-        write_zarr(dataset, destination, max_work_bytes=32)
-
-    assert not destination.exists()
-    assert not list(tmp_path.glob("zarr-*"))
-
-
-def test_bounded_zarr_writer_accounts_directory_archive_overlap(tmp_path):
-    dataset = xarray.Dataset({"value": (("x",), numpy.arange(8, dtype="float64"))})
-    destination = tmp_path / "bounded.zarr.zip"
-
-    with pytest.raises(GribError, match="directory plus archive"):
-        write_zarr(dataset, destination, max_work_bytes=1_000)
-
-    assert not destination.exists()
-    assert not list(tmp_path.glob("zarr-*"))

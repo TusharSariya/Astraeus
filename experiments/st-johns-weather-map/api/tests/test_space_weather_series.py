@@ -69,6 +69,29 @@ def test_fetch_json_returns_payload_and_a_receipt_without_the_payload(tmp_path: 
     assert not list(tmp_path.iterdir())
 
 
+def test_fetch_json_receipt_timestamp_is_taken_after_http_completion(tmp_path: Path, monkeypatch):
+    import ingest.space_weather as module
+
+    completed: list[bool] = []
+
+    class Client:
+        def download_with_headers(self, _url, destination, *, max_bytes):
+            destination.write_bytes(b'[{"time_tag":"2026-09-06T04:21:00"}]')
+            completed.append(True)
+            return destination.stat().st_size, {}
+
+    class Clock:
+        @staticmethod
+        def now(_zone):
+            assert completed == [True], "receipt time must follow the completed response"
+            return datetime(2026, 9, 6, 4, 25, 2, tzinfo=UTC)
+
+    monkeypatch.setattr(module, "datetime", Clock)
+    _payload, receipt = fetch_json(Client(), "https://example.test/feed.json", max_bytes=1024, workdir=tmp_path)
+
+    assert receipt.captured_at == "2026-09-06T04:25:02Z"
+
+
 def test_fetch_json_refuses_a_body_past_the_ceiling(tmp_path: Path):
     client = mock_client(b"[" + b"1," * 600 + b"1]")
     with pytest.raises(AdapterUnavailable, match="ceiling"):

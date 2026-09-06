@@ -12,7 +12,7 @@ reserves room.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator, Sequence
@@ -220,7 +220,7 @@ def test_resource_refusal_precedes_payload_retrieval(tmp_path: Path) -> None:
 def test_payload_bearing_discovery_is_reserved_before_its_first_byte(tmp_path: Path) -> None:
     class _PayloadDiscovery(_Adapter):
         def operation_bounds(self, window: Any) -> ResourceBounds:
-            return replace(self.resource_bounds(None, window), retained_memory_bytes=4096)
+            return self.resource_bounds(None, window)
 
         def discover(self, window: Any) -> list[RunCandidate]:
             assert store.events == ["reserved"]
@@ -238,7 +238,7 @@ def test_payload_bearing_discovery_is_reserved_before_its_first_byte(tmp_path: P
 def test_payload_discovery_never_starts_when_complete_admission_fails(tmp_path: Path) -> None:
     class _PayloadDiscovery(_Adapter):
         def operation_bounds(self, window: Any) -> ResourceBounds:
-            return replace(self.resource_bounds(None, window), retained_memory_bytes=4096)
+            return self.resource_bounds(None, window)
 
         def discover(self, window: Any) -> list[RunCandidate]:
             pytest.fail("payload discovery must remain behind admission")
@@ -253,19 +253,6 @@ def test_payload_discovery_never_starts_when_complete_admission_fails(tmp_path: 
 
     assert outcome.state == "failed"
     assert "pre-discovery admission" in outcome.detail
-
-
-def test_payload_discovery_refuses_retained_objects_above_memory_bound(tmp_path: Path) -> None:
-    class _PayloadDiscovery(_Adapter):
-        def operation_bounds(self, window: Any) -> ResourceBounds:
-            return replace(self.resource_bounds(None, window), retained_memory_bytes=1)
-
-    store = _Store()
-    outcome = run_source(_PayloadDiscovery(result=_result(tmp_path)), _Config(), store, reference=T0)
-
-    assert outcome.state == "failed"
-    assert "retained candidate objects" in outcome.detail
-    assert store.events == ["reserved", "released"]
 
 
 def test_underestimated_temporary_output_is_cleaned_and_never_published(tmp_path: Path) -> None:

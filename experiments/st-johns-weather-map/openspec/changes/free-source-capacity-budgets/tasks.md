@@ -88,13 +88,9 @@
   or multi-host ingestion is enabled. The current worker deliberately executes
   one source at a time; separate experimental capture scripts remain outside
   its reservation boundary and must continue to coordinate capacity externally.
-- [x] 5.5 Admit payload-bearing discovery behind the same complete-operation
-  store/filesystem reservation and received-byte counter held through fetch.
-  Add a writer cap that refuses Zarr directory writes before their bound and
-  accounts for the directory plus deterministic ZIP overlap before creating
-  the archive. `noaa-swpc-kp-1m` is the first bounded representative: its one
-  512 KiB JSON retrieval is retained for a zero-request fetch, its maximum row
-  count follows from the minimum accepted record encoding, and its fixed four
-  arrays plus measured metadata determine the writer allocation. This does not
-  schedule or promote the source. Verify with the mapped adapter, worker and
-  GRIB writer tests.
+- [x] 5.5 Add the optional complete-operation admission seam for adapters whose
+  discovery request is itself the payload: reserve declared store and local
+  filesystem allocations before discovery, and hold that reservation and one
+  received-byte counter through fetch and publication. No source uses the seam
+  until its decode-memory and physical-filesystem peak are measured and
+  enforceable; post-allocation measurement is not treated as prevention.

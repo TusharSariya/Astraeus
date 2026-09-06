@@ -212,7 +212,7 @@ def _run_source(
     """Discover, fetch, stage and publish one source. Never raises."""
     from ingest.contract import AdapterUnavailable, DiscoveryBounds, FetchWindow, ResourceBounds  # noqa: PLC0415
     from ingest.scheduler import plan_fetch  # noqa: PLC0415
-    from ingest.resources import ReceivedBytesExceeded, acquisition_budget, directory_bytes, retained_memory_bytes  # noqa: PLC0415
+    from ingest.resources import ReceivedBytesExceeded, acquisition_budget, directory_bytes  # noqa: PLC0415
     from ingest.store import QuotaExceeded, ResourceBudgetExceeded, RunIdentityConflict, StoreUnavailable  # noqa: PLC0415
 
     window = FetchWindow(now=reference)
@@ -241,14 +241,6 @@ def _run_source(
         return SourceOutcome(config.source_id, "failed", f"discovery failed: {error!r}")
     if not candidates:
         return SourceOutcome(config.source_id, "cancelled", "discovery returned no candidate run")
-    if admitted_bounds is not None:
-        retained = retained_memory_bytes(candidates)
-        if admitted_bounds.retained_memory_bytes <= 0 or retained > admitted_bounds.retained_memory_bytes:
-            return SourceOutcome(
-                config.source_id, "failed",
-                f"upstream_budget_exhausted during discovery: retained candidate objects use {retained} bytes "
-                f"against a {admitted_bounds.retained_memory_bytes} byte bound",
-            )
 
     candidate = candidates[0]
     # Ask the store what is present before fetching. A restart whose window is
@@ -283,7 +275,7 @@ def _run_source(
         except ValueError as error:
             raise ResourceBudgetExceeded(str(error)) from error
         if admitted_bounds is not None:
-            for name in ("store_bytes", "filesystem_bytes", "margin_bytes", "received_bytes", "retained_memory_bytes"):
+            for name in ("store_bytes", "filesystem_bytes", "margin_bytes", "received_bytes"):
                 if getattr(bounds, name) > getattr(admitted_bounds, name):
                     raise ResourceBudgetExceeded(f"candidate {name} exceeds its pre-discovery admission")
             reservation = nullcontext()

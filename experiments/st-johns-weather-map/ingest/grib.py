@@ -728,7 +728,7 @@ def normalize_precipitation(dataset: Any, name: str, *, interval_hours: float) -
     return dataset
 
 
-def write_zarr(dataset: Any, destination: Path, *, max_work_bytes: int | None = None) -> Path:
+def write_zarr(dataset: Any, destination: Path) -> Path:
     """Write a bbox-cropped dataset as a single zipped Zarr artifact.
 
     Zarr is written to a temporary directory store first and only then zipped.
@@ -745,29 +745,6 @@ def write_zarr(dataset: Any, destination: Path, *, max_work_bytes: int | None = 
     import xarray  # noqa: PLC0415
     import zarr  # noqa: PLC0415
 
-    if max_work_bytes is not None and max_work_bytes <= 0:
-        raise ValueError("max_work_bytes must be positive")
-
-    class _BoundedLocalStore(zarr.storage.LocalStore):
-        """LocalStore that refuses each write before it crosses the cap."""
-
-        def __init__(self, root: str, limit: int | None) -> None:
-            super().__init__(root)
-            self.limit = limit
-            self.sizes: dict[str, int] = {}
-            self.used = 0
-
-        async def set(self, key: str, value: Any) -> None:
-            size = len(value)
-            projected = self.used - self.sizes.get(key, 0) + size
-            if self.limit is not None and projected > self.limit:
-                raise GribError(
-                    f"zarr directory would use {projected} bytes above its {self.limit} byte work bound"
-                )
-            await super().set(key, value)
-            self.used = projected
-            self.sizes[key] = size
-
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.unlink(missing_ok=True)
 
@@ -777,26 +754,9 @@ def write_zarr(dataset: Any, destination: Path, *, max_work_bytes: int | None = 
     scratch = Path(tempfile.mkdtemp(prefix="zarr-", dir=str(destination.parent)))
     try:
         directory = scratch / "store.zarr"
-        bounded_store = _BoundedLocalStore(str(directory), max_work_bytes)
-        dataset.to_zarr(bounded_store, mode="w", consolidated=False)
+        dataset.to_zarr(zarr.storage.LocalStore(str(directory)), mode="w", consolidated=False)
 
         entries = sorted(path for path in directory.rglob("*") if path.is_file())
-        # ZIP_STORED has a fixed 30-byte local header and 46-byte central
-        # directory record per entry, two copies of the UTF-8 name, and a
-        # 22-byte end record. Refuse ZIP64-sized output: this writer's bounded
-        # source products never need its additional records.
-        if len(entries) >= 65_535 or any(path.stat().st_size >= 0xFFFFFFFF for path in entries):
-            raise GribError("bounded zarr writer refuses ZIP64 output")
-        zip_bytes = 22 + sum(
-            path.stat().st_size + 76 + 2 * len(str(path.relative_to(directory).as_posix()).encode("utf-8"))
-            for path in entries
-        )
-        peak_bytes = bounded_store.used + zip_bytes
-        if max_work_bytes is not None and peak_bytes > max_work_bytes:
-            raise GribError(
-                f"zarr directory plus archive would use {peak_bytes} bytes above its "
-                f"{max_work_bytes} byte work bound"
-            )
         with zipfile.ZipFile(destination, mode="w", compression=zipfile.ZIP_STORED) as archive:
             for path in entries:
                 info = zipfile.ZipInfo(str(path.relative_to(directory).as_posix()), date_time=(1980, 1, 1, 0, 0, 0))

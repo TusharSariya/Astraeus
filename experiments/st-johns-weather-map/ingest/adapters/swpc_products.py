@@ -50,9 +50,7 @@ from ingest.contract import (
     MEDIA_ZARR,
     AdapterUnavailable,
     Artifact,
-    DiscoveryBounds,
     FetchWindow,
-    ResourceBounds,
     RunCandidate,
     RunResult,
 )
@@ -99,21 +97,6 @@ KP_CODES = (
     "7P", "8M", "8Z", "8P", "9M", "9Z",
 )
 _KP_CODE_INDEX = {code: index for index, code in enumerate(KP_CODES)}
-
-# A minimal usable compact JSON row is still larger than its four 8-byte
-# output values (time plus three variables). Dividing the already enforced
-# wire ceiling by that minimum gives a conservative row count without dropping
-# anything the provider sent. The fixed metadata allowance is measured by the
-# maximal-row fixture; the factor of two is the exact directory/archive overlap
-# of ``write_zarr`` rather than free-space headroom.
-KP1M_MIN_RECORD_BYTES = len(b'{"time_tag":"0","kp_index":0,"estimated_kp":0,"kp":"0Z"}')
-KP1M_MAX_RECORDS = MAX_SMALL_FEED_BYTES // KP1M_MIN_RECORD_BYTES
-KP1M_ARRAY_BYTES_PER_RECORD = 4 * 8
-KP1M_ZARR_METADATA_BYTES = 16 * 1024
-KP1M_ZARR_WORK_BYTES = 2 * (
-    KP1M_MAX_RECORDS * KP1M_ARRAY_BYTES_PER_RECORD + KP1M_ZARR_METADATA_BYTES
-)
-KP1M_RETAINED_MEMORY_BYTES = 4 * 1024 * 1024
 
 #: The GOES X-ray energy bands, as the feed spells them, and the suffix each
 #: one folds into. An energy outside this map is schema drift, not a third
@@ -301,31 +284,28 @@ class SWPCKp1mAdapter:
         self._client = client
         self._url = url
 
-    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
-        return DiscoveryBounds(received_bytes=MAX_SMALL_FEED_BYTES)
-
-    def operation_bounds(self, window: FetchWindow) -> ResourceBounds:
-        return ResourceBounds(
-            store_bytes=KP1M_ZARR_WORK_BYTES,
-            filesystem_bytes=KP1M_ZARR_WORK_BYTES,
-            margin_bytes=0,
-            received_bytes=MAX_SMALL_FEED_BYTES,
-            retained_memory_bytes=KP1M_RETAINED_MEMORY_BYTES,
-        )
-
-    def resource_bounds(self, candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
-        return self.operation_bounds(window)
-
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         payload, receipt = _retrieve(self._client, self._url, MAX_SMALL_FEED_BYTES)
         rows = records(payload, required=self._REQUIRED)
+        raw_count = len(payload) if isinstance(payload, list) else 0
+        header_rows = 1 if payload and isinstance(payload[0], list) else 0
+        if len(rows) != raw_count - header_rows:
+            raise AdapterUnavailable("SWPC 1-minute Kp contains a malformed or incomplete row; refused without thinning")
         if not rows:
             raise AdapterUnavailable("SWPC 1-minute Kp returned no usable records")
-        if len(rows) > KP1M_MAX_RECORDS:
-            raise AdapterUnavailable(
-                f"SWPC 1-minute Kp returned {len(rows)} records above the "
-                f"{KP1M_MAX_RECORDS} record allocation bound"
-            )
+        for index, row in enumerate(rows):
+            if parse_time(row.get("time_tag")) is None:
+                raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has an unparseable time_tag")
+            for field in ("kp_index", "estimated_kp"):
+                value = row.get(field)
+                if value is None or isinstance(value, bool):
+                    raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has invalid {field}")
+                try:
+                    float(value)
+                except (TypeError, ValueError) as error:
+                    raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has invalid {field}") from error
+            if str(row.get("kp", "")).strip() not in _KP_CODE_INDEX:
+                raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has an unsupported kp code")
         timed = _timed_rows(rows, "time_tag")
         if not timed:
             raise AdapterUnavailable("SWPC 1-minute Kp records carry no parseable time_tag")
@@ -360,7 +340,7 @@ class SWPCKp1mAdapter:
         )
         quality, coverage = series_quality("kp_index", kp_index, required_fields={"kp_index": kp_index, "estimated_kp": estimated})
         path = workdir / "kp_1m.zarr.zip"
-        write_zarr(dataset, path, max_work_bytes=KP1M_ZARR_WORK_BYTES)
+        write_zarr(dataset, path)
         provenance = series_provenance(
             source_id=self.source_id,
             producer=SWPC_PRODUCER,
