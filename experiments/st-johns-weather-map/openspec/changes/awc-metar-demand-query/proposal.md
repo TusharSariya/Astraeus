@@ -29,7 +29,7 @@ and provider QC code travel as `provenance.native_report`.
 | `temp`, `dewp` | Canonical temperature/dew point; relative humidity is the existing registered derivation |
 | `slp` | Canonical mean sea-level pressure |
 | `altim` | Native altimeter value only; it is not relabelled as mean sea-level or surface pressure |
-| `wspd`, `wdir`, `wgst` | Native wind metadata; canonical speed/direction come from the existing u/v derivation and gust is served when present |
+| `wspd`, `wdir`, `wgst` | Native wind metadata; canonical speed, direction, and gust remain provider-retrieved values after unit conversion. `VRB` preserves speed with a null numeric direction |
 | `visib` | Canonical visibility with native statute-mile value retained |
 | `cover`, `clouds`, `vertVis` | Native aggregate/layer/vertical-visibility metadata; recognized layer cover/base values are served canonically, while an unmappable code such as `OVX` stays an explicit canonical absence |
 | `wxString` | Native weather string plus existing explicit fog/vicinity-fog/mist evidence flags; no other weather meaning is inferred |
