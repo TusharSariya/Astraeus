@@ -65,7 +65,7 @@ def test_kp3h_child_refuses_any_invalid_row_without_output(mode, rows, tmp_path)
 
 def test_kp_operation_bounds_cover_both_documents_and_outputs(monkeypatch):
     monkeypatch.setattr(SWPCKpAdapter, "_require_bounded_runtime", staticmethod(lambda: None))
-    bounds = SWPCKpAdapter().operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=timezone.utc)))
+    bounds = SWPCKpAdapter().demand_operation_bounds()
     assert bounds.received_bytes == 1024 * 1024
     assert bounds.store_bytes == 1024 * 1024
     assert bounds.filesystem_bytes == 1024 * 1024
@@ -89,6 +89,11 @@ def test_kp_operation_preflight_refuses_unsupported_kernel_before_discovery(monk
         raise RuntimeError("locked limits unavailable")
     monkeypatch.setattr(SWPCKpAdapter, "_require_bounded_runtime", staticmethod(unavailable))
     with pytest.raises(RuntimeError, match="locked limits unavailable"):
+        SWPCKpAdapter().demand_operation_bounds()
+
+
+def test_kp_scheduled_path_refuses_before_discovery():
+    with pytest.raises(AdapterUnavailable, match="scheduled ingestion is disabled"):
         SWPCKpAdapter().operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=timezone.utc)))
 
 
