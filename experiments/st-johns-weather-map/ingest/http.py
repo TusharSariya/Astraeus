@@ -280,11 +280,10 @@ class PoliteClient:
         headers: Mapping[str, str] | None = None,
         chunk_size: int = 1 << 16,
     ) -> tuple[bytes, Mapping[str, str], datetime]:
-        """Read bounded bytes and timestamp completion after the final byte.
+        """As :meth:`get_bytes_with_headers`, with UTC completion after the final byte.
 
-        The response stays streamed until each chunk has passed the ceiling,
-        so an incorrect or absent Content-Length cannot make httpx buffer an
-        unbounded body before the caller can refuse it.
+        Adapters that retain raw-response provenance use this timestamp instead
+        of recording a later bookkeeping time.
         """
         if max_bytes <= 0:
             raise ValueError("max_bytes must be positive")
