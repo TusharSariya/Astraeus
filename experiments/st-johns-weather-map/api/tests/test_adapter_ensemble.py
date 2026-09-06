@@ -56,7 +56,9 @@ from ingest.adapters.ecmwf_opendata import (
     select_member_ranges,
 )
 from ingest.adapters.noaa_s3 import (
+    ATLANTIC_CONTEXT_BOUNDS,
     NOAAGEFSEnsembleAdapter,
+    _gefs_refusing_reader,
     gefs_member_identifiers,
     select_gefs_member_records,
 )
@@ -1485,6 +1487,32 @@ def test_gefs_member_url_preserves_injectable_base_and_declared_product_set():
         "https://fixture.invalid/root/gefs.20260901/00/atmos/pgrb2bp5/"
         "gec00.t00z.pgrb2b.0p50.f024"
     )
+
+
+def test_gefs_reader_refuses_wrong_exact_record_identity(monkeypatch, tmp_path):
+    import xarray as xr
+    wrong = xr.Dataset({"u10": xr.DataArray(
+        [[1.0]], dims=("latitude", "longitude"),
+        coords={"latitude": [47.0], "longitude": [-52.0], "heightAboveGround": 10.0},
+        attrs={"GRIB_shortName": "10u", "GRIB_typeOfLevel": "heightAboveGround", "GRIB_stepType": "instant"},
+    )})
+    monkeypatch.setattr("ingest.grib.open_grib", lambda *_args, **_kwargs: wrong)
+    with pytest.raises(ValueError, match="identity does not match"):
+        _gefs_refusing_reader(tmp_path / "record", upstream="TMP:2 m above ground", member="gec00", bounds=ATLANTIC_CONTEXT_BOUNDS)
+
+
+@pytest.mark.parametrize("upstream,short_name,level_type,step_type,level_value", [
+    ("TCDC:entire atmosphere (0-6 hour ave fcst)", "tcc", "atmosphere", "instant", None),
+    ("TMP:2 m above ground", "2t", "heightAboveGround", "instant", 10.0),
+])
+def test_gefs_reader_refuses_wrong_step_or_scalar_level(monkeypatch, tmp_path, upstream, short_name, level_type, step_type, level_value):
+    import xarray as xr
+    coords={"latitude":[47.0],"longitude":[-52.0]}
+    if level_value is not None: coords[level_type]=level_value
+    wrong=xr.Dataset({"field":xr.DataArray([[1.0]],dims=("latitude","longitude"),coords=coords,attrs={"GRIB_shortName":short_name,"GRIB_typeOfLevel":level_type,"GRIB_stepType":step_type})})
+    monkeypatch.setattr("ingest.grib.open_grib",lambda *_args,**_kwargs:wrong)
+    with pytest.raises(ValueError,match="does not match"):
+        _gefs_refusing_reader(tmp_path/"record",upstream=upstream,member="gec00",bounds=ATLANTIC_CONTEXT_BOUNDS)
 
 
 def test_gefs_selection_is_restricted_to_the_catalogue_family_fields():

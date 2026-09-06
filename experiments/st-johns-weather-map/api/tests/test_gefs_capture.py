@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from weather_api.gefs_capture import GEFSAuditClient
+from weather_api.gefs_capture import GEFSAuditClient, GEFSReplayClient
 
 
 def receipt(body: bytes) -> dict[str, object]:
@@ -43,3 +43,15 @@ def test_audit_client_refuses_nonempty_destination(tmp_path):
     (tmp_path / "old").write_bytes(b"evidence")
     with pytest.raises(RuntimeError, match="must be empty"):
         GEFSAuditClient(Delegate(), tmp_path)
+
+
+def test_replay_requires_exact_sequence_url_range_and_digest(tmp_path):
+    audit = GEFSAuditClient(Delegate(), tmp_path)
+    audit.get_bytes_with_receipt("https://noaa.example/object", max_bytes=10)
+    destination = tmp_path.parent / "ranges"
+    audit.download_ranges_with_receipts("https://noaa.example/object", destination, [(0, 2), (3, 4)], max_bytes=10)
+    replay = GEFSReplayClient(tmp_path)
+    assert replay.get_bytes_with_receipt("https://noaa.example/object", max_bytes=10)[0] == b"idx"
+    output = tmp_path.parent / "replayed"
+    assert replay.download_ranges_with_receipts("https://noaa.example/object", output, [(0, 2), (3, 4)], max_bytes=10)[0] == 5
+    assert output.read_bytes() == b"abcde"

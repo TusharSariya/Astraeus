@@ -12,11 +12,20 @@ def main():
  if shutil.disk_usage(output.parent).free<GEFS_OUTPUT_ALLOWANCE_BYTES: raise RuntimeError("GEFS child workspace is below its output allowance")
  with tempfile.TemporaryDirectory(prefix="gefs-child-",dir=output.parent) as directory:
   client = None
-  if evidence := os.environ.get("GEFS_CAPTURE_EVIDENCE_DIR"):
+  replay = os.environ.get("GEFS_REPLAY_EVIDENCE_DIR")
+  evidence = os.environ.get("GEFS_CAPTURE_EVIDENCE_DIR")
+  if replay and evidence:
+   raise RuntimeError("GEFS worker cannot capture and replay simultaneously")
+  if replay:
+   from weather_api.gefs_capture import GEFSReplayClient
+   client = GEFSReplayClient(Path(replay))
+  elif evidence:
    from ingest.http import PoliteClient
    from weather_api.gefs_capture import GEFSAuditClient
    client = GEFSAuditClient(PoliteClient(), Path(evidence))
   entry=GEFSSelectedLoader(NOAAGEFSEnsembleAdapter(client=client,bounds=dict(key.bounds),capture_transport_receipts=True),Path(directory))(key)
+  if replay:
+   client.assert_complete()
   manifest={"run_id":key.run_id,"run_time":key.run_time.isoformat(),"lead":key.lead,"valid_time":entry.valid_time.isoformat(),"fetched_at":entry.fetched_at.isoformat(),"members_present":entry.members_present,"mandatory_failures":entry.mandatory_failures,"optional_absences":entry.optional_absences,"cloud_intervals":{m:[a.isoformat(),b.isoformat()] for m,(a,b) in entry.cloud_intervals.items()},"provenance":entry.provenance}
   with zipfile.ZipFile(output,"w",compression=zipfile.ZIP_STORED) as bundle:
    bundle.writestr("result.json",json.dumps(manifest,sort_keys=True))

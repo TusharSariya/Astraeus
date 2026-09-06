@@ -895,8 +895,31 @@ def _gefs_refusing_reader(path: Path, *, upstream: str, member: str, bounds: Map
     """Decode one member's record, cropping the global field to the box locally."""
     from ingest.grib import open_grib  # noqa: PLC0415
 
-    param = upstream.split(":", 1)[0].lower()
-    decoded = open_grib(path, filter_by_keys={"shortName": param})
+    # The byte range is already one exact provider index record.  GRIB's
+    # upstream parameter token is not necessarily cfgrib's shortName (TMP at
+    # 2 m is `t2m`, RH is `r2`), so applying it as a second filter can turn a
+    # valid selected record into an empty dataset.
+    decoded = open_grib(path)
+    variables = list(decoded.data_vars.values())
+    expected = {
+        "TMP:2 m above ground": ("2t", "heightAboveGround", "instant", 2.0),
+        "RH:2 m above ground": ("2r", "heightAboveGround", "instant", 2.0),
+        "UGRD:10 m above ground": ("10u", "heightAboveGround", "instant", 10.0),
+        "VGRD:10 m above ground": ("10v", "heightAboveGround", "instant", 10.0),
+        "PRMSL:mean sea level": ("prmsl", "meanSea", "instant", None),
+    }
+    identity = expected.get(upstream)
+    if upstream.startswith("TCDC:entire atmosphere"):
+        identity = ("tcc", "atmosphere", "avg", None)
+    if len(variables) != 1 or identity is None:
+        raise ValueError(f"decoded GEFS record does not have one declared field for {upstream}")
+    variable = variables[0]
+    short_name, level_type, step_type, level_value = identity
+    if (variable.attrs.get("GRIB_shortName"), variable.attrs.get("GRIB_typeOfLevel"),
+            variable.attrs.get("GRIB_stepType")) != (short_name, level_type, step_type):
+        raise ValueError(f"decoded GEFS record identity does not match {upstream}")
+    if level_value is not None and (level_type not in variable.coords or float(variable.coords[level_type]) != level_value):
+        raise ValueError(f"decoded GEFS record level does not match {upstream}")
     normalized = normalize_units(crop_to_bbox(decoded, bounds))
     names = [str(name) for name in normalized.data_vars]
     if not names:
@@ -1096,7 +1119,9 @@ class NOAAGEFSEnsembleAdapter:
             if by_member:
                 stacked[key] = stack_members(by_member, control=control)
 
-        dataset = xarray.Dataset(stacked)
+        dataset = xarray.Dataset(stacked).assign_coords(
+            valid_time=numpy.datetime64(window.now.astimezone(timezone.utc).replace(tzinfo=None), "ns")
+        )
         manifest = self.manifest()
         validation = validate_run(
             manifest,

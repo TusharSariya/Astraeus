@@ -25,6 +25,7 @@ def main() -> None:
     parser.add_argument("--lead", required=True, type=int)
     parser.add_argument("--workspace", type=Path, default=Path("/work"))
     parser.add_argument("--summary", type=Path, required=True)
+    parser.add_argument("--normalized-output", type=Path)
     args = parser.parse_args()
     run_time = datetime.strptime(args.run, "%Y%m%d%H").replace(tzinfo=UTC)
     key = GEFSRequestKey(
@@ -51,6 +52,8 @@ def main() -> None:
         "cache_backing_bytes": entry.backing_bytes,
         "transport_receipt_count": len(entry.provenance["transport_receipts"]),
     }
+    if args.normalized_output:
+        args.normalized_output.write_bytes(entry.payload)
     args.summary.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
 
 

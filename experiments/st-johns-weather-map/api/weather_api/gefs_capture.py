@@ -88,3 +88,52 @@ class GEFSAuditClient:
         if offset != len(payload):
             raise RuntimeError("GEFS audit range bodies do not cover destination")
         return written, receipts
+
+
+class GEFSReplayClient:
+    """Serve one captured request sequence without any network transport."""
+
+    def __init__(self, evidence_dir: Path) -> None:
+        self.root = evidence_dir.resolve()
+        self.records = [json.loads(line) for line in (self.root / "receipts.jsonl").read_text().splitlines()]
+        self.position = 0
+
+    def _next(self, kind: str, url: str) -> tuple[bytes, dict[str, object]]:
+        if self.position >= len(self.records):
+            raise RuntimeError("GEFS replay exhausted captured requests")
+        record = self.records[self.position]
+        self.position += 1
+        if record.get("kind") != kind or record.get("url") != url:
+            raise RuntimeError("GEFS replay request does not match captured sequence")
+        body = (self.root / str(record["body_file"])).read_bytes()
+        if len(body) != record.get("byte_size") or hashlib.sha256(body).hexdigest() != record.get("sha256"):
+            raise RuntimeError("GEFS replay body does not match retained identity")
+        receipt = {key: value for key, value in record.items() if key not in {"kind", "body_file", "requested_range"}}
+        return body, receipt
+
+    def get_bytes_with_receipt(self, url: str, *, max_bytes: int):
+        body, receipt = self._next("index", url)
+        if len(body) > max_bytes:
+            raise RuntimeError("GEFS replay index exceeds caller ceiling")
+        return body, receipt
+
+    def download_ranges_with_receipts(self, url: str, destination: Path, ranges, *, max_bytes: int):
+        requested = list(ranges)
+        bodies = []
+        receipts = []
+        for request_range in requested:
+            record = self.records[self.position]
+            if record.get("requested_range") != list(request_range):
+                raise RuntimeError("GEFS replay byte range differs from capture")
+            body, receipt = self._next("range", url)
+            bodies.append(body)
+            receipts.append(receipt)
+        payload = b"".join(bodies)
+        if len(payload) > max_bytes:
+            raise RuntimeError("GEFS replay ranges exceed caller ceiling")
+        destination.write_bytes(payload)
+        return len(payload), receipts
+
+    def assert_complete(self) -> None:
+        if self.position != len(self.records):
+            raise RuntimeError(f"GEFS replay left {len(self.records) - self.position} captured requests unused")

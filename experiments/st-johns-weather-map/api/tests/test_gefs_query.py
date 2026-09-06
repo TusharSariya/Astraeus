@@ -166,3 +166,14 @@ def test_receipt_accepts_numeric_content_range_total_and_rejects_invalid_total()
  target["response_headers"]={"Content-Range":"bytes 1-1/12345"}
  with pytest.raises(ValueError,match="Content-Range"):
   bad.validate()
+
+def test_last_record_open_range_uses_returned_numeric_end_and_cap():
+ accepted=entry(key()); receipts=[dict(item) for item in accepted.provenance["transport_receipts"]]
+ target=next(item for item in receipts if item.get("field")=="PRMSL:mean sea level")
+ target.update(range_end=None,byte_size=10,sha256="c"*64)
+ target["request_headers"]={"range":"bytes=0-"}; target["response_headers"]={"Content-Range":"bytes 0-9/10"}
+ value=GEFSQueryEntry(accepted.key,accepted.valid_time,accepted.fetched_at,accepted.members_present,accepted.mandatory_failures,accepted.optional_absences,accepted.payload,{**accepted.provenance,"transport_receipts":receipts},accepted.cloud_intervals)
+ value.validate()
+ target["response_headers"]={"Content-Range":"bytes 0-10/11"}
+ with pytest.raises(ValueError,match="byte count"):
+  value.validate()
