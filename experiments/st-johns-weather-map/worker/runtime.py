@@ -168,10 +168,47 @@ def _store():
 
 
 def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callable[[], None] | None = None) -> SourceOutcome:
+    """Admit payload-bearing discovery before delegating the source run."""
+    from ingest.contract import FetchWindow, ResourceBounds  # noqa: PLC0415
+    from ingest.resources import ReceivedBytesExceeded, acquisition_budget  # noqa: PLC0415
+    from ingest.store import QuotaExceeded, ResourceBudgetExceeded  # noqa: PLC0415
+
+    if store is None:
+        return SourceOutcome(config.source_id, "failed", "resource preflight failed: no artifact store is available")
+    operation_method = getattr(adapter, "operation_bounds", None)
+    if operation_method is None:
+        return _run_source(adapter, config, store, reference=reference, heartbeat=heartbeat)
+    try:
+        bounds = operation_method(FetchWindow(now=reference))
+        if not isinstance(bounds, ResourceBounds):
+            raise ResourceBudgetExceeded("complete-operation bounds are unknown or invalid")
+        bounds.validate()
+        reservation = store.reserve_resources(
+            store_bytes=bounds.store_bytes,
+            filesystem_bytes=bounds.filesystem_bytes,
+            margin_bytes=bounds.margin_bytes,
+            filesystem_path=Path(tempfile.gettempdir()),
+        )
+        with reservation, acquisition_budget(bounds.received_bytes):
+            return _run_source(
+                adapter, config, store, reference=reference, heartbeat=heartbeat,
+                admitted_bounds=bounds,
+            )
+    except QuotaExceeded as error:
+        return SourceOutcome(config.source_id, "failed", f"quota_exceeded during pre-discovery admission: {error}")
+    except (ResourceBudgetExceeded, ReceivedBytesExceeded, ValueError) as error:
+        return SourceOutcome(config.source_id, "failed", f"upstream_budget_exhausted during pre-discovery admission: {error}")
+
+
+def _run_source(
+    adapter, config, store, *, reference: datetime,
+    heartbeat: Callable[[], None] | None = None,
+    admitted_bounds=None,
+) -> SourceOutcome:
     """Discover, fetch, stage and publish one source. Never raises."""
     from ingest.contract import AdapterUnavailable, DiscoveryBounds, FetchWindow, ResourceBounds  # noqa: PLC0415
     from ingest.scheduler import plan_fetch  # noqa: PLC0415
-    from ingest.resources import ReceivedBytesExceeded, acquisition_budget, directory_bytes  # noqa: PLC0415
+    from ingest.resources import ReceivedBytesExceeded, acquisition_budget, directory_bytes, retained_memory_bytes  # noqa: PLC0415
     from ingest.store import QuotaExceeded, ResourceBudgetExceeded, RunIdentityConflict, StoreUnavailable  # noqa: PLC0415
 
     window = FetchWindow(now=reference)
@@ -188,7 +225,9 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
             discovery_bounds.validate()
         except ValueError as error:
             raise ResourceBudgetExceeded(str(error)) from error
-        with acquisition_budget(discovery_bounds.received_bytes):
+        from contextlib import nullcontext  # noqa: PLC0415
+        discovery_context = nullcontext() if admitted_bounds is not None else acquisition_budget(discovery_bounds.received_bytes)
+        with discovery_context:
             candidates = adapter.discover(window)
     except AdapterUnavailable as error:
         return SourceOutcome(config.source_id, "cancelled", f"nothing usable upstream: {error}")
@@ -198,6 +237,14 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
         return SourceOutcome(config.source_id, "failed", f"discovery failed: {error!r}")
     if not candidates:
         return SourceOutcome(config.source_id, "cancelled", "discovery returned no candidate run")
+    if admitted_bounds is not None:
+        retained = retained_memory_bytes(candidates)
+        if admitted_bounds.retained_memory_bytes <= 0 or retained > admitted_bounds.retained_memory_bytes:
+            return SourceOutcome(
+                config.source_id, "failed",
+                f"upstream_budget_exhausted during discovery: retained candidate objects use {retained} bytes "
+                f"against a {admitted_bounds.retained_memory_bytes} byte bound",
+            )
 
     candidate = candidates[0]
     # Ask the store what is present before fetching. A restart whose window is
@@ -231,13 +278,21 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
             bounds.validate()
         except ValueError as error:
             raise ResourceBudgetExceeded(str(error)) from error
-        reservation = store.reserve_resources(
-            store_bytes=bounds.store_bytes,
-            filesystem_bytes=bounds.filesystem_bytes,
-            margin_bytes=bounds.margin_bytes,
-            filesystem_path=Path(tempfile.gettempdir()),
-        )
-        with reservation, acquisition_budget(bounds.received_bytes), tempfile.TemporaryDirectory(prefix=f"{config.source_id}-") as workdir:
+        if admitted_bounds is not None:
+            for name in ("store_bytes", "filesystem_bytes", "margin_bytes", "received_bytes", "retained_memory_bytes"):
+                if getattr(bounds, name) > getattr(admitted_bounds, name):
+                    raise ResourceBudgetExceeded(f"candidate {name} exceeds its pre-discovery admission")
+            reservation = nullcontext()
+            budget_context = nullcontext()
+        else:
+            reservation = store.reserve_resources(
+                store_bytes=bounds.store_bytes,
+                filesystem_bytes=bounds.filesystem_bytes,
+                margin_bytes=bounds.margin_bytes,
+                filesystem_path=Path(tempfile.gettempdir()),
+            )
+            budget_context = acquisition_budget(bounds.received_bytes)
+        with reservation, budget_context, tempfile.TemporaryDirectory(prefix=f"{config.source_id}-") as workdir:
             if heartbeat is not None:
                 heartbeat()
             phase = "payload retrieval"

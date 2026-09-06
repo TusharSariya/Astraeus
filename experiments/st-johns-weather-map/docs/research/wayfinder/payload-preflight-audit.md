@@ -66,3 +66,35 @@ The issue 74 owner decision keeps the 64 GiB hot quota and no cold tier,
 requires measured margin and unknown bounds to fail closed, and removes the
 artificial daily download ceiling. This repair does not change registry states,
 enable adapters, promote OpenSpec status or set `operational: true`.
+
+## First payload-bearing discovery measurement
+
+The isolated `noaa-swpc-kp-1m` adapter is the first complete-operation example.
+Its endpoint has no separate metadata object: the one bounded JSON response is
+both discovery evidence and the fetch input. Complete hot-store and local
+filesystem capacity is therefore reserved before `discover`; that reservation
+and the operation-wide received-byte counter remain held through publication.
+The decoded rows stay in the candidate and `fetch` performs no second request.
+
+A bounded live read on 2026-09-06 received 27,925 bytes and 358 records from
+the Kp-1m endpoint
+(`sha256:8e3fad57b946c87aef24989d78bbbc9a25f74a55baa041f59356d33b6ee8b12b`).
+No response body was retained. Admission deliberately uses the existing full
+512 KiB SWPC small-feed ceiling rather than extrapolating that sample.
+
+The minimum compact encoding containing all four required keys is 56 bytes,
+so a conforming 512 KiB document cannot contain more than 9,362 records. The
+normalized output has four eight-byte arrays per record (time and three data
+variables). Its directory/archive allocation is therefore twice the array
+bytes plus a 16 KiB metadata envelope measured by the maximal-row synthetic
+fixture: 631,936 bytes. The bounded writer checks every directory-store write,
+then computes the exact ZIP_STORED headers and payload size and refuses before
+creating the archive if directory plus archive would cross that allocation.
+The maximal 9,362-row fixture produced a 22,567-byte archive. Margin is zero
+because the declared filesystem allocation already includes both simultaneous
+copies and exact container records; it is not a percentage or free-space
+allowance. A record above the wire-derived count is refused, never truncated.
+The maximal candidate graph with distinct numeric and string values measured
+3,878,579 bytes under the runtime's recursive `sys.getsizeof` accounting. Its
+retained-memory admission is 4 MiB; the worker refuses the candidate before
+fetch when that measured envelope is crossed.

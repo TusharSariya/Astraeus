@@ -15,6 +15,8 @@ from ingest.adapters.swpc_products import (
     GOESXrayAdapter,
     SWPCAlertsAdapter,
     SWPCKp1mAdapter,
+    KP1M_MAX_RECORDS,
+    KP1M_ZARR_WORK_BYTES,
     SWPCKyotoDstAdapter,
     SWPCPropagatedSolarWindAdapter,
     SWPCScalesAdapter,
@@ -86,6 +88,30 @@ def test_schema_drift_and_stale_http_200_fail_closed():
     stale = [{"time_tag": "2026-09-04T00:00:00", "kp_index": 1, "estimated_kp": 1, "kp": "1Z"}]
     with pytest.raises(AdapterUnavailable, match="stale"):
         SWPCKp1mAdapter(client=client(stale)).discover(WINDOW)
+
+
+def test_kp1m_declares_complete_pre_discovery_and_writer_bounds(tmp_path):
+    payload = [{"time_tag": "2026-09-05T19:58:00", "kp_index": 3, "estimated_kp": 3.33, "kp": "3P"}]
+    adapter = SWPCKp1mAdapter(client=client(payload))
+
+    operation = adapter.operation_bounds(WINDOW)
+    candidate = adapter.discover(WINDOW)[0]
+    result = adapter.fetch(candidate, WINDOW, tmp_path)
+
+    assert adapter.discovery_bounds(WINDOW).received_bytes == 512 * 1024
+    assert adapter.resource_bounds(candidate, WINDOW) == operation
+    assert operation.margin_bytes == 0
+    assert operation.filesystem_bytes == KP1M_ZARR_WORK_BYTES
+    assert result.artifacts[0].byte_size <= operation.store_bytes
+
+
+def test_kp1m_refuses_record_count_above_its_wire_derived_bound(monkeypatch):
+    row = {"time_tag": "2026-09-05T19:58:00", "kp_index": 3, "estimated_kp": 3.33, "kp": "3P"}
+    adapter = SWPCKp1mAdapter(client=client([row]))
+    monkeypatch.setattr("ingest.adapters.swpc_products.records", lambda *_args, **_kwargs: [row] * (KP1M_MAX_RECORDS + 1))
+
+    with pytest.raises(AdapterUnavailable, match="record allocation bound"):
+        adapter.discover(WINDOW)
 
 
 def test_alert_collision_at_one_issue_instant_fails_closed():

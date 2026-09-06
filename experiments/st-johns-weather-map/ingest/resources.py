@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 from typing import Iterator
 
 
@@ -66,3 +67,24 @@ def directory_bytes(path: Path) -> int:
         if item.is_file() and not item.is_symlink():
             total += item.stat().st_size
     return total
+
+
+def retained_memory_bytes(value: object) -> int:
+    """Count the reachable Python object graph once per object identity."""
+    seen: set[int] = set()
+
+    def size(item: object) -> int:
+        identity = id(item)
+        if identity in seen:
+            return 0
+        seen.add(identity)
+        total = sys.getsizeof(item)
+        if isinstance(item, dict):
+            total += sum(size(key) + size(child) for key, child in item.items())
+        elif isinstance(item, (list, tuple, set, frozenset)):
+            total += sum(size(child) for child in item)
+        elif hasattr(item, "__dict__"):
+            total += size(vars(item))
+        return total
+
+    return size(value)

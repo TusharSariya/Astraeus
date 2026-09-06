@@ -23,16 +23,13 @@ layouts or responsive-phone studies in this run.
 
 ## Immediate runtime blocker
 
-The fresh Sol launch for #118 was rejected with `agent thread limit reached`.
-The agent list contains only root and completed batch_spec_review,
-cache_audit_standards and composition_next. There is no active implementation
-agent and no API here to dispose of those completed threads. #118's temporary
-claim was released. #123/#137 were not claimed or launched. Do not reuse a
-completed agent for unrelated work or claim that the queue is running.
-
-Resume in an execution session that permits fresh subagents. Check capacity
-before taking more claims. Repeated launch failures require preserving this
-handoff, not a fabricated completion or an endless retry loop.
+The worker-level resource preflight repair from #159 merged in PR162 at
+`464b12e0505f6ce1beb692ac4981f62fa84ec3ae`. Scheduler-eligible adapters that
+lack measured discovery and complete-operation resource bounds now fail closed;
+source-specific measurements and bounded writers remain active #159 work. #123
+and #137 are active, #118 is closed, and #158 awaits owner resolution. Agent
+capacity is available through explicitly authorized completed-thread reuse; keep
+claims and isolated worktrees coordinated through the root orchestrator.
 
 ## Mandatory inputs and boundaries
 
