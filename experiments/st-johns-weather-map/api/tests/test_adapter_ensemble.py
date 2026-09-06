@@ -181,7 +181,7 @@ class FakeClient:
         body = destination.read_bytes()
         return written, [{"url": url, "request_headers": {"range": f"bytes={self.ranges[-1][1][0][0]}-{self.ranges[-1][1][0][1]}", "user-agent": "fixture"},
                           "response_headers": {}, "completed_at": "2026-09-01T00:00:02+00:00",
-                          "byte_size": len(body), "sha256": hashlib.sha256(body).hexdigest()}]
+                          "byte_size": self.ranges[-1][1][0][1]-self.ranges[-1][1][0][0]+1, "sha256": hashlib.sha256(body).hexdigest()}]
 
 
 def window_at(moment: datetime = datetime(2026, 9, 2, 12, tzinfo=UTC)) -> FetchWindow:
@@ -1567,7 +1567,7 @@ def test_gefs_publishes_one_member_axis_with_the_control_flagged(tmp_path: Path)
 
 def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Path):
     from datetime import timedelta
-    from weather_api.gefs_query import GEFS_FIELDS, GEFSRequestKey, GEFSQueryService, GEFSSelectedLoader, demand_operation_bounds
+    from weather_api.gefs_query import GEFS_FIELDS, GEFSRequestKey, GEFSQueryService, GEFSSelectedLoader, demand_operation_bounds, validate_normalized_payload
     adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader, capture_transport_receipts=True)
     run = datetime(2026, 9, 1, tzinfo=UTC)
     members = gefs_member_identifiers(get_config("noaa-gefs").ensemble)
@@ -1585,6 +1585,7 @@ def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Pat
     assert set(first.cloud_intervals) == set(members)
     assert set(first.cloud_intervals.values()) == {(run + timedelta(hours=18), run + timedelta(hours=24))}
     assert first.complete is True and first.backing_bytes > len(first.payload)
+    validate_normalized_payload(first.payload, first)
     receipts = first.provenance["transport_receipts"]
     assert len(receipts) == 31 * 8
     assert max(item["completed_at"] for item in receipts) == "2026-09-01T00:00:02+00:00"

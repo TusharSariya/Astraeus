@@ -108,7 +108,7 @@ def test_bounded_loader_validates_child_bundle_identity_and_shape(tmp_path):
   info={"run_id":request["run_id"],"run_time":request["run_time"],"lead":request["lead"],"valid_time": (RUN+timedelta(hours=24)).isoformat(),"fetched_at":RUN.isoformat(),"members_present":request["members"],"mandatory_failures":{},"optional_absences":{},"cloud_intervals":intervals,"provenance":{"source_id":"noaa-gefs",**entry(key(24)).provenance}}
   with zipfile.ZipFile(output,"w") as bundle:
    bundle.writestr("result.json",json.dumps(info)); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
- loaded=GEFSBoundedLoader(tmp_path,runner=runner)(key(24)); loaded.validate()
+ loaded=GEFSBoundedLoader(tmp_path,runner=runner,validator=lambda *_:None)(key(24)); loaded.validate()
  assert loaded.members_present==declared_members() and loaded.valid_time==RUN+timedelta(hours=24)
 
 def test_bounded_loader_refuses_wrong_child_identity(tmp_path):
@@ -118,7 +118,7 @@ def test_bounded_loader_refuses_wrong_child_identity(tmp_path):
   info={"run_id":"wrong","run_time":request["run_time"],"lead":request["lead"],"valid_time":RUN.isoformat(),"fetched_at":RUN.isoformat(),"members_present":[],"mandatory_failures":{},"optional_absences":{},"cloud_intervals":{},"provenance":{}}
   with zipfile.ZipFile(output,"w") as bundle:
    bundle.writestr("result.json",json.dumps(info)); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
- with pytest.raises(ValueError,match="different run identity"):GEFSBoundedLoader(tmp_path,runner=runner)(key())
+ with pytest.raises(ValueError,match="different run identity"):GEFSBoundedLoader(tmp_path,runner=runner,validator=lambda *_:None)(key())
 
 def test_selected_loader_refuses_receiptless_adapter_before_provider_io(tmp_path):
  from ingest.adapters.noaa_s3 import NOAAGEFSEnsembleAdapter
@@ -134,7 +134,7 @@ def test_bounded_loader_refuses_compressed_bundle_before_read(tmp_path):
   with zipfile.ZipFile(output,"w",compression=zipfile.ZIP_DEFLATED) as bundle:
    bundle.writestr("result.json",json.dumps({})); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
  with pytest.raises(ValueError,match="unencrypted stored"):
-  GEFSBoundedLoader(tmp_path,runner=runner)(key())
+  GEFSBoundedLoader(tmp_path,runner=runner,validator=lambda *_:None)(key())
 
 def test_bounded_loader_refuses_untyped_manifest(tmp_path):
  import json,zipfile
@@ -143,7 +143,7 @@ def test_bounded_loader_refuses_untyped_manifest(tmp_path):
   with zipfile.ZipFile(output,"w",compression=zipfile.ZIP_STORED) as bundle:
    bundle.writestr("result.json",json.dumps({"members_present":"all"})); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
  with pytest.raises(ValueError,match="invalid types"):
-  GEFSBoundedLoader(tmp_path,runner=runner)(key())
+  GEFSBoundedLoader(tmp_path,runner=runner,validator=lambda *_:None)(key())
 
 def test_unapproved_endpoint_refuses_before_loader():
  bad=GEFSRequestKey(key().run_id,RUN,6,"pgrb2ap5",declared_members(),GEFS_FIELDS,BOX,"https://evil.invalid")

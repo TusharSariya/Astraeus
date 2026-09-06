@@ -91,17 +91,20 @@ class GEFSQueryEntry:
             member=str(receipt["member"]); stem=f"{self.key.endpoint}/gefs.{self.key.run_time:%Y%m%d}/{self.key.run_time:%H}/atmos/{self.key.product_set}/{member}.t{self.key.run_time:%H}z.{self.key.product_set}.f{self.key.lead:03d}"
             if receipt.get("kind")=="index":
                 if receipt.get("url")!=stem+".idx" or receipt.get("http_status")!=200: raise ValueError("GEFS index receipt has invalid request identity")
+                if not 0<receipt.get("byte_size",0)<=GEFS_IDX_BYTES: raise ValueError("GEFS index receipt exceeds its byte ceiling")
                 seen_idx.add(member)
             elif receipt.get("kind")=="range":
                 field=receipt.get("field"); start=receipt.get("range_start"); end=receipt.get("range_end")
                 if (member,field) not in expected_ranges or receipt.get("url")!=stem or receipt.get("http_status")!=206 or not isinstance(start,int) or not isinstance(end,int) or end<start: raise ValueError("GEFS range receipt has invalid request identity")
                 header={str(k).lower():str(v) for k,v in receipt.get("request_headers",{}).items()}.get("range")
                 if header!=f"bytes={start}-{end}": raise ValueError("GEFS range receipt does not match the requested bytes")
+                if receipt.get("byte_size")!=end-start+1 or receipt["byte_size"]>MAX_GEFS_MEMBER_BYTES: raise ValueError("GEFS range receipt byte count is invalid")
                 seen_ranges.add((member,field))
             else: raise ValueError("GEFS receipt has invalid kind")
             completed=datetime.fromisoformat(str(receipt.get("completed_at")))
             if completed.tzinfo is None or completed.utcoffset()!=timedelta(0) or not isinstance(receipt.get("byte_size"),int) or receipt["byte_size"]<=0 or not re.fullmatch(r"[0-9a-f]{64}",str(receipt.get("sha256"))): raise ValueError("GEFS receipt has invalid completion or body identity")
         if seen_idx!=set(self.key.members) or seen_ranges!=expected_ranges or len(receipts)!=len(seen_idx)+len(seen_ranges): raise ValueError("GEFS receipts do not correspond exactly to represented requests")
+        if self.fetched_at!=max(datetime.fromisoformat(str(item["completed_at"])) for item in receipts): raise ValueError("GEFS fetched time must equal final transport completion")
 class GEFSQueryService:
     def __init__(self,loader:Callable[[GEFSRequestKey],GEFSQueryEntry],*,workspace:Path=Path("/work"),preflight=enforce_platform_bounds,clock=time.monotonic):
         self.loader,self.workspace,self.preflight,self.clock=loader,workspace,preflight,clock; self.lock=threading.Lock(); self.entries=OrderedDict(); self.inflight={}; self.failures={}
@@ -186,9 +189,9 @@ GEFS_CHILD_LIMITS = __import__("ingest.isolation",fromlist=["ProcessAllocationLi
 
 class GEFSBoundedLoader:
     """Execute provider transport and decode in a limited child; validate one bundle."""
-    def __init__(self, workspace: Path, *, runner=None):
+    def __init__(self, workspace: Path, *, runner=None, validator=None):
         from ingest.isolation import run_bounded_process
-        self.workspace, self.runner = workspace, runner or run_bounded_process
+        self.workspace, self.runner, self.validator = workspace, runner or run_bounded_process, validator or validate_normalized_payload
     def __call__(self,key:GEFSRequestKey)->GEFSQueryEntry:
         import sys, zipfile
         request=json.dumps({"run_id":key.run_id,"run_time":key.run_time.isoformat(),"lead":key.lead,"product_set":key.product_set,"members":key.members,"fields":key.fields,"bounds":key.bounds,"endpoint":key.endpoint},sort_keys=True).encode()
@@ -206,4 +209,31 @@ class GEFSBoundedLoader:
             if info["run_id"]!=key.run_id or datetime.fromisoformat(info["run_time"])!=key.run_time or int(info["lead"])!=key.lead: raise ValueError("GEFS child returned different run identity")
             if info["provenance"].get("source_id")!="noaa-gefs": raise ValueError("GEFS child returned a different source identity")
             intervals={member:(datetime.fromisoformat(pair[0]),datetime.fromisoformat(pair[1])) for member,pair in info["cloud_intervals"].items()}
-            return GEFSQueryEntry(key,datetime.fromisoformat(info["valid_time"]),datetime.fromisoformat(info["fetched_at"]),tuple(info["members_present"]),info["mandatory_failures"],{m:tuple(v) for m,v in info["optional_absences"].items()},payload,info["provenance"],intervals)
+            entry=GEFSQueryEntry(key,datetime.fromisoformat(info["valid_time"]),datetime.fromisoformat(info["fetched_at"]),tuple(info["members_present"]),info["mandatory_failures"],{m:tuple(v) for m,v in info["optional_absences"].items()},payload,info["provenance"],intervals)
+            self.validator(payload,entry)
+            return entry
+
+def validate_normalized_payload(payload:bytes,entry:GEFSQueryEntry)->None:
+    """Open the returned Zarr and verify its native member-field contract."""
+    import xarray, zarr
+    from registry import fields as catalogue
+    with tempfile.TemporaryDirectory() as directory:
+        path=Path(directory)/"gefs.zarr.zip"; path.write_bytes(payload)
+        store=zarr.storage.ZipStore(str(path),mode="r")
+        try:
+            dataset=xarray.open_zarr(store,consolidated=False)
+            names=set(dataset.data_vars)
+            if "temperature_2m" not in names or names-set(GEFS_FIELDS): raise ValueError("GEFS normalized fields violate the seven-field contract")
+            for name in names:
+                field=dataset[name]
+                if "member" not in field.dims or not {"latitude","longitude"}<=set(field.dims): raise ValueError("GEFS normalized field has invalid dimensions")
+                expected=catalogue.resolve(name).field.units
+                if field.attrs.get("units")!=expected: raise ValueError("GEFS normalized field has invalid units")
+                if members_with_values(field)!=tuple(member for member in entry.members_present if name=="temperature_2m" or name not in entry.optional_absences.get(member,())): raise ValueError("GEFS normalized member masks disagree with manifest")
+            members=tuple(str(value) for value in dataset["temperature_2m"].coords["member"].values)
+            if members!=entry.members_present: raise ValueError("GEFS normalized member order disagrees with manifest")
+            control=dataset["temperature_2m"].coords.get("control")
+            if control is None or not bool(control.values[0]) or any(bool(value) for value in control.values[1:]): raise ValueError("GEFS normalized control identity is invalid")
+            if entry.provenance.get("source_id")!="noaa-gefs" or entry.provenance.get("quality",{}).get("status") not in {"passed","suspect"}: raise ValueError("GEFS normalized provenance or QC is invalid")
+        finally:
+            store.close()
