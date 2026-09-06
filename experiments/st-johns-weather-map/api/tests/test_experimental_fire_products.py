@@ -45,6 +45,10 @@ def test_cwfis_records_are_retained_verbatim_but_nonpublishable(tmp_path: Path) 
     assert result.artifacts[1].provenance["field_dispositions"] == {"lat": "retrieved", "lon": "retrieved", "frp": "retrieved"}
     assert all(item.provenance["source_qc"]["status"] == "unknown" for item in result.artifacts)
     assert all(item.provenance["upstream_sha256"] == item.provenance["artifact_sha256"] for item in result.artifacts)
+    assert result.artifacts[0].payload_path.read_bytes() == wfs
+    assert result.artifacts[1].payload_path.read_bytes() == b"lat,lon,frp\n47.5,-52.7,2\n"
+    assert result.artifacts[2].payload_path.read_bytes() == b"lat,lon,hfi\n47.5,-52.7,3\n"
+    assert all(item.provenance["field_interpretation"]["times"] == "verbatim, not normalized" for item in result.artifacts)
     assert all(item.provenance["valid_times"] == [] for item in result.artifacts)
     assert result.artifacts[1].provenance["source_file_date"] == HOTSPOT
 
@@ -64,6 +68,10 @@ def test_invalid_csv_or_oversize_cleans_all_prior_artifacts(tmp_path: Path) -> N
     bad = CWFISFireProductsAdapter(client=client(wfs=wfs, hotspot=b"lat,lon\n47.5\n", cffeps=b"lat,lon\n47.5,-52.7\n"), downloads="https://fixture.invalid/hotspots", wfs="https://fixture.invalid/ows")
     with pytest.raises(AdapterUnavailable, match="row does not match"):
         bad.fetch(bad.discover(WINDOW)[0], WINDOW, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+    empty = CWFISFireProductsAdapter(client=client(wfs=wfs, hotspot=b"", cffeps=b"lat,lon\n47.5,-52.7\n"), downloads="https://fixture.invalid/hotspots", wfs="https://fixture.invalid/ows")
+    with pytest.raises(AdapterUnavailable, match="invalid CSV"):
+        empty.fetch(empty.discover(WINDOW)[0], WINDOW, tmp_path)
     assert list(tmp_path.iterdir()) == []
     huge = CWFISFireProductsAdapter(client=client(wfs=wfs, hotspot=b"x" * (MAX_CSV_BYTES + 1), cffeps=b"lat,lon\n47.5,-52.7\n"), downloads="https://fixture.invalid/hotspots", wfs="https://fixture.invalid/ows")
     with pytest.raises(AdapterUnavailable, match="unavailable daily_hotspots"):
@@ -106,6 +114,8 @@ def test_public_firms_modis_and_viirs_downloads_are_retained_nonpublishably(tmp_
     assert [item.logical_name for item in result.artifacts] == [
         "firms_modis_canada_24h", "firms_snpp_canada_24h", "firms_noaa20_canada_24h", "firms_noaa21_canada_24h"]
     assert all(item.provenance["field_dispositions"]["acq_time"] == "retrieved" for item in result.artifacts)
+    assert all(item.payload_path.read_bytes() == raw[item.logical_name.removeprefix("firms_").removesuffix("_canada_24h")] for item in result.artifacts)
+    assert all(item.provenance["field_interpretation"]["format"] == "UTF-8 CSV header and row widths validated only" for item in result.artifacts)
     assert all(item.provenance["upstream_sha256"] == item.provenance["artifact_sha256"] for item in result.artifacts)
 
 

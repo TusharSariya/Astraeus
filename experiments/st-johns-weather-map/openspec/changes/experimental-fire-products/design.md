@@ -14,8 +14,12 @@ The public source indexes are `https://cwfis.cfs.nrcan.gc.ca/downloads/hotspots/
 `https://firms.modaps.eosdis.nasa.gov/api/active_fire_files/all?format=json`.
 
 Each listing, WFS document, and CSV response has a finite streaming ceiling,
-records URL, headers, byte count, SHA-256 and actual completion time, and is
-stored as immutable source bytes. No decoder constructs a numeric field,
-quality value, fire perimeter, emission rate, or API response. Every result is
-made nonpublishable by the unresolved manifest owner gate; it remains
+records URL, headers, byte count, SHA-256 and the transport completion time,
+and is stored as immutable source bytes. GeoJSON structure and UTF-8 CSV
+header/row widths are validated; malformed, empty, over-ceiling, or unsafe
+indexed inputs fail closed and remove partial artifacts. CSV values, including
+native `rep_date`, `acq_date`, `acq_time`, confidence and numeric-looking
+values, are never coerced or normalized. No decoder constructs a numeric
+field, quality value, fire perimeter, emission rate, or API response. Every
+result is made nonpublishable by the unresolved manifest owner gate; it remains
 unregistered and `operational: false`.
