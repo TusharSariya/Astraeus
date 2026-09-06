@@ -552,3 +552,25 @@ def test_gfs_scoped_layers_advertise_only_the_native_demand_raster(monkeypatch):
     assert layer['field'] == 'total_cloud_geometric'
     assert layer['times'] == [stamp.isoformat().replace('+00:00','Z')]
     assert layer['raster_available'] is True and layer['legend_available'] is False
+
+def test_native_geometric_cloud_raster_preserves_percent_and_missing_alpha(tmp_path):
+    import io
+    import numpy as np
+    from PIL import Image
+    from ingest.grib import write_zarr
+    valid = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    run = valid - timedelta(hours=6)
+    dataset = xarray.Dataset(
+        {'total_cloud_geometric': (('valid_time','latitude','longitude'), np.array([[[0.0,50.0],[np.nan,100.0]]]))},
+        coords={'valid_time':[valid.replace(tzinfo=None)], 'latitude':[1.5,0.5], 'longitude':[0.5,1.5]},
+    )
+    dataset['total_cloud_geometric'].attrs['units']='percent'
+    path=write_zarr(dataset,tmp_path/'surface.zip')
+    entry=GFSQueryEntry(KEY,run,valid,valid+timedelta(minutes=2),'c'*64,{'logical_names':['surface']},{'surface':{'product':'Global Forecast System','native_crs':'EPSG:4326'}},(path.read_bytes(),))
+    coordinator=object.__new__(GFSQueryCoordinator); coordinator.query=lambda _selected: entry
+    image, returned=coordinator.total_cloud_raster(valid,bounds={'south':0,'west':0,'north':2,'east':2},width=2,height=2,crs='EPSG:4326')
+    pixels=np.asarray(Image.open(io.BytesIO(image.payload)).convert('RGBA'))
+    assert pixels[:,:,3].tolist()==[[0,127],[0,255]]
+    assert np.all(pixels[:,:,:3]==255)
+    assert image.units=='percent' and image.valid_time==valid and image.run_time==run
+    assert returned is entry
