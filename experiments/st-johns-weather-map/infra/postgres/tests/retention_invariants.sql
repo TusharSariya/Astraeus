@@ -48,7 +48,17 @@ BEGIN
             jsonb_build_object('valid_times',
                 jsonb_build_array(span_start::text, span_end::text)));
 
-    PERFORM weather_experiment.publish_run(new_run);
+    INSERT INTO weather_experiment.resource_reservations
+      (operation_id,owner_id,host_id,host_epoch,device_id,workspace_path,workload_kind,
+       store_key,store_bytes,filesystem_bytes,margin_bytes,deadline_at)
+    VALUES(new_revision,'sql-proof','proof-host',gen_random_uuid(),'1','/tmp/proof','ingestion',
+           'proof-store',1048576,1048576,4096,clock_timestamp()+interval '2 hours');
+    UPDATE weather_experiment.artifact_revisions
+       SET reservation_operation_id=new_revision,
+           reservation_fencing_token=(SELECT fencing_token FROM weather_experiment.resource_reservations WHERE operation_id=new_revision)
+     WHERE revision_id=new_revision;
+    PERFORM weather_experiment.publish_run(
+      new_run,new_revision,(SELECT fencing_token FROM weather_experiment.resource_reservations WHERE operation_id=new_revision));
     RETURN new_revision;
 END;
 $$;

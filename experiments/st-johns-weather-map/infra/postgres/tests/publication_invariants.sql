@@ -28,6 +28,23 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION pg_temp.publish_fenced(candidate_run uuid)
+RETURNS integer LANGUAGE plpgsql AS $$
+DECLARE operation uuid := gen_random_uuid(); token bigint;
+BEGIN
+    INSERT INTO weather_experiment.resource_reservations
+      (operation_id,owner_id,host_id,host_epoch,device_id,workspace_path,workload_kind,
+       store_key,store_bytes,filesystem_bytes,margin_bytes,deadline_at)
+    VALUES(operation,'sql-proof','proof-host',gen_random_uuid(),'1','/tmp/proof','ingestion',
+           'proof-store',1048576,1048576,4096,clock_timestamp()+interval '2 hours')
+    RETURNING fencing_token INTO token;
+    UPDATE weather_experiment.artifact_revisions
+       SET reservation_operation_id=operation,reservation_fencing_token=token
+     WHERE run_id=candidate_run AND state='staged';
+    RETURN weather_experiment.publish_run(candidate_run,operation,token);
+END;
+$$;
+
 INSERT INTO weather_experiment.sources (source_id, producer, product, registry_status, adapter_version)
 VALUES ('eccc-hrdps', 'ECCC', 'HRDPS', 'implementing', 'test-v1');
 
@@ -41,7 +58,7 @@ VALUES ('11111111-1111-1111-1111-111111111111', 'eccc-hrdps', 'good-run', now(),
 INSERT INTO weather_experiment.artifact_revisions (revision_id, run_id, logical_name, object_key, media_type, byte_size, sha256, state, complete, qc_passed)
 VALUES ('aaaaaaaa-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'surface',
         'staging/eccc-hrdps/good-run/surface', 'application/zarr+zip', 1024, repeat('a', 64), 'staged', true, true);
-SELECT pg_temp.assert(weather_experiment.publish_run('11111111-1111-1111-1111-111111111111') = 1,
+SELECT pg_temp.assert(pg_temp.publish_fenced('11111111-1111-1111-1111-111111111111') = 1,
                       'a complete, QC-passed run publishes its artifact');
 
 -- The incomplete run: artifact rows deliberately claim complete/qc_passed, the
@@ -53,7 +70,7 @@ VALUES ('bbbbbbbb-2222-2222-2222-222222222222', '22222222-2222-2222-2222-2222222
         'staging/eccc-hrdps/partial-run/surface', 'application/zarr+zip', 2048, repeat('b', 64), 'staged', true, true);
 
 SELECT pg_temp.expect_failure(
-    $$SELECT weather_experiment.publish_run('22222222-2222-2222-2222-222222222222')$$,
+    $$SELECT pg_temp.publish_fenced('22222222-2222-2222-2222-222222222222')$$,
     'an incomplete parent run cannot publish even when its artifact rows claim otherwise');
 
 SELECT pg_temp.assert(
@@ -100,7 +117,7 @@ VALUES ('cccccccc-3333-3333-3333-333333333333', '33333333-3333-3333-3333-3333333
        ('dddddddd-3333-3333-3333-333333333333', '33333333-3333-3333-3333-333333333333', 'profile',
         'staging/eccc-hrdps/multi-run/profile', 'application/zarr+zip', 8192, repeat('e', 64), 'staged', true, true);
 
-SELECT pg_temp.assert(weather_experiment.publish_run('33333333-3333-3333-3333-333333333333') = 2,
+SELECT pg_temp.assert(pg_temp.publish_fenced('33333333-3333-3333-3333-333333333333') = 2,
                       'a two-artifact run publishes both in one call');
 SELECT pg_temp.assert(
     (SELECT count(*) FROM weather_experiment.current_artifacts WHERE source_id = 'eccc-hrdps') = 2,
@@ -121,7 +138,7 @@ VALUES ('eeeeeeee-4444-4444-4444-444444444444', '44444444-4444-4444-4444-4444444
         'staging/eccc-hrdps/contradicting/z', 'application/zarr+zip', 16, repeat('0', 64), 'staged', false, false);
 
 SELECT pg_temp.expect_failure(
-    $$SELECT weather_experiment.publish_run('44444444-4444-4444-4444-444444444444')$$,
+    $$SELECT pg_temp.publish_fenced('44444444-4444-4444-4444-444444444444')$$,
     'a run containing one bad artifact publishes none of them');
 SELECT pg_temp.assert(
     (SELECT count(*) FROM weather_experiment.artifact_revisions
@@ -132,10 +149,10 @@ SELECT pg_temp.assert(
 INSERT INTO weather_experiment.model_runs (run_id, source_id, provider_run_id, run_time, retrieved_at, complete, qc_passed)
 VALUES ('55555555-5555-5555-5555-555555555555', 'eccc-hrdps', 'empty-run', now(), now(), true, true);
 SELECT pg_temp.expect_failure(
-    $$SELECT weather_experiment.publish_run('55555555-5555-5555-5555-555555555555')$$,
+    $$SELECT pg_temp.publish_fenced('55555555-5555-5555-5555-555555555555')$$,
     'a run with no staged artifacts is an error, not a silent success');
 SELECT pg_temp.expect_failure(
-    $$SELECT weather_experiment.publish_run('99999999-9999-9999-9999-999999999999')$$,
+    $$SELECT pg_temp.publish_fenced('99999999-9999-9999-9999-999999999999')$$,
     'publishing a nonexistent run is an error');
 
 -- ---------------------------------------------------------------------------

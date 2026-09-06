@@ -60,8 +60,8 @@ services:
     ports:
       - "127.0.0.1:${WEATHER_API_PORT:-8000}:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-migrate:
+        condition: service_completed_successfully
       minio-bootstrap:
         condition: service_completed_successfully
     healthcheck:
@@ -85,15 +85,20 @@ services:
       WEATHER_MINIO_ACCESS_KEY: ${WEATHER_MINIO_WRITER_KEY:-weather-writer}
       WEATHER_MINIO_SECRET_KEY: ${WEATHER_MINIO_WRITER_SECRET:-weather-writer-local-only}
       WEATHER_STORAGE_CAP: ${WEATHER_STORAGE_CAP:-64GiB}
+      # Stable allocation target; the worker process creates a fresh epoch.
+      WEATHER_WORKER_HOST_ID: ${WEATHER_WORKER_HOST_ID:-weather-worker-1}
+      WEATHER_RESERVATION_LOCK_DIR: /var/lib/weather-reservation-locks
       WEATHER_WORKER_HEARTBEAT: /tmp/weather-worker-heartbeat
       WEATHER_GENERATED_DISPLAY: ${WEATHER_GENERATED_DISPLAY:-on}
       WEATHER_DATAMART_PARALLEL: ${WEATHER_DATAMART_PARALLEL:-6}
       WEATHER_HTTP_MIN_HOST_INTERVAL: ${WEATHER_HTTP_MIN_HOST_INTERVAL:-0.1}
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-migrate:
+        condition: service_completed_successfully
       minio-bootstrap:
         condition: service_completed_successfully
+    volumes:
+      - reservation-locks:/var/lib/weather-reservation-locks
     # The check fails on a stale beat OR on stalled ingestion: a live process
     # that has stopped publishing is not healthy. See worker/runtime.py.
     healthcheck:
@@ -121,6 +126,22 @@ services:
       retries: 12
       start_period: 10s
     restart: unless-stopped
+    networks: [weather]
+
+  postgres-migrate:
+    image: ghcr.io/baosystems/postgis:17-3.5
+    entrypoint: ["/bin/sh", "-c"]
+    command: ['exec psql -v ON_ERROR_STOP=1 -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -f /migrations/004_resource_reservations.sql']
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-weather}
+      POSTGRES_DB: ${POSTGRES_DB:-weather}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-weather-local-only}
+    volumes:
+      - ./infra/postgres/init/004_resource_reservations.sql:/migrations/004_resource_reservations.sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
     networks: [weather]
 
   minio:
@@ -195,6 +216,7 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  reservation-locks:
 
 networks:
   weather:

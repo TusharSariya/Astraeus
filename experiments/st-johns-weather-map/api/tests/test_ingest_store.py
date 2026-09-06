@@ -24,6 +24,8 @@ from ingest.store import (
     ArtifactStore,
     QuotaExceeded,
     ResourceBudgetExceeded,
+    ReservationIdentity,
+    ReservationLost,
     StoreConfig,
     StoreUnavailable,
     UndeclaredEvidenceClasses,
@@ -120,6 +122,11 @@ def store(config: StoreConfig, monkeypatch: pytest.MonkeyPatch) -> tuple[Artifac
     events: list[tuple[str, Any]] = []
     rows: list[tuple[Any, ...]] = []
     instance = ArtifactStore(config)
+    instance._active_reservation = ReservationIdentity(
+        "00000000-0000-0000-0000-000000000001", 1, "test", "test-host",
+        "00000000-0000-0000-0000-000000000002", "1", Path("/tmp/test-workspace"),
+        datetime(2099, 1, 1, tzinfo=UTC),
+    )
     instance._client = RecordingS3(events)
     instance.returned_rows = rows
 
@@ -199,47 +206,44 @@ def test_replacing_an_existing_revision_frees_its_bytes_in_the_projection(store,
     instance.check_projection(1, replacing_bytes=1)
 
 
-def test_resource_reservation_includes_the_exact_hot_store_boundary(store, monkeypatch, tmp_path):
+def test_resource_reservation_requires_stable_host_identity(store, monkeypatch, tmp_path):
     instance, _ = store
     monkeypatch.setattr(instance, "used_bytes", lambda: LOCAL_STORAGE_CAP_BYTES - 1024)
     monkeypatch.setattr(shutil, "disk_usage", lambda _path: shutil._ntuple_diskusage(10_000, 0, 10_000))
 
-    with instance.reserve_resources(store_bytes=1024, filesystem_bytes=2048, margin_bytes=256, filesystem_path=tmp_path):
-        pass
-    with pytest.raises(QuotaExceeded):
-        with instance.reserve_resources(store_bytes=1025, filesystem_bytes=2048, margin_bytes=256, filesystem_path=tmp_path):
+    monkeypatch.delenv("WEATHER_WORKER_HOST_ID", raising=False)
+    with pytest.raises(ResourceBudgetExceeded, match="stable worker host identity"):
+        with instance.reserve_resources(store_bytes=1024, filesystem_bytes=2048, margin_bytes=256, filesystem_path=tmp_path):
             pass
 
 
-def test_concurrent_reservations_share_hot_and_filesystem_capacity(store, monkeypatch, tmp_path):
+def test_resource_reservation_rejects_unknown_workload_kind(store, monkeypatch, tmp_path):
     instance, _ = store
     monkeypatch.setattr(instance, "used_bytes", lambda: 0)
     monkeypatch.setattr(shutil, "disk_usage", lambda _path: shutil._ntuple_diskusage(10_000, 0, 5_000))
 
-    with instance.reserve_resources(store_bytes=1024, filesystem_bytes=3000, margin_bytes=500, filesystem_path=tmp_path):
-        with pytest.raises(ResourceBudgetExceeded, match="local filesystem"):
-            with instance.reserve_resources(store_bytes=1024, filesystem_bytes=1501, margin_bytes=0, filesystem_path=tmp_path):
-                pass
-    with instance.reserve_resources(store_bytes=1024, filesystem_bytes=4500, margin_bytes=500, filesystem_path=tmp_path):
-        pass
+    with pytest.raises(ResourceBudgetExceeded, match="workload kind"):
+        with instance.reserve_resources(store_bytes=1024, filesystem_bytes=3000, margin_bytes=500,
+                                        filesystem_path=tmp_path, workload_kind="unknown"):
+            pass
 
 
-def test_an_oversize_artifact_is_never_uploaded(store, monkeypatch, tmp_path):
+def test_staging_without_a_durable_reservation_is_never_uploaded(store, monkeypatch, tmp_path):
     instance, events = store
-    monkeypatch.setattr(instance, "used_bytes", lambda: LOCAL_STORAGE_CAP_BYTES)
-    with pytest.raises(QuotaExceeded):
+    instance._active_reservation = None
+    with pytest.raises(ReservationLost):
         instance.stage(make_result([]), make_artifact(tmp_path))
     assert [name for name, _ in events if name == "put_object"] == []
     assert [name for name, _ in events if name == "insert_revision"] == []
 
 
-def test_the_cap_is_checked_before_the_object_is_uploaded(store, monkeypatch, tmp_path):
+def test_an_admitted_artifact_uploads_without_a_second_double_count(store, monkeypatch, tmp_path):
     instance, events = store
     order: list[str] = []
     monkeypatch.setattr(instance, "used_bytes", lambda: (order.append("used_bytes"), 0)[1])
     instance.stage(make_result([]), make_artifact(tmp_path))
     kinds = [name for name, _ in events]
-    assert order == ["used_bytes"]
+    assert order == []
     assert kinds.index("put_object") < kinds.index("insert_revision")
 
 
@@ -253,7 +257,9 @@ def test_stage_uploads_the_object_before_recording_the_row_that_points_at_it(sto
 
     kinds = [name for name, _ in events]
     assert kinds.index("record_run") < kinds.index("put_object") < kinds.index("insert_revision")
-    assert staged.object_key.startswith("staging/eccc-hrdps/2026082912/")
+    assert staged.object_key.startswith(
+        "staging/00000000-0000-0000-0000-000000000001/eccc-hrdps/2026082912/"
+    )
     assert staged.object_key.endswith("/hrdps-surface")
     assert staged.byte_size == artifact.byte_size == len(b"a normalized zarr payload")
     assert staged.sha256 == sha256_of(artifact.payload_path)
