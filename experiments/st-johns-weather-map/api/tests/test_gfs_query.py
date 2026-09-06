@@ -574,3 +574,23 @@ def test_native_geometric_cloud_raster_preserves_percent_and_missing_alpha(tmp_p
     assert np.all(pixels[:,:,:3]==255)
     assert image.units=='percent' and image.valid_time==valid and image.run_time==run
     assert returned is entry
+
+def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    from fastapi.testclient import TestClient
+    from weather_api import gfs_query
+    from weather_api.grids import RenderedGridImage
+    app_module=sys.modules['weather_api.app']; valid=datetime(2026,9,6,18,tzinfo=UTC); run=valid-timedelta(hours=6); fetched=valid+timedelta(minutes=2)
+    entry=SimpleNamespace(fetched_at=fetched)
+    image=RenderedGridImage(b'png','image/png',valid,run,'EPSG:4326','percent','noaa-gfs','Global Forecast System','public domain','NOAA/NCEP')
+    class Coordinator:
+        def total_cloud_raster(self,*args,**kwargs): return image,entry
+    monkeypatch.setenv('WEATHER_DATA_MODE','live'); monkeypatch.setattr(gfs_query,'gfs_query_coordinator',lambda:Coordinator())
+    response=TestClient(app_module.app).get(f'{app_module.PREFIX}/layers/noaa-gfs-demand-total-cloud/raster',params={'valid_time':valid.isoformat(),'south':0,'west':0,'north':2,'east':2,'width':2,'height':2})
+    assert response.status_code==200
+    assert response.headers['x-weather-evidence-basis']=='demand_query'
+    assert response.headers['x-weather-source-id']=='noaa-gfs'
+    assert response.headers['x-weather-valid-time']==valid.isoformat()
+    assert response.headers['x-weather-reference-time']==run.isoformat()
+    assert response.headers['x-weather-retrieval-time']==fetched.isoformat()
