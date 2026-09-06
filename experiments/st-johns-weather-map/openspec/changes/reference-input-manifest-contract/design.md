@@ -20,7 +20,7 @@ Raw epochs remain exactly provider-defined. UTC, TAI, TT, TDB and UT1 are distin
 
 Structural validation computes `complete` and `qc_passed`; adapters never assert them. It checks required payload members, schema/version identity, finite values, declared units, monotonic or explicitly ordered epochs, calendar/MJD agreement, coverage declarations, digest/size, expiry, and adapter decode errors. A failed result may be staged for diagnosis but cannot call `publish_run`.
 
-Structural success does not assert that a reference is scientifically suitable. A separate `scientific_status` is `unknown`, `eligible`, or `ineligible` per accepted consumer profile. Only an accepted profile can move it from `unknown`; retrieval success cannot. For example, an Earth PCK may parse structurally while remaining unusable for astronomy until the required Earth frame, interval, observed/predicted boundary, and accuracy are approved. Whether structurally valid, scientifically unknown resources may become visible on the dedicated route is an owner choice below; the proposal does not choose it.
+Structural success does not assert that a reference is scientifically suitable. A separate `scientific_status` is `unknown`, `eligible`, or `ineligible` per accepted consumer profile. Only an accepted profile can move it from `unknown`; retrieval success cannot. For example, an Earth PCK may parse structurally while remaining unusable for astronomy until the required Earth frame, interval, observed/predicted boundary, and accuracy are approved. The recommended policy permits visibility only on the dedicated experimental route; staged-only remains an alternative below. Neither choice authorizes a science consumer.
 
 ## Publication and reads
 
