@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -31,6 +33,21 @@ FIXTURE = Path(__file__).parent / "fixtures" / "space_weather" / "gfz_hp30.json"
 #: whole fixture sits inside a 24 h window and nothing is stale.
 NOW = datetime(2026, 9, 5, 1, 30, tzinfo=UTC)
 WINDOW = FetchWindow(now=NOW)
+
+
+@pytest.fixture(autouse=True)
+def local_hp30_child(monkeypatch):
+    """Exercise the child protocol on Darwin; Linux tests retain kernel enforcement."""
+    from ingest import gfz_hp30_isolated
+    from ingest.isolation import BoundedProcessError
+    def run(action, raw, destination):
+        if action == "probe": return type("Result",(),{"stdout":b""})()
+        output=destination or Path("/tmp/unused-gfz-hp30")
+        result=subprocess.run([sys.executable,"-m","ingest.gfz_hp30_isolated",action,str(output)],input=raw,capture_output=True,
+            env={**os.environ,"PYTHONPATH":str(Path(gfz_hp30_isolated.__file__).resolve().parents[1])})
+        if result.returncode: raise BoundedProcessError(result.stderr.decode())
+        return type("Result",(),{"stdout":result.stdout})()
+    monkeypatch.setattr(GFZHp30Adapter,"_run_isolated",staticmethod(run))
 
 
 def payload(**overrides):
@@ -96,7 +113,8 @@ def test_discover_carries_records_receipt_and_valid_times():
     candidate = candidates[0]
     assert candidate.provider_run_id == "gfz-hp30-202609050030"
     assert candidate.run_time == datetime(2026, 9, 5, 0, 30, tzinfo=UTC)
-    assert len(candidate.detail["records"]) == 10
+    assert isinstance(candidate.detail["raw"], bytes)
+    assert len(candidate.detail["valid_times"]) == 10
     assert candidate.detail["valid_times"][0] == "2026-09-04T20:00:00Z"
     assert candidate.detail["valid_times"][-1] == "2026-09-05T00:30:00Z"
     receipt = candidate.detail["receipt"]
@@ -323,7 +341,7 @@ def test_live_gfz_hp30_shape_is_pinned(tmp_path: Path):
     adapter = GFZHp30Adapter(client=PoliteClient())
     window = FetchWindow(now=datetime.now(UTC))
     candidate = adapter.discover(window)[0]
-    assert candidate.detail["records"]
+    assert candidate.detail["raw"]
     assert candidate.detail["meta"]["license"] == "CC BY 4.0"
 
     result = adapter.fetch(candidate, window, tmp_path)

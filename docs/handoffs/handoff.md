@@ -27,7 +27,8 @@ The worker-level #159 preflight and payload-discovery reservation seams merged
 through PR166 at `86355f9c81f956eb2d7a123a7e940f3ee6bb9066`.
 Scheduler-eligible adapters without measured complete-operation bounds remain
 fail-closed while #159 adds source-specific memory and physical-allocation
-enforcement; SWPC Kp is the current bounded source slice. #118 is closed.
+enforcement. SWPC Kp merged in PR177 (`a71f60d`); GFZ Hp30 is the current
+bounded source slice. #118 is closed.
 #123/#137 partial proofs merged in PR165/PR164 but their publication contracts
 remain in #167/#168. #105 acquisition merged in PR170 but its image publication
 proposal remains pending. #133 is active; #116 remains active; #158 awaits the

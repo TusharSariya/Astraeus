@@ -26,23 +26,31 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+import hashlib
+import json
+import os
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
 import numpy
+import httpx
 
 from ingest.contract import (
     MEDIA_ZARR,
     AdapterUnavailable,
     Artifact,
+    DiscoveryBounds,
     FetchWindow,
     RunCandidate,
     RunResult,
+    ResourceBounds,
 )
 from ingest.grib import write_zarr
-from ingest.http import PoliteClient
+from ingest.http import MaxBytesExceeded, PoliteClient, RetriesExhausted
+from ingest.isolation import BoundedProcessError, ProcessAllocationLimits, run_bounded_process
 from ingest.registry import register
 from ingest.space_weather import (
     MAX_SMALL_FEED_BYTES,
@@ -73,6 +81,11 @@ GFZ_LICENCE = "CC BY 4.0"
 #: is 24 h back by default; a caller that widened it does not widen the
 #: request.
 MAX_SELECTION_HOURS = 24.0
+GFZ_DOCUMENT_BYTES = 512 * 1024
+GFZ_OUTPUT_BYTES = 64 * 1024
+GFZ_FILESYSTEM_BLOCK_BYTES = 4096
+GFZ_PROCESS_LIMITS = ProcessAllocationLimits(address_space_bytes=256*1024*1024, output_bytes=GFZ_OUTPUT_BYTES,
+    stdin_bytes=GFZ_DOCUMENT_BYTES, stdout_bytes=GFZ_DOCUMENT_BYTES, stderr_bytes=64*1024)
 
 
 class _GFZCurrentIndexAdapter:
@@ -98,7 +111,40 @@ class _GFZCurrentIndexAdapter:
         start = max(window.start, end - timedelta(hours=MAX_SELECTION_HOURS))
         return {"start": format_time(start), "end": format_time(end), "index": self.index}
 
+    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        if self.index != "Hp30":
+            raise AdapterUnavailable(f"GFZ {self.index} has no measured complete-operation bounds")
+        self._require_target(Path(tempfile.gettempdir()))
+        self._run_isolated("probe", b"", None)
+        return ResourceBounds(store_bytes=GFZ_OUTPUT_BYTES, filesystem_bytes=GFZ_OUTPUT_BYTES,
+                              margin_bytes=GFZ_FILESYSTEM_BLOCK_BYTES, received_bytes=GFZ_DOCUMENT_BYTES)
+
+    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
+        return DiscoveryBounds(received_bytes=self.operation_bounds(window).received_bytes)
+
+    def resource_bounds(self, _candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
+        return self.operation_bounds(window)
+
+    @staticmethod
+    def _require_target(path: Path) -> None:
+        stat=path.stat(); vfs=os.statvfs(path)
+        if (stat.st_blksize,vfs.f_frsize)!=(GFZ_FILESYSTEM_BLOCK_BYTES,GFZ_FILESYSTEM_BLOCK_BYTES):
+            raise AdapterUnavailable(f"GFZ Hp30 bounded writer requires measured 4096-byte filesystem blocks; got {(stat.st_blksize,vfs.f_frsize)}")
+
+    @staticmethod
+    def _run_isolated(action: str, raw: bytes, destination: Path | None):
+        if action == "probe":
+            command=[sys.executable,"-c","import sys; assert len(sys.argv)==2","{output}"]
+        else:
+            root=Path(__file__).resolve().parents[2]
+            launcher=f"import sys; sys.path.insert(0, {str(root)!r}); from ingest.gfz_hp30_isolated import main; raise SystemExit(main())"
+            command=[sys.executable,"-c",launcher,action,"{output}"]
+        return run_bounded_process(command=command,stdin=raw,destination=destination,limits=GFZ_PROCESS_LIMITS,
+                                   timeout_seconds=30 if action!='probe' else 5,require_output=action=="normalize")
+
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
+        if self.index == "Hp30":
+            return self._discover_hp30(window)
         parameters = self._request_parameters(window)
         workdir = Path(tempfile.mkdtemp(prefix="gfz-hp30-"))
         try:
@@ -187,7 +233,27 @@ class _GFZCurrentIndexAdapter:
             )
         ]
 
+    def _discover_hp30(self, window: FetchWindow) -> list[RunCandidate]:
+        parameters=self._request_parameters(window); url=f"{self._url}?{urlencode(parameters)}"
+        try:
+            raw,headers,completed=self._get_client().get_bytes_with_headers_completed(url,max_bytes=GFZ_PROCESS_LIMITS.stdin_bytes)
+            info=json.loads(self._run_isolated("inspect",raw,None).stdout)
+        except (BoundedProcessError,MaxBytesExceeded,RetriesExhausted,httpx.HTTPError,OSError,ValueError,KeyError,json.JSONDecodeError) as error:
+            raise AdapterUnavailable(f"GFZ Hp30 unavailable: {error}") from error
+        times=info.get("times"); meta=info.get("meta")
+        if not isinstance(times,list) or not times or info.get("count")!=len(times) or not isinstance(meta,dict):
+            raise AdapterUnavailable("GFZ Hp30 isolated inspection returned invalid metadata")
+        newest=parse_time(times[-1]); assert newest is not None
+        if newest < window.start:
+            raise AdapterUnavailable(f"GFZ Hp30 is stale behind HTTP 200: newest instant {format_time(newest)} is older than the window start {format_time(window.start)}")
+        receipt=FeedReceipt(url=url,byte_count=len(raw),sha256=hashlib.sha256(raw).hexdigest(),captured_at=completed.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            last_modified=headers.get("Last-Modified") or headers.get("last-modified"),request_parameters=parameters)
+        return [RunCandidate(provider_run_id=f"{self.source_id}-{newest.strftime('%Y%m%d%H%M')}",run_time=newest,urls=[url],
+            detail={"raw":raw,"receipt":receipt,"meta":meta,"request_parameters":parameters,"valid_times":times,"finite_count":info.get("finite_count"),"completed":completed})]
+
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+        if self.index == "Hp30" and isinstance(candidate.detail.get("raw"),bytes):
+            return self._fetch_hp30(candidate,window,workdir)
         rows = candidate.detail.get("records") or []
         receipt = candidate.detail.get("receipt")
         meta = candidate.detail.get("meta") or {}
@@ -268,6 +334,30 @@ class _GFZCurrentIndexAdapter:
                 f"licence {GFZ_LICENCE}; {self._status_note()}"
             ),
         )
+
+    def _fetch_hp30(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+        raw=candidate.detail.get("raw"); receipt=candidate.detail.get("receipt"); times=candidate.detail.get("valid_times"); completed=candidate.detail.get("completed")
+        if not isinstance(raw,bytes) or not isinstance(receipt,FeedReceipt) or not isinstance(times,list) or not isinstance(completed,datetime):
+            raise AdapterUnavailable("GFZ Hp30 fetch carried no bounded document, receipt, times, or completion")
+        workdir.mkdir(parents=True,exist_ok=True); self._require_target(workdir)
+        path=workdir/f"{self.logical_name}.zarr.zip"
+        try: self._run_isolated("normalize",raw,path)
+        except BoundedProcessError as error: raise AdapterUnavailable(f"GFZ Hp30 isolated normalization failed: {error}") from error
+        finite=candidate.detail.get("finite_count")
+        if not isinstance(finite,int) or isinstance(finite,bool) or not 0 <= finite <= len(times):
+            path.unlink(missing_ok=True); raise AdapterUnavailable("GFZ Hp30 fetch carried invalid isolated quality counts")
+        fraction=finite/len(times)
+        quality={"status":"unknown" if finite else "failed","flags":["upstream_quality_not_interpreted"] if finite else ["empty_field:hp30_index"],
+                 "detail":f"structural decode passed; hp30_index: {fraction:.4f} of instants carry a finite value; native upstream quality remains uninterpreted; no spatial coverage claimed"}
+        coverage={"status":"complete" if finite else "outside","fraction":round(fraction,4),"required_fields":["hp30_index"],
+                  "missing_required_fields":[] if finite else ["hp30_index"]}
+        provenance=series_provenance(source_id=self.source_id,producer="GFZ German Research Centre for Geosciences",product=self.product,
+            adapter_version=self.adapter_version,quality=quality,coverage=coverage,evidence_classes=["retrieved"],receipts=[receipt],
+            native_resolution="planetary index (no spatial resolution)",measurement_scope="planetary",extra={"licence":GFZ_LICENCE,"meta":dict(candidate.detail.get("meta") or {}),
+            "status_declared":False,"status_note":self._status_note(),"request_window":dict(candidate.detail.get("request_parameters") or {})})
+        return RunResult(source_id=self.source_id,provider_run_id=candidate.provider_run_id,run_time=candidate.run_time,retrieved_at=completed,
+            complete=coverage["status"]=="complete",qc_passed=True,artifacts=[Artifact(self.logical_name,MEDIA_ZARR,path,provenance)],native_crs=None,
+            notes=f"{len(times)} half-hour Hp30 values from {times[0]} to {times[-1]}; licence {GFZ_LICENCE}; {self._status_note()}")
 
     def _status_note(self) -> str:
         if self.status_field:
