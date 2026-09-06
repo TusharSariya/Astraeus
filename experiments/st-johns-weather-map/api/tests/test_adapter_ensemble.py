@@ -1450,7 +1450,7 @@ def gefs_reader(path, *, upstream: str, member: str, bounds):
         "VGRD:10 m above ground": "wind_v_10m",
         "TCDC:entire atmosphere (n-n+6 hour ave fcst)": "total_cloud_mean_6h",
     }
-    return member_field(UNITS_BY_KEY[keys[upstream]])
+    return member_field(UNITS_BY_KEY[keys[upstream]]).assign_coords(valid_time=datetime(2026, 9, 2, tzinfo=UTC).replace(tzinfo=None))
 
 
 def gefs_candidate() -> RunCandidate:
@@ -1585,7 +1585,7 @@ def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Pat
     assert set(first.cloud_intervals) == set(members)
     assert set(first.cloud_intervals.values()) == {(run + timedelta(hours=18), run + timedelta(hours=24))}
     assert first.complete is True and first.backing_bytes > len(first.payload)
-    validate_normalized_payload(first.payload, first)
+    validate_normalized_payload(first.payload, first, tmp_path)
     receipts = first.provenance["transport_receipts"]
     assert len(receipts) == 31 * 8
     assert max(item["completed_at"] for item in receipts) == "2026-09-01T00:00:02+00:00"

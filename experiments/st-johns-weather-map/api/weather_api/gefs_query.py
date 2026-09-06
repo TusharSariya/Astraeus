@@ -210,14 +210,14 @@ class GEFSBoundedLoader:
             if info["provenance"].get("source_id")!="noaa-gefs": raise ValueError("GEFS child returned a different source identity")
             intervals={member:(datetime.fromisoformat(pair[0]),datetime.fromisoformat(pair[1])) for member,pair in info["cloud_intervals"].items()}
             entry=GEFSQueryEntry(key,datetime.fromisoformat(info["valid_time"]),datetime.fromisoformat(info["fetched_at"]),tuple(info["members_present"]),info["mandatory_failures"],{m:tuple(v) for m,v in info["optional_absences"].items()},payload,info["provenance"],intervals)
-            self.validator(payload,entry)
+            self.validator(payload,entry,self.workspace)
             return entry
 
-def validate_normalized_payload(payload:bytes,entry:GEFSQueryEntry)->None:
+def validate_normalized_payload(payload:bytes,entry:GEFSQueryEntry,workspace:Path)->None:
     """Open the returned Zarr and verify its native member-field contract."""
     import xarray, zarr
     from registry import fields as catalogue
-    with tempfile.TemporaryDirectory() as directory:
+    with tempfile.TemporaryDirectory(dir=workspace) as directory:
         path=Path(directory)/"gefs.zarr.zip"; path.write_bytes(payload)
         store=zarr.storage.ZipStore(str(path),mode="r")
         try:
@@ -227,13 +227,18 @@ def validate_normalized_payload(payload:bytes,entry:GEFSQueryEntry)->None:
             for name in names:
                 field=dataset[name]
                 if "member" not in field.dims or not {"latitude","longitude"}<=set(field.dims): raise ValueError("GEFS normalized field has invalid dimensions")
+                if "valid_time" not in field.coords or tuple(__import__("numpy").asarray(field.coords["valid_time"].values).astype("datetime64[ns]").reshape(-1))!=(__import__("numpy").datetime64(entry.valid_time.replace(tzinfo=None),"ns"),): raise ValueError("GEFS normalized field has invalid native valid time")
+                lat=field.coords["latitude"].values; lon=field.coords["longitude"].values
+                if lat.size==0 or lon.size==0 or not __import__("numpy").isfinite(lat).all() or not __import__("numpy").isfinite(lon).all(): raise ValueError("GEFS normalized grid coordinates are invalid")
+                area=dict(entry.key.bounds)
+                if float(lat.min())<area["south"] or float(lat.max())>area["north"] or float(lon.min())<area["west"] or float(lon.max())>area["east"]: raise ValueError("GEFS normalized grid exceeds requested bounds")
                 expected=catalogue.resolve(name).field.units
                 if field.attrs.get("units")!=expected: raise ValueError("GEFS normalized field has invalid units")
                 if members_with_values(field)!=tuple(member for member in entry.members_present if name=="temperature_2m" or name not in entry.optional_absences.get(member,())): raise ValueError("GEFS normalized member masks disagree with manifest")
             members=tuple(str(value) for value in dataset["temperature_2m"].coords["member"].values)
             if members!=entry.members_present: raise ValueError("GEFS normalized member order disagrees with manifest")
             control=dataset["temperature_2m"].coords.get("control")
-            if control is None or not bool(control.values[0]) or any(bool(value) for value in control.values[1:]): raise ValueError("GEFS normalized control identity is invalid")
-            if entry.provenance.get("source_id")!="noaa-gefs" or entry.provenance.get("quality",{}).get("status") not in {"passed","suspect"}: raise ValueError("GEFS normalized provenance or QC is invalid")
+            if not members or members[0]!="gec00" or control is None or not bool(control.values[0]) or any(bool(value) for value in control.values[1:]): raise ValueError("GEFS normalized control identity is invalid")
+            if entry.provenance.get("source_id")!="noaa-gefs" or entry.provenance.get("provider_run_id")!=entry.key.run_id or datetime.fromisoformat(str(entry.provenance.get("run_time")))!=entry.key.run_time or entry.provenance.get("product")!=f"Global Ensemble Forecast System ({entry.key.product_set})" or entry.provenance.get("quality",{}).get("status") not in {"passed","suspect"}: raise ValueError("GEFS normalized provenance or QC is invalid")
         finally:
             store.close()

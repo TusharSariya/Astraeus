@@ -1097,6 +1097,8 @@ class NOAAGEFSEnsembleAdapter:
             "source_id": self.source_id,
             "producer": "NOAA / NCEP",
             "product": f"Global Ensemble Forecast System ({self._product_set})",
+            "provider_run_id": candidate.provider_run_id,
+            "run_time": candidate.run_time.isoformat() if candidate.run_time else None,
             "family": declaration.family,
             "adapter_version": self.adapter_version,
             "subsetting": declaration.subsetting,
