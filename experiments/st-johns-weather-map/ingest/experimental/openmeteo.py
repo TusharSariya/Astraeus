@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +30,9 @@ UTC = timezone.utc
 MAX_JSON_BYTES = 4 * 1024 * 1024
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 BRIGHT_SKY_URL = "https://api.brightsky.dev/weather"
+OPEN_METEO_AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+OPEN_METEO_CAMS_META_URL = "https://air-quality-api.open-meteo.com/data/cams_global/static/meta.json"
+OPEN_METEO_SATELLITE_URL = "https://satellite-api.open-meteo.com/v1/archive"
 
 OPEN_METEO_FIELDS = {
     "temperature_2m": ("temperature_2m", "degC"),
@@ -87,6 +91,39 @@ MODEL_SOURCES = {
     "openmeteo-ukmo-global": ("ukmo_global_deterministic_10km", "UK Met Office", "UKMO Global 10 km"),
 }
 
+COMPOSITION_FIELDS = {
+    "pm2_5": ("pm2_5_surface", "kg m-3", "μg/m³", 1e-9),
+    "pm10": ("pm10_surface", "kg m-3", "μg/m³", 1e-9),
+    "aerosol_optical_depth": ("aerosol_optical_depth_550nm", "1", "", 1.0),
+    "ozone": ("ozone_surface", "kg m-3", "μg/m³", 1e-9),
+    "nitrogen_dioxide": ("nitrogen_dioxide_surface", "kg m-3", "μg/m³", 1e-9),
+    "sulphur_dioxide": ("sulphur_dioxide_surface", "kg m-3", "μg/m³", 1e-9),
+    "carbon_monoxide": ("carbon_monoxide_surface", "kg m-3", "μg/m³", 1e-9),
+    "dust": ("dust_surface", "kg m-3", "μg/m³", 1e-9),
+}
+RADIATION_FIELDS = {
+    "shortwave_radiation": ("downward_shortwave_flux_hour_mean", "W m-2", "hour_mean"),
+    "shortwave_radiation_instant": ("downward_shortwave_flux_instant", "W m-2", "instant"),
+    "direct_radiation": ("direct_shortwave_flux_hour_mean", "W m-2", "hour_mean"),
+    "direct_radiation_instant": ("direct_shortwave_flux_instant", "W m-2", "instant"),
+    "diffuse_radiation": ("diffuse_shortwave_flux_hour_mean", "W m-2", "hour_mean"),
+    "diffuse_radiation_instant": ("diffuse_shortwave_flux_instant", "W m-2", "instant"),
+    "direct_normal_irradiance": ("direct_normal_irradiance_hour_mean", "W m-2", "hour_mean"),
+    "direct_normal_irradiance_instant": ("direct_normal_irradiance_instant", "W m-2", "instant"),
+    "global_tilted_irradiance": ("global_tilted_irradiance_hour_mean", "W m-2", "hour_mean"),
+    "global_tilted_irradiance_instant": ("global_tilted_irradiance_instant", "W m-2", "instant"),
+    "terrestrial_radiation": ("terrestrial_radiation_flux_hour_mean", "W m-2", "hour_mean"),
+    "terrestrial_radiation_instant": ("terrestrial_radiation_flux_instant", "W m-2", "instant"),
+}
+CAMS_COMPOSITION_TRANSFORMATIONS = (
+    "Regridding the CAMS 0.4 degree producer grid onto Open-Meteo 0.1 degree cell centres.",
+    "Temporal interpolation onto the hourly point-series step served by Open-Meteo.",
+)
+LSA_SAF_TRANSFORMATIONS = (
+    "Regridding the LSA SAF MSG product onto Open-Meteo's 0.05 degree point grid.",
+    "Serving separate provider hour-mean and instantaneous radiation series without merging them.",
+)
+
 BRIGHT_SKY_SOURCE = {
     "id": 1228,
     "wmo_station_id": "71801",
@@ -128,6 +165,21 @@ def _response_json(response: Any) -> tuple[dict[str, Any], str]:
     if not isinstance(value, dict):
         raise AdapterUnavailable("provider JSON root is not an object")
     return value, digest
+
+
+def _bounded_json(client: Any, url: str) -> tuple[dict[str, Any], str]:
+    """Stream real HTTP clients to the byte ceiling before decoding.
+
+    Small injected test clients retain the response-shaped seam used by the
+    existing adapter tests.
+    """
+    if hasattr(client, "download"):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "response.json"
+            client.download(url, path, max_bytes=MAX_JSON_BYTES)
+            body = path.read_bytes()
+        return _response_json(type("BoundedResponse", (), {"content": body})())
+    return _response_json(client.get(url))
 
 
 def _numbers(values: Any, count: int, field: str) -> numpy.ndarray:
@@ -378,6 +430,123 @@ class OpenMeteoAdapter:
         surface_complete = True if validation is None else validation.complete
         surface_qc = True if validation is None else validation.qc_passed
         return RunResult(self.source_id, candidate.provider_run_id, None, datetime.now(UTC), surface_complete and profile_validation.complete, surface_qc and profile_validation.qc_passed, artifacts, "EPSG:4326", "experimental; not registered or scheduled")
+
+
+@dataclass
+class OpenMeteoCompositionAdapter:
+    """Bounded CAMS/LSA SAF point retrieval kept outside the adapter registry."""
+
+    source_id: str
+    client: PoliteClient | None = None
+
+    adapter_version = "openmeteo-composition-point-v1"
+
+    def __post_init__(self) -> None:
+        if self.source_id not in {"openmeteo-cams-aod", "openmeteo-air-quality-particulates", "openmeteo-lsa-saf-radiation"}:
+            raise ValueError(f"unsupported composition source: {self.source_id}")
+
+    def _url(self, window: FetchWindow) -> str:
+        common = {"latitude": "47.5615", "longitude": "-52.7126", "timezone": "GMT"}
+        if self.source_id == "openmeteo-lsa-saf-radiation":
+            fields = tuple(RADIATION_FIELDS)
+            archive_end = min(window.end, window.now)
+            params = {**common, "models": "eumetsat_lsa_saf_msg", "hourly": ",".join(fields),
+                      "start_date": window.start.astimezone(UTC).date().isoformat(), "end_date": archive_end.astimezone(UTC).date().isoformat()}
+            return f"{OPEN_METEO_SATELLITE_URL}?{urlencode(params)}"
+        fields = ("aerosol_optical_depth",) if self.source_id == "openmeteo-cams-aod" else tuple(COMPOSITION_FIELDS)
+        params = {**common, "domains": "cams_global", "hourly": ",".join(fields),
+                  "start_hour": window.start.astimezone(UTC).strftime("%Y-%m-%dT%H:00"),
+                  "end_hour": window.end.astimezone(UTC).strftime("%Y-%m-%dT%H:00")}
+        return f"{OPEN_METEO_AIR_QUALITY_URL}?{urlencode(params)}"
+
+    def discover(self, window: FetchWindow) -> list[RunCandidate]:
+        client = self.client or PoliteClient(attempts=1)
+        url = self._url(window)
+        try:
+            payload, digest = _bounded_json(client, url)
+            meta = None
+            if self.source_id != "openmeteo-lsa-saf-radiation":
+                meta, _ = _bounded_json(client, OPEN_METEO_CAMS_META_URL)
+        except AdapterUnavailable:
+            raise
+        except Exception as error:
+            raise AdapterUnavailable(f"Open-Meteo composition request failed: {error}") from error
+        latest_model_initialisation = None
+        if meta is not None:
+            stamp = meta.get("last_run_initialisation_time")
+            if isinstance(stamp, bool) or not isinstance(stamp, (int, float)):
+                raise AdapterUnavailable("CAMS metadata has no numeric last_run_initialisation_time")
+            latest_model_initialisation = datetime.fromtimestamp(stamp, UTC).isoformat()
+        # The rolling point series carries no per-value run reference.  The
+        # latest model timestamp from meta.json is retained as context only;
+        # assigning it to these values would invent their source run.
+        identity = f"rolling-unknown-{digest[:16]}" if meta is not None else f"observation-{digest[:16]}"
+        return [RunCandidate(identity, None, [url], {"payload": payload, "sha256": digest, "meta": meta,
+                                                     "latest_model_initialisation": latest_model_initialisation})]
+
+    def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+        payload = candidate.detail.get("payload")
+        hourly = payload.get("hourly") if isinstance(payload, dict) else None
+        units = payload.get("hourly_units") if isinstance(payload, dict) else None
+        if not isinstance(hourly, dict) or not isinstance(units, dict):
+            raise AdapterUnavailable("missing hourly data or unit declarations")
+        if payload.get("utc_offset_seconds") != 0:
+            raise AdapterUnavailable("Open-Meteo response is not declared UTC")
+        try:
+            returned_latitude, returned_longitude = float(payload["latitude"]), float(payload["longitude"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise AdapterUnavailable(f"invalid returned coordinates: {error}") from error
+        if not math.isfinite(returned_latitude) or not math.isfinite(returned_longitude) or not (-90 <= returned_latitude <= 90) or not (-180 <= returned_longitude <= 180):
+            raise AdapterUnavailable("invalid returned coordinates")
+        times = _times(hourly.get("time"))
+        original_count = len(times)
+        indexes = [index for index, stamp in enumerate(times) if window.covers(stamp)]
+        if not indexes:
+            raise AdapterUnavailable("no returned values fall inside the requested window")
+        times = [times[index] for index in indexes]; count = len(times)
+        declared = RADIATION_FIELDS if self.source_id == "openmeteo-lsa-saf-radiation" else COMPOSITION_FIELDS
+        selected = set(declared)
+        if self.source_id == "openmeteo-cams-aod": selected = {"aerosol_optical_depth"}
+        data_vars: dict[str, Any] = {}; fields: list[RequiredField] = []; dispositions: dict[str, str] = {}
+        for upstream in selected:
+            if upstream not in hourly or upstream not in units:
+                raise AdapterUnavailable(f"missing_selected_field:{upstream}")
+            if self.source_id == "openmeteo-lsa-saf-radiation":
+                canonical, canonical_units, interval = declared[upstream]
+                expected, scale = "W/m²", 1.0
+            else:
+                canonical, canonical_units, expected, scale = declared[upstream]
+                interval = "instant"
+            if units[upstream] != expected:
+                raise AdapterUnavailable(f"unexpected_units:{upstream}:{units[upstream]!r}; expected {expected!r}")
+            all_values = hourly[upstream]
+            if not isinstance(all_values, list) or len(all_values) != original_count:
+                raise AdapterUnavailable(f"missing_or_misaligned_array:{upstream}")
+            array = _numbers([all_values[index] for index in indexes], count, upstream) * scale
+            attrs = {"units": canonical_units, "original_units": expected, "reporting_interval": interval}
+            data_vars[canonical] = (("valid_time", "latitude", "longitude"), array, attrs)
+            fields.append(RequiredField(canonical, canonical_units, evidence_class="reprocessed"))
+            dispositions[canonical] = "retrieved" if numpy.isfinite(array).any() else "missing: all values null"
+        dataset = xarray.Dataset(data_vars, coords={"valid_time": numpy.array([numpy.datetime64(t.replace(tzinfo=None), "ns") for t in times]),
+                                                    "latitude": [returned_latitude], "longitude": [returned_longitude]})
+        manifest = RunManifest(self.source_id, tuple(fields), min_coverage_fraction=0.01)
+        validation = validate_run(manifest, dataset, window=window)
+        path = workdir / f"{self.source_id}.zarr.zip"; write_zarr(dataset, path)
+        producer = "EUMETSAT LSA SAF" if self.source_id == "openmeteo-lsa-saf-radiation" else "ECMWF Copernicus Atmosphere Monitoring Service (CAMS)"
+        product = "LSA SAF MSG surface radiation" if self.source_id == "openmeteo-lsa-saf-radiation" else "CAMS global atmospheric composition forecast"
+        provenance = {"source_id": self.source_id, "producer": producer, "intermediary": "Open-Meteo", "product": product,
+                      "adapter_version": self.adapter_version, "request_url": candidate.urls[0], "response_sha256": candidate.detail["sha256"],
+                      "run_identity": {"value": None, "certainty": "unknown" if candidate.detail.get("meta") is not None else "not_applicable_observation",
+                                       "reason": "rolling response has no per-value run reference" if candidate.detail.get("meta") is not None else "satellite retrieval is an observation"},
+                      "latest_model_initialisation_context": candidate.detail.get("latest_model_initialisation"),
+                      "native_crs": "EPSG:4326", "native_resolution": "0.05 degree" if self.source_id == "openmeteo-lsa-saf-radiation" else "0.4 degree served at 0.1 degree cell centres",
+                      "returned_coordinates": [returned_latitude, returned_longitude], "field_disposition": dispositions,
+                      "intermediary_transformations": list(LSA_SAF_TRANSFORMATIONS if self.source_id == "openmeteo-lsa-saf-radiation" else CAMS_COMPOSITION_TRANSFORMATIONS),
+                      "quality": validation.as_quality(), "coverage": validation.as_coverage(), "licence": "Open-Meteo CC BY 4.0 plus upstream terms", **manifest.as_manifest_block()}
+        provenance["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        return RunResult(self.source_id, candidate.provider_run_id, candidate.run_time, datetime.now(UTC), validation.complete, validation.qc_passed,
+                         [Artifact("composition" if self.source_id != "openmeteo-lsa-saf-radiation" else "radiation", MEDIA_ZARR, path, provenance)],
+                         "EPSG:4326", "experimental; not registered or scheduled")
 
 
 class BrightSkyMosmix71801Adapter:

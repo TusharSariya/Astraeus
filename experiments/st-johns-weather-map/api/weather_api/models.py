@@ -343,6 +343,7 @@ class Provenance(StrictModel):
     #: publication rather than a silent promotion at read time.
     evidence_class: EvidenceClass
     source_id: str
+    artifact_revision: str | None = None
     provider: str
     product: str
     forecast_centre: str

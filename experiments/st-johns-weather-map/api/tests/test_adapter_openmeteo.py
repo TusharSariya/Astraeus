@@ -13,9 +13,12 @@ from fastapi.testclient import TestClient
 
 from ingest.contract import AdapterUnavailable, FetchWindow
 from ingest.experimental.openmeteo import (
+    COMPOSITION_FIELDS,
     OPEN_METEO_PROFILE_FIELDS,
     OPEN_METEO_PROFILE_LEVELS,
+    RADIATION_FIELDS,
     BrightSkyMosmix71801Adapter,
+    OpenMeteoCompositionAdapter,
     OpenMeteoAdapter,
 )
 from weather_api.app import PREFIX, app
@@ -305,3 +308,80 @@ def test_immutable_artifact_reads_back_through_real_artifact_reader_and_point_ap
     payload = response.json(); assert payload["operational"] is False and payload["data_mode"] == "live"
     temperature = next(field for field in payload["fields"] if field["field"] == "temperature")
     assert temperature["value"] == 2.0 and temperature["provenance"]["source_id"] == "openmeteo-jma-gsm"
+
+
+def composition_payload(source_id="openmeteo-air-quality-particulates"):
+    name = {"openmeteo-cams-aod": "cams-aod", "openmeteo-air-quality-particulates": "cams-particulates",
+            "openmeteo-lsa-saf-radiation": "lsa-saf-radiation"}[source_id]
+    payload = json.loads((Path(__file__).parent / "fixtures/openmeteo_composition" / f"{name}.trimmed.json").read_text())
+    payload["utc_offset_seconds"] = 0
+    return payload
+
+
+class SequenceClient:
+    def __init__(self, *values): self.values, self.urls = list(values), []
+    def get(self, url): self.urls.append(url); return Response(self.values.pop(0))
+
+
+@pytest.mark.parametrize("source_id,canonical", [
+    ("openmeteo-cams-aod", {"aerosol_optical_depth_550nm"}),
+    ("openmeteo-air-quality-particulates", {value[0] for value in COMPOSITION_FIELDS.values()}),
+    ("openmeteo-lsa-saf-radiation", {value[0] for value in RADIATION_FIELDS.values()}),
+])
+def test_composition_products_preserve_selected_fields_units_masks_and_identity(tmp_path, source_id, canonical):
+    payload = composition_payload(source_id)
+    values = [payload] if source_id.endswith("radiation") else [payload, {"last_run_initialisation_time": 1788609600}]
+    adapter = OpenMeteoCompositionAdapter(source_id, client=SequenceClient(*values))
+    candidate = adapter.discover(window())
+    result = adapter.fetch(candidate[0], window(), tmp_path)
+    artifact = result.artifacts[0]
+    import zarr
+    with xarray.open_zarr(zarr.storage.ZipStore(artifact.payload_path, mode="r"), consolidated=False) as dataset:
+        assert set(dataset.data_vars) == canonical
+        if "pm2_5_surface" in dataset:
+            assert dataset.pm2_5_surface.values[0, 0, 0] == pytest.approx(2.1e-9)
+            assert dataset.pm2_5_surface.values[1, 0, 0] != dataset.pm2_5_surface.values[1, 0, 0]
+    assert result.complete and result.qc_passed
+    assert artifact.provenance["producer"] != "Open-Meteo"
+    assert result.run_time is None
+    assert artifact.provenance["run_identity"]["certainty"] == ("not_applicable_observation" if source_id.endswith("radiation") else "unknown")
+    if not source_id.endswith("radiation"):
+        assert artifact.provenance["latest_model_initialisation_context"] == "2026-09-05T12:00:00+00:00"
+    assert artifact.provenance["native_resolution"] in {"0.05 degree", "0.4 degree served at 0.1 degree cell centres"}
+
+
+@pytest.mark.parametrize("source_id,missing", [
+    ("openmeteo-cams-aod", "aerosol_optical_depth"),
+    ("openmeteo-air-quality-particulates", "ozone"),
+    ("openmeteo-lsa-saf-radiation", "direct_radiation_instant"),
+])
+def test_composition_missing_selected_field_fails_before_artifact(tmp_path, source_id, missing):
+    payload = composition_payload(source_id); del payload["hourly"][missing]
+    values = [payload] if source_id.endswith("radiation") else [payload, {"last_run_initialisation_time": 1788609600}]
+    adapter = OpenMeteoCompositionAdapter(source_id, client=SequenceClient(*values))
+    with pytest.raises(AdapterUnavailable, match=f"missing_selected_field:{missing}"):
+        adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    assert not list(tmp_path.glob("*.zarr.zip"))
+
+
+def test_composition_wrong_units_and_missing_run_metadata_fail_closed(tmp_path):
+    payload = composition_payload("openmeteo-air-quality-particulates")
+    payload["hourly_units"]["pm2_5"] = "mg/m³"
+    adapter = OpenMeteoCompositionAdapter("openmeteo-air-quality-particulates", client=SequenceClient(payload, {"last_run_initialisation_time": 1788609600}))
+    with pytest.raises(AdapterUnavailable, match="unexpected_units:pm2_5"):
+        adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
+    missing_meta = OpenMeteoCompositionAdapter("openmeteo-cams-aod", client=SequenceClient(composition_payload("openmeteo-cams-aod"), {}))
+    with pytest.raises(AdapterUnavailable, match="no numeric last_run_initialisation_time"):
+        missing_meta.discover(window())
+
+
+@pytest.mark.parametrize("mutation,match", [
+    (lambda payload: payload.update(utc_offset_seconds=3600), "not declared UTC"),
+    (lambda payload: payload.update(latitude=float("nan")), "invalid returned coordinates"),
+    (lambda payload: payload["hourly"]["aerosol_optical_depth"].append(0.2), "missing_or_misaligned_array"),
+])
+def test_composition_refuses_timezone_coordinate_and_array_shape_drift(tmp_path, mutation, match):
+    payload = composition_payload("openmeteo-cams-aod"); mutation(payload)
+    adapter = OpenMeteoCompositionAdapter("openmeteo-cams-aod", client=SequenceClient(payload, {"last_run_initialisation_time": 1788609600}))
+    with pytest.raises(AdapterUnavailable, match=match):
+        adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
