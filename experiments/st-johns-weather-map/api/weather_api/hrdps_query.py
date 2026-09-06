@@ -177,15 +177,20 @@ class HRDPSQueryCoordinator:
     def profile_levels(self, latitude: float, longitude: float, selected_time: datetime, pressures):
         from .store import live_profile_levels
         entry = self.query(selected_time, fields=HRDPS_PROFILE_FIELDS)
-        samples, sampler = self._samples(entry, latitude, longitude)
+        by_pressure = {}
+        sampler = None
+        for pressure in pressures:
+            by_pressure[pressure], sampler = self._samples(entry, latitude, longitude, pressure=pressure)
+        assert sampler is not None
         class Samples:
             skipped, unmodelled = sampler.skipped, sampler.unmodelled
             @staticmethod
-            def sample_point(*_args, **_kwargs): return samples
-        return live_profile_levels(Samples(), latitude, longitude, entry.valid_time, pressures)
+            def sample_profile(*_args, **_kwargs): return by_pressure
+        return live_profile_levels(Samples(), latitude, longitude, entry.valid_time, pressures), entry.valid_time
 
     @staticmethod
-    def _samples(entry: HRDPSQueryEntry, latitude: float, longitude: float):
+    def _samples(entry: HRDPSQueryEntry, latitude: float, longitude: float, *, pressure: int | None = None):
+        from .store import LiveStore
         with tempfile.TemporaryDirectory(prefix="hrdps-demand-read-") as directory:
             path = Path(directory) / "surface.zarr.zip"
             path.write_bytes(entry.payload)
@@ -200,7 +205,7 @@ class HRDPSQueryCoordinator:
                     revision_id=f"demand:{entry.content_digest}", provenance=dict(entry.provenance),
                     run_time=entry.run_time, retrieved_at=entry.fetched_at,
                     native_crs=str(entry.provenance.get("native_crs", "EPSG:4326")))
-                samples = sampler._sample_dataset(dataset, artifact, latitude, longitude, entry.valid_time)
+                samples = sampler._sample_dataset(dataset, artifact, latitude, longitude, entry.valid_time, pressure=pressure)
             finally:
                 dataset.close(); zipped.close()
         return samples, sampler

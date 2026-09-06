@@ -856,6 +856,13 @@ def get_layers() -> LayersResponse:
 
     store = live_store()
     if store is None:
+        proxied, proxy_notices = _proxied_forecast_layers()
+        if proxied:
+            return LayersResponse(
+                data_mode=DataMode.LIVE,
+                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
+                notices=["no live artifact store is reachable; only timestamp-demand provider proxies are offered", *proxy_notices],
+            )
         return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["no live artifact store is reachable; no layer can be offered"])
     try:
         artifacts = store.current()
@@ -996,6 +1003,14 @@ def get_layers() -> LayersResponse:
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
     layers.extend(proxied)
+
+    # HRDPS stored artifacts are retained for audit but are no longer a live
+    # delivery path.  The source's provider proxies above remain; a retained
+    # model_run must not silently outrank the selected-time query architecture.
+    layers = [
+        item for item in layers
+        if not (item.id.startswith("eccc-hrdps-") and item.evidence_basis == wms.PUBLISHED_ARTIFACT)
+    ]
 
     if not layers:
         aged_out, aged_notices = _aged_out_sources(store)
@@ -2273,13 +2288,13 @@ def get_profile(
     if product and product.upper() == "HRDPS":
         try:
             from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
-            levels = hrdps_query_coordinator().profile_levels(latitude, longitude, time, PROFILE_PRESSURES)
+            levels, native_time = hrdps_query_coordinator().profile_levels(latitude, longitude, time, PROFILE_PRESSURES)
         except Exception as error:
             LOGGER.exception("HRDPS demand profile failed for %s", time.isoformat())
             return unavailable(f"HRDPS selected profile is unavailable: {type(error).__name__}", "demand_query_unavailable:eccc-hrdps", [])
         return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude,
-                               valid_time=time, levels=levels,
-                               notices=["HRDPS pressure fields were fetched for this selected native timestep only"])
+                               valid_time=native_time, levels=levels,
+                               notices=[f"HRDPS pressure fields were fetched for native timestep {native_time.isoformat()} only"])
 
     store = live_store()
     if store is None:

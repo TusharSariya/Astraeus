@@ -4,12 +4,16 @@ import importlib
 from pathlib import Path
 
 import pytest
+import numpy as np
+import xarray as xr
 from fastapi.testclient import TestClient
 
-from ingest.adapters.eccc_datamart import ECCCDataMartAdapter, HRDPS_VARS
+from ingest.adapters.eccc_datamart import ECCCDataMartAdapter, HRDPS_VARS, manifest_for
 from ingest.contract import RunCandidate
+from ingest.grib import write_zarr
 from weather_api.hrdps_query import (
     HRDPS_POINT_FIELDS,
+    HRDPS_PROFILE_FIELDS,
     HRDPSQueryEntry,
     HRDPSQueryCoordinator,
     HRDPSQueryService,
@@ -85,14 +89,16 @@ def test_fetch_selected_narrows_candidate_and_fields(monkeypatch, tmp_path: Path
     observed = {}
 
     def fake_fetch(self, narrowed, window, workdir):
-        observed.update(fields=tuple(self.var_map), hours=narrowed.detail["available_hours"], now=window.now)
+        observed.update(fields=tuple(self.var_map), hours=narrowed.detail["available_hours"], now=window.now,
+                        receipts=self._capture_transport_receipts)
         return object()
 
     monkeypatch.setattr(ECCCDataMartAdapter, "fetch", fake_fetch)
     result = adapter.fetch_selected(candidate, run + timedelta(hours=1), tmp_path,
                                     fields=("temperature_2m", "wind_u_10m"))
     assert result is not None
-    assert observed == {"fields": ("temperature_2m", "wind_u_10m"), "hours": ["001"], "now": run + timedelta(hours=1)}
+    assert observed == {"fields": ("temperature_2m", "wind_u_10m"), "hours": ["001"],
+                        "now": run + timedelta(hours=1), "receipts": True}
 
 
 def test_hrdps_point_demand_bypasses_artifact_store(monkeypatch) -> None:
@@ -146,3 +152,71 @@ def test_failure_is_coalesced_and_backed_off() -> None:
     with pytest.raises(RuntimeError, match="provider unavailable"):
         service.query(key())
     assert calls == 1
+
+
+def test_ordinary_selection_resolves_latest_native_hour() -> None:
+    run = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    candidate = RunCandidate("2026090612", run, [], {
+        "cycle_url": "https://example/12/", "available_hours": ["000", "001", "002"]
+    })
+
+    class Adapter:
+        bounds = {"south": 46.0, "north": 48.0, "west": -54.0, "east": -51.0}
+        def operation_bounds(self, _window): return object()
+        def discover(self, _window): return [candidate]
+
+    class Coordinator(HRDPSQueryCoordinator):
+        def _load(self, request): return entry(request)
+
+    result = Coordinator(adapter=Adapter()).query(datetime(2026, 9, 6, 14, 37, tzinfo=UTC))
+    assert result.valid_time == datetime(2026, 9, 6, 14, tzinfo=UTC)
+    assert result.key.lead == 2
+    profile = Coordinator(adapter=Adapter()).query(
+        datetime(2026, 9, 6, 14, 37, tzinfo=UTC), fields=HRDPS_PROFILE_FIELDS
+    )
+    assert profile.key.fields == HRDPS_PROFILE_FIELDS
+    assert set(HRDPS_POINT_FIELDS) != set(HRDPS_PROFILE_FIELDS)
+
+
+def test_real_zarr_sampler_serves_point_and_profile(tmp_path: Path, monkeypatch) -> None:
+    valid = datetime(2026, 9, 6, 14, tzinfo=UTC)
+    dataset = xr.Dataset(
+        {
+            "temperature_2m": (("valid_time", "latitude", "longitude"), [[[12.5]]], {"units": "degC", "level_type": "heightAboveGround", "level_value": 2}),
+            "temperature_850hPa": (("valid_time", "latitude", "longitude"), [[[4.25]]], {"units": "degC", "level_type": "isobaricInhPa", "level_value": 850}),
+        },
+        coords={"valid_time": [np.datetime64(valid.replace(tzinfo=None), "ns")], "latitude": [47.56], "longitude": [-52.71]},
+    )
+    path = write_zarr(dataset, tmp_path / "selected.zarr.zip")
+    fields = {"temperature_2m": HRDPS_VARS["temperature_2m"], "temperature_850hPa": HRDPS_VARS["temperature_850hPa"]}
+    provenance = {
+        "source_id": "eccc-hrdps", "producer": "Environment and Climate Change Canada",
+        "product": "HRDPS", "native_resolution": "RLatLon0.0225", "native_crs": "EPSG:4326",
+        "adapter_version": "hrdps-demand-v1", "run_time": datetime(2026, 9, 6, 12, tzinfo=UTC).isoformat(),
+        "quality": {"status": "passed", "flags": []}, "coverage": {"status": "complete", "fraction": 1.0},
+        **manifest_for("eccc-hrdps", fields).as_manifest_block(),
+    }
+    request = key(2)
+    selected = HRDPSQueryEntry(request, datetime(2026, 9, 6, 12, tzinfo=UTC), valid, valid,
+                               "b" * 64, path.read_bytes(), provenance)
+    coordinator = HRDPSQueryCoordinator(adapter=object())
+    monkeypatch.setattr(coordinator, "query", lambda *_args, **_kwargs: selected)
+    point, _consensus, _sources = coordinator.point_fields(47.56, -52.71, valid)
+    assert [(item.field, item.value) for item in point] == [("temperature", 12.5)]
+    profile, native = coordinator.profile_levels(47.56, -52.71, valid, [850])
+    assert native == valid
+    level = next(item for item in profile if item.pressure_hpa == 850)
+    assert [(item.field, item.value) for item in level.fields if item.value is not None] == [("temperature_850hPa", 4.25)]
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: coordinator)
+    client = TestClient(app_module.app)
+    point_response = client.get(f"{app_module.PREFIX}/point", params={
+        "latitude": 47.56, "longitude": -52.71, "valid_time": valid.isoformat(), "product": "HRDPS"
+    })
+    assert point_response.status_code == 200
+    assert point_response.json()["fields"][0]["value"] == 12.5
+    profile_response = client.get(f"{app_module.PREFIX}/profile", params={
+        "latitude": 47.56, "longitude": -52.71, "valid_time": valid.isoformat(), "product": "HRDPS"
+    })
+    assert profile_response.status_code == 200
+    assert profile_response.json()["valid_time"] == valid.isoformat().replace("+00:00", "Z")

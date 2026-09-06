@@ -49,6 +49,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import ctypes
+import hashlib
 import gc
 import logging
 import os
@@ -499,6 +500,7 @@ class ECCCDataMartAdapter:
         base_url: str = ECCC_DATAMART_BASE,
         fallback_days: int = 1,
         datamart_fallback_path: str | None = None,
+        capture_transport_receipts: bool = False,
     ) -> None:
         self.source_id = source_id
         self.model_subpath = model_subpath
@@ -511,6 +513,7 @@ class ECCCDataMartAdapter:
         self._base_url = base_url.rstrip("/")
         self._fallback_days = max(0, fallback_days)
         self._declared_fallback = datamart_fallback_path
+        self._capture_transport_receipts = capture_transport_receipts
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
@@ -730,6 +733,7 @@ class ECCCDataMartAdapter:
             base_url=self._base_url,
             fallback_days=self._fallback_days,
             datamart_fallback_path=self._declared_fallback,
+            capture_transport_receipts=True,
         )
         narrowed = RunCandidate(
             provider_run_id=candidate.provider_run_id,
@@ -759,6 +763,7 @@ class ECCCDataMartAdapter:
 
         hourly_datasets: list[xarray.Dataset] = []
         decode_errors: list[str] = []
+        transport_receipts: list[dict[str, object]] = []
         for hour_str in target_hours:
             valid_time = run_time + timedelta(hours=int(hour_str))
             if not window.covers(valid_time):
@@ -808,19 +813,39 @@ class ECCCDataMartAdapter:
             if planned:
                 with ThreadPoolExecutor(max_workers=max(1, min(download_parallelism(), len(planned)))) as pool:
                     futures = {
-                        pool.submit(client.download, file_url, local_grib, max_bytes=HRDPS_FILE_BYTES): (canonical_name, match_file, file_url, local_grib)
+                        pool.submit(
+                            client.download_with_headers if self._capture_transport_receipts else client.download,
+                            file_url, local_grib, max_bytes=HRDPS_FILE_BYTES,
+                        ): (canonical_name, match_file, file_url, local_grib)
                         for canonical_name, match_file, file_url, local_grib in planned
                     }
                     for future in as_completed(futures):
                         canonical_name, match_file, file_url, local_grib = futures[future]
                         try:
-                            future.result()
+                            download_result = future.result()
                         except Exception as error:
                             decode_errors.append(f"download:{match_file}")
                             _log.warning("Failed to download %s: %s", file_url, error)
                             local_grib.unlink(missing_ok=True)
                             continue
                         fetched[canonical_name] = local_grib
+                        if self._capture_transport_receipts:
+                            digest = hashlib.sha256()
+                            with local_grib.open("rb") as stream:
+                                for chunk in iter(lambda: stream.read(1 << 20), b""):
+                                    digest.update(chunk)
+                            transport_receipts.append({
+                                "field": canonical_name,
+                                "url": file_url,
+                                "bytes": local_grib.stat().st_size,
+                                "sha256": digest.hexdigest(),
+                                "completed_at": datetime.now(UTC).isoformat(),
+                                "response_headers": {
+                                    str(name).lower(): str(value)
+                                    for name, value in download_result[1].items()
+                                    if str(name).lower() in {"cache-control", "content-length", "content-type", "date", "etag", "last-modified"}
+                                },
+                            })
 
             for canonical_name, match_file, file_url, local_grib in planned:
                 if canonical_name not in fetched:
@@ -940,6 +965,8 @@ class ECCCDataMartAdapter:
                 "filesystem_margin_bytes": HRDPS_MARGIN_BYTES,
                 "memory_cgroup_bytes": HRDPS_MEMORY_LIMIT_BYTES,
             }
+        if transport_receipts:
+            provenance["transport_receipts"] = sorted(transport_receipts, key=lambda item: str(item["field"]))
 
         artifact = Artifact(
             logical_name="surface",
