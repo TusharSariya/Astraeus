@@ -109,6 +109,20 @@ FIELD_BY_VARIABLE.update({name: name for name in CLOUD_LAYER_VARIABLES})
 # keeps them out of the served fields, exactly like the 10 m components.
 FIELD_BY_VARIABLE.update({name: name for name in ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa")})
 
+# Experimental issue-100 composition/radiation artifacts use exact catalogue
+# keys as their API names. Their sources remain unregistered and unscheduled;
+# this only lets a retained immutable artifact prove frame-exact readback.
+FIELD_BY_VARIABLE.update({name: name for name in (
+    "aerosol_optical_depth_550nm", "pm2_5_surface", "pm10_surface", "ozone_surface",
+    "nitrogen_dioxide_surface", "sulphur_dioxide_surface", "carbon_monoxide_surface", "dust_surface",
+    "downward_shortwave_flux_hour_mean", "downward_shortwave_flux_instant",
+    "direct_shortwave_flux_hour_mean", "direct_shortwave_flux_instant",
+    "diffuse_shortwave_flux_hour_mean", "diffuse_shortwave_flux_instant",
+    "direct_normal_irradiance_hour_mean", "direct_normal_irradiance_instant",
+    "global_tilted_irradiance_hour_mean", "global_tilted_irradiance_instant",
+    "terrestrial_radiation_flux_hour_mean", "terrestrial_radiation_flux_instant",
+)})
+
 # Levels stated per variable where the artifact-wide default ("surface") would
 # be untrue. The level-expanded upper-air variables are no longer listed: the
 # catalogue resolves ``wind_u_200hPa`` to the one profile key plus "200 hPa",
@@ -2163,6 +2177,7 @@ def _build_live_provenance(
         data_mode=DataMode.LIVE,
         evidence_class=sample.evidence_class,
         source_id=sample.source_id,
+        artifact_revision=sample.revision_id,
         provider=config.producer if config else sample.source_id,
         product=config.product if config else sample.logical_name,
         forecast_centre=provenance.get("forecast_centre", config.producer if config else "unknown"),

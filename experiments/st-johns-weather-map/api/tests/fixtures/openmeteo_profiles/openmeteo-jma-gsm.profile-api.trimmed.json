@@ -1,0 +1,570 @@
+{
+ "_fixture_note": "Hand-trimmed /profile readback for openmeteo-jma-gsm from the 2026-09-05 retained replay: canonical fields only, descriptive provenance prose dropped.",
+ "data_mode": "live",
+ "latitude": 47.5,
+ "longitude": -52.5,
+ "operational": false,
+ "valid_time": "2026-09-05T15:00:00Z",
+ "levels": [
+  {
+   "pressure_hpa": 1000,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": 14.4,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 100.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 9.63,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 975,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 950,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 925,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": 8.3,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 100.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 10.32,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 900,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 850,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": 5.2,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 105.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 9.55,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 800,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": null,
+     "units": null,
+     "absence_state": "null",
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 700,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": 1.8,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 175.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 3.64,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 600,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": -4.2,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 197.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 6.9,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 500,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": -12.4,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 203.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 8.67,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 400,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": -23.9,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 203.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 8.36,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 300,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": -39.5,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 215.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 20.81,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 250,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": -51.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 224.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 19.8,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 200,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": -59.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 233.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 18.8,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 150,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": -54.5,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 255.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 20.38,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  },
+  {
+   "pressure_hpa": 100,
+   "fields": [
+    {
+     "field": "temperature_pressure",
+     "value": -53.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_direction_pressure",
+     "value": 260.0,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    },
+    {
+     "field": "wind_speed_pressure",
+     "value": 13.54,
+     "units": null,
+     "absence_state": null,
+     "provenance": {
+      "source_id": "openmeteo-jma-gsm",
+      "delivery_kind": "reprocessed"
+     }
+    }
+   ]
+  }
+ ]
+}

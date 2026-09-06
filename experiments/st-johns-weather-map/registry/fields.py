@@ -292,6 +292,18 @@ FAMILIES: list[dict[str, Any]] = [
         "groups": {
             "accumulated": "Accumulated radiant energy over the producer's own window.",
             "flux": "Instantaneous radiant flux density.",
+            "shortwave_hour_mean": "Hour-mean total horizontal shortwave flux.",
+            "shortwave_instant": "Instantaneous total horizontal shortwave flux.",
+            "direct_hour_mean": "Hour-mean direct horizontal shortwave flux.",
+            "direct_instant": "Instantaneous direct horizontal shortwave flux.",
+            "diffuse_hour_mean": "Hour-mean diffuse horizontal shortwave flux.",
+            "diffuse_instant": "Instantaneous diffuse horizontal shortwave flux.",
+            "dni_hour_mean": "Hour-mean direct normal irradiance.",
+            "dni_instant": "Instantaneous direct normal irradiance.",
+            "tilted_hour_mean": "Hour-mean global tilted irradiance under the provider geometry.",
+            "tilted_instant": "Instantaneous global tilted irradiance under the provider geometry.",
+            "terrestrial_hour_mean": "Hour-mean provider terrestrial-radiation series.",
+            "terrestrial_instant": "Instantaneous provider terrestrial-radiation series.",
         },
     },
     {
@@ -306,6 +318,11 @@ FAMILIES: list[dict[str, Any]] = [
         ),
         "groups": {
             "surface_mass": "Mass concentration at the surface.",
+            "ozone_mass": "Ozone mass concentration at the surface.",
+            "nitrogen_dioxide_mass": "Nitrogen dioxide mass concentration at the surface.",
+            "sulphur_dioxide_mass": "Sulphur dioxide mass concentration at the surface.",
+            "carbon_monoxide_mass": "Carbon monoxide mass concentration at the surface.",
+            "dust_mass": "Dust aerosol mass concentration at the surface.",
             "column_mass": "Mass burden integrated over the whole column.",
             "optical_depth": "Aerosol optical depth at a stated wavelength.",
             "health_index": "A categorical public-health index.",
@@ -786,6 +803,18 @@ FIELDS: list[dict[str, Any]] = [
        "Instantaneous downward shortwave flux density. A separate key from the accumulation "
        "because converting one to the other is a derivation, not a unit change.",
        standard_name="surface_downwelling_shortwave_flux_in_air"),
+    _f("downward_shortwave_flux_hour_mean", "hour-mean downward shortwave radiation flux", "W m-2", "radiation", "surface", "shortwave_hour_mean", "Retrieved hour-mean surface shortwave flux; distinct from an instantaneous sample."),
+    _f("downward_shortwave_flux_instant", "instantaneous downward shortwave radiation flux", "W m-2", "radiation", "surface", "shortwave_instant", "Retrieved instantaneous surface shortwave flux."),
+    _f("direct_shortwave_flux_hour_mean", "hour-mean direct shortwave radiation flux", "W m-2", "radiation", "surface", "direct_hour_mean", "Retrieved hour-mean direct horizontal shortwave flux."),
+    _f("direct_shortwave_flux_instant", "instantaneous direct shortwave radiation flux", "W m-2", "radiation", "surface", "direct_instant", "Retrieved instantaneous direct horizontal shortwave flux."),
+    _f("diffuse_shortwave_flux_hour_mean", "hour-mean diffuse shortwave radiation flux", "W m-2", "radiation", "surface", "diffuse_hour_mean", "Retrieved hour-mean diffuse horizontal shortwave flux."),
+    _f("diffuse_shortwave_flux_instant", "instantaneous diffuse shortwave radiation flux", "W m-2", "radiation", "surface", "diffuse_instant", "Retrieved instantaneous diffuse horizontal shortwave flux."),
+    _f("direct_normal_irradiance_hour_mean", "hour-mean direct normal irradiance", "W m-2", "radiation", "surface", "dni_hour_mean", "Retrieved hour-mean direct normal irradiance."),
+    _f("direct_normal_irradiance_instant", "instantaneous direct normal irradiance", "W m-2", "radiation", "surface", "dni_instant", "Retrieved instantaneous direct normal irradiance."),
+    _f("global_tilted_irradiance_hour_mean", "hour-mean global tilted irradiance", "W m-2", "radiation", "surface", "tilted_hour_mean", "Retrieved hour-mean global tilted irradiance under the provider geometry."),
+    _f("global_tilted_irradiance_instant", "instantaneous global tilted irradiance", "W m-2", "radiation", "surface", "tilted_instant", "Retrieved instantaneous global tilted irradiance under the provider geometry."),
+    _f("terrestrial_radiation_flux_hour_mean", "hour-mean extraterrestrial radiation flux", "W m-2", "radiation", "top of atmosphere", "terrestrial_hour_mean", "Retrieved hour-mean provider terrestrial-radiation series."),
+    _f("terrestrial_radiation_flux_instant", "instantaneous extraterrestrial radiation flux", "W m-2", "radiation", "top of atmosphere", "terrestrial_instant", "Retrieved instantaneous provider terrestrial-radiation series."),
 
     # --- air quality -------------------------------------------------------
     _f("air_quality_health_index", "air quality health index", "index", "air_quality", "station",
@@ -806,6 +835,11 @@ FIELDS: list[dict[str, Any]] = [
        "dependence and hygroscopic growth that mass does not, so no conversion between them is a "
        "measurement. Every AOD path into the evidence box is credential-blocked today.",
        standard_name="atmosphere_optical_thickness_due_to_ambient_aerosol_particles"),
+    _f("ozone_surface", "surface ozone mass concentration", "kg m-3", "air_quality", "surface", "ozone_mass", "Surface ozone mass concentration."),
+    _f("nitrogen_dioxide_surface", "surface nitrogen dioxide mass concentration", "kg m-3", "air_quality", "surface", "nitrogen_dioxide_mass", "Surface nitrogen dioxide mass concentration."),
+    _f("sulphur_dioxide_surface", "surface sulphur dioxide mass concentration", "kg m-3", "air_quality", "surface", "sulphur_dioxide_mass", "Surface sulphur dioxide mass concentration."),
+    _f("carbon_monoxide_surface", "surface carbon monoxide mass concentration", "kg m-3", "air_quality", "surface", "carbon_monoxide_mass", "Surface carbon monoxide mass concentration."),
+    _f("dust_surface", "surface dust mass concentration", "kg m-3", "air_quality", "surface", "dust_mass", "Surface dust aerosol mass concentration."),
 
     # --- hazard ------------------------------------------------------------
     _f("alerts_in_force", "alerts in force", "count", "hazard", "surface", "alert_count",
@@ -1503,6 +1537,27 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
     _sf("eccc-gdsps", "storm_surge", "storm_surge", "available-not-stored",
         "Published and not retrieved yet."),
 ]
+
+# Issue-100 verifies these mappings in an isolated adapter while the source
+# records remain catalogued. `available-not-stored` preserves that ceiling:
+# the experimental artifact proves the mapping without claiming deployment
+# storage or scheduler admission.
+SOURCE_FIELDS.extend([
+    _sf("openmeteo-cams-aod", "aerosol_optical_depth_550nm", "aerosol_optical_depth", "available-not-stored", "CAMS total AOD at 550 nm through the explicitly selected cams_global path."),
+    *[_sf("openmeteo-air-quality-particulates", key, upstream, "available-not-stored", "CAMS global composition quantity delivered by Open-Meteo; mass concentrations normalize from micrograms per cubic metre and AOD remains dimensionless.") for upstream, key in (
+        ("pm2_5", "pm2_5_surface"), ("pm10", "pm10_surface"), ("aerosol_optical_depth", "aerosol_optical_depth_550nm"),
+        ("ozone", "ozone_surface"), ("nitrogen_dioxide", "nitrogen_dioxide_surface"), ("sulphur_dioxide", "sulphur_dioxide_surface"),
+        ("carbon_monoxide", "carbon_monoxide_surface"), ("dust", "dust_surface"),
+    )],
+    *[_sf("openmeteo-lsa-saf-radiation", key, upstream, "available-not-stored", f"LSA SAF MSG radiation delivered by Open-Meteo with interval identity preserved as {interval}.") for upstream, key, interval in (
+        ("shortwave_radiation", "downward_shortwave_flux_hour_mean", "hour mean"), ("shortwave_radiation_instant", "downward_shortwave_flux_instant", "instant"),
+        ("direct_radiation", "direct_shortwave_flux_hour_mean", "hour mean"), ("direct_radiation_instant", "direct_shortwave_flux_instant", "instant"),
+        ("diffuse_radiation", "diffuse_shortwave_flux_hour_mean", "hour mean"), ("diffuse_radiation_instant", "diffuse_shortwave_flux_instant", "instant"),
+        ("direct_normal_irradiance", "direct_normal_irradiance_hour_mean", "hour mean"), ("direct_normal_irradiance_instant", "direct_normal_irradiance_instant", "instant"),
+        ("global_tilted_irradiance", "global_tilted_irradiance_hour_mean", "hour mean"), ("global_tilted_irradiance_instant", "global_tilted_irradiance_instant", "instant"),
+        ("terrestrial_radiation", "terrestrial_radiation_flux_hour_mean", "hour mean"), ("terrestrial_radiation_instant", "terrestrial_radiation_flux_instant", "instant"),
+    )],
+])
 
 
 # ---------------------------------------------------------------------------
