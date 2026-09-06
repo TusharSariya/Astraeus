@@ -1,7 +1,7 @@
 # TAF interval and structural completeness decision
 
-Status: proposed for owner decision. This document does not authorize source
-activation.
+Status: owner-selected proposal pending independent approval and the formal
+`spec-status-approved` transition. This document alone does not activate the source.
 
 ## Observed mismatch
 
