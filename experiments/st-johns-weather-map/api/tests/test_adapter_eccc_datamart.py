@@ -36,9 +36,16 @@ from ingest.adapters.eccc_datamart import (
     RDPS_VARS,
     ECCCDataMartAdapter,
     manifest_for,
+    download_parallelism,
+    _release_decoder_memory,
+    HRDPS_ARTIFACT_BYTES,
+    HRDPS_FILESYSTEM_BYTES,
+    HRDPS_MARGIN_BYTES,
+    HRDPS_RECEIVED_BYTES,
 )
 from ingest.contract import AdapterUnavailable, FetchWindow
 from ingest.http import PoliteClient, USER_AGENT
+from ingest.grib import crop_to_bbox, strip_message_scalars
 
 UTC = timezone.utc
 
@@ -46,6 +53,38 @@ UTC = timezone.utc
 def make_html_listing(items: list[str]) -> str:
     links = "".join(f'<a href="{item}">{item}</a><br>\n' for item in items)
     return f"<html><body>{links}</body></html>"
+
+
+def test_download_parallelism_parses_configured_and_invalid_values(monkeypatch):
+    monkeypatch.setenv("WEATHER_DATAMART_PARALLEL", "3")
+    assert download_parallelism() == 3
+    monkeypatch.setenv("WEATHER_DATAMART_PARALLEL", "invalid")
+    assert download_parallelism() == 6
+
+
+def test_decoder_release_invokes_available_allocator(monkeypatch):
+    calls=[]
+    allocator=type("Allocator",(),{"malloc_trim":lambda _self,value:calls.append(value)})()
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.ctypes.CDLL",lambda _name:allocator)
+    _release_decoder_memory()
+    assert calls == [0]
+
+
+def test_loaded_crop_detaches_full_grid_coordinate_bases():
+    rows, columns = 200, 300
+    row, column = numpy.meshgrid(numpy.arange(rows), numpy.arange(columns), indexing="ij")
+    latitude = row / 10 + 40
+    longitude = column / 10 - 60
+    source = xarray.Dataset(
+        {"t2m": (("y", "x"), numpy.ones((rows, columns), dtype="float32"))},
+        coords={"latitude": (("y", "x"), latitude), "longitude": (("y", "x"), longitude)},
+    )
+    cropped = crop_to_bbox(source, {"west": -59, "east": -55, "south": 41, "north": 45})
+    detached = strip_message_scalars(cropped["t2m"].load()).copy(deep=True)
+    assert detached.sizes["y"] < rows and detached.sizes["x"] < columns
+    assert not numpy.shares_memory(detached["latitude"].values, latitude)
+    assert not numpy.shares_memory(detached["longitude"].values, longitude)
+    numpy.testing.assert_array_equal(detached.values, cropped["t2m"].values)
 
 
 def make_mock_client(url_map: dict[str, str]) -> PoliteClient:
@@ -75,6 +114,30 @@ def make_adapter(client: PoliteClient, *, var_map=HRDPS_VARS, **kwargs) -> ECCCD
     )
 
 
+def test_hrdps_complete_operation_bounds_require_kernel_memory_and_filesystem_caps(monkeypatch, tmp_path):
+    adapter = make_adapter(make_mock_client({}))
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.tempfile.gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(Path, "read_text", lambda _self: str(4 * 1024**3))
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.ctypes.CDLL",lambda _name:type("Allocator",(),{"malloc_trim":lambda *_args:1})())
+    geometry = type("Geometry", (), {"f_blocks": 3 * 1024**3 // 4096, "f_bavail": 3 * 1024**3 // 4096, "f_frsize": 4096})()
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.os.statvfs", lambda _path: geometry)
+    bounds = adapter.operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=UTC)))
+    assert (bounds.store_bytes, bounds.filesystem_bytes, bounds.margin_bytes, bounds.received_bytes) == (
+        HRDPS_ARTIFACT_BYTES, HRDPS_FILESYSTEM_BYTES, HRDPS_MARGIN_BYTES, HRDPS_RECEIVED_BYTES,
+    )
+
+
+def test_hrdps_refuses_unconstrained_temporary_filesystem(monkeypatch, tmp_path):
+    adapter = make_adapter(make_mock_client({}))
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.tempfile.gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(Path, "read_text", lambda _self: str(4 * 1024**3))
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.ctypes.CDLL",lambda _name:type("Allocator",(),{"malloc_trim":lambda *_args:1})())
+    geometry = type("Geometry", (), {"f_blocks": 4 * 1024**3 // 4096, "f_bavail": 4 * 1024**3 // 4096, "f_frsize": 4096})()
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.os.statvfs", lambda _path: geometry)
+    with pytest.raises(AdapterUnavailable, match="3 GiB operation ceiling"):
+        adapter.operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=UTC)))
+
+
 def stamp_files(date_str: str, hour: str, *, names: tuple[str, ...] = ("TMP", "DPT")) -> list[str]:
     return [f"{date_str}T{hour}Z_MSC_HRDPS_{var}_AGL-2m_RLatLon0.0225_PT000H.grib2" for var in names]
 
@@ -93,6 +156,11 @@ def test_hrdps_discover():
     window = FetchWindow(now=now)
 
     candidates = adapter.discover(window)
+    assert candidates[0].detail["valid_times"] == [
+        "2026-08-29T12:00:00+00:00",
+        "2026-08-29T13:00:00+00:00",
+        "2026-08-29T14:00:00+00:00",
+    ]
     assert len(candidates) >= 1
     newest = candidates[0]
     assert newest.provider_run_id == "2026082912"
@@ -187,6 +255,7 @@ def test_eccc_fetch_with_mocked_decode(tmp_path: Path, monkeypatch: pytest.Monke
     # Mock open_grib and crop_to_bbox
     latitudes = numpy.array([47.5, 47.6])
     longitudes = numpy.array([-52.8, -52.7])
+    closed: list[str] = []
 
     def mock_open_grib(path: Path):
         var_name = "t2m" if ("TMP" in str(path) or "temperature" in str(path)) else "d2m"
@@ -199,6 +268,7 @@ def test_eccc_fetch_with_mocked_decode(tmp_path: Path, monkeypatch: pytest.Monke
         # mock must set them where the real decode path does after
         # normalize_units.
         ds[var_name].attrs["units"] = "degC"
+        ds.set_close(lambda: closed.append(var_name))
         return ds
 
     monkeypatch.setattr("ingest.adapters.eccc_datamart.open_grib", mock_open_grib)
@@ -219,11 +289,14 @@ def test_eccc_fetch_with_mocked_decode(tmp_path: Path, monkeypatch: pytest.Monke
     assert result.complete is True
     assert result.qc_passed is True
     assert len(result.artifacts) == 1
+    assert sorted(closed) == ["d2m", "t2m"]
 
     artifact = result.artifacts[0]
     assert artifact.logical_name == "surface"
     assert artifact.payload_path.exists()
     assert artifact.provenance["evidence_classes"] == ["retrieved"], "a retrieved artifact declares how its values came to exist"
+    assert artifact.provenance["run_time"] == "2026-08-29T12:00:00+00:00"
+    assert artifact.provenance["valid_times"] == ["2026-08-29T12:00:00+00:00"]
 
     # Open and verify Zarr content
     store = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")

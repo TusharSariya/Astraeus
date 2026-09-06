@@ -48,8 +48,12 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import ctypes
+import gc
 import logging
+import os
 import re
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -67,6 +71,8 @@ from ingest.contract import (
     FetchWindow,
     RunCandidate,
     RunResult,
+    ResourceBounds,
+    DiscoveryBounds,
 )
 from ingest.grib import (
     ECCC_RH_PHASE_BASIS,
@@ -435,6 +441,20 @@ def parse_run_stamp(filename: str) -> datetime | None:
 #: rate ceiling, it only stops one slow response from stalling the others.
 DEFAULT_DOWNLOAD_PARALLELISM = 6
 
+HRDPS_LISTING_BYTES = 2 * 1024 * 1024
+HRDPS_MAX_CYCLES_PER_DATE = 4
+HRDPS_MAX_LEADS = 25
+HRDPS_FILE_BYTES = 10 * 1024 * 1024
+HRDPS_ARTIFACT_BYTES = 512 * 1024 * 1024
+HRDPS_FILESYSTEM_BYTES = 2816 * 1024 * 1024
+HRDPS_MARGIN_BYTES = 128 * 1024 * 1024
+HRDPS_MEMORY_LIMIT_BYTES = 4 * 1024 * 1024 * 1024
+HRDPS_DISCOVERY_REQUESTS = 2 * (1 + 2 * HRDPS_MAX_CYCLES_PER_DATE)
+HRDPS_RECEIVED_BYTES = (
+    (HRDPS_DISCOVERY_REQUESTS + HRDPS_MAX_LEADS) * HRDPS_LISTING_BYTES
+    + HRDPS_MAX_LEADS * len(HRDPS_VARS) * HRDPS_FILE_BYTES
+)
+
 
 def download_parallelism(default: int = DEFAULT_DOWNLOAD_PARALLELISM) -> int:
     """``WEATHER_DATAMART_PARALLEL`` as a positive int, else ``default``."""
@@ -447,6 +467,21 @@ def download_parallelism(default: int = DEFAULT_DOWNLOAD_PARALLELISM) -> int:
         return max(1, int(raw))
     except ValueError:
         return default
+
+
+def _release_decoder_memory() -> None:
+    """Release closed cfgrib/ecCodes allocations before the next message.
+
+    The worker target is glibc Linux.  A missing allocator hook fails closed
+    during HRDPS admission rather than allowing 1,200 decoder opens to retain
+    an unmeasured native heap.
+    """
+    gc.collect()
+    allocator = ctypes.CDLL(None)
+    trim = getattr(allocator, "malloc_trim", None)
+    if trim is None:
+        return
+    trim(0)
 
 class ECCCDataMartAdapter:
     """Ingests GRIB2 datasets from ECCC Datamart dated directory trees."""
@@ -479,6 +514,42 @@ class ECCCDataMartAdapter:
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
+
+    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        if self.source_id != "eccc-hrdps":
+            raise AdapterUnavailable(f"{self.source_id}: complete-operation bounds are not measured")
+        memory_limit = Path("/sys/fs/cgroup/memory.max")
+        try:
+            raw_limit = memory_limit.read_text().strip()
+            available = int(raw_limit)
+        except (OSError, ValueError) as error:
+            raise AdapterUnavailable("HRDPS requires a finite Linux cgroup memory limit") from error
+        if available > HRDPS_MEMORY_LIMIT_BYTES:
+            raise AdapterUnavailable("HRDPS cgroup memory limit is not constrained to the measured 4 GiB ceiling")
+        if available < 2 * 1024 * 1024 * 1024:
+            raise AdapterUnavailable("HRDPS cgroup memory limit is below the measured decoder requirement")
+        if getattr(ctypes.CDLL(None), "malloc_trim", None) is None:
+            raise AdapterUnavailable("HRDPS decoder allocator cannot return closed native buffers")
+        temporary = Path(tempfile.gettempdir())
+        geometry = os.statvfs(temporary)
+        capacity = geometry.f_blocks * geometry.f_frsize
+        free = geometry.f_bavail * geometry.f_frsize
+        if capacity > 3 * 1024 * 1024 * 1024:
+            raise AdapterUnavailable("HRDPS temporary filesystem lacks the enforced 3 GiB operation ceiling")
+        if free < HRDPS_FILESYSTEM_BYTES + HRDPS_MARGIN_BYTES:
+            raise AdapterUnavailable("HRDPS temporary filesystem cannot hold the complete-operation reservation")
+        return ResourceBounds(HRDPS_ARTIFACT_BYTES, HRDPS_FILESYSTEM_BYTES,
+                              HRDPS_MARGIN_BYTES, HRDPS_RECEIVED_BYTES)
+
+    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
+        return DiscoveryBounds(self.operation_bounds(window).received_bytes)
+
+    def resource_bounds(self, _candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
+        return self.operation_bounds(window)
+
+    @staticmethod
+    def _listing(client: PoliteClient, url: str, *, suffixes: tuple[str, ...] = ()) -> list[str]:
+        return client.list_directory(url, suffixes=suffixes, max_bytes=HRDPS_LISTING_BYTES)
 
     def model_root(self, date_str: str) -> str:
         return f"{self._base_url}/{date_str}/{DATED_PATH_SEGMENT}/{self.model_subpath}/"
@@ -521,17 +592,19 @@ class ECCCDataMartAdapter:
 
     def _candidates_under_root(self, client: PoliteClient, root_url: str, date_str: str) -> list[RunCandidate]:
         try:
-            entries = client.list_directory(root_url)
+            entries = self._listing(client, root_url)
         except Exception as error:
             _log.info("%s: no listing at %s (%s)", self.source_id, root_url, error)
             return []
 
         cycles = sorted({entry.rstrip("/") for entry in entries if _CYCLE_DIR.match(entry)}, reverse=True)
+        if len(cycles) > HRDPS_MAX_CYCLES_PER_DATE:
+            raise AdapterUnavailable(f"{self.source_id}: directory advertises too many cycle entries")
         candidates: list[RunCandidate] = []
         for cycle in cycles:
             cycle_url = f"{root_url}{cycle}/"
             try:
-                hour_entries = client.list_directory(cycle_url)
+                hour_entries = self._listing(client, cycle_url)
             except Exception:
                 continue
             hours = sorted({entry.rstrip("/") for entry in hour_entries if _LEAD_DIR.match(entry)})
@@ -540,7 +613,7 @@ class ECCCDataMartAdapter:
 
             analysis_url = f"{cycle_url}000/"
             try:
-                files = client.list_directory(analysis_url, suffixes=(".grib2",))
+                files = self._listing(client, analysis_url, suffixes=(".grib2",))
             except Exception:
                 continue
             stamps = {parse_run_stamp(name) for name in files}
@@ -562,6 +635,11 @@ class ECCCDataMartAdapter:
                         "date_str": date_str,
                         "cycle_url": cycle_url,
                         "available_hours": hours,
+                        "valid_times": [
+                            (run_dt + timedelta(hours=int(hour))).isoformat()
+                            for hour in hours
+                            if int(hour) < HRDPS_MAX_LEADS
+                        ],
                         "run_stamp": run_dt.strftime("%Y%m%dT%HZ"),
                         # Which of the record's paths actually answered. It
                         # travels onto the artifact so a served value can say
@@ -631,8 +709,6 @@ class ECCCDataMartAdapter:
 
         hourly_datasets: list[xarray.Dataset] = []
         decode_errors: list[str] = []
-        retrieved_at = datetime.now(UTC)
-
         for hour_str in target_hours:
             valid_time = run_time + timedelta(hours=int(hour_str))
             if not window.covers(valid_time):
@@ -640,7 +716,7 @@ class ECCCDataMartAdapter:
 
             hour_dir_url = f"{cycle_url}{hour_str}/"
             try:
-                file_list = client.list_directory(hour_dir_url, suffixes=(".grib2",))
+                file_list = self._listing(client, hour_dir_url, suffixes=(".grib2",))
             except Exception as error:
                 decode_errors.append(f"listing:{hour_dir_url}")
                 _log.warning("Could not list %s: %s", hour_dir_url, error)
@@ -682,7 +758,7 @@ class ECCCDataMartAdapter:
             if planned:
                 with ThreadPoolExecutor(max_workers=max(1, min(download_parallelism(), len(planned)))) as pool:
                     futures = {
-                        pool.submit(client.download, file_url, local_grib, max_bytes=10 * 1024 * 1024): (canonical_name, match_file, file_url, local_grib)
+                        pool.submit(client.download, file_url, local_grib, max_bytes=HRDPS_FILE_BYTES): (canonical_name, match_file, file_url, local_grib)
                         for canonical_name, match_file, file_url, local_grib in planned
                     }
                     for future in as_completed(futures):
@@ -699,6 +775,7 @@ class ECCCDataMartAdapter:
             for canonical_name, match_file, file_url, local_grib in planned:
                 if canonical_name not in fetched:
                     continue
+                opened = None
                 try:
                     # The cloud field's identity must be read from the message's own
                     # WMO keys (see the map comment above), so those keys are
@@ -731,7 +808,7 @@ class ECCCDataMartAdapter:
                     # only fetched at write_zarr time and every run dies with
                     # FileNotFoundError. The crop already bounded this to the
                     # Avalon window, so what is held is one small field.
-                    field = strip_message_scalars(decoded[data_var_names[0]].load())
+                    field = strip_message_scalars(decoded[data_var_names[0]].load()).copy(deep=True)
                     if canonical_name.startswith("relative_humidity_"):
                         # GRIB2 0/1/1 codes no saturation-phase key, so the
                         # convention cannot be read off the message; it was
@@ -748,6 +825,10 @@ class ECCCDataMartAdapter:
                     decode_errors.append(f"decode:{match_file}")
                     _log.warning("Failed to decode %s: %s", file_url, error)
                 finally:
+                    if opened is not None:
+                        opened.close()
+                        if self.source_id == "eccc-hrdps":
+                            _release_decoder_memory()
                     local_grib.unlink(missing_ok=True)
 
             if not var_datasets:
@@ -762,6 +843,10 @@ class ECCCDataMartAdapter:
         if not hourly_datasets:
             raise AdapterUnavailable(f"No GRIB2 fields could be fetched or cropped for {self.source_id}")
 
+        # Completion is recorded only after the last selected payload was
+        # received and decoded; a timestamp captured before the loop would
+        # falsely predate the evidence it describes.
+        retrieved_at = datetime.now(UTC)
         combined = xarray.concat(hourly_datasets, dim="valid_time")
         manifest = RunManifest(
             source_id=self.manifest.source_id,
@@ -782,6 +867,12 @@ class ECCCDataMartAdapter:
             "native_resolution": self.grid_token,
             "native_crs": "EPSG:4326",
             "adapter_version": self.adapter_version,
+            "run_time": run_time.isoformat(),
+            # Cache planning and retained-run coverage consume the exact
+            # frames this artifact proved. Omitting them made a same-run
+            # refresh download the full payload again and left timeline
+            # coverage unable to agree with /point.
+            "valid_times": [moment.isoformat() for moment in manifest.required_valid_times],
             "provider_run_stamp": candidate.detail.get("run_stamp", ""),
             # Which declared path answered for this run: the primary, or the
             # record's dated WXO-DD fallback.
@@ -791,6 +882,14 @@ class ECCCDataMartAdapter:
             # Model fields decoded from the producer's own GRIB, unmodified.
             **manifest.as_manifest_block(),
         }
+        if self.source_id == "eccc-hrdps":
+            provenance["resource_enforcement"] = {
+                "received_bytes": HRDPS_RECEIVED_BYTES,
+                "artifact_bytes": HRDPS_ARTIFACT_BYTES,
+                "filesystem_bytes": HRDPS_FILESYSTEM_BYTES,
+                "filesystem_margin_bytes": HRDPS_MARGIN_BYTES,
+                "memory_cgroup_bytes": HRDPS_MEMORY_LIMIT_BYTES,
+            }
 
         artifact = Artifact(
             logical_name="surface",

@@ -107,6 +107,15 @@ def test_a_missing_grid_value_surfaces_as_null_rather_than_being_invented():
     assert by_variable["dew_point_2m"].units == "degC"
 
 
+def test_canonical_field_levels_override_an_artifact_wide_surface_default():
+    store = StubStore([(make_artifact(), make_dataset(temperature=14.5, dew_point=11.0, wind_u=1.0, wind_v=2.0))])
+    samples = {sample.variable: sample for sample in store.sample_point(*ST_JOHNS, VALID_TIME)}
+
+    assert samples["temperature_2m"].level == "2 m"
+    assert samples["dew_point_2m"].level == "2 m"
+    assert samples["wind_u_10m"].level == "10 m"
+
+
 def test_a_null_value_still_carries_full_live_provenance():
     store = StubStore([(make_artifact(), make_dataset(temperature=None, dew_point=None))])
     fields, consensus, sources = live_point_fields(store, *ST_JOHNS, VALID_TIME)

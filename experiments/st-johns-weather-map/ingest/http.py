@@ -393,8 +393,14 @@ class PoliteClient:
             )
         return payload
 
-    def list_directory(self, url: str, *, suffixes: tuple[str, ...] = ()) -> list[str]:
-        return parse_directory_listing(self.get_text(url), suffixes=suffixes)
+    def list_directory(
+        self, url: str, *, suffixes: tuple[str, ...] = (), max_bytes: int | None = None
+    ) -> list[str]:
+        if max_bytes is None:
+            text = self.get_text(url)
+        else:
+            text = self.get_bytes(url, max_bytes=max_bytes).decode("utf-8", errors="strict")
+        return parse_directory_listing(text, suffixes=suffixes)
 
     def download(
         self,

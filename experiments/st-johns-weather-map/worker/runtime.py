@@ -719,6 +719,31 @@ class Scheduler:
             log(f"could not finish job {job['id']}: {error!r}")
 
 
+def _run_derived_passes(store: Any, *, heartbeat: Callable[[], None] | None = None) -> None:
+    """Run bounded display derivations, or refuse before invoking either one."""
+    if store is None:
+        return
+    if not getattr(store, "has_active_reservation", False):
+        log("derived display artifacts skipped: no active bounded reservation")
+        return
+    try:
+        from ingest.derive.weong_layer import weong_cycle  # noqa: PLC0415
+
+        for line in weong_cycle(store):
+            log(line)
+    except Exception as error:
+        log(f"weong low-cloud derive pass failed: {error!r}")
+    try:
+        from ingest.derive.cloud_motion import cloud_motion_cycle  # noqa: PLC0415
+
+        for line in cloud_motion_cycle(store):
+            log(line)
+    except Exception as error:
+        log(f"cloud-motion derive pass failed: {error!r}")
+    if heartbeat is not None:
+        heartbeat()
+
+
 def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int:
     path = heartbeat_path()
     # Read before the first beat overwrites it: the previous document is where
@@ -759,22 +784,7 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
     if once:
         outcomes = scheduler.cycle(force=True, heartbeat=beat)
         if store is not None:
-            try:
-                # Before the motion pass, because the WEonG layer is one of
-                # the artifacts that pass derives motion FOR.
-                from ingest.derive.weong_layer import weong_cycle  # noqa: PLC0415
-
-                for line in weong_cycle(store):
-                    log(line)
-            except Exception as error:
-                log(f"weong low-cloud derive pass failed: {error!r}")
-            try:
-                from ingest.derive.cloud_motion import cloud_motion_cycle  # noqa: PLC0415
-
-                for line in cloud_motion_cycle(store):
-                    log(line)
-            except Exception as error:
-                log(f"cloud-motion derive pass failed: {error!r}")
+            _run_derived_passes(store, heartbeat=beat)
             try:
                 store.prune()
                 store.purge_outside_window()
@@ -802,29 +812,7 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
         map falls back to a plain cross-dissolve - for as long as the rest of
         the rotation takes, including any adapter that is slow or failing.
         """
-        if store is None:
-            return
-        try:
-            # The WEonG low-cloud layer is derived first: it publishes an
-            # artifact the motion pass below then derives motion for, so the
-            # order is a dependency and not a preference. One pass late means
-            # the derived layer draws a plain crossfade for a whole cycle.
-            from ingest.derive.weong_layer import weong_cycle  # noqa: PLC0415
-
-            for line in weong_cycle(store):
-                log(line)
-        except Exception as error:
-            log(f"weong low-cloud derive pass failed: {error!r}")
-        try:
-            from ingest.derive.cloud_motion import cloud_motion_cycle  # noqa: PLC0415
-
-            for line in cloud_motion_cycle(store):
-                log(line)
-        except Exception as error:
-            log(f"cloud-motion derive pass failed: {error!r}")
-        # The derive can outlast the healthcheck window on its own, so the
-        # liveness signal is refreshed on the way out as well as on the way in.
-        beat()
+        _run_derived_passes(store, heartbeat=beat)
 
     last_prune = 0.0
     while not stopping:

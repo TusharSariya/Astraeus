@@ -162,6 +162,8 @@ def variable_level(name: str, artifact_level: str) -> str:
         return VARIABLE_LEVELS.get(name, artifact_level)
     if resolved.level:
         return resolved.level
+    if resolved.field.level:
+        return resolved.field.level
     return VARIABLE_LEVELS.get(name, artifact_level)
 
 # Sampled so they can be derived from, never served as readings: a reader asks
@@ -1050,10 +1052,10 @@ class LiveStore:
             except LookupError:
                 return []
         pressure_name = _coordinate_name(dataset, PRESSURE_COORDINATES)
+        expanded_pressure = pressure is not None and pressure_name is None
         if pressure is not None:
-            if pressure_name is None:
-                return []
-            selection[pressure_name] = pressure
+            if pressure_name is not None:
+                selection[pressure_name] = pressure
         elif pressure_name is not None and pressure_name in dataset.dims:
             return []
 
@@ -1075,7 +1077,7 @@ class LiveStore:
                 return []
             try:
                 located = dataset.isel(indexers)
-                if pressure is not None:
+                if pressure is not None and pressure_name is not None:
                     located = located.sel({pressure_name: pressure}, method="nearest")
                 if exact:
                     located = located.sel(exact)
@@ -1124,6 +1126,12 @@ class LiveStore:
         samples: list[Sample] = []
         for variable in dataset.data_vars:
             name = str(variable)
+            if expanded_pressure:
+                try:
+                    if catalogue.resolve(name).level != f"{pressure} hPa":
+                        continue
+                except catalogue.UnknownFieldKey:
+                    continue
             if name not in FIELD_BY_VARIABLE and pressure is None:
                 continue
             try:
@@ -1831,7 +1839,7 @@ class RetainedRun:
         return self.frame_start <= instant <= self.frame_end
 
 
-def _revision_frame_stamps(artifact: Any) -> list[datetime]:
+def _revision_frame_stamps(artifact: Any, store: Any | None = None) -> list[datetime]:
     """The frames one retained revision can be said to have published.
 
     The same rule :func:`published_frame_times` applies: the declared valid
@@ -1843,6 +1851,21 @@ def _revision_frame_stamps(artifact: Any) -> list[datetime]:
     stamps = [moment for moment in (_parse_iso(value) for value in declared) if moment is not None]
     if stamps:
         return stamps
+    # The first bounded HRDPS revisions predated the exact-frame provenance
+    # field. Recover only that known legacy shape from the integrity-checked
+    # immutable Zarr itself; do not interpolate between database span edges.
+    if str(getattr(artifact, "source_id", "")) == "eccc-hrdps" and store is not None:
+        try:
+            dataset = store.open(artifact)
+            time_name = _coordinate_name(dataset, TIME_COORDINATES)
+            if time_name is not None:
+                import pandas  # noqa: PLC0415
+
+                recovered = [pandas.Timestamp(value).to_pydatetime().replace(tzinfo=UTC) for value in dataset[time_name].values]
+                if recovered:
+                    return sorted(set(recovered))
+        except Exception:
+            pass
     edges = (getattr(artifact, "valid_time_start", None), getattr(artifact, "valid_time_end", None))
     return [moment for moment in (_parse_iso(value) for value in edges) if moment is not None]
 
@@ -1869,9 +1892,13 @@ def retained_runs(store: Any) -> list[RetainedRun]:
     declared_run_times: dict[tuple[str, str], datetime | None] = {}
     for artifact in artifacts:
         key = (str(artifact.source_id), str(artifact.provider_run_id))
-        folded.setdefault(key, []).extend(_revision_frame_stamps(artifact))
+        declared_frames = (getattr(artifact, "provenance", None) or {}).get("valid_times") or ()
+        artifact_stamps = _revision_frame_stamps(artifact, store)
+        folded.setdefault(key, []).extend(artifact_stamps)
         if declared_run_times.get(key) is None:
             declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
+            if declared_run_times[key] is None and not declared_frames and str(artifact.source_id) == "eccc-hrdps" and artifact_stamps:
+                declared_run_times[key] = min(artifact_stamps)
     runs: list[RetainedRun] = []
     for (source_id, provider_run_id), stamps in folded.items():
         runs.append(
@@ -1943,9 +1970,13 @@ def retained_layer_runs(store: Any) -> dict[str, list[LayerRun]]:
             str(artifact.source_id),
             str(artifact.provider_run_id),
         )
-        folded.setdefault(key, set()).update(_revision_frame_stamps(artifact))
+        declared_frames = (getattr(artifact, "provenance", None) or {}).get("valid_times") or ()
+        artifact_stamps = _revision_frame_stamps(artifact, store)
+        folded.setdefault(key, set()).update(artifact_stamps)
         if declared_run_times.get(key) is None:
             declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
+            if declared_run_times[key] is None and not declared_frames and str(artifact.source_id) == "eccc-hrdps" and artifact_stamps:
+                declared_run_times[key] = min(artifact_stamps)
 
     by_layer: dict[str, list[LayerRun]] = {}
     for (layer_id, source_id, provider_run_id), stamps in folded.items():

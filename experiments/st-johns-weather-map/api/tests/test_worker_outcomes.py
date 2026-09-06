@@ -33,7 +33,7 @@ from ingest.store import (
     StoreUnavailable,
 )
 from ingest.validate import to_nanoseconds
-from worker.runtime import run_source
+from worker.runtime import _run_derived_passes, run_source
 
 UTC = timezone.utc
 T0 = datetime(2026, 9, 2, 12, tzinfo=UTC)
@@ -118,6 +118,18 @@ def _result(tmp_path: Path, *, complete: bool = True, qc_passed: bool = True, fl
         complete=complete, qc_passed=qc_passed,
         artifacts=[Artifact(logical_name="surface", media_type="application/zarr+zip", payload_path=payload, provenance=provenance)],
     )
+
+
+def test_derived_passes_refuse_before_invocation_without_a_reservation(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Store:
+        has_active_reservation = False
+
+    lines: list[str] = []
+    monkeypatch.setattr("worker.runtime.log", lines.append)
+
+    _run_derived_passes(Store())
+
+    assert lines == ["derived display artifacts skipped: no active bounded reservation"]
 
 
 # --- an idempotent no-op --------------------------------------------------

@@ -237,6 +237,17 @@ def test_staging_without_a_durable_reservation_is_never_uploaded(store, monkeypa
     assert [name for name, _ in events if name == "insert_revision"] == []
 
 
+def test_publish_without_a_durable_reservation_leaves_no_orphan_run(store, tmp_path):
+    instance, events = store
+    instance._active_reservation = None
+
+    with pytest.raises(ReservationLost):
+        instance.stage_and_publish(make_result([make_artifact(tmp_path)]))
+
+    assert [name for name, _ in events if name == "record_run"] == []
+    assert [name for name, _ in events if name in {"put_object", "insert_revision", "publish_run"}] == []
+
+
 def test_an_admitted_artifact_uploads_without_a_second_double_count(store, monkeypatch, tmp_path):
     instance, events = store
     order: list[str] = []

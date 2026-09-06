@@ -114,6 +114,14 @@ def rotated(centre_lat: float = 47.5, centre_lon: float = -52.7, span: float = 0
     )
 
 
+def rotated_profile() -> xarray.Dataset:
+    dataset = rotated()
+    shape = dataset["temperature_2m"].shape
+    dataset["temperature_850hPa"] = (("valid_time", "y", "x"), numpy.full(shape, -3.0), {"units": "degC"})
+    dataset["relative_humidity_850hPa"] = (("valid_time", "y", "x"), numpy.full(shape, 91.0), {"units": "percent"})
+    return dataset
+
+
 # --- the GeoJSON guard ---------------------------------------------------
 
 def test_a_geojson_artifact_is_not_opened_as_a_zip_when_sampling_a_point():
@@ -162,6 +170,19 @@ def test_a_rotated_grid_is_sampled_by_index_rather_than_raising():
     assert sample.variable == "temperature_2m"
     assert sample.value is not None
     assert sample.sample_method == "curvilinear_nearest_cell"
+
+
+def test_level_expanded_hrdps_fields_are_sampled_as_a_profile():
+    grid = artifact(source_id="eccc-hrdps", logical_name="surface")
+    store = StubStore([(grid, rotated_profile())])
+
+    samples = store.sample_profile(LATITUDE, LONGITUDE, STAMP, (850, 700))
+
+    assert set(samples) == {850}
+    assert {(sample.variable, sample.value, sample.level) for sample in samples[850]} == {
+        ("temperature_850hPa", -3.0, "850 hPa"),
+        ("relative_humidity_850hPa", 91.0, "850 hPa"),
+    }
 
 
 def test_a_rotated_grid_would_raise_under_label_selection():
