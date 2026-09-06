@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import numpy
@@ -24,10 +27,32 @@ from ingest.adapters.swpc import (
 )
 from ingest.contract import ATLANTIC_CONTEXT_BOUNDS, AdapterUnavailable, FetchWindow
 from ingest.http import USER_AGENT, PoliteClient
+from ingest.isolation import BoundedProcessError
+from ingest import kp3h_isolated
 
 UTC = timezone.utc
 NOW = datetime(2026, 8, 31, 2, 0, tzinfo=UTC)
 WINDOW = FetchWindow(now=NOW)
+
+
+@pytest.fixture(autouse=True)
+def local_kp_child(monkeypatch):
+    """Exercise adapter protocol on Darwin; kernel limits are Linux-tested."""
+    def run(action, mode, raw, destination):
+        output = destination or Path("/tmp/unused-kp3h-inspect")
+        result = subprocess.run(
+            [sys.executable, "-m", "ingest.kp3h_isolated", action, mode, str(output)],
+            input=raw,
+            capture_output=True,
+            check=False,
+            env={**os.environ, "PYTHONPATH": str(Path(kp3h_isolated.__file__).resolve().parents[1])},
+        )
+        if result.returncode:
+            raise BoundedProcessError(result.stderr.decode())
+        return SimpleNamespace(output_path=destination, stdout=result.stdout)
+
+    monkeypatch.setattr(SWPCKpAdapter, "_isolated", staticmethod(run))
+    monkeypatch.setattr(SWPCKpAdapter, "_require_bounded_runtime", staticmethod(lambda: None))
 
 KP_OBSERVED = [
     {"time_tag": "2026-08-30T18:00:00", "Kp": 2.33, "a_running": 9, "station_count": 8},
