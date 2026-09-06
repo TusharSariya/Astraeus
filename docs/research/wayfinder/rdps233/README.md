@@ -72,6 +72,6 @@ claim that the native opacity field is absent. No UI redesign was included.
 Verification at handoff: 16 focused RDPS tests; 10 isolated legacy no-fallback
 cases; 237 registry tests and four strict profile audits; 452 web tests and
 production build; 75 strict OpenSpec items; specctl 0 errors/0 warnings. The full
-API gate is recorded separately when terminal. Independent review remains
+API suite passed 2,088 tests with 50 skips; the 46-case cutover group passed. Independent review remains
 pending because the runtime rejected a fresh reviewer with agent-thread-limit.
 No merge or acceptance/status promotion is claimed.

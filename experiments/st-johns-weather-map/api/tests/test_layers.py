@@ -45,8 +45,9 @@ api_module = _sys.modules["weather_api.app"]
 client = TestClient(app)
 
 #: A six-hourly forecast source with a registry record, so the cadence behind
-#: every verdict below is declared rather than invented here.
-FORECAST_SOURCE = "eccc-rdps"
+#: every verdict below is declared rather than invented here. RDPS now hides
+#: retained layers after its demand cutover; IFS still exercises this archive path.
+FORECAST_SOURCE = "ecmwf-ifs"
 LOGICAL = "surface"
 LAYER_ID = f"{FORECAST_SOURCE}-surface"
 SIX_HOURS = 21600

@@ -232,3 +232,34 @@ Research and handoff prose are non-normative. Only the owner changes accepted,
 verified, or superseded specification status.
 
 Spec-Impact: none; this records authorized execution order and completion proof.
+
+
+## RDPS selected-time implementation awaiting independent review
+
+Issue #233 / PR #234 implements the bounded native RDPS slice under #70:
+six producer-native surface fields, nineteen current pressure-profile fields,
+and advertised hourly timeline metadata through f084. The selected-time path
+uses only a finite canonical-request cache (600-second TTL, four entries,
+32 MiB), with no background full run, two-run retention or ArtifactStore
+fallback. Native WindSpeed/WindDir prevent grid-relative components from being
+mislabelled as earth-relative direction. The experiment stays operational:false.
+
+Independent ecCodes comparison matched all 25 fields and nearest native cells;
+point/profile/timeline repeats added zero RDPS requests. Actual aggregate peak
+was 757,927,936 bytes under the 4 GiB cgroup ceiling. Existing Brief/Workbench
+replay and profile table passed. Full API: 2,088 passed/50 skipped; focused
+cutover 46 passed; registry 237 and four profiles; web 452/build; strict OpenSpec 75;
+specctl 0 errors/0 warnings. See `docs/research/wayfinder/rdps233/README.md`.
+
+The 214 additional vertical IDs remain with #188; additional mapped low levels,
+surface pressure and native/generated rasters remain outside this slice under
+#188/#70/#97. Generic retained-layer tests now use the independently registered
+six-hourly IFS source; an explicit RDPS stored-layer test asserts it is hidden.
+Older no-fallback tests use explicit unavailable demand fixtures so public
+provider variability cannot change their expected empty-demand result.
+
+PR #234 is implemented but unmerged. Fresh independent reviewer creation was
+rejected by the agent-thread limit; no reviewer reuse authorization or
+independent approval is assumed. No normative status was promoted. Raw,
+receipts, API responses and browser proof remain outside Git in
+`/private/tmp/rdps233-live`; this is audit evidence, never an application archive.

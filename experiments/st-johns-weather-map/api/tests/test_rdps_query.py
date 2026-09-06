@@ -325,7 +325,10 @@ def test_cache_bounds_evict_and_failure_bookkeeping_is_finite(monkeypatch):
 
 
 def test_native_identity_guard_refuses_wrong_parameter_level_time_grid_and_multiple(monkeypatch, tmp_path):
-    import eccodes
+    import sys
+    from types import SimpleNamespace
+    eccodes = SimpleNamespace(codes_get=None, codes_get_long=None, codes_release=None, codes_grib_new_from_file=None)
+    monkeypatch.setitem(sys.modules, "eccodes", eccodes)
     from ingest.adapters.eccc_datamart import _validate_rdps_message
     stamp = datetime(2026,9,6,18,tzinfo=UTC)
     path = tmp_path / "field.grib2"; path.write_bytes(b"fixture")

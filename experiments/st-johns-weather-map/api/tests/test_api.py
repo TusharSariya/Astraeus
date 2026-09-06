@@ -647,6 +647,11 @@ def test_derived_relative_humidity_is_reported_in_percent_for_rdps(monkeypatch, 
             ]
 
     use_live_store(monkeypatch, data_mode, RdpsOnly())
+    class Demand:
+        @staticmethod
+        def point_fields(latitude, longitude, valid_time):
+            return live_point_fields(RdpsOnly(), latitude, longitude, valid_time)
+    monkeypatch.setattr("weather_api.rdps_query.rdps_query_coordinator", lambda: Demand())
     payload = client.get(f"{PREFIX}/point", params={"product": "RDPS"}).json()
     humidity = next(item for item in payload["fields"] if item["field"] == "relative_humidity")
     assert humidity["provenance"]["derivation_version"] == "metpy-1.7.1-liquid-v1"
