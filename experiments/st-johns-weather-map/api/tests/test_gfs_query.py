@@ -491,3 +491,19 @@ def test_shared_timeline_includes_only_provider_listed_gfs_hours(monkeypatch):
     item = next(item for item in response.items if item.valid_time_utc == native.replace(minute=0, second=0, microsecond=0))
     assert item.available_products == ["noaa-gfs"]
     assert any("provider-advertised demand availability" in notice for notice in response.notices)
+
+
+def test_shared_timeline_refuses_an_unknown_selected_product(monkeypatch):
+    import sys
+    from weather_api.app import get_timeline
+
+    reference = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    app_module = sys.modules["weather_api.app"]
+    monkeypatch.setattr(app_module, "now", lambda: reference)
+    monkeypatch.setattr(app_module, "fixture_mode", lambda: False)
+
+    response = get_timeline("NOAA")
+
+    assert response.data_mode.value == "unavailable"
+    assert all(not item.available_products for item in response.items)
+    assert response.notices == ["NOAA has no timestamp-demand timeline implementation"]

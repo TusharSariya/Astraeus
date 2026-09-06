@@ -448,9 +448,17 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
             notices=["WEATHER_DATA_MODE is not a recognized live mode; no demand availability can be resolved"],
         )
 
+    selected_product = product.upper() if product else None
+    if selected_product not in {None, "HRDPS", "GFS"}:
+        return TimelineResponse(
+            data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference),
+            boundary=boundary, tiers=tiers,
+            notices=[f"{product} has no timestamp-demand timeline implementation"],
+        )
+
     demand_products: dict[datetime, list[str]] = {}
     demand_notices: list[str] = []
-    if product and product.upper() == "HRDPS":
+    if selected_product == "HRDPS":
         try:
             from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
             for stamp in hrdps_query_coordinator().timeline_times(reference):
@@ -460,7 +468,7 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
             demand_notices.append(
                 f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
             )
-    if product and product.upper() == "GFS":
+    if selected_product == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
             stamps, _receipt = gfs_query_coordinator().timeline_times(reference)
