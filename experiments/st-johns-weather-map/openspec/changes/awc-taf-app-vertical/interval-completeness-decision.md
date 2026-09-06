@@ -6,7 +6,9 @@ activation.
 ## Observed mismatch
 
 The bounded 2026-09-06 CYYT response contains one prevailing group followed by
-six change/conditional groups. The response is structurally complete, but the
+six change or conditional groups. Raw coded BECMG, TEMPO and PROB groups may
+omit unchanged elements; AWC's decoded JSON may repeat or expand them, and its
+conditional rows may be sparse or populated. The response is structurally complete, but the
 generic timestamp-grid validator rejects it for two reasons:
 
 1. the prevailing group begins at 12:00Z and governs conditions after the
@@ -49,9 +51,12 @@ groups, rather than a regular timestamp grid:
 - A group is applicable when its half-open native interval intersects the
   requested evidence window. Its native start MUST NOT be clamped or replaced.
 - Require the initial prevailing group and every FM group to carry decoded wind
-  speed/direction, visibility and sky. CAVOK satisfies its combined
-  visibility/weather/sky meaning; null weather is decoded absence and gust is
-  optional.
+  speed plus either a numeric direction or an explicit preserved variable-wind
+  marker, visibility and sky. CAVOK satisfies its combined
+  visibility/weather/sky meaning; a decoded cloud list, a vertical-visibility
+  value, or a known clear-sky code satisfies sky. Null weather is decoded
+  absence and gust is optional. Variable direction leaves u/v missing; it is
+  not converted to an invented bearing.
 - Permit BECMG, TEMPO and probability groups to omit unchanged fields. AWC may
   expand inherited values in its decoded JSON, so mark populated keys
   `decoded_value`, explicit nulls `decoded_absence`, and only missing keys
@@ -82,11 +87,12 @@ same one-way `ValidationResult` and publication remains fail closed.
 - Dropping the overlapping prevailing group would remove the conditions that
   govern the beginning of the requested window.
 
-## Required owner resolution
+## Owner authorization and review gate
 
-Accept or reject the recommended sparse interval/group contract and the
-read-only `/aviation/taf` plus Workbench group-card disclosure defined by the
-executable delta. Acceptance authorizes a source-specific structural validator;
-it does not authorize inheritance, interpolation, change-transition
-timing, aviation decision support, operational status, or any other aviation
-family expansion.
+On 2026-09-06 the owner explicitly selected continued #201 implementation with
+OpenSpec kept current, subject to the no-inheritance, no-clamping and no-invented
+science constraints recorded here. The read-only `/aviation/taf` and Workbench
+group-card disclosure still require independent approval and the repository's
+formal `spec-status-approved` transition before activation. This authorization
+does not cover inheritance, interpolation, change-transition timing, aviation
+decision support, operational status, or any other aviation family expansion.

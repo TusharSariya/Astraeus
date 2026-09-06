@@ -18,5 +18,8 @@ existing app therefore cannot show its native CYYT forecast evidence.
   groups into a single synthetic forecast. Brief continues to show its current
   model forecast and does not label sparse TAF groups as prevailing conditions.
 
-This is an experimental implementation. It does not promote source status or
-change the 64 GiB, retention-window, cold-tier, or daily-receive policies.
+The owner selected this experimental implementation on 2026-09-06, subject to
+the no-inheritance and no-invented-science constraints in the decision record.
+Independent approval and `spec-status-approved` remain required before source
+activation. It does not promote operational source status or change the 64 GiB,
+retention-window, cold-tier, or daily-receive policies.
