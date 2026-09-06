@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
@@ -61,6 +61,14 @@ const bannerCopy: Record<Exclude<DataSource, 'live'>, string> = {
   mixed: 'MIXED EVIDENCE · SOME FIELDS ARE NOT LIVE',
   fixture: 'DEVELOPMENT FIXTURE · NOT LIVE EVIDENCE',
   unavailable: 'NO LIVE EVIDENCE RETRIEVED',
+}
+
+function tafInterval(start: string, end: string): string {
+  const startIso = new Date(start).toISOString()
+  const endIso = new Date(end).toISOString()
+  return startIso.slice(0, 10) !== endIso.slice(0, 10)
+    ? `${startIso}–${endIso} UTC`
+    : `${nlTime(start)}–${nlTime(end)} NT`
 }
 
 /** "derived · MetPy" beside any value the API says it computed rather than
@@ -348,6 +356,8 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
   const [snapshot, setSnapshot] = useState<EvidenceSnapshot>(unavailableSnapshot)
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
+  const [taf, setTaf] = useState<TafResponse | null>(null)
+  const [tafError, setTafError] = useState<string | null>(null)
   // One reference instant for the whole session. Recomputing `now` on every
   // render would slide every layer's resolved frame under the reader.
   const [reference] = useState<Date>(() => new Date())
@@ -436,6 +446,15 @@ export default function App() {
     if (selectedMs === reference.getTime()) return undefined
     return validTime.toISOString().replace(/\.\d{3}Z$/, 'Z')
   }, [selectedMs, reference, validTime])
+  // TAF groups are minute-coded native intervals. Keep their read keyed to
+  // the displayed evidence minute so animation frames cannot create one HTTP
+  // request per paint while a deliberate minute selection still refreshes it.
+  const tafEvidenceAt = useMemo(() => {
+    if (!snapshot.validAt) return null
+    const instant = new Date(snapshot.validAt)
+    instant.setUTCSeconds(0, 0)
+    return instant.toISOString().replace(/\.000Z$/, 'Z')
+  }, [snapshot.validAt])
 
   // The axis a scrub snaps onto when display interpolation is off: the union
   // of the active visible layers' published frame instants in the window.
@@ -509,6 +528,18 @@ export default function App() {
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [playing, speed, direction, windowStartMs, windowEndMs])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setTafError(null)
+    if (!tafEvidenceAt) { setTaf(null); return () => controller.abort() }
+    const timer = window.setTimeout(() => {
+      loadTaf(tafEvidenceAt, controller.signal).then(setTaf).catch((error: unknown) => {
+        if (!controller.signal.aborted) { setTaf(null); setTafError(error instanceof Error ? error.message : 'TAF unavailable') }
+      })
+    }, 250)
+    return () => { window.clearTimeout(timer); controller.abort() }
+  }, [tafEvidenceAt])
 
   // Published frames of the active layers: the ticks under the scrubber and
   // the jump targets. Exactly what /layers returned, never an invented
@@ -815,6 +846,7 @@ export default function App() {
     setLocation({ id: `coordinates-${latitude}-${longitude}`, name: `Coordinates ${latitude.toFixed(3)}, ${longitude.toFixed(3)}`, latitude, longitude, kind: 'map' })
   }
 
+  const hasLiveTaf = taf?.data_mode === 'live'
   const mapField = dataSource === 'live' ? 'Response-backed evidence points'
     : dataSource === 'mixed' ? 'Mixed live and fixture evidence points'
       : dataSource === 'fixture' ? 'Development fixture evidence points'
@@ -861,7 +893,7 @@ export default function App() {
             <button type="submit">Go</button>
             {coordinateError && <small role="alert">{coordinateError}</small>}
           </form>
-          <div className={`source-state ${dataSource}`}><span>Data path</span><strong>{dataPathCopy[dataSource]}</strong></div>
+          <div className={`source-state ${dataSource}`}><span>Data path</span><strong>{hasLiveTaf && dataSource !== 'live' ? 'Live TAF · other evidence unavailable' : dataPathCopy[dataSource]}</strong></div>
         </section>
   )
 
@@ -945,7 +977,7 @@ export default function App() {
 
   return (
     <div className={`workbench ${mode === 'simple' ? 'app-shell' : ''} ${dataSource === 'fixture' ? 'fixture-mode' : ''}`}>
-      {dataSource !== 'live' && <div className={`fixture-watermark ${dataSource}`} role="status">{bannerCopy[dataSource]}</div>}
+      {dataSource !== 'live' && <div className={`fixture-watermark ${dataSource}`} role="status">{hasLiveTaf ? 'LIVE TAF · OTHER EVIDENCE UNAVAILABLE' : bannerCopy[dataSource]}</div>}
       {masthead}
 
       <main className={mode === 'simple' ? 'app-main' : undefined}>
@@ -1294,6 +1326,21 @@ export default function App() {
             {modelStrip}
             {sourceErrorLine}
             {fallbackBadge}
+          <section className="taf-panel evidence-surface" aria-labelledby="taf-heading">
+            <div className="section-head"><span>TAF</span><div><small>CYYT · native conditional groups</small><h2 id="taf-heading">Terminal forecast</h2></div></div>
+            {tafError ? <p role="status">TAF unavailable: {tafError}</p> : taf === null ? <p role="status">No published CYYT TAF covers this instant.</p> : <>
+              <p><strong>Issued {nlTime(taf.issue_time)} NT</strong> · valid {new Date(taf.valid_time_from * 1000).toISOString()}–{new Date(taf.valid_time_to * 1000).toISOString()} UTC · {taf.source_id} · revision {taf.revision_id.slice(0, 8)}</p>
+              <code>{taf.raw_taf}</code>
+              {taf.groups.length === 0 ? <p role="status">No native group interval contains this instant.</p> : <ol className="taf-groups">{taf.groups.map((group) => <li key={group.index}>
+                <strong>{group.change || 'Prevailing'}{group.probability === null ? '' : ` · ${group.probability}%`}</strong>
+                <time>{tafInterval(group.time_from, group.time_to)}</time>
+                {group.time_bec === null ? null : <small>Becomes at {nlTime(new Date(group.time_bec * 1000).toISOString())} NT</small>}
+                <dl>{Object.entries(group.native).map(([name, value]) => <div key={`native-${name}`}><dt>{name}</dt><dd>{value === null || value === '' || value === false ? group.native_presence[name] : typeof value === 'object' ? JSON.stringify(value) : String(value)}{value === null || value === false ? '' : ` ${group.native_units[name] ?? ''}`}</dd></div>)}</dl>
+                <dl>{Object.entries(group.values).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value === null ? group.presence[name] ?? 'missing' : value}</dd></div>)}</dl>
+              </li>)}</ol>}
+              <small>Groups are shown separately. Values are not inherited or merged into Brief.</small>
+            </>}
+          </section>
           <div className="expert-layout">
             <aside className="expert-controls" aria-label="Evidence controls">
               <div className="section-head"><span>EX</span><div><small>Native evidence</small><h2>Field selector</h2></div></div>

@@ -281,6 +281,27 @@ describe('weather workbench fail-closed behavior', () => {
     expect(urls.some((url) => /[?&](run|member|level)=/.test(url))).toBe(false)
   })
 
+  it('shows both dates for a cross-midnight native TAF validity interval', async () => {
+    const taf = {
+      data_mode: 'live', operational: false, station: 'CYYT', at: '2026-09-06T14:00:00Z', source_id: 'awc-taf',
+      revision_id: 'revision-1', run_time: '2026-09-06T11:41:00Z', issue_time: '2026-09-06T11:41:00Z',
+      valid_time_from: 1788696000, valid_time_to: 1788782400, raw_taf: 'TAF CYYT', native_report_metadata: {}, groups: [{
+        index: 0, time_from: '2026-09-06T12:00:00Z', time_to: '2026-09-07T12:00:00Z', change: '', probability: null,
+        time_bec: null, presence: {}, values: {}, native: {}, native_presence: {}, native_units: {},
+      }],
+    }
+    const other = routedFetch({ point: apiPoint([], undefined, 'unavailable') })
+    const fetchMock = routedFetch({ point: apiPoint([], undefined, 'unavailable') })
+    fetchMock.mockImplementation(async (url: string) => url.includes('/aviation/taf') ? response(taf) : other(url))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
+    expect((await screen.findAllByText(/2026-09-06T12:00:00\.000Z.*2026-09-07T12:00:00\.000Z UTC/)).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Live TAF · other evidence unavailable')).toBeInTheDocument()
+    expect(screen.getByText('LIVE TAF · OTHER EVIDENCE UNAVAILABLE')).toBeInTheDocument()
+    expect(screen.queryByText('NO LIVE EVIDENCE RETRIEVED')).not.toBeInTheDocument()
+  })
+
   it('renders the fixture banner for a data_mode:"fixture" response and never claims Live API', async () => {
     vi.stubGlobal('fetch', routedFetch({
       point: apiPoint([{ field: 'temperature', value: 9, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'fixture' } }], undefined, 'fixture'),
@@ -1481,6 +1502,22 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
     await frame(9000)
     expect(screen.getByText(/\+2 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
+  })
+
+  it('does not request TAF at animation-frame cadence', async () => {
+    const frame = driveFrames()
+    const fetchMock = routedFetch({})
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/aviation/taf'))).toBe(true))
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)) })
+    const before = fetchMock.mock.calls.filter(([url]) => String(url).includes('/aviation/taf')).length
+    await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
+    await frame(1000)
+    await frame(1010)
+    await frame(1020)
+    await frame(1030)
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/aviation/taf'))).toHaveLength(before)
   })
 
   it('doubles and halves the speed within the ladder, clamping at both ends', async () => {

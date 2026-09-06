@@ -20,7 +20,9 @@ There is deliberately no path from a live failure to a fixture value.
 
 from __future__ import annotations
 
+import json
 import logging
+import math
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -128,6 +130,7 @@ from .store import (
     unschedulable_detail,
 )
 from .models import AGED_OUT_FLAG, ENSEMBLE_STATISTIC_ENTRIES, THRESHOLD_COMPARISONS
+from .taf_query import TafQueryUnavailable, taf_query_service
 
 LOGGER = logging.getLogger(__name__)
 
@@ -2290,6 +2293,24 @@ def get_source_status() -> SourceStatusResponse:
         return SourceStatusResponse(data_mode=DataMode.UNAVAILABLE, statuses=statuses, notices=notices or ["no live retrieval has been recorded for any source"])
     mode = DataMode.LIVE if all(item.data_mode == DataMode.LIVE for item in statuses) else DataMode.MIXED
     return SourceStatusResponse(data_mode=mode, statuses=statuses, notices=notices)
+
+
+@app.get(f"{PREFIX}/aviation/taf")
+def get_taf(station: str, at: datetime) -> dict:
+    """Return native overlapping TAF groups without composing conditions."""
+    if at.tzinfo is None or at.utcoffset() is None:
+        raise HTTPException(status_code=422, detail="at must include a UTC offset")
+    try:
+        return taf_query_service().query(station, at.astimezone(timezone.utc))
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except TafQueryUnavailable as error:
+        raise HTTPException(status_code=503, detail=error.detail) from error
+    except HTTPException:
+        raise
+    except Exception as error:
+        LOGGER.exception("TAF evidence could not be read")
+        raise HTTPException(status_code=503, detail="live CYYT TAF could not be queried") from error
 
 
 @app.post(f"{PREFIX}/refresh", response_model=Job, status_code=status.HTTP_202_ACCEPTED)
