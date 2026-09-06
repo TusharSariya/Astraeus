@@ -162,6 +162,8 @@ def variable_level(name: str, artifact_level: str) -> str:
         return VARIABLE_LEVELS.get(name, artifact_level)
     if resolved.level:
         return resolved.level
+    if resolved.field.level:
+        return resolved.field.level
     return VARIABLE_LEVELS.get(name, artifact_level)
 
 # Sampled so they can be derived from, never served as readings: a reader asks
@@ -1050,10 +1052,10 @@ class LiveStore:
             except LookupError:
                 return []
         pressure_name = _coordinate_name(dataset, PRESSURE_COORDINATES)
+        expanded_pressure = pressure is not None and pressure_name is None
         if pressure is not None:
-            if pressure_name is None:
-                return []
-            selection[pressure_name] = pressure
+            if pressure_name is not None:
+                selection[pressure_name] = pressure
         elif pressure_name is not None and pressure_name in dataset.dims:
             return []
 
@@ -1075,7 +1077,7 @@ class LiveStore:
                 return []
             try:
                 located = dataset.isel(indexers)
-                if pressure is not None:
+                if pressure is not None and pressure_name is not None:
                     located = located.sel({pressure_name: pressure}, method="nearest")
                 if exact:
                     located = located.sel(exact)
@@ -1124,6 +1126,12 @@ class LiveStore:
         samples: list[Sample] = []
         for variable in dataset.data_vars:
             name = str(variable)
+            if expanded_pressure:
+                try:
+                    if catalogue.resolve(name).level != f"{pressure} hPa":
+                        continue
+                except catalogue.UnknownFieldKey:
+                    continue
             if name not in FIELD_BY_VARIABLE and pressure is None:
                 continue
             try:

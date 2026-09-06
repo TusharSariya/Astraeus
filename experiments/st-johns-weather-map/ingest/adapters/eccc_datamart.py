@@ -862,6 +862,12 @@ class ECCCDataMartAdapter:
             "native_resolution": self.grid_token,
             "native_crs": "EPSG:4326",
             "adapter_version": self.adapter_version,
+            "run_time": run_time.isoformat(),
+            # Cache planning and retained-run coverage consume the exact
+            # frames this artifact proved. Omitting them made a same-run
+            # refresh download the full payload again and left timeline
+            # coverage unable to agree with /point.
+            "valid_times": [moment.isoformat() for moment in manifest.required_valid_times],
             "provider_run_stamp": candidate.detail.get("run_stamp", ""),
             # Which declared path answered for this run: the primary, or the
             # record's dated WXO-DD fallback.

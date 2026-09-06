@@ -16,8 +16,7 @@ COPY ingest /app/ingest
 # and ``ingest.manifest`` import ``registry.fields``, ``store`` imports
 # ``registry.source_data``, and ``fields.schema.json`` travels with the
 # catalogue it describes.
-COPY registry/__init__.py registry/fields.py registry/source_data.py \
-     registry/fields.schema.json registry/schema.json /app/registry/
+COPY registry /app/registry
 COPY api/weather_api ./weather_api
 RUN uv sync --frozen --no-dev
 

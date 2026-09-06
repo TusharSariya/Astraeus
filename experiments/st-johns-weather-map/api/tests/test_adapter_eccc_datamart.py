@@ -290,6 +290,8 @@ def test_eccc_fetch_with_mocked_decode(tmp_path: Path, monkeypatch: pytest.Monke
     assert artifact.logical_name == "surface"
     assert artifact.payload_path.exists()
     assert artifact.provenance["evidence_classes"] == ["retrieved"], "a retrieved artifact declares how its values came to exist"
+    assert artifact.provenance["run_time"] == "2026-08-29T12:00:00+00:00"
+    assert artifact.provenance["valid_times"] == ["2026-08-29T12:00:00+00:00"]
 
     # Open and verify Zarr content
     store = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")

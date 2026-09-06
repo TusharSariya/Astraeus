@@ -134,13 +134,14 @@ services:
   postgres-migrate:
     image: ghcr.io/baosystems/postgis:17-3.5
     entrypoint: ["/bin/sh", "-c"]
-    command: ['exec psql -v ON_ERROR_STOP=1 -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -f /migrations/004_resource_reservations.sql']
+    command: ['for migration in /migrations/004_resource_reservations.sql /migrations/006_source_registry_states.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -f "$$migration" || exit 1; done']
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-weather}
       POSTGRES_DB: ${POSTGRES_DB:-weather}
       PGPASSWORD: ${POSTGRES_PASSWORD:-weather-local-only}
     volumes:
       - ./infra/postgres/init/004_resource_reservations.sql:/migrations/004_resource_reservations.sql:ro
+      - ./infra/postgres/init/006_source_registry_states.sql:/migrations/006_source_registry_states.sql:ro
     depends_on:
       postgres:
         condition: service_healthy

@@ -804,6 +804,13 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
         """
         if store is None:
             return
+        if not getattr(store, "has_active_reservation", False):
+            # Derived artifacts have their own local/store/received allocation.
+            # The durable ledger deliberately refuses them until that complete
+            # operation is admitted; borrowing a source reservation after it
+            # has published caused both unfenced writes and orphan model runs.
+            log("derived display artifacts skipped: no active bounded reservation")
+            return
         try:
             # The WEonG low-cloud layer is derived first: it publishes an
             # artifact the motion pass below then derives motion for, so the
