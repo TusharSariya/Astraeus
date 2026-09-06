@@ -859,6 +859,8 @@ class AWCTafAdapter:
                 "weather_fog_vicinity_code": state("wxString"), "weather_mist_code": state("wxString"),
             }
             clouds = period.get("clouds")
+            if presence["total_cloud_okta"] == "decoded_value" and parse_cloud_cover_percent(None, clouds) is None:
+                presence["total_cloud_okta"] = "decoded_absence"
             for layer in range(1, MAX_CLOUD_LAYERS + 1):
                 if "clouds" not in period:
                     layer_state = "not_stated_in_change_group"
@@ -870,7 +872,10 @@ class AWCTafAdapter:
                     layer_state = "decoded_value"
                     cloud = clouds[layer - 1]
                 presence[f"cloud_layer_{layer}_cover_code"] = layer_state
-                presence[f"cloud_layer_{layer}_cover"] = layer_state
+                cover = str(cloud.get("cover") or "").upper() if cloud else ""
+                presence[f"cloud_layer_{layer}_cover"] = (
+                    "decoded_absence" if layer_state == "decoded_value" and _CLOUD_FRACTION.get(cover) is None else layer_state
+                )
                 presence[f"cloud_layer_{layer}_base"] = (
                     "decoded_absence" if layer_state == "decoded_value" and cloud.get("base") is None else layer_state
                 )

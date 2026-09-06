@@ -281,6 +281,20 @@ describe('weather workbench fail-closed behavior', () => {
     expect(urls.some((url) => /[?&](run|member|level)=/.test(url))).toBe(false)
   })
 
+  it('shows both dates for a cross-midnight native TAF validity interval', async () => {
+    const taf = {
+      data_mode: 'live', operational: false, station: 'CYYT', at: '2026-09-06T14:00:00Z', source_id: 'awc-taf',
+      revision_id: 'revision-1', run_time: '2026-09-06T11:41:00Z', issue_time: '2026-09-06T11:41:00Z',
+      valid_time_from: 1788696000, valid_time_to: 1788782400, raw_taf: 'TAF CYYT', native_report_metadata: {}, groups: [],
+    }
+    const fetchMock = routedFetch({})
+    fetchMock.mockImplementation(async (url: string) => url.includes('/aviation/taf') ? response(taf) : routedFetch({})(url))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
+    expect(await screen.findByText(/2026-09-06T12:00:00\.000Z.*2026-09-07T12:00:00\.000Z UTC/)).toBeInTheDocument()
+  })
+
   it('renders the fixture banner for a data_mode:"fixture" response and never claims Live API', async () => {
     vi.stubGlobal('fetch', routedFetch({
       point: apiPoint([{ field: 'temperature', value: 9, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'fixture' } }], undefined, 'fixture'),

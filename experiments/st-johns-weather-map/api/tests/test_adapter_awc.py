@@ -441,3 +441,19 @@ def test_taf_periods_carry_their_own_layers_and_present_weather(tmp_path: Path):
     assert ds["weather_fog_code"].values[:, 0, 0].tolist() == [0.0, 0.0]
     assert ds["weather_fog_vicinity_code"].values[:, 0, 0].tolist() == [0.0, 1.0]
     assert list(ds.attrs["present_weather_strings"]) == ["-SHRA", "VCFG"]
+
+
+def test_taf_ovx_code_does_not_claim_a_canonical_fraction(tmp_path: Path):
+    from ingest.adapters.awc import AWCTafAdapter
+
+    taf = json.loads(json.dumps(SAMPLE_TAF_JSON))
+    taf[0]["fcsts"][0]["clouds"] = [{"cover": "OVX", "base": None}]
+    window = FetchWindow(now=datetime(2026, 8, 29, 15, tzinfo=UTC), back_hours=3, forward_hours=24)
+    candidate = RunCandidate("cyyt-taf-sample", datetime(2026, 8, 29, 14, tzinfo=UTC), [], {"taf": taf[0]})
+    artifact = AWCTafAdapter().fetch(candidate, window, tmp_path).artifacts[0]
+    ds = xarray.open_zarr(zarr.storage.ZipStore(str(artifact.payload_path), mode="r"), consolidated=False)
+    presence = json.loads(ds.attrs["taf_group_presence_json"])[0]
+    assert presence["cloud_layer_1_cover_code"] == "decoded_value"
+    assert presence["cloud_layer_1_cover"] == "decoded_absence"
+    assert presence["cloud_layer_1_base"] == "decoded_absence"
+    assert presence["total_cloud_okta"] == "decoded_absence"
