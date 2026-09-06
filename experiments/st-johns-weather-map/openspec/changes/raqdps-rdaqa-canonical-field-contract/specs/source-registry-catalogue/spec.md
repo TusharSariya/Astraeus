@@ -7,6 +7,7 @@ The catalogue SHALL reuse `pm2_5_surface`, `pm2_5_column`, `pm10_surface`, and `
 - **WHEN** O3, NO, NO2 or SO2 is decoded from a selected GeoMet coverage in `mol mol-1`
 - **THEN** each finite value is multiplied by exactly 1e9 and stored in its canonical `nmol mol-1` mole-fraction key
 - **AND** provenance retains the original unit and scale factor
+- **AND** missing values remain missing, non-finite values are refused, and verification allows at most one ULP of the expected binary64 result
 
 #### Scenario: PM10 entire-atmosphere coverage arrives
 - **WHEN** `RAQDPS.EATM_PM10` is decoded in `kg m-2`
