@@ -24,7 +24,7 @@ it('addresses the selected product when loading a pressure profile', async () =>
   const fetchMock = vi.fn(async (_url: string) => new Response(JSON.stringify({ valid_time: '2026-09-06T15:00:00Z', levels: [] }), { status: 200 }))
   vi.stubGlobal('fetch', fetchMock)
 
-  await loadProfile({ id: 'test', name: 'Test', latitude: 47.56, longitude: -52.71, kind: 'map' }, '2026-09-06T15:17:00Z', undefined, 'GFS')
+  await loadProfile({ id: 'test', name: 'Test', latitude: 47.56, longitude: -52.71, kind: 'map' }, '2026-09-06T15:17:00Z', 'GFS')
 
   expect(String(fetchMock.mock.calls[0][0])).toContain('product=GFS')
 })
