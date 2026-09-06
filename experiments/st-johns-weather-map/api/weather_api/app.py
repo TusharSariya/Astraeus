@@ -2451,11 +2451,10 @@ def _flag_bool(series: SeriesData, variable: str, index: int) -> bool | None:
 
 @app.get(f"{PREFIX}/space-weather", response_model=SpaceWeatherResponse)
 def get_space_weather(at: datetime = Query(..., description="Aware selected evidence instant")) -> SpaceWeatherResponse:
-    """Selected-time demand Kp plus independently retained latest Bz.
+    """Selected-time demand Kp plus independently queried native RTSW Bz.
 
-    Kp comes from the bounded provider-response cache and never falls back to
-    retained Kp artifacts. Solar wind has not migrated in this slice and keeps
-    its separately labelled retained read. Fixture mode fails closed: no
+    Both sources use independent bounded provider-response caches and never
+    fall back to retained artifacts. Fixture mode fails closed: no
     fixture space weather exists, and none is invented.
     """
     if at.tzinfo is None:
@@ -2474,23 +2473,13 @@ def get_space_weather(at: datetime = Query(..., description="Aware selected evid
         kp_observed = _absent_series(SWPC_KP_SOURCE, str(error))
         kp_forecast = _absent_series(SWPC_KP_SOURCE, str(error))
 
-    # Solar wind has not migrated in this source-local slice. Its retained
-    # read is independent and may fail without erasing demand-backed Kp.
-    store = live_store()
-    solar_wind_data = None
-    store_notices: list[str] = []
-    if store is not None:
-        store.skipped = []
+    from .swpc_rtsw_query import SWPCRTSWUnavailable, swpc_rtsw_query_service  # noqa: PLC0415
     try:
-        if store is not None:
-            solar_wind_data = store.read_series(SWPC_RTSW_SOURCE, "solar_wind")
-    except StoreUnavailable as error:
-        store_notices.append(f"solar-wind retained store is unreachable: {error}")
-    except Exception:
-        LOGGER.exception("solar-wind series could not be read")
-        store_notices.append("the retained store raised while reading solar wind")
-
-    solar_wind = _solar_wind_latest(solar_wind_data, reference)
+        solar_wind = swpc_rtsw_query_service().latest(reference)
+        solar_wind_notice: list[str] = []
+    except (SWPCRTSWUnavailable, ValueError) as error:
+        solar_wind = _absent_solar_wind(str(error))
+        solar_wind_notice = [str(error)]
     available = kp_observed.available or kp_forecast.available or solar_wind.available
     return SpaceWeatherResponse(
         data_mode=DataMode.LIVE if available else DataMode.UNAVAILABLE,
@@ -2498,7 +2487,7 @@ def get_space_weather(at: datetime = Query(..., description="Aware selected evid
         kp_observed=kp_observed,
         kp_forecast=kp_forecast,
         solar_wind=solar_wind,
-        notices=[*(skip_notices(store) if store is not None else []), *store_notices] if available else [*store_notices, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
+        notices=solar_wind_notice if available else [*solar_wind_notice, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
     )
 
 

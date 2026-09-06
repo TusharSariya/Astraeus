@@ -735,6 +735,8 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController()
+    setSpaceWeather(null)
+    setSpaceWeatherNotice('loading selected-time space weather')
     if (!spaceWeatherEvidenceAt) return () => controller.abort()
     const timer = window.setTimeout(() => {
       loadSpaceWeather(new Date(spaceWeatherEvidenceAt), controller.signal).then((result) => {
@@ -742,7 +744,12 @@ export default function App() {
           setSpaceWeather(result.spaceWeather)
           setSpaceWeatherNotice(result.error)
         }
-      }).catch(() => undefined)
+      }).catch((error) => {
+        if (!controller.signal.aborted) {
+          setSpaceWeather(null)
+          setSpaceWeatherNotice(error instanceof Error ? error.message : 'space-weather fetch failed')
+        }
+      })
     }, 250)
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [spaceWeatherEvidenceAt])
@@ -1371,6 +1378,15 @@ export default function App() {
                     const observed = latestKpReading(spaceWeather.kp_observed)
                     const forecast = maxForecastKp(spaceWeather.kp_forecast, windowStartMs, windowEndMs)
                     const wind = spaceWeather.solar_wind
+                    const windNativeDetail = [
+                      `measured ${wind.measured_at ? nlTime(wind.measured_at) : 'at an unknown instant'} NT${staleSuffix(wind.freshness)}`,
+                      wind.feed_declared_spacecraft ? `feed-declared spacecraft ${wind.feed_declared_spacecraft}` : 'feed-declared spacecraft unknown',
+                      wind.bt_nt === null ? 'Bt unknown' : `Bt ${wind.bt_nt.toFixed(1)} nT`,
+                      wind.active === null ? 'active flag unknown' : `active flag ${wind.active ? 'true' : 'false'}`,
+                      wind.overall_quality === null ? 'overall quality unknown' : `overall quality ${wind.overall_quality}`,
+                      wind.acquisition ? `source transport ${nlTime(wind.acquisition.transport_completed_at)} NT` : 'source transport unknown',
+                      'southward (negative) Bz is the aurora tripwire',
+                    ].join(' · ')
                     return (
                       <div className="metric-grid">
                         <Metric
@@ -1394,7 +1410,7 @@ export default function App() {
                           label="Solar wind Bz"
                           value={wind.available && wind.bz_gsm_nt !== null ? `${wind.bz_gsm_nt.toFixed(1)} nT` : 'Unknown'}
                           detail={wind.available && wind.bz_gsm_nt !== null
-                            ? `measured ${wind.measured_at ? `${nlTime(wind.measured_at)} NT` : 'at an unknown instant'}${staleSuffix(wind.freshness)} — southward (negative) Bz is the aurora tripwire`
+                            ? windNativeDetail
                             : wind.notices[0] ?? 'No Bz value was returned'}
                         />
                       </div>

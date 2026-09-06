@@ -410,6 +410,19 @@ export interface SpaceWeatherSeries {
   notices: string[]
 }
 
+/** The bounded provider transport that supplied a cached planetary reading. */
+export interface SpaceWeatherAcquisition {
+  provider_url: string
+  effective_url: string
+  request_headers: Record<string, string>
+  response_headers: Record<string, string>
+  transport_completed_at: string
+  body_bytes: number
+  body_sha256: string
+  expires_at: string
+  last_revalidation: Record<string, unknown> | null
+}
+
 export interface SolarWindLatest {
   available: boolean
   source_id: string
@@ -420,7 +433,11 @@ export interface SolarWindLatest {
   measured_at: string | null
   /** Whatever the feed's own source field declared, verbatim; never a guess. */
   feed_declared_spacecraft: string | null
+  /** Native SWPC flags: null means the feed did not declare a value. */
+  active: boolean | null
+  overall_quality: number | null
   freshness: SpaceWeatherFreshness
+  acquisition: SpaceWeatherAcquisition | null
   notices: string[]
 }
 

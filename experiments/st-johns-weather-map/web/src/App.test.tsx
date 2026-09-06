@@ -101,7 +101,15 @@ const liveSpaceWeather = {
     available: true, source_id: 'noaa-swpc-rtsw', product: 'Real-time solar wind magnetic field (1-minute)',
     bz_gsm_nt: -4.1, bt_nt: 4.3, measured_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
     feed_declared_spacecraft: 'SOLAR1',
+    active: true, overall_quality: 0,
     freshness: { status: 'fresh', age_seconds: 120, threshold_seconds: 900 }, notices: [],
+    acquisition: {
+      provider_url: 'https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json',
+      effective_url: 'https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json',
+      request_headers: { accept: 'application/json', 'accept-encoding': 'identity' }, response_headers: { etag: '"native"' },
+      transport_completed_at: new Date(Date.now() - 60 * 1000).toISOString(), body_bytes: 1234, body_sha256: 'a'.repeat(64),
+      expires_at: new Date(Date.now() + 60 * 1000).toISOString(), last_revalidation: null,
+    },
   },
   notices: [],
 }
@@ -1323,6 +1331,11 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
     expect(screen.getByText(/provider status: predicted/)).toBeInTheDocument()
     expect(screen.getByText(/photographable at St. John's from about Kp 4-5/)).toBeInTheDocument()
     expect(screen.getByText('-4.1 nT')).toBeInTheDocument()
+    expect(screen.getByText(/feed-declared spacecraft SOLAR1/)).toBeInTheDocument()
+    expect(screen.getByText(/Bt 4\.3 nT/)).toBeInTheDocument()
+    expect(screen.getByText(/active flag true/)).toBeInTheDocument()
+    expect(screen.getByText(/overall quality 0/)).toBeInTheDocument()
+    expect(screen.getByText(/source transport/)).toBeInTheDocument()
     expect(screen.getByText(/southward \(negative\) Bz is the aurora tripwire/)).toBeInTheDocument()
     // Planetary indices, never local readings: the section says so.
     expect(screen.getByText(/planetary indices, not local readings/)).toBeInTheDocument()
@@ -1334,7 +1347,7 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
         data_mode: 'unavailable', operational: false, generated_at: '2026-08-31T02:00:00Z',
         kp_observed: { available: false, source_id: 'noaa-swpc-kp', product: 'unavailable', readings: [], freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 21600 }, notices: [] },
         kp_forecast: { available: false, source_id: 'noaa-swpc-kp', product: 'unavailable', readings: [], freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 21600 }, notices: [] },
-        solar_wind: { available: false, source_id: 'noaa-swpc-rtsw', product: 'unavailable', bz_gsm_nt: null, bt_nt: null, measured_at: null, feed_declared_spacecraft: null, freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 900 }, notices: [] },
+        solar_wind: { available: false, source_id: 'noaa-swpc-rtsw', product: 'unavailable', bz_gsm_nt: null, bt_nt: null, measured_at: null, feed_declared_spacecraft: null, active: null, overall_quality: null, freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 900 }, acquisition: null, notices: [] },
         notices: ['no fixture space weather exists; fixture mode answers unavailable rather than inventing planetary indices'],
       },
     }))
@@ -1358,6 +1371,22 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
     render(<App />)
     expect(await screen.findByText('-4.1 nT')).toBeInTheDocument()
     expect(screen.getByText(/stale, 2\.0 h old/)).toBeInTheDocument()
+  })
+
+  it('labels missing native spacecraft, Bt, flags, quality, and transport as unknown', async () => {
+    vi.stubGlobal('fetch', routedFetch({ spaceWeather: {
+      ...liveSpaceWeather,
+      solar_wind: {
+        ...liveSpaceWeather.solar_wind,
+        feed_declared_spacecraft: null, bt_nt: null, active: null, overall_quality: null, acquisition: null,
+      },
+    } }))
+    render(<App />)
+    expect(await screen.findByText(/feed-declared spacecraft unknown/)).toBeInTheDocument()
+    expect(screen.getByText(/Bt unknown/)).toBeInTheDocument()
+    expect(screen.getByText(/active flag unknown/)).toBeInTheDocument()
+    expect(screen.getByText(/overall quality unknown/)).toBeInTheDocument()
+    expect(screen.getByText(/source transport unknown/)).toBeInTheDocument()
   })
 })
 
@@ -1725,6 +1754,38 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     await frame(1020)
     await frame(1030)
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/space-weather?at='))).toHaveLength(before)
+  })
+
+  it('clears solar-wind evidence while scrubbing and ignores an aborted older response', async () => {
+    let resolveOld!: (response: Response) => void
+    let calls = 0
+    const fetchMock = routedFetch({})
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/space-weather')) {
+        calls += 1
+        if (calls === 1) return new Promise<Response>((resolve) => { resolveOld = resolve })
+        return response(liveSpaceWeather)
+      }
+      if (url.includes('/methods')) return response({ default_method: 'baseline', methods: [], notices: [] })
+      if (url.includes('/astronomy')) return response(liveAstronomy)
+      if (url.includes('/sources/status')) return response(sourceStatus)
+      if (url.includes('/point')) return response(apiPoint())
+      if (url.includes('/layers')) return response(emptyLayers)
+      if (url.includes('/catalog')) return response(emptyCatalog)
+      if (url.includes('/timeline')) return response(emptyTimeline)
+      return response({})
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await waitFor(() => expect(calls).toBe(1))
+    expect(screen.getByText(/Space weather unavailable: loading selected-time space weather/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '-1h' }))
+    await waitFor(() => expect(calls).toBe(2))
+    expect(await screen.findByText('-4.1 nT')).toBeInTheDocument()
+    resolveOld(response({ ...liveSpaceWeather, solar_wind: { ...liveSpaceWeather.solar_wind, bz_gsm_nt: -9.9 } }))
+    await act(async () => { await Promise.resolve() })
+    expect(screen.getByText('-4.1 nT')).toBeInTheDocument()
+    expect(screen.queryByText('-9.9 nT')).not.toBeInTheDocument()
   })
 
   it('doubles and halves the speed within the ladder, clamping at both ends', async () => {

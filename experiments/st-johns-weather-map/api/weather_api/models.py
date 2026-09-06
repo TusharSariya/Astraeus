@@ -1398,6 +1398,7 @@ class SolarWindLatest(StrictModel):
     active: bool | None = None
     overall_quality: float | None = None
     freshness: Freshness
+    acquisition: KpAcquisition | None = None
     notices: list[str] = Field(default_factory=list)
 
 

@@ -202,7 +202,7 @@ current main before final gates, and make conventional commits/PRs with exact
   total/low/middle/high geometric-cloud demand rasters merged through PR224
   (`61a2a04`). #208 and #97 remain open for their named residual fields and
   layers; these merges do not make the source complete.
-- #226 is the active bounded ECCC CAP Current-Alerts demand-query slice under
+- #226 merged through PR227 (`a110841`) as the bounded ECCC CAP Current-Alerts demand-query slice under
   #137. It uses a finite current-document request cache and preserves native
   validity, geometry, text, envelope and transport provenance. A successful
   empty response from every declared Avalon box may answer zero; a partial or
@@ -210,6 +210,12 @@ current main before final gates, and make conventional commits/PRs with exact
   was empty, so nonempty presentation remains contract-fixture evidence until a
   real warning is observed. #137 stays open for broader hazards, and #84 remains
   the active GEFS source track.
+- #228 is the active `noaa-swpc-rtsw` magnetic-field demand migration under
+  #89/#70/#97. It replaces only the retained solar-wind read in the existing
+  `/space-weather` and Sky/Brief path with a bounded selected-time cache while
+  preserving all interleaved native spacecraft and quality flags. Plasma,
+  propagated wind, historical products, OVATION and local magnetometer access
+  are unchanged.
 - `/private/tmp/astraeus-live-query-snapshot-api`, branch
   `execution/live-query-snapshot-api`, preserves two local API commits and is
   paused; do not merge it under the corrective sequence.
