@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
+from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -78,7 +79,7 @@ def test_expired_entry_conditionally_revalidates_without_replacing_body_identity
                 "last-modified": "Sat, 05 Sep 2026 17:59:00 GMT",
             }, request=request)
         return httpx.Response(304, content=b"", headers={
-            "cache-control": "max-age=60", "etag": '"native-revision"',
+            "cache-control": "max-age=60", "age": "54", "etag": '"native-revision"',
         }, request=request)
     query = SWPCRTSWQueryService(
         client=httpx.Client(transport=httpx.MockTransport(handler)),
@@ -86,7 +87,7 @@ def test_expired_entry_conditionally_revalidates_without_replacing_body_identity
     )
     first = query.entry()
     monotonic[0] = 61.0
-    completed[0] = NOW.replace(second=31)
+    completed[0] = NOW + timedelta(minutes=20)
     second = query.entry()
     assert len(calls) == 2
     assert calls[1].headers["if-none-match"] == '"native-revision"'
@@ -96,6 +97,53 @@ def test_expired_entry_conditionally_revalidates_without_replacing_body_identity
     assert second.acquisition.transport_completed_at == first.acquisition.transport_completed_at
     assert second.acquisition.last_revalidation is not None
     assert second.acquisition.last_revalidation["http_status"] == 304
+    assert second.expires_at_monotonic == 67.0
+    with pytest.raises(SWPCRTSWUnavailable, match="acquisition context"):
+        query.latest(NOW)
+
+
+def test_304_rejects_changed_last_modified():
+    body = FIXTURE.read_bytes()
+    calls = []
+    monotonic = [0.0]
+    def handler(request: httpx.Request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(200, content=body, headers={
+                "cache-control": "max-age=60", "etag": '"native-revision"',
+                "last-modified": "Sat, 05 Sep 2026 17:59:00 GMT",
+            }, request=request)
+        headers = {"cache-control": "max-age=60", "etag": '"native-revision"'}
+        headers["last-modified"] = "Sat, 05 Sep 2026 18:00:00 GMT"
+        return httpx.Response(304, content=b"", headers=headers, request=request)
+    query = SWPCRTSWQueryService(
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        clock=lambda: monotonic[0], utcnow=lambda: NOW, bounded_decode=decode,
+    )
+    query.entry()
+    monotonic[0] = 61.0
+    with pytest.raises(SWPCRTSWUnavailable, match="changed Last-Modified"):
+        query.entry()
+
+
+def test_304_rejects_changed_effective_identity():
+    body = FIXTURE.read_bytes()
+    responses = [
+        httpx.Response(200, content=body, headers={"cache-control": "max-age=60", "etag": '"native-revision"'},
+                       request=httpx.Request("GET", "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json")),
+        httpx.Response(304, content=b"", headers={"cache-control": "max-age=60", "etag": '"native-revision"'},
+                       request=httpx.Request("GET", "https://example.invalid/rtsw.json")),
+    ]
+    class Client:
+        @contextmanager
+        def stream(self, *_args, **_kwargs):
+            yield responses.pop(0)
+    monotonic = [0.0]
+    query = SWPCRTSWQueryService(client=Client(), clock=lambda: monotonic[0], utcnow=lambda: NOW, bounded_decode=decode)
+    query.entry()
+    monotonic[0] = 61.0
+    with pytest.raises(SWPCRTSWUnavailable, match="effective URL differs"):
+        query.entry()
 
 
 def test_current_document_refuses_historical_future_and_stale_selection():

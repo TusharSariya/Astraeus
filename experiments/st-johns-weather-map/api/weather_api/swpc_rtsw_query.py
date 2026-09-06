@@ -85,8 +85,13 @@ class SWPCRTSWQueryService:
                 if prior is None:
                     raise SWPCRTSWUnavailable("SWPC RTSW returned 304 without cached content")
                 response_headers = {key.lower(): value for key, value in response.headers.items()}
+                if str(response.request.url) != RTSW_MAG_URL:
+                    raise SWPCRTSWUnavailable("SWPC RTSW 304 effective URL differs from its canonical request identity")
                 if response_headers.get("etag") and response_headers["etag"] != prior.acquisition.response_headers.get("etag"):
                     raise SWPCRTSWUnavailable("SWPC RTSW 304 changed ETag")
+                prior_modified = prior.acquisition.response_headers.get("last-modified")
+                if prior_modified and response_headers.get("last-modified") and response_headers["last-modified"] != prior_modified:
+                    raise SWPCRTSWUnavailable("SWPC RTSW 304 changed Last-Modified")
                 freshness_headers = dict(response_headers)
                 freshness_headers.setdefault("cache-control", prior.acquisition.response_headers.get("cache-control", ""))
                 completed = self._utcnow()
@@ -183,6 +188,13 @@ class SWPCRTSWQueryService:
         instant = at.astimezone(UTC)
         document = self.entry()
         acquired = document.acquisition.transport_completed_at
+        if document.acquisition.last_revalidation:
+            revalidated = document.acquisition.last_revalidation.get("transport_completed_at")
+            if isinstance(revalidated, str):
+                parsed = datetime.fromisoformat(revalidated)
+                if parsed.tzinfo is None:
+                    raise SWPCRTSWUnavailable("SWPC RTSW revalidation completion is not offset-aware")
+                acquired = parsed.astimezone(UTC)
         if not acquired - timedelta(seconds=RTSW_FRESHNESS_SECONDS) < instant <= document.acquisition.expires_at:
             raise SWPCRTSWUnavailable("selected timestamp is outside the mutable RTSW acquisition context")
         selected=self._decode(document.body,instant)
