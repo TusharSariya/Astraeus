@@ -12,7 +12,7 @@ from ingest.adapters.noaa_s3 import NOAAGEFSEnsembleAdapter
 from ingest.contract import FetchWindow, ResourceBounds, RunCandidate
 from ingest.registry import get_config
 GEFS_FIELDS=("temperature_2m","dew_point_2m","relative_humidity_2m","wind_u_10m","wind_v_10m","mean_sea_level_pressure","total_cloud_mean_6h")
-GEFS_MEMBER_COUNT=31; GEFS_IDX_BYTES=1024*1024; GEFS_CACHE_MAX_BYTES=1024**3
+GEFS_MEMBER_COUNT=31; GEFS_IDX_BYTES=1024*1024; GEFS_CACHE_MAX_BYTES=704*1024**2
 GEFS_OUTPUT_ALLOWANCE_BYTES=GEFS_CACHE_MAX_BYTES; GEFS_MARGIN_BYTES=128*1024**2
 GEFS_PRODUCT_SET="pgrb2ap5"; GEFS_MAX_LEAD=384
 
@@ -101,7 +101,8 @@ class GEFSQueryEntry:
                 if header!=f"bytes={start}-{end}": raise ValueError("GEFS range receipt does not match the requested bytes")
                 if receipt.get("byte_size")!=end-start+1 or receipt["byte_size"]>MAX_GEFS_MEMBER_BYTES: raise ValueError("GEFS range receipt byte count is invalid")
                 content_range={str(k).lower():str(v) for k,v in receipt.get("response_headers",{}).items()}.get("content-range")
-                if content_range!=f"bytes {start}-{end}/*": raise ValueError("GEFS response Content-Range does not match request")
+                match=re.fullmatch(r"bytes (\d+)-(\d+)/(\d+|\*)",content_range or "")
+                if match is None or tuple(map(int,match.groups()[:2]))!=(start,end) or (match.group(3)!="*" and int(match.group(3))<=end): raise ValueError("GEFS response Content-Range does not match request")
                 seen_ranges.add((member,field))
             else: raise ValueError("GEFS receipt has invalid kind")
             completed=datetime.fromisoformat(str(receipt.get("completed_at")))
