@@ -73,9 +73,13 @@
       member and one six-hour step under explicit time and memory bounds.
       Verify: success, timeout, out-of-memory and unsupported-operation are all
       reported as measured outcomes without relabelling a load test as inference.
-- [ ] 5.3 If CPU inference is impractical, repeat the identical FCN3 case on a
+- [ ] 5.3 **Deferred outside the free-source map:** if CPU inference is impractical, repeat the identical FCN3 case on a
       named rented GPU and measure actual peak VRAM; do not infer a hard minimum
       from Earth2Studio's recommended-memory badge.
+      Owner direction on September 5, 2026 limits the current map to free
+      providers and available local compute. Rented GPU execution requires a
+      separately authorized scope; CPU failure must remain a measured blocker.
+      This task is not completed by deferral.
       Verify: the initializer, checkpoint, precision, seed and output request
       are identical or their differences are declared.
 - [ ] 5.4 Register Earth2Studio only as an inference framework and FourCastNet
@@ -90,14 +94,42 @@
       retrievable and non-retrievable output boundaries, attribution, deletion,
       downstream notification and potential fee changes.
       Verify: a dated terms snapshot and owner decision are linked before use.
-- [ ] 6.2 Establish allowlisted access through the approved secret workflow;
+- [x] 6.2 Establish allowlisted access through the approved secret workflow;
       do not embed credentials or assume anonymous access.
       Verify: credential handling passes repository secret-safety checks.
+      Partial 2026-09-05: owner authorized the existing isolated `astraeus`
+      gcloud login for a Google-native validation. Redacted preflight confirmed
+      an account is selected with no default project, explicitly stored quota
+      project, impersonation, token-file, credential-file or relevant
+      environment override. The `CURRENT_PROJECT` quota value was the SDK
+      default sentinel and resolved to no project. Authenticated access to the
+      selected statistics bucket succeeded without a requester project. The
+      account string was consumed only for a redacted boolean; no identity or
+      token value was printed or persisted in evidence, and no grant or
+      credential file was inspected. This completes the approved GCS CLI access
+      path. Python ADC and future unattended authentication are not configured
+      by this validation.
 - [ ] 6.3 Probe the selected GCS, BigQuery or Earth Engine surface for a full
       evidence-box sample and pin dimensions, coordinates, members, units,
       missing values, product version and exact cloud variables.
       Verify: an authenticated live fixture covers every corner and upstream
       sector without treating statistics as ensemble members.
+      Partial preparation 2026-09-05: the bounded statistics-surface manifest
+      enumerates all 126 documented surface/statistic combinations and rejects
+      partial or over-budget success claims. One anonymous list control returned
+      HTTP 401 with a 742-byte body. The authenticated bounded probe then
+      observed `requesterPays: false`, accessed the proposed August 1 run, and
+      found all 126 documented arrays in its consolidated Zarr v3 metadata.
+      The six selected arrays declare 360 hourly slices on a 1801 by 3600 grid,
+      and their 18 requested whole-grid chunks total 375,209,154 compressed
+      bytes. After owner authorization raised this experiment's received cap to
+      512 MiB, a bounded read decoded all six fields at leads 6, 12 and 24 for
+      the nearest native cell to `(47.5, -52.7)`. The retained artifact records
+      finite values, masks, exact coordinates/times, units, statistics, source
+      generations/ETags, decoder versions and successful post-read identity
+      checks. The other 120 metadata-enumerated arrays remain deferred. This
+      task remains unchecked: there is no full-box fixture/sample, exhaustive
+      completeness proof, member read, or spatial missing-value evidence.
 - [ ] 6.4 Measure publication latency, completeness and retrieval cost across at
       least seven days, separating initialization, publication and retrieval.
       Verify: main and interim cycles are reported separately with failures.
