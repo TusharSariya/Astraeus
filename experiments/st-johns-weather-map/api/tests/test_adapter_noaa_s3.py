@@ -21,6 +21,7 @@ from ingest.adapters.noaa_s3 import (
     MAX_IDX_BYTES,
     NOAAS3Adapter,
     gfs_native_lead,
+    gfs_native_time_at_or_before,
     select_gfs_ranges,
 )
 from ingest.contract import AdapterUnavailable, FetchWindow, RunCandidate
@@ -51,6 +52,29 @@ def test_gfs_native_lead_refuses_off_hour_and_naive_time():
         gfs_native_lead(run_time, run_time + timedelta(minutes=30))
     with pytest.raises(AdapterUnavailable, match="timezone-aware"):
         gfs_native_lead(run_time.replace(tzinfo=None), run_time)
+
+
+def test_gfs_selected_time_uses_latest_native_frame_strictly_under_one_hour():
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+
+    assert gfs_native_time_at_or_before(
+        run_time, run_time + timedelta(hours=2, minutes=17)
+    ) == run_time + timedelta(hours=2)
+    assert gfs_native_time_at_or_before(
+        run_time, run_time + timedelta(hours=123, minutes=59, seconds=59)
+    ) == run_time + timedelta(hours=123)
+    with pytest.raises(AdapterUnavailable, match="strictly under one hour"):
+        gfs_native_time_at_or_before(run_time, run_time + timedelta(hours=124))
+    with pytest.raises(AdapterUnavailable, match="precedes"):
+        gfs_native_time_at_or_before(run_time, run_time - timedelta(seconds=1))
+
+
+def test_gfs_selected_time_normalizes_aware_offsets():
+    offset = timezone(timedelta(hours=-2, minutes=-30))
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    selected = datetime(2026, 9, 6, 12, 47, tzinfo=offset)
+
+    assert gfs_native_time_at_or_before(run_time, selected) == run_time + timedelta(hours=3)
 
 # A condensed but structurally faithful GFS pgrb2 inventory: every message this
 # adapter wants, interleaved with the traps that previously broke it — the same

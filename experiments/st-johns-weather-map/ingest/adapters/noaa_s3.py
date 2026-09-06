@@ -67,6 +67,7 @@ MAX_LEAD_HOURS = 36
 GFS_HOURLY_LEAD_LIMIT = 120
 GFS_PRODUCT_LEAD_LIMIT = 384
 MAX_IDX_BYTES = 2 * 1024 * 1024
+GFS_SELECTED_TIME_MAX_AGE = timedelta(hours=1)
 
 
 def gfs_native_lead(run_time: datetime, selected_time: datetime) -> int:
@@ -82,6 +83,28 @@ def gfs_native_lead(run_time: datetime, selected_time: datetime) -> int:
     if lead > GFS_HOURLY_LEAD_LIMIT and lead % 3:
         raise AdapterUnavailable("selected time is not on the native three-hour GFS cadence")
     return lead
+
+
+def gfs_native_time_at_or_before(run_time: datetime, selected_time: datetime) -> datetime:
+    """Resolve an ordinary selected instant to the latest recent native frame."""
+    if run_time.tzinfo is None or selected_time.tzinfo is None:
+        raise AdapterUnavailable("GFS run and selected times must be timezone-aware")
+    elapsed = selected_time.astimezone(UTC) - run_time.astimezone(UTC)
+    if elapsed.total_seconds() < 0:
+        raise AdapterUnavailable("selected time precedes the GFS producer run")
+    elapsed_hours = int(elapsed.total_seconds() // 3600)
+    if elapsed_hours <= GFS_HOURLY_LEAD_LIMIT:
+        lead = elapsed_hours
+    else:
+        lead = GFS_HOURLY_LEAD_LIMIT + 3 * ((elapsed_hours - GFS_HOURLY_LEAD_LIMIT) // 3)
+    native_time = run_time.astimezone(UTC) + timedelta(hours=lead)
+    age = selected_time.astimezone(UTC) - native_time
+    if age >= GFS_SELECTED_TIME_MAX_AGE:
+        raise AdapterUnavailable(
+            f"latest GFS frame is {int(age.total_seconds())} seconds old; selected-time limit is strictly under one hour"
+        )
+    gfs_native_lead(run_time, native_time)
+    return native_time
 
 # The exact (parameter, level) pairs this adapter reads, matched against the
 # .idx sidecar. Selecting on the parameter name alone is how this adapter
@@ -432,7 +455,8 @@ class NOAAS3Adapter:
         """Fetch exactly one provider-native GFS instant for a demand query."""
         if candidate.run_time is None:
             raise AdapterUnavailable("GFS demand query requires a producer run time")
-        lead = gfs_native_lead(candidate.run_time, selected_time)
+        native_time = gfs_native_time_at_or_before(candidate.run_time, selected_time)
+        lead = gfs_native_lead(candidate.run_time, native_time)
         selected = RunCandidate(
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time,
@@ -441,7 +465,7 @@ class NOAAS3Adapter:
         )
         return self.fetch(
             selected,
-            FetchWindow(now=selected_time, back_hours=0, forward_hours=0),
+            FetchWindow(now=native_time, back_hours=0, forward_hours=0),
             workdir,
         )
 
