@@ -754,9 +754,11 @@ export async function loadSpaceWeather(signal?: AbortSignal): Promise<SpaceWeath
   }
 }
 
-export async function loadTimeline(signal?: AbortSignal): Promise<TimelineResult> {
+export async function loadTimeline(product?: string, signal?: AbortSignal): Promise<TimelineResult> {
   try {
-    const response = await fetch(`${prefix}/timeline`, { signal, headers: { Accept: 'application/json' } })
+    const params = new URLSearchParams()
+    if (product) params.set('product', product)
+    const response = await fetch(`${prefix}/timeline${params.size ? `?${params}` : ''}`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) return { timeline: null, dataMode: 'unavailable', error: `timeline returned ${response.status}` }
     const body: unknown = await response.json()
     if (!body || typeof body !== 'object' || !Array.isArray((body as { items?: unknown }).items)) {

@@ -239,44 +239,19 @@ def test_an_unknown_crs_is_refused():
 
 # --- the layer index ------------------------------------------------------
 
-def test_the_three_strata_layers_are_offered_with_only_ingested_times(monkeypatch, data_mode):
+def test_retained_gfs_strata_are_audit_only_after_demand_cutover(monkeypatch, data_mode):
     use_store(monkeypatch, data_mode, GridStore(grid_dataset()))
     payload = client.get(f"{PREFIX}/layers").json()
-    by_id = {layer["id"]: layer for layer in payload["layers"]}
-    stamps = [stamp.isoformat() for stamp in frame_times()]
-    for layer_id, field in (
-        ("noaa-gfs-surface-cloud-low", "cloud_low"),
-        ("noaa-gfs-surface-cloud-middle", "cloud_middle"),
-        ("noaa-gfs-surface-cloud-high", "cloud_high"),
-    ):
-        layer = by_id[layer_id]
-        assert layer["group"] == "rendered_grid"
-        assert layer["field"] == field
-        assert layer["product"] == "Global Forecast System (GFS 0.25 deg)"
-        assert layer["units"] == "percent"
-        assert layer["evidence_basis"] == "published_artifact"
-        assert layer["raster_available"] is True
-        assert layer["legend_available"] is True
-        assert layer["upstream_wms_layer"] is None
-        assert [datetime.fromisoformat(stamp).isoformat() for stamp in layer["times"]] == stamps
-        assert layer["cadence_seconds"] == 3600
-        assert layer["staleness_tolerance_seconds"] == 3600  # one native interval
-        semantics = layer["semantics"]
-        assert "rendered by this experiment from the retrieved Global Forecast System (GFS 0.25 deg) field" in semantics
-        assert "provider-declared" in semantics
-        assert "native grid 0.25 deg (~25 km)" in semantics
-        assert "nearest-neighbor" in semantics
-        assert "never smoothed" in semantics
+    assert not any(layer["id"].startswith("noaa-gfs-") for layer in payload["layers"])
+    assert any("noaa-gfs-surface is retained for audit" in notice for notice in payload["notices"])
     assert payload["operational"] is False
 
 
-def test_a_missing_variable_is_a_notice_and_no_layer_not_a_guess(monkeypatch, data_mode):
+def test_a_partial_retained_gfs_artifact_stays_audit_only(monkeypatch, data_mode):
     use_store(monkeypatch, data_mode, GridStore(grid_dataset(("cloud_low", "cloud_middle"))))
     payload = client.get(f"{PREFIX}/layers").json()
-    ids = {layer["id"] for layer in payload["layers"]}
-    assert "noaa-gfs-surface-cloud-low" in ids
-    assert "noaa-gfs-surface-cloud-high" not in ids
-    assert any("noaa-gfs-surface-cloud-high" in notice and "does not carry" in notice for notice in payload["notices"])
+    assert not any(layer["id"].startswith("noaa-gfs-") for layer in payload["layers"])
+    assert any("native GFS raster delivery remains unavailable" in notice for notice in payload["notices"])
 
 
 def test_no_gfs_artifact_means_no_strata_layers_at_all(monkeypatch, data_mode):
@@ -457,7 +432,7 @@ def test_the_retained_hrdps_weong_layer_is_hidden_after_demand_cutover(monkeypat
     payload = client.get(f"{PREFIX}/layers").json()
     by_id = {layer["id"]: layer for layer in payload["layers"]}
     assert "eccc-hrdps-low-cloud-weong" not in by_id
-    assert "GENERATED" not in by_id["noaa-gfs-surface-cloud-low"]["semantics"]
+    assert "noaa-gfs-surface-cloud-low" not in by_id
 
 
 def test_the_weong_layer_is_absent_when_its_artifact_is(monkeypatch, data_mode):

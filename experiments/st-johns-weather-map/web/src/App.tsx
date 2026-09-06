@@ -661,13 +661,6 @@ export default function App() {
       setLayersError(result.error)
       setLayersLoading(false)
     }).catch(() => undefined)
-    // The timeline names which hours carry evidence, so it gets the same
-    // fail-closed reading as every other fetch: an unavailable one is kept, but
-    // its hours are not presented as coverage and the reason is shown.
-    loadTimeline(controller.signal).then((result) => {
-      setTimeline(result.timeline)
-      setTimelineNotice(result.error)
-    }).catch(() => undefined)
     // Station markers are drawn from a hardcoded picker list, so this is the
     // only thing that can say whether anything has actually been ingested for
     // one. Until it answers, every station reads as coverage unknown.
@@ -691,6 +684,21 @@ export default function App() {
     }).catch(() => undefined)
     return () => controller.abort()
   }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    // Availability metadata follows the selected source. It never downloads a
+    // model payload and an obsolete request cannot overwrite a newer choice.
+    setTimeline(null)
+    setTimelineNotice(selectedProduct ? `Loading ${selectedProduct} demand availability…` : null)
+    loadTimeline(selectedProduct ?? undefined, controller.signal).then((result) => {
+      if (!controller.signal.aborted) {
+        setTimeline(result.timeline)
+        setTimelineNotice(result.error)
+      }
+    }).catch(() => undefined)
+    return () => controller.abort()
+  }, [selectedProduct])
 
   useEffect(() => {
     const controller = new AbortController()
