@@ -171,7 +171,7 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
     """Admit payload-bearing discovery before delegating the source run."""
     from ingest.contract import FetchWindow, ResourceBounds  # noqa: PLC0415
     from ingest.resources import ReceivedBytesExceeded, acquisition_budget  # noqa: PLC0415
-    from ingest.store import QuotaExceeded, ResourceBudgetExceeded  # noqa: PLC0415
+    from ingest.store import QuotaExceeded, ResourceBudgetExceeded, StoreUnavailable  # noqa: PLC0415
 
     if store is None:
         return SourceOutcome(config.source_id, "failed", "resource preflight failed: no artifact store is available")
@@ -198,6 +198,10 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
         return SourceOutcome(config.source_id, "failed", f"quota_exceeded during pre-discovery admission: {error}")
     except (ResourceBudgetExceeded, ReceivedBytesExceeded, ValueError) as error:
         return SourceOutcome(config.source_id, "failed", f"upstream_budget_exhausted during pre-discovery admission: {error}")
+    except StoreUnavailable as error:
+        return SourceOutcome(config.source_id, "failed", f"store unavailable during pre-discovery admission: {error}")
+    except Exception as error:
+        return SourceOutcome(config.source_id, "failed", f"pre-discovery admission failed: {error!r}")
 
 
 def _run_source(
