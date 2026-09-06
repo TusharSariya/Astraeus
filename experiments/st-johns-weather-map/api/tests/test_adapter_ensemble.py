@@ -48,6 +48,9 @@ from ingest.adapters.eccc_geomet_reductions import (
 from ingest.adapters.ecmwf_opendata import (
     ECMWFAIFSEnsembleAdapter,
     ECMWFENSEnsembleAdapter,
+    IFS_CYCLE_50R1_CONTROL_MAPPING,
+    MAX_MAPPED_CONTROL_DISCOVERY_REQUESTS,
+    _download_verified_range,
     family_upstream_params,
     parse_ecmwf_index_records,
     select_member_ranges,
@@ -161,7 +164,7 @@ class FakeClient:
         self._check(url)
         self.ranges.append((url, list(ranges)))
         destination.write_bytes(b"GRIB-stub")
-        return len(b"GRIB-stub")
+        return sum(end - start + 1 for start, end in self.ranges[-1][1])
 
 
 def window_at(moment: datetime = datetime(2026, 9, 2, 12, tzinfo=UTC)) -> FetchWindow:
@@ -771,6 +774,8 @@ AIFS_PF_INDEX = "\n".join(
     json.dumps(
         {
             "domain": "g",
+            "date": "20260901",
+            "time": "0000",
             "type": "pf",
             "number": str(number),
             "param": param,
@@ -787,6 +792,8 @@ AIFS_CF_INDEX = "\n".join(
     json.dumps(
         {
             "domain": "g",
+            "date": "20260901",
+            "time": "0000",
             "type": "cf",
             "param": param,
             "step": "24",
@@ -799,6 +806,10 @@ AIFS_CF_INDEX = "\n".join(
 
 AIFS_PF_URL = "https://data.ecmwf.int/forecasts/20260901/00z/aifs-ens/0p25/enfo/20260901000000-24h-enfo-pf.grib2"
 AIFS_CF_URL = AIFS_PF_URL.replace("-pf.", "-cf.")
+
+
+def index_url(url: str) -> str:
+    return f"{url.removesuffix('.grib2')}.index"
 
 
 def ecmwf_reader(path, *, param: str, member: str, bounds):
@@ -833,16 +844,13 @@ def aifs_adapter(client: FakeClient) -> ECMWFAIFSEnsembleAdapter:
 
 def test_aifs_ens_assembles_two_files_into_one_member_axis(tmp_path: Path):
     client = FakeClient(
-        texts={
-            f"{AIFS_PF_URL}.index": AIFS_PF_INDEX,
-            f"{AIFS_CF_URL}.index": AIFS_CF_INDEX,
-        }
+        texts={index_url(AIFS_PF_URL): AIFS_PF_INDEX, index_url(AIFS_CF_URL): AIFS_CF_INDEX}
     )
     result = aifs_adapter(client).assemble(
         RunCandidate(
             provider_run_id="aifs-ens-2026090100",
             run_time=datetime(2026, 9, 1, tzinfo=UTC),
-            detail={"member_url": AIFS_PF_URL},
+            detail={"member_url": AIFS_PF_URL, "lead_hours": 24},
         ),
         window_at(),
         tmp_path,
@@ -858,17 +866,13 @@ def test_aifs_ens_assembles_two_files_into_one_member_axis(tmp_path: Path):
     assert result.artifacts[0].provenance["control_file"] == AIFS_CF_URL
 
 
-def test_aifs_ens_publishes_partial_with_the_control_named_when_cf_is_missing(
-    tmp_path: Path,
-):
-    client = FakeClient(
-        texts={f"{AIFS_PF_URL}.index": AIFS_PF_INDEX}, missing=("-cf.",)
-    )
+def test_aifs_ens_publishes_partial_with_the_control_named_when_cf_is_missing(tmp_path: Path):
+    client = FakeClient(texts={index_url(AIFS_PF_URL): AIFS_PF_INDEX}, missing=("-cf.",))
     result = aifs_adapter(client).assemble(
         RunCandidate(
             provider_run_id="aifs-ens-2026090100",
             run_time=datetime(2026, 9, 1, tzinfo=UTC),
-            detail={"member_url": AIFS_PF_URL},
+            detail={"member_url": AIFS_PF_URL, "lead_hours": 24},
         ),
         window_at(),
         tmp_path,
@@ -886,16 +890,13 @@ def test_aifs_ens_publishes_partial_with_the_control_named_when_cf_is_missing(
 
 def test_aifs_ens_stores_only_the_catalogue_family_fields(tmp_path: Path):
     client = FakeClient(
-        texts={
-            f"{AIFS_PF_URL}.index": AIFS_PF_INDEX,
-            f"{AIFS_CF_URL}.index": AIFS_CF_INDEX,
-        }
+        texts={index_url(AIFS_PF_URL): AIFS_PF_INDEX, index_url(AIFS_CF_URL): AIFS_CF_INDEX}
     )
     result = aifs_adapter(client).assemble(
         RunCandidate(
             provider_run_id="aifs-ens-2026090100",
             run_time=datetime(2026, 9, 1, tzinfo=UTC),
-            detail={"member_url": AIFS_PF_URL},
+            detail={"member_url": AIFS_PF_URL, "lead_hours": 24},
         ),
         window_at(),
         tmp_path,
@@ -916,6 +917,8 @@ IFS_EF_INDEX = "\n".join(
     json.dumps(
         {
             "domain": "g",
+            "date": "20260901",
+            "time": "0000",
             "type": "pf",
             "number": str(number),
             "param": param,
@@ -929,10 +932,8 @@ IFS_EF_INDEX = "\n".join(
 )
 
 
-def test_ifs_ens_reports_the_control_missing_rather_than_failing_the_run(
-    tmp_path: Path,
-):
-    client = FakeClient(texts={f"{IFS_EF_URL}.index": IFS_EF_INDEX})
+def test_ifs_ens_reports_the_control_missing_rather_than_failing_the_run(tmp_path: Path):
+    client = FakeClient(texts={index_url(IFS_EF_URL): IFS_EF_INDEX})
     adapter = ECMWFENSEnsembleAdapter(client=client, reader=ecmwf_reader)
 
     # No cf-typed record exists in the file, which is what was measured. The run
@@ -942,7 +943,7 @@ def test_ifs_ens_reports_the_control_missing_rather_than_failing_the_run(
         RunCandidate(
             provider_run_id="ifs-ens-2026090100",
             run_time=datetime(2026, 9, 1, tzinfo=UTC),
-            detail={"member_url": IFS_EF_URL},
+            detail={"member_url": IFS_EF_URL, "lead_hours": 24},
         ),
         window_at(),
         tmp_path,
@@ -951,16 +952,448 @@ def test_ifs_ens_reports_the_control_missing_rather_than_failing_the_run(
     members = result.artifacts[0].provenance["members"]
     assert members["control"] == "0"
     assert "0" in members["missing"]
-    assert members["control_retrieval"] == "same_file"
+    assert members["control_retrieval"] is None
     assert result.complete is False
     assert result.artifacts  # published partial, not refused
 
 
-def test_ifs_ens_declares_the_control_in_the_member_file():
+def test_ifs_ens_leaves_control_retrieval_unstated_when_open_enfo_exposes_none():
     adapter = ECMWFENSEnsembleAdapter()
-    assert adapter.control_retrieval() == "same_file"
+    assert adapter.control_retrieval() is None
     assert adapter.declared_members()[0] == "0"
     assert len(adapter.declared_members()) == 51
+
+
+IFS_OPER_URL = "https://data.ecmwf.int/forecasts/20260901/00z/ifs/0p25/oper/20260901000000-24h-oper-fc.grib2"
+
+
+def ifs_control_index(*, stream="oper", record_type="fc", number=None, date="20260901", param_override=None):
+    return "\n".join(
+        json.dumps(
+            {
+                "domain": "g", "date": date, "time": "0000", "type": record_type,
+                "stream": stream, "number": number, "param": param_override or param,
+                "step": "24", "_offset": index * 600_000, "_length": 570_000,
+            }
+        )
+        for index, param in enumerate(IFS_CYCLE_50R1_CONTROL_MAPPING["fields"])
+    )
+
+
+def mapped_control_reader(path, *, param: str, member: str, bounds):
+    field = ecmwf_reader(path, param=param, member=member, bounds=bounds)
+    field.attrs.update({
+        "GRIB_dataDate": 20260901, "GRIB_dataTime": 0, "GRIB_stepRange": "24",
+        "GRIB_shortName": param, "GRIB_dataType": "fc", "GRIB_marsStream": "oper",
+        "GRIB_validityDate": 20260902, "GRIB_validityTime": 0,
+    })
+    return field
+
+
+def ifs_mapped_candidate(mapping=None, url=IFS_OPER_URL):
+    return RunCandidate(
+        provider_run_id="ifs-ens-20260901000000-f024",
+        run_time=datetime(2026, 9, 1, tzinfo=UTC),
+        detail={
+            "member_url": IFS_EF_URL,
+            "control_url": url,
+            "lead_hours": 24,
+            "ifs_cycle_50r1_control_mapping": mapping if mapping is not None else {
+                **IFS_CYCLE_50R1_CONTROL_MAPPING,
+                "fields": list(IFS_CYCLE_50R1_CONTROL_MAPPING["fields"]),
+            },
+        },
+    )
+
+
+def test_ifs_cycle_50r1_maps_only_explicit_oper_fc_fields_to_control_zero(tmp_path: Path):
+    client = FakeClient(texts={
+        index_url(IFS_EF_URL): IFS_EF_INDEX,
+        index_url(IFS_OPER_URL): ifs_control_index(),
+    })
+    result = ECMWFENSEnsembleAdapter(client=client, reader=mapped_control_reader).assemble(
+        ifs_mapped_candidate(), window_at(), tmp_path
+    )
+    provenance = result.artifacts[0].provenance
+    assert provenance["members"]["control"] == "0"
+    assert "0" in provenance["members"]["present"]
+    assert provenance["members"]["control_retrieval"] == "separate_file"
+    assert provenance["mapped_control"]["source_stream"] == "oper"
+    assert provenance["mapped_control"]["source_type"] == "fc"
+    assert provenance["mapped_control"]["source_url"] == IFS_OPER_URL
+    assert provenance["provider_run_id"] == "ifs-ens-20260901000000-f024"
+    assert provenance["valid_times"] == ["2026-09-02T00:00:00+00:00"]
+
+
+@pytest.mark.parametrize(
+    ("index_text", "mapping", "url", "flag"),
+    [
+        (ifs_control_index(stream="enfo"), None, IFS_OPER_URL, "mapped_control_index_identity"),
+        (ifs_control_index(record_type="pf"), None, IFS_OPER_URL, "mapped_control_index_identity"),
+        (ifs_control_index(number="1"), None, IFS_OPER_URL, "mapped_control_index_identity"),
+        (ifs_control_index(), {"producer": "ECMWF"}, IFS_OPER_URL, "mapped_control_authorization_identity"),
+        (ifs_control_index(), None, IFS_OPER_URL.replace("/oper/", "/enfo/"), "mapped_control_url_identity"),
+    ],
+)
+def test_ifs_control_mapping_rejects_wrong_source_member_or_authorization(
+    tmp_path: Path, index_text, mapping, url, flag
+):
+    texts = {index_url(IFS_EF_URL): IFS_EF_INDEX, index_url(url): index_text}
+    result = ECMWFENSEnsembleAdapter(client=FakeClient(texts=texts), reader=mapped_control_reader).assemble(
+        ifs_mapped_candidate(mapping=mapping, url=url), window_at(), tmp_path
+    )
+    assert result.complete is False
+    assert "0" in result.artifacts[0].provenance["members"]["missing"]
+    assert any(flag in item for item in result.artifacts[0].provenance["quality"]["flags"])
+
+
+def test_ifs_control_mapping_rejects_payload_field_and_run_identity(tmp_path: Path):
+    def wrong_payload(path, *, param: str, member: str, bounds):
+        field = mapped_control_reader(path, param=param, member=member, bounds=bounds)
+        if param == "tcc":
+            field.attrs["GRIB_shortName"] = "2t"
+        return field
+
+    client = FakeClient(texts={index_url(IFS_EF_URL): IFS_EF_INDEX, index_url(IFS_OPER_URL): ifs_control_index()})
+    result = ECMWFENSEnsembleAdapter(client=client, reader=wrong_payload).assemble(
+        ifs_mapped_candidate(), window_at(), tmp_path
+    )
+    assert result.complete is False
+    assert any("member:oper-fc-control0:0:tcc" in item for item in result.artifacts[0].provenance["quality"]["flags"])
+
+
+def test_ifs_control_mapping_rejects_payload_stream_identity(tmp_path: Path):
+    def wrong_stream(path, *, param: str, member: str, bounds):
+        field = mapped_control_reader(path, param=param, member=member, bounds=bounds)
+        field.attrs["GRIB_marsStream"] = "wave"
+        return field
+
+    client = FakeClient(texts={index_url(IFS_EF_URL): IFS_EF_INDEX, index_url(IFS_OPER_URL): ifs_control_index()})
+    result = ECMWFENSEnsembleAdapter(client=client, reader=wrong_stream).assemble(
+        ifs_mapped_candidate(), window_at(), tmp_path
+    )
+    assert result.complete is False
+    assert "0" in result.artifacts[0].provenance["members"]["missing"]
+
+
+def test_experiment_discovery_enumerates_the_full_window_cadence_without_scheduling():
+    base = "https://data.ecmwf.int/forecasts"
+    directory = f"{base}/20260901/00z/aifs-ens/0p25/enfo/"
+    files = "\n".join(
+        f'<a href="/forecasts/20260901/00z/aifs-ens/0p25/enfo/20260901000000-{lead}h-enfo-{suffix}.grib2">x</a>'
+        for lead in (0, 6, 12, 18, 24, 30)
+        for suffix in ("pf", "cf")
+    )
+    client = FakeClient(
+        texts={
+            f"{base}/": '<a href="/forecasts/20260901/">date</a>',
+            f"{base}/20260901/": '<a href="/forecasts/20260901/00z/">cycle</a>',
+            directory: files,
+        }
+    )
+    adapter = aifs_adapter(client)
+    window = FetchWindow(
+        now=datetime(2026, 9, 1, 12, tzinfo=UTC), back_hours=12, forward_hours=12
+    )
+
+    candidates = adapter.discover_experiment(window)
+
+    assert sorted(item.detail["lead_hours"] for item in candidates) == [0, 6, 12, 18, 24]
+    assert all(item.detail["control_url"].endswith("-cf.grib2") for item in candidates)
+    assert len(client.urls) == 3  # root, date and one full-cycle product listing
+    with pytest.raises(AdapterUnavailable, match="not schedulable"):
+        adapter.discover(window)
+
+
+def test_ifs_discovery_maps_only_an_exact_advertised_oper_fc_control():
+    base = "https://data.ecmwf.int/forecasts"
+    enfo = f"{base}/20260901/00z/ifs/0p25/enfo/"
+    oper = f"{base}/20260901/00z/ifs/0p25/oper/"
+    ef_name = "20260901000000-24h-enfo-ef.grib2"
+    fc_name = "20260901000000-24h-oper-fc.grib2"
+    client = FakeClient(texts={
+        f"{base}/": '<a href="/forecasts/20260901/">date</a>',
+        f"{base}/20260901/": '<a href="/forecasts/20260901/00z/">cycle</a>',
+        enfo: f'<a href="{ef_name}">ef</a>',
+        oper: f'<a href="{fc_name}">fc</a><a href="20260901000000-30h-oper-fc.grib2">other</a>',
+    })
+    adapter = ECMWFENSEnsembleAdapter(client=client)
+    candidates = adapter.discover_experiment(
+        FetchWindow(datetime(2026, 9, 2, tzinfo=UTC), back_hours=0, forward_hours=0),
+        include_ifs_cycle_50r1_control=True,
+    )
+    assert len(candidates) == 1
+    assert candidates[0].detail["control_url"] == oper + fc_name
+    assert candidates[0].detail["ifs_cycle_50r1_control_mapping"]["fields"] == list(
+        IFS_CYCLE_50R1_CONTROL_MAPPING["fields"]
+    )
+
+
+def test_ifs_discovery_does_not_infer_a_control_when_exact_lead_is_absent():
+    base = "https://data.ecmwf.int/forecasts"
+    enfo = f"{base}/20260901/00z/ifs/0p25/enfo/"
+    oper = f"{base}/20260901/00z/ifs/0p25/oper/"
+    client = FakeClient(texts={
+        f"{base}/": '<a href="/forecasts/20260901/">date</a>',
+        f"{base}/20260901/": '<a href="/forecasts/20260901/00z/">cycle</a>',
+        enfo: '<a href="20260901000000-24h-enfo-ef.grib2">ef</a>',
+        oper: '<a href="20260901000000-30h-oper-fc.grib2">different lead</a>',
+    })
+    candidate = adapter = ECMWFENSEnsembleAdapter(client=client).discover_experiment(
+        FetchWindow(datetime(2026, 9, 2, tzinfo=UTC), back_hours=0, forward_hours=0),
+        include_ifs_cycle_50r1_control=True,
+    )[0]
+    assert "control_url" not in candidate.detail
+    assert "ifs_cycle_50r1_control_mapping" not in candidate.detail
+
+
+def test_ifs_discovery_keeps_perturbed_candidate_when_oper_listing_is_unavailable():
+    base = "https://data.ecmwf.int/forecasts"
+    enfo = f"{base}/20260901/00z/ifs/0p25/enfo/"
+    client = FakeClient(
+        texts={
+            f"{base}/": '<a href="/forecasts/20260901/">date</a>',
+            f"{base}/20260901/": '<a href="/forecasts/20260901/00z/">cycle</a>',
+            enfo: '<a href="20260901000000-24h-enfo-ef.grib2">ef</a>',
+        },
+        missing=("/oper/",),
+    )
+    candidates = ECMWFENSEnsembleAdapter(client=client).discover_experiment(
+        FetchWindow(datetime(2026, 9, 2, tzinfo=UTC), back_hours=0, forward_hours=0),
+        include_ifs_cycle_50r1_control=True,
+    )
+    assert len(candidates) == 1
+    assert "control_url" not in candidates[0].detail
+
+
+def test_ifs_mapped_control_discovery_has_a_finite_21_request_ceiling():
+    base = "https://data.ecmwf.int/forecasts"
+    dates = ("20260901", "20260902", "20260903", "20260904")
+    texts = {f"{base}/": "".join(f'<a href="/forecasts/{date}/">d</a>' for date in dates)}
+    for date in dates:
+        texts[f"{base}/{date}/"] = (
+            f'<a href="/forecasts/{date}/00z/">00</a>'
+            f'<a href="/forecasts/{date}/12z/">12</a>'
+        )
+        for cycle in ("00", "12"):
+            texts[f"{base}/{date}/{cycle}z/ifs/0p25/enfo/"] = ""
+            texts[f"{base}/{date}/{cycle}z/ifs/0p25/oper/"] = ""
+    client = FakeClient(texts=texts)
+    ECMWFENSEnsembleAdapter(client=client).discover_experiment(
+        FetchWindow(datetime(2026, 9, 3, tzinfo=UTC), back_hours=96, forward_hours=96),
+        include_ifs_cycle_50r1_control=True,
+    )
+    assert len(client.urls) == MAX_MAPPED_CONTROL_DISCOVERY_REQUESTS == 21
+
+
+def test_ecmwf_index_run_identity_mismatch_fails_closed(tmp_path: Path):
+    bad_index = AIFS_PF_INDEX.replace('"date": "20260901"', '"date": "20260902"')
+    client = FakeClient(texts={index_url(AIFS_PF_URL): bad_index}, missing=("-cf.",))
+    with pytest.raises(AdapterUnavailable, match="no member decoded"):
+        aifs_adapter(client).assemble(
+            RunCandidate(
+                provider_run_id="aifs-ens-20260901000000-f024",
+                run_time=datetime(2026, 9, 1, tzinfo=UTC),
+                detail={"member_url": AIFS_PF_URL, "lead_hours": 24},
+            ),
+            window_at(),
+            tmp_path,
+        )
+
+
+def test_ecmwf_missing_selected_field_is_incomplete(tmp_path: Path):
+    without_cloud = "\n".join(
+        line for line in AIFS_PF_INDEX.splitlines() if json.loads(line)["param"] != "tcc"
+    )
+    client = FakeClient(texts={index_url(AIFS_PF_URL): without_cloud}, missing=("-cf.",))
+    result = aifs_adapter(client).assemble(
+        RunCandidate(
+            provider_run_id="aifs-ens-20260901000000-f024",
+            run_time=datetime(2026, 9, 1, tzinfo=UTC),
+            detail={"member_url": AIFS_PF_URL, "lead_hours": 24},
+        ),
+        window_at(),
+        tmp_path,
+    )
+    assert result.complete is False
+    assert any("total_cloud_geometric" in flag for flag in result.artifacts[0].provenance["quality"]["flags"])
+
+
+def test_ecmwf_wrong_normalized_units_fail_qc(tmp_path: Path):
+    def wrong_units(path, *, param: str, member: str, bounds):
+        field = ecmwf_reader(path, param=param, member=member, bounds=bounds)
+        if param == "tcc":
+            field.attrs["units"] = "fraction"
+        return field
+
+    client = FakeClient(
+        texts={index_url(AIFS_PF_URL): AIFS_PF_INDEX, index_url(AIFS_CF_URL): AIFS_CF_INDEX}
+    )
+    result = ECMWFAIFSEnsembleAdapter(client=client, reader=wrong_units).assemble(
+        RunCandidate(
+            provider_run_id="aifs-ens-20260901000000-f024",
+            run_time=datetime(2026, 9, 1, tzinfo=UTC),
+            detail={"member_url": AIFS_PF_URL, "lead_hours": 24},
+        ),
+        window_at(),
+        tmp_path,
+    )
+    assert result.qc_passed is False
+    assert any("bad_units" in flag for flag in result.artifacts[0].provenance["quality"]["flags"])
+
+
+def test_ecmwf_grid_identity_difference_fails_instead_of_aligning_with_nulls(tmp_path: Path):
+    def mismatched_reader(path, *, param: str, member: str, bounds):
+        field = ecmwf_reader(path, param=param, member=member, bounds=bounds)
+        if member == "2":
+            field = field.assign_coords(longitude=[-53.0, -52.0, -50.75])
+        return field
+
+    client = FakeClient(
+        texts={index_url(AIFS_PF_URL): AIFS_PF_INDEX, index_url(AIFS_CF_URL): AIFS_CF_INDEX}
+    )
+    with pytest.raises(AdapterUnavailable, match="grid_identity:2"):
+        ECMWFAIFSEnsembleAdapter(client=client, reader=mismatched_reader).assemble(
+            RunCandidate(
+                provider_run_id="aifs-ens-20260901000000-f024",
+                run_time=datetime(2026, 9, 1, tzinfo=UTC),
+                detail={"member_url": AIFS_PF_URL, "lead_hours": 24},
+            ),
+            window_at(),
+            tmp_path,
+        )
+
+
+def test_ecmwf_artifact_records_exact_valid_time_ranges_bytes_and_checksums(tmp_path: Path):
+    client = FakeClient(
+        texts={index_url(AIFS_PF_URL): AIFS_PF_INDEX, index_url(AIFS_CF_URL): AIFS_CF_INDEX}
+    )
+    result = aifs_adapter(client).assemble(
+        RunCandidate(
+            provider_run_id="aifs-ens-20260901000000-f024",
+            run_time=datetime(2026, 9, 1, tzinfo=UTC),
+            detail={"member_url": AIFS_PF_URL, "lead_hours": 24},
+        ),
+        window_at(),
+        tmp_path,
+    )
+    artifact = result.artifacts[0]
+    dataset = open_artifact(artifact.payload_path)
+    assert str(dataset.valid_time.values[0]).startswith("2026-09-02T00:00:00")
+    evidence = artifact.provenance["upstream_ranges"]
+    assert evidence
+    assert artifact.provenance["upstream_bytes"] == sum(item["byte_size"] for item in evidence)
+    assert all(len(item["sha256"]) == 64 for item in evidence)
+
+
+class ExactRangeResponse:
+    def __init__(
+        self, status: int, payload: bytes, content_range: str, *, content_length: str = ""
+    ) -> None:
+        self.status_code = status
+        self.headers = {"Content-Range": content_range}
+        if content_length:
+            self.headers["Content-Length"] = content_length
+        self.payload = payload
+        self.chunks_read = 0
+
+    def iter_bytes(self):
+        for offset in range(0, len(self.payload), 2):
+            self.chunks_read += 1
+            yield self.payload[offset : offset + 2]
+
+    def close(self) -> None:
+        pass
+
+
+def exact_range_client(response: ExactRangeResponse):
+    client = object.__new__(__import__("ingest.http", fromlist=["PoliteClient"]).PoliteClient)
+    def request(*_args, **kwargs):
+        assert kwargs["stream"] is True
+        return response
+
+    client._request = request
+    return client
+
+
+@pytest.mark.parametrize(
+    ("response", "reason"),
+    [
+        (ExactRangeResponse(200, b"whole", ""), "range_status"),
+        (ExactRangeResponse(206, b"12345", "bytes 0-5/100"), "range_length"),
+        (ExactRangeResponse(206, b"123456", "bytes 1-6/100"), "range_content_range"),
+        (ExactRangeResponse(206, b"123456", "bytes 0-5/*"), "range_content_range"),
+    ],
+)
+def test_ecmwf_exact_range_refuses_full_body_short_body_and_wrong_identity(
+    tmp_path: Path, response: ExactRangeResponse, reason: str
+):
+    destination = tmp_path / "x"
+    with pytest.raises(ValueError, match=reason):
+        _download_verified_range(
+            exact_range_client(response), "https://example.test/run", destination, (0, 5)
+        )
+    assert not destination.exists()
+    if reason in {"range_status", "range_content_range"}:
+        assert response.chunks_read == 0
+
+
+def test_ecmwf_exact_range_stops_reading_when_stream_exceeds_index_length(tmp_path: Path):
+    response = ExactRangeResponse(206, b"1234567890", "bytes 0-5/100")
+    destination = tmp_path / "x"
+
+    with pytest.raises(ValueError, match="range_length:8: expected 6"):
+        _download_verified_range(
+            exact_range_client(response), "https://example.test/run", destination, (0, 5)
+        )
+
+    assert response.chunks_read == 4
+    assert not destination.exists()
+
+
+def test_ecmwf_exact_range_records_verified_response_identity(tmp_path: Path):
+    response = ExactRangeResponse(206, b"123456", "bytes 0-5/100", content_length="6")
+    evidence: dict[str, object] = {}
+
+    size = _download_verified_range(
+        exact_range_client(response),
+        "https://example.test/run",
+        tmp_path / "x",
+        (0, 5),
+        response_evidence=evidence,
+    )
+
+    assert size == 6
+    assert evidence == {"http_status": 206, "content_range": "bytes 0-5/100"}
+    assert (tmp_path / "x").read_bytes() == b"123456"
+
+
+def test_ecmwf_exact_range_refuses_wrong_declared_length_without_reading(tmp_path: Path):
+    response = ExactRangeResponse(
+        206, b"123456", "bytes 0-5/100", content_length="999999999"
+    )
+
+    with pytest.raises(ValueError, match="range_length:999999999: expected 6"):
+        _download_verified_range(
+            exact_range_client(response), "https://example.test/run", tmp_path / "x", (0, 5)
+        )
+
+    assert response.chunks_read == 0
+    assert not (tmp_path / "x").exists()
+
+
+def test_ecmwf_exact_range_refuses_malformed_declared_length_without_reading(tmp_path: Path):
+    response = ExactRangeResponse(
+        206, b"123456", "bytes 0-5/100", content_length="six"
+    )
+
+    with pytest.raises(ValueError, match="range_length:six: expected 6"):
+        _download_verified_range(
+            exact_range_client(response), "https://example.test/run", tmp_path / "x", (0, 5)
+        )
+
+    assert response.chunks_read == 0
+    assert not (tmp_path / "x").exists()
 
 
 # ----------------------------------------------------------------------- 4. GEFS

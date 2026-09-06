@@ -44,13 +44,16 @@ no instantaneous column at all. GEPS is fifth and reduction-only, because it
 publishes zero members anywhere reachable. ICON-EPS is last, natively,
 because nothing about it was measured on that ticket.
 
-What remains unverified, and is stated here rather than assumed away: where
-the IFS ENS control member's file lives in the `ifs/0p25/enfo` layout;
+What remained unverified when this change was written, and was not assumed
+away: where the IFS ENS control member's file lives in the `ifs/0p25/enfo` layout;
 whether ECMWF `06z` and `18z` carry the full ENS; the REPS run cycles and lead
 set, which are documentation and were not enumerated; whether REPS `ETA_NT` is
 genuinely instantaneous, since GeoTIFF carries no product definition template;
 the PDT of the AIFS-ENS layered cloud fields; and every figure for ICON-EPS.
-No statistic in this change may be computed from a family whose member count
+Issue 82 rechecked the live Open Data listing and f024 index on 2026-09-05:
+only `enfo-ef` exists and it contains `pf` 1..50 with no `cf`. The experiment
+keeps control 0 missing and does not borrow deterministic `oper` output. No
+statistic in this change may be computed from a family whose member count
 is unverified, which is the fail-closed reading of all of the above.
 
 Classification: Experiment, Spec-Impact: none. `docs/specv1` is untouched.

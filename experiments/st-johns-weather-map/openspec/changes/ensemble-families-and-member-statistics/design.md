@@ -252,9 +252,11 @@ is false for an ensemble record whose `ensemble` is absent or whose
   already its own S3 object, and its control is nevertheless in a
   `separate_file`. So the GEFS adapter states `separate_file` directly;
   mapping the flag would have written `same_file` into provenance, which is
-  false for that family. AIFS-ENS (`true` -> `separate_file`), IFS ENS
-  (`false` -> `same_file`) and REPS (no identifier -> `null`) are unaffected,
-  and no adapter reads a member count, a control identifier or a storage scope
+  false for that family. AIFS-ENS remains `separate_file`. Issue 82's
+  2026-09-05 live check found no `cf` in IFS `enfo-ef` and no separate control
+  object, so its unregistered experiment records `null` rather than a false
+  retrieval location. REPS remains `null`, and no adapter reads a member
+  count, a control identifier or a storage scope
   from anywhere but the declaration.
 - The store samples a member-bearing dataset only when the request named a
   member (`member=<id>` or `member=all`) or a statistic; otherwise the
