@@ -276,7 +276,7 @@ def test_fixture_artifact_round_trips_through_the_astraeus_live_api_sampler(tmp_
 
 @pytest.mark.parametrize(("model", "field"), REPRESENTATIVE_FIELDS)
 def test_every_representative_round_trips_raw_to_artifact_reader_without_default_point_fallback(
-    tmp_path, monkeypatch, model, field,
+    tmp_path, monkeypatch, model, field, no_default_demand_evidence,
 ):
     monkeypatch.setattr(api_module, "now", lambda: VALID)
     client = GeoMetWCSClient(client=FixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet")
@@ -310,7 +310,7 @@ def test_every_representative_round_trips_raw_to_artifact_reader_without_default
     samples = harness.sample_point(47.56, -52.71, VALID)
     assert any(sample.variable == field.variable and sample.value == 4.0 for sample in samples)
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
-    monkeypatch.setattr(api_module, "live_store", lambda: harness)
+    monkeypatch.setattr(api_module, "live_store", lambda: pytest.fail("default demand opened ArtifactStore"))
     monkeypatch.setattr(api_models, "catalogue_key_for", lambda _field: "temperature_2m")
     response = TestClient(app).get(
         "/api/experiments/weather/v0/point",

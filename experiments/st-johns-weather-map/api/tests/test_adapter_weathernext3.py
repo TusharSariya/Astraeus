@@ -191,7 +191,7 @@ def test_all_field_box_reaches_real_reader_and_http_at_land_and_ocean_cells(tmp_
     }})
     api_module = importlib.import_module("weather_api.app")
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
-    monkeypatch.setattr(api_module, "live_store", lambda: harness)
+    monkeypatch.setattr(api_module, "live_store", lambda: pytest.fail("default demand opened ArtifactStore"))
     monkeypatch.setattr(api_module, "now", lambda: datetime(2026, 8, 1, 12, tzinfo=UTC))
     by_field = {sample["field"]: sample for sample in item["sample"]["fields"]}
     grids = item["avalon_box_sample"]["grids"]
@@ -256,7 +256,7 @@ class HarnessStore(LiveStore):
         pass
 
 
-def test_actual_reader_reads_all_126_fields_without_default_point_fallback(tmp_path, monkeypatch):
+def test_actual_reader_reads_all_126_fields_without_default_point_fallback(tmp_path, monkeypatch, no_default_demand_evidence):
     adapter = WeatherNext3StatisticsAdapter(ALL_FIELDS_EVIDENCE)
     result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
     currents, datasets = [], {}
@@ -292,7 +292,7 @@ def test_actual_reader_reads_all_126_fields_without_default_point_fallback(tmp_p
         )
     monkeypatch.setattr(catalogue, "_FIELDS", test_fields)
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
-    monkeypatch.setattr(api_module, "live_store", lambda: harness)
+    monkeypatch.setattr(api_module, "live_store", lambda: pytest.fail("default demand opened ArtifactStore"))
     monkeypatch.setattr(api_module, "now", lambda: datetime(2026, 8, 1, 12, tzinfo=UTC))
     response = TestClient(api_module.app).get(
         "/api/experiments/weather/v0/point",
@@ -304,7 +304,7 @@ def test_actual_reader_reads_all_126_fields_without_default_point_fallback(tmp_p
     assert "No retained forecast artifact was read or substituted" in response.json()["notices"]
 
 
-def test_six_field_box_reaches_real_reader_without_default_point_fallback(tmp_path, monkeypatch):
+def test_six_field_box_reaches_real_reader_without_default_point_fallback(tmp_path, monkeypatch, no_default_demand_evidence):
     adapter = WeatherNext3StatisticsAdapter(EVIDENCE)
     result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
     artifact = result.artifacts[0]
@@ -327,7 +327,7 @@ def test_six_field_box_reaches_real_reader_without_default_point_fallback(tmp_pa
     assert sampled == pytest.approx(expected)
     api_module = importlib.import_module("weather_api.app")
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
-    monkeypatch.setattr(api_module, "live_store", lambda: harness)
+    monkeypatch.setattr(api_module, "live_store", lambda: pytest.fail("default demand opened ArtifactStore"))
     monkeypatch.setattr(api_module, "now", lambda: datetime(2026, 8, 1, 12, tzinfo=UTC))
     response = TestClient(api_module.app).get(
         "/api/experiments/weather/v0/point",

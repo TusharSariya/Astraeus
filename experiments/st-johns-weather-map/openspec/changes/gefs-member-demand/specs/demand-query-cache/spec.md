@@ -31,6 +31,11 @@ The operational-false implementation SHALL probe the selected native lead in at 
 
 Failed member-index attempts SHALL be recorded separately from completed-body receipts, with known status (or null), attempt completion, error type and body-not-retained disposition. Successful range receipts SHALL survive subsequent decode failure. Missing mandatory temperature SHALL exclude that member; optional field absence SHALL remain explicit. Existing family QC and storage-scope judgments SHALL remain unchanged.
 
+#### Scenario: A selected control index is available in the first eligible cycle
+- **WHEN** the bounded selected-lead control index request succeeds in the newest eligible cycle
+- **THEN** its completed response identity and SHA-256 bind the canonical family request
+- **AND** a fresh identical query adds no discovery, member index, range, or decode operation
+
 ### Requirement: The response carries the existing consensus result separately
 The point response MAY carry a typed consensus summary with availability, server-computed temperature in degC, fixed method, derived-here class, centre range, deterministic contributor IDs, full input evidence, ensemble-witness IDs and refusal reason. It SHALL equal the existing `build_consensus` result over its served fields. Inputs and witnesses SHALL bind to that response. Ensembles SHALL NOT contribute numerically.
 

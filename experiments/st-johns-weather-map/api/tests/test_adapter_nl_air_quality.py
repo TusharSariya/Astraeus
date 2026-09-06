@@ -115,7 +115,7 @@ def test_missing_selected_value_is_partial_and_never_filled(tmp_path):
     assert result.artifacts[0].provenance["missing_counts"]["ozone_surface_mole_fraction"] == 1
 
 
-def test_artifact_reads_back_through_real_reader_and_http_point_api(tmp_path, monkeypatch):
+def test_artifact_reads_back_through_real_reader_and_http_point_api(tmp_path, monkeypatch, no_default_demand_evidence):
     import sys
     api_module = sys.modules["weather_api.app"]
     adapter = NLAirQualityAdapter(client=Client())
@@ -149,6 +149,12 @@ def test_artifact_reads_back_through_real_reader_and_http_point_api(tmp_path, mo
     fields = {item["field"]: item for item in payload["fields"]}
     assert fields["pm2_5_surface_24h_mean"]["value"] == pytest.approx(5.7e-9)
     assert fields["ozone_surface_mole_fraction"]["value"] == pytest.approx(27.8)
+    assert any(item["provenance"]["source_id"] == adapter.source_id for item in fields.values())
     for item in fields.values():
+        if item["provenance"]["source_id"] == "awc-metar-speci":
+            assert item["provenance"]["evidence_class"] in {"retrieved", "derived_here"}
+            assert item["provenance"]["product"] == "METAR/SPECI"
+            continue
+        assert item["provenance"]["source_id"] == adapter.source_id
         assert item["provenance"]["evidence_class"] == "uncalibrated_observation"
         assert item["provenance"]["operational"] is False

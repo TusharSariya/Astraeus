@@ -757,12 +757,13 @@ def test_a_selected_product_that_was_never_held_is_still_null(empty_live_store):
         assert field["provenance"]["last_valid_time"] is None
 
 
-def test_default_demand_point_never_reads_unreadable_retained_age_history(empty_live_store):
+def test_default_demand_point_never_reads_unreadable_retained_age_history(empty_live_store, no_default_demand_evidence):
 
     def raising(store):
         raise StoreUnavailable("the last valid time table is unreachable")
 
     empty_live_store.setattr(_api_module, "last_valid_times", raising)
+    empty_live_store.setattr(_api_module, "live_store", lambda: pytest.fail("default demand opened ArtifactStore"))
     payload = _client.get(f"{PREFIX}/point").json()
 
     assert payload["data_mode"] == "unavailable"

@@ -43,3 +43,20 @@ def data_mode(monkeypatch: pytest.MonkeyPatch):
         reset_live_store()
 
     return switch
+
+
+@pytest.fixture
+def no_default_demand_evidence(monkeypatch):
+    """Archive-isolation tests never contact unrelated live forecast services."""
+    import importlib
+
+    class UnavailableDemand:
+        @staticmethod
+        def point_fields(*_args, **_kwargs):
+            raise RuntimeError("explicit fixture: no current demand evidence")
+
+    for name, factory in (("hrdps_query", "hrdps_query_coordinator"),
+                          ("gfs_query", "gfs_query_coordinator"),
+                          ("gefs_query", "gefs_query_coordinator"),
+                          ("metar_query", "metar_query_service")):
+        monkeypatch.setattr(importlib.import_module(f"weather_api.{name}"), factory, lambda: UnavailableDemand())
