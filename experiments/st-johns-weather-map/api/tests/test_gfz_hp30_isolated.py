@@ -41,6 +41,13 @@ def test_child_refuses_any_bad_row_or_field_without_output(tmp_path,body):
     result,output=run(tmp_path,"normalize",body); assert result.returncode!=0 and not output.exists()
 
 
+def test_child_refuses_more_than_complete_half_hour_window_without_thinning(tmp_path):
+    body={"Hp30":[1.0]*50,"datetime":[f"2026-09-05T{index//2:02d}:{30*(index%2):02d}:00Z" for index in range(48)]+["2026-09-06T00:00:00Z","2026-09-06T00:30:00Z"],
+          "meta":{"license":"CC BY 4.0","source":"GFZ Potsdam"}}
+    result,output=run(tmp_path,"normalize",body)
+    assert result.returncode!=0 and b"refused without thinning" in result.stderr and not output.exists()
+
+
 def test_operation_bounds_cover_document_output_and_block_allowance(monkeypatch):
     monkeypatch.setattr(GFZHp30Adapter,"_run_isolated",staticmethod(lambda *_: None))
     bounds=GFZHp30Adapter().operation_bounds(FetchWindow(datetime(2026,9,6,tzinfo=timezone.utc)))

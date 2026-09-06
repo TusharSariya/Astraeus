@@ -7,8 +7,12 @@ support. Unsupported targets fail before network access.
 
 The one response is streamed under 512 KiB. Its raw bytes remain the only
 payload retained by the parent. Inspection and normalization each run in a
-child with a 256 MiB address-space cap, bounded pipes, and a 64 KiB single-file
-output cap. Every top-level field, metadata field, value and datetime is
+child with a 256 MiB address-space cap, a 16 KiB inspection reply cap, and a
+64 KiB single-file output cap. The inclusive 24-hour half-hour selection admits
+at most 49 rows before constructing the parent metadata list. Thus the parent
+retains at most the 512 KiB raw input, one 512 KiB stdin transfer, a 16 KiB
+reply, and 49 compact time strings while the child is limited separately; this
+does not characterize `RLIMIT_AS` as a total-memory guarantee. Every top-level field, metadata field, value and datetime is
 validated; malformed timestamps are refused without thinning. Native nulls
 remain gaps. The one private workspace output is atomically promoted, and all
 failure paths remove workspace and destination.

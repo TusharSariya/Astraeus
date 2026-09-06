@@ -83,9 +83,10 @@ GFZ_LICENCE = "CC BY 4.0"
 MAX_SELECTION_HOURS = 24.0
 GFZ_DOCUMENT_BYTES = 512 * 1024
 GFZ_OUTPUT_BYTES = 64 * 1024
+GFZ_INSPECTION_BYTES = 16 * 1024
 GFZ_FILESYSTEM_BLOCK_BYTES = 4096
 GFZ_PROCESS_LIMITS = ProcessAllocationLimits(address_space_bytes=256*1024*1024, output_bytes=GFZ_OUTPUT_BYTES,
-    stdin_bytes=GFZ_DOCUMENT_BYTES, stdout_bytes=GFZ_DOCUMENT_BYTES, stderr_bytes=64*1024)
+    stdin_bytes=GFZ_DOCUMENT_BYTES, stdout_bytes=GFZ_INSPECTION_BYTES, stderr_bytes=64*1024)
 
 
 class _GFZCurrentIndexAdapter:

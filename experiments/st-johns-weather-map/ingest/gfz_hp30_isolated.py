@@ -18,6 +18,8 @@ import zarr
 from ingest.contract import AdapterUnavailable
 from ingest.space_weather import format_time, parse_time, series_dataset
 
+MAX_ROWS = 49  # inclusive endpoints of one 24-hour half-hour selection
+
 
 def decode(raw: bytes) -> tuple[list[str], list[float], dict[str, Any]]:
     try:
@@ -34,6 +36,8 @@ def decode(raw: bytes) -> tuple[list[str], list[float], dict[str, Any]]:
         raise AdapterUnavailable(f"GFZ Hp30 declares licence {meta.get('license') if isinstance(meta,dict) else None!r}, not 'CC BY 4.0'")
     if not isinstance(values, list) or not isinstance(stamps, list) or not values or len(values) != len(stamps):
         raise AdapterUnavailable("GFZ Hp30 returned no values or value/datetime arrays are misaligned")
+    if len(values) > MAX_ROWS:
+        raise AdapterUnavailable(f"GFZ Hp30 returned {len(values)} rows for a 24-hour half-hour selection; refused without thinning")
     times: list[str] = []
     numbers: list[float] = []
     for index, (stamp, value) in enumerate(zip(stamps, values, strict=True)):
