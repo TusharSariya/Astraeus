@@ -1660,6 +1660,21 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/aviation/taf'))).toHaveLength(before)
   })
 
+  it('does not request Kp at animation-frame cadence', async () => {
+    const frame = driveFrames()
+    const fetchMock = routedFetch({})
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/space-weather?at='))).toBe(true))
+    const before = fetchMock.mock.calls.filter(([url]) => String(url).includes('/space-weather?at=')).length
+    await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
+    await frame(1000)
+    await frame(1010)
+    await frame(1020)
+    await frame(1030)
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/space-weather?at='))).toHaveLength(before)
+  })
+
   it('doubles and halves the speed within the ladder, clamping at both ends', async () => {
     const frame = driveFrames()
     vi.stubGlobal('fetch', routedFetch({}))

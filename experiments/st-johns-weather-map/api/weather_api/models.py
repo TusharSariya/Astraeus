@@ -1347,6 +1347,20 @@ class SpaceWeatherReading(StrictModel):
     status: str | None = None
 
 
+class KpAcquisition(StrictModel):
+    """Bounded transport identity for one cached Kp document; never its body."""
+
+    provider_url: str
+    effective_url: str
+    request_headers: dict[str, str]
+    response_headers: dict[str, str]
+    transport_completed_at: datetime
+    body_bytes: int
+    body_sha256: str
+    expires_at: datetime
+    last_revalidation: dict[str, Any] | None = None
+
+
 class SpaceWeatherSeries(StrictModel):
     """A planetary index series, or its honest absence."""
 
@@ -1355,6 +1369,7 @@ class SpaceWeatherSeries(StrictModel):
     product: str
     readings: list[SpaceWeatherReading] = Field(default_factory=list)
     freshness: Freshness
+    acquisition: KpAcquisition | None = None
     notices: list[str] = Field(default_factory=list)
 
 

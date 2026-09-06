@@ -737,9 +737,10 @@ export async function loadAstronomy(signal?: AbortSignal): Promise<AstronomyResu
  *  only a response declaring `live` is shown, the API's own notices are the
  *  reason otherwise, and a transport failure yields null — a Kp card showing
  *  zero on an outage would be an invented reading. */
-export async function loadSpaceWeather(signal?: AbortSignal): Promise<SpaceWeatherResult> {
+export async function loadSpaceWeather(at: Date, signal?: AbortSignal): Promise<SpaceWeatherResult> {
   try {
-    const response = await fetch(`${prefix}/space-weather`, { signal, headers: { Accept: 'application/json' } })
+    const params = new URLSearchParams({ at: at.toISOString() })
+    const response = await fetch(`${prefix}/space-weather?${params}`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) return { spaceWeather: null, error: `space-weather returned ${response.status}` }
     const body: unknown = await response.json()
     if (!body || typeof body !== 'object' || !(body as { kp_observed?: unknown }).kp_observed || !(body as { solar_wind?: unknown }).solar_wind) {

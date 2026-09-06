@@ -556,6 +556,7 @@ describe('layer grouping shared by the drawer and the coverage rows', () => {
 })
 
 describe('space weather is read fail-closed', () => {
+  const selected = new Date('2026-08-31T02:00:00Z')
   const liveBody = {
     data_mode: 'live', operational: false, generated_at: '2026-08-31T02:00:00Z',
     kp_observed: { available: true, source_id: 'noaa-swpc-kp', product: 'Planetary K index (observed)', readings: [{ time: '2026-08-31T00:00:00Z', value: 4.33, status: null }], freshness: { status: 'fresh', age_seconds: 1800, threshold_seconds: 21600 }, notices: [] },
@@ -566,7 +567,7 @@ describe('space weather is read fail-closed', () => {
 
   it('returns a live response with the provider status intact', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(liveBody), { status: 200 })))
-    const result = await loadSpaceWeather()
+    const result = await loadSpaceWeather(selected)
     expect(result.error).toBeNull()
     expect(result.spaceWeather?.kp_forecast.readings[0].status).toBe('predicted')
     expect(result.spaceWeather?.solar_wind.bz_gsm_nt).toBe(-4.1)
@@ -575,7 +576,7 @@ describe('space weather is read fail-closed', () => {
   it('fails closed on a non-live mode, keeping the API notice as the reason', async () => {
     const unavailable = { ...liveBody, data_mode: 'unavailable', notices: ['no fixture space weather exists; fixture mode answers unavailable rather than inventing planetary indices'] }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(unavailable), { status: 200 })))
-    const result = await loadSpaceWeather()
+    const result = await loadSpaceWeather(selected)
     expect(result.spaceWeather).toBeNull()
     expect(result.error).toMatch(/no fixture space weather exists/)
   })
@@ -583,19 +584,19 @@ describe('space weather is read fail-closed', () => {
   it('fails closed on a missing or unrecognised mode', async () => {
     const { data_mode: _dropped, ...noMode } = liveBody
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(noMode), { status: 200 })))
-    expect((await loadSpaceWeather()).spaceWeather).toBeNull()
+    expect((await loadSpaceWeather(selected)).spaceWeather).toBeNull()
   })
 
   it('returns null with the transport failure, never an invented zero', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
-    const result = await loadSpaceWeather()
+    const result = await loadSpaceWeather(selected)
     expect(result.spaceWeather).toBeNull()
     expect(result.error).toMatch(/offline/)
   })
 
   it('refuses an incompatible schema', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data_mode: 'live' }), { status: 200 })))
-    const result = await loadSpaceWeather()
+    const result = await loadSpaceWeather(selected)
     expect(result.spaceWeather).toBeNull()
     expect(result.error).toMatch(/incompatible schema/)
   })

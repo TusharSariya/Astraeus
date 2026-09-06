@@ -463,6 +463,10 @@ export default function App() {
     instant.setUTCSeconds(0, 0)
     return instant.toISOString().replace(/\.000Z$/, 'Z')
   }, [snapshot.validAt])
+  // Kp is selected against the same completed point-evidence minute. Playback
+  // frames therefore cannot hammer `/space-weather`; a completed deliberate
+  // selection refreshes the planetary series once.
+  const spaceWeatherEvidenceAt = tafEvidenceAt
 
   // The axis a scrub snaps onto when display interpolation is off: the union
   // of the active visible layers' published frame instants in the window.
@@ -676,10 +680,6 @@ export default function App() {
     // Planetary space weather (Kp, Bz). Fail-closed like astronomy: a failure
     // keeps the reason and no card shows a number, because a Kp of zero on an
     // outage would be an invented reading.
-    loadSpaceWeather(controller.signal).then((result) => {
-      setSpaceWeather(result.spaceWeather)
-      setSpaceWeatherNotice(result.error)
-    }).catch(() => undefined)
     loadSourceStatus(controller.signal).then((result) => {
       setSourceStatuses(result.statuses)
       setSourceStatusError(result.error)
@@ -703,6 +703,20 @@ export default function App() {
     }).catch(() => undefined)
     return () => controller.abort()
   }, [demandLayerIdentity]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const controller = new AbortController()
+    if (!spaceWeatherEvidenceAt) return () => controller.abort()
+    const timer = window.setTimeout(() => {
+      loadSpaceWeather(new Date(spaceWeatherEvidenceAt), controller.signal).then((result) => {
+        if (!controller.signal.aborted) {
+          setSpaceWeather(result.spaceWeather)
+          setSpaceWeatherNotice(result.error)
+        }
+      }).catch(() => undefined)
+    }, 250)
+    return () => { window.clearTimeout(timer); controller.abort() }
+  }, [spaceWeatherEvidenceAt])
 
   useEffect(() => {
     const controller = new AbortController()

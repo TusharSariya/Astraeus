@@ -200,9 +200,12 @@ def build_products(store: LiveStore, reference: datetime, *, registry_threshold:
     freshness rather than to a guess.
     """
     store.skipped = []
+    all_artifacts = list(store.current())
+    legacy_kp = [artifact for artifact in all_artifacts if artifact.source_id == "noaa-swpc-kp"]
     artifacts = [
-        artifact for artifact in store.current()
+        artifact for artifact in all_artifacts
         if (artifact.provenance or {}).get("native_crs") == SERIES_CRS
+        and artifact.source_id != "noaa-swpc-kp"
     ]
     products: list[SpaceWeatherProduct] = []
     for artifact in sorted(artifacts, key=lambda item: (item.source_id, item.logical_name)):
@@ -212,6 +215,8 @@ def build_products(store: LiveStore, reference: datetime, *, registry_threshold:
         products.append(product_from_series(series, reference, _threshold(artifact.source_id, registry_threshold)))
     skipped = [SpaceWeatherSkipped(source_id=item.source_id, logical_name=_logical_for(item, artifacts), reason=item.reason) for item in store.skipped]
     notices: list[str] = []
+    if legacy_kp:
+        notices.append("retained noaa-swpc-kp artifacts are historical audit evidence and are omitted; current Kp is selected on demand through /space-weather")
     if not products:
         notices.append("no coordinate-free space-weather artifact is currently published; nothing is listed and nothing is invented")
     return SpaceWeatherProductsResponse(

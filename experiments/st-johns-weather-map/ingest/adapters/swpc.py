@@ -154,6 +154,9 @@ class SWPCKpAdapter:
         return self._client or PoliteClient()
 
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        raise AdapterUnavailable("noaa-swpc-kp scheduled ingestion is disabled; use selected-timestamp demand queries")
+
+    def demand_operation_bounds(self) -> ResourceBounds:
         # The worker calls this before reserving resources or issuing discovery
         # requests; reject an unmeasured allocation geometry at that boundary.
         self._require_measured_filesystem(Path(tempfile.gettempdir()))
@@ -164,6 +167,18 @@ class SWPCKpAdapter:
             margin_bytes=2 * KP_FILESYSTEM_MARGIN_BYTES,
             received_bytes=2 * KP_PROCESS_LIMITS.stdin_bytes,
         )
+
+    def demand_decode(self, raw: bytes, mode: str) -> list[tuple[datetime, float, float]]:
+        """Validate and decode one bounded document inside the measured child."""
+        try:
+            payload = json.loads(self._isolated("inspect", mode, raw, None).stdout)
+            rows = payload["rows"]
+            decoded = [(_parse_time(row[0]), float(row[1]), float(row[2])) for row in rows]
+        except (BoundedProcessError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            raise AdapterUnavailable(f"SWPC {mode} Kp isolated validation failed: {error}") from error
+        if len(decoded) != payload.get("count") or any(stamp is None for stamp, _, _ in decoded):
+            raise AdapterUnavailable(f"SWPC {mode} Kp isolated validation returned inconsistent rows")
+        return [(stamp, value, context) for stamp, value, context in decoded if stamp is not None]
 
     def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
         return DiscoveryBounds(received_bytes=self.operation_bounds(window).received_bytes)
