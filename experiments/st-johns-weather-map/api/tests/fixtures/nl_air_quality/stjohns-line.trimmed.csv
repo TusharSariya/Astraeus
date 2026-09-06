@@ -1,0 +1,5 @@
+Due to the volume and frequent updating of the data available on this Web site the air monitoring data is PROVISIONAL and has not undergone quality control checks. These data may be subject to significant change.
+STAT_NUM,DATE_TIME,PM2_5_RUN_AVG,PM10_RUN_AVG,NO,NO2,NOX,O3,SO2,CO
+StJohns,9/5/2026 7:00:00 PM,5.3,10.8,7.93,15.48,23.42,25.3,1.05,0.1
+StJohns,9/5/2026 8:00:00 PM,5.5,11.2,8.34,15.47,23.82,25.2,1.14,0.1
+StJohns,9/5/2026 9:00:00 PM,5.7,11.8,6.12,11.66,17.76,27.8,1.1,0.1
