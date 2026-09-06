@@ -163,6 +163,12 @@ class GFSQueryService:
             current = self._clock()
             return tuple(sorted({entry.valid_time for expiry, entry in self._entries.values() if current < expiry}))
 
+    def cached_entries(self) -> tuple[GFSQueryEntry, ...]:
+        """Unexpired normalized entries, without provider or loader I/O."""
+        with self._lock:
+            current = self._clock()
+            return tuple(entry for expiry, entry in self._entries.values() if current < expiry)
+
 
 def hides_legacy_published_gfs_layer(source_id: str) -> bool:
     """Keep pre-demand GFS artifacts audit-readable without advertising them as live layers."""
@@ -230,6 +236,17 @@ class GFSQueryCoordinator:
 
     def cached_valid_times(self) -> tuple[datetime, ...]:
         return self._cache.cached_valid_times()
+
+    def cached_cloud_availability(self) -> Mapping[str, tuple[datetime, ...]]:
+        """Cached native frames by actually present cloud field; no provider I/O."""
+        fields = ("total_cloud_geometric", "cloud_low", "cloud_middle", "cloud_high")
+        result: dict[str, list[datetime]] = {field: [] for field in fields}
+        for entry in self._cache.cached_entries():
+            present = set(entry.values.get("surface_fields", ()))
+            for field in fields:
+                if field in present:
+                    result[field].append(entry.valid_time)
+        return {field: tuple(sorted(set(times))) for field, times in result.items()}
 
     def point_fields(self, latitude: float, longitude: float, selected_time: datetime) -> tuple[list[Any], Any, list[str]]:
         """Answer one point through the existing evidence/provenance builder.
@@ -565,13 +582,27 @@ class GFSQueryCoordinator:
                 payloads = tuple(bundle.read(f"artifacts/{artifact['name']}") for artifact in artifacts)
             digest = hashlib.sha256(b"".join(payloads)).hexdigest()
             provenance = {artifact["logical_name"]: artifact["provenance"] for artifact in artifacts}
+            surface_fields: tuple[str, ...] = ()
+            if "surface" in logical_names:
+                surface_payload = payloads[logical_names.index("surface")]
+                surface_path = Path(directory) / "validated-surface.zarr.zip"
+                surface_path.write_bytes(surface_payload)
+                import xarray  # noqa: PLC0415
+                import zarr  # noqa: PLC0415
+                surface_store = zarr.storage.ZipStore(str(surface_path), mode="r")
+                surface_dataset = xarray.open_zarr(surface_store, consolidated=False)
+                try:
+                    surface_fields = tuple(sorted(str(name) for name in surface_dataset.data_vars))
+                finally:
+                    surface_dataset.close()
+                    surface_store.close()
         return GFSQueryEntry(
             key=key,
             run_time=datetime.fromisoformat(info["run_time"]),
             valid_time=self._selected_time(key, candidate),
             fetched_at=datetime.fromisoformat(info["retrieved_at"]),
             content_digest=digest,
-            values={"logical_names": [artifact["logical_name"] for artifact in artifacts]},
+            values={"logical_names": [artifact["logical_name"] for artifact in artifacts], "surface_fields": surface_fields},
             provenance=provenance,
             payloads=payloads,
         )

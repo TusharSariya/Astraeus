@@ -923,7 +923,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     if product is not None and product.upper() == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
-            times = gfs_query_coordinator().cached_valid_times()
+            availability = gfs_query_coordinator().cached_cloud_availability()
         except Exception as error:  # noqa: BLE001
             return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=[f"GFS demand raster availability could not be resolved: {type(error).__name__}"])
         capabilities = (
@@ -937,10 +937,10 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             kind="raster", field=field, product="GFS", units="percent",
             evidence_class="retrieved", family="cloud_cover", field_key=field,
             semantics=f"NOAA GFS native geometric {stratum} cloud cover rendered from the selected grid; nearest cell, never interpolated, substituted between strata, or compared as opacity",
-            times=list(times), cadence_seconds=None, staleness_tolerance_seconds=3600,
+            times=list(availability[field]), cadence_seconds=None, staleness_tolerance_seconds=3600,
             z_index=Z_INDEX_BY_KIND["raster"], evidence_basis="demand_query", group="rendered_grid",
-            raster_available=bool(times), legend_available=False,
-        ) for layer_id, title, field, stratum in capabilities], notices=["GFS raster values are fetched only for the selected native timestamp; advertised hours are metadata, not fetched coverage"])
+            raster_available=bool(availability[field]), legend_available=False,
+        ) for layer_id, title, field, stratum in capabilities if availability[field]], notices=["GFS raster values are fetched only for the selected native timestamp; advertised hours are metadata, not fetched coverage"])
 
     store = live_store()
     if store is None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from threading import Event
 from time import sleep
@@ -540,7 +541,8 @@ def test_gfs_scoped_layers_advertise_native_geometric_cloud_strata(monkeypatch):
     from weather_api import gfs_query
     stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
     class Coordinator:
-        def cached_valid_times(self): return (stamp,)
+        def cached_cloud_availability(self):
+            return {field: (stamp,) for field in ('total_cloud_geometric', 'cloud_low', 'cloud_middle', 'cloud_high')}
     monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
     monkeypatch.setattr(gfs_query, 'gfs_query_coordinator', lambda: Coordinator())
     body = TestClient(app_module.app).get(f'{app_module.PREFIX}/layers', params={'product':'GFS'}).json()
@@ -557,6 +559,21 @@ def test_gfs_scoped_layers_advertise_native_geometric_cloud_strata(monkeypatch):
     assert layer['raster_available'] is True and layer['legend_available'] is False
     assert [layer['field'] for layer in body['layers'][1:]] == ['cloud_low', 'cloud_middle', 'cloud_high']
     assert all('geometric' in layer['semantics'] and 'opacity' in layer['semantics'] for layer in body['layers'])
+
+
+def test_gfs_scoped_layers_exclude_an_absent_optional_stratum(monkeypatch):
+    from fastapi.testclient import TestClient
+    import sys
+    app_module = sys.modules['weather_api.app']
+    from weather_api import gfs_query
+    stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    class Coordinator:
+        def cached_cloud_availability(self):
+            return {'total_cloud_geometric': (), 'cloud_low': (stamp,), 'cloud_middle': (), 'cloud_high': (stamp,)}
+    monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
+    monkeypatch.setattr(gfs_query, 'gfs_query_coordinator', lambda: Coordinator())
+    body = TestClient(app_module.app).get(f'{app_module.PREFIX}/layers', params={'product': 'GFS'}).json()
+    assert [layer['id'] for layer in body['layers']] == ['noaa-gfs-demand-cloud-low', 'noaa-gfs-demand-cloud-high']
 
 def test_native_geometric_cloud_raster_preserves_percent_and_missing_alpha(tmp_path):
     import io
@@ -601,7 +618,7 @@ def test_native_cloud_strata_rasters_select_exact_fields_without_substitution(tm
         dataset[name].attrs['units'] = 'percent'
     path = write_zarr(dataset, tmp_path / 'surface.zip')
     entry = GFSQueryEntry(KEY, run, valid, valid + timedelta(minutes=2), 'c' * 64,
-        {'logical_names': ['surface']}, {'surface': {'product': 'Global Forecast System', 'native_crs': 'EPSG:4326'}}, (path.read_bytes(),))
+        {'logical_names': ['surface'], 'surface_fields': list(values)}, {'surface': {'product': 'Global Forecast System', 'native_crs': 'EPSG:4326'}}, (path.read_bytes(),))
     coordinator = object.__new__(GFSQueryCoordinator); coordinator.query = lambda _selected: entry
     expected_alpha = {
         'noaa-gfs-demand-cloud-low': [[0, 64], [0, 255]],
@@ -615,6 +632,15 @@ def test_native_cloud_strata_rasters_select_exact_fields_without_substitution(tm
         assert pixels[:, :, 3].tolist() == expected
         assert np.all(pixels[:, :, :3] == 255)
         assert image.units == 'percent' and image.valid_time == valid and returned is entry
+    sparse_path = write_zarr(dataset.drop_vars('cloud_middle'), tmp_path / 'sparse-surface.zip')
+    sparse = replace(entry, values={'logical_names': ['surface'], 'surface_fields': ['cloud_low', 'cloud_high']}, payloads=(sparse_path.read_bytes(),))
+    coordinator.query = lambda _selected: sparse
+    low, _ = coordinator.cloud_raster(valid, layer_id='noaa-gfs-demand-cloud-low',
+        bounds={'south': 0, 'west': 0, 'north': 2, 'east': 2}, width=2, height=2, crs='EPSG:4326')
+    assert low.payload
+    with pytest.raises(Exception, match='does not carry cloud_middle'):
+        coordinator.cloud_raster(valid, layer_id='noaa-gfs-demand-cloud-middle',
+            bounds={'south': 0, 'west': 0, 'north': 2, 'east': 2}, width=2, height=2, crs='EPSG:4326')
 
 def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
     import sys
