@@ -671,7 +671,7 @@ export interface SourceStatusResult {
 }
 
 /** Whether live response-backed evidence stands behind a picker station. */
-export type StationCoverageState = 'live' | 'declared-not-live' | 'no-source' | 'unknown'
+export type StationCoverageState = 'live' | 'status-live' | 'declared-not-live' | 'no-source' | 'unknown'
 
 export interface StationCoverage {
   state: StationCoverageState

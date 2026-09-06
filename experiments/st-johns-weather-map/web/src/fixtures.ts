@@ -55,9 +55,9 @@ export function stationCoverage(point: LocationPoint, statuses: SourceStatusItem
   if (live.length > 0) {
     const newest = live.map((row) => row.last_retrieval).filter((value): value is string => Boolean(value)).sort().at(-1)
     return {
-      state: 'live',
-      short: 'live source',
-      detail: `${point.name}: live response-backed source ${live.map((row) => row.source_id).join(', ')}${newest ? `, last retrieval ${newest}` : ', no retrieval timestamp reported'}.`,
+      state: 'status-live',
+      short: 'status-reported live source',
+      detail: `${point.name}: source status reports ${live.map((row) => row.source_id).join(', ')} as live${newest ? `, last retrieval ${newest}` : ', with no retrieval timestamp reported'}. The selected point response does not currently carry evidence from that source.`,
     }
   }
   const missing = declared.filter((id) => !statuses.some((status) => status.source_id === id))

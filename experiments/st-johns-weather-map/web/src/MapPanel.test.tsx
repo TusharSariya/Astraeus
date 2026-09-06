@@ -270,7 +270,7 @@ describe('MapPanel station coverage', () => {
 
   it('separates stations with a live response-backed source from those without, in text', () => {
     render(panel())
-    expect(screen.getByText(/live response-backed source awc-metar-speci, awc-taf/i)).toBeInTheDocument()
+    expect(screen.getByText(/source status reports awc-metar-speci, awc-taf as live/i)).toBeInTheDocument()
     expect(screen.getByText(/smartatlantic-st-johns is catalogued but reported no live retrieval/i)).toBeInTheDocument()
     expect(screen.getByText(/no registry source declares coverage of this place/i)).toBeInTheDocument()
   })
@@ -295,7 +295,7 @@ describe('MapPanel station coverage', () => {
     expect(props.characterSet).toContain('\u2019')
     expect(props.characterSet).toContain('\u00b7')
     const cyyt = props.data.find((d) => d.id === 'cyyt')!
-    expect(props.getText(cyyt)).toBe('CYYT \u00b7 live source')
+    expect(props.getText(cyyt)).toBe('CYYT \u00b7 status-reported live source')
     expect(props.getText(props.data.find((d) => d.id === 'sma-sj')!)).toMatch(/St\. John\u2019s/)
     expect(props.extensions.some((extension) => extension?.constructor?.name === 'CollisionFilterExtension')).toBe(true)
     expect(props.getCollisionPriority(cyyt)).toBeGreaterThan(props.getCollisionPriority({ id: 'cape-spear' }))

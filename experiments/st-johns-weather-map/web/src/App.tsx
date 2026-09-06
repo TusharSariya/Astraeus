@@ -792,8 +792,9 @@ export default function App() {
   const stationGroups = useMemo(() => {
     const groups: Array<{ label: string; entries: typeof stationOptions }> = [
       { label: 'Live response-backed source', entries: stationOptions.filter(({ coverage }) => coverage.state === 'live') },
+      { label: 'Status-reported live source', entries: stationOptions.filter(({ coverage }) => coverage.state === 'status-live') },
       { label: 'Live-source coverage unknown', entries: stationOptions.filter(({ coverage }) => coverage.state === 'unknown') },
-      { label: 'No eligible response-backed source (place to query)', entries: stationOptions.filter(({ coverage }) => coverage.state !== 'live' && coverage.state !== 'unknown') },
+      { label: 'No eligible response-backed source (place to query)', entries: stationOptions.filter(({ coverage }) => !['live', 'status-live', 'unknown'].includes(coverage.state)) },
     ]
     return groups.filter(({ entries }) => entries.length > 0)
   }, [stationOptions])
@@ -801,7 +802,9 @@ export default function App() {
     if (sourceStatusError) return `Live-source coverage unknown: ${sourceStatusError}. No station is being shown as live.`
     if (sourceStatuses === null) return 'Checking which stations have live response-backed evidence…'
     const live = stationOptions.filter(({ coverage }) => coverage.state === 'live').length
-    return `A live response-backed source stands behind ${live} of ${stationOptions.length} stations; the rest are places you can query, not stations reporting to this deployment.`
+    const statusLive = stationOptions.filter(({ coverage }) => coverage.state === 'status-live').length
+    const statusNote = statusLive > 0 ? ` Source status separately reports ${statusLive} station${statusLive === 1 ? '' : 's'} as live without evidence in the selected response.` : ''
+    return `A live response-backed source stands behind ${live} of ${stationOptions.length} stations; the rest are places you can query, not stations reporting to this deployment.${statusNote}`
   }, [sourceStatusError, sourceStatuses, stationOptions])
 
   // The header names the product the response answered with, in the response's
