@@ -198,6 +198,18 @@ current main before final gates, and make conventional commits/PRs with exact
 - #196 HRDPS is merged and closed; its bounded evidence remains outside Git for audit.
 - #201 CYYT TAF is merged and closed through PR207; its provider-response cache is the source-local pattern, not a generic persistence framework.
 - #208 GFS point, native pressure profile, provider-advertised timeline metadata, and one native geometric-total-cloud raster are merged through PR212/PR215/PR219. Legacy stored rasters are audit-only. GFS APCP, SST, AOTK, cloud-top pressure, and remaining native rasters stay open under #208/#97. The related #191/#111/#107/#85 issues currently own ECCC precipitation, ocean products, aerosol observations, and satellite cloud products respectively; they are related family tracks, not precise owners for these GFS rows. The next APCP slice requires the native interval/card choice recorded in `docs/research/wayfinder/gfs-apcp-native-intervals.md`.
+- Consensus demand selection merged through PR225 (`2f28452`), and GFS native
+  total/low/middle/high geometric-cloud demand rasters merged through PR224
+  (`61a2a04`). #208 and #97 remain open for their named residual fields and
+  layers; these merges do not make the source complete.
+- #226 is the active bounded ECCC CAP Current-Alerts demand-query slice under
+  #137. It uses a finite current-document request cache and preserves native
+  validity, geometry, text, envelope and transport provenance. A successful
+  empty response from every declared Avalon box may answer zero; a partial or
+  malformed response never becomes an all-clear. The live capture on 2026-09-06
+  was empty, so nonempty presentation remains contract-fixture evidence until a
+  real warning is observed. #137 stays open for broader hazards, and #84 remains
+  the active GEFS source track.
 - `/private/tmp/astraeus-live-query-snapshot-api`, branch
   `execution/live-query-snapshot-api`, preserves two local API commits and is
   paused; do not merge it under the corrective sequence.
