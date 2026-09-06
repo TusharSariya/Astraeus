@@ -430,7 +430,7 @@ def _resolved_coverage(store: object, reference: datetime) -> tuple[dict[datetim
 
 
 @app.get(f"{PREFIX}/timeline", response_model=TimelineResponse)
-def get_timeline() -> TimelineResponse:
+def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
     reference = now()
     start, end = window_start(reference), window_end(reference)
     tiers = horizon_tiers(reference)
@@ -441,28 +441,36 @@ def get_timeline() -> TimelineResponse:
         # has no retrieved run to be covered by.
         fixture_items = [item.model_copy(update={"tier": tier_of(item.valid_time_utc, reference)}) for item in timeline(reference)]
         return TimelineResponse(data_mode=DataMode.FIXTURE, start=start, end=end, items=fixture_items, boundary=boundary, tiers=tiers)
+    if response_mode() is DataMode.UNAVAILABLE:
+        return TimelineResponse(
+            data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference),
+            boundary=boundary, tiers=tiers,
+            notices=["WEATHER_DATA_MODE is not a recognized live mode; no demand availability can be resolved"],
+        )
 
     demand_products: dict[datetime, list[str]] = {}
     demand_notices: list[str] = []
-    try:
-        from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
-        for stamp in hrdps_query_coordinator().timeline_times(reference):
-            if start <= stamp <= end:
-                demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-hrdps")
-    except Exception as error:  # noqa: BLE001 - a provider miss is an unavailable source, not a route failure
-        demand_notices.append(
-            f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
-        )
-    try:
-        from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
-        stamps, _receipt = gfs_query_coordinator().timeline_times(reference)
-        for stamp in stamps:
-            if start <= stamp <= end:
-                demand_products.setdefault(_floor_to_hour(stamp), []).append("noaa-gfs")
-    except Exception as error:  # noqa: BLE001 - an unavailable listing must not fail the shared route
-        demand_notices.append(
-            f"noaa-gfs demand availability could not be resolved: {type(error).__name__}"
-        )
+    if product and product.upper() == "HRDPS":
+        try:
+            from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+            for stamp in hrdps_query_coordinator().timeline_times(reference):
+                if start <= stamp <= end:
+                    demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-hrdps")
+        except Exception as error:  # noqa: BLE001 - a provider miss is an unavailable source, not a route failure
+            demand_notices.append(
+                f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
+            )
+    if product and product.upper() == "GFS":
+        try:
+            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+            stamps, _receipt = gfs_query_coordinator().timeline_times(reference)
+            for stamp in stamps:
+                if start <= stamp <= end:
+                    demand_products.setdefault(_floor_to_hour(stamp), []).append("noaa-gfs")
+        except Exception as error:  # noqa: BLE001 - an unavailable listing must not fail the shared route
+            demand_notices.append(
+                f"noaa-gfs demand availability could not be resolved: {type(error).__name__}"
+            )
 
     store = live_store()
     if store is None:

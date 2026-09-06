@@ -213,7 +213,9 @@ def test_live_timeline_uses_hrdps_demand_availability_without_artifact_store(mon
     monkeypatch.setattr(app_module, "now", lambda: reference)
     monkeypatch.setattr(app_module, "live_store", lambda: None)
     monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: Coordinator())
-    response = TestClient(app_module.app).get(f"{app_module.PREFIX}/timeline")
+    response = TestClient(app_module.app).get(
+        f"{app_module.PREFIX}/timeline", params={"product": "HRDPS"}
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["data_mode"] == "live"
@@ -240,7 +242,9 @@ def test_hrdps_demand_timeline_survives_a_raising_legacy_store(monkeypatch) -> N
     monkeypatch.setattr(app_module, "now", lambda: reference)
     monkeypatch.setattr(app_module, "live_store", lambda: RaisingStore())
     monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: Coordinator())
-    body = TestClient(app_module.app).get(f"{app_module.PREFIX}/timeline").json()
+    body = TestClient(app_module.app).get(
+        f"{app_module.PREFIX}/timeline", params={"product": "HRDPS"}
+    ).json()
     assert body["data_mode"] == "live"
     item = next(item for item in body["items"] if datetime.fromisoformat(item["valid_time_utc"]) == reference)
     assert item["available_products"] == ["eccc-hrdps"]

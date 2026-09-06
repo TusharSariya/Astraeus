@@ -390,6 +390,18 @@ describe('timeline mode', () => {
     expect(result.dataMode).toBe('unavailable')
   })
 
+  it('scopes demand availability to the selected product', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data_mode: 'live', start: '', end: '', items: [] }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await loadTimeline('GFS')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/timeline?product=GFS'),
+      expect.objectContaining({ headers: { Accept: 'application/json' } }),
+    )
+  })
+
   it('builds no story hour from an unavailable timeline', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

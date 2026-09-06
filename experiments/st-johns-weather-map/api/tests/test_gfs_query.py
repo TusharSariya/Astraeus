@@ -485,7 +485,7 @@ def test_shared_timeline_includes_only_provider_listed_gfs_hours(monkeypatch):
     monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: GFS())
     monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: HRDPS())
 
-    response = get_timeline()
+    response = get_timeline("GFS")
 
     assert response.data_mode.value == "live"
     item = next(item for item in response.items if item.valid_time_utc == native.replace(minute=0, second=0, microsecond=0))
