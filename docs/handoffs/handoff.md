@@ -1,4 +1,4 @@
-# Autonomous execution handoff: complete sources through the existing app
+# Autonomous execution handoff: deliver the working desktop evidence app
 
 Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
@@ -20,6 +20,15 @@ maps or create another master map. Source work may make routine changes needed
 by the existing UI; new layout, styling, shared-snapshot UX, and desktop design
 stay with #38.
 
+The owner's current autonomous product outcome is one working desktop application
+that uses every relevant eligible source. #70 owns source truth through the
+existing client; #38 owns the subsequent desktop interaction and visual rebuild
+on that working data path. Treat these as two linked delivery stages, not two
+competing products. Reconcile broad, duplicate, obsolete and deferred children
+against this outcome instead of mechanically closing every historical ticket.
+A source or app ticket closes only when its evidence is complete or a traceable
+replacement, exclusion, external block or owner-approved deferral is recorded.
+
 The owner approved a corrective sequencing change after the September 6 delivery
 audit: first make one complete HRDPS vertical slice work through the current
 refresh/store/API/web path, then repeat complete source paths. Further fragment,
@@ -30,14 +39,14 @@ features were never selected and does not revert merged safety work.
 
 ## Measured baseline
 
-Current main is `ad49c99782cbb7331a3d42abb8cd9bb3ee839780` after reviewed PR199.
+Current main is `9a58dccc74d0b6f8b3ca7f6d50eba5286bff5345` after the reviewed HRDPS implementation, exact-memory admission fix and contract backfill.
 The registry contains 123 records: 21 are `implemented-unverified`. Seventeen
-records intersect ingestible configuration and a registered adapter, but only
-`awc-metar-speci` and `noaa-swpc-kp` currently implement both finite discovery
-and payload resource bounds required by the worker. The other 15 fail closed
-before discovery. Four adapter classes in the tree implement whole-operation
-bounds; two are not scheduled sources. These are code-configuration counts, not
-proof that either source is live in a running application.
+records intersected ingestible configuration and a registered adapter, but only
+`awc-metar-speci` and `noaa-swpc-kp` implemented both finite discovery and
+payload resource bounds at that audit point. PR199 subsequently added the first
+fully verified HRDPS vertical. Treat these as dated code-configuration counts,
+not proof that every registered source is live in the application; each source
+still needs the vertical definition of done below.
 
 The current web client still reads `/point`, `/timeline`, `/layers`, `/catalog`,
 `/sources/status`, and the existing image/feature routes. It makes no snapshot
@@ -95,7 +104,12 @@ Every subsequent source follows the same definition of done:
 7. Pass relevant API, registry/profile, SQL/storage, strict OpenSpec, specctl and
    CI gates, followed by independent evidence review.
 
-Continue until #97 can verify all required source dispositions and integrations.
+Continue until #97 can verify all relevant eligible source dispositions and
+integrations, then execute #38 against those real paths. During the queue, triage
+tracker children into four explicit outcomes: required delivery, duplicate or
+superseded with a replacement pointer, deferred with a stated product reason, or
+blocked by a named owner/external fact. Research completion, a merged contract,
+or an adapter that cannot publish does not by itself count as delivered.
 
 ## Deferred work and retained safeguards
 
@@ -144,8 +158,8 @@ current main before final gates, and make conventional commits/PRs with exact
   `execution/scoped-weather-db-roles`, preserves uncommitted scoped-role work and
   is paused.
 - The #158 fragment worktree remains preserved and paused.
-- This completion/next-slice handoff update is isolated at
-  `/private/tmp/astraeus-source-handoff-hrdps`.
+- The current product-outcome handoff update is isolated at
+  `/private/tmp/astraeus-autonomous-app-goal`.
 
 Research and handoff prose are non-normative. Only the owner changes accepted,
 verified, or superseded specification status.
