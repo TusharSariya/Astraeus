@@ -1220,7 +1220,7 @@ export function MapPanel({
   /** One retrieved image, in words. Every clause is a retrieved fact off the
    *  response headers; "nothing detected" is only said about an image that
    *  arrived. */
-  const describeImage = (slot: RasterSlot): string => {
+  const describeImage = (slot: RasterSlot, layer: LayerItem): string => {
     const { provenance, coverage } = slot.image
     // The alerts image is served untimed (`x-weather-valid-time: none`). It
     // used to be stamped with the scrubbed time, which is a timestamp the
@@ -1229,11 +1229,14 @@ export function MapPanel({
       ? 'current image, not time-indexed'
       : `valid ${provenance.validTime ?? new Date(slot.frame.time).toISOString()}`
     const run = provenance.referenceTime && provenance.referenceTime !== 'none' ? `, model run ${provenance.referenceTime}` : ''
-    // A rendered-grid image was drawn here from the stored artifact; naming a
-    // WMS layer for it would invent an upstream it never had.
+    // A rendered-grid image can come from a published artifact or the bounded
+    // selected-time cache. Naming either one as the other would invent a
+    // durability claim; neither has an upstream WMS layer.
     const drawnFrom = provenance.wmsLayer
       ?? (provenance.imageBasis === 'rendered_grid'
-        ? `the stored ${provenance.sourceId ?? 'grid'} artifact, rendered by this experiment at its native cells (nearest-neighbor, never smoothed)`
+        ? layer.evidence_basis === 'demand_query'
+          ? `the bounded selected-time ${provenance.sourceId ?? 'grid'} cache entry, rendered by this experiment at its native cells (nearest-neighbor, never smoothed)`
+          : `the stored ${provenance.sourceId ?? 'grid'} artifact, rendered by this experiment at its native cells (nearest-neighbor, never smoothed)`
         : 'an unnamed source')
     const head = `Imagery retrieved from ${drawnFrom}, ${when}${run}`
     const notice = provenance.notice ? ` Notice: ${provenance.notice}.` : ''
@@ -1248,7 +1251,7 @@ export function MapPanel({
     if (state.status === 'none') return `No map image requested: ${state.reason}.`
     if (state.status === 'requesting') return `Requesting map imagery for frame${state.frames.length === 1 ? '' : 's'} ${state.frames.map((frame) => new Date(frame.time).toISOString()).join(' and ')}.`
     if (state.status === 'refreshing') {
-      return `Requesting map imagery for frame${state.frames.length === 1 ? '' : 's'} ${state.frames.map((frame) => new Date(frame.time).toISOString()).join(' and ')}; until it arrives the last retrieved frame stays drawn at its own instant. ${state.slots.map(describeImage).join(' ')}`
+      return `Requesting map imagery for frame${state.frames.length === 1 ? '' : 's'} ${state.frames.map((frame) => new Date(frame.time).toISOString()).join(' and ')}; until it arrives the last retrieved frame stays drawn at its own instant. ${state.slots.map((slot) => describeImage(slot, layer)).join(' ')}`
     }
     // "Not retrieved" and "retrieved, nothing detected" are different sentences
     // on purpose; collapsing them would erase a real observation of absence.
@@ -1256,11 +1259,11 @@ export function MapPanel({
     if (state.slots.length === 2) {
       const [previous, next] = state.slots
       if (isLocallyRendered(layer)) {
-        return `Display interpolation between two retrieved frames at fraction ${next.weight.toFixed(2)} — advection-corrected along a derived motion field when one exists for the pair, a linear cross-dissolve otherwise; display derivation, not evidence. ${describeImage(previous)} ${describeImage(next)}`
+        return `Display interpolation between two retrieved frames at fraction ${next.weight.toFixed(2)} — advection-corrected along a derived motion field when one exists for the pair, a linear cross-dissolve otherwise; display derivation, not evidence. ${describeImage(previous, layer)} ${describeImage(next, layer)}`
       }
-      return `Display composite of two retrieved frames at ${Math.round(previous.weight * 100)}% and ${Math.round(next.weight * 100)}% opacity — display derivation, not evidence. ${describeImage(previous)} ${describeImage(next)}`
+      return `Display composite of two retrieved frames at ${Math.round(previous.weight * 100)}% and ${Math.round(next.weight * 100)}% opacity — display derivation, not evidence. ${describeImage(previous, layer)} ${describeImage(next, layer)}`
     }
-    return describeImage(state.slots[0])
+    return describeImage(state.slots[0], layer)
   }
 
   const onLegendError = (layer: LayerItem) => {

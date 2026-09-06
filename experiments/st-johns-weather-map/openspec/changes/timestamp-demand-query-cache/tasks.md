@@ -2,7 +2,7 @@
 
 - [x] Revise CYYT TAF to conditional provider query plus native report cache and prove Workbench use (PR207, independently verified against an actual 200/304 response and current Workbench).
 - [x] Revise GFS to fetch only the selected native valid time and requested eligible fields, under a locked bounded child, and prove a cache miss then hit through `/point` and the current model control (issue #208).
-- [ ] Complete GFS selected-time consumers: pressure profile implemented and retained-byte API replay verified; wire metadata-only timeline after the shared HRDPS timeline change lands; keep native raster delivery explicitly undisclosed under #97 until implemented.
+- [x] Complete the bounded GFS point, pressure-profile and metadata-only timeline consumers and one selected-time native `total_cloud_geometric` raster; keep the remaining GFS fields and native raster coverage open under #97 and their field issues.
 - [ ] Define the minimal shared cache key/outcome seam from those two concrete sources; do not introduce snapshots, background refresh jobs or a new archive.
 - [x] Migrate HRDPS point and profile consumers from scheduled bulk ingestion to bounded selected-time queries, retain the existing GeoMet live raster proxies, hide stale stored HRDPS layers, and disable HRDPS full-run scheduling only after real point/profile readback passed.
 - [ ] Migrate METAR/SPECI and Kp from scheduled bulk ingestion to bounded selected-time queries without deleting their prior evidence until replacement passes.

@@ -154,6 +154,10 @@ export interface DerivationMethod {
 export interface FieldAttribution {
   sourceId: string | null
   product: string | null
+  /** Native producer run and exact demand content revision, when declared. */
+  runTime: string | null
+  validTime: string | null
+  artifactRevision: string | null
   provider: string
   /** The catalogue key this value was served under, verbatim. Null when the
    *  response declared none, which is said rather than guessed from the API
