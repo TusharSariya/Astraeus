@@ -276,6 +276,9 @@ html[data-theme='dark'] .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: 
 .scrubber-labels .scrubber-mark.start { transform: none; }
 .scrubber-labels .scrubber-mark.end { transform: translateX(-100%); }
 .scrubber-labels .scrubber-now { color: var(--orange); font-weight: 700; }
+/* The core/planning boundary: a tick plus a label, never colour alone. */
+.scrubber-labels .boundary-mark { transform: translateX(-50%); color: var(--cyan); font-weight: 700; }
+.scrubber-labels .boundary-mark::before { content: ''; position: absolute; top: -4px; left: 50%; width: 1px; height: 18px; background: var(--cyan); transform: translateX(-50%); }
 .timeline-slider { width: 100%; height: 6px; appearance: none; background: linear-gradient(90deg, #3498db 0%, #1abc9c 15%, #f39c12 50%, #e74c3c 100%); border-radius: 3px; outline: none; cursor: pointer; }
 .timeline-slider::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--orange); border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 8px rgba(255, 158, 64, 0.8); }
 .timeline-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--orange); border: 2px solid #fff; cursor: pointer; box-shadow: 0 0 8px rgba(255, 158, 64, 0.8); }
@@ -286,10 +289,27 @@ html[data-theme='dark'] .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: 
 .frame-marker-rail { position: relative; height: 12px; margin-top: 2px; }
 .frame-marker { position: absolute; top: 0; width: 3px; height: 12px; padding: 0; transform: translateX(-50%); border: 0; border-radius: 1px; cursor: pointer; opacity: .85; }
 .frame-marker:hover, .frame-marker:focus-visible { opacity: 1; outline: 1px solid var(--ink); outline-offset: 1px; height: 14px; }
+/* A small change-point marker where a segment's run_time differs from its
+   predecessor's (task 4.3) — a notch above the tick, not a colour swap, so
+   it reads the same under a colour-blind palette. */
+.frame-marker.frame-marker-run-change::after { content: ''; position: absolute; top: -5px; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: var(--orange); transform: translateX(-50%); }
 .frame-marker-key { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; color: var(--muted); font: 500 10px 'IBM Plex Mono', monospace; }
 .frame-marker-key .marker-key-entry { display: inline-flex; align-items: center; gap: 5px; }
 .frame-marker-key .marker-key-entry i { width: 8px; height: 8px; border-radius: 1px; }
 .frame-marker-key .marker-key-note { font-style: italic; }
+.marker-key-note.planning-tier-empty { color: var(--orange); font-style: normal; font-weight: 600; }
+
+/* Coverage panel: every source covering the selected instant, beside the
+   valid-instant badge (task 4.2). */
+.coverage-panel { display: flex; flex-direction: column; gap: 2px; font: 500 10px 'IBM Plex Mono', monospace; color: var(--muted); }
+.coverage-panel-title { margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.coverage-notice { margin: 0; }
+.coverage-notice.coverage-unavailable { color: var(--alarm); }
+.coverage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.coverage-entry { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.coverage-source { color: var(--ink); font-weight: 700; }
+.coverage-stale-badge { color: var(--orange); font-weight: 700; }
+.coverage-stale-unknown { font-style: italic; }
 
 .scrubber-transport-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .timeline-transport { display: flex; align-items: center; gap: 4px; margin-top: 12px; padding: 3px 6px; background: #0c252c; border: 1px solid #23434c; border-radius: 3px; }
@@ -611,3 +631,193 @@ html[data-theme='light'] .surface-watermark { color: #fff; }
 .tonight { margin-top: 12px; }
 .tonight h3 { font-size: 13px; margin: 0 0 6px; }
 .tonight h3 small { font-weight: normal; color: var(--text-soft, #778); margin-left: 6px; }
+
+/* ---- Evidence class badges (change evidence-classes-and-derived-here) ----
+   One colour per class, defined once as a token so the map, the readings and
+   the stories cannot drift apart. Both themes define every token: a colour
+   whose only definition sits in one theme block leaves the other borrowing
+   whatever came before it. The badge is rendered for `retrieved` too - the
+   absence of a badge must never carry meaning, so there is no silent default. */
+:root {
+  --ec-retrieved: #7fd4a8;
+  --ec-reprocessed: #7fb6e8;
+  --ec-derived-here: #c0a6f0;
+  --ec-intermediary-derived: #8fd0d6;
+  --ec-generated-display: #f2b85b;
+  --ec-uncalibrated-observation: #b7c2c4;
+  --ec-unrecognised: #f0785d;
+}
+
+html[data-theme='light'] {
+  --ec-retrieved: #10684a;
+  --ec-reprocessed: #10508f;
+  --ec-derived-here: #5a3796;
+  --ec-intermediary-derived: #0f5f66;
+  --ec-generated-display: #8a5200;
+  --ec-uncalibrated-observation: #4c5b5e;
+  --ec-unrecognised: #a5321f;
+}
+
+.evidence-class {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 1px 6px;
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  font: 600 9px 'IBM Plex Mono', monospace;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.evidence-class-retrieved { color: var(--ec-retrieved); }
+.evidence-class-reprocessed { color: var(--ec-reprocessed); }
+.evidence-class-derived_here { color: var(--ec-derived-here); }
+.evidence-class-intermediary_derived { color: var(--ec-intermediary-derived); }
+.evidence-class-generated_display { color: var(--ec-generated-display); }
+.evidence-class-uncalibrated_observation { color: var(--ec-uncalibrated-observation); }
+/* The one class that is a fault rather than a description reads as one. */
+.evidence-class-unrecognised { color: var(--ec-unrecognised); border-style: dashed; }
+
+.evidence-class-reason { color: var(--ec-unrecognised); }
+.metric-unavailable strong { color: var(--ec-unrecognised); }
+
+.evidence-class-legend { margin: 10px 0 0; border: 1px solid var(--line); border-radius: 3px; padding: 6px 9px; }
+.evidence-class-legend > summary { cursor: pointer; font: 600 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.evidence-class-legend p { margin: 7px 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.evidence-class-legend dl { margin: 0; }
+.evidence-class-legend-row { display: grid; grid-template-columns: minmax(0, 11ch) minmax(0, 1fr); gap: 4px 10px; align-items: baseline; padding: 3px 0; }
+.evidence-class-legend dt { margin: 0; }
+.evidence-class-legend dd { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+/* Under the narrow viewport the badge column would squeeze the sentence to
+   two words a line, so the two stack instead of sharing a row. */
+@media (max-width: 820px) {
+  .evidence-class-legend-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+.derived-detail { margin-top: 6px; }
+.derived-detail > summary { cursor: pointer; color: var(--ec-derived-here); font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: .05em; }
+.derived-detail p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.derived-inputs { margin: 5px 0 0; padding-left: 16px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.derived-inputs b { color: var(--ink); }
+.derived-inputs-missing { color: var(--ec-unrecognised); }
+.drawer-row-head .evidence-class { margin-top: 0; }
+
+/* The delivery kind: how the value reached this deployment, a second axis
+   from the class. Quieter than the class badge - no border, lower contrast -
+   because the class is the claim and this qualifies it. A record that
+   declared no kind renders nothing at all. */
+.delivery-kind {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 1px 4px;
+  color: var(--muted);
+  font: 500 9px 'IBM Plex Mono', monospace;
+  font-style: normal;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+/* The two third-party kinds are the ones a reader must not miss. */
+.delivery-kind-reprocessed, .delivery-kind-intermediary_derived { color: var(--ec-reprocessed); }
+
+.model-non-primary { color: var(--ec-reprocessed); font-size: 9px; }
+
+/* Retrieved, but never the reading. Rendered under the metrics rather than
+   inside them: these values must be readable, and must never occupy the slot
+   a producer's own published cell occupies. */
+.alternative-readings { margin: 12px 0 0; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 3px; }
+.alternative-readings h3 { margin: 0 0 5px; font: 600 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.alternative-readings > p { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.field-alternatives { margin-top: 5px; }
+.field-alternatives > summary { cursor: pointer; color: var(--ink); font: 500 11px 'IBM Plex Mono', monospace; }
+.field-alternatives p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.field-alternatives ul { margin: 5px 0 0; padding-left: 16px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.field-alternatives b { color: var(--ink); }
+.alternative-method { display: block; color: var(--muted); font-size: 10px; line-height: 1.45; }
+
+
+/* Field families. A family groups fields that measure related but
+   non-identical quantities, so the grouping itself is evidence: the heading
+   says which quantity a reader is looking at, the key says which member of it,
+   and the definition says what that member measures. Nothing here is styled to
+   suggest one member outranks another - the decision layer chooses members,
+   the evidence layer never picks for it. */
+.field-families { margin: 12px 0 0; padding: 9px 11px; border: 1px solid var(--line); border-radius: 3px; }
+.field-families h3 { margin: 0 0 5px; font: 600 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.field-families > p { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.field-family { margin-top: 10px; }
+.field-family h4 { margin: 0 0 3px; font: 600 11px 'IBM Plex Mono', monospace; color: var(--ink); letter-spacing: .04em; }
+.family-note { margin: 0 0 6px; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+.family-members { margin: 0; padding: 0; list-style: none; }
+.family-member { margin: 0 0 8px; padding-left: 8px; border-left: 2px solid var(--line); }
+.family-member-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin: 0; }
+.family-member-key { font: 500 10px 'IBM Plex Mono', monospace; color: var(--muted); }
+.family-member-value { font-size: 12px; color: var(--ink); }
+.family-member-phase { font: 500 9px 'IBM Plex Mono', monospace; color: var(--muted); letter-spacing: .04em; }
+.family-member-source { font: 400 9px 'IBM Plex Mono', monospace; color: var(--muted); font-style: normal; }
+.family-member-definition, .family-member-absence { margin: 3px 0 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+/* The two storage answers that are not "stored" always read as statements
+   about the producer and this deployment, never as a fault in the value. */
+.family-storage, .legend-storage { margin: 3px 0 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+.family-storage b, .legend-storage b { color: var(--ec-reprocessed); }
+.family-member-uncatalogued { margin: 3px 0 0; color: var(--ec-unrecognised); font-size: 10.5px; line-height: 1.45; }
+
+/* ---- Absent-value badges (change storage-window-and-restart-cache) ----
+   Five states, five readings, and none of them silent. The colours reuse the
+   evidence-class tokens rather than inventing a palette: both themes already
+   define every one of them, so no state borrows a colour from the other theme.
+   Aged out reads as a statement about this deployment's retention, not as a
+   fault - it is the one state that carries a time, and the badge is wide
+   enough to hold it. */
+.absence-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  font: 600 9px 'IBM Plex Mono', monospace;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.absence-null { color: var(--ec-uncalibrated-observation); }
+.absence-blocked { color: var(--ec-generated-display); }
+.absence-retrieval_failed { color: var(--ec-unrecognised); border-style: dashed; }
+.absence-available-not-stored, .absence-not-published { color: var(--ec-reprocessed); }
+.absence-aged_out { color: var(--ec-intermediary-derived); white-space: normal; }
+/* The one that is neither a state nor a value: an aged-out claim we refused
+   to render for want of a last valid time. */
+.absence-unavailable { color: var(--ec-unrecognised); }
+.absence-legend { margin-top: 8px; }
+.absence-legend > summary { cursor: pointer; color: var(--ink); font: 500 10.5px 'IBM Plex Mono', monospace; }
+.absence-legend > p { margin: 6px 0; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+.absence-legend dl { margin: 0; }
+.absence-legend-row { display: grid; grid-template-columns: minmax(96px, max-content) 1fr; gap: 4px 8px; margin-bottom: 5px; align-items: baseline; }
+.absence-legend-row dt { margin: 0; }
+.absence-legend-row dd { margin: 0; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+@media (max-width: 520px) { .absence-legend-row { grid-template-columns: 1fr; } }
+/* Not comparable is a refusal, and it is coloured like one. */
+.family-not-comparable, .legend-not-comparable, .difference-refused, .difference-standing-refusal {
+  margin: 3px 0 0; color: var(--ec-unrecognised); font-size: 10.5px; line-height: 1.45;
+}
+
+.difference-view { margin: 12px 0 0; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 3px; }
+.difference-view h3 { margin: 0 0 5px; font: 600 11px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.difference-view > p { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.difference-view label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10.5px; }
+.difference-view select { display: block; width: 100%; margin-top: 3px; }
+.difference-value { margin: 6px 0 0; color: var(--ink); font-size: 11px; }
+
+.source-field-catalogue { margin-top: 10px; }
+.source-field-catalogue h4 { margin: 0 0 5px; font: 600 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.source-fields > summary { cursor: pointer; color: var(--ink); font: 500 10.5px 'IBM Plex Mono', monospace; }
+.source-family h5, .drawer-family h5, .legend-family h5 { margin: 6px 0 2px; font: 600 10px 'IBM Plex Mono', monospace; color: var(--ink); }
+.source-family ul, .drawer-family ul { margin: 0; padding-left: 16px; color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+
+.drawer-families { margin-bottom: 10px; }
+.drawer-families h4 { margin: 0 0 4px; font: 600 10px 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.drawer-family-note { margin: 0 0 4px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.drawer-row-family { margin: 3px 0 0; font: 500 10px 'IBM Plex Mono', monospace; color: var(--muted); }
+.drawer-family-title { color: var(--ink); }
+.drawer-row-definition { margin: 2px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.legend-definition { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.legend-family { margin-bottom: 6px; }

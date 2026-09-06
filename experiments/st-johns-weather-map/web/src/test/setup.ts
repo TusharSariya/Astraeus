@@ -25,6 +25,21 @@ Object.defineProperty(globalThis, 'localStorage', {
   value: new MemoryStorage(),
 })
 
+// jsdom implements no 2-D canvas: every `getContext('2d')` logs "Not
+// implemented: HTMLCanvasElement.prototype.getContext" to the virtual console
+// and returns undefined. `TimelineDock` measures its scale labels through a
+// canvas, so a full suite printed that line 184 times and buried anything
+// real. Returning null is exactly what a runtime without a 2-D context should
+// answer, and it is the case `textMeasurer` already handles by falling back to
+// the unmeasured path - so the thinning behaviour under test is unchanged, it
+// is only the noise that goes. A test that wants real measurement passes its
+// own widths to `placeScaleMarks`, which is why that geometry is pure.
+Object.defineProperty(globalThis.HTMLCanvasElement.prototype, 'getContext', {
+  configurable: true,
+  writable: true,
+  value: () => null,
+})
+
 // Per test, so one test's remembered preference cannot leak into the next.
 // Tests that need persistence ACROSS renders keep it within their own body.
 beforeEach(() => localStorage.clear())

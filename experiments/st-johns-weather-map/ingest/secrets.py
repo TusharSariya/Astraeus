@@ -27,6 +27,16 @@ SECRET_ENV_BY_SOURCE = {
     "openaq": "WEATHER_SECRET_OPENAQ_API_KEY",
     "nl-511": "WEATHER_SECRET_NL511_API_KEY",
     "google-weathernext-2": "WEATHER_SECRET_GOOGLE_WEATHERNEXT_TOKEN",
+    # The intermediary route is anonymous, but the producer's real-time terms
+    # gate the values whatever route they arrive by, so the same acceptance
+    # token gates this record too rather than a second, weaker one.
+    "open-meteo-weathernext-2": "WEATHER_SECRET_GOOGLE_WEATHERNEXT_TOKEN",
+    # The camera stills sit behind a NAV CANADA Spaces token; without it the
+    # source stays credential-required and serves nothing.
+    "nav-canada-weather-cameras": "WEATHER_SECRET_NC_SPACES_TOKEN",
+    # Night lights come through the same NASA Earthdata login as the aerosol
+    # record, so they share the one token rather than each holding a copy.
+    "viirs-dnb-night-lights": "WEATHER_SECRET_NASA_EARTHDATA_TOKEN",
 }
 
 # Redaction is applied to anything that might carry a key into a log or an

@@ -290,11 +290,17 @@ def _segment_tangents(flow01: list[Any], flow10: list[Any], confidence: list[Any
 #: actually carries that stratum (CIRACast's cloud-top steering level, INCA,
 #: Liang MWR 2020). Total cloud has no single top, so it takes the mid-level
 #: wind, which is the conventional single-level steering choice.
+#: Every column-cover key takes the mid-level wind for the same reason: the
+#: choice follows from the quantity having no single top, not from which
+#: producer's definition of column cover it is.
 STEERING_LEVEL_BY_VARIABLE = {
     "cloud_low": 850,
     "cloud_middle": 700,
     "cloud_high": 500,
-    "total_cloud": 700,
+    "total_cloud_opacity": 700,
+    "total_cloud_geometric": 700,
+    "total_cloud_mean_6h": 700,
+    "total_cloud_weong": 700,
 }
 #: Below this speed (grid cells over the frame interval) a well-supported
 #: image flow is reporting that the field is NOT moving, and the steering

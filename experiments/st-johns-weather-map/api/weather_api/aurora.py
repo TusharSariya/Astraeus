@@ -43,10 +43,13 @@ UNITS = "percent"
 #: frames are stored (the artifact normally carries exactly one Forecast Time).
 NOMINAL_CADENCE_SECONDS = 600
 
-#: Beyond this past the newest stored forecast instant the layer declares
-#: itself unavailable rather than showing an old nowcast as current: one hour,
-#: six missed 10-minute updates and past the model's own ~30-40 min horizon.
-STALENESS_TOLERANCE_SECONDS = 3600
+#: The unknown-cadence fallback only. The tolerance actually published is one
+#: native interval derived from the stored instants through the shared rule
+#: (``grids.frame_tolerance_seconds``); this constant answers only when the
+#: artifact carries a single Forecast Time and no modal gap can be measured, in
+#: which case it is the OVATION grid's own 10-minute interval - one missed
+#: update, not six.
+STALENESS_TOLERANCE_SECONDS = NOMINAL_CADENCE_SECONDS
 
 #: Below this stored probability a cell is fully transparent. Disclosed in the
 #: colormap doc, the legend caption and the layer semantics.
@@ -337,11 +340,12 @@ def aurora_layers(store: Any, layer_model: Any, *, z_index: int, now: datetime |
     times, cadence = _times_and_cadence(dataset)
     if not times:
         return [], [f"{LAYER_ID}: the published artifact carries no forecast instant; the layer is not offered"]
+    tolerance = grids.frame_tolerance_seconds(cadence)
     age = (moment - max(times)).total_seconds()
-    if age > STALENESS_TOLERANCE_SECONDS:
+    if age > tolerance:
         return [], [
             f"{LAYER_ID}: the newest stored OVATION forecast instant is {int(age)} s old, beyond the "
-            f"{STALENESS_TOLERANCE_SECONDS} s staleness tolerance; the layer is unavailable rather than "
+            f"{tolerance} s staleness tolerance; the layer is unavailable rather than "
             "showing an old nowcast as current. A feed gap is never rendered as absence of aurora."
         ]
     provenance = dict(artifact.provenance or {})
@@ -355,7 +359,7 @@ def aurora_layers(store: Any, layer_model: Any, *, z_index: int, now: datetime |
         semantics=semantics(),
         times=times,
         cadence_seconds=grids._modal_cadence(times),
-        staleness_tolerance_seconds=STALENESS_TOLERANCE_SECONDS,
+        staleness_tolerance_seconds=tolerance,
         z_index=z_index,
         evidence_basis="published_artifact",
         group="rendered_grid",

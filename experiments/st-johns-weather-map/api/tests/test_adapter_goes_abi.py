@@ -401,6 +401,7 @@ def test_fetch_publishes_one_zarr_artifact(granules, tmp_path):
     assert artifact.media_type == "application/zarr+zip"
     assert artifact.logical_name == "cloud_mask"
     assert artifact.provenance["cloud_top_height_maturity"] == "NOAA Provisional"
+    assert artifact.provenance["evidence_classes"] == ["retrieved"], "a retrieved artifact declares how its values came to exist"
     # The scan time in the result is the granule's own, not the key stamp.
     assert result.run_time == datetime(2026, 8, 30, 12, 0, 21, 500000, tzinfo=UTC)
 

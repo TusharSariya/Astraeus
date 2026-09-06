@@ -335,6 +335,7 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
     artifact = result.artifacts[0]
     assert artifact.logical_name == "surface"
     assert artifact.payload_path.exists()
+    assert artifact.provenance["evidence_classes"] == ["retrieved"], "a retrieved artifact declares how its values came to exist"
 
     # Open and verify Zarr content
     store = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")
@@ -357,8 +358,8 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
     assert float(ds["cloud_low"].values[0, 0, 0]) == 55.0
     assert float(ds["cloud_middle"].values[0, 0, 0]) == 25.0
     assert float(ds["cloud_high"].values[0, 0, 0]) == 10.0
-    assert float(ds["total_cloud"].values[0, 0, 0]) == 90.0
-    for name in ("cloud_low", "cloud_middle", "cloud_high", "total_cloud"):
+    assert float(ds["total_cloud_geometric"].values[0, 0, 0]) == 90.0
+    for name in ("cloud_low", "cloud_middle", "cloud_high", "total_cloud_geometric"):
         assert ds[name].attrs["units"] == "percent"
 
     # Precipitable water is a column total stored beside the surface set,

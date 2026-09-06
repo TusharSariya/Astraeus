@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astraeus.local/schemas/field-catalogue.json",
+  "title": "Astraeus field catalogue",
+  "description": "The canonical list of fields the evidence layer exposes, independent of which source produced them. One physical quantity per key; related quantities grouped into families that carry the comparability note.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["catalogue_version", "as_of", "families", "fields", "source_scope", "source_fields"],
+  "properties": {
+    "catalogue_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Versioned so a manifest can say which catalogue it was written against."
+    },
+    "as_of": {"type": "string", "format": "date"},
+    "families": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/family"}
+    },
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/field"}
+    },
+    "source_scope": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/sourceScope"}
+    },
+    "source_fields": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/sourceField"}
+    }
+  },
+  "$defs": {
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "description": "Project style: snake case, level suffix for height fields (temperature_2m, wind_u_10m)."
+    },
+    "family": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "title", "note"],
+      "properties": {
+        "name": {"$ref": "#/$defs/key"},
+        "title": {"type": "string", "minLength": 1},
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The comparability note. What the family measures and where its members stop being comparable."
+        },
+        "groups": {
+          "type": "object",
+          "description": "Comparability group label -> why the members of that group mean the same thing. Two fields are comparable only inside one group.",
+          "additionalProperties": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "quantity", "units", "family", "level", "comparability_group", "evidence_classes", "description"],
+      "properties": {
+        "key": {"$ref": "#/$defs/key"},
+        "quantity": {"type": "string", "minLength": 1},
+        "units": {
+          "type": ["string", "null"],
+          "description": "The normalized unit the experiment stores, not the provider's. Null only where the producer declares the unit per artifact and no normalization pins it; a null unit switches the manifest unit check off for that key and must carry a reason in the description."
+        },
+        "family": {"$ref": "#/$defs/key"},
+        "level": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The level convention. Height fields carry the level in the key and repeat it here; a profile field says which coordinate carries its levels."
+        },
+        "level_coordinate": {
+          "type": ["string", "null"],
+          "description": "For a profile field, the coordinate that carries the levels. One key with a coordinate, never one key per level."
+        },
+        "level_suffix_pattern": {
+          "type": ["string", "null"],
+          "description": "Regular expression matching the level-expanded artifact variable names that resolve to this profile key, e.g. relative_humidity_850hPa. Present only on profile fields."
+        },
+        "standard_name": {
+          "type": ["string", "null"],
+          "description": "CF standard_name where one exists. Null for class indices, health flags and geometry, which CF does not name."
+        },
+        "comparability_group": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Members of one family are comparable only when they share this group."
+        },
+        "evidence_classes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["retrieved", "reprocessed", "derived_here", "intermediary_derived", "generated_display", "uncalibrated_observation"]
+          },
+          "description": "The classes this field may carry. A value of any other class is refused rather than served."
+        },
+        "phase_attribute": {
+          "type": "boolean",
+          "default": false,
+          "description": "True where every value must carry a liquid/mixed phase attribute stamped from the producer's own specific humidity."
+        },
+        "range": {
+          "type": ["array", "null"],
+          "prefixItems": [{"type": "number"}, {"type": "number"}],
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Physical range, inclusive, where one is meaningful."
+        },
+        "description": {"type": "string", "minLength": 1}
+      }
+    },
+    "sourceScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "subsetting", "policy", "note"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "subsetting": {
+          "enum": ["server_side", "none"],
+          "description": "Whether the access path subsets to the evidence box before the bytes leave the producer."
+        },
+        "policy": {
+          "enum": ["every_published_field", "family_fields_only"],
+          "description": "every_published_field for a server-side-subsetting source; family_fields_only for a feed with no subsetting, whose remaining records are catalogued available-not-stored."
+        },
+        "published_field_count": {"type": ["integer", "null"], "minimum": 0},
+        "counted_from": {"type": ["string", "null"]},
+        "note": {"type": "string", "minLength": 1}
+      }
+    },
+    "sourceField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "key", "storage", "note"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "key": {"$ref": "#/$defs/key"},
+        "upstream": {
+          "type": ["string", "null"],
+          "description": "The producer's own name for the quantity: a WCS coverage id, a GRIB record label, a JSON member."
+        },
+        "storage": {
+          "enum": ["stored", "available-not-stored", "not-published"],
+          "description": "stored: retrieved and kept under the catalogue key. available-not-stored: the producer publishes it and this deployment does not fetch it; visible, never served as a bare null. not-published: the producer leaves the gap, so the field stays null and nothing derives it."
+        },
+        "phase": {
+          "enum": ["liquid", "mixed"],
+          "description": "The saturation phase this producer's humidity is defined over, measured against its own specific humidity."
+        },
+        "note": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

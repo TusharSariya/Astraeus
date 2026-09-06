@@ -84,12 +84,263 @@ continuous curve across two runs. What is forbidden is blending them or
 presenting the join as one series: two runs are two pieces of evidence, shown
 as two.
 
+## Seam
+
+Fixed before any owner started (2026-09-02), so the registry, the worker, the
+API and the web are built against one vocabulary. Names below are the names
+on the wire and in code; the spec deltas use the same ones.
+
+### Where the code lives
+
+`tasks.md` was written before the code existed. The owned files are:
+
+- registry: `registry/source_data.py`, `registry/schema.json`,
+  `registry/audit.py`, `registry/README.md`, `registry/tests/test_reach.py`,
+  and the scheduler-facing view `ingest/registry.py` (`IngestConfig`).
+- worker: `ingest/scheduler.py` (pure decisions) and `worker/runtime.py`
+  (effects, heartbeat), `ingest/adapters/eccc_datamart.py` (the declared
+  fallback path), tests `api/tests/test_worker_scheduling.py` and
+  `api/tests/test_worker_heartbeat.py`.
+- API: `api/weather_api/app.py`, `models.py`, `store.py`, `grids.py`,
+  `satellite.py`, `aurora.py`, the read side of `ingest/store.py`
+  (`retained_artifacts`), tests `api/tests/test_timeline.py` and
+  `api/tests/test_layers.py`.
+- web: `web/src/TimelineDock.tsx`, `App.tsx`, `api.ts`, `types.ts`,
+  `styles.css`, new `CoveragePanel.tsx`, `tierBoundary.ts`, `runSegments.ts`
+  and tests `boundary.test.tsx`, `coverage.test.tsx`, `runchange.test.tsx`.
+
+### Registry record fields (`registry/source_data.py`, validated by `registry/audit.py`)
+
+All optional in `schema.json`; the audit requires them where a registered
+adapter exists (source ids parsed statically from `ingest/adapters/*.py`,
+the way `declared_field_keys` parses field keys).
+
+```
+"reach": {
+  "earliest_hours": 0,                       # earliest valid time relative to run time, hours (negative = before)
+  "latest_hours": 48,                        # latest valid time relative to run time, hours
+  "per_cycle": {"00": 360, "06": 144, "12": 360, "18": 144}   # optional; latest_hours by UTC run hour "HH"
+}
+"run_cadence_seconds": 21600                 # forecast records (category in ingest.registry.FORECAST_CATEGORIES); absent elsewhere
+"native_cadence_seconds": 360                # observation and nowcast records; absent on forecast records
+"publication_latency": {                     # forecast records only
+  "estimate_seconds": 19080,                 # null when nothing is measured and no seed exists
+  "observation_count": 0,
+  "last_observed": null,                     # ISO instant of the most recent observed publication
+  "measured": false,                         # true only after this deployment observed a publication
+  "basis": "seed: docs/research/wayfinder/planning-horizon-matrix.md, 2026-09-02"   # or "none"
+}
+"datamart_fallback_path": "https://dd.weather.gc.ca/{YYYYMMDD}/WXO-DD/model_hrdps/continental/2.5km/{HH}/{FFF}/"   # ECCC Datamart records only
+```
+
+An observation covers its own instant: `reach = {"earliest_hours": 0,
+"latest_hours": 0}`. Seeds: ICON 12600 s, GFS 19080 s, GEFS 19080 s (final
+leads later, unbounded above; say so in `basis`), the four ECMWF records
+27360 s. GDPS, GEPS, REPS and WeatherNext 2: `estimate_seconds: null`,
+`measured: false`, `basis: "none"`.
+
+Audit rules: a registered-adapter record must carry `reach`; a forecast one
+must carry an integer `run_cadence_seconds > 0` and a `publication_latency`
+block; a non-forecast one an integer `native_cadence_seconds > 0`.
+`measured: false` requires `observation_count == 0` and `last_observed:
+null`; `estimate_seconds: null` requires `measured: false`; a non-null
+estimate requires a non-empty `basis`; `measured: true` requires
+`observation_count >= 1` and `last_observed`. `per_cycle` keys are two-digit
+UTC hours and their count matches `86400 / run_cadence_seconds`.
+
+Four things the registry owner had to settle that the seam left open or stated
+too broadly. Field names and shapes are unchanged; these are values.
+
+- **Which records the cadence and latency rules bind.** The requirement is
+  written against a registered-adapter record, and that is how it is enforced:
+  a record with a registered adapter must declare a reach, and then a run
+  cadence with a latency block if its category is a forecast one, or a native
+  cadence if it is not. The seven extra records that declare a horizon without
+  an adapter yet (GEFS, IFS ENS, both AIFS records, GEPS, REPS, WeatherNext 2)
+  are checked for internal consistency but are not forced to complete a shape.
+  This is what lets **WeatherNext 2** declare its documented 15-day reach and
+  an explicitly empty latency while declaring **no run cadence at all**: its
+  record says "official dataset-dependent" and the matrix left it unverified,
+  so a 21600 s cadence read off the 6-hourly step interval would be exactly the
+  invented number the change exists to refuse.
+- **HRDPS and RDPS also carry a null latency.** The seam named GDPS, GEPS, REPS
+  and WeatherNext 2 as the unseeded records, but the matrix measured no ECCC
+  publication instant at all, so the two Datamart models get
+  `estimate_seconds: null`, `measured: false`, `basis: "none"` on the same
+  grounds and start polling at their run time.
+- **GEPS reaches from +3 h, not 0.** Its 12z run advertised
+  `2026-09-01T15Z/2026-09-17T12Z/PT3H`, so the reduction set contains nothing at
+  the run instant and `earliest_hours` is 3. It is the one record whose earliest
+  reach is not its run hour.
+- **OVATION is the one non-forecast record with a forward reach**, 0 to 0.667 h,
+  the upper end of the "~30-40 minutes ahead of its observation instant" its own
+  record states. Radar, lightning, CAP alerts, AQHI, the SWPC K index and the
+  TAF all reach 0 to 0: what is retrieved for each is the current issue, and
+  `aviation` is deliberately outside `FORECAST_CATEGORIES`, so no lead frames
+  exist for a TAF to cover an instant with. An alert's own validity interval
+  travels inside the message and is read from there.
+
+### `ingest/registry.py`
+
+```python
+@dataclass(frozen=True)
+class Reach:
+    earliest_hours: float
+    latest_hours: float
+    per_cycle: Mapping[str, float] = field(default_factory=dict)   # "HH" -> latest_hours
+    def latest_hours_for(self, run_time: datetime) -> float: ...       # per_cycle[run_time UTC "%H"] else latest_hours
+    def span(self, run_time: datetime) -> tuple[datetime, datetime]: ...
+    def covers(self, run_time: datetime, instant: datetime) -> bool: ...
+
+@dataclass(frozen=True)
+class PublicationLatency:
+    estimate_seconds: int | None
+    observation_count: int
+    last_observed: datetime | None
+    measured: bool
+    basis: str
+
+class IngestConfig:  # new fields, all defaulting to None
+    reach: Reach | None
+    run_cadence_seconds: int | None
+    native_cadence_seconds: int | None
+    publication_latency: PublicationLatency | None
+    datamart_fallback_path: str | None
+    # ingestible now also requires reach is not None and one of the two cadences
+```
+
+### Worker (`ingest/scheduler.py`, `worker/runtime.py`)
+
+- `POLL_INTERVAL_SECONDS = 600`. Forecast first attempt: `run_time +
+  publication_latency.estimate_seconds` when the estimate is not null, else
+  `run_time`; then a poll every 600 s bounded by the next run time. The
+  bounded cancellation detail reads
+  `run <provider_run_id or run_time ISO> did not appear after polling <N> min; previous run stays visible`.
+- Observation and nowcast sources: rescheduled every `native_cadence_seconds`.
+- Heartbeat `sources[source_id]` gains
+  `"publication_latency": {"estimate_seconds", "observation_count", "last_observed", "latency_measured", "basis"}`
+  and `"last_observed_publication": ISO | null`. Written only from an
+  observed publication; a run that never appeared leaves it untouched.
+- The short-cycle decision is a pure function
+  `short_cycle_plan(previous_run, newest_run) -> ShortCyclePlan` naming which
+  leads each run serves; the API serves them (below).
+- ECCC Datamart: when the primary path answers nothing, the adapter tries
+  `datamart_fallback_path` (only when declared) and records the answering
+  path in `RunResult.notes` and each artifact's `provenance["datamart_path"]`.
+
+### API responses
+
+`TimelineResponse` gains:
+
+```
+"boundary": ISO                                  # reference + 24 h
+"tiers": [{"id": "core", "start": ISO, "end": ISO}, {"id": "planning", "start": ISO, "end": ISO}]
+```
+
+`TimelineItem` gains:
+
+```
+"tier": "core" | "planning"
+"coverage": [ {"source_id": str, "provider_run_id": str, "run_time": ISO | null,
+               "run_cadence_seconds": int | null, "run_age_seconds": int | null,
+               "run_stale": bool | null, "run_stale_reason": str | null} ]   # sorted by source_id then run_time; [] = nothing covers
+"coverage_notice": str | null                    # "nothing covers this instant" when [] and the store answered; null otherwise
+```
+
+Coverage of an hourly item = declared `Reach.covers(run_time, hour)` for a
+retained run, intersected with the span of frames that run actually
+published. A run's `run_time` is the adapter-declared
+`provenance["run_time"]`; `model_runs.run_time` is stamped with the
+retrieval time when an adapter declared none and is never a run-time claim.
+
+`Layer` gains (all with defaults so the fixtures, satellite, aurora and grid
+constructors keep working):
+
+```
+"run_time": ISO | null
+"run_stale": bool | null
+"run_stale_reason": str | null                   # required when run_stale is null
+"run_cadence_seconds": int | null
+"frames": [{"valid_time": ISO, "run_time": ISO | null, "provider_run_id": str | null, "run_stale": bool | null}]   # one per entry of `times`, same order
+"runs": [{"provider_run_id": str, "run_time": ISO | null, "run_stale": bool | null, "frame_count": int}]
+```
+
+`run_stale = run_age > 2 * run_cadence_seconds`; null with
+`run_stale_reason` when the run time or the cadence is unknown, and on
+observation layers ("observation layer: no run concept"). A refused instant
+outside both tiers names both ranges. `staleness_tolerance_seconds` =
+`cadence_seconds` (min 60), 900 when the cadence cannot be derived.
+`Provenance` gains `run_stale: bool | None = None` and
+`run_stale_reason: str | None = None`, set on live `/point` fields.
+
+Two things the timeline owner had to settle that the seam left open. Wire
+shapes are unchanged; these are the reads behind them.
+
+- **The retrieval stamp is carried under its own name.** `RetainedArtifact`
+  exposes the `model_runs` column as `retrieval_run_time`, not `run_time`.
+  The seam says that column is never a run-time claim, and the surest way to
+  keep it from becoming one is to refuse it the name: `run_time` on the wire
+  is only ever `provenance["run_time"]`.
+- **A run with no declared run time is credited by delivery alone.** A reach
+  is stated relative to a run time, so with none declared there is nothing to
+  test `Reach.covers` against. Such a run is credited only for the frames it
+  demonstrably published - strictly narrower than the reach test, never wider
+  - and it reports `run_time: null` and `run_stale: null` with the reason.
+
+`ingest/store.py` gains a read `retained_artifacts(source_ids=None)`
+returning the current revision and, where the previous complete run is still
+retained under the two-run ceiling, that run's superseded revisions, each
+tagged with its `provider_run_id` and `run_time`. `/layers` serves the leads
+the newest run lacks from the previous run through it.
+
+### Web
+
+Reads exactly the shapes above. The scrubber spans `/timeline` `start..end`
+(24 h back, 14 d ahead); the boundary is `timeline.boundary`; the per-instant
+list is the `coverage` of the hourly item containing the selected instant;
+run segments come from `layer.frames[].run_time`, and display interpolation
+never pairs two frames whose `run_time` differ.
+
 ## Open questions carried into implementation
 
-- Whether the latency estimator should be a rolling median or a high quantile.
+- ~~Whether the latency estimator should be a rolling median or a high quantile.
   A median schedules half the fetches early; a high quantile wastes horizon.
   The spec requires the estimate be measured and its basis published, and
-  leaves the statistic to implementation with the choice recorded.
+  leaves the statistic to implementation with the choice recorded.~~
+  **Settled (task 2.3): a high quantile, p = 0.8, computed as asymmetric
+  exponential smoothing.** `observe_latency` in `ingest/scheduler.py` moves the
+  estimate by `LATENCY_STEP_UP = 0.4` of the gap when the observed publication
+  is later than the estimate and `LATENCY_STEP_DOWN = 0.1` when it is earlier;
+  the ratio of the two steps is the quantile it converges on. Three reasons for
+  this shape over a rolling median. The asymmetry is the point: a median
+  schedules the first attempt where half the runs have not published yet, and
+  each of those misses costs ten-minute polls against the bound, while being
+  half an hour late costs half an hour of horizon on a fourteen-day forecast -
+  the two errors are not the same size. The state is one number and a count,
+  which is exactly what `PublicationLatency` carries, so nothing has to hold a
+  window of past observations and the estimate survives a restart through the
+  heartbeat rather than needing a store. And the estimate always moves toward
+  the observation by a fixed fraction, which is what the spec's scenario
+  requires and what makes the behaviour testable without simulating a
+  distribution. The first observation of a source with no seed (GDPS, GEPS,
+  REPS, HRDPS, RDPS) *is* the estimate: smoothing against a null publishes a
+  number no run produced.
+
+  Three implementation details the seam did not name, none of them a deviation
+  from it. (1) The live `PublicationLatency` is held per source by
+  `worker/runtime.py`'s `Scheduler`, seeded from the registry record and never
+  written back to it - the registry record stays research, and `next_due` takes
+  the live block through a new optional `latency=` argument so the next run's
+  first attempt lands on the re-measured estimate. (2) On start the worker reads
+  the existing heartbeat *before* the first beat overwrites it and restores any
+  block whose `latency_measured` is true, so a restart does not throw away
+  weeks of measurement and fall back to the seed; a block that is unmeasured,
+  malformed, or missing an estimate or count is ignored rather than repaired,
+  since a restart reading a guess as a measurement is the failure this change
+  exists to prevent. (3) A source refreshed on demand through `drain_jobs` does
+  not re-measure: that fetch happens when the API asked, not when the run
+  appeared, so recording it would measure this deployment's own timing rather
+  than the producer's.
 - Whether GDPS needs per-layer latency rather than per-source, given that its
   layers were measured on two different runs in one capabilities document.
 - Whether the ten-minute poll should back off for sources whose measured

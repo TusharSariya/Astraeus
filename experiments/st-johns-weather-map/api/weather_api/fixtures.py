@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from .config import WINDOW_BACK, WINDOW_FORWARD, WINDOW_STEPS, sliding_window
 from .models import (
     Coverage,
     DataMode,
@@ -39,30 +40,33 @@ from .science import (
 UTC = timezone.utc
 NEWFOUNDLAND = ZoneInfo("America/St_Johns")
 AVALON_CORE_BOUNDS = {"south": 46.5, "west": -55.0, "north": 48.5, "east": -51.0}
-BACK_HOURS = 3
-FORWARD_HOURS = 24
+# Read from the one window definition rather than restated. Two literals is
+# how the API came to serve 3 h back while the planning tier reached 14 days.
+BACK_HOURS = int(WINDOW_BACK.total_seconds() // 3600)
+FORWARD_HOURS = int(WINDOW_FORWARD.total_seconds() // 3600)
 
 
 def now() -> datetime:
     """The rolling reference time, truncated to the hour.
 
-    Truncation keeps the evidence window exactly 28 hourly steps whenever it is
-    asked for, which is the contract the timeline and the UI depend on.
+    Truncation keeps the evidence window exactly ``WINDOW_STEPS`` hourly steps
+    whenever it is asked for, which is the contract the timeline and the UI
+    depend on.
     """
     return datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
 
 
 def window_start(reference: datetime | None = None) -> datetime:
-    return (reference or now()) - timedelta(hours=BACK_HOURS)
+    return sliding_window(reference or now())[0]
 
 
 def window_end(reference: datetime | None = None) -> datetime:
-    return (reference or now()) + timedelta(hours=FORWARD_HOURS)
+    return sliding_window(reference or now())[1]
 
 
 SOURCES = [
     SourceRecord(
-        id="eccc-hrdps", category="deterministic_forecast", schedulable=True, producer="ECCC", product="HRDPS", state=SourceState.IMPLEMENTING,
+        id="eccc-hrdps", category="deterministic_forecast", schedulable=True, producer="ECCC", product="HRDPS", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned primary deterministic and fallback", may_enter_consensus=True,
         exact_variables=["temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_10m", "visibility"],
         levels=["surface", "2 m", "10 m", "1000-300 hPa"], geographic_coverage="Avalon and Atlantic context",
@@ -74,7 +78,7 @@ SOURCES = [
         fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="eccc-rdps", category="deterministic_forecast", schedulable=True, producer="ECCC", product="RDPS", state=SourceState.IMPLEMENTING,
+        id="eccc-rdps", category="deterministic_forecast", schedulable=True, producer="ECCC", product="RDPS", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned regional fallback", may_enter_consensus=True,
         exact_variables=["temperature_2m", "dew_point_2m", "wind_10m", "precipitation"], levels=["surface", "pressure levels"],
         geographic_coverage="Canada and adjacent waters", cadence="6 hours", forecast_horizon="84 hours", authentication="none",
@@ -85,7 +89,7 @@ SOURCES = [
         fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="eccc-reps", category="ensemble", schedulable=True, producer="ECCC", product="REPS", state=SourceState.IMPLEMENTING,
+        id="eccc-reps", category="ensemble", schedulable=True, producer="ECCC", product="REPS", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned ensemble distribution", may_enter_consensus=True,
         exact_variables=["temperature_2m", "precipitation", "wind_10m"], levels=["surface", "pressure levels"],
         geographic_coverage="North America", cadence="12 hours", forecast_horizon="72 hours", authentication="none",
@@ -96,7 +100,7 @@ SOURCES = [
         fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="noaa-gfs", category="deterministic_forecast", schedulable=True, producer="NOAA", product="GFS", state=SourceState.IMPLEMENTING,
+        id="noaa-gfs", category="deterministic_forecast", schedulable=True, producer="NOAA", product="GFS", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned independent comparison", may_enter_consensus=True,
         exact_variables=["temperature_2m", "dew_point_2m", "wind_10m"], levels=["surface", "pressure levels"],
         geographic_coverage="global", cadence="6 hours", forecast_horizon="384 hours", authentication="none",
@@ -106,7 +110,7 @@ SOURCES = [
         integration="Herbie with official S3 fallback planned", fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="awc-metar-speci", category="observation", schedulable=True, producer="NAV CANADA / ECCC", product="CYYT METAR/SPECI", state=SourceState.IMPLEMENTING,
+        id="awc-metar-speci", category="observation", schedulable=True, producer="NAV CANADA / ECCC", product="CYYT METAR/SPECI", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned observation supporting evidence", may_enter_consensus=False,
         exact_variables=["temperature", "dew_point", "visibility", "cloud_layers", "weather_codes"], levels=["surface"],
         geographic_coverage="CYYT", cadence="hourly and special", forecast_horizon="observation", authentication="none",
@@ -116,7 +120,7 @@ SOURCES = [
         integration="official OpenAPI generated client planned", fixture_status="passing", live_smoke_status="not_run",
     ),
     SourceRecord(
-        id="eccc-radar", category="observation", schedulable=True, producer="ECCC", product="Weather radar", state=SourceState.IMPLEMENTING,
+        id="eccc-radar", category="observation", schedulable=True, producer="ECCC", product="Weather radar", state=SourceState.IMPLEMENTED_UNVERIFIED,
         status_reason="fixture contract passes; live smoke test has not run, so adapter is not active", role="planned precipitation observation", may_enter_consensus=False,
         exact_variables=["precipitation_rate", "precipitation_type"], levels=["composite"], geographic_coverage="Newfoundland radar domain",
         cadence="6 minutes", forecast_horizon="observation", authentication="none", licence="Open Government Licence - Canada",
@@ -129,12 +133,32 @@ SOURCES = [
 
 
 LAYERS = [
-    Layer(id="consensus-temperature", title="Experimental temperature consensus", kind="raster", field="temperature", product="consensus", units="degC", semantics="approximately 10 km independent-centre mean", cadence_seconds=3600, staleness_tolerance_seconds=1800, z_index=0),
-    Layer(id="hrdps-relative-humidity", title="HRDPS 2 m relative humidity", kind="raster", field="relative_humidity", product="HRDPS", units="percent", semantics="provider RH preserved; derived only if absent", cadence_seconds=3600, staleness_tolerance_seconds=1800, z_index=1),
-    Layer(id="radar-echo", title="ECCC radar", kind="raster", field="radar_echo", product="Weather radar", units="category", semantics="no echo means no detected precipitating echo, not clear sky", cadence_seconds=360, staleness_tolerance_seconds=600, z_index=2),
-    Layer(id="fog-evidence", title="Fog evidence", kind="mask", field="fog_state", product="multi-evidence", units="category", semantics="categorical evidence; high RH alone never proves fog", cadence_seconds=3600, staleness_tolerance_seconds=1800, z_index=3),
-    Layer(id="cyyt-observation", title="CYYT METAR", kind="point", field="station_weather", product="CYYT METAR/SPECI", units="mixed", semantics="observation, never blended", cadence_seconds=3600, staleness_tolerance_seconds=5400, z_index=10),
+    Layer(id="consensus-temperature", title="Experimental temperature consensus", kind="raster", field="temperature", product="consensus", units="degC", semantics="approximately 10 km independent-centre mean", cadence_seconds=3600, staleness_tolerance_seconds=3600, z_index=0),
+    Layer(id="hrdps-relative-humidity", title="HRDPS 2 m relative humidity", kind="raster", field="relative_humidity", product="HRDPS", units="percent", semantics="provider RH preserved; derived only if absent", cadence_seconds=3600, staleness_tolerance_seconds=3600, z_index=1),
+    Layer(id="radar-echo", title="ECCC radar", kind="raster", field="radar_echo", product="Weather radar", units="category", semantics="no echo means no detected precipitating echo, not clear sky", cadence_seconds=360, staleness_tolerance_seconds=360, z_index=2),
+    Layer(id="fog-evidence", title="Fog evidence", kind="mask", field="fog_state", product="multi-evidence", units="category", semantics="categorical evidence; high RH alone never proves fog", cadence_seconds=3600, staleness_tolerance_seconds=3600, z_index=3),
+    Layer(id="cyyt-observation", title="CYYT METAR", kind="point", field="station_weather", product="CYYT METAR/SPECI", units="mixed", semantics="observation, never blended", cadence_seconds=3600, staleness_tolerance_seconds=3600, z_index=10),
 ]
+
+
+#: What fixture mode answers a member or statistic request with. The fixture
+#: snapshot is a hand-built point, not an ensemble: it holds no member axis,
+#: and the one thing it must never do is invent one. So the ordinary fixture
+#: fields are still served, unchanged, no field carries a ``member`` or an
+#: ``ensemble`` block, and this notice says why there is nothing more.
+NO_ENSEMBLE_MEMBERS_NOTICE = "fixture deployment carries no ensemble members"
+
+
+def ensemble_notices(member: str | None, statistic: str | None) -> list[str]:
+    """The notice a fixture-mode ensemble request earns, or nothing.
+
+    A request that names neither a member nor a statistic is not an ensemble
+    request and gets no notice; anything else is told, once, that this
+    deployment has no members to answer from.
+    """
+    if member is None and statistic is None:
+        return []
+    return [NO_ENSEMBLE_MEMBERS_NOTICE]
 
 
 def provenance(
@@ -155,6 +179,11 @@ def provenance(
     contributor_records = [item for item in SOURCES if item.id in (contributors or [])]
     return Provenance(
         data_mode=DataMode.FIXTURE,  # unmistakable: this number was computed, not retrieved
+        # The class a fixture stands in for. What marks it as a fixture is
+        # ``data_mode``, which every response carries and every client reads;
+        # the class describes the value being stood in for, and a derived
+        # fixture says so through its ``derivation``.
+        evidence_class="derived_here" if derivation else "retrieved",
         source_id=source_id,
         provider=source, product=product, forecast_centre=centre,
         run_time=None if unavailable or product in {"CYYT METAR/SPECI", "Weather radar"} else now() - timedelta(hours=3),
@@ -208,7 +237,7 @@ def point_fields(valid_time: datetime) -> tuple[list[EvidenceField], object]:
 
     fields = [
         EvidenceField(field="temperature", value=consensus.value, provenance=provenance("multi-centre", "experimental-consensus", "independent centres", valid_time, units="degC", level="approximately 10 km grid", contributors=list(consensus.contributors))),
-        EvidenceField(field="relative_humidity", value=rh, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", derivation=derivation, derivation_version=derivation_version)),
+        EvidenceField(field="relative_humidity", phase="liquid", value=rh, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", derivation=derivation, derivation_version=derivation_version)),
         EvidenceField(field="dew_point", value=base_dew, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="degC")),
         EvidenceField(field="wind_speed", value=wind_spd, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="m s-1", level="10 m above ground")),
         EvidenceField(field="wind_gust", value=wind_gst, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="m s-1", level="10 m above ground")),
@@ -216,7 +245,7 @@ def point_fields(valid_time: datetime) -> tuple[list[EvidenceField], object]:
         EvidenceField(field="cloud_low", value=c_low, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="low cloud")),
         EvidenceField(field="cloud_middle", value=c_mid, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="middle cloud")),
         EvidenceField(field="cloud_high", value=c_high, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="high cloud")),
-        EvidenceField(field="total_cloud", value=c_tot, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="total atmosphere")),
+        EvidenceField(field="total_cloud_opacity", value=c_tot, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level="total atmosphere")),
         EvidenceField(field="fog_state", value=fog_state(provider_diagnostic=None, visibility_m=int(vis_km * 1000), fog_code=fog_code), provenance=provenance("CYYT", "CYYT METAR/SPECI", "observation", valid_time, units="category", level="surface")),
         EvidenceField(field="radar_echo", value=radar_echo_semantics(False), provenance=provenance("ECCC", "Weather radar", "ECCC", valid_time, units="category", level="composite")),
     ]
@@ -265,7 +294,7 @@ def selected_forecast_fields(valid_time: datetime, product: str) -> list[Evidenc
     rh, derivation, version = resolve_relative_humidity(None, temp, dew)
     return [
         fallback_temperature(valid_time, product),
-        EvidenceField(field="relative_humidity", value=rh, provenance=provenance(provider, product_name, provider, valid_time, units="percent", derivation=derivation, derivation_version=version)),
+        EvidenceField(field="relative_humidity", phase="liquid", value=rh, provenance=provenance(provider, product_name, provider, valid_time, units="percent", derivation=derivation, derivation_version=version)),
         EvidenceField(field="dew_point", value=dew, provenance=provenance(provider, product_name, provider, valid_time, units="degC")),
     ]
 
@@ -278,15 +307,22 @@ def unavailable_forecast_fields(valid_time: datetime) -> list[EvidenceField]:
 
 
 def profile_levels(valid_time: datetime) -> list[ProfileLevel]:
+    """The development profile, keyed on the catalogue's pressure-level fields.
+
+    Dew point is not among them: the catalogue carries dew point at 2, 40, 80
+    and 120 m and no dew point on pressure levels, and a fixture may not invent
+    a key the catalogue lacks any more than an artifact may. The dew point is
+    still what the relative humidity is derived from; it is simply not served
+    at a level the catalogue does not define.
+    """
     result: list[ProfileLevel] = []
     for pressure, temp, dew, wind in [(1000, 15.2, 12.1, 8.0), (850, 8.0, 3.0, 14.0), (700, -2.0, -10.0, 22.0), (500, -18.0, -32.0, 31.0), (300, -43.0, -56.0, 45.0)]:
         rh, derivation, version = resolve_relative_humidity(None, temp, dew)
         level = f"{pressure} hPa"
         result.append(ProfileLevel(pressure_hpa=pressure, fields=[
-            EvidenceField(field="temperature", value=temp, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="degC", level=level)),
-            EvidenceField(field="dew_point", value=dew, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="degC", level=level)),
-            EvidenceField(field="relative_humidity", value=rh, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level=level, derivation=derivation, derivation_version=version)),
-            EvidenceField(field="wind_speed", value=wind, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="m s-1", level=level)),
+            EvidenceField(field="temperature", key="temperature_pressure", value=temp, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="degC", level=level)),
+            EvidenceField(field="relative_humidity", key="relative_humidity_pressure", phase="liquid", value=rh, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="percent", level=level, derivation=derivation, derivation_version=version)),
+            EvidenceField(field="wind_speed", key="wind_speed_pressure", value=wind, provenance=provenance("ECCC", "HRDPS", "ECCC", valid_time, units="m s-1", level=level)),
         ]))
     return result
 
@@ -295,7 +331,7 @@ def timeline(reference: datetime | None = None) -> list[TimelineItem]:
     moment = reference or now()
     start = window_start(moment)
     result: list[TimelineItem] = []
-    for index in range(BACK_HOURS + FORWARD_HOURS + 1):
+    for index in range(WINDOW_STEPS):
         valid_time = start + timedelta(hours=index)
         products = ["HRDPS", "GFS", "REPS"]
         if valid_time <= moment:

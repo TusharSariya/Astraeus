@@ -7,11 +7,26 @@
 set -eu
 
 BUCKET="${WEATHER_MINIO_BUCKET:?bucket name is required}"
-CAP="${WEATHER_STORAGE_CAP:-25GiB}"
+# 64 GiB, sized on docs/research/wayfinder/size-probe-full-fields.md scenario C
+# and fixed by wayfinder ticket 20. See infra/STORAGE.md. There is no cold
+# tier: reaching this cap is a failure the worker reports, never a condition
+# the store resolves by moving bytes.
+CAP="${WEATHER_STORAGE_CAP:-64GiB}"
 
 mc alias set root "${WEATHER_MINIO_ENDPOINT}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 mc mb --ignore-existing "root/${BUCKET}"
+
+# Reset unconditionally, and say so when the bucket was carrying something
+# else. A quota changed with admin tools invalidates the guarantee the staging
+# projection relies on, so the start path is where it is put back - silently
+# inheriting an out-of-band value would leave the projection reserving room
+# against a cap that is not the one being enforced.
+before="$(mc quota info --json "root/${BUCKET}" 2>/dev/null || true)"
 mc quota set "root/${BUCKET}" --size "${CAP}"
+after="$(mc quota info --json "root/${BUCKET}" 2>/dev/null || true)"
+if [ -n "${before}" ] && [ "${before}" != "${after}" ]; then
+  echo "minio bootstrap: bucket quota differed from the configured ${CAP} and was reset"
+fi
 
 cat >/tmp/weather-writer.json <<JSON
 {

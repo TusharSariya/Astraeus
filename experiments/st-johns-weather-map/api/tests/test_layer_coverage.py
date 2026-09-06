@@ -131,11 +131,15 @@ def test_an_artifact_whose_geometry_is_unknown_is_not_offered_as_a_layer():
     assert layer_kind("application/octet-stream", None) is None
 
 
-def test_tolerance_is_half_a_cadence_so_a_fast_layer_is_not_answered_by_a_stale_frame():
-    # Radar publishes every six minutes; a fifteen-minute floor would have let a
-    # frame two sweeps old answer as current.
-    assert staleness_tolerance_seconds(360) == 180
-    assert staleness_tolerance_seconds(3600) == 1800
+def test_tolerance_is_one_native_interval_so_a_layer_answers_at_its_own_resolution():
+    # One native interval, not half of one: within a layer's own resolution
+    # there is a frame that genuinely belongs to the requested instant, so a
+    # six-minute radar layer tolerates six minutes rather than three.
+    assert staleness_tolerance_seconds(360) == 360
+    assert staleness_tolerance_seconds(3600) == 3600
+    # The coarser planning steps, where half a cadence was most wrong.
+    assert staleness_tolerance_seconds(10800) == 10800
+    assert staleness_tolerance_seconds(21600) == 21600
     # An underivable cadence still gets a bound rather than an open one.
     assert staleness_tolerance_seconds(None) == 900
 

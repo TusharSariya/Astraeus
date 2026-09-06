@@ -18,7 +18,15 @@ import pytest
 import xarray
 
 from ingest.contract import FetchWindow
-from ingest.manifest import ManifestError, RequiredField, RunManifest, ValidationResult, validate_run
+from ingest.grib import declare_time_average, stack_members
+from ingest.manifest import (
+    ManifestError,
+    MemberReport,
+    RequiredField,
+    RunManifest,
+    ValidationResult,
+    validate_run,
+)
 
 UTC = timezone.utc
 
@@ -251,7 +259,7 @@ def test_manifest_rejects_naive_required_valid_times():
 
 def test_a_step_outside_the_evidence_window_fails_qc() -> None:
     window = FetchWindow(now=T0)
-    beyond = datetime(2026, 8, 31, 12, tzinfo=UTC)  # +48 h, past the +24 h edge
+    beyond = datetime(2026, 9, 13, 12, tzinfo=UTC)  # +15 d, past the +14 d edge
     dataset = make_dataset(times=(T0, beyond))
     manifest = RunManifest(source_id="eccc-hrdps", fields=(RequiredField(name="temperature_2m", units="degC"),))
 
@@ -259,13 +267,13 @@ def test_a_step_outside_the_evidence_window_fails_qc() -> None:
 
     assert result.qc_passed is False, "an out-of-window step is a contract violation, not a gap"
     assert result.complete is False
-    assert "out_of_window:2026-08-31T12:00:00Z" in result.flags
+    assert "out_of_window:2026-09-13T12:00:00Z" in result.flags
     assert result.as_quality()["status"] == "failed"
 
 
 def test_a_step_before_the_window_start_is_caught_too() -> None:
     window = FetchWindow(now=T0)
-    stale = datetime(2026, 8, 29, 4, tzinfo=UTC)  # -8 h, past the -3 h edge
+    stale = datetime(2026, 8, 27, 12, tzinfo=UTC)  # -48 h, past the -24 h edge
     dataset = make_dataset(times=(stale, T0))
 
     result = validate_run(
@@ -275,11 +283,11 @@ def test_a_step_before_the_window_start_is_caught_too() -> None:
     )
 
     assert result.qc_passed is False
-    assert "out_of_window:2026-08-29T04:00:00Z" in result.flags
+    assert "out_of_window:2026-08-27T12:00:00Z" in result.flags
 
 
 def test_steps_inside_the_window_are_not_flagged() -> None:
-    """The boundary is inclusive at both edges, so an exact -3h/+24h step passes."""
+    """The boundary is inclusive at both edges, so an exact -24h/+14d step passes."""
     window = FetchWindow(now=T0)
     dataset = make_dataset(times=(window.start, T0, window.end))
 
@@ -297,7 +305,7 @@ def test_steps_inside_the_window_are_not_flagged() -> None:
 def test_many_out_of_window_steps_are_reported_but_capped() -> None:
     """A badly-bounded run can carry hundreds; the flag list stays readable."""
     window = FetchWindow(now=T0)
-    strays = tuple(datetime(2026, 9, day, 12, tzinfo=UTC) for day in range(1, 10))
+    strays = tuple(datetime(2026, 9, day, 12, tzinfo=UTC) for day in range(14, 23))
     dataset = make_dataset(times=(T0, *strays))
 
     result = validate_run(
@@ -310,3 +318,235 @@ def test_many_out_of_window_steps_are_reported_but_capped() -> None:
     assert len(flagged) == 6, "five named steps plus one summary flag"
     assert any(flag.endswith("_more") for flag in flagged)
     assert result.qc_passed is False
+
+
+# --- the member axis ------------------------------------------------------
+#
+# Member completeness is computed from what was decoded, never asserted from
+# the request that was issued, so every test below builds the member axis the
+# way ``ingest.grib.stack_members`` builds it and lets ``validate_run`` read it.
+
+
+def make_member_dataset(
+    members: tuple[str, ...] = ("01", "02", "03"),
+    *,
+    control: str | None = "01",
+    times: tuple[datetime, ...] = (T0,),
+    units: str = "degC",
+) -> xarray.Dataset:
+    """One run on a member axis: ``member`` in front of valid_time/lat/lon."""
+    shape = (len(times), len(LATITUDES), len(LONGITUDES))
+    per_member = {
+        identifier: xarray.DataArray(
+            numpy.full(shape, 10.0),
+            dims=("valid_time", "latitude", "longitude"),
+            coords={
+                "valid_time": [_stamp(moment) for moment in times],
+                "latitude": LATITUDES,
+                "longitude": LONGITUDES,
+            },
+            attrs={"units": units},
+        )
+        for identifier in members
+    }
+    return xarray.Dataset({"temperature_2m": stack_members(per_member, control=control)})
+
+
+def member_manifest(**kwargs) -> RunManifest:
+    defaults: dict = dict(
+        source_id="test-source",
+        fields=(RequiredField("temperature_2m", "degC", level="2 m"),),
+        member_count=3,
+        control="01",
+    )
+    defaults.update(kwargs)
+    return RunManifest(**defaults)
+
+
+def test_a_complete_member_set_publishes_and_reports_its_members():
+    result = validate_run(member_manifest(), make_member_dataset(), window=window())
+
+    assert result.publishable is True
+    assert result.members == MemberReport(declared=3, present=("01", "02", "03"), missing=(), control="01")
+    assert result.as_members() == {
+        "declared": 3,
+        "present": ["01", "02", "03"],
+        "missing": [],
+        "control": "01",
+        # The adapter knows the access shape and this one stated none, so the
+        # block says so rather than guessing a shape from the member count.
+        "control_retrieval": None,
+    }
+
+
+def test_the_adapter_states_how_the_control_was_retrieved():
+    """REPS fetches each member as its own coverage, the control included."""
+    result = validate_run(
+        member_manifest(),
+        make_member_dataset(),
+        window=window(),
+        control_retrieval="separate_coverage",
+    )
+
+    assert result.members.control_retrieval == "separate_coverage"
+    assert result.as_members()["control_retrieval"] == "separate_coverage"
+
+
+def test_the_two_file_aifs_ens_control_is_recorded_as_a_separate_retrieval():
+    """One axis, two retrievals: provenance says the control came from ``cf``."""
+    dataset = make_member_dataset(members=("0", "1", "2"), control="0")
+    result = validate_run(
+        member_manifest(control="0"),
+        dataset,
+        window=window(),
+        declared_members=("0", "1", "2"),
+        control_retrieval="separate_file",
+    )
+
+    assert result.publishable is True
+    assert result.as_members() == {
+        "declared": 3,
+        "present": ["0", "1", "2"],
+        "missing": [],
+        "control": "0",
+        "control_retrieval": "separate_file",
+    }
+
+
+def test_a_retrieval_shape_outside_the_declared_vocabulary_is_refused():
+    with pytest.raises(ManifestError):
+        validate_run(
+            member_manifest(),
+            make_member_dataset(),
+            window=window(),
+            control_retrieval="somehow",
+        )
+
+
+def test_a_family_with_no_control_records_no_retrieval_shape():
+    """No control means no retrieval to describe, whatever the adapter passed."""
+    dataset = make_member_dataset(control=None)
+    result = validate_run(
+        member_manifest(control=None), dataset, window=window(), control_retrieval="same_file"
+    )
+
+    assert result.as_members()["control_retrieval"] is None
+
+
+def test_a_member_axis_in_front_leaves_coverage_and_the_lat_lon_checks_working():
+    """The grid checks must not care that ``member`` is now the leading axis."""
+    dataset = make_member_dataset()
+    assert dataset["temperature_2m"].dims == ("member", "valid_time", "latitude", "longitude")
+
+    result = validate_run(member_manifest(), dataset, window=window())
+
+    assert result.coverage_fraction == 1.0
+    assert not [flag for flag in result.flags if flag.startswith(("missing_axis", "empty_grid"))]
+
+
+def test_partial_members_names_the_missing_ones_when_they_are_declared():
+    result = validate_run(
+        member_manifest(),
+        make_member_dataset(members=("01", "03")),
+        window=window(),
+        declared_members=("01", "02", "03"),
+    )
+
+    assert result.complete is False
+    assert "partial_members:02" in result.flags
+    # A shortfall is not a QC failure: what arrived is right, there is less of it.
+    assert result.qc_passed is True
+    assert result.as_quality()["status"] == "suspect"
+    assert result.members.missing == ("02",)
+
+
+def test_partial_members_reports_a_ratio_when_the_identifiers_are_not_declared():
+    result = validate_run(member_manifest(), make_member_dataset(members=("01", "03")), window=window())
+
+    assert result.complete is False
+    assert "partial_members:2/3" in result.flags
+    assert result.members.present == ("01", "03")
+
+
+def test_no_members_at_all_fails_the_run_rather_than_publishing_thin():
+    result = validate_run(member_manifest(), make_dataset(), window=window())
+
+    assert result.complete is False
+    assert "no_members" in result.flags
+    assert result.members.present == ()
+
+
+def test_a_declared_control_that_no_member_carries_fails_the_run():
+    """The AIFS-ENS ``cf`` file did not arrive: partial, not a complete 50."""
+    dataset = make_member_dataset(members=("1", "2", "3"), control="0")
+    manifest = member_manifest(member_count=4, control="0")
+
+    result = validate_run(manifest, dataset, window=window(), declared_members=("0", "1", "2", "3"))
+
+    assert result.complete is False
+    assert "control_missing:0" in result.flags
+    assert "partial_members:0" in result.flags
+    assert result.qc_passed is True
+    assert result.members.control == "0"
+    assert "0" in result.members.missing
+    assert not bool(dataset["control"].values.any()), "no perturbed member may take the flag"
+
+
+def test_a_family_with_no_control_is_judged_on_its_members_alone():
+    dataset = make_member_dataset(members=("01", "02", "03"), control=None)
+    result = validate_run(member_manifest(control=None), dataset, window=window())
+
+    assert result.publishable is True
+    assert not [flag for flag in result.flags if flag.startswith("control_missing")]
+    assert result.as_members()["control"] is None
+
+
+def test_a_deterministic_run_with_no_member_axis_validates_exactly_as_before():
+    manifest = make_manifest(required_valid_times=(T0,))
+    result = validate_run(manifest, make_dataset(), window=window())
+
+    assert result.publishable is True
+    assert result.flags == ()
+    assert result.members is None
+    assert result.as_members() is None
+
+
+def test_a_manifest_rejects_a_member_count_below_one():
+    with pytest.raises(ManifestError):
+        make_manifest(member_count=0)
+
+
+# --- the averaging window -------------------------------------------------
+
+
+def _averaged_dataset(*, window_label: str | None) -> xarray.Dataset:
+    dataset = make_dataset()
+    variable = dataset["temperature_2m"]
+    if window_label is None:
+        # A time mean whose producer record stated no window: the attribute the
+        # window would have gone in is simply absent.
+        variable.attrs = {**variable.attrs, "cell_methods": "time: mean"}
+    else:
+        declare_time_average(variable, window_label=window_label)
+    return dataset
+
+
+def test_a_time_mean_that_states_its_averaging_window_passes():
+    result = validate_run(make_manifest(), _averaged_dataset(window_label="18-24 hour ave fcst"), window=window())
+
+    assert result.publishable is True
+    assert not [flag for flag in result.flags if flag.startswith("averaging_window")]
+
+
+def test_a_time_mean_with_no_averaging_window_fails_qc():
+    """A mean whose window is unknown is not a quantity anyone can weigh."""
+    result = validate_run(make_manifest(), _averaged_dataset(window_label=None), window=window())
+
+    assert result.qc_passed is False
+    assert "averaging_window_unstated:temperature_2m" in result.flags
+    assert result.as_quality()["status"] == "failed"
+
+
+def test_an_instantaneous_field_is_not_asked_for_an_averaging_window():
+    result = validate_run(make_manifest(), make_dataset(), window=window())
+    assert not [flag for flag in result.flags if flag.startswith("averaging_window")]

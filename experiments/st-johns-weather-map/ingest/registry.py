@@ -12,6 +12,7 @@ import importlib
 import re
 import sys
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 
@@ -25,8 +26,16 @@ DEFAULT_CYCLE_SECONDS = 21600
 DEFAULT_FRESHNESS_SECONDS = 2 * DEFAULT_CYCLE_SECONDS
 FORWARD_HOURS = 24
 
-# Core evidence vocabulary for this experiment. Adapters may narrow it, never
-# widen it: unrequested variables are what blow the storage cap.
+# Core evidence vocabulary for this experiment, in catalogue keys
+# (``registry.fields``). Adapters may narrow it, never widen it: unrequested
+# variables are what blow the storage cap.
+#
+# The cloud member is ``total_cloud_opacity`` because this default describes the
+# ECCC GEM family, which is what every source that falls through to it is.
+# A producer whose cloud is a different quantity states its own key in
+# ``VARIABLE_OVERRIDES`` below rather than inheriting a name that would misstate
+# it: that inheritance is exactly how three adapters came to share one
+# ``total_cloud``.
 DEFAULT_VARIABLES = (
     "temperature_2m",
     "dew_point_2m",
@@ -35,8 +44,15 @@ DEFAULT_VARIABLES = (
     "wind_v_10m",
     "mean_sea_level_pressure",
     "precipitation_accumulation",
-    "total_cloud",
+    "total_cloud_opacity",
     "visibility",
+)
+
+#: The default surface set with the geometric maximum-random overlap cloud the
+#: global GRIB feeds publish, for the sources that would otherwise inherit
+#: ECCC's opacity-weighted key.
+GEOMETRIC_CLOUD_DEFAULTS = tuple(
+    "total_cloud_geometric" if name == "total_cloud_opacity" else name for name in DEFAULT_VARIABLES
 )
 
 #: The cloud steering levels the motion derivation reads (display only).
@@ -117,7 +133,7 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "noaa-gfs": (
         "temperature_2m", "dew_point_2m", "relative_humidity_2m",
         "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure", "visibility",
-        "total_cloud", "cloud_low", "cloud_middle", "cloud_high",
+        "total_cloud_geometric", "cloud_low", "cloud_middle", "cloud_high",
         "wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa",
         "wind_u_850hPa", "wind_v_850hPa", "wind_u_700hPa", "wind_v_700hPa",
         "wind_u_500hPa", "wind_v_500hPa",
@@ -126,9 +142,26 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
         "temperature_850hPa", "temperature_700hPa", "temperature_500hPa",
         "precipitable_water",
     ),
+    # Global GRIB feeds: geometric overlap cloud, not ECCC's opacity-weighted
+    # quantity. Stated per source so nothing inherits a cloud key that means
+    # something else.
+    "dwd-icon-global": GEOMETRIC_CLOUD_DEFAULTS,
+    "ecmwf-ifs": GEOMETRIC_CLOUD_DEFAULTS,
+    "ecmwf-ens": GEOMETRIC_CLOUD_DEFAULTS,
+    "ecmwf-aifs-single": GEOMETRIC_CLOUD_DEFAULTS,
+    "ecmwf-aifs-ens": GEOMETRIC_CLOUD_DEFAULTS,
+    # GEFS publishes no instantaneous column cloud at any lead in any product
+    # set: its TCDC:entire atmosphere is a 3 h or 6 h mean, confirmed at the
+    # GRIB2 level. It therefore stores the mean under its own key rather than
+    # under a name a reader would take for an instant.
+    "noaa-gefs": tuple(
+        "total_cloud_mean_6h" if name == "total_cloud_opacity" else name for name in DEFAULT_VARIABLES
+    ),
     "noaa-swpc-kp": ("kp_index", "a_running", "kp_status"),
     "noaa-swpc-rtsw": ("bz_gsm", "bt"),
     "noaa-swpc-ovation": ("aurora_probability",),
+    "metoffice-ostia-sst": ("sea_surface_temperature", "sea_surface_temperature_uncertainty", "sea_surface_temperature_mask"),
+    "noaa-oisst-v2-1": ("sea_surface_temperature", "sea_surface_temperature_uncertainty"),
     # HRDPS and RDPS carry the default surface set plus the cloud steering
     # winds, the vertical velocity, the RH/temperature profile at the same
     # levels and the nine-level low-cloud profile with its AGL datum; all are
@@ -152,6 +185,7 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
 CONTEXT_BOX_SOURCES = frozenset({
     "noaa-gfs", "noaa-gefs", "ecmwf-ifs", "ecmwf-ens", "ecmwf-aifs-single",
     "ecmwf-aifs-ens", "dwd-icon-global", "eccc-gdps", "eccc-geps", "noaa-goes-east", "noaa-swpc-ovation",
+    "metoffice-ostia-sst", "noaa-oisst-v2-1",
 })
 
 # Only categories where *every* member carries forecast lead times get
@@ -227,6 +261,201 @@ def _poll_seconds(cycle_seconds: int) -> int:
 
 
 @dataclass(frozen=True)
+class Reach:
+    """How far a run of this source reaches, as the record declares it.
+
+    Reach is a declared registry fact, never inferred from what a fetch
+    happened to return: a run that publishes fewer leads than it promised
+    leaves those instants uncovered by that run, and does not quietly rewrite
+    the promise. ``per_cycle`` exists because a source's reach is not
+    necessarily a constant of the source - IFS reaches 360 h at 00z and 12z
+    and 144 h at 06z and 18z, so the run's own cycle decides.
+    """
+
+    earliest_hours: float
+    latest_hours: float
+    per_cycle: Mapping[str, float] = field(default_factory=dict)
+
+    def latest_hours_for(self, run_time: datetime) -> float:
+        """The reach of the cycle this run belongs to, else the record's own."""
+        return self.per_cycle.get(run_time.astimezone(timezone.utc).strftime("%H"), self.latest_hours)
+
+    def span(self, run_time: datetime) -> tuple[datetime, datetime]:
+        """The valid-time interval this run can cover, inclusive of both ends."""
+        return (
+            run_time + timedelta(hours=self.earliest_hours),
+            run_time + timedelta(hours=self.latest_hours_for(run_time)),
+        )
+
+    def covers(self, run_time: datetime, instant: datetime) -> bool:
+        start, end = self.span(run_time)
+        return start <= instant <= end
+
+
+@dataclass(frozen=True)
+class PublicationLatency:
+    """How long after its run time a source has been observed to publish.
+
+    ``measured`` is the whole point of the type: an estimate that came from
+    research rather than from this deployment watching a run appear is served
+    with ``measured`` false and an observation count of zero, so nothing
+    downstream can present a seed as this deployment's own measurement.
+    """
+
+    estimate_seconds: int | None
+    observation_count: int
+    last_observed: datetime | None
+    measured: bool
+    basis: str
+
+
+def _parse_instant(value: Any) -> datetime | None:
+    if not value:
+        return None
+    text = str(value)
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _reach_from_record(block: Mapping[str, Any] | None) -> Reach | None:
+    if not block:
+        return None
+    return Reach(
+        earliest_hours=float(block["earliest_hours"]),
+        latest_hours=float(block["latest_hours"]),
+        per_cycle={str(hour): float(value) for hour, value in (block.get("per_cycle") or {}).items()},
+    )
+
+
+@dataclass(frozen=True)
+class EnsembleControl:
+    """How a family identifies its control member, as a flag on the member axis.
+
+    ``identifier`` is the provider's own token and is None where the family
+    publishes members and no measurement says which one is the control. That is
+    not the same as ``EnsembleDeclaration.control`` being None, which means the
+    family publishes no members at all: an unlocated control keeps the family
+    unschedulable, and never licenses a perturbed member to stand in for it.
+    """
+
+    identifier: str | None
+    rule: str
+    separate_retrieval: bool
+
+
+@dataclass(frozen=True)
+class EnsembleVerification:
+    """What was measured about a family, and where the measurement is written.
+
+    Any field that is ``unverified`` makes the family unschedulable, because a
+    member count that was assumed cannot check completeness and an access path
+    that was assumed cannot be retried. ``evidence`` is the research path, or
+    ``"none"`` where nothing was measured.
+    """
+
+    member_count: str
+    access_path: str
+    cadence: str
+    evidence: str
+
+    @property
+    def fully_verified(self) -> bool:
+        return "unverified" not in (self.member_count, self.access_path, self.cadence)
+
+
+@dataclass(frozen=True)
+class EnsembleGap:
+    """A field a family does not publish that its siblings do, and why.
+
+    A gap is never filled by derivation, by another family's value or by the
+    same family's provider reduction; it is a declared absence with a reason.
+    """
+
+    field: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class EnsembleDeclaration:
+    """One ensemble family, as its registry record declares it.
+
+    The scheduler-facing mirror of the ``ensemble`` block in
+    ``registry/source_data.py``, field for field. ``schedulable`` is the whole
+    point of carrying it here: registering an adapter for a family must not
+    schedule that family, and a family that has not been measured must not be
+    retrieved on an assumed access path.
+    """
+
+    family: str
+    build_order: int
+    shape: str
+    subsetting: str
+    storage_scope: str
+    member_count: int | None
+    control: EnsembleControl | None
+    reductions: tuple[str, ...]
+    gaps: tuple[EnsembleGap, ...]
+    verification: EnsembleVerification
+    schedulable: bool
+    schedulable_reason: str
+
+    @property
+    def publishes_members(self) -> bool:
+        return self.shape == "members"
+
+
+def _ensemble_from_record(block: Mapping[str, Any] | None) -> EnsembleDeclaration | None:
+    if not block:
+        return None
+    control = block.get("control")
+    verification = block.get("verification") or {}
+    return EnsembleDeclaration(
+        family=str(block["family"]),
+        build_order=int(block["build_order"]),
+        shape=str(block["shape"]),
+        subsetting=str(block["subsetting"]),
+        storage_scope=str(block["storage_scope"]),
+        member_count=None if block.get("member_count") is None else int(block["member_count"]),
+        control=None if control is None else EnsembleControl(
+            identifier=None if control.get("identifier") is None else str(control["identifier"]),
+            rule=str(control["rule"]),
+            separate_retrieval=bool(control["separate_retrieval"]),
+        ),
+        reductions=tuple(str(name) for name in block.get("reductions", ())),
+        gaps=tuple(
+            EnsembleGap(field=str(gap["field"]), reason=str(gap["reason"]))
+            for gap in block.get("gaps", ())
+        ),
+        verification=EnsembleVerification(
+            member_count=str(verification.get("member_count", "unverified")),
+            access_path=str(verification.get("access_path", "unverified")),
+            cadence=str(verification.get("cadence", "unverified")),
+            evidence=str(verification.get("evidence", "none")),
+        ),
+        schedulable=bool(block.get("schedulable", False)),
+        schedulable_reason=str(block.get("schedulable_reason", "")),
+    )
+
+
+def _latency_from_record(block: Mapping[str, Any] | None) -> PublicationLatency | None:
+    if not block:
+        return None
+    estimate = block.get("estimate_seconds")
+    return PublicationLatency(
+        estimate_seconds=None if estimate is None else int(estimate),
+        observation_count=int(block.get("observation_count", 0)),
+        last_observed=_parse_instant(block.get("last_observed")),
+        measured=bool(block.get("measured", False)),
+        basis=str(block.get("basis", "none")),
+    )
+
+
+@dataclass(frozen=True)
 class IngestConfig:
     """Everything the scheduler and an adapter need, derived from the registry."""
 
@@ -249,11 +478,76 @@ class IngestConfig:
     may_enter_consensus: bool
     consensus_family: str | None
     documentation_urls: tuple[str, ...] = ()
+    #: How this source's values reach the deployment, as its record declares
+    #: it, with the intermediary that stands between the producer and this
+    #: deployment where one does. Carried here so a served value can name it
+    #: without the API reopening the registry file for every field.
+    delivery_kind: str | None = None
+    intermediary: str | None = None
+    intermediary_method: str | None = None
+    #: Whether this source's values may be a field's display primary. Follows
+    #: from the kind unless the record overrides it.
+    display_primary: bool = True
+    #: How far a run of this source reaches, as the record declares it. None
+    #: where the record declares nothing, which makes the source unschedulable
+    #: rather than giving it a reach nobody stated.
+    reach: Reach | None = None
+    #: The producer's own run cadence on a forecast record, and the native
+    #: publication interval on an observation or nowcast record. Exactly one of
+    #: the two is set; both are None where the record declares neither.
+    #:
+    #: Neither replaces ``cadence_seconds`` (how often this deployment looks)
+    #: or ``cycle_seconds`` (the cadence parsed out of the record's prose).
+    #: Those stay as they are; the worker owner rebuilds the schedule on top of
+    #: these declared numbers next.
+    run_cadence_seconds: int | None = None
+    native_cadence_seconds: int | None = None
+    #: The measured publication latency held beside the cadence, or None where
+    #: the record carries no block at all.
+    publication_latency: PublicationLatency | None = None
+    #: The dated WXO-DD path an ECCC model adapter falls back to, where the
+    #: adapter documents one.
+    datamart_fallback_path: str | None = None
+    #: The ensemble family this record declares, on an ensemble record. None on
+    #: every other category, and None on an ensemble record that declares no
+    #: block at all - which makes that record unschedulable rather than giving
+    #: it a member count, an access shape and a storage scope nobody stated.
+    ensemble: EnsembleDeclaration | None = None
+    #: Whether the record carries an admission condition its owner has not
+    #: marked satisfied. An admission subject to a check is not an admission
+    #: until the check is recorded, so this alone makes the source
+    #: unschedulable, whatever else the record says.
+    admission_condition_outstanding: bool = False
 
     @property
     def ingestible(self) -> bool:
-        """Only catalogued, non-credential sources may be scheduled here."""
-        return self.registry_status == "implementing" and self.freshness_threshold_seconds is not None
+        """Only implemented-unverified sources, unconditionally admitted, with a declared horizon.
+
+        ``implemented-unverified`` is the single schedulable state: a record in
+        any other state is a catalogue entry, a blocked one or a dead one, and
+        none of those is fetched. A record admitted subject to a check nobody
+        has recorded is refused for the same reason.
+
+        A source that will not say how far it reaches cannot be shown to answer
+        any instant, and one with neither a run cadence nor a native cadence
+        cannot be scheduled against anything, so both are refused here rather
+        than defaulted into existence further down.
+
+        An ensemble record is refused on top of that unless its own record
+        declares a family and declares it schedulable. Registering an adapter
+        for a family must not schedule that family: the member count, control
+        rule and access path an adapter would rely on are registry facts, and a
+        family whose facts are unverified, or whose upstream cost the owner has
+        not accepted, is not retrieved on an assumption.
+        """
+        return (
+            self.registry_status == "implemented-unverified"
+            and not self.admission_condition_outstanding
+            and self.freshness_threshold_seconds is not None
+            and self.reach is not None
+            and (self.run_cadence_seconds is not None or self.native_cadence_seconds is not None)
+            and (self.category != "ensemble" or (self.ensemble is not None and self.ensemble.schedulable))
+        )
 
 
 def _load_registry() -> dict[str, Any]:
@@ -261,6 +555,13 @@ def _load_registry() -> dict[str, Any]:
         sys.path.insert(0, str(EXPERIMENT_ROOT))
     module = importlib.import_module("registry.source_data")
     return module.registry()
+
+
+def _admission() -> Any:
+    """``registry.admission``, the one definition of the admission vocabulary."""
+    if str(EXPERIMENT_ROOT) not in sys.path:
+        sys.path.insert(0, str(EXPERIMENT_ROOT))
+    return importlib.import_module("registry.admission")
 
 
 def _config_from_record(record: Mapping[str, Any]) -> IngestConfig:
@@ -296,6 +597,17 @@ def _config_from_record(record: Mapping[str, Any]) -> IngestConfig:
         may_enter_consensus=bool(consensus.get("eligible", False)),
         consensus_family=consensus.get("family"),
         documentation_urls=tuple(record.get("documentation_urls", ())),
+        delivery_kind=record.get("delivery_kind"),
+        intermediary=(record.get("intermediary") or {}).get("name"),
+        intermediary_method=(record.get("intermediary") or {}).get("method"),
+        display_primary=bool(record.get("display_primary", True)),
+        reach=_reach_from_record(record.get("reach")),
+        run_cadence_seconds=record.get("run_cadence_seconds"),
+        native_cadence_seconds=record.get("native_cadence_seconds"),
+        publication_latency=_latency_from_record(record.get("publication_latency")),
+        admission_condition_outstanding=_admission().condition_outstanding(record),
+        datamart_fallback_path=record.get("datamart_fallback_path"),
+        ensemble=_ensemble_from_record(record.get("ensemble")),
     )
 
 

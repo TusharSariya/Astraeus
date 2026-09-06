@@ -1239,4 +1239,28 @@ describe('MapPanel layer drawer', () => {
     render(panel({ layers: [], selections: [], layersLoading: true }))
     expect(screen.getByRole('status')).toHaveTextContent('Loading published layers…')
   })
+
+  // Change evidence-classes-and-derived-here: a layer states how its values
+  // came to exist, in the drawer and in the text alternative alike.
+  it('badges a layer with its declared evidence class, before it is switched on', () => {
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    render(panel({ layers: [{ ...radarLayer, evidence_class: 'retrieved' }], selections: [{ id: radarLayer.id, visible: false, opacity: 0.85 }] }))
+    const badges = screen.getAllByText('retrieved')
+    expect(badges[0]).toHaveAttribute('data-evidence-class', 'retrieved')
+  })
+
+  it('says a layer’s evidence class is unavailable when it declared none, and never reads it as retrieved', () => {
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    render(panel())
+    expect(screen.getAllByText('unrecognised evidence class')[0]).toHaveAttribute('data-evidence-class', 'unrecognised')
+    expect(screen.getAllByText(/Evidence class unavailable: unrecognised evidence class — the response declared none/).length).toBeGreaterThan(0)
+    expect(screen.queryByText('retrieved')).not.toBeInTheDocument()
+  })
+
+  it('carries the class into the text alternative as the same sentence', () => {
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    render(panel({ layers: [{ ...radarLayer, evidence_class: 'generated_display' }] }))
+    const alternative = document.querySelector('.layer-text-list') as HTMLElement
+    expect(within(alternative).getByText(/Evidence class generated display/)).toBeInTheDocument()
+  })
 })

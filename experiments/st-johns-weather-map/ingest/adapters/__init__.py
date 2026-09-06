@@ -24,6 +24,13 @@ import importlib.util
 _MODULES = (
     "eccc_datamart",
     "eccc_geomet",
+    # The four ensemble access shapes, in the owner's declared build order:
+    # REPS (per-member WCS coverages) here, then AIFS-ENS and IFS ENS in
+    # ``ecmwf_opendata`` and GEFS in ``noaa_s3``, both listed below. Loading an
+    # adapter never schedules its family: every one of them gates on
+    # ``IngestConfig.ensemble.schedulable``, which the registry declares false
+    # for all six families.
+    "eccc_geomet_ensemble",
     "noaa_s3",
     "ecmwf_opendata",
     "dwd_icon",

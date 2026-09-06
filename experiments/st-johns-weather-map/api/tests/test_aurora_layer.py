@@ -206,7 +206,9 @@ def test_layer_listed_in_the_rendered_grid_group_once(monkeypatch, data_mode):
     assert entry["raster_available"] and entry["legend_available"]
     assert entry["upstream_wms_layer"] is None
     assert [datetime.fromisoformat(t) for t in entry["times"]] == [FORECAST_INSTANT]
-    assert entry["staleness_tolerance_seconds"] == aurora.STALENESS_TOLERANCE_SECONDS
+    # One native interval of the OVATION grid.
+    assert entry["staleness_tolerance_seconds"] == 600
+    assert aurora.STALENESS_TOLERANCE_SECONDS == 600  # the unknown-cadence fallback agrees
     assert "OVATION model probabilities" in entry["semantics"]
     assert "Kp 4-5" in entry["semantics"]
     # The generic artifact-derived listing does not duplicate it.

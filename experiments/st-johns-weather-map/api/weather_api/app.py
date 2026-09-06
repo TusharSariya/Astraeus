@@ -21,6 +21,7 @@ There is deliberately no path from a live failure to a fixture value.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -33,6 +34,7 @@ from .fixtures import (
     LAYERS,
     NEWFOUNDLAND,
     SOURCES,
+    ensemble_notices,
     now,
     point_fields,
     profile_levels,
@@ -58,6 +60,8 @@ from .models import (
     InterpolationMethodItem,
     MethodRequirement,
     Layer,
+    LayerFrame,
+    LayerRunSummary,
     LayersResponse,
     MethodScore,
     MethodsResponse,
@@ -67,6 +71,8 @@ from .models import (
     RefreshRequest,
     Selection,
     SourceStatusResponse,
+    CoverageEntry,
+    HorizonTier,
     TimelineItem,
     TimelineResponse,
     AstronomyCoreWindow,
@@ -84,25 +90,39 @@ from .models import (
 )
 from .science import select_fallback
 from . import astronomy, aurora, grids, satellite as goes_satellite, wms
+from .config import WINDOW_BACK, WINDOW_STEPS, sliding_window
 from .store import (
     FIXTURE_MODE,
     LIVE_MODE,
     SeriesData,
     StoreUnavailable,
+    absence_state,
     configured_mode,
+    last_valid_times,
     known_source_ids,
     LayerCoverage,
     layer_id_for,
+    NO_RUN_CONCEPT_REASON,
+    NO_RUN_TIME_REASON,
     live_point_fields,
     live_profile_levels,
     live_store,
     registry_source_records,
     registry_source_statuses,
+    retained_layer_runs,
+    retained_runs,
+    run_stale_verdict,
     schedulable_source_ids,
     source_category,
+    source_reach,
+    source_has_run_concept,
+    source_run_cadence_seconds,
+    source_run_staleness,
     unavailable_point_fields,
     unavailable_profile_levels,
+    unschedulable_detail,
 )
+from .models import AGED_OUT_FLAG, ENSEMBLE_STATISTIC_ENTRIES, THRESHOLD_COMPARISONS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -123,7 +143,7 @@ PRODUCT_SOURCE_IDS = {
     "DWD": "dwd-icon-global",
 }
 CONSENSUS_PRODUCTS = {"consensus", "multi-centre"}
-OBSERVATION_FIELDS = {"fog_state", "radar_echo", "visibility", "cloud_low", "cloud_middle", "cloud_high", "total_cloud", "wind_speed", "wind_gust"}
+OBSERVATION_FIELDS = {"fog_state", "radar_echo", "visibility", "cloud_low", "cloud_middle", "cloud_high", "total_cloud_opacity", "wind_speed", "wind_gust"}
 # Registry categories whose fields stay in a live ``/point`` response when a
 # product is selected. A selected model never borrows another *model's* values,
 # but an observation is not a competing model: a METAR visibility under an
@@ -172,6 +192,53 @@ def skip_notices(store: object) -> list[str]:
     return [f"artifact from {item.source_id} (revision {item.revision_id}) was skipped: {item.reason}" for item in getattr(store, "skipped", [])]
 
 
+def tier_boundary(reference: datetime) -> datetime:
+    """Where the core tier ends and the planning tier begins.
+
+    The core tier reaches exactly as far ahead as the evidence window reaches
+    back, so this is ``WINDOW_BACK`` read forwards rather than a second
+    24-hour constant written down here. The bound has one definition
+    (``config.py``) and this is a use of it, not a restatement.
+    """
+    return reference + WINDOW_BACK
+
+
+def horizon_tiers(reference: datetime) -> list[HorizonTier]:
+    """The two tiers as valid-time ranges, core first.
+
+    A tier names no source. Together they cover the window exactly, which is
+    why an instant in neither tier is also an instant outside the window: one
+    refusal, stated in both vocabularies.
+    """
+    boundary = tier_boundary(reference)
+    return [
+        HorizonTier(id="core", start=window_start(reference), end=boundary),
+        HorizonTier(id="planning", start=boundary, end=window_end(reference)),
+    ]
+
+
+def tier_of(moment: datetime, reference: datetime) -> str | None:
+    """Which tier an instant falls in, or ``None`` when it falls in neither.
+
+    The boundary instant itself belongs to the core tier: it is served, and
+    serving it twice would put the same hour in two ranges.
+    """
+    for tier in horizon_tiers(reference):
+        if tier.start <= moment <= tier.end:
+            return tier.id
+    return None
+
+
+def _outside_both_tiers_detail(reference: datetime) -> str:
+    core, planning = horizon_tiers(reference)
+    return (
+        f"valid_time is outside the available window {core.start.isoformat()} through {planning.end.isoformat()}: "
+        f"it falls in neither the core tier ({core.start.isoformat()} through {core.end.isoformat()}) "
+        f"nor the planning tier ({planning.start.isoformat()} through {planning.end.isoformat()}), "
+        "and nothing from the nearest covered instant is substituted for it"
+    )
+
+
 def requested_time(value: datetime | None) -> datetime:
     reference = now()
     if value is None:
@@ -179,9 +246,8 @@ def requested_time(value: datetime | None) -> datetime:
     if value.tzinfo is None:
         raise HTTPException(status_code=422, detail="valid_time must include a UTC offset")
     utc_value = value.astimezone(timezone.utc)
-    start, end = window_start(reference), window_end(reference)
-    if not start <= utc_value <= end:
-        raise HTTPException(status_code=422, detail=f"valid_time is outside the available window {start.isoformat()} through {end.isoformat()}")
+    if tier_of(utc_value, reference) is None:
+        raise HTTPException(status_code=422, detail=_outside_both_tiers_detail(reference))
     return utc_value
 
 
@@ -203,41 +269,194 @@ def _floor_to_hour(moment: datetime) -> datetime:
     return moment.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
 
 
-def _window_items(reference: datetime, products_at: dict[datetime, list[str]] | None = None) -> list[TimelineItem]:
-    """The 28 hourly steps, carrying only the products given for each hour."""
+def _aged_out_sources(store: object) -> tuple[dict[str, datetime], list[str]]:
+    """Sources this deployment held and purged, with the last valid time each reached.
+
+    An empty mapping with no notice means the store answered and holds no such
+    record: every absence is then ``null``. An empty mapping WITH a notice
+    means the record could not be read, and the caller must not present either
+    absence state as if it knew which applied.
+
+    A store that has no last-valid-time record at all - an older deployment,
+    or one whose retention migration has not run - is treated as "nothing was
+    ever held", which is the fail-closed answer: it under-claims rather than
+    inventing evidence this deployment cannot show was here.
+    """
+    try:
+        return last_valid_times(store), []
+    except StoreUnavailable as error:
+        LOGGER.warning("the last valid time record could not be read: %s", error)
+        return {}, [f"the last valid time record could not be read, so no absence is reported as aged out: {error}"]
+    except Exception as error:  # noqa: BLE001 - a missing table must not take the timeline down
+        LOGGER.exception("the last valid time record could not be read")
+        return {}, [f"the last valid time record could not be read, so no absence is reported as aged out: {type(error).__name__}: {error}"]
+
+
+#: What is said about an instant no retained run covers, when the store did
+#: answer. Never used for a store that could not be read: "nothing covers it"
+#: is a statement about the evidence, not about the query.
+NOTHING_COVERS = "nothing covers this instant"
+
+
+def _coverage_entry(run: Any, reference: datetime) -> CoverageEntry:
+    """One covering run, with its run age and staleness verdict.
+
+    ``run_stale`` is only ever a verdict where both halves of the comparison
+    are known: the adapter's own run time and the producer's declared run
+    cadence. Either missing gives ``null`` with the reason, because ``false``
+    would report an unmeasurable run as current.
+    """
+    cadence = source_run_cadence_seconds(run.source_id)
+    age, stale, reason = run_stale_verdict(run.run_time, cadence, reference)
+    return CoverageEntry(
+        source_id=run.source_id,
+        provider_run_id=run.provider_run_id,
+        run_time=run.run_time,
+        run_cadence_seconds=cadence,
+        run_age_seconds=age,
+        run_stale=stale,
+        run_stale_reason=reason,
+    )
+
+
+def _coverage_index(runs: Sequence[Any], reference: datetime) -> dict[datetime, list[CoverageEntry]]:
+    """Which retained runs cover each hour of the window.
+
+    Two conditions, both required. The declared reach says how far the run was
+    meant to carry, and the frames it actually published say how far it did.
+    A reach with nothing retrieved behind it contributes nothing, and a run
+    that published beyond its declared reach is not credited past the promise
+    either.
+
+    A run whose adapter declared no run time cannot be tested against a reach
+    at all - the reach is stated relative to the run time - so such a run is
+    credited only where it demonstrably published frames. That is narrower
+    than the reach test, never wider, and it keeps the retrieval instant
+    stamped on the run out of the containment test.
+    """
     start = window_start(reference)
+    index: dict[datetime, list[CoverageEntry]] = {}
+    for run in runs:
+        reach = source_reach(run.source_id)
+        if reach is None:
+            # No declared reach means not schedulable and served to nobody.
+            continue
+        if run.frame_start is None or run.frame_end is None:
+            continue
+        low, high = run.frame_start, run.frame_end
+        if run.run_time is not None:
+            reach_start, reach_end = reach.span(run.run_time)
+            low, high = max(low, reach_start), min(high, reach_end)
+        if low > high:
+            continue
+        entry = _coverage_entry(run, reference)
+        for step in range(WINDOW_STEPS):
+            hour = start + timedelta(hours=step)
+            if low <= hour <= high:
+                index.setdefault(hour, []).append(entry)
+    return {
+        hour: sorted(entries, key=lambda item: (item.source_id, item.run_time or datetime.min.replace(tzinfo=timezone.utc), item.provider_run_id))
+        for hour, entries in index.items()
+    }
+
+
+def _window_items(
+    reference: datetime,
+    products_at: dict[datetime, list[str]] | None = None,
+    *,
+    aged_out: dict[str, datetime] | None = None,
+    coverage_at: dict[datetime, list[CoverageEntry]] | None = None,
+    coverage_resolved: bool = False,
+) -> list[TimelineItem]:
+    """The hourly steps of the sliding window, with only what each hour holds.
+
+    ``aged_out`` names the sources whose frames this deployment held and
+    purged, with the last valid time each reached. An hour that lists no
+    product and names no aged-out source is an hour nothing ever covered; the
+    two must stay distinguishable, or an emptied hour at the back edge reads
+    as one that was never populated.
+    """
+    start = window_start(reference)
+    stated = dict(sorted((aged_out or {}).items()))
     items: list[TimelineItem] = []
-    for index in range(BACK_HOURS + FORWARD_HOURS + 1):
+    for index in range(WINDOW_STEPS):
         valid_time = start + timedelta(hours=index)
+        products = sorted((products_at or {}).get(valid_time, []))
+        covering = (coverage_at or {}).get(valid_time, [])
         items.append(
             TimelineItem(
                 valid_time_utc=valid_time,
                 valid_time_newfoundland=valid_time.astimezone(NEWFOUNDLAND),
-                available_products=sorted((products_at or {}).get(valid_time, [])),
+                available_products=products,
+                # Stated per hour rather than once per response: an hour that
+                # holds a product is not aged out, and one that holds nothing
+                # needs the reason beside it, not in a footnote.
+                aged_out_sources={} if products else stated,
+                tier=tier_of(valid_time, reference),
+                coverage=covering,
+                # Only a store that answered can say nothing covers an hour.
+                # With coverage unresolved the list is empty and silent, and
+                # the response notices carry the failure instead.
+                coverage_notice=NOTHING_COVERS if coverage_resolved and not covering else None,
             )
         )
     return items
+
+
+def _resolved_coverage(store: object, reference: datetime) -> tuple[dict[datetime, list[CoverageEntry]], bool, list[str]]:
+    """Per-hour coverage from declared reach against runs actually retrieved.
+
+    Returns the index, whether the store answered at all, and any notice. An
+    unreachable store gives an empty index with ``False``: no instant is then
+    said to be covered, and none is said to be uncovered either.
+    """
+    try:
+        runs = retained_runs(store)
+    except StoreUnavailable as error:
+        LOGGER.warning("retained runs could not be read: %s", error)
+        return {}, False, [f"coverage could not be resolved, so no instant is reported as covered or uncovered: {error}"]
+    except Exception as error:  # noqa: BLE001 - any failure is the same answer
+        LOGGER.exception("retained runs could not be read")
+        return {}, False, [f"coverage could not be resolved, so no instant is reported as covered or uncovered: {type(error).__name__}: {error}"]
+    return _coverage_index(runs, reference), True, []
 
 
 @app.get(f"{PREFIX}/timeline", response_model=TimelineResponse)
 def get_timeline() -> TimelineResponse:
     reference = now()
     start, end = window_start(reference), window_end(reference)
+    tiers = horizon_tiers(reference)
+    boundary = tier_boundary(reference)
     if fixture_mode():
-        return TimelineResponse(data_mode=DataMode.FIXTURE, start=start, end=end, items=timeline(reference))
+        # The tier is a property of the instant, so a fixture hour carries it
+        # too. Its coverage stays empty: fixtures name products, and a fixture
+        # has no retrieved run to be covered by.
+        fixture_items = [item.model_copy(update={"tier": tier_of(item.valid_time_utc, reference)}) for item in timeline(reference)]
+        return TimelineResponse(data_mode=DataMode.FIXTURE, start=start, end=end, items=fixture_items, boundary=boundary, tiers=tiers)
 
     store = live_store()
     if store is None:
-        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), notices=["no live artifact store is reachable; no hour can be said to have a published product"])
+        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["no live artifact store is reachable; no hour can be said to have a published product"])
     try:
         coverage = store.published_products()
     except Exception:
         LOGGER.exception("published product coverage could not be read")
-        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), notices=["the live artifact store raised while resolving published coverage"])
+        # No hour is said to hold a product AND no hour is said to have aged
+        # out: with the store unreadable, either claim would be a guess.
+        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["the live artifact store raised while resolving published coverage"])
 
     notices = skip_notices(store)
+    aged_out, aged_out_notices = _aged_out_sources(store)
+    notices.extend(aged_out_notices)
+    coverage_at, coverage_resolved, coverage_notices = _resolved_coverage(store, reference)
+    notices.extend(coverage_notices)
     if not coverage:
-        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), notices=[*notices, "no artifacts are currently published for this window"])
+        return TimelineResponse(
+            data_mode=DataMode.UNAVAILABLE, start=start, end=end,
+            items=_window_items(reference, aged_out=aged_out, coverage_at=coverage_at, coverage_resolved=coverage_resolved),
+            boundary=boundary, tiers=tiers,
+            notices=[*notices, "no artifacts are currently published for this window"],
+        )
     products_at: dict[datetime, list[str]] = {}
     for source_id, stamps in coverage.items():
         for stamp in stamps:
@@ -252,7 +471,19 @@ def get_timeline() -> TimelineResponse:
             bucket = products_at.setdefault(hour, [])
             if source_id not in bucket:
                 bucket.append(source_id)
-    return TimelineResponse(data_mode=DataMode.LIVE, start=start, end=end, items=_window_items(reference, products_at), notices=notices)
+    # A source with coverage is not aged out, whatever the record says it once
+    # held: the record is the high-water mark, not a claim about now.
+    still_held = {source_id for source_id, stamps in coverage.items() if stamps}
+    return TimelineResponse(
+        data_mode=DataMode.LIVE, start=start, end=end,
+        items=_window_items(
+            reference, products_at,
+            aged_out={k: v for k, v in aged_out.items() if k not in still_held},
+            coverage_at=coverage_at, coverage_resolved=coverage_resolved,
+        ),
+        boundary=boundary, tiers=tiers,
+        notices=notices,
+    )
 
 
 #: Media types this API knows how to represent at all. A type absent here has
@@ -266,7 +497,7 @@ Z_INDEX_BY_KIND = {"raster": 0, "mask": 10, "line": 20, "alert": 30, "point": 40
 
 #: What a layer may claim when its cadence cannot be derived - a single frame,
 #: or an irregular one. It still needs a bound; without one a lone frame would
-#: answer for the whole 28-hour window.
+#: answer for the whole evidence window.
 UNKNOWN_CADENCE_TOLERANCE_SECONDS = 900
 
 #: A floor so a very fast layer does not become unresolvable between frames.
@@ -339,13 +570,181 @@ def layer_group(evidence_basis: str, kind: str, group: str | None = None) -> str
 def staleness_tolerance_seconds(cadence_seconds: int | None) -> int:
     """How stale a frame may be before the layer must report unavailable.
 
-    Half a cadence: within that, the requested time is genuinely nearer this
-    frame than the next, which is what "nearest" is allowed to mean. Beyond it
-    the client renders nothing rather than misdating an older frame as current.
+    One native interval of the layer itself: within its own resolution there is
+    a frame that genuinely belongs to the requested instant, so a six-minute
+    radar layer tolerates six minutes and a three-hourly planning layer three
+    hours. Half a cadence answered a different question and refused frames a
+    layer's own resolution says are the right ones. Beyond one interval the
+    frame is still drawable, but only as a disclosed fallback naming its real
+    time, never quietly as the requested instant.
     """
     if cadence_seconds is None or cadence_seconds <= 0:
         return UNKNOWN_CADENCE_TOLERANCE_SECONDS
-    return max(MIN_STALENESS_TOLERANCE_SECONDS, cadence_seconds // 2)
+    return max(MIN_STALENESS_TOLERANCE_SECONDS, cadence_seconds)
+
+
+#: Said of a layer whose imagery is rendered upstream at request time. There is
+#: a run behind it at the provider, but nothing is retained here to read a run
+#: time from, so the verdict is unknown rather than false.
+LIVE_PROXY_RUN_REASON = (
+    "live-proxied layer: its frames are rendered upstream at request time and no run is retained here to date"
+)
+
+#: Said of every layer when the retained-run read itself failed. Unknown
+#: retention is not an empty one, and every frame is still served.
+RUNS_UNREADABLE_REASON = "retained runs could not be read, so no run staleness can be reported for this layer"
+
+#: Said of a fixture layer. Fixtures name products; no run stands behind one,
+#: and none is invented for it.
+FIXTURE_RUN_REASON = "fixture layer: no run is retained behind it"
+
+
+def _unattributed_layer(layer: Layer, reason: str) -> Layer:
+    """Every frame served, none attributed to a run, with the reason said once.
+
+    The frames list is still one entry per entry of ``times``, in the same
+    order, so a client reads run attribution the same way for every layer and
+    never has to infer an absent list means anything.
+    """
+    return layer.model_copy(
+        update={
+            "run_time": None,
+            "run_stale": None,
+            "run_stale_reason": reason,
+            "run_cadence_seconds": None,
+            "frames": [LayerFrame(valid_time=stamp) for stamp in layer.times],
+            "runs": [],
+        }
+    )
+
+
+def _attributed_layer(layer: Layer, source_id: str, runs: Sequence[Any], reference: datetime) -> Layer:
+    """One layer's frames, each carrying the run that produced it.
+
+    ``runs`` arrives newest first, so a frame both runs published is credited to
+    the newer one and the previous run keeps exactly the leads the newer run
+    does not reach. That is the short-cycle rule: the two runs are shown as two,
+    the layer's ``times`` is their union, and no value is blended across the
+    join or extrapolated past either run.
+
+    A run-stale frame is served like any other. The flag travels with it so a
+    reader can see the evidence is from a superseded run; withholding it would
+    leave the instant answered by nothing at all.
+    """
+    verdicts: dict[str, tuple[bool | None, str | None, int | None]] = {}
+    claimed: dict[datetime, Any] = {}
+    for run in runs:
+        _age, stale, reason, cadence = source_run_staleness(source_id, run.run_time, reference)
+        verdicts[run.provider_run_id] = (stale, reason, cadence)
+        for stamp in run.times:
+            claimed.setdefault(stamp, run)
+
+    times = sorted(set(layer.times) | set(claimed))
+    frames: list[LayerFrame] = []
+    counts: dict[str, int] = {}
+    for stamp in times:
+        run = claimed.get(stamp)
+        if run is None:
+            frames.append(LayerFrame(valid_time=stamp))
+            continue
+        stale, _reason, _cadence = verdicts[run.provider_run_id]
+        frames.append(
+            LayerFrame(valid_time=stamp, run_time=run.run_time, provider_run_id=run.provider_run_id, run_stale=stale)
+        )
+        counts[run.provider_run_id] = counts.get(run.provider_run_id, 0) + 1
+
+    summaries = [
+        LayerRunSummary(
+            provider_run_id=run.provider_run_id,
+            run_time=run.run_time,
+            run_stale=verdicts[run.provider_run_id][0],
+            frame_count=counts[run.provider_run_id],
+        )
+        for run in runs
+        if counts.get(run.provider_run_id)
+    ]
+    if not summaries:
+        # Nothing retained answers for this layer's frames. The layer is still
+        # offered with every frame it published; only the attribution is absent.
+        return _unattributed_layer(layer, NO_RUN_TIME_REASON)
+
+    newest = summaries[0]
+    stale, reason, cadence = verdicts[newest.provider_run_id]
+    return layer.model_copy(
+        update={
+            "times": times,
+            "run_time": newest.run_time,
+            "run_stale": stale,
+            "run_stale_reason": reason,
+            "run_cadence_seconds": cadence,
+            "frames": frames,
+            "runs": summaries,
+        }
+    )
+
+
+def _layer_artifact_key(layer: Layer, artifacts: Sequence[Any]) -> tuple[str, str] | None:
+    """The ``(source_id, logical_name)`` of the artifact a layer is drawn from.
+
+    A rendered grid, the cloud mask and the aurora oval carry ids of their own -
+    one artifact can stand behind several rendered layers - so the mapping is
+    read from the module that offered the layer rather than parsed back out of
+    the id. Anything else is a generic published layer, whose id was formed by
+    :func:`layer_id_for` and can be matched against the artifacts directly.
+    """
+    spec = grids.rendered_grid_spec(layer.id)
+    if spec is not None:
+        return spec.source_id, spec.logical_name
+    if layer.id == goes_satellite.LAYER_ID:
+        return goes_satellite.SOURCE_ID, goes_satellite.LOGICAL_NAME
+    if layer.id == aurora.LAYER_ID:
+        return aurora.SOURCE_ID, aurora.LOGICAL_NAME
+    for artifact in artifacts:
+        if layer_id_for(artifact.source_id, artifact.logical_name) == layer.id:
+            return artifact.source_id, artifact.logical_name
+    return None
+
+
+def _with_run_attribution(
+    layers: Sequence[Layer], artifacts: Sequence[Any], layer_runs: dict[str, list[Any]] | None, reason: str | None, reference: datetime
+) -> list[Layer]:
+    """Every layer, with its frames attributed to the runs that produced them.
+
+    Applied in one pass over the assembled index so a layer offered by the
+    satellite, aurora or rendered-grid modules carries run attribution on the
+    same terms as a generic one, and no constructor has to remember to.
+    """
+    attributed: list[Layer] = []
+    for layer in layers:
+        if layer.evidence_basis == wms.LIVE_PROXY:
+            attributed.append(_unattributed_layer(layer, LIVE_PROXY_RUN_REASON))
+            continue
+        if reason is not None:
+            attributed.append(_unattributed_layer(layer, reason))
+            continue
+        key = _layer_artifact_key(layer, artifacts)
+        if key is None:
+            attributed.append(_unattributed_layer(layer, NO_RUN_TIME_REASON))
+            continue
+        source_id, logical_name = key
+        if not source_has_run_concept(source_id):
+            attributed.append(_unattributed_layer(layer, NO_RUN_CONCEPT_REASON))
+            continue
+        runs = (layer_runs or {}).get(layer_id_for(source_id, logical_name), [])
+        attributed.append(_attributed_layer(layer, source_id, runs, reference))
+    return attributed
+
+
+def _layer_runs_or_reason(store: object) -> tuple[dict[str, list[Any]], str | None, list[str]]:
+    """The retained runs per layer, or the reason there are none to report."""
+    try:
+        return retained_layer_runs(store), None, []
+    except StoreUnavailable as error:
+        LOGGER.warning("retained runs could not be read for the layer index: %s", error)
+        return {}, RUNS_UNREADABLE_REASON, [f"{RUNS_UNREADABLE_REASON}: {error}"]
+    except Exception as error:  # noqa: BLE001 - run attribution must not take the index down
+        LOGGER.exception("retained runs could not be read for the layer index")
+        return {}, RUNS_UNREADABLE_REASON, [f"{RUNS_UNREADABLE_REASON}: {type(error).__name__}: {error}"]
 
 
 #: The one upstream this API proxies imagery from.
@@ -390,8 +789,8 @@ def _proxied_forecast_layers() -> tuple[list[Layer], list[str]]:
     for coverage in coverages:
         if coverage.notice:
             notices.append(coverage.notice)
-        # The advertised extent runs further forward than this experiment's
-        # 28-hour window. Offering frames the rest of the API refuses would
+        # The advertised extent can run further than this experiment's
+        # sliding window. Offering frames the rest of the API refuses would
         # scrub the client into 422s, so the layer carries the intersection and
         # the full extent is stated rather than quietly dropped.
         frames = [stamp for stamp in coverage.times if start <= stamp <= end]
@@ -442,7 +841,10 @@ def _proxied_forecast_layers() -> tuple[list[Layer], list[str]]:
 @app.get(f"{PREFIX}/layers", response_model=LayersResponse)
 def get_layers() -> LayersResponse:
     if fixture_mode():
-        return LayersResponse(data_mode=DataMode.FIXTURE, layers=LAYERS)
+        return LayersResponse(
+            data_mode=DataMode.FIXTURE,
+            layers=[_unattributed_layer(layer, FIXTURE_RUN_REASON) for layer in LAYERS],
+        )
 
     store = live_store()
     if store is None:
@@ -457,10 +859,15 @@ def get_layers() -> LayersResponse:
         # live-proxied imagery. It is offered here only because every one of
         # those layers announces itself as unpublished, unstored and un-QC'd.
         proxied, proxy_notices = _proxied_forecast_layers()
-        notices = ["no artifacts are currently published", *proxy_notices]
+        aged_out, aged_notices = _aged_out_sources(store)
+        notices = ["no artifacts are currently published", *proxy_notices, *aged_notices]
+        # The aged-out names travel on both branches: a proxied layer is not
+        # this deployment's stored evidence, so its presence says nothing about
+        # whether the stored evidence aged out.
         if not proxied:
-            return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=notices)
-        return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(proxied, key=lambda item: (item.z_index, item.id)), notices=notices)
+            return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=notices, aged_out_sources=aged_out)
+        proxied = _with_run_attribution(proxied, [], {}, None, now())
+        return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(proxied, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
         coverage = store.published_layer_times()
@@ -583,29 +990,84 @@ def get_layers() -> LayersResponse:
     layers.extend(proxied)
 
     if not layers:
-        return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=[*notices, "no published artifact has a known map representation"])
+        aged_out, aged_notices = _aged_out_sources(store)
+        return LayersResponse(
+            data_mode=DataMode.UNAVAILABLE, layers=[],
+            notices=[*notices, *aged_notices, "no published artifact has a known map representation"],
+            aged_out_sources=aged_out,
+        )
+
+    # Which run produced each frame, read from the same retained revisions the
+    # timeline's coverage reads. A store that cannot answer costs the
+    # attribution, never the frames: every layer is still offered, with the
+    # reason its run staleness is unknown.
+    layer_runs, runs_reason, run_notices = _layer_runs_or_reason(store)
+    notices.extend(run_notices)
+    layers = _with_run_attribution(layers, artifacts, layer_runs, runs_reason, now())
+
     layers.sort(key=lambda item: (item.z_index, item.id))
     return LayersResponse(data_mode=DataMode.LIVE, layers=layers, notices=notices)
 
 
-def _unavailable_point(latitude: float, longitude: float, time: datetime, *, reason: str, flags: list[str], notices: list[str], source_id: str = "unavailable", product: str = "unavailable") -> PointResponse:
+def _unavailable_point(latitude: float, longitude: float, time: datetime, *, reason: str, flags: list[str], notices: list[str], source_id: str = "unavailable", product: str = "unavailable", last_valid_time: datetime | None = None) -> PointResponse:
     return PointResponse(
         data_mode=DataMode.UNAVAILABLE,
         latitude=latitude,
         longitude=longitude,
         valid_time=time,
         selection=unavailable_selection(reason),
-        fields=unavailable_point_fields(time, flags=flags, source_id=source_id, product=product),
+        fields=unavailable_point_fields(time, flags=flags, source_id=source_id, product=product, last_valid_time=last_valid_time),
         notices=notices,
     )
 
 
-def _live_point(latitude: float, longitude: float, time: datetime, product: str | None) -> PointResponse:
+def _aged_out_absence(store: object, source_ids: Sequence[str]) -> tuple[datetime | None, list[str], list[str]]:
+    """Whether an absence over these sources is aged out, and how to say it.
+
+    Returns the last valid time to carry (``None`` where nothing was ever
+    held, which is the ``null`` absence), the QC flags, and notices. A store
+    that cannot answer yields no flag at all: the response then reports plain
+    ``unavailable``, because choosing between aged out and null on a guess
+    would state a fact about this deployment's history that nobody knows.
+    """
+    held, notices = _aged_out_sources(store)
+    recorded = {source_id: held[source_id] for source_id in source_ids if source_id in held}
+    if not recorded:
+        return None, [], notices
+    latest = max(recorded.values())
+    flags = [AGED_OUT_FLAG, *(f"{AGED_OUT_FLAG}:{source_id}" for source_id in sorted(recorded))]
+    stated = ", ".join(f"{source_id} to {moment.isoformat()}" for source_id, moment in sorted(recorded.items()))
+    return latest, flags, [*notices, f"held here and purged when it left the evidence window: {stated}"]
+
+
+def _live_point(
+    latitude: float,
+    longitude: float,
+    time: datetime,
+    product: str | None,
+    *,
+    member: str | None = None,
+    statistic: str | None = None,
+    quantile: float | None = None,
+    threshold: float | None = None,
+    comparison: str | None = None,
+) -> PointResponse:
+    """Live evidence at one point, optionally addressing an ensemble's members.
+
+    The five ensemble parameters are passed through to the sampler rather than
+    interpreted here: which artifacts carry a member axis, which family they
+    belong to and whether a statistic over them is answerable are all facts
+    the store and the derivation registry hold.
+    """
     store = live_store()
     if store is None:
         return _unavailable_point(latitude, longitude, time, reason="no live artifact store is reachable", flags=["live_store_unreachable"], notices=["no live artifact store is reachable"])
     try:
-        fields, consensus, sources = live_point_fields(store, latitude, longitude, time)
+        fields, consensus, sources = live_point_fields(
+            store, latitude, longitude, time,
+            member=member, statistic=statistic,
+            quantile=quantile, threshold=threshold, comparison=comparison,
+        )
     except Exception:
         LOGGER.exception("live point sampling failed at %s,%s for %s", latitude, longitude, time.isoformat())
         return _unavailable_point(latitude, longitude, time, reason="the live artifact store raised while sampling", flags=["live_store_error"], notices=["the live artifact store raised while sampling published artifacts"])
@@ -622,12 +1084,22 @@ def _live_point(latitude: float, longitude: float, time: datetime, product: str 
         # where no source at all has an artifact.
         product_fields = [item for item in fields if item.provenance.source_id == source_id]
         if not product_fields:
+            # Which absence this is depends on whether the store ever held
+            # frames for this source. "No published artifact" was one message
+            # for two different facts; a reader could not tell a source that
+            # aged out from one that was never retrieved.
+            aged_at, aged_flags, aged_notices = _aged_out_absence(store, [source_id])
+            reason = (
+                f"{selected} aged out at {aged_at.isoformat()}: the frames this deployment held left the evidence window"
+                if aged_at is not None
+                else f"{selected} has no published artifact covering this coordinate and time"
+            )
             return _unavailable_point(
                 latitude, longitude, time,
-                reason=f"{selected} has no published artifact covering this coordinate and time",
-                flags=[f"no_published_artifact:{source_id}"],
-                notices=[*notices, f"{selected} ({source_id}) has no published artifact covering this coordinate and time"],
-                source_id=source_id, product=selected,
+                reason=reason,
+                flags=[f"no_published_artifact:{source_id}", *aged_flags],
+                notices=[*notices, *aged_notices, f"{selected} ({source_id}) has no published artifact covering this coordinate and time"],
+                source_id=source_id, product=selected, last_valid_time=aged_at,
             )
         # Observations are kept beside the selected model. They are not another
         # model's values: each field still carries its own source id, so a
@@ -649,7 +1121,18 @@ def _live_point(latitude: float, longitude: float, time: datetime, product: str 
         )
 
     if not fields:
-        return _unavailable_point(latitude, longitude, time, reason="no published artifact covers this coordinate and time", flags=["no_published_artifact"], notices=[*notices, "no published artifact covers this coordinate and time"])
+        aged_at, aged_flags, aged_notices = _aged_out_absence(store, sorted(known_source_ids()))
+        reason = (
+            f"aged out at {aged_at.isoformat()}: every frame this deployment held has left the evidence window"
+            if aged_at is not None
+            else "no published artifact covers this coordinate and time"
+        )
+        return _unavailable_point(
+            latitude, longitude, time, reason=reason,
+            flags=["no_published_artifact", *aged_flags],
+            notices=[*notices, *aged_notices, "no published artifact covers this coordinate and time"],
+            last_valid_time=aged_at,
+        )
 
     live_hrdps = "eccc-hrdps" in sources
     live_rdps = "eccc-rdps" in sources
@@ -669,8 +1152,27 @@ def _live_point(latitude: float, longitude: float, time: datetime, product: str 
     )
 
 
-def _fixture_point(latitude: float, longitude: float, time: datetime, product: str | None, *, hrdps_fresh: bool, rdps_fresh: bool, consensus_evidence: bool) -> PointResponse:
+def _fixture_point(
+    latitude: float,
+    longitude: float,
+    time: datetime,
+    product: str | None,
+    *,
+    hrdps_fresh: bool,
+    rdps_fresh: bool,
+    consensus_evidence: bool,
+    member: str | None = None,
+    statistic: str | None = None,
+) -> PointResponse:
+    """The fixture snapshot, plus a notice where an ensemble was asked for.
+
+    A member or statistic request is answered with the ordinary fixture fields
+    and the notice that this deployment carries no members. Nothing is
+    fabricated: no field grows a ``member``, no statistic is invented over the
+    hand-built values, and the request is not silently ignored either.
+    """
     fields, consensus = point_fields(time)
+    notices = ensemble_notices(member, statistic)
     mode, badge, reason = select_fallback(consensus.available and consensus_evidence, hrdps_fresh=hrdps_fresh, rdps_fresh=rdps_fresh)
     observations = [item for item in fields if item.field in OBSERVATION_FIELDS]
 
@@ -682,6 +1184,7 @@ def _fixture_point(latitude: float, longitude: float, time: datetime, product: s
             data_mode=DataMode.FIXTURE, latitude=latitude, longitude=longitude, valid_time=time,
             selection=Selection(mode="fallback", selected_source_id=f"model-{selected.lower()}", selected_product_id=selected.lower(), badge=f"{selected} selected model", reason=f"Selected model: {selected}"),
             fields=selected_forecast_fields(time, selected) + observations,
+            notices=notices,
         )
 
     if mode == "consensus":
@@ -699,6 +1202,7 @@ def _fixture_point(latitude: float, longitude: float, time: datetime, product: s
         data_mode=DataMode.FIXTURE, latitude=latitude, longitude=longitude, valid_time=time,
         selection=Selection(mode=mode, selected_source_id=selected_source_id, selected_product_id=selected_product_id, badge=badge, reason=reason),
         fields=fields,
+        notices=notices,
     )
 
 
@@ -1276,14 +1780,39 @@ def get_point(
     hrdps_fresh: bool = True,
     rdps_fresh: bool = True,
     consensus_evidence: bool = True,
+    member: str | None = Query(default=None, description="A provider's own member identifier, or 'all' for every member the family publishes"),
+    statistic: str | None = Query(default=None, description=f"One of {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}; the derivation registry entry that produces it"),
+    quantile: float | None = Query(default=None, ge=0, le=1, description="For ensemble_quantile: the quantile in 0..1, Hyndman and Fan type 7"),
+    threshold: float | None = Query(default=None, description="For ensemble_threshold_probability: the threshold, in the field's normalized units"),
+    comparison: str | None = Query(default=None, description="For ensemble_threshold_probability: ge, gt, le or lt"),
 ) -> PointResponse:
+    """One point's evidence, optionally one ensemble family's members or a
+    statistic over them.
+
+    ``statistic`` and ``comparison`` are checked against the registered sets
+    here rather than passed through: an unregistered statistic name is a
+    request this API cannot answer, and answering it with the nearest entry -
+    or with a silent null - would hide which construction produced the number.
+    """
     require_core_coverage(latitude, longitude)
+    if statistic is not None and statistic not in ENSEMBLE_STATISTIC_ENTRIES:
+        raise HTTPException(status_code=422, detail=f"unknown statistic: {statistic}; the registered entries are {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
+    if comparison is not None and comparison not in THRESHOLD_COMPARISONS:
+        raise HTTPException(status_code=422, detail=f"unknown comparison: {comparison}; the accepted comparisons are {', '.join(THRESHOLD_COMPARISONS)}")
     time = requested_time(valid_time)
     mode = configured_mode()
     if mode == FIXTURE_MODE:
-        return _fixture_point(latitude, longitude, time, product, hrdps_fresh=hrdps_fresh, rdps_fresh=rdps_fresh, consensus_evidence=consensus_evidence)
+        return _fixture_point(
+            latitude, longitude, time, product,
+            hrdps_fresh=hrdps_fresh, rdps_fresh=rdps_fresh, consensus_evidence=consensus_evidence,
+            member=member, statistic=statistic,
+        )
     if mode == LIVE_MODE:
-        return _live_point(latitude, longitude, time, product)
+        return _live_point(
+            latitude, longitude, time, product,
+            member=member, statistic=statistic,
+            quantile=quantile, threshold=threshold, comparison=comparison,
+        )
     return _unavailable_point(latitude, longitude, time, reason="WEATHER_DATA_MODE is not set to live or fixture", flags=["data_mode_unconfigured"], notices=["WEATHER_DATA_MODE is missing or malformed; this deployment fails closed"])
 
 
@@ -1547,10 +2076,11 @@ def get_profile(
     if fixture_mode():
         return ProfileResponse(data_mode=DataMode.FIXTURE, latitude=latitude, longitude=longitude, valid_time=time, levels=profile_levels(time))
 
-    def unavailable(reason: str, flag: str, notices: list[str]) -> ProfileResponse:
+    def unavailable(reason: str, flag: str, notices: list[str], *, flags: Sequence[str] = (), last_valid_time: datetime | None = None) -> ProfileResponse:
         return ProfileResponse(
             data_mode=DataMode.UNAVAILABLE, latitude=latitude, longitude=longitude, valid_time=time,
-            levels=unavailable_profile_levels(time, PROFILE_PRESSURES, flags=[flag]), notices=[*notices, reason],
+            levels=unavailable_profile_levels(time, PROFILE_PRESSURES, flags=[flag, *flags], last_valid_time=last_valid_time),
+            notices=[*notices, reason],
         )
 
     store = live_store()
@@ -1564,7 +2094,13 @@ def get_profile(
         return unavailable("the live artifact store raised while sampling published artifacts", "live_store_error", [])
     notices = skip_notices(store)
     if not levels:
-        return unavailable("no published artifact carries a pressure-level profile here", "no_published_artifact", notices)
+        aged_at, aged_flags, aged_notices = _aged_out_absence(store, sorted(known_source_ids()))
+        reason = (
+            f"aged out at {aged_at.isoformat()}: the profile frames this deployment held have left the evidence window"
+            if aged_at is not None
+            else "no published artifact carries a pressure-level profile here"
+        )
+        return unavailable(reason, "no_published_artifact", [*notices, *aged_notices], flags=aged_flags, last_valid_time=aged_at)
     return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time, levels=levels, notices=notices)
 
 
@@ -1612,11 +2148,15 @@ def refresh(request: RefreshRequest) -> Job:
     if unknown:
         raise HTTPException(status_code=422, detail=f"unknown source ids: {', '.join(sorted(unknown))}")
     schedulable = schedulable_source_ids()
-    # A credential-required, retired or licence-review source cannot be
-    # scheduled; accepting a job for one would promise work that cannot happen.
+    # Only an implemented-unverified record with a registered adapter and no
+    # outstanding admission condition is schedulable. Everything else is
+    # refused by name and by state, because accepting a job for a catalogued,
+    # credential-required, licence-blocked, link-only, partnership-only,
+    # unavailable, rejected or superseded source would promise work that
+    # cannot happen.
     rejected = set(request.source_ids) - schedulable
     if rejected:
-        raise HTTPException(status_code=422, detail=f"source ids are not schedulable: {', '.join(sorted(rejected))}")
+        raise HTTPException(status_code=422, detail=unschedulable_detail(sorted(rejected)))
     source_ids = request.source_ids or sorted(schedulable)
     if not source_ids:
         raise HTTPException(status_code=422, detail="no schedulable source ids are available")
@@ -1668,13 +2208,18 @@ def health() -> HealthResponse:
 
 
 def _evidence_boundary(store: object, reference: datetime) -> bool:
-    """True when published artifacts actually cover the requested window."""
+    """True when retained frames actually fall inside the sliding window.
+
+    Judged against ``sliding_window`` rather than against a second pair of
+    literals: readiness that answered on a different window from the one
+    ``/point`` accepts would report ready for instants nothing can serve.
+    """
     try:
         coverage = store.published_products()
     except Exception:
         LOGGER.exception("evidence boundary could not be resolved for readiness")
         return False
-    start, end = window_start(reference), window_end(reference)
+    start, end = sliding_window(reference)
     return any(start <= stamp <= end for stamps in coverage.values() for stamp in stamps)
 
 
@@ -1688,9 +2233,17 @@ def ready() -> ReadyResponse:
         store = live_store()
         boundary = store is not None and _evidence_boundary(store, now())
         # Live readiness means evidence can actually be served: a reachable
-        # store with published artifacts covering the window. Anything less is
-        # not ready, however healthy the process is.
+        # store with retained frames inside the sliding window. Anything less
+        # is not ready, however healthy the process is.
         checks = {"data_mode_configured": True, "registry_catalog": bool(registry_source_records()), "job_store": True, "live_store": store is not None, "evidence_boundary": boundary}
         ready_now = all(checks.values())
-        return ReadyResponse(data_mode=DataMode.LIVE if ready_now else DataMode.UNAVAILABLE, ready=ready_now, checks=checks)
+        # A store holding only aged-out frames reports not ready AND says why.
+        # Reported only when the boundary is false: a ready deployment naming
+        # aged-out sources would read as a warning about evidence it is
+        # currently serving.
+        aged_out, notices = ({}, []) if boundary or store is None else _aged_out_sources(store)
+        return ReadyResponse(
+            data_mode=DataMode.LIVE if ready_now else DataMode.UNAVAILABLE,
+            ready=ready_now, checks=checks, aged_out_sources=aged_out, notices=notices,
+        )
     return ReadyResponse(data_mode=DataMode.UNAVAILABLE, ready=False, checks={"data_mode_configured": False, "registry_catalog": bool(registry_source_records()), "job_store": True, "live_store": False, "evidence_boundary": False})

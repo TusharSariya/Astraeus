@@ -44,7 +44,7 @@ def make_artifact(source_id: str, logical_name: str, product: str, run_time: dat
         object_key=f"artifacts/{source_id}/{logical_name}",
         media_type="application/zarr+zip",
         byte_size=1024,
-        provenance={"product": product, **(provenance_extra or {})},
+        provenance={"product": product, "evidence_classes": ["retrieved"], **(provenance_extra or {})},
         published_at=stamp,
         run_time=run_time,
         retrieved_at=stamp,

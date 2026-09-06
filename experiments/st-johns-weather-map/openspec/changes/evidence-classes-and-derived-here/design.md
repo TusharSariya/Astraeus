@@ -64,10 +64,217 @@ name and reasserts that it never reaches a data path. The three-level kill
 switch (registry `enabled`, `WEATHER_GENERATED_DISPLAY=off`, reader menu) is
 the model for the derivation method registry's own enabling levels.
 
+## What the registry entries look like, and why two start disabled
+
+Decided while implementing tasks 3 and 4, and recorded here rather than left
+to the reader of the code:
+
+- **An entry may produce more than one field.** The spec names "wind speed and
+  direction" and "the Sun and Moon geometry fields" as single constructions, so
+  an entry carries `outputs`, each with its own field, units, physical range
+  and range rule. A one-output entry is the common case, not the only one.
+- **Ensemble statistics and sector sampling are registered `enabled: false`.**
+  Both are required entries and neither has an implementation yet: member
+  retrieval arrives with `ensemble-members-and-source-plurality` and the sector
+  sampler with the point work. Registering them enabled would declare a
+  construction this deployment cannot perform. They are entries, approved, and
+  switched off at the first of the three levels until their code exists.
+- **The no-blend rule reads the field family, not the field name.** The spec's
+  own blending scenario combines `total_cloud_opacity_weighted` from HRDPS with
+  `total_cloud_geometric` from GFS - two different catalogue names for one
+  family. So each input declares its family and its source, and two members of
+  one family from two sources are refused as blending, as is the same field
+  from two sources and a provider reduction mixed with another member set.
+- **`delivery_kind` is required on every record, and this change is where it
+  landed.** The obligation belongs to `ensemble-members-and-source-plurality`,
+  which specified the field and did not implement it, so task 4.0 carries it
+  here rather than leaving 4.1 extending a field that does not exist. All 64
+  records declare a kind: 60 `published_cell`, 3 `reprocessed` (MADIS, OpenAQ
+  and the CWOP route through findu.com - the three places where a third party
+  stands between the producer and this deployment and transforms what it
+  passes on), and 1 `intermediary_derived`. `_source` takes it keyword-only
+  with no default, so the next aggregator record cannot inherit
+  `published_cell` in silence.
+- **Display-primary eligibility is a field the audit enforces, not prose.**
+  Every record carries `display_primary`, which follows from its kind unless
+  the record overrides it, and the audit refuses any record that claims the
+  primary while its values are not the producer's own cell. The spec says the
+  audit enforces this "rather than leaving it to the display layer", which
+  needs something in the record for the display layer to read.
+- **The producer-direct kind is `published_cell`, not `retrieved`.** Both spec
+  deltas name it that way, and the two axes are separate on purpose: a
+  delivery kind says whose cell a value is, an evidence class says how the
+  value came to exist. An `intermediary_derived` value is still retrieved by
+  this deployment, so reusing `retrieved` for the delivery kind would make one
+  word mean two things.
+
+## The seam between the API and the derivation method registry
+
+There is one interface and the registry owns it. `weather_api.store` holds no
+copy of an entry's shape, of the three switch levels or of a range rule; it
+asks `ingest.derive.registry` and reports what it says.
+
+- **Gating.** `resolve(name, reader_disabled=())` returns `None` when the
+  method may produce a value now, else a `Refusal` whose `code` is one of
+  `unregistered_method`, `method_disabled`, `deployment_refused` or
+  `reader_disabled`. The store carries that code and detail into the notice
+  verbatim, so a reader is never told a method is missing when it is switched
+  off.
+- **Constructing.** `derive_relative_humidity(t, td)`, `derive_wind(u, v)` and
+  `derive_fog_state(...)` each apply the gate, the construction from
+  `ingest.meteorology` and the entry's range rule, and hand back the value
+  with the entry and the flags the rule raised. The `resolve_registered_*`
+  tuples remain for callers that want only the numbers. Wind returns the
+  flags per field because one entry produces two values under two rules: a
+  speed is clamped, a bearing is folded.
+- **Naming.** `provenance(name)` yields the entry's name, version and
+  citation. A served `derived_here` provenance carries the entry name in
+  `derivation`, never a free-text sentence: a reader told a number was
+  constructed is owed a name they can look up in the registry.
+- **Failing closed.** A registry that cannot be imported at all - an invalid
+  entry set raises at import - means no method is an enabled entry, every
+  derived value is `null` with a notice, and no unregistered construction is
+  substituted. Retrieved values are untouched.
+
+The API names three of the registry's entries:
+`relative_humidity_from_dewpoint_liquid`,
+`wind_speed_and_direction_from_components` and
+`fog_state_from_present_weather`. The names are spelled in `store.py` so the
+API can name a method even when the registry will not import, and pinned
+against the registry's own constants by a test, so the two cannot drift.
+
+`fog_state_from_present_weather` was added to the registry during
+implementation. `/point` already served the fog state as a derivation, and the
+first-entries list did not name it; a served derivation with no entry is
+exactly the gap the registry exists to close, so it was registered rather than
+exempted. Its output is categorical, so it declares `inherit_input_range` and
+its admissible values in the note: a category has no numeric range to bound.
+
+## What class an absent value carries
+
+`evidence_class` is required on every provenance, including the placeholder a
+response uses for a value that does not exist. The placeholder states the
+class the absent value would have carried - `retrieved` for a field nothing
+retrieved, `derived_here` for a derivation that was refused. What says the
+value is absent is the null value beside it, the `unavailable` data mode and
+the `no_retrieval` flag, never the class, so no reader can mistake a
+placeholder for a reading.
+
+## Web contract
+
+The shape below is the API's, as `api/weather_api/models.py` publishes it
+(merged 2026-09-02). Provenance is FLAT: there is no nested method object and
+no nested delivery object. The client reads the flat fields as its contract.
+
+- `provenance.evidence_class`: one of the six strings, required, no default.
+  Absent, empty, non-string or outside the six all resolve to one client
+  state, `unrecognised`, which renders as unavailable with the reason and
+  never as `retrieved`. The two failures are distinguished only in the reason
+  text.
+- `provenance.quality`: `{ status, flags }`. `flags` carries `derived` for a
+  derived value, and the two refusal flags below. Absent means "not named",
+  never a status this client invented.
+- **The method, flat**: `derivation` (the registry entry name),
+  `derivation_version`, `derivation_citation`. A nested
+  `derivation_method: { name, version, citation }` is still read first because
+  it costs three lines, but nothing produces it; the flat fields are the
+  contract. Read only when the value's own class is `derived_here`: a
+  reprocessed value's `derivation` is the intermediary's sentence, not a
+  registered method this deployment can cite.
+- `provenance.derivation_inputs`: a list of
+  `{ field, source_id, product, valid_time, run_time, units, evidence_class,
+  quality }`, `quality` being the same `{ status, flags }` object (a bare
+  status string is also accepted, for a hand-written response).
+- **Delivery, flat**: `delivery_kind` (`published_cell` | `reprocessed` |
+  `intermediary_derived`), `intermediary`, `intermediary_method`. The label
+  beside the class badge is "producer's own cell", "reprocessed by
+  <intermediary>", "computed by <intermediary>". A kind the client does not
+  know, or none at all, renders NO label — see the decisions below.
+- `provenance.display_primary_eligible`: the API computes it from the class.
+  When it is absent the client reads the class directly and refuses
+  `reprocessed`, `intermediary_derived` and `uncalibrated_observation`, so a
+  missing field can never promote one of the three into a reading.
+- **Refusals**: `quality.flags` carries `derivation_refused` (the registry
+  conditions refused a derived value) or `provenance_unmodelled` (an
+  artifact's provenance could not be modelled). The reason lives only in the
+  response's `notices`, as
+  `artifact from <source> (revision <id>) was skipped: <reason>`. The client
+  matches a notice to the field by the field name, falling back to the source
+  id — an unmodelled artifact's notice names the artifact, not each field.
+- `/catalog` source records carry `delivery_kind`, `intermediary` and
+  `display_primary`. All three are optional on the client until every record
+  declares them.
+- `/layers` items carry `evidence_class` as the same six-value string. The
+  class is never inferred from `evidence_basis` or the group: a published
+  artifact can hold values of any class, and inferring is what the field
+  replaces.
+
+Client decisions the spec left open, recorded here because they are visible
+behaviour:
+
+- **A missing class suppresses the value.** The spec's scenario names an
+  unrecognised class; the field is required with no default, so a value
+  carrying none has no honest class either and is treated identically.
+- **A missing delivery kind is silent.** The opposite decision, and
+  deliberately so: the kind is a registry attribute, so an undeclared one is a
+  gap in the registry rather than a failure of the evidence, and a "delivery
+  unknown" chip beside a good retrieved value would read as a doubt about the
+  value. An undeclared CLASS is a doubt about the value; an undeclared KIND is
+  not.
+- **An unrecognised class still occupies the reading's slot.** It is refused
+  as a value but not demoted to an alternative: the fault must be visible
+  where the number would have been, not tucked inside a disclosure panel. Only
+  the three declared non-primary classes, and a source the catalogue refuses,
+  become alternatives.
+- **Non-primary values are shown, never hidden.** They are collected under
+  "Retrieved, but never the reading", driven by the whole alternatives record
+  rather than wired metric by metric, so a field with no metric of its own
+  cannot be silently dropped. A field whose ONLY value is non-primary reads as
+  Unknown with that value beside it.
+- **Alternatives are not unit-converted.** The metrics convert; an alternative
+  prints the value in the unit its own response declared, because it exists to
+  be compared with the source it names.
+- **Alerts ignore the primary rule.** An alert is a published hazard text, not
+  a reading to be outranked, so `warnings` reads from every field. Withholding
+  a warning to satisfy a rule about numbers would be the worse error.
+- **An unrecognised class on a LAYER does not withhold the imagery.** The
+  drawer shows the unrecognised badge and the reason sentence beside the row.
+  Withholding a whole layer's pixels is a fallback-rules decision
+  (`frame-fallback-and-viewport-layout`), not this change's, and is left to
+  the owner.
+
 ## Open questions carried into implementation
 
-- Whether existing derived artifacts (cloud motion, the WEonG repair) are
+- ~~Whether existing derived artifacts (cloud motion, the WEonG repair) are
   re-classed in place or republished; the manifest gains `evidence_classes`
-  either way.
-- The exact validation tolerance for a method's physical range clamp and how
-  a clamped value is flagged.
+  either way.~~ **Answered: republished, and nothing is re-classed in place.**
+  The declaration is written where the artifact is built, so it appears on
+  the next run of each producer; `ArtifactStore.stage` refuses an artifact
+  that carries none, so nothing new publishes without one. An artifact
+  already published without a declaration keeps answering as a layer and is
+  isolated on the data paths - null with a notice naming it - until its
+  producer's next run replaces it. That is the fail-closed direction: the
+  alternative, reading the old `derived`/`generated` flags as a class, is the
+  inference this change exists to remove.
+
+Two class assignments that had to be decided while wiring the declarations,
+and are recorded here because neither spec delta names the artifact:
+
+- **The GOES-19 cloud mask is `retrieved`.** Its values are NOAA's own cloud
+  probability and cloud-top height, moved onto this deployment's grid
+  nearest-neighbour and parallax-corrected in place. Nothing is computed here
+  and no intermediary stands between NOAA and this deployment, so neither
+  `derived_here` nor `reprocessed` fits; the regrid and parallax disclosures
+  the accepted `goes19-cloud-mask-overlay` spec already requires are what tell
+  a reader the cells were moved.
+- **GeoMet's `GetFeatureInfo` artifacts are `retrieved`.** MSC published the
+  value; this deployment asked for one pixel of it and stored the answer
+  unmodified.
+- ~~The exact validation tolerance for a method's physical range clamp and how
+  a clamped value is flagged.~~ **Answered.** There is no tolerance, because a
+  tolerance is a second bound nobody declared. Each output declares one of four
+  range rules: `clamp` bounds the value and flags it `range_clamped`; `wrap`
+  folds a circular quantity such as a bearing into its interval and flags it
+  `range_wrapped`; `null` refuses the value and flags it `range_refused`; and
+  `inherit_input_range` says the bound is the input field's own published
+  range, which is the honest answer for a statistic over an arbitrary field.
