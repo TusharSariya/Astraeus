@@ -244,9 +244,16 @@ class _GFZCurrentIndexAdapter:
         times=info.get("times"); meta=info.get("meta")
         if not isinstance(times,list) or not times or info.get("count")!=len(times) or not isinstance(meta,dict):
             raise AdapterUnavailable("GFZ Hp30 isolated inspection returned invalid metadata")
-        newest=parse_time(times[-1]); assert newest is not None
-        if newest < window.start:
-            raise AdapterUnavailable(f"GFZ Hp30 is stale behind HTTP 200: newest instant {format_time(newest)} is older than the window start {format_time(window.start)}")
+        instants=[parse_time(value) for value in times]
+        selection_start=parse_time(parameters["start"]); selection_end=parse_time(parameters["end"])
+        newest=instants[-1]
+        if newest is not None and selection_start is not None and newest < selection_start:
+            raise AdapterUnavailable(f"GFZ Hp30 is stale behind HTTP 200: newest instant {format_time(newest)} is older than the window start {format_time(selection_start)}")
+        if selection_start is None or selection_end is None or any(value is None or value < selection_start or value > selection_end for value in instants):
+            raise AdapterUnavailable(
+                f"GFZ Hp30 carries a timestamp outside requested {parameters['start']} .. {parameters['end']}; refused without thinning"
+            )
+        assert newest is not None
         receipt=FeedReceipt(url=url,byte_count=len(raw),sha256=hashlib.sha256(raw).hexdigest(),captured_at=completed.strftime("%Y-%m-%dT%H:%M:%SZ"),
                             last_modified=headers.get("Last-Modified") or headers.get("last-modified"),request_parameters=parameters)
         return [RunCandidate(provider_run_id=f"{self.source_id}-{newest.strftime('%Y%m%d%H%M')}",run_time=newest,urls=[url],

@@ -167,6 +167,21 @@ def test_a_non_json_body_is_unavailable():
         discovered(b"<html>service unavailable</html>")
 
 
+@pytest.mark.parametrize("stamp", ["2026-09-04T01:29:59Z", "2026-09-05T01:30:01Z"])
+def test_any_timestamp_outside_exact_request_window_refuses_whole_response(stamp):
+    body=payload()
+    body["datetime"][0]=stamp
+    with pytest.raises(AdapterUnavailable,match="outside requested.*refused without thinning"):
+        discovered(body)
+
+
+def test_offset_timestamps_normalize_to_utc_without_changing_identity():
+    body=payload()
+    body["datetime"][0]="2026-09-04T17:30:00-02:30"
+    _adapter,candidates,_recorder=discovered(body)
+    assert candidates[0].detail["valid_times"][0]=="2026-09-04T20:00:00Z"
+
+
 def test_a_404_is_unavailable():
     with pytest.raises(AdapterUnavailable, match="unavailable"):
         discovered(status=404)
