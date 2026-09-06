@@ -7,6 +7,8 @@ import time
 import json
 import hashlib
 import tempfile
+import sys
+import zipfile
 from collections import OrderedDict
 from concurrent.futures import Future
 from dataclasses import dataclass
@@ -25,10 +27,18 @@ from ingest.adapters.noaa_s3 import (
     select_gfs_ranges,
 )
 from ingest.contract import FetchWindow, RunCandidate
+from ingest.isolation import ProcessAllocationLimits, run_bounded_process
 
 GFS_OBJECT_CACHE_TTL_SECONDS = 600.0
 GFS_CACHE_MAX_ENTRIES = 4
 GFS_CACHE_MAX_BYTES = 256 * 1024 * 1024
+GFS_DEMAND_LIMITS = ProcessAllocationLimits(
+    address_space_bytes=1 * 1024 * 1024 * 1024,
+    output_bytes=64 * 1024 * 1024,
+    stdin_bytes=2 * 1024 * 1024,
+    stdout_bytes=64 * 1024,
+    stderr_bytes=256 * 1024,
+)
 _COORDINATOR: GFSQueryCoordinator | None = None
 
 @dataclass(frozen=True)
@@ -148,6 +158,7 @@ class GFSQueryCoordinator:
         *,
         clock: Callable[[], float] = time.monotonic,
         now: Callable[[], datetime],
+        bounded_fetch: Callable[[GFSRequestKey, RunCandidate, datetime], GFSQueryEntry] | None = None,
     ) -> None:
         self._adapter = adapter or NOAAS3Adapter()
         self._clock = clock
@@ -156,6 +167,7 @@ class GFSQueryCoordinator:
         self._candidate: tuple[float, RunCandidate] | None = None
         self._indices: OrderedDict[str, tuple[float, str]] = OrderedDict()
         self._prepared: dict[GFSRequestKey, RunCandidate] = {}
+        self._bounded_fetch = bounded_fetch
         self._cache = GFSQueryService(self._load, clock=clock)
 
     def query(self, selected_time: datetime) -> GFSQueryEntry:
@@ -265,18 +277,41 @@ class GFSQueryCoordinator:
 
     def _load(self, key: GFSRequestKey) -> GFSQueryEntry:
         candidate = self._prepared[key]
+        if self._bounded_fetch is not None:
+            return self._bounded_fetch(key, candidate, self._selected_time(key, candidate))
         with tempfile.TemporaryDirectory(prefix="gfs-demand-") as directory:
-            result = self._adapter.fetch_selected(candidate, self._selected_time(key, candidate), Path(directory))
-            payloads = tuple(artifact.payload_path.read_bytes() for artifact in result.artifacts)
+            bundle_path = Path(directory) / "gfs-demand-result.zip"
+            request = json.dumps(
+                {
+                    "provider_run_id": candidate.provider_run_id,
+                    "run_time": candidate.run_time.isoformat() if candidate.run_time else None,
+                    "selected_time": self._selected_time(key, candidate).isoformat(),
+                    "urls": candidate.urls,
+                    "detail": candidate.detail,
+                },
+                default=lambda value: value.isoformat() if isinstance(value, datetime) else str(value),
+                sort_keys=True,
+            ).encode()
+            run_bounded_process(
+                command=[sys.executable, "-m", "weather_api.gfs_query_worker", "{output}"],
+                stdin=request,
+                destination=bundle_path,
+                limits=GFS_DEMAND_LIMITS,
+                timeout_seconds=180,
+            )
+            with zipfile.ZipFile(bundle_path) as bundle:
+                info = json.loads(bundle.read("result.json"))
+                artifacts = info["artifacts"]
+                payloads = tuple(bundle.read(f"artifacts/{artifact['name']}") for artifact in artifacts)
             digest = hashlib.sha256(b"".join(payloads)).hexdigest()
-            provenance = {artifact.logical_name: artifact.provenance for artifact in result.artifacts}
+            provenance = {artifact["logical_name"]: artifact["provenance"] for artifact in artifacts}
         return GFSQueryEntry(
             key=key,
-            run_time=result.run_time,
+            run_time=datetime.fromisoformat(info["run_time"]),
             valid_time=self._selected_time(key, candidate),
-            fetched_at=result.retrieved_at,
+            fetched_at=datetime.fromisoformat(info["retrieved_at"]),
             content_digest=digest,
-            values={"logical_names": [artifact.logical_name for artifact in result.artifacts]},
+            values={"logical_names": [artifact["logical_name"] for artifact in artifacts]},
             provenance=provenance,
             payloads=payloads,
         )

@@ -347,6 +347,11 @@ def test_concatenated_ranges_stop_at_the_ceiling_and_leave_no_partial_file(
             )
             == 2048
         )
+        assert [item["byte_size"] for item in client.last_range_receipts] == [1024, 1024]
+        assert client.last_range_receipts[0]["request_headers"]["Range"] == "bytes=0-1023"
+        assert client.last_range_receipts[0]["request_headers"]["Accept-Encoding"] == "identity"
+        assert len(client.last_range_receipts[0]["sha256"]) == 64
+        assert client.last_range_receipts[0]["completed_at"].endswith("+00:00")
         with pytest.raises(MaxBytesExceeded):
             client.download_ranges(URL, destination, [(0, 1023)] * 8, max_bytes=4096)
     assert not destination.exists()

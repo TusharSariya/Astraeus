@@ -491,6 +491,7 @@ class NOAAS3Adapter:
 
         hourly_datasets: list[xarray.Dataset] = []
         decode_errors: list[str] = []
+        transport_receipts: list[dict[str, object]] = []
 
         requested_leads = candidate.detail.get("requested_leads")
         lead_hours = tuple(requested_leads) if requested_leads is not None else tuple(range(self._max_lead_hours + 1))
@@ -532,6 +533,7 @@ class NOAAS3Adapter:
                     [r.as_tuple() for r in ranges],
                     max_bytes=MAX_BYTES_PER_LEAD,
                 )
+                transport_receipts.extend(getattr(client, "last_range_receipts", ()))
                 _log.info("GFS %s: fetched %d bytes across %d ranges", base_filename, fetched_bytes, len(ranges))
             except Exception as error:
                 decode_errors.append(f"download:{base_filename}")
@@ -647,6 +649,7 @@ class NOAAS3Adapter:
             # Both artifacts below are GFS's own published cells, so the one
             # declaration covers the surface set and the jet-level winds.
             **manifest.as_manifest_block(),
+            "http_range_receipts": transport_receipts,
         }
 
         # The run is validated as one dataset, then written as two artifacts:
@@ -684,7 +687,10 @@ class NOAAS3Adapter:
             source_id=self.source_id,
             provider_run_id=candidate.provider_run_id,
             run_time=run_dt,
-            retrieved_at=datetime.now(UTC),
+            retrieved_at=max(
+                (datetime.fromisoformat(str(item["completed_at"])) for item in transport_receipts),
+                default=datetime.now(UTC),
+            ),
             complete=validation.complete,
             qc_passed=validation.qc_passed,
             artifacts=artifacts,

@@ -163,7 +163,16 @@ def test_coordinator_fetches_one_native_lead_then_serves_exact_cache_hit(tmp_pat
                              [Artifact("surface", "application/zarr+zip", path, {"source_id": "noaa-gfs"})])
 
     adapter = Adapter()
-    coordinator = GFSQueryCoordinator(adapter, now=lambda: run_time)
+    def fetch(key, candidate, selected):
+        result = adapter.fetch_selected(candidate, selected, tmp_path)
+        payloads = tuple(artifact.payload_path.read_bytes() for artifact in result.artifacts)
+        return GFSQueryEntry(
+            key, run_time, selected, selected, "c" * 64,
+            {"logical_names": [artifact.logical_name for artifact in result.artifacts]},
+            {artifact.logical_name: artifact.provenance for artifact in result.artifacts}, payloads,
+        )
+
+    coordinator = GFSQueryCoordinator(adapter, now=lambda: run_time, bounded_fetch=fetch)
     selected = run_time + timedelta(hours=3, minutes=17)
 
     first = coordinator.query(selected)
