@@ -28,6 +28,8 @@ EPSG:4326 box is answered HTTP 200 with a near-empty tile and no exception.
 
 ### Requirement: Imagery SHALL be drawn only where its provenance is established
 
+Imagery SHALL be drawn only where its provenance is established.
+
 An image is evidence only if the client can say where it came from, what it is,
 and what instant it represents. The response carries that as `X-Weather-*`
 headers.
@@ -43,6 +45,8 @@ headers.
 - **AND** it reports the layer as unavailable with the reason
 
 ### Requirement: A transparent image SHALL be reported as a reading, not an outage
+
+A transparent image SHALL be reported as a reading, not an outage.
 
 A fully transparent tile means the provider was asked and detected nothing. That
 is a measurement. Reporting it as "unavailable" would erase a real observation of
@@ -76,6 +80,8 @@ image; if the provider serves none, the layer is drawn without one and says so.
 - **THEN** the layer is drawn and explicitly noted as carrying no provider legend
 
 ### Requirement: The client SHALL respect the upstream request budget
+
+The client SHALL respect the upstream request budget.
 
 The proxy permits 16 upstream calls per request and 240 per rolling minute. Nine
 proxied forecast layers scrubbed cold at once is 252 calls, which exceeds it.

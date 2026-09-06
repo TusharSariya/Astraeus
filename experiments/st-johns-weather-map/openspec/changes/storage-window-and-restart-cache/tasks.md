@@ -176,3 +176,14 @@ under `ingest/` was touched by the storage owner.
   checkout): green. API 1003 passed, 25 skipped; web 330 passed in 15 files;
   registry 54 passed; SQL publication and retention invariants PASS; specctl
   0 errors, 0 warnings; strict validation valid.
+
+## 7. Main integration cleanup regressions
+
+- [x] 7.1 Run the valid-time purge during normal worker maintenance as well as restart.
+- [x] 7.2 Keep failed object deletions queued and roll back interrupted claims;
+  queue fallback pruning and abandoned staging deletion in the metadata transaction.
+- [x] 7.3 Close and remove stale/LRU API disk copies, including non-Zarr copies
+  and files left by earlier processes, under the existing 32-entry cache ceiling.
+- [x] 7.4 Verify with api/tests/test_cache_lifecycle.py, the existing retention,
+  ingest-store and worker-restart suites, and the SQL claim rollback invariant.
+  Combined integration results are recorded in docs/main-integration.md.

@@ -75,6 +75,8 @@ _EMPTY_BY_DEFAULT = frozenset({"published_digests", "present_keys", "window_revi
 def _statement_kind(sql: str) -> str:
     text = " ".join(sql.split()).lower()
     for marker, name in (
+        ("claim_purged_objects", "claim_purge"),
+        ("insert into weather_experiment.purged_objects", "queue_purge"),
         ("publish_run", "publish_run"),
         ("publish_revision", "publish"),
         ("with ranked", "prune_rows"),
@@ -321,7 +323,7 @@ def test_pruning_removes_the_rows_first_and_only_then_the_objects(store):
 
     assert instance.prune(now=datetime(2026, 8, 29, 12, tzinfo=UTC)) == 2
     kinds = [name for name, _ in events]
-    assert kinds == ["prune_rows", "delete_object", "delete_object"]
+    assert kinds == ["prune_rows", "queue_purge", "queue_purge", "claim_purge", "delete_object", "delete_object"]
     assert instance._client.objects == {}
 
 
@@ -329,7 +331,7 @@ def test_restart_discards_abandoned_staging_objects(store):
     instance, events = store
     instance.returned_rows.append(("staging/eccc-hrdps/2026082906/abc/surface",))
     assert instance.restart() == 1
-    assert [name for name, _ in events] == ["discard_staging", "delete_object"]
+    assert [name for name, _ in events] == ["discard_staging", "queue_purge", "claim_purge", "delete_object"]
 
 
 def test_an_object_already_gone_does_not_abort_the_sweep(store):
@@ -390,5 +392,5 @@ def test_discarding_a_runs_staging_never_touches_a_published_revision(store):
     """
     instance, events = store
     assert instance.discard_staged("some-run-id") == 0
-    assert [name for name, _ in events] == ["discard_run_staging"]
+    assert [name for name, _ in events] == ["discard_run_staging", "claim_purge"]
     assert events[0][1] == ("some-run-id",)

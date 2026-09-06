@@ -273,7 +273,7 @@ class ReachSchemaTests(unittest.TestCase):
 
     def test_reach_summary_counts_the_records_that_declare_one(self) -> None:
         report = audit.summary(registry())
-        self.assertEqual(35, report["reach_declared"])
+        self.assertEqual(36, report["reach_declared"])
         self.assertEqual([], report["latency_measured"])
         # Base 21 plus nine space-weather identities and isolated GOES GLM.
         self.assertEqual(31, len(report["adapter_source_ids"]))

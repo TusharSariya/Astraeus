@@ -196,8 +196,19 @@ SELECT pg_temp.assert(
     'with nothing outside the window, no bytes are reclaimable: a projection cannot be satisfied by purging an in-window frame');
 
 -- ---------------------------------------------------------------------------
--- 6. Draining the purge queue is idempotent and hands each key out once.
+-- 6. Claims roll back on interruption; committed acknowledgements are idempotent.
 -- ---------------------------------------------------------------------------
+BEGIN;
+SAVEPOINT interrupted_sweep;
+SELECT pg_temp.assert(
+    (SELECT count(*) FROM weather_experiment.claim_purged_objects(1000)) > 0,
+    'an interrupted sweep can claim queued keys');
+ROLLBACK TO SAVEPOINT interrupted_sweep;
+SELECT pg_temp.assert(
+    EXISTS (SELECT 1 FROM weather_experiment.purged_objects),
+    'rolling back an unacknowledged claim preserves retry work');
+COMMIT;
+
 SELECT pg_temp.assert(
     (SELECT count(*) FROM weather_experiment.claim_purged_objects(1000)) > 0,
     'the sweep claims the queued keys');

@@ -21,6 +21,7 @@ from uuid import uuid4
 from .contract import Artifact, RunResult
 from .validate import to_nanoseconds
 from .window import sliding_window
+from .purge import drain_objects, queue_objects
 
 UTC = timezone.utc
 
@@ -420,7 +421,8 @@ class ArtifactStore:
                 (run_id,),
             )
             keys = [row[0] for row in cursor.fetchall()]
-        self._delete_objects(keys)
+            queue_objects(cursor, keys)
+        drain_objects(self)
         return len(keys)
 
     def restart(self) -> int:
@@ -432,7 +434,8 @@ class ArtifactStore:
                 (cutoff,),
             )
             keys = [row[0] for row in cursor.fetchall()]
-        self._delete_objects(keys)
+            queue_objects(cursor, keys)
+        drain_objects(self)
         return len(keys)
 
     # --- the restart-cache protocol --------------------------------------
@@ -515,9 +518,7 @@ class ArtifactStore:
             cursor.execute("SELECT weather_experiment.purge_outside_window(%s)", (moment,))
             row = cursor.fetchone()
             purged = int(row[0]) if row else 0
-            cursor.execute("SELECT weather_experiment.claim_purged_objects(%s)", (1000,))
-            keys = [item[0] for item in cursor.fetchall()]
-        self._delete_objects(keys)
+        drain_objects(self)
         return purged
 
     # --- retention -------------------------------------------------------
@@ -552,15 +553,9 @@ class ArtifactStore:
                 (KEEP_COMPLETE_RUNS, floor),
             )
             keys = [row[0] for row in cursor.fetchall()]
-        self._delete_objects(keys)
+            queue_objects(cursor, keys)
+        drain_objects(self)
         return len(keys)
-
-    def _delete_objects(self, keys: Sequence[str]) -> None:
-        for key in keys:
-            try:
-                self.s3.delete_object(Bucket=self.config.bucket, Key=key)
-            except Exception:  # object already gone; the row is the record of truth
-                continue
 
     # --- reads -----------------------------------------------------------
     def current_artifacts(self, *, source_ids: Sequence[str] | None = None) -> list[CurrentArtifact]:

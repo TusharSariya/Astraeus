@@ -648,6 +648,7 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
                 log(f"cloud-motion derive pass failed: {error!r}")
             try:
                 store.prune()
+                store.purge_outside_window()
             except Exception as error:
                 log(f"retention pass failed: {error!r}")
         beat()
@@ -708,6 +709,7 @@ def run(*, once: bool = False, source_ids: tuple[str, ...] | None = None) -> int
             derive()
             if store is not None and time.monotonic() - last_prune > 3600:
                 store.prune()
+                store.purge_outside_window()
                 last_prune = time.monotonic()
         except Exception:  # the loop is the last line of defence
             log("unexpected scheduler error:\n" + traceback.format_exc())

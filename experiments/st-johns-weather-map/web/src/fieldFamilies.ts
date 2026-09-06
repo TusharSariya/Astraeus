@@ -43,16 +43,21 @@ export interface FieldCatalogueCopy {
 export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
   "version": "1.0.0",
   "asOf": "2026-09-02",
-  "fingerprint": "d01ea7585cb1ca1c51b84067feeea5cab8717c5b65baa817dfd98f8c6666d879",
+  "fingerprint": "7498c58e2c6823ebdd7d3b6da5eb5b688031bb46c8b3b66ca6f9983da37927d2",
   "families": [
     {
       "name": "air_quality",
       "title": "Air quality and aerosol",
       "note": "Particulate mass and aerosol optical depth are not the same quantity and no conversion between them is a measurement. Mass carries no wavelength dependence and no hygroscopic growth; a mass-to-extinction conversion is a citable method and must be declared derived-here. A surface concentration and a column burden are also not comparable. The health index is a categorical scale, not a concentration.",
       "groups": {
+        "carbon_monoxide_mass": "Carbon monoxide mass concentration at the surface.",
         "column_mass": "Mass burden integrated over the whole column.",
+        "dust_mass": "Dust aerosol mass concentration at the surface.",
         "health_index": "A categorical public-health index.",
+        "nitrogen_dioxide_mass": "Nitrogen dioxide mass concentration at the surface.",
         "optical_depth": "Aerosol optical depth at a stated wavelength.",
+        "ozone_mass": "Ozone mass concentration at the surface.",
+        "sulphur_dioxide_mass": "Sulphur dioxide mass concentration at the surface.",
         "surface_mass": "Mass concentration at the surface."
       }
     },
@@ -87,6 +92,7 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "observed_layer": "An observer's reported cover for one reported cloud layer.",
         "opacity_weighted_column": "Opacity-weighted whole-column cover, instantaneous.",
         "provider_stratum": "The producer's own low/middle/high layer fraction, geometric.",
+        "satellite_column": "Satellite-retrieved whole-column cloud fraction from a layered product; neither opacity-weighted nor geometric overlap.",
         "satellite_layer": "Satellite-retrieved fraction in one vertical layer of a layered product.",
         "scene_class": "A categorical clear/cloudy scene classification, not a fraction.",
         "time_mean_column": "Column cover averaged over a stated window, never an instant."
@@ -99,6 +105,16 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "groups": {
         "observed_base": "Observer-reported base of one reported layer, above ground.",
         "satellite_top": "Radiatively retrieved cloud-top height or pressure."
+      }
+    },
+    {
+      "name": "cloud_microphysics",
+      "title": "Cloud microphysics",
+      "note": "Phase, optical depth and particle size retrieved from a satellite cloud algorithm. Each is the output of its own retrieval method and is not comparable across different algorithms or instruments; none of these is validated against an in-situ or ground-based measurement in this deployment.",
+      "groups": {
+        "optical_depth": "Cloud optical depth from a satellite retrieval, daytime only.",
+        "particle_size": "Cloud particle effective size from a satellite retrieval, daytime only.",
+        "phase": "Categorical cloud-top thermodynamic phase from a satellite retrieval."
       }
     },
     {
@@ -137,6 +153,7 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "current": "Horizontal sea-water velocity component.",
         "ice": "Fraction of the cell covered by sea ice.",
         "salinity": "Sea-water salinity.",
+        "sea_surface_skin_temperature": "Satellite-retrieved radiometric skin temperature of the sea surface; a different measurement from a modelled or buoy-reported bulk sea surface temperature.",
         "sea_surface_temperature": "Temperature of the sea surface layer.",
         "sea_surface_temperature_mask": "Producer-published surface-type mask retained as quality metadata.",
         "sea_surface_temperature_uncertainty": "Producer-published uncertainty for an analysed SST cell.",
@@ -174,7 +191,19 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "note": "Every ECCC global-radiation coverage is an accumulation in J/m2 over a window the producer does not state in its title. Differencing consecutive steps for a mean flux would be derived-here, so an accumulation and a flux are separate keys and are not comparable.",
       "groups": {
         "accumulated": "Accumulated radiant energy over the producer's own window.",
-        "flux": "Instantaneous radiant flux density."
+        "diffuse_hour_mean": "Hour-mean diffuse horizontal shortwave flux.",
+        "diffuse_instant": "Instantaneous diffuse horizontal shortwave flux.",
+        "direct_hour_mean": "Hour-mean direct horizontal shortwave flux.",
+        "direct_instant": "Instantaneous direct horizontal shortwave flux.",
+        "dni_hour_mean": "Hour-mean direct normal irradiance.",
+        "dni_instant": "Instantaneous direct normal irradiance.",
+        "flux": "Instantaneous radiant flux density.",
+        "shortwave_hour_mean": "Hour-mean total horizontal shortwave flux.",
+        "shortwave_instant": "Instantaneous total horizontal shortwave flux.",
+        "terrestrial_hour_mean": "Hour-mean provider terrestrial-radiation series.",
+        "terrestrial_instant": "Instantaneous provider terrestrial-radiation series.",
+        "tilted_hour_mean": "Hour-mean global tilted irradiance under the provider geometry.",
+        "tilted_instant": "Instantaneous global tilted irradiance under the provider geometry."
       }
     },
     {
@@ -193,10 +222,21 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "groups": {
         "aurora_probability": "Modelled probability of visible aurora over a grid cell.",
         "imf": "Interplanetary magnetic field at the measuring spacecraft.",
+        "magnetic_field": "Magnetic field components measured at a named platform.",
         "planetary_index": "A planetary geomagnetic activity index on the producer's own cadence.",
         "ring_current_index": "A ring-current index in nanotesla.",
         "solar_wind_plasma": "Solar-wind plasma bulk properties at the measuring spacecraft.",
+        "space_weather_guidance": "Issued categorical or text guidance; unlike numeric measurements.",
         "xray_flux": "Solar soft X-ray flux in a stated passband."
+      }
+    },
+    {
+      "name": "stability",
+      "title": "Convective stability",
+      "note": "CAPE and four stability indices from a satellite sounding retrieval. The indices are on different numeric scales from each other and from CAPE, and must never share an axis or a colour ramp.",
+      "groups": {
+        "energy": "Convective available potential energy from a sounding retrieval.",
+        "index": "A stability index on its own numeric scale; never compared across index types."
       }
     },
     {
@@ -205,6 +245,7 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "note": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
       "groups": {
         "air": "Air temperature at a stated height or pressure level.",
+        "cloud_top": "Satellite-retrieved radiative temperature of the cloud top.",
         "radiative": "Aggregate surface radiative temperature; not verified equal to skin.",
         "skin": "Aggregate land surface skin temperature."
       }
@@ -253,6 +294,7 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "component": "Grid-relative u and v components of the horizontal wind.",
         "direction": "Bearing the wind comes from, meteorological convention.",
         "gust": "Peak gust over the producer's own reporting interval.",
+        "satellite_vector": "Cloud-tracked motion vector at the producer-retrieved pressure.",
         "speed": "Scalar horizontal wind speed."
       }
     }
@@ -331,6 +373,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Southward IMF component in GSM coordinates. The RTSW feed interleaves SOLAR-1, ACE and IMAP with no active flag set, so the measuring spacecraft's identity has to travel with the value."
     },
     {
+      "key": "carbon_monoxide_surface",
+      "family": "air_quality",
+      "quantity": "surface carbon monoxide mass concentration",
+      "units": "kg m-3",
+      "level": "surface",
+      "comparabilityGroup": "carbon_monoxide_mass",
+      "description": "Surface carbon monoxide mass concentration."
+    },
+    {
       "key": "cloud_ceiling",
       "family": "cloud_geometry",
       "quantity": "cloud ceiling height",
@@ -383,6 +434,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "product layer 5 (highest)",
       "comparabilityGroup": "satellite_layer",
       "description": "Cloud fraction in the highest of the five GOES ABI Cloud Cover Layers layers."
+    },
+    {
+      "key": "cloud_fraction_total_satellite",
+      "family": "cloud_cover",
+      "quantity": "satellite total cloud fraction",
+      "units": "percent",
+      "level": "column",
+      "comparabilityGroup": "satellite_column",
+      "description": "Whole-column cloud fraction (GOES ABI Cloud Cover Layers TCF), a producer diagnostic computed from the same layered cloud-top retrieval as cloud_fraction_layer_1..5, not an independent whole-column measurement. Neither opacity-weighted (ECCC GEM NT) nor a geometric maximum-random overlap (GFS, ECMWF, ICON); never share a ramp or axis with either."
     },
     {
       "key": "cloud_high",
@@ -556,6 +616,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "The coded sky cover (SKC/FEW/SCT/BKN/OVC/VV) of the 6th layer the report lists, in the producer's own order. Never folded into low/middle/high strata: that would be a classification the owner has not approved."
     },
     {
+      "key": "cloud_layer_flag",
+      "family": "cloud_cover",
+      "quantity": "cloud layer flag",
+      "units": "code",
+      "level": "column",
+      "comparabilityGroup": "scene_class",
+      "description": "The GOES ABI Cloud Cover Layers product's own per-pixel cloud-layer flag (CL): a categorical code, not a fraction, and never averaged or interpolated."
+    },
+    {
       "key": "cloud_low",
       "family": "cloud_cover",
       "quantity": "low cloud cover",
@@ -583,6 +652,24 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "The producer's own middle-cloud layer fraction (GFS MCDC)."
     },
     {
+      "key": "cloud_optical_depth",
+      "family": "cloud_microphysics",
+      "quantity": "cloud optical depth",
+      "units": "1",
+      "level": "cloud column",
+      "comparabilityGroup": "optical_depth",
+      "description": "GOES ABI daytime DCOMP cloud optical depth retrieval (CODF COD), dimensionless. Valid only for sunlit pixels; night pixels are flagged and carry no retrieval. Not comparable across different optical-depth retrieval methods."
+    },
+    {
+      "key": "cloud_particle_size",
+      "family": "cloud_microphysics",
+      "quantity": "cloud particle effective size",
+      "units": "um",
+      "level": "cloud top",
+      "comparabilityGroup": "particle_size",
+      "description": "GOES ABI cloud particle effective size retrieval (CPSF PSD), micrometres. A daytime DCOMP companion to cloud_optical_depth and comparably retrieval-method-dependent."
+    },
+    {
       "key": "cloud_probability",
       "family": "cloud_cover",
       "quantity": "cloud probability",
@@ -601,6 +688,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Radiatively retrieved height of the highest opaque cloud surface (GOES ABI ACHA). NOAA Provisional maturity."
     },
     {
+      "key": "cloud_top_phase",
+      "family": "cloud_microphysics",
+      "quantity": "cloud top thermodynamic phase",
+      "units": "code",
+      "level": "cloud top",
+      "comparabilityGroup": "phase",
+      "description": "GOES ABI Cloud Top Phase retrieval (ACTPF Phase): a per-pixel categorical code (0 clear sky, 1 liquid water, 2 supercooled liquid water, 3 mixed phase, 4 ice, 5 unknown). A classification, not a measured quantity, and not comparable across retrieval algorithms."
+    },
+    {
       "key": "cloud_top_pressure",
       "family": "cloud_geometry",
       "quantity": "cloud top pressure",
@@ -608,6 +704,24 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "cloud top",
       "comparabilityGroup": "satellite_top",
       "description": "Retrieved pressure of the cloud top (GOES ABI CTP)."
+    },
+    {
+      "key": "cloud_top_temperature",
+      "family": "temperature",
+      "quantity": "cloud top temperature",
+      "units": "K",
+      "level": "cloud top",
+      "comparabilityGroup": "cloud_top",
+      "description": "GOES ABI radiatively retrieved cloud-top temperature."
+    },
+    {
+      "key": "convective_available_potential_energy",
+      "family": "stability",
+      "quantity": "convective available potential energy",
+      "units": "J kg-1",
+      "level": "column",
+      "comparabilityGroup": "energy",
+      "description": "GOES ABI Derived Stability Indices CAPE retrieval."
     },
     {
       "key": "current_u",
@@ -664,6 +778,60 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Dew point at 80 m."
     },
     {
+      "key": "diffuse_shortwave_flux_hour_mean",
+      "family": "radiation",
+      "quantity": "hour-mean diffuse shortwave radiation flux",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "diffuse_hour_mean",
+      "description": "Retrieved hour-mean diffuse horizontal shortwave flux."
+    },
+    {
+      "key": "diffuse_shortwave_flux_instant",
+      "family": "radiation",
+      "quantity": "instantaneous diffuse shortwave radiation flux",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "diffuse_instant",
+      "description": "Retrieved instantaneous diffuse horizontal shortwave flux."
+    },
+    {
+      "key": "direct_normal_irradiance_hour_mean",
+      "family": "radiation",
+      "quantity": "hour-mean direct normal irradiance",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "dni_hour_mean",
+      "description": "Retrieved hour-mean direct normal irradiance."
+    },
+    {
+      "key": "direct_normal_irradiance_instant",
+      "family": "radiation",
+      "quantity": "instantaneous direct normal irradiance",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "dni_instant",
+      "description": "Retrieved instantaneous direct normal irradiance."
+    },
+    {
+      "key": "direct_shortwave_flux_hour_mean",
+      "family": "radiation",
+      "quantity": "hour-mean direct shortwave radiation flux",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "direct_hour_mean",
+      "description": "Retrieved hour-mean direct horizontal shortwave flux."
+    },
+    {
+      "key": "direct_shortwave_flux_instant",
+      "family": "radiation",
+      "quantity": "instantaneous direct shortwave radiation flux",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "direct_instant",
+      "description": "Retrieved instantaneous direct horizontal shortwave flux."
+    },
+    {
       "key": "downward_shortwave_accumulated",
       "family": "radiation",
       "quantity": "accumulated downward shortwave radiation",
@@ -682,6 +850,24 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Instantaneous downward shortwave flux density. A separate key from the accumulation because converting one to the other is a derivation, not a unit change."
     },
     {
+      "key": "downward_shortwave_flux_hour_mean",
+      "family": "radiation",
+      "quantity": "hour-mean downward shortwave radiation flux",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "shortwave_hour_mean",
+      "description": "Retrieved hour-mean surface shortwave flux; distinct from an instantaneous sample."
+    },
+    {
+      "key": "downward_shortwave_flux_instant",
+      "family": "radiation",
+      "quantity": "instantaneous downward shortwave radiation flux",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "shortwave_instant",
+      "description": "Retrieved instantaneous surface shortwave flux."
+    },
+    {
       "key": "dst_index",
       "family": "space_weather",
       "quantity": "disturbance storm time index",
@@ -689,6 +875,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "planetary",
       "comparabilityGroup": "ring_current_index",
       "description": "The Kyoto WDC quicklook Dst. Reprocessed where it arrives through NOAA SWPC's redistribution rather than from Kyoto directly."
+    },
+    {
+      "key": "dust_surface",
+      "family": "air_quality",
+      "quantity": "surface dust mass concentration",
+      "units": "kg m-3",
+      "level": "surface",
+      "comparabilityGroup": "dust_mass",
+      "description": "Surface dust aerosol mass concentration."
     },
     {
       "key": "fog_closure",
@@ -709,6 +904,51 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "A fog classification computed here from present-weather codes and visibility by a registered derivation method. Never the producer's own observation."
     },
     {
+      "key": "geomagnetic_field_eastward",
+      "family": "space_weather",
+      "quantity": "geosynchronous magnetic field eastward component",
+      "units": "nT",
+      "level": "geosynchronous orbit",
+      "comparabilityGroup": "magnetic_field",
+      "description": "GOES magnetometer He component, stored per satellite."
+    },
+    {
+      "key": "geomagnetic_field_normal",
+      "family": "space_weather",
+      "quantity": "geosynchronous magnetic field normal component",
+      "units": "nT",
+      "level": "geosynchronous orbit",
+      "comparabilityGroup": "magnetic_field",
+      "description": "GOES magnetometer Hn component, stored per satellite."
+    },
+    {
+      "key": "geomagnetic_field_parallel",
+      "family": "space_weather",
+      "quantity": "geosynchronous magnetic field spin-axis component",
+      "units": "nT",
+      "level": "geosynchronous orbit",
+      "comparabilityGroup": "magnetic_field",
+      "description": "GOES magnetometer Hp component, stored per satellite."
+    },
+    {
+      "key": "geomagnetic_field_total",
+      "family": "space_weather",
+      "quantity": "geosynchronous magnetic field magnitude",
+      "units": "nT",
+      "level": "geosynchronous orbit",
+      "comparabilityGroup": "magnetic_field",
+      "description": "GOES magnetometer total field, stored per satellite."
+    },
+    {
+      "key": "geomagnetic_storm_scale",
+      "family": "space_weather",
+      "quantity": "NOAA geomagnetic storm scale",
+      "units": "1",
+      "level": "planetary",
+      "comparabilityGroup": "space_weather_guidance",
+      "description": "NOAA G scale by the product's own day offset."
+    },
+    {
       "key": "geopotential_height_pressure",
       "family": "pressure",
       "quantity": "geopotential height",
@@ -716,6 +956,24 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "pressure levels",
       "comparabilityGroup": "geopotential",
       "description": "Geopotential height of a pressure surface, level-expanded as geopotential_height_<hPa>hPa. Left in gpm: that is what the message declares and normalize_units has no rule for it."
+    },
+    {
+      "key": "global_tilted_irradiance_hour_mean",
+      "family": "radiation",
+      "quantity": "hour-mean global tilted irradiance",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "tilted_hour_mean",
+      "description": "Retrieved hour-mean global tilted irradiance under the provider geometry."
+    },
+    {
+      "key": "global_tilted_irradiance_instant",
+      "family": "radiation",
+      "quantity": "instantaneous global tilted irradiance",
+      "units": "W m-2",
+      "level": "surface",
+      "comparabilityGroup": "tilted_instant",
+      "description": "Retrieved instantaneous global tilted irradiance under the provider geometry."
     },
     {
       "key": "hp30_index",
@@ -736,6 +994,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "GFZ's hourly Hp60 index."
     },
     {
+      "key": "k_index",
+      "family": "stability",
+      "quantity": "K-index",
+      "units": "K",
+      "level": "column",
+      "comparabilityGroup": "index",
+      "description": "GOES ABI Derived Stability Indices K-index; not comparable to another index."
+    },
+    {
       "key": "kp_index",
       "family": "space_weather",
       "quantity": "planetary K index",
@@ -752,6 +1019,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "planetary",
       "comparabilityGroup": "planetary_index",
       "description": "The producer's own status string for a Kp value (observed, estimated, predicted), carried per value so an outlook is never read as an observation."
+    },
+    {
+      "key": "lifted_index",
+      "family": "stability",
+      "quantity": "lifted index",
+      "units": "K",
+      "level": "column",
+      "comparabilityGroup": "index",
+      "description": "GOES ABI Derived Stability Indices lifted index; its own scale is retained."
     },
     {
       "key": "lightning_observed",
@@ -826,6 +1102,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Angular separation between the Moon and a named target, from DE442. The target travels with the value."
     },
     {
+      "key": "nitrogen_dioxide_surface",
+      "family": "air_quality",
+      "quantity": "surface nitrogen dioxide mass concentration",
+      "units": "kg m-3",
+      "level": "surface",
+      "comparabilityGroup": "nitrogen_dioxide_mass",
+      "description": "Surface nitrogen dioxide mass concentration."
+    },
+    {
       "key": "omega_pressure",
       "family": "vertical_motion",
       "quantity": "vertical velocity in pressure coordinates",
@@ -833,6 +1118,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "pressure levels",
       "comparabilityGroup": "omega",
       "description": "Omega on pressure surfaces, level-expanded as omega_<hPa>hPa. Positive is descent."
+    },
+    {
+      "key": "ozone_surface",
+      "family": "air_quality",
+      "quantity": "surface ozone mass concentration",
+      "units": "kg m-3",
+      "level": "surface",
+      "comparabilityGroup": "ozone_mass",
+      "description": "Surface ozone mass concentration."
     },
     {
       "key": "pm10_surface",
@@ -916,6 +1210,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Aggregate surface radiative temperature (RDPS/GDPS RadiativeTemp). Kept apart from skin_temperature because their equality is unverified and the air-sea difference that drives Grand Banks advection fog depends on which one is meant."
     },
     {
+      "key": "radio_blackout_scale",
+      "family": "space_weather",
+      "quantity": "NOAA radio blackout scale",
+      "units": "1",
+      "level": "planetary",
+      "comparabilityGroup": "space_weather_guidance",
+      "description": "NOAA R scale by the product's own day offset."
+    },
+    {
       "key": "relative_humidity_120m",
       "family": "humidity",
       "quantity": "relative humidity",
@@ -970,6 +1273,24 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Sea-water salinity."
     },
     {
+      "key": "satellite_motion_wind_direction",
+      "family": "wind",
+      "quantity": "satellite-derived motion wind direction",
+      "units": "degree",
+      "level": "retrieved pressure",
+      "comparabilityGroup": "satellite_vector",
+      "description": "GOES ABI tracer motion vector's meteorological from-direction."
+    },
+    {
+      "key": "satellite_motion_wind_speed",
+      "family": "wind",
+      "quantity": "satellite-derived motion wind speed",
+      "units": "m s-1",
+      "level": "retrieved pressure",
+      "comparabilityGroup": "satellite_vector",
+      "description": "GOES ABI cloud or clear-sky water-vapour tracer motion-vector speed; each feature carries its producer-retrieved pressure and quality flag."
+    },
+    {
       "key": "sea_ice_fraction",
       "family": "marine",
       "quantity": "sea ice area fraction",
@@ -977,6 +1298,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "sea surface",
       "comparabilityGroup": "ice",
       "description": "Fraction of the cell covered by sea ice. HRDPS publishes it analysis-only: its WMS time extent advertised a single instant with PT0H, not a forecast series."
+    },
+    {
+      "key": "sea_surface_skin_temperature",
+      "family": "marine",
+      "quantity": "sea surface skin temperature",
+      "units": "K",
+      "level": "sea surface skin",
+      "comparabilityGroup": "sea_surface_skin_temperature",
+      "description": "Satellite-retrieved radiometric skin temperature. It remains distinct from modelled or in-situ bulk sea-surface temperature."
     },
     {
       "key": "sea_surface_temperature",
@@ -1024,6 +1354,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "ECCC RDPS seeing index (RDPS_10km_SeeingIndex). An unlabelled integer class; a live subset decoded to exactly {0, 3, 4, 5}. The class definitions could not be verified from any machine-readable source and CMC is documented as refusing to compute seeing above 80 percent cloud, so 0 may be a masked cell."
     },
     {
+      "key": "showalter_index",
+      "family": "stability",
+      "quantity": "Showalter index",
+      "units": "K",
+      "level": "column",
+      "comparabilityGroup": "index",
+      "description": "GOES ABI Derived Stability Indices Showalter index; not comparable to another index."
+    },
+    {
       "key": "significant_wave_height",
       "family": "marine",
       "quantity": "significant wave height",
@@ -1051,6 +1390,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Instantaneous snowfall rate as depth of snow, not water equivalent."
     },
     {
+      "key": "solar_radiation_storm_scale",
+      "family": "space_weather",
+      "quantity": "NOAA solar radiation storm scale",
+      "units": "1",
+      "level": "planetary",
+      "comparabilityGroup": "space_weather_guidance",
+      "description": "NOAA S scale by the product's own day offset."
+    },
+    {
       "key": "solar_wind_density",
       "family": "space_weather",
       "quantity": "solar wind proton density",
@@ -1076,6 +1424,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "measuring spacecraft at L1",
       "comparabilityGroup": "solar_wind_plasma",
       "description": "Proton temperature at L1."
+    },
+    {
+      "key": "space_weather_alert",
+      "family": "space_weather",
+      "quantity": "space weather alert text",
+      "units": "text",
+      "level": "planetary",
+      "comparabilityGroup": "space_weather_guidance",
+      "description": "An issued NOAA alert, watch or warning retained verbatim."
     },
     {
       "key": "specific_humidity_120m",
@@ -1121,6 +1478,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "sea surface",
       "comparabilityGroup": "surge",
       "description": "Water level departure attributable to meteorological forcing."
+    },
+    {
+      "key": "sulphur_dioxide_surface",
+      "family": "air_quality",
+      "quantity": "surface sulphur dioxide mass concentration",
+      "units": "kg m-3",
+      "level": "surface",
+      "comparabilityGroup": "sulphur_dioxide_mass",
+      "description": "Surface sulphur dioxide mass concentration."
     },
     {
       "key": "sun_altitude",
@@ -1213,6 +1579,24 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Air temperature on pressure surfaces. One field with a level coordinate; the GRIB adapters write it level-expanded as temperature_<hPa>hPa and it resolves back to here."
     },
     {
+      "key": "terrestrial_radiation_flux_hour_mean",
+      "family": "radiation",
+      "quantity": "hour-mean extraterrestrial radiation flux",
+      "units": "W m-2",
+      "level": "top of atmosphere",
+      "comparabilityGroup": "terrestrial_hour_mean",
+      "description": "Retrieved hour-mean provider terrestrial-radiation series."
+    },
+    {
+      "key": "terrestrial_radiation_flux_instant",
+      "family": "radiation",
+      "quantity": "instantaneous extraterrestrial radiation flux",
+      "units": "W m-2",
+      "level": "top of atmosphere",
+      "comparabilityGroup": "terrestrial_instant",
+      "description": "Retrieved instantaneous provider terrestrial-radiation series."
+    },
+    {
       "key": "total_cloud_geometric",
       "family": "cloud_cover",
       "quantity": "geometric total cloud cover",
@@ -1256,6 +1640,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "entire atmosphere (column)",
       "comparabilityGroup": "derived_repair",
       "description": "ECCC's own WEonG technical note states HRDPS published NT under-reports low cloud and repairs it from the RH profile. This key carries that repair, computed here, and is always served beside total_cloud_opacity rather than replacing it."
+    },
+    {
+      "key": "total_totals_index",
+      "family": "stability",
+      "quantity": "total totals index",
+      "units": "K",
+      "level": "column",
+      "comparabilityGroup": "index",
+      "description": "GOES ABI Derived Stability Indices total totals index; not comparable to another index."
     },
     {
       "key": "transparency_class_eccc",

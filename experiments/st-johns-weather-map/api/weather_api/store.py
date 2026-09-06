@@ -835,7 +835,18 @@ class LiveStore:
     def _forget_stale_datasets(self, current_revisions: set[str]) -> None:
         """Drop cached datasets whose revision is no longer published."""
         for revision_id in [key for key in self._datasets if key not in current_revisions]:
-            self._datasets.pop(revision_id, None)
+            self._evict_dataset(revision_id)
+        # Include files left by earlier processes and non-Zarr readers.
+        for path in self._cache_dir.glob("*.zarr.zip"):
+            if path.name.removesuffix(".zarr.zip") not in current_revisions:
+                self._evict_dataset(path.name.removesuffix(".zarr.zip"))
+
+    def _evict_dataset(self, revision_id: str) -> None:
+        dataset = self._datasets.pop(revision_id, None)
+        close = getattr(dataset, "close", None)
+        if close is not None:
+            close()
+        (self._cache_dir / f"{revision_id}.zarr.zip").unlink(missing_ok=True)
 
     def source_activity(self) -> dict[str, datetime]:
         return self._store.source_activity()
@@ -856,7 +867,12 @@ class LiveStore:
         """
         destination = self._cache_dir / f"{artifact.revision_id}.zarr.zip"
         if destination.exists():  # only ever written after verification below
+            destination.touch()
             return destination
+        # Bound disk copies too, including JSON artifacts and previous processes.
+        cached_paths = sorted(self._cache_dir.glob("*.zarr.zip"), key=lambda p: p.stat().st_mtime)
+        while len(cached_paths) >= MAX_CACHED_DATASETS:
+            self._evict_dataset(cached_paths.pop(0).name.removesuffix(".zarr.zip"))
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_suffix(".part")
         digest = hashlib.sha256()
@@ -899,7 +915,7 @@ class LiveStore:
         dataset = xarray.open_zarr(store, consolidated=False)
         self._datasets[artifact.revision_id] = dataset
         while len(self._datasets) > MAX_CACHED_DATASETS:
-            self._datasets.popitem(last=False)
+            self._evict_dataset(next(iter(self._datasets)))
         return dataset
 
     # --- sampling --------------------------------------------------------
@@ -2101,31 +2117,15 @@ def purge_outside_window(store: Any, *, now: datetime | None = None, sweep: bool
 
 
 def drain_purged_objects(store: Any, *, batch: int = 1000) -> tuple[int, int]:
-    """Delete the objects whose rows a purge already removed.
+    """Drain retention work, keeping failed deletions queued for retry."""
+    from ingest.purge import drain_objects
 
-    An object already gone does not abort the sweep: the row is the record of
-    truth, and the queue entry is claimed either way so a permanently missing
-    object cannot make the sweep loop forever.
-    """
     try:
-        with _cursor(store) as connection, connection.cursor() as cursor:
-            cursor.execute("SELECT weather_experiment.claim_purged_objects(%s)", (batch,))
-            keys = [row[0] for row in cursor.fetchall()]
+        return drain_objects(artifact_store(store), batch=batch)
     except StoreUnavailable:
         raise
-    except Exception as error:  # noqa: BLE001
-        raise StoreUnavailable(f"the purge queue could not be claimed: {error}") from error
-
-    target = artifact_store(store)
-    deleted = missing = 0
-    for key in keys:
-        try:
-            target.s3.delete_object(Bucket=target.config.bucket, Key=key)
-            deleted += 1
-        except Exception:  # noqa: BLE001 - already gone, or gone by the next sweep
-            LOGGER.warning("purged object %s could not be deleted; the row is already gone", key)
-            missing += 1
-    return deleted, missing
+    except Exception as error:
+        raise StoreUnavailable(f"the purge queue could not be drained: {error}") from error
 
 
 def reclaimable_bytes(store: Any, *, now: datetime | None = None) -> int:
@@ -2317,7 +2317,6 @@ def _build_live_provenance(
         intermediary=provenance.get("intermediary", getattr(config, "intermediary", None)),
         intermediary_method=provenance.get("intermediary_method", getattr(config, "intermediary_method", None)),
         adapter_version=str(provenance.get("adapter_version", "unknown")),
-        artifact_revision=sample.revision_id,
         sampled_latitude=sample.sampled_latitude,
         sampled_longitude=sample.sampled_longitude,
         sample_distance_km=sample.sample_distance_km,
