@@ -80,3 +80,23 @@ two-run retention, source admission or operational status.
 - **AND** the bounded raster route preserves native missing cells as transparent pixels, applies the registered geometric-cloud percent palette without smoothing, and returns source, run, native-valid, upstream-completion and content-digest provenance
 - **AND** a different field, frame, invalid bounds, unsupported CRS or oversized output fails explicitly without substituting an opacity-weighted field or a neighbouring frame
 - **AND** this single native field does not complete GFS raster or source coverage under #97 or the residual field issues
+
+### Requirement: GFS accumulation identity is resolved before payload selection
+For a selected native GFS frame, the experiment SHALL parse every provider-declared
+`APCP:surface` statistical interval from the bounded `.idx` response and preserve
+the record number, exact positive interval start/end, and byte range as one native
+record identity. It SHALL NOT infer an interval from lead cadence, merge simultaneous
+recent-block and run-to-date products, difference cumulative amounts, or label an
+accumulation as a rate. This requirement supersedes the GFS cloud-strata change's
+blanket exclusion only for bounded APCP index parsing; payload retrieval and the
+single-card product choice remain unavailable until their pending owner choice is
+recorded.
+
+#### Scenario: One selected frame advertises two accumulation products
+- **WHEN** its `.idx` contains a recent-block APCP interval and a run-to-date APCP interval ending at the selected native lead
+- **THEN** both records retain distinct record numbers, byte ranges, interval starts and interval ends
+- **AND** neither becomes the point card merely because it is shorter, longer, or first in provider order
+
+#### Scenario: An accumulation interval is ambiguous
+- **WHEN** an APCP record omits an exact interval, has a zero or negative interval, ends at a different lead, or lacks a finite byte range
+- **THEN** selection fails before payload retrieval and does not infer meaning from cadence or neighbouring records
