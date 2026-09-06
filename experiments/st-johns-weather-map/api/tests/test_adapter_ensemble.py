@@ -179,7 +179,7 @@ class FakeClient:
         import hashlib
         written = self.download_ranges(url, destination, ranges, max_bytes=max_bytes)
         body = destination.read_bytes()
-        return written, [{"url": url, "request_headers": {"range": "bytes=fixture", "user-agent": "fixture"},
+        return written, [{"url": url, "request_headers": {"range": f"bytes={self.ranges[-1][1][0][0]}-{self.ranges[-1][1][0][1]}", "user-agent": "fixture"},
                           "response_headers": {}, "completed_at": "2026-09-01T00:00:02+00:00",
                           "byte_size": len(body), "sha256": hashlib.sha256(body).hexdigest()}]
 

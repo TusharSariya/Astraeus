@@ -1004,7 +1004,7 @@ class NOAAGEFSEnsembleAdapter:
                 if self._capture_transport_receipts:
                     idx_raw, idx_receipt = client.get_bytes_with_receipt(idx_url, max_bytes=MAX_IDX_BYTES)
                     idx_text = idx_raw.decode("utf-8")
-                    transport_receipts.append({"kind": "index", "member": member, **idx_receipt})
+                    transport_receipts.append({"kind": "index", "member": member, "http_status": 200, **idx_receipt})
                 else:
                     idx_text = client.get_text(idx_url)
             except Exception as error:
@@ -1024,7 +1024,9 @@ class NOAAGEFSEnsembleAdapter:
                         _, receipts = client.download_ranges_with_receipts(
                             grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES
                         )
-                        transport_receipts.extend({"kind": "range", "member": member, "field": upstream, **receipt} for receipt in receipts)
+                        transport_receipts.extend({"kind": "range", "member": member, "field": upstream,
+                                                   "range_start": byte_range.start, "range_end": byte_range.end,
+                                                   "http_status": 206, **receipt} for receipt in receipts)
                     else:
                         client.download_ranges(grib_url, local, [byte_range.as_tuple()], max_bytes=MAX_GEFS_MEMBER_BYTES)
                     field = self._reader(local, upstream=upstream, member=member, bounds=self._bounds)

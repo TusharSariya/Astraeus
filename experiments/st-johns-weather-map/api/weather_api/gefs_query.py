@@ -1,13 +1,13 @@
 """Bounded cache for one selected GEFS member-family lead."""
 from __future__ import annotations
-import json, math, os, tempfile, threading, time
+import json, math, os, re, tempfile, threading, time
 from collections import OrderedDict
 from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Callable, Mapping
-from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, NOAA_GEFS_S3_BASE, gefs_member_identifiers
+from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, NOAA_GEFS_S3_BASE, _gefs_keys_by_upstream, gefs_member_identifiers
 from ingest.adapters.noaa_s3 import NOAAGEFSEnsembleAdapter
 from ingest.contract import FetchWindow, ResourceBounds, RunCandidate
 from ingest.registry import get_config
@@ -81,6 +81,27 @@ class GEFSQueryEntry:
             if self.key.lead==3 and interval!=(self.key.run_time,self.valid_time): raise ValueError("GEFS f003 cloud interval must be exactly 0-3 hours")
             if self.key.lead>=6 and interval[1]-interval[0]!=timedelta(hours=6): raise ValueError("GEFS cloud interval at f006 and later must be exactly six hours")
         if self.key.lead==0 and self.cloud_intervals: raise ValueError("GEFS f000 has no declared averaged-cloud interval")
+        receipts=self.provenance.get("transport_receipts")
+        if not isinstance(receipts,list): raise ValueError("GEFS transport receipts are required")
+        upstream_by_field={field:upstream for upstream,field in _gefs_keys_by_upstream("noaa-gefs").items()}
+        expected_ranges={(member,upstream_by_field[field]) for member in self.members_present for field in GEFS_FIELDS if field=="temperature_2m" or field not in self.optional_absences.get(member,())}
+        seen_idx=set(); seen_ranges=set()
+        for receipt in receipts:
+            if not isinstance(receipt,dict) or receipt.get("member") not in self.key.members: raise ValueError("GEFS receipt has invalid member identity")
+            member=str(receipt["member"]); stem=f"{self.key.endpoint}/gefs.{self.key.run_time:%Y%m%d}/{self.key.run_time:%H}/atmos/{self.key.product_set}/{member}.t{self.key.run_time:%H}z.{self.key.product_set}.f{self.key.lead:03d}"
+            if receipt.get("kind")=="index":
+                if receipt.get("url")!=stem+".idx" or receipt.get("http_status")!=200: raise ValueError("GEFS index receipt has invalid request identity")
+                seen_idx.add(member)
+            elif receipt.get("kind")=="range":
+                field=receipt.get("field"); start=receipt.get("range_start"); end=receipt.get("range_end")
+                if (member,field) not in expected_ranges or receipt.get("url")!=stem or receipt.get("http_status")!=206 or not isinstance(start,int) or not isinstance(end,int) or end<start: raise ValueError("GEFS range receipt has invalid request identity")
+                header={str(k).lower():str(v) for k,v in receipt.get("request_headers",{}).items()}.get("range")
+                if header!=f"bytes={start}-{end}": raise ValueError("GEFS range receipt does not match the requested bytes")
+                seen_ranges.add((member,field))
+            else: raise ValueError("GEFS receipt has invalid kind")
+            completed=datetime.fromisoformat(str(receipt.get("completed_at")))
+            if completed.tzinfo is None or completed.utcoffset()!=timedelta(0) or not isinstance(receipt.get("byte_size"),int) or receipt["byte_size"]<=0 or not re.fullmatch(r"[0-9a-f]{64}",str(receipt.get("sha256"))): raise ValueError("GEFS receipt has invalid completion or body identity")
+        if seen_idx!=set(self.key.members) or seen_ranges!=expected_ranges or len(receipts)!=len(seen_idx)+len(seen_ranges): raise ValueError("GEFS receipts do not correspond exactly to represented requests")
 class GEFSQueryService:
     def __init__(self,loader:Callable[[GEFSRequestKey],GEFSQueryEntry],*,workspace:Path=Path("/work"),preflight=enforce_platform_bounds,clock=time.monotonic):
         self.loader,self.workspace,self.preflight,self.clock=loader,workspace,preflight,clock; self.lock=threading.Lock(); self.entries=OrderedDict(); self.inflight={}; self.failures={}

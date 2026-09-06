@@ -1,14 +1,22 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC,datetime,timedelta
 import pytest
-from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES
+from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, _gefs_keys_by_upstream
 from weather_api.gefs_query import *
 import numpy as np
 import xarray as xr
 RUN=datetime(2026,9,6,12,tzinfo=UTC)
 BOX=(("east",-46.0),("north",50.5),("south",45.0),("west",-58.0))
 def key(lead=6):return GEFSRequestKey("2026090612",RUN,lead,"pgrb2ap5",declared_members(),GEFS_FIELDS,BOX)
-def entry(k,**kw):return GEFSQueryEntry(k,RUN+timedelta(hours=k.lead),RUN,kw.get("present",k.members),kw.get("mandatory",{}),kw.get("optional",{}),b"zarr",{},kw.get("intervals",{m:(RUN+timedelta(hours=max(0,k.lead-(3 if k.lead==3 else 6))),RUN+timedelta(hours=k.lead)) for m in kw.get("present",k.members)}))
+def entry(k,**kw):
+ present=kw.get("present",k.members); optional=kw.get("optional",{}); by_field={field:upstream for upstream,field in _gefs_keys_by_upstream("noaa-gefs").items()}; receipts=[]
+ for member in k.members:
+  stem=f"{k.endpoint}/gefs.{k.run_time:%Y%m%d}/{k.run_time:%H}/atmos/{k.product_set}/{member}.t{k.run_time:%H}z.{k.product_set}.f{k.lead:03d}"
+  receipts.append({"kind":"index","member":member,"http_status":200,"url":stem+".idx","request_headers":{},"response_headers":{},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":"a"*64})
+  if member in present:
+   for field in GEFS_FIELDS:
+    if field=="temperature_2m" or field not in optional.get(member,()): receipts.append({"kind":"range","member":member,"field":by_field[field],"range_start":0,"range_end":0,"http_status":206,"url":stem,"request_headers":{"range":"bytes=0-0"},"response_headers":{},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":"b"*64})
+ return GEFSQueryEntry(k,RUN+timedelta(hours=k.lead),RUN,present,kw.get("mandatory",{}),optional,b"zarr",{"transport_receipts":receipts},kw.get("intervals",{m:(RUN+timedelta(hours=max(0,k.lead-(3 if k.lead==3 else 6))),RUN+timedelta(hours=k.lead)) for m in present if "total_cloud_mean_6h" not in optional.get(m,())}))
 def test_bounds_charge_all_member_fields_indices_and_output():
  b=demand_operation_bounds(); raw=31*7*MAX_GEFS_MEMBER_BYTES; idx=31*GEFS_IDX_BYTES
  assert b.received_bytes==raw+idx and b.filesystem_bytes==raw+idx+GEFS_OUTPUT_ALLOWANCE_BYTES; b.validate()
@@ -97,7 +105,7 @@ def test_bounded_loader_validates_child_bundle_identity_and_shape(tmp_path):
  def runner(**kwargs):
   request=json.loads(kwargs["stdin"]); output=kwargs["destination"]
   intervals={m:[(RUN+timedelta(hours=18)).isoformat(),(RUN+timedelta(hours=24)).isoformat()] for m in request["members"]}
-  info={"run_id":request["run_id"],"run_time":request["run_time"],"lead":request["lead"],"valid_time": (RUN+timedelta(hours=24)).isoformat(),"fetched_at":RUN.isoformat(),"members_present":request["members"],"mandatory_failures":{},"optional_absences":{},"cloud_intervals":intervals,"provenance":{"source_id":"noaa-gefs"}}
+  info={"run_id":request["run_id"],"run_time":request["run_time"],"lead":request["lead"],"valid_time": (RUN+timedelta(hours=24)).isoformat(),"fetched_at":RUN.isoformat(),"members_present":request["members"],"mandatory_failures":{},"optional_absences":{},"cloud_intervals":intervals,"provenance":{"source_id":"noaa-gefs",**entry(key(24)).provenance}}
   with zipfile.ZipFile(output,"w") as bundle:
    bundle.writestr("result.json",json.dumps(info)); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
  loaded=GEFSBoundedLoader(tmp_path,runner=runner)(key(24)); loaded.validate()
