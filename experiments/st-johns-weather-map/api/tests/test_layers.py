@@ -22,6 +22,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+import numpy
+import xarray
 from fastapi.testclient import TestClient
 
 from weather_api.app import (
@@ -37,7 +39,7 @@ from weather_api.app import (
     staleness_tolerance_seconds,
 )
 from weather_api.models import Layer
-from weather_api.store import LayerCoverage, StoreUnavailable, run_stale_verdict
+from weather_api.store import LayerCoverage, StoreUnavailable, retained_layer_runs, run_stale_verdict
 
 api_module = _sys.modules["weather_api.app"]
 client = TestClient(app)
@@ -316,6 +318,30 @@ def test_two_runs_in_one_index_each_carry_their_own_run_time_and_run_stale(monke
     assert sum(entry["frame_count"] for entry in layer["runs"]) == len(layer["times"])
     # Every frame carries its own run time, so no client can read one curve.
     assert {entry["run_time"] for entry in layer["frames"]} == {iso(newest), iso(previous)}
+
+
+def test_legacy_hrdps_run_recovers_exact_frames_from_immutable_artifact():
+    run_time = REFERENCE - timedelta(hours=6)
+    stamps = [run_time + timedelta(hours=lead) for lead in range(25)]
+    legacy = Retained(
+        source_id="eccc-hrdps",
+        provider_run_id=run_time.strftime("%Y%m%d%H"),
+        provenance={},
+        revision_id="legacy-hrdps",
+        valid_time_start=run_time,
+        valid_time_end=run_time,
+    )
+
+    class LegacyStore(FakeStore):
+        def open(self, _artifact):
+            values = [stamp.replace(tzinfo=None) for stamp in stamps]
+            return xarray.Dataset(coords={"valid_time": numpy.array(values, dtype="datetime64[ns]")})
+
+    runs = retained_layer_runs(LegacyStore([legacy]))["eccc-hrdps-surface"]
+
+    assert len(runs) == 1
+    assert runs[0].run_time == run_time
+    assert runs[0].times == stamps
 
 
 def test_the_layer_run_stale_verdict_is_the_newest_runs_when_two_stand_behind_it(monkeypatch, data_mode):
