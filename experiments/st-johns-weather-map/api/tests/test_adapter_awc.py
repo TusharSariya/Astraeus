@@ -26,7 +26,7 @@ from ingest.adapters.awc import (
     parse_visibility_meters,
     parse_wind_components,
 )
-from ingest.contract import AdapterUnavailable, FetchWindow
+from ingest.contract import AdapterUnavailable, FetchWindow, RunCandidate
 from ingest.http import PoliteClient, USER_AGENT
 from ingest.isolation import BoundedProcessResult
 
@@ -260,9 +260,10 @@ def test_awc_taf_discover_and_fetch(tmp_path: Path):
     now = datetime(2026, 8, 29, 15, tzinfo=UTC)
     window = FetchWindow(now=now, back_hours=3, forward_hours=24)
 
-    candidates = adapter.discover(window)
-    assert len(candidates) == 1
-    result = adapter.fetch(candidates[0], window, tmp_path)
+    candidate = RunCandidate(
+        "cyyt-taf-sample", datetime(2026, 8, 29, 14, tzinfo=UTC), [], {"taf": SAMPLE_TAF_JSON[0]}
+    )
+    result = adapter.fetch(candidate, window, tmp_path)
 
     assert result.source_id == "awc-taf"
     assert result.complete is True
@@ -424,7 +425,8 @@ def test_taf_periods_carry_their_own_layers_and_present_weather(tmp_path: Path):
     adapter = AWCTafAdapter(client=make_mock_client(taf))
     window = FetchWindow(now=datetime(2026, 8, 29, 15, tzinfo=UTC), back_hours=3, forward_hours=24)
 
-    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+    candidate = RunCandidate("cyyt-taf-sample", datetime(2026, 8, 29, 14, tzinfo=UTC), [], {"taf": taf[0]})
+    result = adapter.fetch(candidate, window, tmp_path)
     assert result.complete is True
     artifact = result.artifacts[0]
     assert artifact.provenance["adapter_version"] == "awc-taf-v2"

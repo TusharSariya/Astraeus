@@ -35,7 +35,7 @@ from ingest.contract import (
 from ingest.grib import RH_PHASE_LIQUID_WATER, write_zarr
 from ingest.http import PoliteClient
 from ingest.isolation import ProcessAllocationLimits, run_bounded_process
-from ingest.manifest import RequiredField, RunManifest, validate_run
+from ingest.manifest import RequiredField, RunManifest, ValidationResult, validate_run
 from ingest.registry import register
 
 UTC = timezone.utc
@@ -65,6 +65,16 @@ AWC_METAR_LIMITS = ProcessAllocationLimits(
     address_space_bytes=640 * 1024 * 1024,
     output_bytes=AWC_METAR_ARTIFACT_BYTES,
     stdin_bytes=AWC_METAR_DOCUMENT_BYTES,
+    stdout_bytes=64 * 1024,
+    stderr_bytes=16 * 1024,
+)
+AWC_TAF_DOCUMENT_BYTES = 64 * 1024
+AWC_TAF_ARTIFACT_BYTES = 64 * 1024
+AWC_TAF_FILESYSTEM_BLOCK_BYTES = 4096
+AWC_TAF_LIMITS = ProcessAllocationLimits(
+    address_space_bytes=640 * 1024 * 1024,
+    output_bytes=AWC_TAF_ARTIFACT_BYTES,
+    stdin_bytes=AWC_TAF_DOCUMENT_BYTES,
     stdout_bytes=64 * 1024,
     stderr_bytes=16 * 1024,
 )
@@ -647,6 +657,33 @@ class AWCMetarAdapter:
 METAR_ADAPTER = register(AWCMetarAdapter())
 
 
+def validate_taf_structure(
+    taf: dict[str, Any], groups: list[tuple[datetime, dict[str, Any]]], decode_errors: list[str]
+) -> ValidationResult:
+    """Judge native TAF groups structurally without composing inherited values."""
+    errors = list(decode_errors)
+    for index, (_stamp, group) in enumerate(groups):
+        change = str(group.get("fcstChange") or "").upper()
+        if index != 0 and change != "FM":
+            continue
+        if group.get("wspd") is None:
+            errors.append(f"self_contained_wind_speed@{index}")
+        direction = group.get("wdir")
+        variable = str(direction or "").upper() == "VRB" or bool(group.get("windVariable"))
+        if direction is None and not variable:
+            errors.append(f"self_contained_wind_direction@{index}")
+        if group.get("visib") is None and not group.get("cavok"):
+            errors.append(f"self_contained_visibility@{index}")
+        clouds = group.get("clouds")
+        has_sky = isinstance(clouds, list) or group.get("vertVis") is not None or bool(group.get("cavok"))
+        if not has_sky:
+            errors.append(f"self_contained_sky@{index}")
+    complete = not errors and bool(groups)
+    detail = "TAF native interval/group structure passed" if complete else "; ".join(errors)
+    return ValidationResult(complete, complete, 1.0 if complete else 0.0,
+                            tuple(f"decode_error:{error}" for error in errors), detail)
+
+
 class AWCTafAdapter:
     """Ingests AWC TAF terminal aerodrome forecasts for CYYT."""
 
@@ -660,32 +697,88 @@ class AWCTafAdapter:
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
 
+    @staticmethod
+    def _require_target(path: Path) -> None:
+        stat = path.stat()
+        vfs = os.statvfs(path)
+        if (stat.st_blksize, vfs.f_frsize) != (AWC_TAF_FILESYSTEM_BLOCK_BYTES,) * 2:
+            raise AdapterUnavailable(
+                "AWC TAF bounded writer requires measured 4096-byte filesystem blocks; "
+                f"got {(stat.st_blksize, vfs.f_frsize)}"
+            )
+
+    @staticmethod
+    def _isolated(action: str, raw: bytes, window: FetchWindow, destination: Path | None):
+        root = Path(__file__).resolve().parents[2]
+        launcher = (
+            "import sys; "
+            f"sys.path.insert(0, {str(root)!r}); "
+            "from ingest.awc_taf_isolated import main; raise SystemExit(main())"
+        )
+        return run_bounded_process(
+            command=[sys.executable, "-c", launcher, action, window.start.isoformat(), window.end.isoformat(), "{output}"],
+            stdin=raw,
+            destination=destination,
+            limits=AWC_TAF_LIMITS,
+            require_output=action == "normalize",
+        )
+
+    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        self._require_target(Path(tempfile.gettempdir()))
+        try:
+            self._isolated("probe", b"", FetchWindow(datetime.now(UTC)), None)
+        except Exception as error:
+            raise AdapterUnavailable(f"AWC TAF bounded runtime unavailable: {error}") from error
+        return ResourceBounds(AWC_TAF_ARTIFACT_BYTES, AWC_TAF_ARTIFACT_BYTES,
+                              2 * AWC_TAF_FILESYSTEM_BLOCK_BYTES, AWC_TAF_DOCUMENT_BYTES)
+
+    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
+        return DiscoveryBounds(self.operation_bounds(window).received_bytes)
+
+    def resource_bounds(self, _candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
+        return self.operation_bounds(window)
+
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         client = self._get_client()
         try:
-            response = client.get(self._url)
-            data = response.json()
+            raw, headers, completed = client.get_bytes_with_headers_completed(
+                self._url, max_bytes=AWC_TAF_DOCUMENT_BYTES, headers={"Accept-Encoding": "identity"}
+            )
+            inspected = json.loads(self._isolated("inspect", raw, window, None).stdout)
         except Exception as error:
             raise AdapterUnavailable(f"AWC TAF endpoint unavailable: {error}") from error
-        if not isinstance(data, list) or not data:
-            raise AdapterUnavailable("AWC TAF returned empty record list")
-
-        taf = data[0]
-        issue_time_str = taf.get("issueTime", "")
-        valid_from = taf.get("validTimeFrom")
-        run_dt = datetime.fromtimestamp(int(valid_from), tz=UTC) if valid_from else window.now
-        run_id = f"cyyt-taf-{int(valid_from) if valid_from else int(window.now.timestamp())}"
+        issue_epoch = int(inspected["issue_epoch"])
+        run_dt = datetime.fromtimestamp(issue_epoch, tz=UTC)
+        run_id = f"cyyt-taf-{issue_epoch}"
 
         return [
             RunCandidate(
                 provider_run_id=run_id,
                 run_time=run_dt,
                 urls=[self._url],
-                detail={"taf": taf, "issue_time": issue_time_str},
+                detail={"bounded_raw": raw, "transport_completed_at": completed.isoformat(),
+                        "transport_headers": dict(headers), "raw_group_count": int(inspected["group_count"])},
             )
         ]
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+        raw = candidate.detail.get("bounded_raw")
+        if isinstance(raw, bytes):
+            destination = workdir / "cyyt_taf.zarr.zip"
+            try:
+                reply = json.loads(self._isolated("normalize", raw, window, destination).stdout)
+            except Exception as error:
+                raise AdapterUnavailable(f"AWC TAF bounded decode unavailable: {error}") from error
+            provenance = dict(reply["provenance"])
+            provenance["acquisition"] = {
+                "url": self._url, "body_bytes": len(raw), "body_sha256": hashlib.sha256(raw).hexdigest(),
+                "transport_completed_at": candidate.detail["transport_completed_at"],
+                "headers": candidate.detail["transport_headers"],
+            }
+            return RunResult(self.source_id, candidate.provider_run_id, datetime.fromisoformat(reply["run_time"]),
+                             datetime.fromisoformat(candidate.detail["transport_completed_at"]), bool(reply["complete"]),
+                             bool(reply["qc_passed"]), [Artifact("surface", MEDIA_ZARR, destination, provenance)],
+                             "EPSG:4326", str(reply["notes"]))
         taf = candidate.detail.get("taf", {})
         if not taf:
             client = self._get_client()
@@ -705,13 +798,15 @@ class AWCTafAdapter:
             if not t_from:
                 continue
             dt = datetime.fromtimestamp(int(t_from), tz=UTC)
-            if window.covers(dt):
+            t_to = period.get("timeTo")
+            end = datetime.fromtimestamp(int(t_to), tz=UTC) if t_to else dt
+            if dt <= window.end and end >= window.start:
                 valid_fcsts.append((dt, period))
 
         if not valid_fcsts:
             raise AdapterUnavailable(f"No TAF periods within window {window.start}..{window.end}")
 
-        valid_fcsts.sort(key=lambda item: item[0])
+        # Provider order is semantic for overlapping FM/TEMPO/BECMG groups.
         times = [item[0] for item in valid_fcsts]
         n_times = len(times)
 
@@ -727,11 +822,18 @@ class AWCTafAdapter:
         fog_arr = numpy.zeros((n_times, 1, 1), dtype="float64")
         fog_vicinity_arr = numpy.zeros((n_times, 1, 1), dtype="float64")
         mist_arr = numpy.zeros((n_times, 1, 1), dtype="float64")
+        gust_arr = numpy.full((n_times, 1, 1), numpy.nan, dtype="float64")
         present_weather_strings: list[str] = []
         decode_errors: list[str] = []
+        group_presence: list[dict[str, str]] = []
 
         for i, (_dt, period) in enumerate(valid_fcsts):
             stamp = times[i].strftime("%Y-%m-%dT%H:%M:%SZ")
+            group_presence.append({
+                key: ("decoded_absence" if period.get(key) is None else "decoded_value")
+                if key in period else "not_stated_in_change_group"
+                for key in ("wspd", "wdir", "wgst", "visib", "wxString", "clouds", "vertVis")
+            })
             vis = parse_visibility_meters(period.get("visib"))
             if vis is not None:
                 vis_arr[i, 0, 0] = vis
@@ -753,6 +855,12 @@ class AWCTafAdapter:
             if u is not None and v is not None:
                 wind_u_arr[i, 0, 0] = u
                 wind_v_arr[i, 0, 0] = v
+            gust = period.get("wgst")
+            if gust is not None:
+                try:
+                    gust_arr[i, 0, 0] = float(gust) * 0.514444
+                except (TypeError, ValueError):
+                    decode_errors.append(f"wgst:{gust}@{stamp}")
 
         dataset = xarray.Dataset(
             {
@@ -760,6 +868,7 @@ class AWCTafAdapter:
                 "total_cloud_okta": (("valid_time", "latitude", "longitude"), cloud_arr, {"units": "percent", "original_units": "okta_fraction"}),
                 "wind_u_10m": (("valid_time", "latitude", "longitude"), wind_u_arr, {"units": "m s-1", "original_units": "kt"}),
                 "wind_v_10m": (("valid_time", "latitude", "longitude"), wind_v_arr, {"units": "m s-1", "original_units": "kt"}),
+                "wind_gust_10m": (("valid_time", "latitude", "longitude"), gust_arr, {"units": "m s-1", "original_units": "kt"}),
                 **_cloud_layer_data_vars(layer_arrays, "TAF"),
                 **_present_weather_data_vars(fog_arr, fog_vicinity_arr, mist_arr),
             },
@@ -770,10 +879,18 @@ class AWCTafAdapter:
                 "source": "AWC TAF",
                 "raw_taf": taf.get("rawTAF", ""),
                 "present_weather_strings": present_weather_strings,
+                "taf_issue_time": taf.get("issueTime"),
+                "taf_valid_time_from": int(taf["validTimeFrom"]),
+                "taf_valid_time_to": int(taf["validTimeTo"]),
+                "taf_period_time_to": [int(item[1]["timeTo"]) for item in valid_fcsts],
+                "taf_period_time_bec": [item[1].get("timeBec") for item in valid_fcsts],
+                "taf_change_groups": [item[1].get("fcstChange") or "" for item in valid_fcsts],
+                "taf_probabilities": [item[1].get("probability") for item in valid_fcsts],
+                "taf_group_presence_json": json.dumps(group_presence, separators=(",", ":")),
             },
         )
 
-        validation = validate_run(TAF_MANIFEST, dataset, window=window, decode_errors=decode_errors)
+        validation = validate_taf_structure(taf, valid_fcsts, decode_errors)
 
         zarr_path = workdir / "cyyt_taf.zarr.zip"
         write_zarr(dataset, zarr_path)
@@ -789,6 +906,11 @@ class AWCTafAdapter:
             "coverage": validation.as_coverage(),
             "station_id": "CYYT",
             "original_units": _original_units(dataset),
+            "run_time": candidate.run_time.isoformat(),
+            "valid_times": [time.isoformat() for time in times],
+            "native_report": {"raw_taf": taf.get("rawTAF", ""), "issue_time": taf.get("issueTime"),
+                              "valid_time_from": int(taf["validTimeFrom"]), "valid_time_to": int(taf["validTimeTo"]),
+                              "forecast_group_count": len(valid_fcsts)},
             # A report is retrieved exactly as the station coded it; the
             # manifest is what says so, so the declaration comes from there
             # rather than being written out again here.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
@@ -348,6 +348,8 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
   const [snapshot, setSnapshot] = useState<EvidenceSnapshot>(unavailableSnapshot)
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
+  const [taf, setTaf] = useState<TafResponse | null>(null)
+  const [tafError, setTafError] = useState<string | null>(null)
   // One reference instant for the whole session. Recomputing `now` on every
   // render would slide every layer's resolved frame under the reader.
   const [reference] = useState<Date>(() => new Date())
@@ -509,6 +511,15 @@ export default function App() {
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
   }, [playing, speed, direction, windowStartMs, windowEndMs])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setTafError(null)
+    loadTaf(validTime.toISOString(), controller.signal).then(setTaf).catch((error: unknown) => {
+      if (!controller.signal.aborted) { setTaf(null); setTafError(error instanceof Error ? error.message : 'TAF unavailable') }
+    })
+    return () => controller.abort()
+  }, [validTime])
 
   // Published frames of the active layers: the ticks under the scrubber and
   // the jump targets. Exactly what /layers returned, never an invented
@@ -1294,6 +1305,19 @@ export default function App() {
             {modelStrip}
             {sourceErrorLine}
             {fallbackBadge}
+          <section className="taf-panel evidence-surface" aria-labelledby="taf-heading">
+            <div className="section-head"><span>TAF</span><div><small>CYYT · native conditional groups</small><h2 id="taf-heading">Terminal forecast</h2></div></div>
+            {tafError ? <p role="status">TAF unavailable: {tafError}</p> : taf === null ? <p role="status">No published CYYT TAF covers this instant.</p> : <>
+              <p><strong>Issued {nlTime(taf.issue_time)} NT</strong> · {taf.source_id} · revision {taf.revision_id.slice(0, 8)}</p>
+              <code>{taf.raw_taf}</code>
+              {taf.groups.length === 0 ? <p role="status">No native group interval contains this instant.</p> : <ol className="taf-groups">{taf.groups.map((group) => <li key={group.index}>
+                <strong>{group.change || 'Prevailing'}{group.probability === null ? '' : ` · ${group.probability}%`}</strong>
+                <time>{nlTime(group.time_from)}–{nlTime(group.time_to)} NT</time>
+                <dl>{Object.entries(group.values).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value === null ? group.presence[name] ?? 'missing' : value}</dd></div>)}</dl>
+              </li>)}</ol>}
+              <small>Groups are shown separately. Values are not inherited or merged into Brief.</small>
+            </>}
+          </section>
           <div className="expert-layout">
             <aside className="expert-controls" aria-label="Evidence controls">
               <div className="section-head"><span>EX</span><div><small>Native evidence</small><h2>Field selector</h2></div></div>

@@ -20,7 +20,9 @@ There is deliberately no path from a live failure to a fixture value.
 
 from __future__ import annotations
 
+import json
 import logging
+import math
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -2290,6 +2292,46 @@ def get_source_status() -> SourceStatusResponse:
         return SourceStatusResponse(data_mode=DataMode.UNAVAILABLE, statuses=statuses, notices=notices or ["no live retrieval has been recorded for any source"])
     mode = DataMode.LIVE if all(item.data_mode == DataMode.LIVE for item in statuses) else DataMode.MIXED
     return SourceStatusResponse(data_mode=mode, statuses=statuses, notices=notices)
+
+
+@app.get(f"{PREFIX}/aviation/taf")
+def get_taf(station: str, at: datetime) -> dict:
+    """Return native overlapping TAF groups without composing conditions."""
+    if station.upper() != "CYYT":
+        raise HTTPException(status_code=422, detail="only the contracted CYYT TAF is available")
+    store = live_store()
+    if store is None:
+        raise HTTPException(status_code=503, detail="live TAF evidence is unavailable")
+    try:
+        artifact = next(item for item in store.current() if item.source_id == "awc-taf" and item.logical_name == "surface")
+        dataset = store.open(artifact)
+        starts = [datetime.fromisoformat(str(value).replace("Z", "+00:00")) for value in artifact.provenance["valid_times"]]
+        ends = [datetime.fromtimestamp(int(value), tz=UTC) for value in dataset.attrs["taf_period_time_to"]]
+        changes = list(dataset.attrs["taf_change_groups"])
+        probabilities = list(dataset.attrs["taf_probabilities"])
+        presence = json.loads(dataset.attrs["taf_group_presence_json"])
+        groups = []
+        for index, (start, end) in enumerate(zip(starts, ends, strict=True)):
+            if start <= at < end:
+                values = {}
+                for name in dataset.data_vars:
+                    value = float(dataset[name].values[index, 0, 0])
+                    values[str(name)] = None if math.isnan(value) else value
+                groups.append({"index": index, "time_from": start, "time_to": end,
+                               "change": changes[index], "probability": probabilities[index],
+                               "presence": presence[index], "values": values})
+        return {"data_mode": "live", "station": "CYYT", "at": at, "source_id": "awc-taf",
+                "revision_id": str(artifact.revision_id), "run_time": artifact.run_time,
+                "issue_time": dataset.attrs["taf_issue_time"], "valid_time_from": dataset.attrs["taf_valid_time_from"],
+                "valid_time_to": dataset.attrs["taf_valid_time_to"], "raw_taf": dataset.attrs["raw_taf"],
+                "quality": artifact.provenance.get("quality"), "groups": groups}
+    except StopIteration:
+        raise HTTPException(status_code=404, detail="no published CYYT TAF") from None
+    except HTTPException:
+        raise
+    except Exception as error:
+        LOGGER.exception("TAF evidence could not be read")
+        raise HTTPException(status_code=503, detail="published CYYT TAF could not be read") from error
 
 
 @app.post(f"{PREFIX}/refresh", response_model=Job, status_code=status.HTTP_202_ACCEPTED)
