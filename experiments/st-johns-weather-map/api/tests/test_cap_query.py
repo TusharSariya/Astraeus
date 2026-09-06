@@ -3,12 +3,15 @@ from __future__ import annotations
 import json
 import threading
 import time
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 import pytest
+from fastapi.testclient import TestClient
 
 from weather_api.cap_query import CAPQueryService, CapQueryUnavailable
+from weather_api.app import PREFIX, app
 
 
 NOW = datetime(2026, 9, 6, 21, 0, tzinfo=UTC)
@@ -191,3 +194,45 @@ def test_geometry_boxes_and_completion_require_exact_bounded_shapes():
     client.get_bytes_with_receipt = naive
     with pytest.raises(CapQueryUnavailable, match="final-byte completion"):
         CAPQueryService(client=client, boxes=BOXES, clock=Clock()).query(NOW)
+
+
+def test_demand_features_route_bypasses_artifact_store_and_preserves_partial_warning(monkeypatch):
+    warning = feature("warning", sent="2026-09-06T20:00:00Z", effective="2026-09-06T20:00:00Z", expires="2026-09-06T22:00:00Z")
+    error = CapQueryUnavailable("east Avalon box failed", partial_features=[warning])
+    class Service:
+        def query(self, _moment):
+            raise error
+        def partial_response(self, moment, caught):
+            return CAPQueryService.partial_response(self, moment, caught)
+    import weather_api.cap_query as cap_module
+    app_module = sys.modules["weather_api.app"]
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(cap_module, "cap_query_service", lambda: Service())
+    monkeypatch.setattr(app_module, "live_store", lambda: (_ for _ in ()).throw(AssertionError("store must not be read")))
+    response = TestClient(app).get(f"{PREFIX}/layers/eccc-cap-alerts-current/features", params={"valid_time": NOW.isoformat()})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["data_mode"] == "unavailable"
+    assert payload["alerts_in_force"] is None and payload["all_boxes_succeeded"] is False
+    assert payload["features"] == [warning]
+    assert "no aggregate all-clear" in payload["notices"][1]
+
+
+def test_cap_layer_listing_is_cache_only(monkeypatch):
+    warning = feature("warning", sent="2026-09-06T20:00:00Z", effective="2026-09-06T20:00:00Z", expires="2026-09-06T22:00:00Z")
+    service = CAPQueryService(client=Client([collection(warning), collection()]), boxes=BOXES, clock=Clock())
+    service.query(NOW)
+    calls = service._client.calls
+    def must_not_query(_moment):
+        raise AssertionError("layer listing must not fetch")
+    service.query = must_not_query
+    import weather_api.cap_query as cap_module
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(cap_module, "cap_query_service", lambda: service)
+    response = TestClient(app).get(f"{PREFIX}/layers", params={"product": "CAP"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert service._client.calls == calls
+    assert payload["layers"][0]["id"] == "eccc-cap-alerts-current"
+    assert payload["layers"][0]["evidence_basis"] == "demand_query"
+    assert "no provider request" in payload["notices"][0]

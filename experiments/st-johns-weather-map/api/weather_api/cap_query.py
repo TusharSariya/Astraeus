@@ -28,9 +28,10 @@ CAP_FAILURE_BACKOFF_SECONDS = 30.0
 class CapQueryUnavailable(RuntimeError):
     """The mutable current-alert document cannot truthfully answer the query."""
 
-    def __init__(self, message: str, *, partial_features: Sequence[Mapping[str, object]] = ()) -> None:
+    def __init__(self, message: str, *, partial_features: Sequence[Mapping[str, object]] = (), completed_receipts: Sequence[Mapping[str, object]] = ()) -> None:
         super().__init__(message)
         self.partial_features = tuple(dict(item) for item in partial_features)
+        self.completed_receipts = tuple(dict(item) for item in completed_receipts)
 
 
 @dataclass(frozen=True)
@@ -126,7 +127,7 @@ def _validate_geometry(geometry: object, index: int) -> None:
     points = 0
     def position(value: object) -> tuple[float, float]:
         nonlocal points
-        if not (isinstance(value, list) and len(value) >= 2 and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value[:2])):
+        if not (isinstance(value, list) and len(value) >= 2 and all(isinstance(item, (int, float)) and not isinstance(item, bool) and math.isfinite(float(item)) for item in value)):
             raise CapQueryUnavailable(f"ECCC CAP feature {index} geometry position is invalid")
         lon, lat = float(value[0]), float(value[1])
         if not all(math.isfinite(item) for item in (lon, lat)) or not (-180 <= lon <= 180 and -90 <= lat <= 90):
@@ -262,16 +263,16 @@ class CAPQueryService:
                     document = json.loads(raw)
                     features = _validate_collection(document)
                 except Exception as error:
-                    raise CapQueryUnavailable(f"ECCC CAP declared-box query failed: {error}", partial_features=merged.values()) from error
+                    raise CapQueryUnavailable(f"ECCC CAP declared-box query failed: {error}", partial_features=merged.values(), completed_receipts=receipts) from error
                 encoded_total += len(raw)
                 if encoded_total > CAP_CACHE_MAX_BYTES:
-                    raise CapQueryUnavailable("ECCC CAP combined response exceeds the cache byte ceiling", partial_features=merged.values())
+                    raise CapQueryUnavailable("ECCC CAP combined response exceeds the cache byte ceiling", partial_features=merged.values(), completed_receipts=receipts)
                 receipts.append(receipt)
                 for feature in features:
                     key = _feature_key(feature)
                     prior = merged.get(key)
                     if prior is not None and json.dumps(prior, sort_keys=True) != json.dumps(feature, sort_keys=True):
-                        raise CapQueryUnavailable(f"ECCC CAP identifier {key!r} conflicts across declared boxes", partial_features=merged.values())
+                        raise CapQueryUnavailable(f"ECCC CAP identifier {key!r} conflicts across declared boxes", partial_features=merged.values(), completed_receipts=receipts)
                     if prior is None:
                         merged[key] = feature
         if len(receipts) != len(self.key.urls):
@@ -356,3 +357,33 @@ class CAPQueryService:
             "acquisition": list(entry.receipts), "excluded_features": excluded,
             "source_id": "eccc-cap-alerts", "layer": ALERTS_LAYER,
         }
+
+    def cached_entry(self) -> CAPCacheEntry | None:
+        """Return only a fresh entry; layer listing must never fetch upstream."""
+        with self._lock:
+            return self._entry if self._entry is not None and self._clock() < self._entry.expires_at_monotonic else None
+
+    def partial_response(self, selected_at: datetime, error: CapQueryUnavailable) -> dict[str, object]:
+        """Preserve applicable warnings from completed boxes without claiming domain completeness."""
+        selected_at = selected_at.astimezone(UTC)
+        features = [dict(item) for item in error.partial_features if _applies(item, selected_at)[0]]
+        return {
+            "type": "FeatureCollection", "features": features, "data_mode": "unavailable", "operational": False,
+            "alerts_in_force": None, "all_boxes_succeeded": False, "empty_is_an_answer": False,
+            "selected_time": selected_at.isoformat(), "source_id": "eccc-cap-alerts", "layer": ALERTS_LAYER,
+            "notices": [str(error), "one or more declared Avalon boxes failed; no aggregate all-clear is available"],
+            "acquisition": list(error.completed_receipts),
+        }
+
+
+_SERVICE: CAPQueryService | None = None
+_SERVICE_LOCK = threading.Lock()
+
+
+def cap_query_service() -> CAPQueryService:
+    global _SERVICE
+    if _SERVICE is None:
+        with _SERVICE_LOCK:
+            if _SERVICE is None:
+                _SERVICE = CAPQueryService()
+    return _SERVICE
