@@ -20,6 +20,7 @@ import xarray
 from fastapi.testclient import TestClient
 
 import weather_api.app  # noqa: F401
+import weather_api.swpc_kp_query as kp_query_module
 from ingest.store import CurrentArtifact
 from weather_api.app import PREFIX, app
 from weather_api.fixtures import now
@@ -30,6 +31,11 @@ api_module = _sys.modules["weather_api.app"]
 client = TestClient(app)
 
 ST_JOHNS = (47.5615, -52.7126)
+
+
+def space_weather(at: datetime | None = None):
+    instant = at or now()
+    return client.get(f"{PREFIX}/space-weather", params={"at": instant.isoformat()})
 
 
 # --- artifacts and datasets ------------------------------------------------
@@ -132,6 +138,13 @@ def use_store(monkeypatch, data_mode, store) -> None:
     data_mode("live")
     monkeypatch.setattr(api_module, "live_store", lambda: store)
     monkeypatch.setattr(api_module, "_proxied_forecast_layers", lambda: ([], []))
+    class DemandKp:
+        def series(self, at):
+            return (
+                api_module._kp_series(store.read_series("noaa-swpc-kp", "kp_observed"), at, with_status=False, name="kp_observed"),
+                api_module._kp_series(store.read_series("noaa-swpc-kp", "kp_forecast"), at, with_status=True, name="kp_forecast"),
+            )
+    monkeypatch.setattr(kp_query_module, "swpc_kp_query_service", lambda: DemandKp())
 
 
 def full_store(reference: datetime) -> StubStore:
@@ -144,7 +157,7 @@ def full_store(reference: datetime) -> StubStore:
 def test_space_weather_serves_kp_and_bz_with_provider_status(monkeypatch, data_mode):
     reference = datetime.now(UTC).replace(second=0, microsecond=0)
     use_store(monkeypatch, data_mode, full_store(reference))
-    payload = client.get(f"{PREFIX}/space-weather").json()
+    payload = space_weather(reference).json()
 
     assert payload["data_mode"] == "live"
     assert payload["operational"] is False
@@ -179,7 +192,7 @@ def test_latest_bz_is_the_newest_finite_record_with_its_own_instant(monkeypatch,
     the gap's timestamp."""
     reference = datetime.now(UTC).replace(second=0, microsecond=0)
     use_store(monkeypatch, data_mode, full_store(reference))
-    wind = client.get(f"{PREFIX}/space-weather").json()["solar_wind"]
+    wind = space_weather(reference).json()["solar_wind"]
     assert wind["bz_gsm_nt"] == -4.1
     measured = datetime.fromisoformat(wind["measured_at"]).astimezone(UTC)
     assert measured == reference - timedelta(minutes=1)
@@ -189,7 +202,7 @@ def test_all_gap_solar_wind_is_absent_never_zero(monkeypatch, data_mode):
     reference = datetime.now(UTC).replace(second=0, microsecond=0)
     store = StubStore([kp_observed_pair(reference), solar_wind_pair(reference, bz=[numpy.nan, numpy.nan, numpy.nan])])
     use_store(monkeypatch, data_mode, store)
-    wind = client.get(f"{PREFIX}/space-weather").json()["solar_wind"]
+    wind = space_weather(reference).json()["solar_wind"]
     assert wind["available"] is False
     assert wind["bz_gsm_nt"] is None
     assert any("gap" in notice and "never zero" in notice for notice in wind["notices"])
@@ -199,7 +212,7 @@ def test_stale_solar_wind_is_marked_stale_with_its_age(monkeypatch, data_mode):
     reference = datetime.now(UTC).replace(second=0, microsecond=0)
     store = StubStore([solar_wind_pair(reference, offset=timedelta(hours=2))])
     use_store(monkeypatch, data_mode, store)
-    wind = client.get(f"{PREFIX}/space-weather").json()["solar_wind"]
+    wind = space_weather(reference).json()["solar_wind"]
     assert wind["available"] is True
     assert wind["freshness"]["status"] == "stale"
     assert wind["freshness"]["age_seconds"] >= 7000
@@ -210,7 +223,7 @@ def test_forecast_feed_absent_keeps_the_observed_series(monkeypatch, data_mode):
     reference = datetime.now(UTC).replace(second=0, microsecond=0)
     store = StubStore([kp_observed_pair(reference)])
     use_store(monkeypatch, data_mode, store)
-    payload = client.get(f"{PREFIX}/space-weather").json()
+    payload = space_weather(reference).json()
     assert payload["data_mode"] == "live"
     assert payload["kp_observed"]["available"] is True
     forecast = payload["kp_forecast"]
@@ -221,7 +234,7 @@ def test_forecast_feed_absent_keeps_the_observed_series(monkeypatch, data_mode):
 
 def test_nothing_published_is_absent_series_with_notices(monkeypatch, data_mode):
     use_store(monkeypatch, data_mode, StubStore([]))
-    payload = client.get(f"{PREFIX}/space-weather").json()
+    payload = space_weather().json()
     assert payload["data_mode"] == "unavailable"
     for key in ("kp_observed", "kp_forecast"):
         assert payload[key]["available"] is False
@@ -233,7 +246,7 @@ def test_nothing_published_is_absent_series_with_notices(monkeypatch, data_mode)
 
 
 def test_fixture_mode_fails_closed_with_no_invented_indices():
-    payload = client.get(f"{PREFIX}/space-weather").json()
+    payload = space_weather().json()
     assert payload["data_mode"] == "unavailable"
     assert payload["kp_observed"]["available"] is False
     assert payload["solar_wind"]["bz_gsm_nt"] is None
@@ -242,7 +255,7 @@ def test_fixture_mode_fails_closed_with_no_invented_indices():
 
 def test_unconfigured_mode_fails_closed(data_mode):
     data_mode(None)
-    payload = client.get(f"{PREFIX}/space-weather").json()
+    payload = space_weather().json()
     assert payload["data_mode"] == "unavailable"
     assert any("fails closed" in notice for notice in payload["notices"])
 

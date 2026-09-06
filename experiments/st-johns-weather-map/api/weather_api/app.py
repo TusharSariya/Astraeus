@@ -2322,36 +2322,45 @@ def _flag_bool(series: SeriesData, variable: str, index: int) -> bool | None:
 
 
 @app.get(f"{PREFIX}/space-weather", response_model=SpaceWeatherResponse)
-def get_space_weather() -> SpaceWeatherResponse:
+def get_space_weather(at: datetime = Query(..., description="Aware selected evidence instant")) -> SpaceWeatherResponse:
     """Latest Bz, the observed Kp series, and the provider's Kp outlook.
 
     Every value is read from the published SWPC artifacts through the same
     integrity-checked path ``/point`` uses, minus any spatial claim. Fixture
     mode fails closed: no fixture space weather exists, and none is invented.
     """
-    reference = datetime.now(timezone.utc)
+    if at.tzinfo is None:
+        raise HTTPException(status_code=422, detail="at must include a UTC offset")
+    reference = at.astimezone(timezone.utc)
     mode = configured_mode()
     if mode == FIXTURE_MODE:
         return _unavailable_space_weather(reference, "no fixture space weather exists; fixture mode answers unavailable rather than inventing planetary indices")
     if mode != LIVE_MODE:
         return _unavailable_space_weather(reference, "WEATHER_DATA_MODE is missing or malformed; this deployment fails closed")
 
-    store = live_store()
-    if store is None:
-        return _unavailable_space_weather(reference, "no live artifact store is reachable; no space-weather series can be read")
-    store.skipped = []
+    from .swpc_kp_query import SWPCKpUnavailable, swpc_kp_query_service  # noqa: PLC0415
     try:
-        kp_observed_data = store.read_series(SWPC_KP_SOURCE, "kp_observed")
-        kp_forecast_data = store.read_series(SWPC_KP_SOURCE, "kp_forecast")
-        solar_wind_data = store.read_series(SWPC_RTSW_SOURCE, "solar_wind")
-    except StoreUnavailable as error:
-        return _unavailable_space_weather(reference, f"the object store is unreachable: {error}")
-    except Exception:
-        LOGGER.exception("space-weather series could not be read")
-        return _unavailable_space_weather(reference, "the live artifact store raised while reading the space-weather series")
+        kp_observed, kp_forecast = swpc_kp_query_service().series(reference)
+    except (SWPCKpUnavailable, ValueError) as error:
+        kp_observed = _absent_series(SWPC_KP_SOURCE, str(error))
+        kp_forecast = _absent_series(SWPC_KP_SOURCE, str(error))
 
-    kp_observed = _kp_series(kp_observed_data, reference, with_status=False, name="kp_observed")
-    kp_forecast = _kp_series(kp_forecast_data, reference, with_status=True, name="kp_forecast")
+    # Solar wind has not migrated in this source-local slice. Its retained
+    # read is independent and may fail without erasing demand-backed Kp.
+    store = live_store()
+    solar_wind_data = None
+    store_notices: list[str] = []
+    if store is not None:
+        store.skipped = []
+    try:
+        if store is not None:
+            solar_wind_data = store.read_series(SWPC_RTSW_SOURCE, "solar_wind")
+    except StoreUnavailable as error:
+        store_notices.append(f"solar-wind retained store is unreachable: {error}")
+    except Exception:
+        LOGGER.exception("solar-wind series could not be read")
+        store_notices.append("the retained store raised while reading solar wind")
+
     solar_wind = _solar_wind_latest(solar_wind_data, reference)
     available = kp_observed.available or kp_forecast.available or solar_wind.available
     return SpaceWeatherResponse(
@@ -2360,7 +2369,7 @@ def get_space_weather() -> SpaceWeatherResponse:
         kp_observed=kp_observed,
         kp_forecast=kp_forecast,
         solar_wind=solar_wind,
-        notices=skip_notices(store) if available else [*skip_notices(store), "no SWPC space-weather artifact is currently published; every series is absent and nothing is invented"],
+        notices=[*(skip_notices(store) if store is not None else []), *store_notices] if available else [*store_notices, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
     )
 
 
