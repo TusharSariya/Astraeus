@@ -181,6 +181,7 @@ def test_transport_failure_is_independently_unavailable():
     (lambda rows: rows[0].__setitem__("bt", "6.2"), "not finite numeric or null"),
     (lambda rows: rows[0].__setitem__("active", 1), "not boolean or null"),
     (lambda rows: rows.append(dict(rows[0])), "duplicates native time/source"),
+    (lambda rows: rows.append({**rows[0], "time_tag": f"{rows[0]['time_tag']}+00:00"}), "duplicates native time/source"),
     (lambda rows: rows[0].__setitem__("time_tag", "not-a-time"), "invalid timestamp"),
 ])
 def test_every_native_row_field_and_identity_validates_without_silent_drop(mutation, message):

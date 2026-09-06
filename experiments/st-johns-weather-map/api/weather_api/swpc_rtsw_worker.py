@@ -21,7 +21,7 @@ def validated(raw: bytes):
         stamp=parse_time(row["time_tag"]) if isinstance(row.get("time_tag"),str) else None
         if stamp is None or stamp.tzinfo is None: raise ValueError(f"row {i} has an invalid timestamp")
         if not isinstance(row.get("source"),str) or not row["source"]: raise ValueError(f"row {i} has invalid source")
-        ident=(row["time_tag"],row["source"])
+        ident=(stamp,row["source"])
         if ident in seen: raise ValueError(f"row {i} duplicates native time/source identity")
         seen.add(ident)
         for field in RTSW_MAG_FIELDS:
