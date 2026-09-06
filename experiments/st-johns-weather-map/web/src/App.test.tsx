@@ -30,7 +30,7 @@ const classed = (fields: unknown[]): unknown[] => fields.map((field) => {
   return { ...record, provenance: { ...provenance, evidence_class: 'retrieved' } }
 })
 
-const apiPoint = (fields: unknown[] = [], selection = { mode: 'fallback', badge: 'HRDPS primary - consensus unavailable', reason: 'test' }, dataMode: string | null = 'live') => {
+const apiPoint = (fields: unknown[] = [], selection: Record<string, unknown> = { mode: 'fallback', badge: 'HRDPS primary - consensus unavailable', reason: 'test' }, dataMode: string | null = 'live') => {
   const body: Record<string, unknown> = { latitude: 47.6186, longitude: -52.7519, valid_time: '2026-08-29T15:00:00Z', selection, fields: classed(fields) }
   if (dataMode !== null) body.data_mode = dataMode
   return body

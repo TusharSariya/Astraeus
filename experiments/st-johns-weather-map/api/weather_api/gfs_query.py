@@ -231,6 +231,7 @@ class GFSQueryCoordinator:
                 dataset = xarray.open_zarr(zipped, consolidated=False)
                 try:
                     provenance = dict(entry.provenance[logical_name])
+                    provenance.setdefault("run_time", entry.run_time.isoformat())
                     artifact = SimpleNamespace(
                         source_id="noaa-gfs",
                         logical_name=logical_name,

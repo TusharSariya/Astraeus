@@ -644,6 +644,7 @@ class NOAAS3Adapter:
 
         provenance = {
             "source_id": self.source_id,
+            "run_time": run_dt.isoformat(),
             "producer": "NOAA / NCEP",
             "product": "Global Forecast System (GFS 0.25 deg)",
             "native_resolution": "0.25 deg (~25 km)",

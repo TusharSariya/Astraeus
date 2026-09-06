@@ -219,6 +219,8 @@ def test_cached_native_payload_uses_existing_point_evidence_builder(tmp_path):
     assert temperature.provenance.source_id == "noaa-gfs"
     assert temperature.provenance.valid_time == valid_time
     assert temperature.provenance.run_time == run_time
+    assert temperature.provenance.run_stale is False
+    assert temperature.provenance.run_stale_reason is None
     assert sources == ["noaa-gfs"]
 
 
@@ -256,6 +258,8 @@ def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_
     assert response.data_mode.value == "live"
     assert response.selection.selected_source_id == "noaa-gfs"
     assert response.fields[0].provenance.valid_time == valid_time
+    assert response.fields[0].provenance.run_stale is False
+    assert response.fields[0].provenance.run_stale_reason is None
     assert any("no temporal interpolation" in notice for notice in response.notices)
 
 
