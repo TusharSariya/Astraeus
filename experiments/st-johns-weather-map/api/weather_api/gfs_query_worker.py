@@ -33,7 +33,9 @@ def main() -> None:
     detail["idx_text_by_lead"] = {int(key): value for key, value in retained.items()}
     candidate = RunCandidate(request["provider_run_id"], run_time, list(request["urls"]), detail)
     with tempfile.TemporaryDirectory(prefix="gfs-demand-child-", dir=output.parent) as directory:
-        result = NOAAS3Adapter().fetch_selected(candidate, selected_time, Path(directory))
+        result = NOAAS3Adapter(base_url=request["base_url"], bounds=request["bounds"]).fetch_selected(
+            candidate, selected_time, Path(directory)
+        )
         artifact_paths = {artifact.payload_path.resolve() for artifact in result.artifacts}
         actual_paths = {path.resolve() for path in Path(directory).iterdir() if path.is_file()}
         if actual_paths != artifact_paths or len(artifact_paths) > 2:

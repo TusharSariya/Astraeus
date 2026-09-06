@@ -295,6 +295,8 @@ class GFSQueryCoordinator:
                     "selected_time": self._selected_time(key, candidate).isoformat(),
                     "urls": candidate.urls,
                     "detail": candidate.detail,
+                    "base_url": self._adapter._base_url,
+                    "bounds": self._adapter._bounds,
                 },
                 default=lambda value: value.isoformat() if isinstance(value, datetime) else str(value),
                 sort_keys=True,
