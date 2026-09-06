@@ -71,7 +71,7 @@ class ProcessAllocationLimits:
 class BoundedProcessResult:
     """A promoted single-file artifact and its bounded machine-readable reply."""
 
-    output_path: Path
+    output_path: Path | None
     stdout: bytes
 
 
@@ -136,17 +136,20 @@ def run_bounded_process(
     *,
     command: Sequence[str],
     stdin: bytes,
-    destination: Path,
+    destination: Path | None,
     limits: ProcessAllocationLimits,
     timeout_seconds: float = 60.0,
+    require_output: bool = True,
 ) -> BoundedProcessResult:
     """Run a one-artifact decoder under kernel limits and atomically promote it.
 
     The child starts in a private sibling workspace and receives the absolute
     path for its only allowed output via a literal ``{output}`` argv item.  It
     receives at most ``stdin_bytes`` before exec, and parent-side pipe readers
-    terminate it before retaining more than either reply bound.  Failure never
-    leaves a destination file or workspace behind.
+    terminate it before retaining more than either reply bound.  A discovery
+    caller may set ``require_output=False`` for a bounded inspect operation;
+    that child must leave no workspace output and returns only ``stdout``.
+    Failure never leaves a destination file or workspace behind.
     """
     limits.validate()
     if not isinstance(stdin, bytes):
@@ -160,9 +163,13 @@ def run_bounded_process(
     if timeout_seconds <= 0:
         raise ValueError("bounded process timeout must be positive")
 
-    destination = Path(destination)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    workspace = Path(tempfile.mkdtemp(prefix="bounded-decode-", dir=destination.parent))
+    if require_output and destination is None:
+        raise ValueError("a bounded artifact decoder requires a destination")
+    destination_path = None if destination is None else Path(destination)
+    if destination_path is not None:
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+    workspace_parent = None if destination_path is None else destination_path.parent
+    workspace = Path(tempfile.mkdtemp(prefix="bounded-decode-", dir=workspace_parent))
     output = workspace / "artifact"
     stdout = bytearray()
     stderr = bytearray()
@@ -185,6 +192,8 @@ def run_bounded_process(
             # address-space limit.  Treat that as unavailable rather than
             # running a decoder under an imagined limit.
             raise BoundedProcessUnavailable("runtime rejected required kernel allocation limits") from error
+        except OSError as error:
+            raise BoundedProcessError(f"could not launch bounded decoder: {error}") from error
         assert process.stdin is not None
         assert process.stdout is not None
         assert process.stderr is not None
@@ -227,12 +236,17 @@ def run_bounded_process(
                 raise BoundedProcessError(f"bounded decoder ended by {signame}: {stderr.decode(errors='replace')}")
             raise BoundedProcessError(f"bounded decoder exited {exit_code}: {stderr.decode(errors='replace')}")
         workspace_entries = list(workspace.iterdir())
+        if not require_output:
+            if workspace_entries:
+                raise BoundedProcessError("bounded inspect process must not leave workspace files")
+            return BoundedProcessResult(output_path=None, stdout=bytes(stdout))
         if workspace_entries != [output] or output.is_symlink() or not output.is_file():
             raise BoundedProcessError("bounded decoder must leave exactly its one output file in the workspace")
         if output.stat().st_size > limits.output_bytes:
             raise BoundedProcessError("bounded decoder output exceeded its enforced file-size limit")
-        output.replace(destination)
-        return BoundedProcessResult(output_path=destination, stdout=bytes(stdout))
+        assert destination_path is not None
+        output.replace(destination_path)
+        return BoundedProcessResult(output_path=destination_path, stdout=bytes(stdout))
     finally:
         if process is not None and process.poll() is None:
             process.kill()

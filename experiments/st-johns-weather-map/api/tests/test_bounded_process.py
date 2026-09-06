@@ -117,6 +117,19 @@ def test_extra_child_scratch_is_refused_and_cleaned_up(tmp_path: Path) -> None:
     assert _workspaces(tmp_path) == []
 
 
+@requires_enforcement
+def test_bounded_inspection_returns_only_a_capped_result_and_refuses_files(tmp_path: Path) -> None:
+    result = run_bounded_process(
+        command=_command("print('identity')"),
+        stdin=b"raw payload",
+        destination=None,
+        limits=LIMITS,
+        require_output=False,
+    )
+    assert result.output_path is None
+    assert result.stdout == b"identity\n"
+
+
 def test_unsupported_limit_runtime_fails_closed_before_launch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(isolation, "_resource_module", lambda: None)
     with pytest.raises(BoundedProcessUnavailable):
