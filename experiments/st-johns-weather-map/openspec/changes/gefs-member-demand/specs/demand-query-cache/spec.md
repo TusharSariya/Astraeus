@@ -13,7 +13,7 @@ Before discovery or payload, the operation SHALL reserve a finite bound covering
 ### Requirement: GEFS member completeness and native intervals remain explicit
 The response SHALL preserve every returned member identifier and SHALL identify `gec00` as the provider-declared control. Temperature at two metres remains the one mandatory record for admitting a member. A member missing that record SHALL remain absent with its reason. Each of the other six registered records remains optional per member and SHALL carry its own absence reason without erasing an otherwise admitted member. No member or optional value SHALL be reconstructed or replaced from another member. The response SHALL state 31 members declared, the members used for each field, whether each field is partial, whether the control is included, and every known absence reason. It SHALL NOT invent a 31-of-31 eligibility threshold; downstream statistics and consensus SHALL apply only their existing method-specific guards to the resolved member set.
 
-The `total_cloud_mean_6h` record SHALL preserve the exact provider-declared averaging interval. It SHALL NOT be exposed or compared as instantaneous geometric cloud.
+The `total_cloud_mean_6h` record SHALL preserve the exact provider-declared averaging interval start and end parsed from its index label, including the 0-3 hour window at f003 and the labelled window thereafter. It SHALL NOT be exposed or compared as instantaneous geometric cloud.
 
 #### Scenario: A member range fails
 - **WHEN** one declared member cannot return mandatory `temperature_2m`

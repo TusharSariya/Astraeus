@@ -26,7 +26,7 @@ def test_mandatory_temperature_failure_incomplete_but_optional_absence_is_not():
  assert optional.complete and optional.optional_absences[missing]==("dew_point_2m",)
 def test_f003_cloud_interval_is_three_hours_and_malformed_interval_refuses():
  assert entry(key(3)).cloud_intervals[declared_members()[0]]==(RUN,RUN+timedelta(hours=3))
- with pytest.raises(ValueError,match="native cloud interval"):GEFSQueryService(lambda k:entry(k,intervals={k.members[0]:(RUN,RUN)}),preflight=demand_operation_bounds).query(key())
+ with pytest.raises(ValueError,match="cloud interval"):GEFSQueryService(lambda k:entry(k,intervals={k.members[0]:(RUN,RUN)}),preflight=demand_operation_bounds).query(key())
 
 def test_failure_is_cached_until_backoff_deadline():
  now=[0.0]; calls=[]
