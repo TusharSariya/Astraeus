@@ -97,6 +97,38 @@ def test_age_reduces_cache_lifetime_and_redirect_is_refused():
     with pytest.raises(TafQueryUnavailable,match="redirect refused"):
         TafQueryService(client=client(lambda _:httpx.Response(302,headers={"Location":"https://example.test"}))).entry()
 
+def test_invalid_date_and_apparent_age_fail_or_reduce_freshness():
+    with pytest.raises(TafQueryUnavailable,match="invalid Date"):
+        TafQueryService(client=client(lambda _:httpx.Response(200,json=report(),headers={"Cache-Control":"max-age=60","Date":"bad"}))).entry()
+    from email.utils import format_datetime
+    now=datetime.now(UTC)
+    service=TafQueryService(client=client(lambda _:httpx.Response(200,json=report(),headers={"Cache-Control":"max-age=60","Date":format_datetime(now.replace(microsecond=0))})),clock=Clock())
+    entry=service.entry()
+    assert 59 <= entry.expires_at_monotonic-100 <= 60
+
+def test_304_etag_mismatch_and_nonempty_body_fail_closed_without_draining():
+    clock=Clock(); count=0
+    def mismatch(_):
+        nonlocal count; count+=1
+        if count==1: return httpx.Response(200,json=report(),headers={"Cache-Control":"max-age=1","ETag":"\"one\""})
+        return httpx.Response(304,headers={"Cache-Control":"max-age=60","ETag":"\"two\""})
+    service=TafQueryService(client=client(mismatch),clock=clock); service.entry(); clock.value+=2
+    with pytest.raises(TafQueryUnavailable,match="changed the retained ETag"): service.entry()
+    count=0
+    class Stream(httpx.SyncByteStream):
+        yielded=0
+        def __iter__(self):
+            for _ in range(10000):
+                self.yielded+=1; yield b"x"*1024
+    stream=Stream()
+    def body(_):
+        nonlocal count; count+=1
+        if count==1: return httpx.Response(200,json=report(),headers={"Cache-Control":"max-age=1","ETag":"\"one\""})
+        return httpx.Response(304,headers={"Cache-Control":"max-age=60","ETag":"\"one\""},stream=stream)
+    service=TafQueryService(client=client(body),clock=clock); service.entry(); clock.value+=2
+    with pytest.raises(TafQueryUnavailable,match="response body"): service.entry()
+    assert stream.yielded==1
+
 def test_timestamp_outside_report_is_distinct_from_provider_failure():
     service=TafQueryService(client=client(lambda _:httpx.Response(200,json=report(),headers={"Cache-Control":"max-age=60"})),clock=Clock())
     response=service.query("CYYT",datetime(2026,9,7,12,tzinfo=UTC))

@@ -178,8 +178,7 @@ class TafQueryService:
         with self._client.stream("GET", AWC_TAF_URL, headers=request_headers) as response:
             completed: datetime
             if response.status_code == 304:
-                body_size = sum(len(chunk) for chunk in response.iter_bytes(1024))
-                if body_size:
+                if next(response.iter_bytes(1), b""):
                     raise TafQueryUnavailable("AWC TAF 304 unexpectedly carried a response body")
                 completed = datetime.now(UTC)
                 if prior is None:
