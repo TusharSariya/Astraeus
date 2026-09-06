@@ -111,7 +111,7 @@ function routedFetch(routes: { point?: unknown; profile?: unknown; layers?: unkn
     if (url.includes('/space-weather')) return response(routes.spaceWeather ?? liveSpaceWeather)
     if (url.includes('/astronomy')) return response(routes.astronomy ?? liveAstronomy)
     if (url.includes('/sources/status')) return response(routes.sources ?? sourceStatus)
-    if (url.includes('/profile')) return response(routes.profile ?? { valid_time: NOW, levels: [] })
+    if (url.includes('/profile')) return response(routes.profile ?? { valid_time: '2026-09-06T19:00:00Z', levels: [] })
     if (url.includes('/point')) return response(routes.point ?? apiPoint())
     if (url.includes('/layers')) return response(routes.layers ?? emptyLayers)
     if (url.includes('/catalog')) return response(routes.catalog ?? emptyCatalog)

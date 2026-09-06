@@ -50,7 +50,7 @@ it('maps native level-qualified HRDPS profile fields into the expert table', asy
     ] }],
   }), { status: 200, headers: { 'content-type': 'application/json' } })))
   await expect(loadProfile(
-    { id: 'cyyt', name: 'CYYT', latitude: 47.6, longitude: -52.7 },
+    { id: 'cyyt', name: 'CYYT', latitude: 47.6, longitude: -52.7, kind: 'airport' },
     '2026-09-06T19:00:00Z', 'HRDPS',
   )).resolves.toEqual({
     valid_time: '2026-09-06T19:00:00Z',
