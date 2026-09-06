@@ -9,14 +9,15 @@ make an artifact publishable.
 
 ## Recommendation
 
-Decide only contracts that immediately unlock a complete path into the existing
-application. Accept the RAQDPS/RDAQA field package in PR172 and the source-specific
-SST freshness package in PR179. Accept the structural GeoJSON package in PR168
-only for a bounded CAP-alert implementation through the existing feature/layer
-surface. Defer PR167 because its reference inputs have no existing weather-view
-consumer. Defer PR175 until redistribution authority for the rendered images and
-an existing-web display path are both pinned; image structure alone cannot grant
-rights or make a source visible.
+Decide only contracts that remove a concrete blocker on a complete path into the
+existing application. Accept the RAQDPS/RDAQA field package in PR172 and the
+source-specific SST freshness package in PR179. Accept the structural GeoJSON
+package in PR168 only for a bounded CAP-alert implementation, while recognizing
+that its new snapshot-feature route still needs existing-client wiring. Defer
+PR167 because its reference inputs have no existing weather-view consumer. Defer
+PR175 until provider terms or permission establish that rendered-image display
+is allowed and an existing-web display path is pinned; image structure alone
+cannot grant rights or make a source visible.
 
 These are five independent representation or policy choices, not one shared
 manifest framework. None authorizes science, scoring, operational promotion, or
@@ -57,23 +58,28 @@ unmeasured extra cycle.
 **Owner question 2:** Approve PR179's 60-hour `daily_l4_analysis` ceiling for only
 OSTIA and OISST?
 
-### 3. PR168: native GeoJSON alerts — accept narrowly for CAP feature delivery
+### 3. PR168: native GeoJSON alerts — accept with its new snapshot route explicit
 
-The existing application already has layer/feature semantics for GeoJSON. Native
-CAP properties can remain source fields without inventing canonical hazard
-meaning. The minimum contract is structural validation, provider QC unknown,
-producer times only when present, retrieval time used only as provenance, a
-24-hour acquisition-age refusal for untimed query snapshots, bounded artifact
-size, and current plus previous retention with the previous revision audit-only.
+The application has general layer/feature semantics for timed GeoJSON, but its
+current `/features?valid_time=` route refuses untimed query snapshots and the
+existing client does not call PR168's proposed
+`GET /layers/{layer_id}/snapshots/{provider_run_id}/features` route. PR168 is an
+indivisible package: structural validation, provider QC unknown, producer times
+only when present, retrieval time used only as provenance, a 24-hour
+acquisition-age refusal for untimed query snapshots, bounded artifact size,
+current plus previous retention with the previous revision audit-only, and that
+immutable snapshot-route identity. Native CAP properties remain source fields
+without invented canonical hazard meaning.
 
 Activation still needs populated-response size evidence; five empty seasonal
 collections cannot justify the 40 MiB ceiling. Acceptance does not authorize
 SCRIBE or unknown-schema products and does not translate alerts into scientific
 weather fields.
 
-**Owner question 3:** Approve PR168's native structural GeoJSON branch only for
-bounded CAP-alert feature/layer delivery, contingent on measured populated-size
-bounds?
+**Owner question 3:** Approve PR168's indivisible native structural GeoJSON and
+snapshot-feature-route package for bounded CAP alerts, contingent on populated-
+response size bounds and subsequent wiring of that route into the existing
+client?
 
 ### 4. PR175: Holyrood rendered GIFs — defer pending rights and a current UI path
 
@@ -85,9 +91,11 @@ notice, and the proposal adds revision-addressed routes that the existing web do
 not consume. Accepting image structure alone would not resolve redistribution or
 complete provider-to-existing-app delivery.
 
-**Owner question 4:** Keep PR175 deferred until a cited redistribution basis and
-a minimal existing-web layer route are supplied, or explicitly authorize
-local-only experimental display under the stated terms?
+**Owner question 4:** Keep PR175 deferred until cited provider terms or permission
+establish that local rendered-image display is allowed and a minimal existing-web
+layer route is supplied? Project-owner authorization alone cannot waive the
+provider's rights; any restricted own-reader treatment must remain conditional on
+recorded terms permitting that use.
 
 ### 5. PR167: IERS/NAIF reference inputs — defer until a named consumer exists
 
