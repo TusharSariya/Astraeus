@@ -43,7 +43,7 @@ export interface FieldCatalogueCopy {
 export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
   "version": "1.0.0",
   "asOf": "2026-09-02",
-  "fingerprint": "7498c58e2c6823ebdd7d3b6da5eb5b688031bb46c8b3b66ca6f9983da37927d2",
+  "fingerprint": "b63b59d7c09943bdb429019292b4a650c918ad95e931dd55307740b3f95302a9",
   "families": [
     {
       "name": "air_quality",
@@ -57,8 +57,10 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "nitrogen_dioxide_mass": "Nitrogen dioxide mass concentration at the surface.",
         "optical_depth": "Aerosol optical depth at a stated wavelength.",
         "ozone_mass": "Ozone mass concentration at the surface.",
+        "ozone_mole_fraction": "Ozone mole fraction at the surface; not interchangeable with mass concentration without atmospheric state.",
         "sulphur_dioxide_mass": "Sulphur dioxide mass concentration at the surface.",
-        "surface_mass": "Mass concentration at the surface."
+        "surface_mass": "Mass concentration at the surface.",
+        "surface_mass_24h_mean": "Mass concentration at the surface as a trailing 24-hour running mean; never an instantaneous value."
       }
     },
     {
@@ -1129,6 +1131,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "description": "Surface ozone mass concentration."
     },
     {
+      "key": "ozone_surface_mole_fraction",
+      "family": "air_quality",
+      "quantity": "surface ozone mole fraction",
+      "units": "nmol mol-1",
+      "level": "surface",
+      "comparabilityGroup": "ozone_mole_fraction",
+      "description": "Surface ozone reported in ppb, retained as nmol/mol without an atmosphere-dependent mass conversion."
+    },
+    {
       "key": "pm10_surface",
       "family": "air_quality",
       "quantity": "surface PM10 mass concentration",
@@ -1154,6 +1165,15 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "surface",
       "comparabilityGroup": "surface_mass",
       "description": "Surface fine particulate mass concentration (RAQDPS SFC_PM2.5)."
+    },
+    {
+      "key": "pm2_5_surface_24h_mean",
+      "family": "air_quality",
+      "quantity": "24-hour running-mean surface PM2.5 mass concentration",
+      "units": "kg m-3",
+      "level": "surface",
+      "comparabilityGroup": "surface_mass_24h_mean",
+      "description": "A producer-published 24-hour running mean, not an instantaneous concentration."
     },
     {
       "key": "precipitable_water",
