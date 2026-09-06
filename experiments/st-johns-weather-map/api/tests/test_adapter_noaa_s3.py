@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import os
@@ -18,14 +18,39 @@ from ingest.adapters.noaa_s3 import (
     GFS_MANIFEST,
     GFS_IDX_SELECTORS,
     MAX_BYTES_PER_LEAD,
+    MAX_IDX_BYTES,
     NOAAS3Adapter,
+    gfs_native_lead,
     select_gfs_ranges,
 )
-from ingest.contract import AdapterUnavailable, FetchWindow
+from ingest.contract import AdapterUnavailable, FetchWindow, RunCandidate
 from ingest.grib import GribError, selected_bytes
 from ingest.http import PoliteClient, USER_AGENT
 
 UTC = timezone.utc
+
+
+@pytest.mark.parametrize(
+    ("lead", "accepted"),
+    [(0, True), (120, True), (121, False), (122, False), (123, True), (336, True), (342, True), (384, True), (387, False)],
+)
+def test_gfs_native_lead_resolution(lead: int, accepted: bool):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    selected = run_time + timedelta(hours=lead)
+
+    if accepted:
+        assert gfs_native_lead(run_time, selected) == lead
+    else:
+        with pytest.raises(AdapterUnavailable):
+            gfs_native_lead(run_time, selected)
+
+
+def test_gfs_native_lead_refuses_off_hour_and_naive_time():
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    with pytest.raises(AdapterUnavailable, match="exact GFS valid hour"):
+        gfs_native_lead(run_time, run_time + timedelta(minutes=30))
+    with pytest.raises(AdapterUnavailable, match="timezone-aware"):
+        gfs_native_lead(run_time.replace(tzinfo=None), run_time)
 
 # A condensed but structurally faithful GFS pgrb2 inventory: every message this
 # adapter wants, interleaved with the traps that previously broke it — the same
@@ -276,12 +301,54 @@ def test_noaa_gfs_discover():
     assert candidates[0].run_time == datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
 
 
+def test_noaa_gfs_discovery_caps_index_response(monkeypatch: pytest.MonkeyPatch):
+    client = make_mock_client(
+        {"gfs.20260829/12/atmos/gfs.t12z.pgrb2.0p25.f000.idx": (200, SAMPLE_GFS_IDX)}
+    )
+    calls = []
+    original = client.get_bytes
+
+    def recorded(url, *, max_bytes, chunk_size=1 << 20):
+        calls.append((url, max_bytes))
+        return original(url, max_bytes=max_bytes, chunk_size=chunk_size)
+
+    monkeypatch.setattr(client, "get_bytes", recorded)
+    NOAAS3Adapter(client=client).discover(FetchWindow(now=datetime(2026, 8, 29, 14, tzinfo=UTC)))
+
+    assert calls
+    assert all(bound == MAX_IDX_BYTES for _, bound in calls)
+
+
 def test_noaa_gfs_discover_unavailable():
     client = make_mock_client({})
     adapter = NOAAS3Adapter(client=client)
     window = FetchWindow(now=datetime(2026, 8, 29, 14, tzinfo=UTC))
     with pytest.raises(AdapterUnavailable):
         adapter.discover(window)
+
+
+def test_noaa_gfs_fetch_selected_passes_only_resolved_native_lead(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    candidate = RunCandidate(
+        provider_run_id="gfs-2026090612",
+        run_time=run_time,
+        detail={"date_str": "20260906", "cycle": "12"},
+    )
+    adapter = NOAAS3Adapter()
+    observed = {}
+    sentinel = object()
+
+    def fake_fetch(selected, window, workdir):
+        observed.update(candidate=selected, window=window, workdir=workdir)
+        return sentinel
+
+    monkeypatch.setattr(adapter, "fetch", fake_fetch)
+    result = adapter.fetch_selected(candidate, run_time + timedelta(hours=342), tmp_path)
+
+    assert result is sentinel
+    assert observed["candidate"].detail["requested_leads"] == (342,)
+    assert observed["window"].start == observed["window"].end == run_time + timedelta(hours=342)
+    assert observed["workdir"] == tmp_path
 
 
 def _four_lead_client() -> PoliteClient:
