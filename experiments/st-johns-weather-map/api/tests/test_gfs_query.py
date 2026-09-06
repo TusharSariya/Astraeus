@@ -359,6 +359,31 @@ def test_timeline_lists_actual_native_keys_once_without_fetching_grib_payloads()
     assert "list-type=2" in Adapter.client.calls[0][0]
 
 
+def test_timeline_metadata_does_not_wait_for_a_selected_payload_query():
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    xml = b"<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>gfs.20260906/12/atmos/gfs.t12z.pgrb2.0p25.f006.idx</Key></Contents></ListBucketResult>"
+
+    class Client:
+        def get_bytes_with_receipt(self, _url, *, max_bytes):
+            assert max_bytes == GFS_TIMELINE_LISTING_MAX_BYTES
+            return xml, {"bytes": len(xml)}
+
+    class Adapter:
+        _base_url = "https://example.invalid"
+        def _get_client(self): return Client()
+        def discover(self, _window):
+            return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+
+    coordinator = GFSQueryCoordinator(Adapter(), now=lambda: run_time + timedelta(hours=6))
+    coordinator._lock.acquire()
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            result = pool.submit(coordinator.timeline_times, run_time + timedelta(hours=6)).result(timeout=1)
+    finally:
+        coordinator._lock.release()
+    assert result[0] == (run_time + timedelta(hours=6),)
+
+
 @pytest.mark.parametrize("xml", [
     "<ListBucketResult><IsTruncated>true</IsTruncated></ListBucketResult>",
     "<!DOCTYPE x [<!ENTITY y 'z'>]><ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>",

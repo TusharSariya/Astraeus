@@ -178,6 +178,8 @@ class GFSQueryCoordinator:
         self._clock = clock
         self._now = now
         self._lock = threading.Lock()
+        self._candidate_lock = threading.Lock()
+        self._timeline_lock = threading.Lock()
         self._candidate: tuple[float, RunCandidate] | None = None
         self._indices: OrderedDict[str, tuple[float, str, Mapping[str, object] | None]] = OrderedDict()
         self._timeline: tuple[float, str, tuple[datetime, ...], Mapping[str, object]] | None = None
@@ -187,8 +189,9 @@ class GFSQueryCoordinator:
         self._cache = GFSQueryService(self._load, clock=clock)
 
     def query(self, selected_time: datetime) -> GFSQueryEntry:
-        with self._lock:
+        with self._candidate_lock:
             candidate = self._discover()
+        with self._lock:
             if candidate.run_time is None:
                 raise ValueError("GFS discovery returned no producer run time")
             native_time = gfs_native_time_at_or_before(candidate.run_time, selected_time)
@@ -366,9 +369,13 @@ class GFSQueryCoordinator:
         """Return actual native frame keys from one bounded, coalesced S3 listing."""
         if reference.tzinfo is None:
             raise ValueError("reference must be timezone-aware")
-        with self._lock:
+        current = self._clock()
+        with self._timeline_lock:
+            if self._timeline is not None and current < self._timeline[0]:
+                return self._timeline[2], self._timeline[3]
+        with self._candidate_lock:
             candidate = self._discover()
-            current = self._clock()
+        with self._timeline_lock:
             if self._timeline is not None and current < self._timeline[0] and self._timeline[1] == candidate.provider_run_id:
                 return self._timeline[2], self._timeline[3]
             future = self._timeline_inflight
@@ -420,7 +427,7 @@ class GFSQueryCoordinator:
                 if start <= candidate.run_time + timedelta(hours=lead) <= end
             )
             result = (times, receipt)
-            with self._lock:
+            with self._timeline_lock:
                 self._timeline = (current + GFS_OBJECT_CACHE_TTL_SECONDS, candidate.provider_run_id, times, receipt)
             future.set_result(result)
             return result
@@ -428,7 +435,7 @@ class GFSQueryCoordinator:
             future.set_exception(error)
             raise
         finally:
-            with self._lock:
+            with self._timeline_lock:
                 self._timeline_inflight = None
 
     def _discover(self) -> RunCandidate:

@@ -88,6 +88,15 @@ export function TimelineDock({
     () => planningTierHasCoverage(timeline?.items ?? [], timeline?.boundary ?? null),
     [timeline],
   )
+  const demandAvailability = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const item of timeline?.items ?? []) {
+      for (const product of item.available_products) {
+        counts.set(product, (counts.get(product) ?? 0) + 1)
+      }
+    }
+    return [...counts.entries()]
+  }, [timeline])
   // The rail the scale labels are placed on, measured rather than assumed:
   // the same viewport can give it very different widths depending on whether
   // the conditions strip sits beside it.
@@ -261,6 +270,11 @@ export function TimelineDock({
             {markers.markers.length === 0 && <span className="marker-key-note">No active layer published a frame in this window</span>}
             {markers.axisless.length > 0 && <span className="marker-key-note">No published frame axis: {markers.axisless.join(', ')}</span>}
           </div>
+          {demandAvailability.map(([product, count]) => (
+            <p className="marker-key-note demand-availability" key={product}>
+              {product} demand availability · {count} provider-advertised native {count === 1 ? 'hour' : 'hours'} · metadata only; values are fetched when selected
+            </p>
+          ))}
           {/* When nothing retrieved past the boundary covers any instant, the
               planning side says so plainly rather than drawing an axis that
               implies coverage it does not have (task 4.1). */}

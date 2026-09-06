@@ -689,6 +689,8 @@ export default function App() {
     const controller = new AbortController()
     // Availability metadata follows the selected source. It never downloads a
     // model payload and an obsolete request cannot overwrite a newer choice.
+    setTimeline(null)
+    setTimelineNotice(selectedProduct ? `Loading ${selectedProduct} demand availability…` : null)
     loadTimeline(selectedProduct ?? undefined, controller.signal).then((result) => {
       if (!controller.signal.aborted) {
         setTimeline(result.timeline)
