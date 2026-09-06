@@ -9,10 +9,12 @@ Captured 2026-09-05 for issue 150. This is experimental evidence under issue
 | `gfz-hp60-current` | GFZ current JSON selection, `Hp60`, `datetime`, `meta` | producer instants at 1-hour cadence; Hp60 is dimensionless | the response declares no per-value status; provenance records `status_declared: false` | `catalogued`; experimental reader is not scheduler-registered |
 
 Both anonymous HTTPS responses declared `meta.license: CC BY 4.0`. The readers
-fail closed on another licence, missing or misaligned arrays, repeated or
-unparseable instants, an empty selection, a stale newest instant, non-JSON,
+fail closed on another licence, missing or misaligned arrays, repeated instants, an entirely
+unparseable selection, an empty selection, a stale newest instant, non-JSON,
 HTTP failure, or the shared small-feed byte ceiling. Requests are clamped to
-24 hours before retrieval. They store only a coordinate-free `valid_time`
+24 hours before retrieval. Individual unparseable timestamps are omitted by
+the shared reader; it refuses the response when no parseable timestamp remains.
+They store only a coordinate-free `valid_time`
 series with planetary scope; retrieval time remains separate from producer
 valid time and the newest producer instant is the provider run identifier.
 
