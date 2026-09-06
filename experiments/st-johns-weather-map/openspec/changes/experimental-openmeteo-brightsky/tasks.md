@@ -31,4 +31,4 @@ These open tickets track remaining work beyond the completed isolated acquisitio
 
 - [ ] [Complete Open-Meteo and Bright Sky experimental source admission](https://github.com/TusharSariya/Astraeus/issues/142).
 - [ ] [Resolve missing JMA pressure levels in the free acquisition path](https://github.com/TusharSariya/Astraeus/issues/143).
-- [ ] [Resolve missing MOSMIX gusts for the St Johns station](https://github.com/TusharSariya/Astraeus/issues/144).
+- [x] [Resolve missing MOSMIX gusts for the St Johns station](https://github.com/TusharSariya/Astraeus/issues/144): eight native DWD cycles prove producer-missing `FX1`; no retrieval/decode fix is eligible. The future field-completeness and rotating Bright Sky source-ID rules remain owner decisions.
