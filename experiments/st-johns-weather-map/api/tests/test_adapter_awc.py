@@ -210,7 +210,8 @@ def test_awc_metar_fetch_creates_valid_zarr_artifact(tmp_path: Path):
     assert "dew_point_2m" in ds.data_vars
     assert "visibility" in ds.data_vars
     assert "total_cloud_okta" in ds.data_vars
-    assert "wind_u_10m" in ds.data_vars
+    assert "wind_speed_10m" in ds.data_vars
+    assert "wind_direction_10m" in ds.data_vars
     assert "mean_sea_level_pressure" in ds.data_vars
 
     # Step 1: 14:00Z -> temp 18.0, dewp 17.0, vis 4SM (~6437m)
@@ -218,6 +219,21 @@ def test_awc_metar_fetch_creates_valid_zarr_artifact(tmp_path: Path):
     assert float(ds["dew_point_2m"].sel(latitude=47.6186, longitude=-52.7519).values[1]) == 17.0
     assert float(ds["visibility"].sel(latitude=47.6186, longitude=-52.7519).values[1]) == pytest.approx(4 * 1609.344)
     assert ds["temperature_2m"].attrs["units"] == "degC"
+
+
+def test_metar_variable_wind_keeps_retrieved_speed_and_no_direction(tmp_path: Path):
+    record = dict(SAMPLE_METAR_JSON[0], wdir="VRB")
+    adapter = AWCMetarAdapter(client=make_mock_client([record]))
+    window = FetchWindow(now=datetime(2026, 8, 29, 15, tzinfo=UTC), back_hours=3, forward_hours=24)
+    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+    zipped = zarr.storage.ZipStore(str(result.artifacts[0].payload_path), mode="r")
+    dataset = xarray.open_zarr(zipped, consolidated=False)
+    try:
+        assert float(dataset["wind_speed_10m"].values[0, 0, 0]) == pytest.approx(10 * 0.514444)
+        assert numpy.isnan(dataset["wind_direction_10m"].values[0, 0, 0])
+    finally:
+        dataset.close()
+        zipped.close()
 
 
 SAMPLE_TAF_JSON = [

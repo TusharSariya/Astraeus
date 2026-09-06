@@ -173,6 +173,10 @@ def test_latest_before_selection_is_normalized_and_sampled_without_artifact_stor
     assert by_name["wind_speed"].value==pytest.approx(5.1)
     assert by_name["wind_gust"].value==pytest.approx(10.28888)
     assert by_name["fog_state"].value=="unknown"
+    assert by_name["wind_speed"].provenance.evidence_class=="retrieved"
+    assert by_name["wind_direction"].provenance.evidence_class=="retrieved"
+    assert by_name["wind_gust"].provenance.evidence_class=="retrieved"
+    assert by_name["fog_state"].provenance.evidence_class=="derived_here"
     assert all(field.provenance.source_id=="awc-metar-speci" for field in fields)
     identity=by_name["temperature"].provenance.native_report
     assert identity.provider_report_id==42

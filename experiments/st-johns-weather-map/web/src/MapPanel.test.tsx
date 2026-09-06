@@ -268,9 +268,9 @@ describe('MapPanel station coverage', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('separates stations with a live ingested source from those without, in text', () => {
+  it('separates stations with a live response-backed source from those without, in text', () => {
     render(panel())
-    expect(screen.getByText(/live ingested source awc-metar-speci, awc-taf/i)).toBeInTheDocument()
+    expect(screen.getByText(/live response-backed source awc-metar-speci, awc-taf/i)).toBeInTheDocument()
     expect(screen.getByText(/smartatlantic-st-johns is catalogued but reported no live retrieval/i)).toBeInTheDocument()
     expect(screen.getByText(/no registry source declares coverage of this place/i)).toBeInTheDocument()
   })
@@ -278,7 +278,7 @@ describe('MapPanel station coverage', () => {
   it('reports coverage as unknown, never as absent, when the status endpoint could not be read', () => {
     render(panel({ sourceStatuses: null }))
     expect(screen.getAllByText(/source status could not be read/i).length).toBe(2)
-    expect(screen.queryByText(/live ingested source/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/live response-backed source/i)).not.toBeInTheDocument()
   })
 
   it('declares every glyph the labels use, keeps the apostrophe in place names, and favours the selected station in collisions', () => {

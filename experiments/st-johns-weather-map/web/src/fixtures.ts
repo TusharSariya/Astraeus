@@ -13,26 +13,34 @@ export const stations: LocationPoint[] = [
   { id: 'cape-spear', name: 'Cape Spear', latitude: 47.523, longitude: -52.622, kind: 'station', sourceIds: [] },
 ]
 
-/** Whether a live ingested source stands behind one picker entry.
+/** Whether live response-backed evidence stands behind one picker entry.
  *
  *  Four states, kept distinct on purpose. "We could not read the status
  *  endpoint" is not "nothing is live", and "no source claims this place" is not
  *  "a source claims it but has retrieved nothing" — collapsing any pair of them
  *  would let a marker imply coverage that was never established. */
-export function stationCoverage(point: LocationPoint, statuses: SourceStatusItem[] | null): StationCoverage {
+export function stationCoverage(point: LocationPoint, statuses: SourceStatusItem[] | null, responseSourceIds: ReadonlySet<string> = new Set()): StationCoverage {
   const declared = point.sourceIds ?? []
   if (point.kind === 'map') {
     return {
       state: 'no-source',
       short: 'not a station',
-      detail: `${point.name} is a coordinate you chose, not a station. No ingested source observes it; any values shown come from the point request for those coordinates.`,
+      detail: `${point.name} is a coordinate you chose, not a station. No source declares station coverage there; any values shown come from the point request for those coordinates.`,
     }
   }
   if (declared.length === 0) {
     return {
       state: 'no-source',
-      short: 'no ingested source',
-      detail: `${point.name}: no registry source declares coverage of this place, so nothing has been ingested for it. It is offered as a location to query, not as an observing station.`,
+      short: 'no eligible source',
+      detail: `${point.name}: no registry source declares coverage of this place. It is offered as a location to query, not as an observing station.`,
+    }
+  }
+  const demanded = declared.filter((id) => responseSourceIds.has(id))
+  if (demanded.length > 0) {
+    return {
+      state: 'live',
+      short: 'live response',
+      detail: `${point.name}: the selected point response carries live evidence from ${demanded.join(', ')}. This is response-backed demand evidence, not an ingestion-status claim.`,
     }
   }
   if (statuses === null) {
@@ -49,14 +57,14 @@ export function stationCoverage(point: LocationPoint, statuses: SourceStatusItem
     return {
       state: 'live',
       short: 'live source',
-      detail: `${point.name}: live ingested source ${live.map((row) => row.source_id).join(', ')}${newest ? `, last retrieval ${newest}` : ', no retrieval timestamp reported'}.`,
+      detail: `${point.name}: live response-backed source ${live.map((row) => row.source_id).join(', ')}${newest ? `, last retrieval ${newest}` : ', no retrieval timestamp reported'}.`,
     }
   }
   const missing = declared.filter((id) => !statuses.some((status) => status.source_id === id))
   return {
     state: 'declared-not-live',
     short: 'no live retrieval',
-    detail: `${point.name}: ${declared.join(', ')} ${declared.length === 1 ? 'is' : 'are'} catalogued but ${missing.length === declared.length ? 'absent from the status response' : 'reported no live retrieval'}. Nothing has been ingested for this station.`,
+    detail: `${point.name}: ${declared.join(', ')} ${declared.length === 1 ? 'is' : 'are'} catalogued but ${missing.length === declared.length ? 'absent from the status response' : 'reported no live retrieval'}. No response-backed evidence is available for this station.`,
   }
 }
 

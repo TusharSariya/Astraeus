@@ -12,7 +12,7 @@ export interface LocationPoint {
   longitude: number
   kind: 'airport' | 'buoy' | 'station' | 'map'
   /** Registry source IDs whose declared coverage names this place. Empty or
-   *  absent means no ingested source claims it, which the UI must say out loud:
+   *  absent means no registered source claims it, which the UI must say out loud:
    *  a pin on a map reads as coverage whether or not anything is behind it. */
   sourceIds?: string[]
 }
@@ -670,7 +670,7 @@ export interface SourceStatusResult {
   error: string | null
 }
 
-/** Whether a live ingested source stands behind a picker station. */
+/** Whether live response-backed evidence stands behind a picker station. */
 export type StationCoverageState = 'live' | 'declared-not-live' | 'no-source' | 'unknown'
 
 export interface StationCoverage {
