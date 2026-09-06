@@ -1,0 +1,77 @@
+{
+  "classification": "tracking only; source behavior remains experimental and unaccepted",
+  "create_now": [
+    {
+      "key": "eccc_aq",
+      "title": "Implement native RAQDPS and RDAQA fields",
+      "parent_issue": 80,
+      "included_roster_scope": [
+        "eccc-raqdps surface, column, smoke and emissions fields actually published in the selected roster",
+        "eccc-rdaqa preliminary/final and smoke analysis paths"
+      ],
+      "excluded_scope": "HRDPA/HREPA, land analyses, CAP/hazards, CWFIS/FIRMS (owned by the fire-source ticket), superseded standalone RAQDPS-FireWork",
+      "blocked_by_issues": [
+        75,
+        79
+      ]
+    },
+    {
+      "key": "eccc_precip",
+      "title": "Implement HRDPA and HREPA precipitation analyses",
+      "parent_issue": 80,
+      "included_roster_scope": [
+        "eccc-hrdpa selected precipitation amounts and supported intervals",
+        "eccc-hrepa selected ensemble/probability/percentile analysis products with exact semantics"
+      ],
+      "excluded_scope": "RDPA alternate CRS (separate child), land analyses, air quality and derived rain-rate assumptions",
+      "blocked_by_issues": [
+        75,
+        79
+      ]
+    },
+    {
+      "key": "eccc_land",
+      "title": "Implement HRDLPS and CaLDAS land analyses",
+      "parent_issue": 80,
+      "included_roster_scope": [
+        "eccc-hrdlps selected land and surface fields",
+        "eccc-caldas CaLDAS-NSRPS selected analysis fields"
+      ],
+      "excluded_scope": "Atmospheric models, precipitation analyses, air quality and invented soil/snow conversions",
+      "blocked_by_issues": [
+        75,
+        79
+      ]
+    },
+    {
+      "key": "eccc_rdpa",
+      "title": "Resolve and implement native RDPA geometry and units",
+      "parent_issue": 80,
+      "included_roster_scope": [
+        "eccc-rdpa numeric native path; verify advertised EPSG:102978 versus valid native CRS, explicit reprojection or documented alternate public feed",
+        "Retain unknown units as raw experimental evidence only when justified; do not coerce to RDPS or EPSG:4326"
+      ],
+      "excluded_scope": "HRDPA/HREPA and silently relabelling unknown CRS/units",
+      "blocked_by_issues": [
+        75,
+        79
+      ]
+    },
+    {
+      "key": "eccc_public",
+      "title": "Implement ECCC public alerts, outlooks and nowcasting",
+      "parent_issue": 80,
+      "included_roster_scope": [
+        "eccc-cap-alerts CAP weather alerts",
+        "eccc-thunderstorm-outlooks",
+        "eccc-hurricane-products",
+        "eccc-integrated-nowcasting and roster-selected SCRIBE paths only where an actual public numeric/structured feed exists"
+      ],
+      "excluded_scope": "CWFIS/FIRMS and wildfire hotspots (owned by the existing fire-source ticket), aviation products, private feeds and guessed endpoints",
+      "blocked_by_issues": [
+        75,
+        79
+      ]
+    }
+  ]
+}

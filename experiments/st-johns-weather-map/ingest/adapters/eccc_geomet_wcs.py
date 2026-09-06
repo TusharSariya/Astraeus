@@ -81,10 +81,24 @@ GRID_CONTRACTS = {
     "rdps": GridContract("eccc-rdps", "RDPS 10 km", "RDPS_10km", 0.090298, 45, 23),
     "gdps": GridContract("eccc-gdps", "GDPS 15 km", "GDPS_15km", 0.15, 27, 14),
     "geml": GridContract("eccc-gdps", "GEML 25 km", "GDPS-GEML_25km", 0.25, 16, 9),
+    "raqdps": GridContract("eccc-raqdps", "RAQDPS 10 km", "RAQDPS", 0.09, 45, 23),
+    "rdaqa": GridContract("eccc-rdaqa", "RDAQA 10 km", "RDAQA", 0.09, 45, 23),
+    "hrdpa": GridContract("eccc-hrdpa", "HRDPA 2.5 km", "HRDPA", 0.0225, 178, 89),
+    "rdpa": GridContract("eccc-rdpa", "RDPA rotated 10 km", "RDPA", 0.090298, 45, 23),
+    "hrepa": GridContract("eccc-hrepa", "HREPA 2.5 km", "HREPA", 0.0225, 178, 89),
+    "hrdlps": GridContract("eccc-hrdlps", "HRDLPS 2.5 km", "HRDLPS", 0.0225, 178, 89),
+    "caldas": GridContract("eccc-caldas", "CaLDAS-NSRPS 2.5 km", "CaLDAS-NSRPS", 0.0225, 178, 89),
 }
 
 
 def grid_contract_for(coverage_id: str) -> GridContract:
+    # Analyse these exact product families before the forecast prefixes below.
+    # Each keeps its own source identity even where the nominal spacing happens
+    # to match a forecast grid.
+    for name in ("raqdps", "rdaqa", "hrdpa", "rdpa", "hrepa", "hrdlps", "caldas"):
+        contract = GRID_CONTRACTS[name]
+        if coverage_id.startswith(contract.prefix):
+            return contract
     if coverage_id.startswith("HRDPS"):
         return GRID_CONTRACTS["hrdps"]
     if coverage_id.startswith("RDPS"):
@@ -478,12 +492,34 @@ def fetch_artifact(
         "units_recognised": recognised,
         "evidence_classes": ["retrieved"],
         "quality": {"status": "unknown", "flags": ["experimental_source_contract_pending"]},
+        "raw_response": {
+            "retained_path": str(receipt.path),
+            "bytes": receipt.path.stat().st_size,
+            "sha256": hashlib.sha256(receipt.path.read_bytes()).hexdigest(),
+            "finite_cells": int(numpy.isfinite(dataset[field.variable].values).sum()),
+            "null_cells": int(numpy.isnan(dataset[field.variable].values).sum()),
+        },
         "sha256": digest,
         "licence": LICENCE,
         "attribution": ATTRIBUTION,
         "operational": False,
     }
     return Artifact(field.variable, MEDIA_ZARR, output, provenance)
+
+
+def retained_raw_artifact(normalized: Artifact) -> Artifact:
+    """Expose the validated upstream TIFF as a separately stageable artifact."""
+    raw = normalized.provenance.get("raw_response", {})
+    path = Path(str(raw.get("retained_path", "")))
+    if not path.is_file():
+        raise WCSResponseError("validated raw coverage bytes are no longer retained")
+    observed_size = path.stat().st_size
+    observed_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if (observed_size, observed_digest) != (raw.get("bytes"), raw.get("sha256")):
+        raise WCSResponseError("retained raw coverage bytes failed integrity verification")
+    provenance = dict(normalized.provenance)
+    provenance.update({"sha256": observed_digest, "byte_size": observed_size, "representation": "upstream_geotiff"})
+    return Artifact(f"{normalized.logical_name}__raw", "image/tiff", path, provenance)
 
 
 def fetch_pressure_profile_artifact(
