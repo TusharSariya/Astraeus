@@ -91,6 +91,10 @@
 - [x] 5.5 Add the optional complete-operation admission seam for adapters whose
   discovery request is itself the payload: reserve declared store and local
   filesystem allocations before discovery, and hold that reservation and one
-  received-byte counter through fetch and publication. No source uses the seam
-  until its decode-memory and physical-filesystem peak are measured and
-  enforceable; post-allocation measurement is not treated as prevention.
+  received-byte counter through fetch and publication. The experimental SWPC
+  Kp-1m adapter uses the seam only where Linux can lock `RLIMIT_AS` and
+  `RLIMIT_FSIZE` for its isolated decoder. Its retained response and single
+  output are each limited to 512 KiB, decoder address space to 256 MiB, and
+  measured ext4 workspace overhead to one 4 KiB margin. Unsupported runtimes
+  fail closed. These kernel limits prevent allocation; post-allocation
+  measurement alone is not treated as prevention.

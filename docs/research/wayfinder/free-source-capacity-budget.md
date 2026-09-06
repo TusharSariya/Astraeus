@@ -239,3 +239,55 @@ Both commands passed on 2026-09-05; `specctl` reported 0 errors and 0 warnings.
 
 Spec-Impact: none. This is research and owner decision preparation; the linked
 OpenSpec change remains a draft requirement change.
+
+## Experimental SWPC Kp-1m enforced allocation study (2026-09-06)
+
+Issue 159's first source-specific implementation uses the complete-operation
+admission seam for `noaa-swpc-kp-1m`. The payload-bearing discovery response is
+retrieved once and retained through normalization; discovery does not perform a
+second request or silently discard rows. The worker reserves 512 KiB received,
+512 KiB hot-store output, 512 KiB local output and a 4 KiB measured filesystem
+margin before that request.
+
+The retained live response completed at `2026-09-06T04:25:02Z` with provider
+`Last-Modified: Sun, 06 Sep 2026 04:23:03 GMT`. It was 28,003 bytes and contained
+359 rows (SHA-256
+`c60893f906fdcf5eada86433673f6dbcfff0d52cd5dc765a9995425ef3699c3c`). Every
+raw timestamp, Kp value, estimate and status survived normalization and API
+readback; the canonical all-row digest was
+`ff79d315bc2e66d7ead1df46e7d00e259665b7b0ab65287b758b84d276a98927` with zero
+mismatches. The bounded-size study then constructed the largest valid document
+below the 512 KiB transport ceiling: 524,253 bytes and 6,828 distinct rows. It
+produced a 49,282-byte archive occupying 53,248 bytes on ext4, with a 191,246-byte
+bounded result channel. The implementation validates every input row and
+refuses malformed, duplicate-time, non-finite or unsupported rows; it never
+truncates to meet a bound.
+
+The isolated decoder receives the already bounded body through a 512 KiB stdin
+channel, returns at most 512 KiB on stdout and 64 KiB on stderr, and writes one
+artifact directly from a memory-backed Zarr store. Linux applies locked hard
+limits before `exec`: 256 MiB `RLIMIT_AS` and 512 KiB `RLIMIT_FSIZE`. This is an
+address-space ceiling, not a total-memory or RSS claim. A binary study failed at
+204 MiB and succeeded at 208 MiB; five fresh 256 MiB runs had container
+parent-plus-child cgroup peaks of 165,548,032, 88,285,184, 88,891,392,
+88,875,008 and 89,333,760 bytes. The chosen 256 MiB value is the enforced
+ceiling above those observations, without deriving or asserting a percentage
+margin.
+
+For local storage, the 512 KiB file-size ceiling is already a multiple of the
+measured 4 KiB ext4 allocation unit. One private workspace directory adds one
+4 KiB allocation; atomic same-filesystem rename promotes the one file without
+a second file copy. Thus the complete local bound is 512 KiB plus 4 KiB, while
+the retained store bound is 512 KiB. Any child scratch file, second output,
+oversized pipe, timeout, limit failure or invalid reply refuses the run and
+removes both workspace and destination. Darwin exposes but rejects the required
+locked address-space limit and therefore fails closed.
+
+Target verification used the existing local Linux worker image. The generic
+process suite passed 8 tests with the one Darwin-only rejection test skipped;
+it exercised actual address-space exhaustion, file-size exhaustion, reply-pipe
+limits, scratch refusal, atomic promotion and cleanup. The retained evidence is
+under `/tmp/kp159-20260906/`, `/tmp/kp159-child-measure/` and
+`/tmp/kp159-isolated-final2/`. The final isolated artifact has the same
+`f71275ad...` SHA-256 as the artifact used for the 359-row API comparison;
+provider payloads remain outside Git.

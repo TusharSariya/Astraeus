@@ -37,9 +37,11 @@ the payload never does.
 
 from __future__ import annotations
 
-import math
+import hashlib
+import json
 import re
 import shutil
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,12 +53,15 @@ from ingest.contract import (
     MEDIA_ZARR,
     AdapterUnavailable,
     Artifact,
+    DiscoveryBounds,
     FetchWindow,
+    ResourceBounds,
     RunCandidate,
     RunResult,
 )
 from ingest.grib import write_zarr
-from ingest.http import PoliteClient
+from ingest.http import MaxBytesExceeded, PoliteClient, RetriesExhausted
+from ingest.isolation import BoundedProcessError, ProcessAllocationLimits, run_bounded_process
 from ingest.registry import register
 from ingest.space_weather import (
     MAX_LARGE_FEED_BYTES,
@@ -98,6 +103,14 @@ KP_CODES = (
     "7P", "8M", "8Z", "8P", "9M", "9Z",
 )
 _KP_CODE_INDEX = {code: index for index, code in enumerate(KP_CODES)}
+KP1M_PROCESS_LIMITS = ProcessAllocationLimits(
+    address_space_bytes=256 * 1024 * 1024,
+    output_bytes=MAX_SMALL_FEED_BYTES,
+    stdin_bytes=MAX_SMALL_FEED_BYTES,
+    stdout_bytes=MAX_SMALL_FEED_BYTES,
+    stderr_bytes=64 * 1024,
+)
+KP1M_FILESYSTEM_MARGIN_BYTES = 4096
 
 #: The GOES X-ray energy bands, as the feed spells them, and the suffix each
 #: one folds into. An energy outside this map is schema drift, not a third
@@ -277,7 +290,7 @@ class SWPCKp1mAdapter:
     """The 1-minute planetary K index, with the provider's own thirds code."""
 
     source_id = "noaa-swpc-kp-1m"
-    adapter_version = "swpc-kp1m-v1"
+    adapter_version = "swpc-kp1m-isolated-v2"
 
     _REQUIRED = ("time_tag", "kp_index", "estimated_kp", "kp")
 
@@ -285,65 +298,88 @@ class SWPCKp1mAdapter:
         self._client = client
         self._url = url
 
+    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
+        return DiscoveryBounds(received_bytes=MAX_SMALL_FEED_BYTES)
+
+    def operation_bounds(self, window: FetchWindow) -> ResourceBounds:
+        return ResourceBounds(
+            store_bytes=KP1M_PROCESS_LIMITS.output_bytes,
+            filesystem_bytes=KP1M_PROCESS_LIMITS.output_bytes,
+            margin_bytes=KP1M_FILESYSTEM_MARGIN_BYTES,
+            received_bytes=MAX_SMALL_FEED_BYTES,
+        )
+
+    def resource_bounds(self, candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
+        return self.operation_bounds(window)
+
+    @staticmethod
+    def _isolated(mode: str, raw: bytes, destination: Path | None):
+        package_root = Path(__file__).resolve().parents[2]
+        launcher = (
+            "import sys; "
+            f"sys.path.insert(0, {str(package_root)!r}); "
+            "from ingest.kp1m_isolated import main; raise SystemExit(main())"
+        )
+        return run_bounded_process(
+            command=[sys.executable, "-c", launcher, mode, "{output}"],
+            stdin=raw,
+            destination=destination,
+            limits=KP1M_PROCESS_LIMITS,
+            timeout_seconds=30,
+            require_output=mode == "normalize",
+        )
+
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
-        payload, receipt = _retrieve(self._client, self._url, MAX_SMALL_FEED_BYTES)
-        rows = records(payload, required=self._REQUIRED)
-        raw_count = len(payload) if isinstance(payload, list) else 0
-        header_rows = 1 if payload and isinstance(payload[0], list) else 0
-        if len(rows) != raw_count - header_rows:
-            raise AdapterUnavailable("SWPC 1-minute Kp contains a malformed or incomplete row; refused without thinning")
-        if not rows:
-            raise AdapterUnavailable("SWPC 1-minute Kp returned no usable records")
-        for index, row in enumerate(rows):
-            if parse_time(row.get("time_tag")) is None:
-                raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has an unparseable time_tag")
-            for field in ("kp_index", "estimated_kp"):
-                value = row.get(field)
-                if value is None or isinstance(value, bool):
-                    raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has invalid {field}")
-                try:
-                    numeric = float(value)
-                except (TypeError, ValueError) as error:
-                    raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has invalid {field}") from error
-                if not math.isfinite(numeric):
-                    raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has non-finite {field}")
-            if str(row.get("kp", "")).strip() not in _KP_CODE_INDEX:
-                raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has an unsupported kp code")
-        timed = _timed_rows(rows, "time_tag")
-        if not timed:
-            raise AdapterUnavailable("SWPC 1-minute Kp records carry no parseable time_tag")
-        times = [stamp for stamp, _ in timed]
-        _refuse_if_stale(times[-1], window, "SWPC 1-minute Kp")
-        return [_candidate("swpc-kp1m", times[-1], self._url, {"records": [row for _, row in timed], "receipt": receipt}, times)]
+        client = self._client or PoliteClient()
+        try:
+            raw, headers = client.get_bytes_with_headers(self._url, max_bytes=MAX_SMALL_FEED_BYTES)
+            completed_at = datetime.now(UTC)
+            inspected = self._isolated("inspect", raw, None)
+            metadata = json.loads(inspected.stdout)
+            times = [parse_time(value) for value in metadata["times"]]
+            if not times or any(stamp is None for stamp in times):
+                raise AdapterUnavailable("isolated Kp inspection returned invalid times")
+        except (
+            BoundedProcessError,
+            KeyError,
+            MaxBytesExceeded,
+            OSError,
+            RetriesExhausted,
+            TypeError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            raise AdapterUnavailable(f"SWPC 1-minute Kp isolated discovery failed: {error}") from error
+        valid_times = [stamp for stamp in times if stamp is not None]
+        _refuse_if_stale(valid_times[-1], window, "SWPC 1-minute Kp")
+        receipt = FeedReceipt(
+            url=self._url,
+            byte_count=len(raw),
+            sha256=hashlib.sha256(raw).hexdigest(),
+            captured_at=completed_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            last_modified=headers.get("Last-Modified") or headers.get("last-modified"),
+        )
+        return [_candidate("swpc-kp1m", valid_times[-1], self._url, {"raw": raw, "receipt": receipt}, valid_times)]
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         receipt = _receipt_of(candidate, "SWPC 1-minute Kp")
-        timed = _timed_rows(candidate.detail.get("records") or [], "time_tag")
-        if not timed:
-            raise AdapterUnavailable("SWPC 1-minute Kp fetch carried no records")
-        times = [stamp for stamp, _ in timed]
-        rows = [row for _, row in timed]
-
-        kp_index = numpy.array([float_or_nan(row.get("kp_index")) for row in rows])
-        estimated = numpy.array([float_or_nan(row.get("estimated_kp")) for row in rows])
-        codes = numpy.array([
-            float(_KP_CODE_INDEX[text]) if (text := str(row.get("kp", "")).strip()) in _KP_CODE_INDEX else numpy.nan
-            for row in rows
-        ])
-        unknown = int(numpy.count_nonzero(numpy.isnan(codes)))
-
-        dataset = series_dataset(
-            times,
-            {
-                "kp_index": (kp_index, _quantity("planetary K index, 1-minute, as retrieved", "dimensionless", "Kp index")),
-                "estimated_kp": (estimated, _quantity("estimated planetary K index, as retrieved", "dimensionless", "Kp index")),
-                "kp_code": (codes, flag_attrs(list(KP_CODES), long_name="the provider's own Kp thirds code, as retrieved")),
-            },
-            {"source": "SWPC 1-minute planetary K index"},
-        )
-        quality, coverage = series_quality("kp_index", kp_index, required_fields={"kp_index": kp_index, "estimated_kp": estimated})
+        raw = candidate.detail.get("raw")
+        if not isinstance(raw, bytes):
+            raise AdapterUnavailable("SWPC 1-minute Kp fetch carried no bounded raw document")
         path = workdir / "kp_1m.zarr.zip"
-        write_zarr(dataset, path)
+        try:
+            normalized = self._isolated("normalize", raw, path)
+            metadata = json.loads(normalized.stdout)
+        except (BoundedProcessError, TypeError, ValueError, json.JSONDecodeError) as error:
+            path.unlink(missing_ok=True)
+            raise AdapterUnavailable(f"SWPC 1-minute Kp isolated normalization failed: {error}") from error
+        times = [parse_time(value) for value in metadata.get("times") or []]
+        if not times or any(stamp is None for stamp in times):
+            path.unlink(missing_ok=True)
+            raise AdapterUnavailable("isolated Kp normalization returned invalid times")
+        valid_times = [stamp for stamp in times if stamp is not None]
+        quality = {"status": "passed", "flags": [], "detail": f"all {len(valid_times)} raw rows passed isolated validation"}
+        coverage = {"status": "complete", "fraction": 1.0}
         provenance = series_provenance(
             source_id=self.source_id,
             producer=SWPC_PRODUCER,
@@ -355,18 +391,18 @@ class SWPCKp1mAdapter:
             receipts=[receipt],
             native_resolution="1 minute (planetary index, no spatial resolution)",
             measurement_scope="planetary",
-            extra={"status_declared": False, "kp_codes_outside_the_table": unknown},
+            extra={"status_declared": False, "kp_codes_outside_the_table": 0},
         )
         return RunResult(
             source_id=self.source_id,
             provider_run_id=candidate.provider_run_id,
-            run_time=candidate.run_time or times[-1],
+            run_time=candidate.run_time or valid_times[-1],
             retrieved_at=datetime.now(UTC),
             complete=coverage["status"] == "complete",
             qc_passed=True,
             artifacts=[Artifact("kp_1m", MEDIA_ZARR, path, provenance)],
             native_crs=None,
-            notes=f"{len(times)} Kp minutes, {unknown} code(s) outside the SWPC thirds table, newest {format_time(times[-1])}",
+            notes=f"{len(valid_times)} Kp minutes, every raw row validated in isolation, newest {format_time(valid_times[-1])}",
         )
 
 
