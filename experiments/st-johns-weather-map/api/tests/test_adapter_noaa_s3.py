@@ -383,6 +383,34 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
         assert upper_ds[name].attrs["units"] == "m s-1"
 
 
+def test_noaa_gfs_fetch_requests_only_selected_missing_lead(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """The worker's exact restart selection reaches the indexed GRIB request."""
+    client = _four_lead_client()
+    adapter = NOAAS3Adapter(client=client)
+    download_calls = []
+
+    def mock_download_ranges(url, dest, ranges, max_bytes):
+        download_calls.append((url, ranges, max_bytes))
+        dest.write_bytes(b"dummy_grib_subset")
+        return 1000
+
+    monkeypatch.setattr(client, "download_ranges", mock_download_ranges)
+    monkeypatch.setattr("ingest.adapters.noaa_s3.open_grib", make_mock_open_grib(full_message_set()))
+    monkeypatch.setattr("ingest.adapters.noaa_s3.crop_to_bbox", lambda ds, bounds: ds)
+
+    now = datetime(2026, 8, 29, 13, tzinfo=UTC)
+    full_window = FetchWindow(now=now, back_hours=1, forward_hours=2)
+    missing = datetime(2026, 8, 29, 14, tzinfo=UTC)
+    selected = full_window.selecting((int(numpy.datetime64(missing.replace(tzinfo=None), "ns").astype("int64")),))
+
+    result = adapter.fetch(adapter.discover(full_window)[0], selected, tmp_path)
+
+    assert result.complete and result.qc_passed
+    assert len(download_calls) == 1
+    assert download_calls[0][0].endswith(".f002")
+    assert result.provider_run_id == "gfs-2026082912"
+
+
 def test_noaa_gfs_message_scalar_levels_survive_assembly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Regression for the message-scalar bug: each GRIB message carries its own
     scalar level coordinate (heightAboveGround = 2 for t2m, = 10 for u10, plus

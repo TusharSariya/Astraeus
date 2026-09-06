@@ -51,12 +51,14 @@ class _Config:
 
 class _Adapter:
     adapter_version = "1"
+    partial_fetch_supported = True
 
     def __init__(self, result: RunResult | None = None, *, times: Sequence[datetime] = TIMES) -> None:
         self.source_id = "eccc-hrdps"
         self._result = result
         self._times = tuple(times)
         self.fetched = 0
+        self.fetch_window: Any = None
 
     def discover(self, window: Any) -> list[RunCandidate]:
         return [RunCandidate(
@@ -66,6 +68,7 @@ class _Adapter:
 
     def fetch(self, candidate: Any, window: Any, workdir: Path) -> RunResult:
         self.fetched += 1
+        self.fetch_window = window
         assert self._result is not None, "this adapter must never be asked to fetch"
         return self._result
 
@@ -132,7 +135,26 @@ def test_a_partly_filled_window_still_fetches(tmp_path: Path) -> None:
     outcome = run_source(adapter, _Config(), store, reference=T0)
 
     assert adapter.fetched == 1
+    assert adapter.fetch_window.selected_valid_times_ns == frozenset(
+        to_nanoseconds(moment) for moment in TIMES[1:]
+    )
+    assert not adapter.fetch_window.covers(TIMES[0])
+    assert adapter.fetch_window.covers(TIMES[1])
     assert outcome.state == "succeeded" and outcome.published == 1
+
+
+def test_partial_aggregate_without_merge_support_fails_before_payload(tmp_path: Path) -> None:
+    adapter = _Adapter(result=_result(tmp_path))
+    adapter.partial_fetch_supported = False
+    store = _Store(present={to_nanoseconds(TIMES[0])})
+
+    outcome = run_source(adapter, _Config(), store, reference=T0)
+
+    assert outcome.state == "failed"
+    assert "partial cache repair is unsupported" in outcome.detail
+    assert "retained frames stay visible" in outcome.detail
+    assert adapter.fetched == 0
+    assert store.published == 0
 
 
 def test_a_store_that_cannot_be_asked_fails_the_source_without_fetching() -> None:
