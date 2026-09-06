@@ -223,6 +223,46 @@ def test_live_timeline_uses_hrdps_demand_availability_without_artifact_store(mon
     assert any("provider-advertised demand availability" in item for item in body["notices"])
 
 
+def test_hrdps_demand_timeline_survives_a_raising_legacy_store(monkeypatch) -> None:
+    reference = datetime(2026, 9, 6, 14, tzinfo=UTC)
+
+    class Coordinator:
+        @staticmethod
+        def timeline_times(_selected):
+            return (reference,)
+
+    class RaisingStore:
+        @staticmethod
+        def published_products():
+            raise RuntimeError("legacy store unavailable")
+
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(app_module, "now", lambda: reference)
+    monkeypatch.setattr(app_module, "live_store", lambda: RaisingStore())
+    monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: Coordinator())
+    body = TestClient(app_module.app).get(f"{app_module.PREFIX}/timeline").json()
+    assert body["data_mode"] == "live"
+    item = next(item for item in body["items"] if datetime.fromisoformat(item["valid_time_utc"]) == reference)
+    assert item["available_products"] == ["eccc-hrdps"]
+    assert any("legacy artifact store raised" in notice for notice in body["notices"])
+
+
+def test_live_proxy_layers_survive_a_raising_legacy_store(monkeypatch) -> None:
+    class RaisingStore:
+        @staticmethod
+        def current():
+            raise RuntimeError("legacy store unavailable")
+
+    proxy = app_module.LAYERS[0].model_copy(update={"evidence_basis": "live_proxy"})
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(app_module, "live_store", lambda: RaisingStore())
+    monkeypatch.setattr(app_module, "_proxied_forecast_layers", lambda: ([proxy], ["provider metadata retained"]))
+    body = TestClient(app_module.app).get(f"{app_module.PREFIX}/layers").json()
+    assert body["data_mode"] == "live"
+    assert [item["id"] for item in body["layers"]] == [proxy.id]
+    assert any("legacy artifact store raised" in notice for notice in body["notices"])
+
+
 def test_real_zarr_sampler_serves_point_and_profile(tmp_path: Path, monkeypatch) -> None:
     valid = datetime(2026, 9, 6, 14, tzinfo=UTC)
     dataset = xr.Dataset(

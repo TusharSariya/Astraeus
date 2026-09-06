@@ -467,6 +467,12 @@ def get_timeline() -> TimelineResponse:
         coverage = store.published_products()
     except Exception:
         LOGGER.exception("published product coverage could not be read")
+        if demand_products:
+            return TimelineResponse(
+                data_mode=DataMode.LIVE, start=start, end=end,
+                items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
+                notices=[*demand_notices, "the legacy artifact store raised; HRDPS hours are provider-advertised demand availability"],
+            )
         # No hour is said to hold a product AND no hour is said to have aged
         # out: with the store unreadable, either claim would be a guess.
         return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["the live artifact store raised while resolving published coverage"])
@@ -896,6 +902,13 @@ def get_layers() -> LayersResponse:
         artifacts = store.current()
     except Exception:
         LOGGER.exception("published artifacts could not be listed for the layer index")
+        proxied, proxy_notices = _proxied_forecast_layers()
+        if proxied:
+            return LayersResponse(
+                data_mode=DataMode.LIVE,
+                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
+                notices=["the legacy artifact store raised; only timestamp-demand provider proxies are offered", *proxy_notices],
+            )
         return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["the live artifact store raised while listing published artifacts"])
     if not artifacts:
         # Nothing is published, but the forward window can still be shown as
@@ -916,6 +929,13 @@ def get_layers() -> LayersResponse:
         coverage = store.published_layer_times()
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
+        proxied, proxy_notices = _proxied_forecast_layers()
+        if proxied:
+            return LayersResponse(
+                data_mode=DataMode.LIVE,
+                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
+                notices=["the legacy artifact store raised while reading coverage; only timestamp-demand provider proxies are offered", *proxy_notices],
+            )
         return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["the live artifact store raised while reading layer time coverage"])
 
     notices = skip_notices(store)
