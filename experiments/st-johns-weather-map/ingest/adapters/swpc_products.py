@@ -37,6 +37,7 @@ the payload never does.
 
 from __future__ import annotations
 
+import math
 import re
 import shutil
 import tempfile
@@ -301,9 +302,11 @@ class SWPCKp1mAdapter:
                 if value is None or isinstance(value, bool):
                     raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has invalid {field}")
                 try:
-                    float(value)
+                    numeric = float(value)
                 except (TypeError, ValueError) as error:
                     raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has invalid {field}") from error
+                if not math.isfinite(numeric):
+                    raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has non-finite {field}")
             if str(row.get("kp", "")).strip() not in _KP_CODE_INDEX:
                 raise AdapterUnavailable(f"SWPC 1-minute Kp row {index} has an unsupported kp code")
         timed = _timed_rows(rows, "time_tag")

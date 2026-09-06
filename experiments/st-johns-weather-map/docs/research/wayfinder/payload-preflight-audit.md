@@ -91,3 +91,9 @@ The final HTTP row and artifact both carry 2026-09-06T04:21:00Z, Kp index 0,
 estimated Kp 0.0 and provider code `0Z` (stored flag 0). This verifies content
 and receipt plumbing only; it does not remove the decode-memory and physical
 allocation blockers above or activate the adapter.
+The deterministic all-row comparison is retained as
+`/tmp/kp159-20260906/all-rows-comparison.json`. All 359 raw HTTP, artifact and
+actual `LiveStore.read_series` rows normalize to SHA-256
+`ff79d315bc2e66d7ead1df46e7d00e259665b7b0ab65287b758b84d276a98927`;
+both comparisons report zero mismatches. It preserves the source HTTP
+completion time above and `Last-Modified: Sun, 06 Sep 2026 04:23:03 GMT`.

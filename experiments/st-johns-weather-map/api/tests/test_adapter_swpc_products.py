@@ -102,6 +102,16 @@ def test_kp1m_refuses_every_malformed_raw_row_without_thinning(row, message):
         SWPCKp1mAdapter(client=client([row])).discover(WINDOW)
 
 
+@pytest.mark.parametrize("field", ["kp_index", "estimated_kp"])
+@pytest.mark.parametrize("value", ["NaN", "Infinity", "-Infinity"])
+def test_kp1m_refuses_non_finite_numeric_rows(field, value):
+    row = {"time_tag": "2026-09-05T19:58:00", "kp_index": 1, "estimated_kp": 1, "kp": "1Z"}
+    row[field] = value
+
+    with pytest.raises(AdapterUnavailable, match=f"non-finite {field}"):
+        SWPCKp1mAdapter(client=client([row])).discover(WINDOW)
+
+
 def test_alert_collision_at_one_issue_instant_fails_closed():
     payload = [
         {"product_id": "A", "issue_datetime": "2026-09-05 19:58:00", "message": "one"},
