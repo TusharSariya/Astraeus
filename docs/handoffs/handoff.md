@@ -6,13 +6,43 @@ history and the owner's earlier design selections.
 
 ## Destination and map ownership
 
+## Current owner correction: timestamp-driven delivery
+
+On September 6 the owner replaced the background-ingestion architecture with a
+selected-timestamp live-query path and a simple anti-hammering cache. This is
+the current execution authority and supersedes the full-run/two-retained-run
+source sequence below where they conflict. Preserve the older record as history;
+do not present it as the current delivery design.
+
+The required path is: selected timestamp -> cache lookup -> one bounded upstream
+fetch on a miss -> native normalization -> response and cache fill. Concurrent
+identical requests deduplicate to one upstream operation. Each source declares a
+finite freshness TTL; an unsupported, unavailable, or expired timestamp returns
+an explicit absence and never falls back to a neighbouring instant. The cache
+may use memory, files, or the existing database as a measured implementation
+detail. It is not a retained evidence archive, a background full-run ingestion
+system, a two-run publication store, or the deferred shared-snapshot framework.
+
+Source map #70 owns complete eligible field dispositions and this bounded
+provider-to-existing-client path. Application map #38 owns later visual redesign.
+Revise #201 and #208 against this route before merging their preserved work;
+reuse bounded transport, decode, native semantics, API, and client components,
+but do not require persistent artifact publication or full-horizon prefetch.
+Migrate the already demonstrated HRDPS, METAR/SPECI and Kp paths to this same
+demand-query contract in bounded follow-ups; their existing implementations and
+evidence remain useful until replaced, but scheduled bulk acquisition is not
+the final application architecture.
+Merged integrity and provenance safeguards remain available where the cache or a
+source-specific implementation actually uses them. OpenSpec status changes still
+require the normal owner-controlled workflow.
+
 [Source map #70](https://github.com/TusharSariya/Astraeus/issues/70) owns every
-eligible free-access product from provider request through bounded worker,
-immutable artifact, real API response, and consumption by the **existing web
-application**. A source is complete only when every eligible product field has a
-retrieved, missing, unsupported, or deferred disposition and retained evidence
-proves the normal path. Catalogue entries, adapter fixtures, isolated captures,
-or nonpublishable artifacts alone do not complete a source.
+eligible free-access product from a selected timestamp through bounded provider
+access, native normalization, a real API response, and consumption by the
+**existing web application**. A source is complete only when every eligible
+product field has a retrieved, missing, unsupported, or deferred disposition
+and retained evidence proves the normal query path. Catalogue entries, adapter
+fixtures, or isolated captures alone do not complete a source.
 
 [Application map #38](https://github.com/TusharSariya/Astraeus/issues/38) remains
 a separate, linked effort for the later desktop visual rebuild. Do not merge the
@@ -29,9 +59,9 @@ against this outcome instead of mechanically closing every historical ticket.
 A source or app ticket closes only when its evidence is complete or a traceable
 replacement, exclusion, external block or owner-approved deferral is recorded.
 
-The owner approved a corrective sequencing change after the September 6 delivery
+The owner previously approved a corrective sequencing change after the September 6 delivery
 audit: first make one complete HRDPS vertical slice work through the current
-refresh/store/API/web path, then repeat complete source paths. Further fragment,
+refresh/store/API/web path, then repeat complete source paths. That sequence is historical after the timestamp-driven correction above. Further fragment,
 shared-snapshot, scoped-database-role, and general framework extensions are
 paused until a measured source or UI failure demonstrates their need. This
 supersedes the earlier framework-first sequence; it does not say those earlier
@@ -78,8 +108,7 @@ unit, shape or hash mismatches. The source remains experimental and
 non-operational; #187 still owns the additional 195 HRDPS vertical catalogue
 IDs.
 
-[#201](https://github.com/TusharSariya/Astraeus/issues/201) is the next bounded
-vertical slice. It targets the already registered CYYT `awc-taf` source because
+[#201](https://github.com/TusharSariya/Astraeus/issues/201) remains the active source slice, but its persistent publication PR is held and must be adapted to the timestamp-driven cache path. It targets the already registered CYYT `awc-taf` source because
 the existing client already presents CYYT TAF evidence, while this adapter still
 fails closed before provider payload retrieval. It must extend only measured AWC
 bounds that the TAF endpoint and body actually support, preserve every eligible
@@ -87,22 +116,15 @@ TAF field and change-group disposition, and prove normal refresh through
 artifact, real API and the existing Brief/Workbench. Other aviation products
 remain with #115; remaining source bounds remain with #159.
 
-Every subsequent source follows the same definition of done:
+Every subsequent source follows the current definition of done:
 
-1. Enumerate all eligible product fields and exact dispositions; do not hide a
-   family behind a small selected sample.
-2. Bound discovery, network bytes, decode memory/process limits, temporary and
-   stored physical allocation, and cleanup before payload retrieval.
-3. Preserve source/product/run/revision identity, native units, geometry, masks,
-   QC and missingness, and provider publication/valid/retrieval times.
-4. Publish only validated complete artifacts atomically and preserve the prior
-   readable revision on failure.
-5. Prove raw-to-artifact values and actual API values from a retained bounded
-   capture, then prove the existing web client consumes those responses.
-6. Exercise malformed, unavailable, oversized, quota, restart and stale-cache
-   paths. Fixture-only and direct-adapter-only checks are insufficient.
-7. Pass relevant API, registry/profile, SQL/storage, strict OpenSpec, specctl and
-   CI gates, followed by independent evidence review.
+1. Enumerate all eligible product fields and exact dispositions; do not hide a family behind a selected sample.
+2. Resolve the selected timestamp to the provider's native valid time and bound discovery, network, decode memory/files and response size before payload retrieval.
+3. Preserve source/product/run identity, native units, geometry, masks, QC, missingness and provider publication/valid/retrieval times.
+4. On a cache miss, fetch only the native data needed for the selected timestamp, normalize it and return it; cache hits issue zero provider payload and concurrent identical misses deduplicate.
+5. Enforce a source-specific freshness TTL and return explicit unavailable/unsupported/expired states without nearest-time substitution.
+6. Prove retained raw-to-normalized-to-real API values and existing-client consumption, plus malformed, oversized, timeout, cache-expiry and concurrency cases.
+7. Pass relevant API, registry/profile, strict OpenSpec, specctl and CI gates, followed by independent evidence review.
 
 Continue until #97 can verify all relevant eligible source dispositions and
 integrations, then execute #38 against those real paths. During the queue, triage
@@ -130,9 +152,7 @@ or an adapter that cannot publish does not by itself count as delivered.
 
 ## Fixed boundaries
 
-Keep `operational: false`, registry ceilings, the 64 GiB hot quota, two complete
-forecast runs, rolling 24-hour observation history, and 14-day forecast horizon.
-No cold tier, paid service, rented compute, provider outreach, implicit rights
+Keep `operational: false`, registry ceilings, and the selected timestamp range of 24 hours back through 14 days ahead. The old 64 GiB/two-run persistence policy does not define the new query cache; give the cache its own measured finite ceiling and TTL. No cold tier, paid service, rented compute, provider outreach, implicit rights
 acceptance, science promotion, or public deployment is authorized. No raw
 provider payload belongs in Git. Retain bounded raw bytes, headers, exact HTTP
 completion times and artifacts outside Git until independent review; commit only
@@ -149,8 +169,8 @@ current main before final gates, and make conventional commits/PRs with exact
 
 - Root user checkout contains unrelated work and must not be mutated.
 - #196 HRDPS is merged and closed; its bounded evidence remains outside Git for audit.
-- #201 CYYT TAF implementation is assigned to the payload/resource lead in a fresh
-  isolated current-main worktree, with independent review by the GeoMet lead.
+- #201 CYYT TAF preserved implementation is held before merge and is being revised to the timestamp-driven cache path, with independent review by the GeoMet lead.
+- #208 GFS full-run capture was stopped on owner correction after 714 durable request receipts/713 distinct raw bodies; retained evidence remains outside Git. Its full-run branch is preserved and must be revised to selected-time fetch.
 - `/private/tmp/astraeus-live-query-snapshot-api`, branch
   `execution/live-query-snapshot-api`, preserves two local API commits and is
   paused; do not merge it under the corrective sequence.
