@@ -107,3 +107,28 @@ recorded.
 #### Scenario: An accumulation interval is ambiguous
 - **WHEN** an APCP record omits an exact interval, has a zero or negative interval, ends at a different lead, or lacks a finite byte range
 - **THEN** selection fails before payload retrieval and does not infer meaning from cadence or neighbouring records
+
+### Requirement: ECCC CAP current alerts are queried as a bounded mutable document
+The isolated experiment SHALL query every declared Avalon box for the native
+`Current-Alerts` FeatureCollection under one bounded, coalesced source-local
+cache identity. Layer listing SHALL inspect only a fresh validated cache entry.
+It SHALL NOT use ArtifactStore publication, retained-artifact fallback, a
+scheduled refresh, or substitute the current document for historical evidence.
+
+#### Scenario: Every declared box returns a valid empty collection
+- **WHEN** every canonical Avalon-box request succeeds with a strictly valid empty FeatureCollection
+- **THEN** the selected response reports `alerts_in_force = 0` and identifies the result as retrieved absence
+- **AND** a failed, unqueried, malformed, oversized, or partially read box makes the aggregate count unavailable rather than an all-clear
+
+#### Scenario: Native CAP validity selects an alert
+- **WHEN** a feature's native sent/effective-or-onset/expires interval contains the selected current-context instant
+- **THEN** its identifier, issuer, alert text, severity, urgency, certainty, native times, geometry, properties and provider transport provenance are returned without reinterpretation
+- **AND** a future-issued, not-yet-effective, expired, or validity-ambiguous feature is excluded with its reason
+
+#### Scenario: A historical instant is selected
+- **WHEN** the selected instant is outside the mutable document's finite acquisition context
+- **THEN** the response is unavailable and does not present the latest current-alert document as historical evidence
+
+#### Scenario: Identical current-alert misses are concurrent
+- **WHEN** multiple callers resolve to the same complete set of canonical provider box requests
+- **THEN** one bounded upstream operation runs, each completed request preserves effective headers, final-byte completion, byte count and body digest, and a fresh repeat adds no provider request
