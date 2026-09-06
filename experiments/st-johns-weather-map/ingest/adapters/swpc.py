@@ -154,6 +154,9 @@ class SWPCKpAdapter:
         return self._client or PoliteClient()
 
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        raise AdapterUnavailable("noaa-swpc-kp scheduled ingestion is disabled; use selected-timestamp demand queries")
+
+    def demand_operation_bounds(self) -> ResourceBounds:
         # The worker calls this before reserving resources or issuing discovery
         # requests; reject an unmeasured allocation geometry at that boundary.
         self._require_measured_filesystem(Path(tempfile.gettempdir()))

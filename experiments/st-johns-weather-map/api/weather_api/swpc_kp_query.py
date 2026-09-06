@@ -6,6 +6,7 @@ import threading
 import time
 from concurrent.futures import Future
 from dataclasses import dataclass
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Callable, Mapping
@@ -16,6 +17,7 @@ from ingest.adapters.swpc import KP_DOCUMENT_BYTES, KP_FORECAST_URL, KP_OBSERVED
 from ingest.kp3h_isolated import decode
 from ingest.contract import FetchWindow
 from .models import Freshness, KpAcquisition, SpaceWeatherReading, SpaceWeatherSeries
+from .taf_query import TafQueryUnavailable, _freshness
 
 KP_CACHE_SECONDS = 60
 
@@ -35,6 +37,11 @@ class KpDocument:
     request_headers: Mapping[str, str]
     response_headers: Mapping[str, str]
     completed_at: datetime
+    expires_at_monotonic: float
+    expires_at: datetime
+    max_age: int
+    etag: str | None
+    last_revalidation: Mapping[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -67,8 +74,32 @@ class SWPCKpQueryService:
         self._failure: tuple[float, SWPCKpUnavailable] | None = None
         self._lock = threading.Lock()
 
-    def _document(self, url: str, mode: str) -> KpDocument:
-        with self._client.stream("GET", url, headers={"Accept": "application/json", "Accept-Encoding": "identity"}) as response:
+    def _document(self, url: str, mode: str, prior: KpDocument | None = None) -> KpDocument:
+        sent = {"Accept": "application/json", "Accept-Encoding": "identity"}
+        if prior and prior.etag:
+            sent["If-None-Match"] = prior.etag
+        with self._client.stream("GET", url, headers=sent) as response:
+            if response.status_code == 304:
+                if next(response.iter_bytes(1), b""):
+                    raise SWPCKpUnavailable(f"SWPC {mode} Kp 304 carried a body")
+                if prior is None:
+                    raise SWPCKpUnavailable(f"SWPC {mode} Kp returned 304 without cached content")
+                headers = {key.lower(): value for key, value in response.headers.items()}
+                if headers.get("etag") and headers["etag"] != prior.etag:
+                    raise SWPCKpUnavailable(f"SWPC {mode} Kp 304 changed ETag")
+                freshness_headers = dict(headers)
+                freshness_headers.setdefault("cache-control", prior.response_headers.get("cache-control", ""))
+                completed = datetime.now(UTC)
+                try:
+                    max_age, ttl = _freshness(freshness_headers, completed)
+                except TafQueryUnavailable as error:
+                    raise SWPCKpUnavailable(f"SWPC {mode} Kp freshness invalid: {error}") from error
+                event = {"http_status": 304, "effective_url": str(response.request.url),
+                         "request_headers": _safe_headers(response.request.headers),
+                         "response_headers": headers, "transport_completed_at": completed.isoformat()}
+                return replace(prior, expires_at_monotonic=self._clock() + ttl,
+                               expires_at=completed + timedelta(seconds=ttl), max_age=max_age,
+                               last_revalidation=event)
             if response.status_code != 200:
                 raise SWPCKpUnavailable(f"SWPC {mode} Kp returned HTTP {response.status_code}")
             declared = response.headers.get("content-length")
@@ -95,8 +126,14 @@ class SWPCKpQueryService:
             time=stamp, value=value,
             status=statuses[int(context)] if mode == "forecast" else None,
         ) for stamp, value, context in rows)
+        try:
+            max_age, ttl = _freshness(response_headers, completed)
+        except TafQueryUnavailable as error:
+            raise SWPCKpUnavailable(f"SWPC {mode} Kp freshness invalid: {error}") from error
         return KpDocument(mode, readings, len(body), hashlib.sha256(body).hexdigest(), url,
-                          effective_url, request_headers, response_headers, completed)
+                          effective_url, request_headers, response_headers, completed,
+                          self._clock() + ttl, completed + timedelta(seconds=ttl), max_age,
+                          response_headers.get("etag"))
 
     def entry(self) -> KpEntry:
         with self._lock:
@@ -117,15 +154,16 @@ class SWPCKpQueryService:
         try:
             # The historical bound charges both documents and both outputs.
             # Enforce that aggregate envelope before the first provider byte.
-            self._adapter.operation_bounds(FetchWindow(datetime.now(UTC), 0, 0))
-            observed = self._document(KP_OBSERVED_URL, "observed")
+            self._adapter.demand_operation_bounds()
+            observed = self._document(KP_OBSERVED_URL, "observed", self._entry.observed if self._entry else None)
             try:
-                forecast = self._document(KP_FORECAST_URL, "forecast")
+                forecast = self._document(KP_FORECAST_URL, "forecast", self._entry.forecast if self._entry else None)
                 forecast_error = None
             except SWPCKpUnavailable as error:
                 forecast = None
                 forecast_error = str(error)
-            result = KpEntry(observed, forecast, forecast_error, self._clock() + KP_CACHE_SECONDS)
+            expiries = [observed.expires_at_monotonic, *( [forecast.expires_at_monotonic] if forecast else [])]
+            result = KpEntry(observed, forecast, forecast_error, min(expiries))
             with self._lock:
                 self._entry = result
                 self._failure = None
@@ -172,6 +210,8 @@ class SWPCKpQueryService:
                 transport_completed_at=document.completed_at,
                 body_bytes=document.body_bytes,
                 body_sha256=document.body_sha256,
+                expires_at=document.expires_at,
+                last_revalidation=dict(document.last_revalidation) if document.last_revalidation else None,
             ),
             notices=[] if selected else ["no native Kp row is applicable to the selected instant"],
         )

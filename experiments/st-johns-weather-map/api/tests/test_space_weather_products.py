@@ -168,6 +168,16 @@ def test_nothing_published_is_unavailable_not_empty_success(tmp_path: Path):
     assert any("nothing is invented" in notice for notice in response.notices)
 
 
+def test_retained_kp_is_omitted_as_historical_demand_migration_evidence(tmp_path: Path):
+    retained = artifact("noaa-swpc-kp", "kp_observed", {
+        "native_crs": "not_applicable", "product": "Kp observed", "evidence_classes": ["retrieved"],
+    })
+    response = build_products(ZipStore([(retained, tmp_path / "never-opened.zip")]), REFERENCE,
+                              registry_threshold=lambda _id: None)
+    assert response.products == []
+    assert any("historical audit evidence" in notice and "/space-weather" in notice for notice in response.notices)
+
+
 def test_unknown_threshold_is_unknown_freshness(tmp_path: Path):
     store = ZipStore([hp30(tmp_path)])
     (product,) = build_products(store, REFERENCE, registry_threshold=lambda _id: None).products

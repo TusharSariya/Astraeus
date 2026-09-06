@@ -13,7 +13,7 @@ class BoundsProbe:
     def __init__(self) -> None:
         self.calls = 0
 
-    def operation_bounds(self, _window) -> None:
+    def demand_operation_bounds(self) -> None:
         self.calls += 1
 
 
@@ -41,8 +41,10 @@ def service(*, forecast_status: int = 200):
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(str(request.url))
         if "forecast" in str(request.url):
-            return httpx.Response(forecast_status, content=forecast_body() if forecast_status == 200 else b"", request=request)
-        return httpx.Response(200, content=observed_body(), request=request)
+            return httpx.Response(forecast_status, content=forecast_body() if forecast_status == 200 else b"",
+                                  headers={"Cache-Control": "max-age=60", "ETag": '"forecast"'}, request=request)
+        return httpx.Response(200, content=observed_body(),
+                              headers={"Cache-Control": "max-age=60", "ETag": '"observed"'}, request=request)
 
     bounds = BoundsProbe()
     query = SWPCKpQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)), adapter=bounds)  # type: ignore[arg-type]
@@ -90,3 +92,46 @@ def test_selected_time_requires_an_offset() -> None:
     query, _calls, _bounds = service()
     with pytest.raises(ValueError, match="include an offset"):
         query.series(datetime(2026, 9, 6, 14))
+
+
+def test_expiry_conditionally_revalidates_both_documents_without_replacing_body_identity() -> None:
+    now = [0.0]
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        forecast = "forecast" in str(request.url)
+        etag = '"forecast"' if forecast else '"observed"'
+        if request.headers.get("if-none-match"):
+            return httpx.Response(304, headers={"Cache-Control": "max-age=60", "ETag": etag}, request=request)
+        return httpx.Response(200, content=forecast_body() if forecast else observed_body(),
+                              headers={"Cache-Control": "max-age=60", "ETag": etag}, request=request)
+
+    query = SWPCKpQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)),
+                               adapter=BoundsProbe(), clock=lambda: now[0])  # type: ignore[arg-type]
+    first = query.entry()
+    now[0] = 61
+    second = query.entry()
+    assert len(calls) == 4
+    assert calls[2].headers["if-none-match"] == '"observed"'
+    assert calls[3].headers["if-none-match"] == '"forecast"'
+    assert second.observed.body_sha256 == first.observed.body_sha256
+    assert second.observed.completed_at == first.observed.completed_at
+    assert second.observed.last_revalidation["http_status"] == 304  # type: ignore[index]
+
+
+def test_observed_failure_is_negative_cached_for_the_source_interval() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503, request=request)
+
+    query = SWPCKpQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)),
+                               adapter=BoundsProbe())  # type: ignore[arg-type]
+    with pytest.raises(Exception, match="HTTP 503"):
+        query.entry()
+    with pytest.raises(Exception, match="HTTP 503"):
+        query.entry()
+    assert calls == 1

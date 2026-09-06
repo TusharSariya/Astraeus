@@ -1354,6 +1354,8 @@ class KpAcquisition(StrictModel):
     transport_completed_at: datetime
     body_bytes: int
     body_sha256: str
+    expires_at: datetime
+    last_revalidation: dict[str, Any] | None = None
 
 
 class SpaceWeatherSeries(StrictModel):
