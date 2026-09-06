@@ -823,3 +823,63 @@ def test_live_gfs_rh_is_mixed_phase_and_eccc_rh_is_not():
     print(f"GFS 500 mb RH below -25 degC: bias vs ice {bias_ice:+.2f} %, vs water {bias_water:+.2f} %")
     assert abs(bias_ice) < 2.0, "GFS RH no longer matches saturation over ice below -25 degC"
     assert abs(bias_water) > 10.0, "GFS RH now matches saturation over water; the declared convention is wrong"
+
+
+def test_gfs_apcp_selector_preserves_both_native_interval_identities():
+    from ingest.adapters.noaa_s3 import select_gfs_apcp_records
+
+    idx = "\n".join(
+        [
+            "595:100:d=2026090612:TMP:2 m above ground:7 hour fcst:",
+            "596:200:d=2026090612:APCP:surface:6-7 hour acc fcst:",
+            "597:300:d=2026090612:APCP:surface:0-7 hour acc fcst:",
+            "598:500:d=2026090612:PRMSL:mean sea level:7 hour fcst:",
+        ]
+    )
+
+    records = select_gfs_apcp_records(idx, expected_lead=7)
+
+    assert [(item.record_number, item.interval_start_hours, item.interval_end_hours) for item in records] == [
+        (596, 6, 7),
+        (597, 0, 7),
+    ]
+    assert [item.interval_hours for item in records] == [1, 7]
+    assert [item.byte_range.header for item in records] == ["bytes=200-299", "bytes=300-499"]
+
+
+def test_gfs_apcp_selector_keeps_duplicate_provider_records_distinct():
+    from ingest.adapters.noaa_s3 import select_gfs_apcp_records
+
+    idx = "\n".join(
+        [
+            "596:200:d=2026090612:APCP:surface:0-6 hour acc fcst:",
+            "597:300:d=2026090612:APCP:surface:0-6 hour acc fcst:",
+            "598:500:d=2026090612:PRMSL:mean sea level:6 hour fcst:",
+        ]
+    )
+
+    records = select_gfs_apcp_records(idx, expected_lead=6)
+
+    assert [item.record_number for item in records] == [596, 597]
+    assert [item.interval_hours for item in records] == [6, 6]
+
+
+@pytest.mark.parametrize(
+    ("forecast", "lead", "message"),
+    [
+        ("7 hour fcst", 7, "no exact accumulation interval"),
+        ("7-7 hour acc fcst", 7, "non-positive"),
+        ("0-6 hour acc fcst", 7, "not selected lead"),
+    ],
+)
+def test_gfs_apcp_selector_refuses_ambiguous_or_invalid_intervals(forecast, lead, message):
+    from ingest.adapters.noaa_s3 import select_gfs_apcp_records
+
+    idx = "\n".join(
+        [
+            f"596:200:d=2026090612:APCP:surface:{forecast}:",
+            "597:300:d=2026090612:PRMSL:mean sea level:7 hour fcst:",
+        ]
+    )
+    with pytest.raises(GribError, match=message):
+        select_gfs_apcp_records(idx, expected_lead=lead)

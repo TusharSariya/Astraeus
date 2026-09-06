@@ -178,6 +178,60 @@ GFS_IDX_SELECTORS: frozenset[tuple[str, str]] = frozenset(
 # cfgrib refuse the decode, and an average over an unstated convention is not
 # the quantity the manifest declares.
 _INSTANTANEOUS_FORECAST = re.compile(r"^(anl|\d+ hour fcst)$")
+_APCP_INTERVAL = re.compile(r"^(\d+)-(\d+) (hour|day) acc fcst$")
+
+
+@dataclass(frozen=True)
+class GFSAccumulationRecord:
+    """One provider-declared APCP amount and its exact statistical interval.
+
+    ``record_number`` remains part of the identity because GFS can publish two
+    APCP messages with the same interval in one sidecar. This parser never
+    chooses which native product should occupy the application's single card.
+    """
+
+    record_number: int
+    interval_start_hours: int
+    interval_end_hours: int
+    byte_range: ByteRange
+
+    @property
+    def interval_hours(self) -> int:
+        return self.interval_end_hours - self.interval_start_hours
+
+
+def select_gfs_apcp_records(idx_text: str, *, expected_lead: int) -> tuple[GFSAccumulationRecord, ...]:
+    """Preserve every exact positive APCP interval ending at ``expected_lead``.
+
+    No cadence or lead arithmetic supplies a missing interval. Malformed,
+    zero/negative, mismatched-end, and open-ended records fail closed before a
+    payload request can be constructed.
+    """
+    selected: list[GFSAccumulationRecord] = []
+    for record in parse_idx(idx_text):
+        if (record.param.upper(), record.level.lower()) != ("APCP", "surface"):
+            continue
+        match = _APCP_INTERVAL.fullmatch(record.forecast.strip().lower())
+        if match is None:
+            raise GribError(f"GFS APCP record {record.number} has no exact accumulation interval")
+        start, end = int(match.group(1)), int(match.group(2))
+        multiplier = 24 if match.group(3) == "day" else 1
+        start *= multiplier
+        end *= multiplier
+        if start < 0 or end <= start:
+            raise GribError(f"GFS APCP record {record.number} has a non-positive accumulation interval")
+        if end != expected_lead:
+            raise GribError(
+                f"GFS APCP record {record.number} ends at +{end} h, not selected lead +{expected_lead} h"
+            )
+        if record.end is None:
+            raise GribError(f"GFS APCP record {record.number} has an unbounded byte range")
+        selected.append(
+            GFSAccumulationRecord(record.number, start, end, ByteRange(record.offset, record.end))
+        )
+    if not selected:
+        raise GribError("GFS sidecar contains no exact APCP surface accumulation")
+    return tuple(selected)
 
 # Ceiling on the byte ranges fetched for one lead hour. It exists to stop a
 # careless selector turning into a whole-file pull: one f003 pgrb2.0p25 file

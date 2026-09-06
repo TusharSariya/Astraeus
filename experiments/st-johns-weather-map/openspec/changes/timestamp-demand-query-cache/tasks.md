@@ -9,3 +9,4 @@
 - [x] Verify HRDPS cache miss/hit, expiry, concurrent coalescing, bounded failure, exact transport and native-time provenance, real point/profile responses, and current-client consumption.
 - [ ] Verify conditional revalidation where the provider exposes a validator; the measured HRDPS immutable run/lead objects did not expose an ETag in this slice.
 - [ ] Verify the same cache, failure, provenance and current-client matrix for every remaining migrated source (GFS miss/hit/coalescing/bounded failure and current-client response were verified in #208).
+- [x] Parse and bound both native GFS APCP record identities from the selected frame's `.idx`; leave payload selection and current-card meaning pending the owner choice between recent-block, run-to-date, or interval-qualified multi-value display.
