@@ -1,5 +1,7 @@
 # JMA GSM global pressure-profile contract
 
+Status: draft; owner decision pending.
+
 ## Why
 
 The existing experiment treats all 16 pressure surfaces shown by Open-Meteo's
