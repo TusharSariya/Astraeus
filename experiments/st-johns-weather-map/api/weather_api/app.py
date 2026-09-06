@@ -2323,11 +2323,12 @@ def _flag_bool(series: SeriesData, variable: str, index: int) -> bool | None:
 
 @app.get(f"{PREFIX}/space-weather", response_model=SpaceWeatherResponse)
 def get_space_weather(at: datetime = Query(..., description="Aware selected evidence instant")) -> SpaceWeatherResponse:
-    """Latest Bz, the observed Kp series, and the provider's Kp outlook.
+    """Selected-time demand Kp plus independently retained latest Bz.
 
-    Every value is read from the published SWPC artifacts through the same
-    integrity-checked path ``/point`` uses, minus any spatial claim. Fixture
-    mode fails closed: no fixture space weather exists, and none is invented.
+    Kp comes from the bounded provider-response cache and never falls back to
+    retained Kp artifacts. Solar wind has not migrated in this slice and keeps
+    its separately labelled retained read. Fixture mode fails closed: no
+    fixture space weather exists, and none is invented.
     """
     if at.tzinfo is None:
         raise HTTPException(status_code=422, detail="at must include a UTC offset")

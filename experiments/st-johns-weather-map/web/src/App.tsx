@@ -688,13 +688,15 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController()
     if (!spaceWeatherEvidenceAt) return () => controller.abort()
-    loadSpaceWeather(new Date(spaceWeatherEvidenceAt), controller.signal).then((result) => {
-      if (!controller.signal.aborted) {
-        setSpaceWeather(result.spaceWeather)
-        setSpaceWeatherNotice(result.error)
-      }
-    }).catch(() => undefined)
-    return () => controller.abort()
+    const timer = window.setTimeout(() => {
+      loadSpaceWeather(new Date(spaceWeatherEvidenceAt), controller.signal).then((result) => {
+        if (!controller.signal.aborted) {
+          setSpaceWeather(result.spaceWeather)
+          setSpaceWeatherNotice(result.error)
+        }
+      }).catch(() => undefined)
+    }, 250)
+    return () => { window.clearTimeout(timer); controller.abort() }
   }, [spaceWeatherEvidenceAt])
 
   useEffect(() => {
