@@ -4,7 +4,7 @@
 
 ### Requirement: Native air-quality fields remain isolated until semantically catalogued
 
-The experimental WCS path SHALL enumerate and retain every selected RAQDPS and RDAQA field with its provider coverage id, published units, vertical level, product phase, valid time, reference time when published, response headers, and actual HTTP completion time. A field whose unit, attribution, averaging interval, or analysis phase has no canonical catalogue key SHALL remain source-scoped and nonpublishable; it SHALL NOT be converted to a differently dimensioned catalogue key or omitted from the acquisition receipt.
+The experimental WCS path SHALL enumerate and retain every selected RAQDPS and RDAQA field with its provider coverage id, published units, vertical level, product phase, valid time, reference time when published, response headers, and actual HTTP completion time. A field whose unit, attribution, averaging interval, or analysis phase has no canonical catalogue key SHALL remain source-scoped and nonpublishable; it SHALL NOT be converted to a differently dimensioned catalogue key or omitted from the acquisition receipt. Product phase, vertical scope, and any statistic window SHALL be explicit in the selected field contract, normalized variable attributes, artifact provenance, and retained receipt; they SHALL NOT be inferred later from a coverage identifier or variable spelling.
 
 #### Scenario: GeoMet gas is published as mole fraction
 

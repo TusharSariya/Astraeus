@@ -58,6 +58,9 @@ def main() -> None:
                         "raw": artifact.provenance["raw_response"],
                         "artifact": {"path": str(artifact.payload_path), "bytes": artifact.byte_size, "sha256": artifact.provenance["sha256"]},
                         "units_as_published": artifact.provenance["units_as_published"], "stored_units": stored_units,
+                        "product_phase": artifact.provenance["product_phase"],
+                        "vertical_scope": artifact.provenance["vertical_scope"],
+                        "statistic_window_hours": artifact.provenance["statistic_window_hours"],
                         "group_complete": result.complete, "group_qc_passed": result.qc_passed, "group_notes": result.notes,
                     })
     finally:

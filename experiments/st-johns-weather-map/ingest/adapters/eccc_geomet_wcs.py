@@ -115,6 +115,8 @@ class CoverageField:
     coverage_id: str
     variable: str
     disposition: str = "experimental-retrievable"
+    vertical_scope: str | None = None
+    statistic_window_hours: int | None = None
 
 
 @dataclass(frozen=True)
@@ -464,6 +466,7 @@ def fetch_artifact(
     client: GeoMetWCSClient, field: CoverageField, *, valid_time: datetime,
     reference_time: datetime | None, workdir: Path, model: str = "rdps",
     bounds: Mapping[str, float] = AVALON_CORE_BOUNDS,
+    product_phase: str | None = None,
 ) -> Artifact:
     """Fetch, validate, normalize and round-trip one immutable WCS artifact."""
     grid = grid_contract_for(field.coverage_id)
@@ -479,7 +482,13 @@ def fetch_artifact(
     raw_units, units, recognised = capability.units
     if field.variable in {"seeing_class_eccc", "transparency_class_eccc"} and raw_units is None:
         units, raw_units, recognised = "1", "unlabelled class index", True
-    dataset[field.variable].attrs.update({"units": units or "unknown", "original_units": raw_units or "unknown"})
+    dataset[field.variable].attrs.update({
+        "units": units or "unknown",
+        "original_units": raw_units or "unknown",
+        **({"product_phase": product_phase} if product_phase else {}),
+        **({"vertical_scope": field.vertical_scope} if field.vertical_scope else {}),
+        **({"statistic_window_hours": field.statistic_window_hours} if field.statistic_window_hours else {}),
+    })
     output = write_zarr(dataset, workdir / f"{_snake(field.coverage_id)}.zarr.zip")
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
     provenance = {
@@ -504,6 +513,9 @@ def fetch_artifact(
         "resampling": dataset.attrs["resampling"],
         "units_as_published": raw_units,
         "units_recognised": recognised,
+        "product_phase": product_phase,
+        "vertical_scope": field.vertical_scope,
+        "statistic_window_hours": field.statistic_window_hours,
         "evidence_classes": ["retrieved"],
         "quality": {"status": "unknown", "flags": ["experimental_source_contract_pending"]},
         "raw_response": {

@@ -1,5 +1,5 @@
 {
-  "capture_class": "source-scoped staged HTTP proof; not published through the normal route",
+  "capture_class": "source-scoped staged serialization proof; not published through the normal route",
   "capture_completed_at": "2026-09-06T04:59:45.979196+00:00",
   "comparisons": [
     {
@@ -227,16 +227,18 @@
       "mismatches": 0
     }
   ],
-  "disk_free_before": "38 GiB",
-  "endpoint": "https://geo.weather.gc.ca/geomet/",
   "finite_operation_cap_bytes": 67108864,
-  "normal_route_disposition": "raw source-scoped fields are absent; focused fail-closed test proves /point does not expose them",
   "received_bytes": 664819,
+  "replay": {
+    "classification": "local replay of retained raw bodies; original HTTP completion timestamps and headers preserved unchanged",
+    "code_head": "working-tree provenance fix after ec2fe93",
+    "completed_at": "2026-09-06T05:05:57.262622+00:00"
+  },
   "rows": [
     {
       "artifact": {
-        "bytes": 6743,
-        "sha256": "07afec7c741d643cea75580e5757dddefafa03d4bb8f509d09022f4b46e0864e"
+        "bytes": 6809,
+        "sha256": "9220cf173748833ddcd96dad5345004f0a0bd16afd7f4da2081b83421ec9945a"
       },
       "coverage_id": "RAQDPS.SFC_PM2.5",
       "group_complete": false,
@@ -258,6 +260,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:05.430088+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -265,16 +268,18 @@
         "sha256": "4b78663884cdb92af473d3f2cf74854ad0f57320ad2cd79af1477fcb995f659b"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "pm2_5_surface"
+      "variable": "pm2_5_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6632,
-        "sha256": "d1e1abc2ca8f8e305e39e16d27d2bcb604a8f9d0b65cd780cd2e810f727eee8a"
+        "bytes": 6708,
+        "sha256": "3750aacbc89a731e6a2cc1aaf5f153d6c84edc579507493f67fd7797d53f52ed"
       },
       "coverage_id": "RAQDPS.EATM_PM2.5",
       "group_complete": false,
@@ -296,6 +301,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:06.917567+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -303,16 +309,18 @@
         "sha256": "d1dbe68eb2a9ec88a92f487f3f4dfb1350751ea8f2e0e9eb978afbfb3a5d8ddc"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "kg m-2",
       "units_as_published": "kg/m\u00b2",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.EATM_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "pm2_5_column"
+      "variable": "pm2_5_column",
+      "vertical_scope": "entire_atmosphere"
     },
     {
       "artifact": {
-        "bytes": 6627,
-        "sha256": "e50832ec72eb5345339199d05972f42fd426234dbbefd033dd6e8460e13f194b"
+        "bytes": 6693,
+        "sha256": "1085403fb79f793cc97c9aee0d73ce997e7b9bb644573c85b526630f33923f0c"
       },
       "coverage_id": "RAQDPS.SFC_PM10",
       "group_complete": false,
@@ -334,6 +342,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:08.428261+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -341,16 +350,18 @@
         "sha256": "5ba8e8c845916df2e97ea5473f78039a9698d70837a3f9d70bc3081160c6a609"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "pm10_surface"
+      "variable": "pm10_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6678,
-        "sha256": "fe744bb23c7dceb25416b0592f9a1737a6d4c17a63c35ab6fe352aac5804767d"
+        "bytes": 6754,
+        "sha256": "70155fcc2551d9843bf2b1ef7c646f42884fe23230a7d462af49d7930c774c33"
       },
       "coverage_id": "RAQDPS.EATM_PM10",
       "group_complete": false,
@@ -372,6 +383,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:09.946298+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -379,16 +391,18 @@
         "sha256": "90a2894c5b63155e042b0ec7a01959a1d612d9f636be0d4650aa40f92ff19b11"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "kg m-2",
       "units_as_published": "kg/m\u00b2",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.EATM_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_pm10_column"
+      "variable": "raw__raqdps_pm10_column",
+      "vertical_scope": "entire_atmosphere"
     },
     {
       "artifact": {
-        "bytes": 6655,
-        "sha256": "2ea59915081f985ad7e5a1a1497c37e03fd6308e281ea2568d466da029aa48c3"
+        "bytes": 6721,
+        "sha256": "a89f5113603273ac81ad6352c65d4d8a3f51370bc5c41953b75c951127c6319d"
       },
       "coverage_id": "RAQDPS.SFC_O3",
       "group_complete": false,
@@ -410,6 +424,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:11.436513+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -417,16 +432,18 @@
         "sha256": "32363ebc0f5ab4deeca181ec21d5e1a1d3b7a559038f6012c5023db40709409a"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_O3&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_ozone_surface_mole_fraction"
+      "variable": "raw__raqdps_ozone_surface_mole_fraction",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 4765,
-        "sha256": "3ad333fcbbff7df99cc0a7291913b2044065a6dd9aa8ec5949563fb86017407d"
+        "bytes": 4831,
+        "sha256": "f1693d37b1d5c529e2fd9bf5bfcf2134fce9304895dda2ad0e5a862af7298b37"
       },
       "coverage_id": "RAQDPS.SFC_NO",
       "group_complete": false,
@@ -448,6 +465,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:12.921344+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -455,16 +473,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_NO&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_nitric_oxide_surface"
+      "variable": "raw__raqdps_nitric_oxide_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6266,
-        "sha256": "e8bf11ad5d5ffe28636b0233fcc2088c1748229ff7c7a2611720804c8bf77a3e"
+        "bytes": 6332,
+        "sha256": "65897b3e9ff210b9d817d77e4c0c9b61e4691c3d7599b5664397c04b7e30a836"
       },
       "coverage_id": "RAQDPS.SFC_NO2",
       "group_complete": false,
@@ -486,6 +506,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:14.424556+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -493,16 +514,18 @@
         "sha256": "be85a63d62d15baa1f75fb5da877bdeb1b3c17e1e682816faf3b2e0f893df15f"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_NO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_nitrogen_dioxide_surface_mole_fraction"
+      "variable": "raw__raqdps_nitrogen_dioxide_surface_mole_fraction",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 5667,
-        "sha256": "6c5d94d77c9b367cff1f2ddfad35dad10b0471d0dfabbf08a1dad8ed94cb3d0c"
+        "bytes": 5733,
+        "sha256": "3c3433a92224e2af3a8c0024826bf3bb14a9c507d46ff363793087a2d2af1ff3"
       },
       "coverage_id": "RAQDPS.SFC_SO2",
       "group_complete": false,
@@ -524,6 +547,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:15.917924+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -531,16 +555,18 @@
         "sha256": "e02e2c4b6e3522e097df93ed360e337d5269d0a28c70d3338d1d5921e8b6a7e8"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.SFC_SO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_sulphur_dioxide_surface_mole_fraction"
+      "variable": "raw__raqdps_sulphur_dioxide_surface_mole_fraction",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 4761,
-        "sha256": "f5f4589b0776976bce8a6ba03d2d08ccc39e3c74f69c274e9af1d6fcb58ab932"
+        "bytes": 4827,
+        "sha256": "35679bf7c181b35dd2b0ce1340da86e58f53c6286f793addd12908e113d886b6"
       },
       "coverage_id": "RAQDPS.Sfc_PM2.5-WildfireSmokePlume",
       "group_complete": false,
@@ -562,6 +588,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:17.423893+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -569,16 +596,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.Sfc_PM2.5-WildfireSmokePlume&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_smoke_pm2_5_surface"
+      "variable": "raw__raqdps_smoke_pm2_5_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 4757,
-        "sha256": "83d9c08a05ba350a6866c40e2088502766329db840372593ba2cbd2cdf43778d"
+        "bytes": 4833,
+        "sha256": "1778196a53d8a8fde254f631add885bdb8fdddf4c535ac0698f8d10fba076a3f"
       },
       "coverage_id": "RAQDPS.EAtm_PM2.5-WildfireSmokePlume",
       "group_complete": false,
@@ -600,6 +629,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:18.921510+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -607,16 +637,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "kg m-2",
       "units_as_published": "kg/m\u00b2",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.EAtm_PM2.5-WildfireSmokePlume&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_smoke_pm2_5_column"
+      "variable": "raw__raqdps_smoke_pm2_5_column",
+      "vertical_scope": "entire_atmosphere"
     },
     {
       "artifact": {
-        "bytes": 4757,
-        "sha256": "a98edd097fcdff884bbfe29a710e2f643a3e1309b265139a91f7aa2beb97f971"
+        "bytes": 4823,
+        "sha256": "3b807efc9c5fed84abe8b88af1e852513724a9235d9d545032d3ba40e1130e97"
       },
       "coverage_id": "RAQDPS.Sfc_PM10-WildfireSmokePlume",
       "group_complete": false,
@@ -638,6 +670,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:20.409054+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -645,16 +678,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.Sfc_PM10-WildfireSmokePlume&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_smoke_pm10_surface"
+      "variable": "raw__raqdps_smoke_pm10_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 4753,
-        "sha256": "13c498b45d639f4c7b5a196548c1f10c68f520a9f024455faf6f1ed6ea643e2b"
+        "bytes": 4829,
+        "sha256": "4bcafd9ed0bef9cf333eef0fce2e4f9d6067c399401c6ae3de68b514a9080684"
       },
       "coverage_id": "RAQDPS.EAtm_PM10-WildfireSmokePlume",
       "group_complete": false,
@@ -676,6 +711,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:21.908261+00:00",
       "product": "raqdps_hourly",
+      "product_phase": "forecast",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -683,16 +719,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": null,
       "stored_units": "kg m-2",
       "units_as_published": "kg/m\u00b2",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.EAtm_PM10-WildfireSmokePlume&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T05%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-06T05:00:00+00:00",
-      "variable": "raw__raqdps_smoke_pm10_column"
+      "variable": "raw__raqdps_smoke_pm10_column",
+      "vertical_scope": "entire_atmosphere"
     },
     {
       "artifact": {
-        "bytes": 4797,
-        "sha256": "a3001a5008c66d2e838a16582611a4139105ff04a72f8ce8e1d5a34825f1f5ff"
+        "bytes": 4907,
+        "sha256": "a893bab0a8f6c367174556591956d1b788202dad200615520e06ddd2613319b8"
       },
       "coverage_id": "RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg",
       "group_complete": false,
@@ -714,6 +752,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:23.422523+00:00",
       "product": "raqdps_statistics",
+      "product_phase": "forecast_statistic",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -721,16 +760,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": 24,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-07T00%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-07T00:00:00+00:00",
-      "variable": "raw__raqdps_smoke_pm2_5_surface_24h_mean"
+      "variable": "raw__raqdps_smoke_pm2_5_surface_24h_mean",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 4793,
-        "sha256": "781a094650c145e5debe0523e7d89b9e17390339c7c2fcb5d602903b66aaad88"
+        "bytes": 4903,
+        "sha256": "400029e60953963c57739f5dc9a9f92435808290c867725477973ad2d92e6a86"
       },
       "coverage_id": "RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax",
       "group_complete": false,
@@ -752,6 +793,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:24.927270+00:00",
       "product": "raqdps_statistics",
+      "product_phase": "forecast_statistic",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -759,16 +801,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": "2026-09-06T00:00:00+00:00",
+      "statistic_window_hours": 24,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-07T00%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-06T00%3A00%3A00Z",
       "valid_time": "2026-09-07T00:00:00+00:00",
-      "variable": "raw__raqdps_smoke_pm2_5_surface_24h_max"
+      "variable": "raw__raqdps_smoke_pm2_5_surface_24h_max",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6731,
-        "sha256": "ae7a6b4851ac5b9ceba43e9067247b50017f1b35b79b348936b18dece13b9908"
+        "bytes": 6809,
+        "sha256": "f21e5600b7ab5ea7ac065c988c74c017c6be73fccb0a29618dda42a4633158ff"
       },
       "coverage_id": "RDAQA-Prelim_10km_PM2.5",
       "group_complete": false,
@@ -790,6 +834,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:26.445775+00:00",
       "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -797,16 +842,18 @@
         "sha256": "19dbdf361505e15310bf737877dcc1aa1827955109f74548eb2d53b95be8696a"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
       "valid_time": "2026-09-06T03:00:00+00:00",
-      "variable": "raw__rdaqa_preliminary_pm2_5_surface"
+      "variable": "raw__rdaqa_preliminary_pm2_5_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6780,
-        "sha256": "930966017d1272186e836fd142128de5eafeed07ed149ec127548e8111351dd9"
+        "bytes": 6858,
+        "sha256": "c77b28b8e8baf893e8a23e830ea58cae7ac78579586009b8a453fe73988ba28d"
       },
       "coverage_id": "RDAQA-Prelim_10km_PM10",
       "group_complete": false,
@@ -828,6 +875,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:27.935498+00:00",
       "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -835,16 +883,18 @@
         "sha256": "e95c4f9b3aad1e8a4f0456c759b84631ad6794aa6cf24c2520262d1421077d97"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
       "valid_time": "2026-09-06T03:00:00+00:00",
-      "variable": "raw__rdaqa_preliminary_pm10_surface"
+      "variable": "raw__rdaqa_preliminary_pm10_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6643,
-        "sha256": "d89137cf40adba507654a8c32c36acded0a58b008966925e98cefbfe32e4eec6"
+        "bytes": 6721,
+        "sha256": "e235f7f6cdc18e039fb351ba7a989a6b3c0c7b148a5bcc41cf3be7e07de4cde3"
       },
       "coverage_id": "RDAQA-Prelim_10km_O3",
       "group_complete": false,
@@ -866,6 +916,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:29.454488+00:00",
       "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -873,16 +924,18 @@
         "sha256": "69ec1afea17ae35ce93f1a682bd86edd8c186fc8dd8bcda216daa64b3ca38244"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_O3&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
       "valid_time": "2026-09-06T03:00:00+00:00",
-      "variable": "raw__rdaqa_preliminary_ozone_surface"
+      "variable": "raw__rdaqa_preliminary_ozone_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 4809,
-        "sha256": "48a856e5bfbc3ff69a8ca3c83422085b6bcaa67effafce0bede6ff617c354980"
+        "bytes": 4887,
+        "sha256": "1d735005cdc5428e78e720636e0debc0f57160734d45a26e45d9dec4d8ca35aa"
       },
       "coverage_id": "RDAQA-Prelim_10km_NO",
       "group_complete": false,
@@ -904,6 +957,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:30.968433+00:00",
       "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -911,16 +965,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_NO&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
       "valid_time": "2026-09-06T03:00:00+00:00",
-      "variable": "raw__rdaqa_preliminary_nitric_oxide_surface"
+      "variable": "raw__rdaqa_preliminary_nitric_oxide_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 5612,
-        "sha256": "7f95c05f8b5792fdbfe18f626929158a7b62c2d6989ef97ef77043eee8d8b37e"
+        "bytes": 5690,
+        "sha256": "d84c69fdf27afafea3e8eb7bbfcf67c07e3e62902b6b4f6037d8752b9844e60e"
       },
       "coverage_id": "RDAQA-Prelim_10km_NO2",
       "group_complete": false,
@@ -942,6 +998,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:32.490089+00:00",
       "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -949,16 +1006,18 @@
         "sha256": "7d5e35a2fec99bd789ece933e8b98da5ad72c8fab20385c321c36340ee379765"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_NO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
       "valid_time": "2026-09-06T03:00:00+00:00",
-      "variable": "raw__rdaqa_preliminary_nitrogen_dioxide_surface"
+      "variable": "raw__rdaqa_preliminary_nitrogen_dioxide_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 5608,
-        "sha256": "4db0e13b850b1990ee1addb7b661bdfa02ab04bd5d37df85a6d5caa17ade4270"
+        "bytes": 5686,
+        "sha256": "7c0c5e33e9d065cec99d412374993dedb61f7b46129cb7cf9c91bae9560b1be8"
       },
       "coverage_id": "RDAQA-Prelim_10km_SO2",
       "group_complete": false,
@@ -980,6 +1039,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:33.933613+00:00",
       "product": "rdaqa_preliminary",
+      "product_phase": "preliminary_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -987,16 +1047,18 @@
         "sha256": "3f48251cd247ef789515ea2300b03816828dc428375173c4c7000f3be4ebea7e"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-Prelim_10km_SO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T03%3A00%3A00Z",
       "valid_time": "2026-09-06T03:00:00+00:00",
-      "variable": "raw__rdaqa_preliminary_sulphur_dioxide_surface"
+      "variable": "raw__rdaqa_preliminary_sulphur_dioxide_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6695,
-        "sha256": "2819b0c2245d718d6e4def6ec277d0e97519b3b54b0a71140e11d5d46983eef9"
+        "bytes": 6767,
+        "sha256": "cab34be9766a21e24f42bf00db9aa6a2788348d881992ab38de2d8d94a7b2d52"
       },
       "coverage_id": "RDAQA_10km_PM2.5",
       "group_complete": false,
@@ -1018,6 +1080,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:35.439984+00:00",
       "product": "rdaqa_final",
+      "product_phase": "final_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -1025,16 +1088,18 @@
         "sha256": "d081fa89e190d97be921b72b2aaebebe2a425db0f400c5ae624bf3dd07ae4f6f"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
       "valid_time": "2026-09-06T02:00:00+00:00",
-      "variable": "raw__rdaqa_final_pm2_5_surface"
+      "variable": "raw__rdaqa_final_pm2_5_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6818,
-        "sha256": "d0445572df2d4f5bdf1ce719138a70ea1b65f7ca152e63e5046538b04df59905"
+        "bytes": 6890,
+        "sha256": "e575d920aa694a1ce8c52a15890cba0e7077875cafb543967cb73589d89f57e9"
       },
       "coverage_id": "RDAQA_10km_PM10",
       "group_complete": false,
@@ -1056,6 +1121,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:36.940035+00:00",
       "product": "rdaqa_final",
+      "product_phase": "final_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -1063,16 +1129,18 @@
         "sha256": "666cf92f159106198e68e6106c1194b5d0b21c082c6ca048f407d664556cba1e"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
       "valid_time": "2026-09-06T02:00:00+00:00",
-      "variable": "raw__rdaqa_final_pm10_surface"
+      "variable": "raw__rdaqa_final_pm10_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6620,
-        "sha256": "b55903d3142ac18da3b5f14ddbc9c44ce3e45622fbe9205605900f43b86d5f91"
+        "bytes": 6692,
+        "sha256": "4e8cfe61e708ab5b8b3b95d30d31992084484bd0c27e3cc91806b0fe6f8636cb"
       },
       "coverage_id": "RDAQA_10km_O3",
       "group_complete": false,
@@ -1094,6 +1162,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:38.453082+00:00",
       "product": "rdaqa_final",
+      "product_phase": "final_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -1101,16 +1170,18 @@
         "sha256": "20e1ca908b2f4490eb239820c8b469ac908cd1ef1ed269c25a62fee7edb575ea"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_O3&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
       "valid_time": "2026-09-06T02:00:00+00:00",
-      "variable": "raw__rdaqa_final_ozone_surface"
+      "variable": "raw__rdaqa_final_ozone_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 4785,
-        "sha256": "f706fd39793d7142c3c526e3c0c014937701795c18e126bb93d010550dea3b5d"
+        "bytes": 4857,
+        "sha256": "f48c744ea612141e3389b31af90c1f3d5a481e949db7318b1a91534bece6e011"
       },
       "coverage_id": "RDAQA_10km_NO",
       "group_complete": false,
@@ -1132,6 +1203,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:39.937013+00:00",
       "product": "rdaqa_final",
+      "product_phase": "final_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -1139,16 +1211,18 @@
         "sha256": "ee995eb35c4686ebef4bafe55aa8b7816c794bac9c3b8f08ba851da018668e89"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_NO&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
       "valid_time": "2026-09-06T02:00:00+00:00",
-      "variable": "raw__rdaqa_final_nitric_oxide_surface"
+      "variable": "raw__rdaqa_final_nitric_oxide_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 5653,
-        "sha256": "66e35e9fba90ac3bea06f29d37f60ca1806447296d5a03487fa87d499adf4c67"
+        "bytes": 5725,
+        "sha256": "15de477396aec00899b4157cef78e23ef58c7b26c3a12d45593e2c31b4bf8397"
       },
       "coverage_id": "RDAQA_10km_NO2",
       "group_complete": false,
@@ -1170,6 +1244,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:41.465427+00:00",
       "product": "rdaqa_final",
+      "product_phase": "final_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -1177,16 +1252,18 @@
         "sha256": "3b11791a016ec58ff022d47ef9017e6b2ca4ad97d377815aef6c70d10ed31afe"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_NO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
       "valid_time": "2026-09-06T02:00:00+00:00",
-      "variable": "raw__rdaqa_final_nitrogen_dioxide_surface"
+      "variable": "raw__rdaqa_final_nitrogen_dioxide_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 5915,
-        "sha256": "fc93c47962268279c62c874e3860380f79abc7505d2b4a7b0ec101f473d062f6"
+        "bytes": 5987,
+        "sha256": "33911d449e50166d87d14045b0142e0fedc3a2659f8d7951069779b7e8496015"
       },
       "coverage_id": "RDAQA_10km_SO2",
       "group_complete": false,
@@ -1208,6 +1285,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:43.004645+00:00",
       "product": "rdaqa_final",
+      "product_phase": "final_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -1215,16 +1293,18 @@
         "sha256": "f9cb1190a5691b25f739fa80937d4884bbb3b6b08de6ec87dd1eef24d1887350"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "mol mol-1",
       "units_as_published": "mol/mol",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA_10km_SO2&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
       "valid_time": "2026-09-06T02:00:00+00:00",
-      "variable": "raw__rdaqa_final_sulphur_dioxide_surface"
+      "variable": "raw__rdaqa_final_sulphur_dioxide_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6695,
-        "sha256": "14adac2af2ef8602bbf6f235123d4042b6d0ac51c07454012b4c4bb22ab00475"
+        "bytes": 6783,
+        "sha256": "346c126fbfe584aa5ce1de3c59dedcaca4194513bafcb077ee1d61df402a6b2d"
       },
       "coverage_id": "RDAQA-FW_10km_PM2.5",
       "group_complete": false,
@@ -1246,6 +1326,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:44.457870+00:00",
       "product": "rdaqa_smoke",
+      "product_phase": "firework_contribution_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -1253,16 +1334,18 @@
         "sha256": "d081fa89e190d97be921b72b2aaebebe2a425db0f400c5ae624bf3dd07ae4f6f"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-FW_10km_PM2.5&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
       "valid_time": "2026-09-06T02:00:00+00:00",
-      "variable": "raw__rdaqa_smoke_pm2_5_surface"
+      "variable": "raw__rdaqa_smoke_pm2_5_surface",
+      "vertical_scope": "surface"
     },
     {
       "artifact": {
-        "bytes": 6818,
-        "sha256": "5bd14f8166daa7869bf5918a533630aba1f267ffd9e681219bc9a40e43ea2b54"
+        "bytes": 6906,
+        "sha256": "1471bca2aa55d197e5184626ad56a6dc8cf546c3d3d3a6ab54031624991c9108"
       },
       "coverage_id": "RDAQA-FW_10km_PM10",
       "group_complete": false,
@@ -1284,6 +1367,7 @@
       },
       "http_completed_at": "2026-09-06T04:59:45.942893+00:00",
       "product": "rdaqa_smoke",
+      "product_phase": "firework_contribution_analysis",
       "raw": {
         "bytes": 4558,
         "finite_cells": 1035,
@@ -1291,11 +1375,13 @@
         "sha256": "666cf92f159106198e68e6106c1194b5d0b21c082c6ca048f407d664556cba1e"
       },
       "run_time": null,
+      "statistic_window_hours": null,
       "stored_units": "kg m-3",
       "units_as_published": "kg/m\u00b3",
       "url": "https://geo.weather.gc.ca/geomet?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCoverage&COVERAGEID=RDAQA-FW_10km_PM10&FORMAT=image%2Ftiff&SUBSET=long%28-55.0%2C-51.0%29&SUBSET=lat%2846.5%2C48.5%29&SCALESIZE=long%2845%29&SCALESIZE=lat%2823%29&TIME=2026-09-06T02%3A00%3A00Z",
       "valid_time": "2026-09-06T02:00:00+00:00",
-      "variable": "raw__rdaqa_smoke_pm10_surface"
+      "variable": "raw__rdaqa_smoke_pm10_surface",
+      "vertical_scope": "surface"
     }
   ]
 }

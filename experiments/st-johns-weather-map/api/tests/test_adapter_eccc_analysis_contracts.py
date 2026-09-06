@@ -94,6 +94,18 @@ def test_selected_air_quality_inventory_is_exhaustive_and_preserves_provider_spe
     }
 
 
+def test_all_28_fields_declare_phase_vertical_scope_and_statistic_window():
+    products = ("raqdps_hourly", "raqdps_statistics", "rdaqa_preliminary", "rdaqa_final", "rdaqa_smoke")
+    rows = [(product_contract(name), field) for name in products for field in product_contract(name).fields]
+    assert len(rows) == 28
+    assert all(contract.product_phase for contract, _field in rows)
+    assert all(field.vertical_scope in {"surface", "entire_atmosphere"} for _contract, field in rows)
+    assert all(
+        field.statistic_window_hours == (24 if contract.product_phase == "forecast_statistic" else None)
+        for contract, field in rows
+    )
+
+
 def test_live_receipt_covers_every_selected_field_and_actual_http_time():
     path = Path(__file__).parent / "fixtures/eccc_geomet_wcs/raqdps-rdaqa-2026-09-06.receipt.json"
     receipt = json.loads(path.read_text())
@@ -107,6 +119,11 @@ def test_live_receipt_covers_every_selected_field_and_actual_http_time():
     assert receipt["finite_operation_cap_bytes"] == 64 << 20
     assert receipt["received_bytes"] == 664_819
     assert all(row["group_complete"] is False and row["group_qc_passed"] is True for row in receipt["rows"])
+    assert all(row["product_phase"] and row["vertical_scope"] in {"surface", "entire_atmosphere"} for row in receipt["rows"])
+    assert all(
+        row["statistic_window_hours"] == (24 if row["product"] == "raqdps_statistics" else None)
+        for row in receipt["rows"]
+    )
     by_product = {}
     for row in receipt["rows"]:
         by_product.setdefault(row["product"], set()).add((row["valid_time"], row["run_time"]))
@@ -125,6 +142,8 @@ def test_full_product_fetch_uses_validator_owned_nonpublishable_verdict(tmp_path
     assert result.retrieved_at == VALID
     assert len(result.artifacts) == 2
     assert all(artifact.provenance["operational"] is False for artifact in result.artifacts)
+    assert all(artifact.provenance["product_phase"] == "firework_contribution_analysis" for artifact in result.artifacts)
+    assert all(artifact.provenance["vertical_scope"] == "surface" for artifact in result.artifacts)
 
 @pytest.mark.parametrize(
     ("name", "field_count"),
