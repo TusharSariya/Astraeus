@@ -874,7 +874,9 @@ def test_consensus_uses_parallel_demand_sources_without_store_fallback(monkeypat
             class Store(EmptyStore):
                 def sample_point(inner, *_args, **_kwargs):
                     return [_sample(self.source, "temperature_2m", self.value, "degC", valid_time)]
-            return live_point_fields(Store(), latitude, longitude, valid_time)
+            fields, consensus, sources = live_point_fields(Store(), latitude, longitude, valid_time)
+            fields = [item.model_copy(update={"provenance": item.provenance.model_copy(update={"run_stale": False, "freshness": item.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0, "threshold_seconds": 3600}), "quality": item.provenance.quality.model_copy(update={"status": "passed"})})}) for item in fields]
+            return fields, consensus, sources
 
     class NoMetar:
         def point_fields(self, *_args):
@@ -916,7 +918,9 @@ def test_consensus_demand_sources_overlap_and_fail_independently(monkeypatch, da
             class Store(EmptyStore):
                 def sample_point(inner, *_args, **_kwargs):
                     return [_sample("eccc-hrdps", "temperature_2m", 8.5, "degC", valid_time)]
-            return live_point_fields(Store(), latitude, longitude, valid_time)
+            fields, consensus, sources = live_point_fields(Store(), latitude, longitude, valid_time)
+            fields = [item.model_copy(update={"provenance": item.provenance.model_copy(update={"run_stale": False, "freshness": item.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0, "threshold_seconds": 3600}), "quality": item.provenance.quality.model_copy(update={"status": "passed"})})}) for item in fields]
+            return fields, consensus, sources
 
     class NoMetar:
         def point_fields(self, *_args): raise OSError
@@ -931,3 +935,23 @@ def test_consensus_demand_sources_overlap_and_fail_independently(monkeypatch, da
     assert payload["selection"]["selected_source_id"] == "eccc-hrdps"
     assert {item["provenance"]["source_id"] for item in payload["fields"]} == {"eccc-hrdps"}
     assert any("noaa-gfs demand evidence is unavailable" in notice for notice in payload["notices"])
+
+
+@pytest.mark.parametrize("mutation", ["member", "stale", "failed_qc", "non_temperature"])
+def test_demand_consensus_candidate_preserves_existing_guards(mutation):
+    from weather_api.store import consensus_candidates_from_fields
+
+    selected = now()
+    class Store(EmptyStore):
+        def sample_point(self, *_args, **_kwargs):
+            variable = "visibility" if mutation == "non_temperature" else "temperature_2m"
+            units = "m" if mutation == "non_temperature" else "degC"
+            return [_sample("eccc-hrdps", variable, 9.0, units, selected)]
+    fields, _consensus, _sources = live_point_fields(Store(), 47.6, -52.7, selected)
+    field = fields[0]
+    updates = {"run_stale": False}
+    if mutation == "member": updates["member"] = "p01"
+    if mutation == "stale": updates["freshness"] = field.provenance.freshness.model_copy(update={"status": "stale"})
+    if mutation == "failed_qc": updates["quality"] = field.provenance.quality.model_copy(update={"status": "failed"})
+    field = field.model_copy(update={"provenance": field.provenance.model_copy(update=updates)})
+    assert consensus_candidates_from_fields([field]) == []

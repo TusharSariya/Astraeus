@@ -2658,7 +2658,14 @@ def consensus_candidates_from_fields(fields: Sequence[Any]) -> list[Any]:
     candidates = []
     for field in fields:
         provenance = field.provenance
-        if field.field != "temperature" or field.value is None or provenance.evidence_class != "retrieved":
+        if (
+            field.field != "temperature" or field.value is None
+            or provenance.evidence_class != "retrieved"
+            or provenance.member is not None
+            or provenance.freshness.status != "fresh"
+            or provenance.quality.status != "passed"
+            or provenance.run_stale is not False
+        ):
             continue
         config = _registry_config(provenance.source_id)
         if config is None or not config.may_enter_consensus:

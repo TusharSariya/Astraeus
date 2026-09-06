@@ -1198,7 +1198,7 @@ def _live_point(
             LOGGER.info("METAR demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
             return [], ["awc-metar-speci has no validated observation less than one hour old at or before this selection"]
 
-    def demand_consensus() -> tuple[list[EvidenceField], object, list[str], list[str]]:
+    def demand_consensus() -> tuple[list[EvidenceField], object, list[str], list[str], set[str]]:
         """Feed the unchanged consensus reader with independently queried sources."""
         calls = {
             "eccc-hrdps": lambda: __import__("weather_api.hrdps_query", fromlist=["hrdps_query_coordinator"]).hrdps_query_coordinator().point_fields(latitude, longitude, time),
@@ -1218,8 +1218,9 @@ def _live_point(
                     notices.append(f"{source} demand evidence is unavailable and was omitted independently: {error}")
 
         from .science import build_consensus  # noqa: PLC0415
-        consensus = build_consensus(consensus_candidates_from_fields(demanded))
-        return demanded, consensus, sorted({field.provenance.source_id for field in demanded}), notices
+        candidates = consensus_candidates_from_fields(demanded)
+        consensus = build_consensus(candidates)
+        return demanded, consensus, sorted({field.provenance.source_id for field in demanded}), notices, {item.source_id for item in candidates}
 
     if product and product.upper() == "HRDPS":
         try:
@@ -1301,7 +1302,7 @@ def _live_point(
 
     demand_observations, demand_notices = demand_metar()
     if product is None or product.lower() in CONSENSUS_PRODUCTS:
-        fields, consensus, sources, consensus_notices = demand_consensus()
+        fields, consensus, sources, consensus_notices, eligible_temperature_sources = demand_consensus()
         fields = [*fields, *demand_observations]
         sources = sorted({*sources, *(item.provenance.source_id for item in demand_observations)})
         if not fields:
@@ -1311,7 +1312,7 @@ def _live_point(
                 flags=["demand_consensus_unavailable"],
                 notices=[*consensus_notices, *demand_notices, "No retained forecast artifact was read or substituted"],
             )
-        live_hrdps = "eccc-hrdps" in sources
+        live_hrdps = "eccc-hrdps" in eligible_temperature_sources
         mode, badge, reason = select_fallback(consensus.available, hrdps_fresh=live_hrdps, rdps_fresh=False)
         return PointResponse(
             data_mode=DataMode.LIVE,
