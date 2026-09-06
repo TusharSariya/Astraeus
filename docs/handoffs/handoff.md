@@ -1,163 +1,148 @@
-# Autonomous execution handoff: sources, then desktop app
+# Autonomous execution handoff: complete sources through the existing app
 
-Updated September 6, 2026. This is a non-normative execution record, not a new
-Wayfinder map or a change to application behavior.
+Updated September 6, 2026. This is the current non-normative execution record.
+It supersedes earlier framework-first queue instructions while preserving their
+history and the owner's earlier design selections.
 
-## Current state and owner authorization
+## Destination and map ownership
 
-The full experimental weather-map stack merged to main in PR157, commit
-6322b1174e566c1a26c1da79bd837201bc898f2b. All18 former open stacked PRs were
-included and closed as superseded. Read
-`experiments/st-johns-weather-map/docs/main-integration.md` for pinned heads,
-cache corrections and combined verification.
+[Source map #70](https://github.com/TusharSariya/Astraeus/issues/70) owns every
+eligible free-access product from provider request through bounded worker,
+immutable artifact, real API response, and consumption by the **existing web
+application**. A source is complete only when every eligible product field has a
+retrieved, missing, unsupported, or deferred disposition and retained evidence
+proves the normal path. Catalogue entries, adapter fixtures, isolated captures,
+or nonpublishable artifacts alone do not complete a source.
 
-The owner approved the ordered queue below and instructed "Implement the plan":
-sources first, then desktop app/design; fresh Sol leads and bounded Terra/Luna
-workers; review and merge passing experimental work without routine approval
-prompts; keep human/external blockers visible and continue eligible work.
+[Application map #38](https://github.com/TusharSariya/Astraeus/issues/38) remains
+a separate, linked effort for the later desktop visual rebuild. Do not merge the
+maps or create another master map. Source work may make routine changes needed
+by the existing UI; new layout, styling, shared-snapshot UX, and desktop design
+stay with #38.
 
-The owner explicitly said "skip the phone brief". #53 remains open, deferred
-and unclaimed. #55 excludes phone work and its native blocker edge from #53 was
-removed. #38 records desktop scope and the phone deferral. Do not build phone
-layouts or responsive-phone studies in this run.
+The owner approved a corrective sequencing change after the September 6 delivery
+audit: first make one complete HRDPS vertical slice work through the current
+refresh/store/API/web path, then repeat complete source paths. Further fragment,
+shared-snapshot, scoped-database-role, and general framework extensions are
+paused until a measured source or UI failure demonstrates their need. This
+supersedes the earlier framework-first sequence; it does not say those earlier
+features were never selected and does not revert merged safety work.
 
-## Immediate runtime blocker
+## Measured baseline
 
-The worker-level #159 preflight and payload-discovery reservation seams merged
-through PR166 at `86355f9c81f956eb2d7a123a7e940f3ee6bb9066`.
-Scheduler-eligible adapters without measured complete-operation bounds remain
-fail-closed while #159 adds source-specific memory and physical-allocation
-enforcement. SWPC Kp merged in PR177 (`a71f60d`); GFZ Hp30 is the current
-bounded source slice. Active source work is #159 GFZ bounds, #115 ECCC/WMO
-aviation after AWC PR178 merged, and #143 JMA research. #116 acquisition merged
-in PR176, while its contracts and redistribution rights remain unresolved.
-#153 is released pending the owner's #179 decision. Pending owner contracts are
-#167, #168, #172, #173, #175 and #179; #158 awaits the owner's fragment choice.
-Native acquisition proofs do not establish whole-source publication or API
-completion. #118 is closed. The owner
-authorizes completed-thread reuse. The root
-orchestrator delegates implementation and independent evidence review while
-keeping claims and isolated worktrees coordinated.
+Current main is `490fc56df0a86eb7613b37509efaf1dedb1d8edf` after reviewed PR173.
+The registry contains 123 records: 21 are `implemented-unverified`. Seventeen
+records intersect ingestible configuration and a registered adapter, but only
+`awc-metar-speci` and `noaa-swpc-kp` currently implement both finite discovery
+and payload resource bounds required by the worker. The other 15 fail closed
+before discovery. Four adapter classes in the tree implement whole-operation
+bounds; two are not scheduled sources. These are code-configuration counts, not
+proof that either source is live in a running application.
 
-## Mandatory inputs and boundaries
+The current web client still reads `/point`, `/timeline`, `/layers`, `/catalog`,
+`/sources/status`, and the existing image/feature routes. It makes no snapshot
+request. Before the post-PR157 source queue, the recorded live audit found 35
+layers, 118 catalogue records, 54 fields on the one-point response, sparse
+timeline coverage, and null profiles. Recent bounded acquisition and safety PRs
+improved evidence and failure handling, but many deliberately stopped before
+publication or existing-UI integration.
 
-Read AGENTS.md, the repository manage-astraeus-specs skill, docs/specv1/README.md,
-GOVERNANCE.md, CONTEXT.md, docs/agents/issue-tracker.md, map70 Notes and the exact
-issue with its native blockers. Read relevant accepted requirements and owning
-experimental OpenSpec before behavior changes. Missing/draft/conflicting
-production or scientific authority remains a human decision. The existing
-experimental seams do not authorize normative promotion.
+Trace the baseline through [PR157](https://github.com/TusharSariya/Astraeus/pull/157),
+the partial-cache refusal in [PR161](https://github.com/TusharSariya/Astraeus/pull/161),
+the payload gates in [PR162](https://github.com/TusharSariya/Astraeus/pull/162)
+and [PR166](https://github.com/TusharSariya/Astraeus/pull/166), the durable
+reservation implementation in [PR173](https://github.com/TusharSariya/Astraeus/pull/173),
+and the deferred shared-snapshot contract in
+[PR195](https://github.com/TusharSariya/Astraeus/pull/195).
 
-Use current origin/main in a new isolated worktree per ticket. Root user WIP
-remains at /Users/tusharsariya/Projects/Astraeus on execution/activity-profiles
-at9af2aaf: do not reset, switch, merge into or commit that checkout. The old
-prepared #118/#123 worktrees start at fe9a24f and are stale; use fresh main-based
-worktrees. Preserve other users' worktrees and raw-data ownership.
+## Immediate milestone and source definition of done
 
-Keep operational:false, registry ceilings, 64GiB hot quota, two complete
-forecast runs, 24h observation history and 14d forecast horizon. No cold tier,
-paid service, rented compute, provider outreach or implicit rights acceptance.
-No raw provider payload or rebuilt artifact belongs in Git. Keep only compact
-receipts (URL/params/bytes/SHA/actual capture time/artifact revision and actual
-API comparison results) and small hand-trimmed representative fixtures.
-Bound each capture and extraction, account for concurrent tasks and physical
-disk margin, and delete task-owned captures only after root review.
+[#196](https://github.com/TusharSariya/Astraeus/issues/196) is the first required
+vertical slice and blocks final verification #97. It adds source-specific finite
+bounds for the existing `eccc-hrdps` source and proves a fresh bounded
+`POST /refresh` job through worker discovery/fetch, atomic immutable publication,
+real `/point`, `/timeline`, and `/layers` responses, and existing web-client
+consumption. It preserves all selected HRDPS field dispositions; #187 continues
+to own the additional 195 vertical catalogue IDs.
 
-## Queue and priority
+The initial running-stack observation is an acceptance failure, not a baseline
+success: HRDPS returned 13 null point fields, the timeline reported zero of 361
+hours covered, and no HRDPS artifact was published. The running containers also
+appeared to expose the older 118-record catalogue while current main declares
+123, so #196 must pin the image/commit under test before attributing behavior to
+current main.
 
-Tracking truth is GitHub Issues on TusharSariya/Astraeus. Rows below are priority
-batches, not barriers: native blockers take precedence and available slots may
-be filled from later rows. At most three implementation tickets are active.
+Every subsequent source follows the same definition of done:
 
-First complete the new audit/repair follow-ups: #158 missing-only acquisition
-after partial cache hits, and #159 resource preflight before payload retrieval.
-Both are native children of #70 and native blockers of final verification #97.
-The shared #159 gate is implemented and tested; source-specific bounds remain
-incremental work. #158 remains pending the owner's fragment choice.
+1. Enumerate all eligible product fields and exact dispositions; do not hide a
+   family behind a small selected sample.
+2. Bound discovery, network bytes, decode memory/process limits, temporary and
+   stored physical allocation, and cleanup before payload retrieval.
+3. Preserve source/product/run/revision identity, native units, geometry, masks,
+   QC and missingness, and provider publication/valid/retrieval times.
+4. Publish only validated complete artifacts atomically and preserve the prior
+   readable revision on failure.
+5. Prove raw-to-artifact values and actual API values from a retained bounded
+   capture, then prove the existing web client consumes those responses.
+6. Exercise malformed, unavailable, oversized, quota, restart and stale-cache
+   paths. Fixture-only and direct-adapter-only checks are insufficient.
+7. Pass relevant API, registry/profile, SQL/storage, strict OpenSpec, specctl and
+   CI gates, followed by independent evidence review.
 
-| Batch | Tasks |
-| --- | --- |
-| 1 | #118 NL air quality; #123 IERS time inputs/kernels; #137 ECCC alerts/outlooks |
-| 2 | #133 RAQDPS/RDAQA; #105 Holyrood radar; #109 CWFIS/FIRMS |
-| 3 | #116 SWOB/city observations; #115 aviation hazards; #153 SST freshness/admission |
-| 4 | #143 JMA levels; #144 MOSMIX gusts; #145 GeoMet field accounting |
-| 5 | #142 Open-Meteo/Bright Sky admission; #141 GeoMet contracts; #140 WeatherNext temporal coverage |
-| 6 | #134 HRDPA/HREPA; #136 RDPA geometry/units; #135 HRDLPS/CaLDAS |
-| 7 | #84 GEFS/ICON ensemble; #147 REPS fields; #148 GEPS reductions |
-| 8 | #102 VIIRS/JPSS clouds; #103 NUCAPS profiles; #107 aerosols |
-| 9 | #106 native CAMS; #108 AERONET/eligible AQ observations; #104 Copernicus/MODIS/GPM |
-| 10 | #119 terrain/canopy; #121 night-light/sky brightness; #122 land/site access |
-| 11 | #120 buildings/OSM; #124 eclipse/geometry catalogues; #125 orbital/small bodies |
-| 12 | #117 community weather/MADIS; #90 permissioned cameras/transport; #126 meteor/photometry/transients |
-| 13 | #99 Open-Meteo marine/GFS-Wave; #112 buoys/water levels; #113 hydrometric |
-| 14 | #110 ocean/wave/surge; #111 remaining SST/ice/satellite ocean; #114 marine advisories |
-| 15 | #93 historical acquisition decision; #95 local FourCastNet feasibility |
-| 16 | #94 approved historical windows; #127 NOAA AI-GFS/AI-GEFS |
-| 17 | #97 integrated source verification and handoff |
+After HRDPS, select the next eligible source by the smallest missing work to meet
+this same definition, rather than by how much isolated acquisition code exists.
+Continue until #97 can verify all required source dispositions and integrations.
 
-#142 follows #143/#144; #111 currently depends on #153; #94/#127 depend on #93.
-Do not repeat merged SST implementation: #153 remains open because the captured
-latest analyses were outside the24h window and those source IDs have no owner
-admission resolution. Marine work needs a concrete activity connection and
-eligible path. #145 may expose more bounded field children; #95 only graduates
-inference integration children after feasibility and evidence-class decisions.
-New required children must block final verification; metadata or tiny selected
-samples cannot establish whole-source coverage.
+## Deferred work and retained safeguards
 
-Family milestones close only after their actual requirements and children:
-#78 named Open-Meteo/Bright Sky; #80 ECCC analyses; #85 cloud/radar satellites;
-#86 aerosol/radiation/fire; #87 marine/ocean/hydrometric; #88 local/aviation;
-#91 terrain/site; #92 celestial; #96 published AI products. Close #70 only after
-#97 establishes completion; unresolved required work is not implemented.
+- #158 missing-only repair and #159 source-bound coverage remain open and remain
+  blockers of #97 for their honest residual obligations. They are not blockers
+  of #196 unless its measurements demonstrate that full-fetch repair or a shared
+  bound is required.
+- Unmerged fragment manifests, shared 15-minute snapshots, selection-refresh
+  jobs, and scoped database roles are parked. Preserved worktrees are evidence,
+  not merged capability. Resume only with a reproduced partial-cache, concurrent
+  revision, or privilege-boundary need and an explicitly bounded task.
+- PR173's merged durable reservation/fencing safeguards remain in main. Do not
+  delete or weaken them. Unsupported adapters continue to fail closed.
+- Draft contract PRs #167, #168, #172, #175, and #179 are concrete owner
+  decisions, not accepted blanket authority. Present their recommendations as a
+  batch when they directly unblock source publication; do not acquire additional
+  variants merely to create more contract questions.
 
-## Desktop app/design sequence
+## Fixed boundaries
 
-Begin when eligible source work is finished or waiting on external input.
+Keep `operational: false`, registry ceilings, the 64 GiB hot quota, two complete
+forecast runs, rolling 24-hour observation history, and 14-day forecast horizon.
+No cold tier, paid service, rented compute, provider outreach, implicit rights
+acceptance, science promotion, or public deployment is authorized. No raw
+provider payload belongs in Git. Retain bounded raw bytes, headers, exact HTTP
+completion times and artifacts outside Git until independent review; commit only
+compact receipts and tiny representative fixtures.
 
-1. In parallel where capacity allows: #57 resolve the obsolete band-math scope
-   and numeric-input blockers; #69 reuse existing accessibility repairs and
-   finish reader verification; #66 prepare and resolve camera placement.
-2. #65 prepare outdoor red-night testing and obtain the owner's observations.
-3. #54 settle remaining prototype-backed API contracts after native blockers.
-4. #55 desktop front-end/API proposals, excluding phone #53.
-5. #38 record desktop completion while retaining the explicit phone deferral.
+Tracking truth is GitHub. Keep no more than three active implementation tickets.
+All detailed work is delegated from the root orchestrator; completed runtime
+threads may be reused. A lead does not independently approve its own evidence.
+Use an independent reviewer before merge, preserve user worktrees, integrate
+current main before final gates, and make conventional commits/PRs with exact
+`Spec-Refs` and `Verification`.
 
-#57's old swipe language predates the owner's exclusion of on-map comparison.
-Do not silently restore it or compare unlike cloud fields. #69 already has
-prototype repairs on dedicated branches; real screen-reader output remains
-unverified. #65 is physical human work. #66 requires a placement decision and
-source eligibility; registered metadata does not authorize camera image reuse.
-The current app queue ends in design/proposals. Create bounded implementation
-children from resolved contracts rather than inventing wire formats or science.
+## Current worktrees and claims
 
-## Agent, review and merge protocol
+- Root user checkout contains unrelated work and must not be mutated.
+- #196 HRDPS implementation is assigned to the payload/resource lead in a fresh
+  isolated main-based worktree.
+- `/private/tmp/astraeus-live-query-snapshot-api`, branch
+  `execution/live-query-snapshot-api`, preserves two local API commits and is
+  paused; do not merge it under the corrective sequence.
+- `/private/tmp/astraeus-scoped-db-roles`, branch
+  `execution/scoped-weather-db-roles`, preserves uncommitted scoped-role work and
+  is paused.
+- The #158 fragment worktree remains preserved and paused.
+- This tracker update is isolated at
+  `/private/tmp/astraeus-corrective-source-execution`.
 
-Each ticket has one fresh Sol lead; Terra handles complex bounded implementation
-or review; Luna handles bounded catalogue, fixture and documentation work. With
-four runtime slots total, root plus three leads leaves no nested-worker slot.
-Stagger leads when a complex ticket needs a subtree. Claim before work, but
-release claims when launch fails and no work is active. Never reuse completed
-agents on unrelated tickets.
+Research and handoff prose are non-normative. Only the owner changes accepted,
+verified, or superseded specification status.
 
-Root reviews field dispositions, bounded live evidence, artifacts, actual HTTP
-readback, negative tests and provenance. Leads do not self-close issues or
-promote admission. Rebase/integrate current main, resolve conflicts preserving
-both intents, run relevant checks, merge passing work, then close with a
-resolution and context pointer. Keep branches short instead of rebuilding a
-large PR stack. Human/external decisions get precise evidence and remaining
-actions while unrelated eligible work continues.
-
-Verification: API/registry tests, relevant strict OpenSpec, specctl validate and
-traceable Spec-Refs/Verification metadata on every change. Run web, SQL and
-storage checks when affected and at combined milestones. No fixture or static
-accessibility check substitutes for required real evidence. A no-data source
-is an explicit unavailable/unsupported disposition, never a favorable value.
-
-## Completed during queue setup
-
-- Deferred #53 and removed its native blocker from #55; updated #38/#55 scope.
-- Created #158/#159, linked them to #70 and as native blockers of #97.
-- Saved the owner-approved queue and runtime blocker here.
-- No new source implementation or provider capture was completed in this setup.
-
-Spec-Impact: none; execution handoff only, with no application behavior change.
+Spec-Impact: none; this records authorized execution order and completion proof.
