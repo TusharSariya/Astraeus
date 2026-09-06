@@ -955,3 +955,59 @@ def test_demand_consensus_candidate_preserves_existing_guards(mutation):
     if mutation == "failed_qc": updates["quality"] = field.provenance.quality.model_copy(update={"status": "failed"})
     field = field.model_copy(update={"provenance": field.provenance.model_copy(update=updates)})
     assert consensus_candidates_from_fields([field]) == []
+
+
+def test_repeated_consensus_request_adds_zero_upstream_loads_per_source(monkeypatch):
+    """Production source caches absorb the second route call before their loaders."""
+    from weather_api.gfs_query import GFSQueryEntry, GFSQueryService, GFSRequestKey
+    from weather_api.hrdps_query import HRDPSQueryEntry, HRDPSQueryService, HRDPSRequestKey
+    selected = now()
+
+    class CachedCoordinator:
+        def __init__(self, source, value, service, key):
+            self.source, self.value = source, value
+            self.service, self.key = service, key
+            self.upstream_calls = 0
+
+        def point_fields(self, latitude, longitude, valid_time):
+            self.service.query(self.key)
+            class Store(EmptyStore):
+                def sample_point(inner, *_args, **_kwargs):
+                    return [_sample(self.source, "temperature_2m", self.value, "degC", valid_time)]
+            fields, consensus, sources = live_point_fields(Store(), latitude, longitude, valid_time)
+            fields = [item.model_copy(update={"provenance": item.provenance.model_copy(update={
+                "run_stale": False,
+                "freshness": item.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0, "threshold_seconds": 3600}),
+                "quality": item.provenance.quality.model_copy(update={"status": "passed"}),
+            })}) for item in fields]
+            return fields, consensus, sources
+
+    hkey = HRDPSRequestKey("https://provider/hrdps/", "run", 0, ("temperature_2m",), ())
+    gkey = GFSRequestKey("https://provider/gfs.idx", "https://provider/gfs", ((0, 1),), ("TMP:2 m",), ())
+    hrdps = CachedCoordinator("eccc-hrdps", 8.5, None, hkey)
+    gfs = CachedCoordinator("noaa-gfs", 7.5, None, gkey)
+    def load_hrdps(key):
+        hrdps.upstream_calls += 1
+        return HRDPSQueryEntry(key, selected, selected, selected, "a" * 64, b"zip", {})
+    def load_gfs(key):
+        gfs.upstream_calls += 1
+        return GFSQueryEntry(key, selected, selected, selected, "b" * 64, {}, {}, (b"payload",))
+    hrdps.service = HRDPSQueryService(load_hrdps)
+    gfs.service = GFSQueryService(load_gfs)
+    monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: hrdps)
+    monkeypatch.setattr("weather_api.gfs_query.gfs_query_coordinator", lambda: gfs)
+    monkeypatch.setattr("weather_api.metar_query.metar_query_service", lambda: type("NoMetar", (), {"point_fields": staticmethod(lambda *_args: (_ for _ in ()).throw(OSError()))})())
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    client = TestClient(app)
+    params = {"latitude": 47.6, "longitude": -52.7, "valid_time": selected.isoformat()}
+
+    first = client.get("/api/experiments/weather/v0/point", params=params)
+    first_counts = (hrdps.upstream_calls, gfs.upstream_calls)
+    second = client.get("/api/experiments/weather/v0/point", params=params)
+
+    assert first.status_code == second.status_code == 200
+    assert first_counts == (1, 1)
+    assert (hrdps.upstream_calls, gfs.upstream_calls) == first_counts
+    assert [(item["value"], item["provenance"]["source_id"]) for item in first.json()["fields"]] == [
+        (item["value"], item["provenance"]["source_id"]) for item in second.json()["fields"]
+    ]

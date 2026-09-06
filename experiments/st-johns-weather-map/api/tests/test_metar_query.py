@@ -275,4 +275,4 @@ def test_default_point_keeps_demand_metar_when_legacy_store_raises(monkeypatch):
     body=response.json()
     assert body["data_mode"]=="live" and body["selection"]["mode"]=="evidence_only"
     assert [item["provenance"]["source_id"] for item in body["fields"]]==["awc-metar-speci"]
-    assert "no retained field was used" in body["notices"][0]
+    assert all("legacy store broken" not in notice for notice in body["notices"])

@@ -275,7 +275,7 @@ def test_fixture_artifact_round_trips_through_the_astraeus_live_api_sampler(tmp_
 
 
 @pytest.mark.parametrize(("model", "field"), REPRESENTATIVE_FIELDS)
-def test_every_representative_round_trips_raw_to_artifact_reader_and_http(
+def test_every_representative_round_trips_raw_to_artifact_reader_without_default_point_fallback(
     tmp_path, monkeypatch, model, field,
 ):
     monkeypatch.setattr(api_module, "now", lambda: VALID)
@@ -318,7 +318,8 @@ def test_every_representative_round_trips_raw_to_artifact_reader_and_http(
     )
     assert response.status_code == 200, response.text
     returned = {item["field"]: item["value"] for item in response.json()["fields"]}
-    assert returned[field.variable] == 4.0
+    assert field.variable not in returned
+    assert "no migrated demand source returned applicable point evidence" in response.json()["selection"]["reason"]
 
 
 @pytest.mark.parametrize(("model", "field"), REPRESENTATIVE_FIELDS)
