@@ -1067,6 +1067,51 @@ def _live_point(
     belong to and whether a statistic over them is answerable are all facts
     the store and the derivation registry hold.
     """
+    if product and product.upper() in {"GFS", "NOAA"}:
+        try:
+            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+
+            fields, _consensus, _sources = gfs_query_coordinator().point_fields(latitude, longitude, time)
+        except Exception as error:
+            LOGGER.exception("GFS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
+            return _unavailable_point(
+                latitude,
+                longitude,
+                time,
+                reason=f"GFS selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:noaa-gfs"],
+                notices=["noaa-gfs could not retrieve and validate the selected native timestep"],
+                source_id="noaa-gfs",
+                product="GFS",
+            )
+        if not fields:
+            return _unavailable_point(
+                latitude,
+                longitude,
+                time,
+                reason="GFS has no native value covering this coordinate and selected timestamp",
+                flags=["demand_query_empty:noaa-gfs"],
+                notices=["noaa-gfs returned no validated native value for the selected point"],
+                source_id="noaa-gfs",
+                product="GFS",
+            )
+        actual_time = fields[0].provenance.valid_time
+        return PointResponse(
+            data_mode=DataMode.LIVE,
+            latitude=latitude,
+            longitude=longitude,
+            valid_time=time,
+            selection=Selection(
+                mode="fallback",
+                selected_source_id="noaa-gfs",
+                selected_product_id="gfs",
+                badge="GFS selected model",
+                reason=f"Selected GFS native timestep {actual_time.isoformat()}",
+            ),
+            fields=fields,
+            notices=[f"GFS values are from native timestep {actual_time.isoformat()}; no temporal interpolation was applied"],
+        )
+
     store = live_store()
     if store is None:
         return _unavailable_point(latitude, longitude, time, reason="no live artifact store is reachable", flags=["live_store_unreachable"], notices=["no live artifact store is reachable"])
