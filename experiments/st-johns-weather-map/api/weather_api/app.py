@@ -147,6 +147,7 @@ PRODUCT_SOURCE_IDS = {
     "REPS": "eccc-reps",
     "GFS": "noaa-gfs",
     "NOAA": "noaa-gfs",
+    "GFS Wave": "openmeteo-gfs-wave",
     "IFS": "ecmwf-ifs",
     "ECMWF": "ecmwf-ifs",
     "ICON": "dwd-icon-global",
@@ -1349,6 +1350,40 @@ def _live_point(
             ),
             fields=fields + observations,
             notices=[f"GFS values are from native timestep {actual_time.isoformat()}; no temporal interpolation was applied", *observation_notices],
+        )
+    if product and product.upper() == "GFS WAVE":
+        try:
+            from .openmeteo_gfs_wave_query import openmeteo_gfs_wave_query_service  # noqa: PLC0415
+
+            fields = openmeteo_gfs_wave_query_service().point_fields(latitude, longitude, time)
+        except Exception as error:
+            LOGGER.info("Open-Meteo GFS-Wave demand point failed at %s,%s for %s: %s", latitude, longitude, time.isoformat(), type(error).__name__)
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason=f"GFS-Wave selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:openmeteo-gfs-wave"],
+                notices=["openmeteo-gfs-wave could not retrieve and validate the exact selected native hourly response"],
+                source_id="openmeteo-gfs-wave", product="GFS-Wave 0.16 degree via Open-Meteo",
+            )
+        if not fields:
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason="GFS-Wave has no native value covering this coordinate and selected timestamp",
+                flags=["demand_query_empty:openmeteo-gfs-wave"],
+                notices=["openmeteo-gfs-wave returned no validated native sea-cell value for the selected point"],
+                source_id="openmeteo-gfs-wave", product="GFS-Wave 0.16 degree via Open-Meteo",
+            )
+        return PointResponse(
+            data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+            selection=Selection(
+                mode="evidence_only", selected_source_id=None, selected_product_id=None,
+                badge="GFS-Wave sea-state evidence", reason="Reprocessed Open-Meteo sea-state evidence is not a display primary",
+            ),
+            fields=fields,
+            notices=[
+                "GFS-Wave values are the exact selected native hourly response; no temporal interpolation or neighbouring-time fallback was applied",
+                "Open-Meteo does not expose a GFS-Wave producer run identifier in this response, so no run time is claimed",
+            ],
         )
 
     demand_observations, demand_notices = demand_metar()

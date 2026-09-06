@@ -36,6 +36,18 @@ class CatalogueShapeTests(unittest.TestCase):
             seen |= keys
         self.assertEqual(set(fields.keys()), seen)
 
+    def test_openmeteo_wave_partition_keys_have_registered_families(self) -> None:
+        expected = {
+            "wind_wave_period": "wave_partition_period",
+            "swell_wave_period": "wave_partition_period",
+            "wind_wave_direction": "wave_partition_direction",
+            "swell_wave_direction": "wave_partition_direction",
+        }
+        for key, group in expected.items():
+            entry = fields.field(key)
+            self.assertEqual("marine", entry.family)
+            self.assertEqual(group, entry.comparability_group)
+
     def test_a_key_the_catalogue_lacks_raises_rather_than_returning_a_placeholder(self) -> None:
         with self.assertRaises(fields.UnknownFieldKey):
             fields.field("total_cloud")
