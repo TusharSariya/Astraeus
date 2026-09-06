@@ -413,7 +413,7 @@ class AWCMetarAdapter:
         return ResourceBounds(
             AWC_METAR_ARTIFACT_BYTES,
             AWC_METAR_ARTIFACT_BYTES,
-            AWC_METAR_FILESYSTEM_BLOCK_BYTES,
+            2 * AWC_METAR_FILESYSTEM_BLOCK_BYTES,
             AWC_METAR_DOCUMENT_BYTES,
         )
 

@@ -16,6 +16,10 @@
     "store_fields_per_row": 29,
     "http_rows": 7,
     "http_exposed_fields_per_row": 27,
+    "raw_to_artifact_values_or_masks": 203,
+    "http_direct_fields_per_row": 24,
+    "http_derived_fields": ["fog_state", "wind_speed_10m", "wind_direction_10m"],
+    "http_key_coverage_complete": true,
     "all_exposed_values_equal": true,
     "route_support": "labeled synthetic HRDPS artifact only opens the accepted point route; excluded from AWC comparisons"
   },
@@ -32,7 +36,9 @@
     "artifact_bytes": 65536,
     "stdout_bytes": 65536,
     "stderr_bytes": 16384,
-    "filesystem_block_bytes": 4096
+    "filesystem_block_bytes": 4096,
+    "overlapping_directory_allocations": 2,
+    "filesystem_margin_bytes": 8192
   },
   "scratch": "/private/tmp/awc159-capture"
 }

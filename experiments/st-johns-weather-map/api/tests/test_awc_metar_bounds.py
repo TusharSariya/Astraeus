@@ -51,4 +51,8 @@ def test_declared_limits_cover_enforced_channels(monkeypatch, tmp_path: Path) ->
     bounds = AWCMetarAdapter().operation_bounds(WINDOW)
     assert bounds.received_bytes == AWC_METAR_DOCUMENT_BYTES
     assert bounds.store_bytes == bounds.filesystem_bytes == AWC_METAR_ARTIFACT_BYTES
-    assert bounds.margin_bytes == 4096
+    assert bounds.margin_bytes == 8192
+    # At peak the worker TemporaryDirectory and the child's private workspace
+    # coexist with the child output. The atomic rename does not create a
+    # second output inode, so the complete physical reservation is exact.
+    assert bounds.filesystem_bytes + bounds.margin_bytes == 65536 + 4096 + 4096
