@@ -26,10 +26,13 @@ layouts or responsive-phone studies in this run.
 The worker-level #159 preflight and payload-discovery reservation seams merged
 through PR166 at `86355f9c81f956eb2d7a123a7e940f3ee6bb9066`.
 Scheduler-eligible adapters without measured complete-operation bounds remain
-fail-closed while source-specific memory and physical-allocation enforcement is
-implemented. #118 is closed; #123/#137 partial proofs merged in PR165/PR164 but
-their contracts remain in #167/#168; #158 awaits the owner's fragment choice;
-#133 awaits its contract/publication path and #105 is active. The owner
+fail-closed while #159 adds source-specific memory and physical-allocation
+enforcement; SWPC Kp is the current bounded source slice. #118 is closed.
+#123/#137 partial proofs merged in PR165/PR164 but their publication contracts
+remain in #167/#168. #105 acquisition merged in PR170 but its image publication
+proposal remains pending. #133 is active; #116 remains active; #158 awaits the
+owner's fragment choice; #173's shared durable-ledger proposal awaits its owner
+decision. The owner
 authorizes completed-thread reuse. The root
 orchestrator delegates implementation and independent evidence review while
 keeping claims and isolated worktrees coordinated.
