@@ -374,9 +374,16 @@ class GFSQueryCoordinator:
                     )
         return levels
 
-    def total_cloud_raster(self, selected_time: datetime, *, bounds: Mapping[str, float], width: int, height: int, crs: str):
-        """Render the cached native total-cloud grid without publishing it."""
+    def cloud_raster(self, selected_time: datetime, *, layer_id: str, bounds: Mapping[str, float], width: int, height: int, crs: str):
+        """Render one allowlisted cached native geometric-cloud grid."""
         from . import grids  # noqa: PLC0415
+        if layer_id not in {
+            "noaa-gfs-demand-total-cloud",
+            "noaa-gfs-demand-cloud-low",
+            "noaa-gfs-demand-cloud-middle",
+            "noaa-gfs-demand-cloud-high",
+        }:
+            raise ValueError(f"unsupported GFS demand raster: {layer_id}")
         entry = self.query(selected_time)
         try:
             index = tuple(entry.values["logical_names"]).index("surface")
@@ -399,12 +406,16 @@ class GFSQueryCoordinator:
                 def current(self): return [artifact]
                 def open(self, _artifact): return dataset
             try:
-                spec = grids.rendered_grid_spec("noaa-gfs-demand-total-cloud")
+                spec = grids.rendered_grid_spec(layer_id)
                 assert spec is not None
                 return grids.render_grid(Store(), spec, bounds=bounds, width=width, height=height, crs=crs, valid_time=entry.valid_time), entry
             finally:
                 dataset.close()
                 zipped.close()
+
+    def total_cloud_raster(self, selected_time: datetime, *, bounds: Mapping[str, float], width: int, height: int, crs: str):
+        """Compatibility wrapper for the first GFS demand raster."""
+        return self.cloud_raster(selected_time, layer_id="noaa-gfs-demand-total-cloud", bounds=bounds, width=width, height=height, crs=crs)
 
     def timeline_times(self, reference: datetime) -> tuple[tuple[datetime, ...], Mapping[str, object]]:
         """Return actual native frame keys from one bounded, coalesced S3 listing."""

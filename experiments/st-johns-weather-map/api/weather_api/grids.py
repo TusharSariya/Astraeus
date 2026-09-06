@@ -154,6 +154,18 @@ RENDERED_GRID_SPECS: tuple[RenderedGridSpec, ...] = (
         "total_cloud_geometric", "geometric total cloud cover", "entire atmosphere",
     ),
     RenderedGridSpec(
+        "noaa-gfs-demand-cloud-low", "noaa-gfs", "surface", "cloud_low",
+        "cloud_low", "geometric low cloud cover", "low cloud layer",
+    ),
+    RenderedGridSpec(
+        "noaa-gfs-demand-cloud-middle", "noaa-gfs", "surface", "cloud_middle",
+        "cloud_middle", "geometric middle cloud cover", "middle cloud layer",
+    ),
+    RenderedGridSpec(
+        "noaa-gfs-demand-cloud-high", "noaa-gfs", "surface", "cloud_high",
+        "cloud_high", "geometric high cloud cover", "high cloud layer",
+    ),
+    RenderedGridSpec(
         "noaa-gfs-surface-cloud-low", "noaa-gfs", "surface", "cloud_low",
         "cloud_low", "low cloud cover", "low cloud layer",
     ),
