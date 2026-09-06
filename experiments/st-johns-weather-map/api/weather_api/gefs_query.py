@@ -8,7 +8,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Callable, Mapping
 from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, gefs_member_identifiers
-from ingest.contract import ResourceBounds
+from ingest.adapters.noaa_s3 import NOAAGEFSEnsembleAdapter
+from ingest.contract import FetchWindow, ResourceBounds, RunCandidate
 from ingest.registry import get_config
 GEFS_FIELDS=("temperature_2m","dew_point_2m","relative_humidity_2m","wind_u_10m","wind_v_10m","mean_sea_level_pressure","total_cloud_mean_6h")
 GEFS_MEMBER_COUNT=31; GEFS_IDX_BYTES=1024*1024; GEFS_CACHE_MAX_BYTES=1024**3
@@ -66,7 +67,8 @@ class GEFSQueryEntry:
         for member,interval in self.cloud_intervals.items():
             if member not in self.members_present or len(interval)!=2 or not interval[0]<interval[1] or interval[1]!=self.valid_time or interval[1]-interval[0]>timedelta(hours=6): raise ValueError("GEFS cloud interval must preserve the native positive window ending at valid time")
             if self.key.lead==3 and interval!=(self.key.run_time,self.valid_time): raise ValueError("GEFS f003 cloud interval must be exactly 0-3 hours")
-            if self.key.lead==6 and interval!=(self.key.run_time,self.valid_time): raise ValueError("GEFS f006 cloud interval must be exactly 0-6 hours")
+            if self.key.lead>=6 and interval[1]-interval[0]!=timedelta(hours=6): raise ValueError("GEFS cloud interval at f006 and later must be exactly six hours")
+        if self.key.lead==0 and self.cloud_intervals: raise ValueError("GEFS f000 has no declared averaged-cloud interval")
 class GEFSQueryService:
     def __init__(self,loader:Callable[[GEFSRequestKey],GEFSQueryEntry],*,workspace:Path=Path("/work"),preflight=enforce_platform_bounds,clock=time.monotonic):
         self.loader,self.workspace,self.preflight,self.clock=loader,workspace,preflight,clock; self.lock=threading.Lock(); self.entries=OrderedDict(); self.inflight={}; self.failures={}
@@ -92,3 +94,48 @@ class GEFSQueryService:
             future.set_exception(error); raise
         finally:
             with self.lock:self.inflight.pop(key,None)
+
+
+class GEFSSelectedLoader:
+    """Run the existing bounded member decoder for one canonical run/lead."""
+
+    def __init__(self, adapter: NOAAGEFSEnsembleAdapter, workspace: Path) -> None:
+        self.adapter, self.workspace = adapter, workspace
+
+    def __call__(self, key: GEFSRequestKey) -> GEFSQueryEntry:
+        import xarray
+        import zarr
+        valid_time = key.run_time + timedelta(hours=key.lead)
+        candidate = RunCandidate(key.run_id, key.run_time, detail={
+            "date_str": key.run_time.strftime("%Y%m%d"),
+            "cycle": key.run_time.strftime("%H"),
+            "lead_hours": key.lead,
+        })
+        with tempfile.TemporaryDirectory(dir=self.workspace) as directory:
+            result = self.adapter.assemble(candidate, FetchWindow(valid_time), Path(directory))
+            artifact = result.artifacts[0]
+            payload = artifact.payload_path.read_bytes()
+            store = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")
+            try:
+                dataset = xarray.open_zarr(store, consolidated=False)
+                temperature = dataset["temperature_2m"]
+                present = tuple(str(value) for value in temperature.coords["member"].values)
+                mandatory = {member: "temperature_2m unavailable after bounded decode" for member in key.members if member not in present}
+                optional: dict[str, tuple[str, ...]] = {}
+                for member in present:
+                    absent = []
+                    for field in GEFS_FIELDS[1:]:
+                        if field not in dataset or member not in {str(value) for value in dataset[field].coords["member"].values}:
+                            absent.append(field)
+                    if absent:
+                        optional[member] = tuple(absent)
+                intervals = {}
+                if "total_cloud_mean_6h" in dataset:
+                    cloud = dataset["total_cloud_mean_6h"]
+                    hours = float(cloud.attrs["averaging_window_hours"])
+                    for member in (str(value) for value in cloud.coords["member"].values):
+                        intervals[member] = (valid_time - timedelta(hours=hours), valid_time)
+            finally:
+                store.close()
+            return GEFSQueryEntry(key, valid_time, result.retrieved_at, present, mandatory, optional,
+                                  payload, artifact.provenance, intervals)

@@ -69,3 +69,14 @@ def test_f006_one_hour_cloud_window_is_refused():
  intervals[member]=(RUN+timedelta(hours=5),RUN+timedelta(hours=6))
  with pytest.raises(ValueError,match="f006"):
   GEFSQueryService(lambda k:entry(k,intervals=intervals),preflight=lambda _:demand_operation_bounds()).query(key(6))
+
+
+def test_f012_cloud_interval_requires_exact_six_hours():
+ intervals=dict(entry(key(12)).cloud_intervals); member=declared_members()[0]
+ intervals[member]=(RUN+timedelta(hours=7),RUN+timedelta(hours=12))
+ with pytest.raises(ValueError,match="exactly six"):
+  GEFSQueryService(lambda k:entry(k,intervals=intervals),preflight=lambda _:demand_operation_bounds()).query(key(12))
+
+def test_f000_cannot_advertise_averaged_cloud_without_native_label():
+ with pytest.raises(ValueError,match="f000"):
+  GEFSQueryService(lambda k:entry(k),preflight=lambda _:demand_operation_bounds()).query(key(0))

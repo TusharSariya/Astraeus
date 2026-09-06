@@ -1546,3 +1546,25 @@ def test_gefs_publishes_one_member_axis_with_the_control_flagged(tmp_path: Path)
     flags = stored[CONTROL_COORD].values
     assert flags.sum() == 1  # exactly the control, never a defaulted member
     assert stored[MEMBER_DIM].values[flags][0] == "gec00"
+
+
+def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Path):
+    from datetime import timedelta
+    from weather_api.gefs_query import GEFS_FIELDS, GEFSRequestKey, GEFSQueryService, GEFSSelectedLoader, demand_operation_bounds
+    adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader)
+    run = datetime(2026, 9, 1, tzinfo=UTC)
+    members = gefs_member_identifiers(get_config("noaa-gefs").ensemble)
+    key = GEFSRequestKey("2026090100", run, 24, "pgrb2ap5", members, GEFS_FIELDS,
+                         (("east", -40.0), ("north", 55.0), ("south", 40.0), ("west", -70.0)))
+    loads = []
+    loader = GEFSSelectedLoader(adapter, tmp_path)
+    service = GEFSQueryService(lambda request: loads.append(request) or loader(request),
+                               workspace=tmp_path, preflight=lambda _workspace: demand_operation_bounds())
+    first = service.query(key)
+    second = service.query(key)
+    assert second is first and loads == [key]
+    assert first.members_present == members and first.mandatory_failures == {}
+    assert first.optional_absences == {}
+    assert set(first.cloud_intervals) == set(members)
+    assert set(first.cloud_intervals.values()) == {(run + timedelta(hours=18), run + timedelta(hours=24))}
+    assert first.complete is True and first.backing_bytes > len(first.payload)
