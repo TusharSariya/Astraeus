@@ -589,7 +589,7 @@ class ArtifactStore:
     @property
     def has_active_reservation(self) -> bool:
         """Whether this process currently owns an admitted fenced operation."""
-        return self._active_reservation is not None
+        return getattr(self, "_active_reservation", None) is not None
 
     def stage(self, result: RunResult, artifact: Artifact, *, run_id: str | None = None) -> StagedRevision:
         """Upload the immutable object first, then record the staged revision.
@@ -666,7 +666,7 @@ class ArtifactStore:
         """
         if not result.artifacts:
             return []
-        if self._active_reservation is None:
+        if not self.has_active_reservation:
             # Check before record_run: an unadmitted derivation must not leave
             # a complete-looking orphan model run behind when staging refuses.
             raise ReservationLost("staging requires an active durable reservation")

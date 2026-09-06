@@ -348,6 +348,7 @@ def test_partial_experimental_result_cannot_advance_actual_store_publication(tmp
     result = WeatherNext3StatisticsAdapter(EVIDENCE).fetch(
         WeatherNext3StatisticsAdapter(EVIDENCE).discover(window())[0], window(), tmp_path)
     store = object.__new__(ArtifactStore)
+    store._active_reservation = object()
     state = {"current": "prior-revision", "published": False}
     monkeypatch.setattr(store, "assert_run_identity", lambda _result: None)
     monkeypatch.setattr(store, "record_run", lambda _result: "experimental-run")
