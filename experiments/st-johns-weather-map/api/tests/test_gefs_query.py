@@ -15,7 +15,7 @@ def entry(k,**kw):
   receipts.append({"kind":"index","member":member,"http_status":200,"url":stem+".idx","request_headers":{},"response_headers":{},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":"a"*64})
   if member in present:
    for field in GEFS_FIELDS:
-    if field=="temperature_2m" or field not in optional.get(member,()): receipts.append({"kind":"range","member":member,"field":by_field[field],"range_start":0,"range_end":0,"http_status":206,"url":stem,"request_headers":{"range":"bytes=0-0"},"response_headers":{},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":"b"*64})
+    if field=="temperature_2m" or field not in optional.get(member,()): receipts.append({"kind":"range","member":member,"field":by_field[field],"range_start":0,"range_end":0,"http_status":206,"url":stem,"effective_url":stem,"request_headers":{"range":"bytes=0-0"},"response_headers":{"Content-Range":"bytes 0-0/*"},"completed_at":RUN.isoformat(),"byte_size":1,"sha256":"b"*64})
  return GEFSQueryEntry(k,RUN+timedelta(hours=k.lead),RUN,present,kw.get("mandatory",{}),optional,b"zarr",{"transport_receipts":receipts},kw.get("intervals",{m:(RUN+timedelta(hours=max(0,k.lead-(3 if k.lead==3 else 6))),RUN+timedelta(hours=k.lead)) for m in present if "total_cloud_mean_6h" not in optional.get(m,())}))
 def test_bounds_charge_all_member_fields_indices_and_output():
  b=demand_operation_bounds(); raw=31*7*MAX_GEFS_MEMBER_BYTES; idx=31*GEFS_IDX_BYTES
