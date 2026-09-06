@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import math
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
@@ -112,6 +113,7 @@ from .store import (
     NO_RUN_CONCEPT_REASON,
     NO_RUN_TIME_REASON,
     live_point_fields,
+    consensus_candidates_from_fields,
     live_profile_levels,
     live_store,
     registry_source_records,
@@ -1196,6 +1198,29 @@ def _live_point(
             LOGGER.info("METAR demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
             return [], ["awc-metar-speci has no validated observation less than one hour old at or before this selection"]
 
+    def demand_consensus() -> tuple[list[EvidenceField], object, list[str], list[str]]:
+        """Feed the unchanged consensus reader with independently queried sources."""
+        calls = {
+            "eccc-hrdps": lambda: __import__("weather_api.hrdps_query", fromlist=["hrdps_query_coordinator"]).hrdps_query_coordinator().point_fields(latitude, longitude, time),
+            "noaa-gfs": lambda: __import__("weather_api.gfs_query", fromlist=["gfs_query_coordinator"]).gfs_query_coordinator().point_fields(latitude, longitude, time),
+        }
+        demanded: list[EvidenceField] = []
+        notices: list[str] = []
+        with ThreadPoolExecutor(max_workers=len(calls)) as executor:
+            futures = {executor.submit(call): source for source, call in calls.items()}
+            for future in as_completed(futures):
+                source = futures[future]
+                try:
+                    source_fields, _source_consensus, _source_ids = future.result()
+                    demanded.extend(source_fields)
+                except Exception as error:
+                    LOGGER.info("consensus demand source %s unavailable: %s", source, type(error).__name__)
+                    notices.append(f"{source} demand evidence is unavailable and was omitted independently: {error}")
+
+        from .science import build_consensus  # noqa: PLC0415
+        consensus = build_consensus(consensus_candidates_from_fields(demanded))
+        return demanded, consensus, sorted({field.provenance.source_id for field in demanded}), notices
+
     if product and product.upper() == "HRDPS":
         try:
             from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
@@ -1275,6 +1300,30 @@ def _live_point(
         )
 
     demand_observations, demand_notices = demand_metar()
+    if product is None or product.lower() in CONSENSUS_PRODUCTS:
+        fields, consensus, sources, consensus_notices = demand_consensus()
+        fields = [*fields, *demand_observations]
+        sources = sorted({*sources, *(item.provenance.source_id for item in demand_observations)})
+        if not fields:
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason="no migrated demand source returned applicable point evidence",
+                flags=["demand_consensus_unavailable"],
+                notices=[*consensus_notices, *demand_notices, "No retained forecast artifact was read or substituted"],
+            )
+        live_hrdps = "eccc-hrdps" in sources
+        mode, badge, reason = select_fallback(consensus.available, hrdps_fresh=live_hrdps, rdps_fresh=False)
+        return PointResponse(
+            data_mode=DataMode.LIVE,
+            latitude=latitude, longitude=longitude, valid_time=time,
+            selection=Selection(
+                mode=mode, selected_source_id="multi-centre" if mode == "consensus" else ("eccc-hrdps" if live_hrdps else None),
+                selected_product_id="experimental-consensus" if mode == "consensus" else ("hrdps" if live_hrdps else None),
+                badge=badge, reason=reason,
+            ),
+            fields=fields,
+            notices=[*consensus_notices, *demand_notices, "Consensus acquisition used demand sources only; no retained forecast artifact was read"],
+        )
     store = live_store()
     if store is None:
         if demand_observations:

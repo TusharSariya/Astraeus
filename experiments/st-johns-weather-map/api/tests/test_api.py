@@ -415,8 +415,19 @@ def assert_no_evidence_was_invented(payload: dict) -> None:
     assert payload["notices"], "an outage has to be named"
 
 
-@pytest.mark.parametrize(("store", "flag"), [(BrokenStore(), "live_store_error"), (EmptyStore(), "no_published_artifact")], ids=["store-raises", "nothing-published"])
+@pytest.mark.parametrize(("store", "flag"), [(BrokenStore(), "demand_consensus_unavailable"), (EmptyStore(), "demand_consensus_unavailable")], ids=["store-raises", "nothing-published"])
 def test_a_live_failure_reports_unavailable_instead_of_a_fixture_number(monkeypatch, data_mode, store, flag):
+    import weather_api.gfs_query as gfs_query
+    import weather_api.hrdps_query as hrdps_query
+    import weather_api.metar_query as metar_query
+
+    class Unavailable:
+        def point_fields(self, *_args, **_kwargs):
+            raise OSError("provider unavailable")
+
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: Unavailable())
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: Unavailable())
+    monkeypatch.setattr(metar_query, "metar_query_service", lambda: Unavailable())
     use_live_store(monkeypatch, data_mode, store)
     response = client.get(f"{PREFIX}/point")
     assert response.status_code == 200, response.text
@@ -844,3 +855,79 @@ def test_every_declared_member_threshold_comparison_is_accepted(name):
 def test_a_member_quantile_outside_the_unit_interval_is_refused(value):
     response = client.get(f"{PREFIX}/point", params={"statistic": "ensemble_quantile", "quantile": value})
     assert response.status_code == 422
+
+
+def test_consensus_uses_parallel_demand_sources_without_store_fallback(monkeypatch, data_mode):
+    """Two deterministic demand results stay visible but cannot form consensus."""
+    import weather_api.gfs_query as gfs_query
+    import weather_api.hrdps_query as hrdps_query
+    import weather_api.metar_query as metar_query
+
+    selected = now()
+
+    class OneSource:
+        def __init__(self, source, value):
+            self.source = source
+            self.value = value
+
+        def point_fields(self, latitude, longitude, valid_time):
+            class Store(EmptyStore):
+                def sample_point(inner, *_args, **_kwargs):
+                    return [_sample(self.source, "temperature_2m", self.value, "degC", valid_time)]
+            return live_point_fields(Store(), latitude, longitude, valid_time)
+
+    class NoMetar:
+        def point_fields(self, *_args):
+            raise OSError("no observation")
+
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: OneSource("eccc-hrdps", 9.0))
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: OneSource("noaa-gfs", 11.0))
+    monkeypatch.setattr(metar_query, "metar_query_service", lambda: NoMetar())
+    monkeypatch.setattr(api_module, "live_store", lambda: (_ for _ in ()).throw(AssertionError("store fallback")))
+    data_mode("live")
+
+    payload = client.get(f"{PREFIX}/point", params={"valid_time": selected.isoformat(), "product": "consensus"}).json()
+    assert payload["selection"]["badge"] == "HRDPS primary - consensus unavailable"
+    assert payload["selection"]["reason"] == "minimum consensus evidence not met"
+    by_source = {item["provenance"]["source_id"]: item for item in payload["fields"]}
+    assert by_source["eccc-hrdps"]["value"] == 9.0
+    assert by_source["noaa-gfs"]["value"] == 11.0
+    assert by_source["eccc-hrdps"]["provenance"]["normalized_units"] == "degC"
+    assert by_source["noaa-gfs"]["provenance"]["valid_time"] == selected.isoformat().replace("+00:00", "Z")
+    assert any("no retained forecast artifact" in notice for notice in payload["notices"])
+
+
+def test_consensus_demand_sources_overlap_and_fail_independently(monkeypatch, data_mode):
+    import threading
+    import weather_api.gfs_query as gfs_query
+    import weather_api.hrdps_query as hrdps_query
+    import weather_api.metar_query as metar_query
+
+    selected = now()
+    entered = {"eccc-hrdps": threading.Event(), "noaa-gfs": threading.Event()}
+
+    class Demand:
+        def __init__(self, source, fail=False): self.source, self.fail = source, fail
+        def point_fields(self, latitude, longitude, valid_time):
+            entered[self.source].set()
+            other = "noaa-gfs" if self.source == "eccc-hrdps" else "eccc-hrdps"
+            assert entered[other].wait(1), "demand calls did not overlap"
+            if self.fail: raise ValueError("malformed source response")
+            class Store(EmptyStore):
+                def sample_point(inner, *_args, **_kwargs):
+                    return [_sample("eccc-hrdps", "temperature_2m", 8.5, "degC", valid_time)]
+            return live_point_fields(Store(), latitude, longitude, valid_time)
+
+    class NoMetar:
+        def point_fields(self, *_args): raise OSError
+
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: Demand("eccc-hrdps"))
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: Demand("noaa-gfs", fail=True))
+    monkeypatch.setattr(metar_query, "metar_query_service", lambda: NoMetar())
+    monkeypatch.setattr(api_module, "live_store", lambda: (_ for _ in ()).throw(AssertionError("store fallback")))
+    data_mode("live")
+
+    payload = client.get(f"{PREFIX}/point", params={"valid_time": selected.isoformat()}).json()
+    assert payload["selection"]["selected_source_id"] == "eccc-hrdps"
+    assert {item["provenance"]["source_id"] for item in payload["fields"]} == {"eccc-hrdps"}
+    assert any("noaa-gfs demand evidence is unavailable" in notice for notice in payload["notices"])
