@@ -43,7 +43,7 @@ export interface FieldCatalogueCopy {
 export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
   "version": "1.0.0",
   "asOf": "2026-09-02",
-  "fingerprint": "49948dc61e3f1a0c296c1760dd4cf623f201c19c72fdee7db57ee03d5e23daf3",
+  "fingerprint": "d01ea7585cb1ca1c51b84067feeea5cab8717c5b65baa817dfd98f8c6666d879",
   "families": [
     {
       "name": "air_quality",
@@ -138,6 +138,8 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "ice": "Fraction of the cell covered by sea ice.",
         "salinity": "Sea-water salinity.",
         "sea_surface_temperature": "Temperature of the sea surface layer.",
+        "sea_surface_temperature_mask": "Producer-published surface-type mask retained as quality metadata.",
+        "sea_surface_temperature_uncertainty": "Producer-published uncertainty for an analysed SST cell.",
         "surge": "Water level departure attributable to meteorological forcing.",
         "wave_direction": "Mean direction of the sea state.",
         "wave_height": "Height statistic of the combined sea state.",
@@ -984,6 +986,24 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "sea surface",
       "comparabilityGroup": "sea_surface_temperature",
       "description": "Temperature of the sea surface layer. A modelled bulk SST and a satellite skin SST are different measurements of a stratified surface."
+    },
+    {
+      "key": "sea_surface_temperature_mask",
+      "family": "marine",
+      "quantity": "sea surface temperature native surface mask",
+      "units": "flag",
+      "level": "sea surface",
+      "comparabilityGroup": "sea_surface_temperature_mask",
+      "description": "The producer's native water, land, lake and sea-ice bit mask retained for quality and missingness. It is not served as sea-ice evidence."
+    },
+    {
+      "key": "sea_surface_temperature_uncertainty",
+      "family": "marine",
+      "quantity": "sea surface temperature analysis uncertainty",
+      "units": "degC",
+      "level": "sea surface",
+      "comparabilityGroup": "sea_surface_temperature_uncertainty",
+      "description": "Producer-published standard error of an analysed SST cell. It is uncertainty metadata, not another SST estimate."
     },
     {
       "key": "seeing_arcsec",
