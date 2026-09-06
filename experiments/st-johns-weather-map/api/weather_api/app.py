@@ -2185,6 +2185,37 @@ def get_space_weather_products() -> SpaceWeatherProductsResponse:
         return unavailable_products(reference, "the live artifact store raised while reading space-weather products")
 
 
+IERS_TIME_PRODUCTS = (
+    ("iers-bulletin-a-finals2000a", "earth_orientation"),
+    ("iers-leap-second-table", "leap_seconds"),
+    ("naif-leapseconds-kernel-naif0012", "naif_leapseconds_kernel"),
+)
+
+
+@app.get(f"{PREFIX}/experimental/time-inputs")
+def experimental_time_inputs() -> dict[str, object]:
+    """Read isolated time-reference artifacts without using them in science."""
+    if configured_mode() != LIVE_MODE:
+        return {"data_mode": "unavailable", "operational": False, "products": [], "notices": ["live mode is required; no time input is substituted"]}
+    store = live_store()
+    if store is None:
+        return {"data_mode": "unavailable", "operational": False, "products": [], "notices": ["no live artifact store is reachable"]}
+    products: list[dict[str, object]] = []
+    for source_id, logical_name in IERS_TIME_PRODUCTS:
+        series = store.read_series(source_id, logical_name)
+        if series is None:
+            continue
+        products.append({
+            "source_id": source_id, "logical_name": logical_name,
+            "revision_id": str(series.revision_id), "provider_run_id": series.provider_run_id,
+            "retrieved_at": series.retrieved_at.isoformat().replace("+00:00", "Z"),
+            "valid_times": [stamp.isoformat().replace("+00:00", "Z") for stamp in series.times],
+            "variables": {name: {"units": variable.units, "values": variable.values} for name, variable in series.variables.items()},
+            "provenance": series.provenance, "operational": False,
+        })
+    return {"data_mode": "live" if products else "unavailable", "operational": False, "products": products, "notices": skip_notices(store)}
+
+
 @app.get(f"{PREFIX}/profile", response_model=ProfileResponse)
 def get_profile(
     latitude: float = Query(default=47.5615, ge=-90, le=90),
