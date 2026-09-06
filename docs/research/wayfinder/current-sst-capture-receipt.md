@@ -55,7 +55,13 @@ gap, not a successful live-now claim; the adapters do not widen or relabel the
 window. OSTIA also returns null SST at native land-mask cells, including the
 default St. John's point, rather than substituting a nearby ocean value.
 
-Raw captures and normalized artifacts remain under `/tmp/astraeus-sst-153`
-for root review and are not tracked by Git. Repeat the HTTP proof with
+Root independently verified all ten receipted source/artifact byte counts and
+SHA-256 digests (3,103,560 bytes) and reran the committed HTTP replay script
+without upstream access. All five served SST, uncertainty and mask fields
+matched their stored values, units, actual valid times and revisions; receipt
+retrieval timestamps were preserved. Structural coverage in the replay was
+reconstructed from the captured dataset and manifest, not a scientific-quality
+claim. Task-owned raw captures and normalized artifacts were then removed from
+`/tmp/astraeus-sst-153`; no payload or rebuilt artifact is tracked by Git. Repeat the HTTP proof with
 `PYTHONPATH=api:. WEATHER_DATA_MODE=live api/.venv/bin/python scripts/replay_sst_capture.py`
 from `experiments/st-johns-weather-map`.
