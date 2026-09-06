@@ -3,6 +3,8 @@ from datetime import UTC,datetime,timedelta
 import pytest
 from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES
 from weather_api.gefs_query import *
+import numpy as np
+import xarray as xr
 RUN=datetime(2026,9,6,12,tzinfo=UTC)
 BOX=(("east",-46.0),("north",50.5),("south",45.0),("west",-58.0))
 def key(lead=6):return GEFSRequestKey("2026090612",RUN,lead,"pgrb2ap5",declared_members(),GEFS_FIELDS,BOX)
@@ -80,3 +82,12 @@ def test_f012_cloud_interval_requires_exact_six_hours():
 def test_f000_cannot_advertise_averaged_cloud_without_native_label():
  with pytest.raises(ValueError,match="f000"):
   GEFSQueryService(lambda k:entry(k,intervals={m:(RUN-timedelta(hours=6),RUN) for m in k.members}),preflight=lambda _:demand_operation_bounds()).query(key(0))
+
+def test_member_presence_uses_finite_native_cells_not_aligned_coordinate():
+ values=np.array([[[1.0,np.nan]],[[np.nan,np.nan]],[[2.0,3.0]]])
+ field=xr.DataArray(values,dims=("member","latitude","longitude"),coords={"member":["gec00","gep01","gep02"]})
+ assert members_with_values(field)==("gec00","gep02")
+
+def test_member_presence_treats_masked_and_all_nan_as_absent():
+ field=xr.DataArray(np.ma.array([[1.0],[2.0]],mask=[[True],[False]]),dims=("member","cell"),coords={"member":["gec00","gep01"]})
+ assert members_with_values(field)==("gep01",)

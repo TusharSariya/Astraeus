@@ -15,6 +15,17 @@ GEFS_FIELDS=("temperature_2m","dew_point_2m","relative_humidity_2m","wind_u_10m"
 GEFS_MEMBER_COUNT=31; GEFS_IDX_BYTES=1024*1024; GEFS_CACHE_MAX_BYTES=1024**3
 GEFS_OUTPUT_ALLOWANCE_BYTES=GEFS_CACHE_MAX_BYTES; GEFS_MARGIN_BYTES=128*1024**2
 GEFS_PRODUCT_SET="pgrb2ap5"; GEFS_MAX_LEAD=384
+
+def members_with_values(field) -> tuple[str, ...]:
+    """Member labels with at least one finite, unmasked native cell."""
+    import numpy
+    if "member" not in field.dims:
+        return ()
+    values = numpy.ma.masked_invalid(numpy.asarray(field.values, dtype=float))
+    axis = field.get_axis_num("member")
+    moved = numpy.moveaxis(values, axis, 0).reshape((field.sizes["member"], -1))
+    labels = [str(value) for value in field.coords["member"].values]
+    return tuple(label for label, row in zip(labels, moved, strict=True) if row.count() > 0)
 GEFS_MEMORY_LIMIT_BYTES=4*1024**3; GEFS_TEMP_LIMIT_BYTES=3*1024**3
 
 def declared_members(): return gefs_member_identifiers(get_config("noaa-gefs").ensemble)
@@ -119,13 +130,13 @@ class GEFSSelectedLoader:
             try:
                 dataset = xarray.open_zarr(store, consolidated=False)
                 temperature = dataset["temperature_2m"]
-                present = tuple(str(value) for value in temperature.coords["member"].values)
+                present = members_with_values(temperature)
                 mandatory = {member: "temperature_2m unavailable after bounded decode" for member in key.members if member not in present}
                 optional: dict[str, tuple[str, ...]] = {}
                 for member in present:
                     absent = []
                     for field in GEFS_FIELDS[1:]:
-                        if field not in dataset or member not in {str(value) for value in dataset[field].coords["member"].values}:
+                        if field not in dataset or member not in members_with_values(dataset[field]):
                             absent.append(field)
                     if absent:
                         optional[member] = tuple(absent)
@@ -133,7 +144,7 @@ class GEFSSelectedLoader:
                 if "total_cloud_mean_6h" in dataset:
                     cloud = dataset["total_cloud_mean_6h"]
                     hours = float(cloud.attrs["averaging_window_hours"])
-                    for member in (str(value) for value in cloud.coords["member"].values):
+                    for member in members_with_values(cloud):
                         intervals[member] = (valid_time - timedelta(hours=hours), valid_time)
             finally:
                 store.close()
