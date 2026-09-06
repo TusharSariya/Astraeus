@@ -20,12 +20,14 @@ def declared_members(): return gefs_member_identifiers(get_config("noaa-gefs").e
 def demand_operation_bounds():
     raw=GEFS_MEMBER_COUNT*len(GEFS_FIELDS)*MAX_GEFS_MEMBER_BYTES; idx=GEFS_MEMBER_COUNT*GEFS_IDX_BYTES
     return ResourceBounds(GEFS_CACHE_MAX_BYTES,raw+idx+GEFS_OUTPUT_ALLOWANCE_BYTES,GEFS_MARGIN_BYTES,raw+idx)
-def enforce_platform_bounds():
+def enforce_platform_bounds(workspace: Path):
     bounds=demand_operation_bounds(); bounds.validate()
     try: memory=int(Path("/sys/fs/cgroup/memory.max").read_text().strip())
     except (OSError,ValueError) as error: raise RuntimeError("GEFS demand requires a finite Linux cgroup memory limit") from error
     if memory!=GEFS_MEMORY_LIMIT_BYTES: raise RuntimeError("GEFS demand requires the measured 4 GiB cgroup limit")
-    geometry=os.statvfs(tempfile.gettempdir()); capacity=geometry.f_blocks*geometry.f_frsize
+    workspace=workspace.resolve()
+    if not workspace.is_dir(): raise RuntimeError("GEFS dedicated workspace is unavailable")
+    geometry=os.statvfs(workspace); capacity=geometry.f_blocks*geometry.f_frsize
     if capacity>GEFS_TEMP_LIMIT_BYTES: raise RuntimeError("GEFS demand requires the enforced 3 GiB temporary filesystem")
     if geometry.f_bavail*geometry.f_frsize<bounds.filesystem_bytes+bounds.margin_bytes: raise RuntimeError("GEFS demand temporary capacity is below the complete-operation bound")
     return bounds
@@ -45,7 +47,7 @@ class GEFSRequestKey:
 class GEFSQueryEntry:
     key:GEFSRequestKey; valid_time:datetime; fetched_at:datetime; members_present:tuple[str,...]; mandatory_failures:Mapping[str,str]; optional_absences:Mapping[str,tuple[str,...]]; payload:bytes; provenance:Mapping[str,object]; cloud_intervals:Mapping[str,tuple[datetime,datetime]]
     @property
-    def backing_bytes(self): return len(self.payload)+len(json.dumps({"key":self.key,"present":self.members_present,"mandatory":self.mandatory_failures,"optional":self.optional_absences,"provenance":self.provenance},sort_keys=True,default=str).encode())
+    def backing_bytes(self): return len(self.payload)+len(json.dumps({"key":self.key,"present":self.members_present,"mandatory":self.mandatory_failures,"optional":self.optional_absences,"cloud_intervals":self.cloud_intervals,"provenance":self.provenance},sort_keys=True,default=str).encode())
     @property
     def complete(self): return self.members_present==self.key.members and not self.mandatory_failures
     def validate(self):
@@ -59,11 +61,15 @@ class GEFSQueryEntry:
         if self.fetched_at.tzinfo is None or self.fetched_at.utcoffset()!=timedelta(0): raise ValueError("GEFS fetch completion must be aware UTC")
         if any(not reason for reason in self.mandatory_failures.values()): raise ValueError("GEFS failure reasons must be nonempty")
         if any(not fields or len(fields)!=len(set(fields)) for fields in self.optional_absences.values()): raise ValueError("GEFS optional absences must be unique and nonempty")
+        expected_cloud=set(self.members_present)-{member for member,fields in self.optional_absences.items() if "total_cloud_mean_6h" in fields}
+        if set(self.cloud_intervals)!=expected_cloud: raise ValueError("GEFS cloud intervals must exactly match members with cloud records")
         for member,interval in self.cloud_intervals.items():
             if member not in self.members_present or len(interval)!=2 or not interval[0]<interval[1] or interval[1]!=self.valid_time or interval[1]-interval[0]>timedelta(hours=6): raise ValueError("GEFS cloud interval must preserve the native positive window ending at valid time")
+            if self.key.lead==3 and interval!=(self.key.run_time,self.valid_time): raise ValueError("GEFS f003 cloud interval must be exactly 0-3 hours")
+            if self.key.lead==6 and interval!=(self.key.run_time,self.valid_time): raise ValueError("GEFS f006 cloud interval must be exactly 0-6 hours")
 class GEFSQueryService:
-    def __init__(self,loader:Callable[[GEFSRequestKey],GEFSQueryEntry],*,preflight=enforce_platform_bounds,clock=time.monotonic):
-        self.loader,self.preflight,self.clock=loader,preflight,clock; self.lock=threading.Lock(); self.entries=OrderedDict(); self.inflight={}; self.failures={}
+    def __init__(self,loader:Callable[[GEFSRequestKey],GEFSQueryEntry],*,workspace:Path=Path("/work"),preflight=enforce_platform_bounds,clock=time.monotonic):
+        self.loader,self.workspace,self.preflight,self.clock=loader,workspace,preflight,clock; self.lock=threading.Lock(); self.entries=OrderedDict(); self.inflight={}; self.failures={}
     def query(self,key):
         key.validate()
         with self.lock:
@@ -73,7 +79,7 @@ class GEFSQueryService:
             if owner: future=Future(); self.inflight[key]=future
         if not owner:return future.result()
         try:
-            bounds=self.preflight(); bounds.validate(); entry=self.loader(key)
+            bounds=self.preflight(self.workspace); bounds.validate(); entry=self.loader(key)
             if entry.key!=key: raise ValueError("GEFS loader changed request identity")
             entry.validate()
             if not 0<entry.backing_bytes<=GEFS_CACHE_MAX_BYTES: raise ValueError("GEFS cache entry exceeds finite byte ceiling")
