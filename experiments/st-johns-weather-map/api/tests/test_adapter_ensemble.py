@@ -1603,7 +1603,7 @@ def test_gefs_publishes_one_member_axis_with_the_control_flagged(tmp_path: Path)
 
 def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Path):
     from datetime import timedelta
-    from weather_api.gefs_query import GEFS_FIELDS, GEFSRequestKey, GEFSQueryService, GEFSSelectedLoader, demand_operation_bounds, validate_normalized_payload
+    from weather_api.gefs_query import GEFS_FIELDS, GEFSQueryCoordinator, GEFSRequestKey, GEFSQueryService, GEFSSelectedLoader, demand_operation_bounds, validate_normalized_payload
     adapter = NOAAGEFSEnsembleAdapter(client=gefs_client(), reader=gefs_reader, capture_transport_receipts=True)
     run = datetime(2026, 9, 1, tzinfo=UTC)
     members = gefs_member_identifiers(get_config("noaa-gefs").ensemble)
@@ -1625,3 +1625,35 @@ def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Pat
     receipts = first.provenance["transport_receipts"]
     assert len(receipts) == 31 * 8
     assert max(item["completed_at"] for item in receipts) == "2026-09-01T00:00:02+00:00"
+    coordinator = GEFSQueryCoordinator(service, workspace=tmp_path)
+    coordinator.request_key = lambda _selected: key
+    fields, _consensus, sources = coordinator.point_fields(47.5, -52.5, run + timedelta(hours=24), member="gec00")
+    temperatures = [field for field in fields if field.field == "temperature"]
+    assert len(temperatures) == 1
+    assert [field.provenance.member for field in temperatures] == ["gec00"]
+    assert temperatures[0].provenance.member_control is True
+    assert all(field.provenance.ensemble.statistic is None for field in temperatures)
+    assert sources == ["noaa-gefs"] and loads == [key]
+    statistic_fields, _, _ = coordinator.point_fields(47.5, -52.5, run + timedelta(hours=24), statistic="ensemble_mean")
+    mean_temperature = next(field for field in statistic_fields if field.field == "temperature" and field.provenance.ensemble.statistic == "ensemble_mean")
+    assert mean_temperature.provenance.evidence_class == "derived_here"
+    mean_temperature = mean_temperature.model_copy(update={"provenance": mean_temperature.provenance.model_copy(update={
+        "run_stale": False,
+        "freshness": mean_temperature.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0}),
+    })})
+    from weather_api.store import consensus_candidates_from_fields
+    witness = consensus_candidates_from_fields([mean_temperature])
+    assert len(witness) == 1 and witness[0].is_ensemble is True
+    from weather_api.science import ConsensusCandidate, build_consensus
+    deterministic = [
+        ConsensusCandidate("eccc-hrdps", "ECCC", "deterministic_forecast", 9.0, is_eccc_regional=True),
+        ConsensusCandidate("noaa-gfs", "NOAA", "deterministic_forecast", 11.0),
+    ]
+    consensus = build_consensus([*deterministic, *witness])
+    assert consensus.available is True and consensus.value == 10.0
+    assert consensus.contributors == ("eccc-hrdps", "noaa-gfs")
+    partial_set = mean_temperature.provenance.ensemble.member_set.model_copy(update={"members_used": 30, "members_missing": ["gep30"], "partial": True})
+    partial_ensemble = mean_temperature.provenance.ensemble.model_copy(update={"member_set": partial_set})
+    partial_field = mean_temperature.model_copy(update={"provenance": mean_temperature.provenance.model_copy(update={"ensemble": partial_ensemble})})
+    assert consensus_candidates_from_fields([partial_field]) == []
+    assert build_consensus([*deterministic, *consensus_candidates_from_fields([partial_field])]).available is False

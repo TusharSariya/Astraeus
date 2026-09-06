@@ -2658,6 +2658,36 @@ def consensus_candidates_from_fields(fields: Sequence[Any]) -> list[Any]:
     candidates = []
     for field in fields:
         provenance = field.provenance
+        ensemble = provenance.ensemble
+        if (
+            provenance.source_id == "noaa-gefs"
+            and field.field == "temperature" and field.value is not None
+            and provenance.evidence_class == "derived_here"
+            and provenance.freshness.status == "fresh"
+            and provenance.quality.status == "passed"
+            and provenance.run_stale is False
+            and ensemble is not None and ensemble.statistic == "ensemble_mean"
+            and ensemble.member_set is not None and not ensemble.member_set.partial
+            and ensemble.member_set.control_included is True
+        ):
+            # The complete family is the minimum-evidence witness. Its mean is
+            # carried only because ConsensusCandidate is numeric; build_consensus
+            # deliberately excludes ensemble candidates from the centre mean.
+            config = _registry_config(provenance.source_id)
+            # noaa-gefs is deliberately not a deterministic centre vote in
+            # the source registry.  A complete family is nevertheless the
+            # accepted ensemble-presence condition, and build_consensus never
+            # includes is_ensemble candidates in its numeric centre mean.
+            if config is not None and config.category == "ensemble":
+                candidates.append(ConsensusCandidate(
+                    source_id=provenance.source_id,
+                    forecast_centre=config.consensus_family or config.producer,
+                    family=config.category,
+                    value=field.value,
+                    is_eccc_regional=False,
+                    is_ensemble=True,
+                ))
+            continue
         if (
             field.field != "temperature" or field.value is None
             or provenance.evidence_class != "retrieved"

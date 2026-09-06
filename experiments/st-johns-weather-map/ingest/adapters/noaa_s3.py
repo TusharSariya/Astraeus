@@ -1119,8 +1119,8 @@ class NOAAGEFSEnsembleAdapter:
             if by_member:
                 stacked[key] = stack_members(by_member, control=control)
 
-        dataset = xarray.Dataset(stacked).assign_coords(
-            valid_time=numpy.datetime64(window.now.astimezone(timezone.utc).replace(tzinfo=None), "ns")
+        dataset = xarray.Dataset(stacked).expand_dims(
+            valid_time=[numpy.datetime64(window.now.astimezone(timezone.utc).replace(tzinfo=None), "ns")]
         )
         manifest = self.manifest()
         validation = validate_run(

@@ -1209,6 +1209,7 @@ def _live_point(
         calls = {
             "eccc-hrdps": lambda: __import__("weather_api.hrdps_query", fromlist=["hrdps_query_coordinator"]).hrdps_query_coordinator().point_fields(latitude, longitude, time),
             "noaa-gfs": lambda: __import__("weather_api.gfs_query", fromlist=["gfs_query_coordinator"]).gfs_query_coordinator().point_fields(latitude, longitude, time),
+            "noaa-gefs": lambda: __import__("weather_api.gefs_query", fromlist=["gefs_query_coordinator"]).gefs_query_coordinator().point_fields(latitude, longitude, time, statistic="ensemble_mean"),
         }
         demanded: list[EvidenceField] = []
         notices: list[str] = []
@@ -1260,6 +1261,30 @@ def _live_point(
             fields=fields + observations,
             notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
         )
+    if product and product.upper() == "GEFS":
+        try:
+            from .gefs_query import gefs_query_coordinator
+            fields, _consensus, _sources = gefs_query_coordinator().point_fields(
+                latitude, longitude, time, member=member, statistic=statistic,
+                quantile=quantile, threshold=threshold, comparison=comparison,
+            )
+        except Exception as error:
+            LOGGER.exception("GEFS demand point failed")
+            return _unavailable_point(latitude, longitude, time,
+                reason=f"GEFS selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:noaa-gefs"],
+                notices=["noaa-gefs could not retrieve and validate the selected native member family"],
+                source_id="noaa-gefs", product="GEFS")
+        if not fields:
+            return _unavailable_point(latitude, longitude, time,
+                reason="GEFS member axis requires a member or registered statistic",
+                flags=["ensemble_axis_unaddressed:noaa-gefs"],
+                notices=["Choose a native GEFS member or a registered ensemble statistic; no implicit member average was used"],
+                source_id="noaa-gefs", product="GEFS")
+        return PointResponse(data_mode=DataMode.LIVE,latitude=latitude,longitude=longitude,valid_time=time,
+            selection=Selection(mode="fallback",selected_source_id="noaa-gefs",selected_product_id="gefs",
+                badge="GEFS selected ensemble",reason="Selected GEFS native member family"),fields=fields,
+            notices=["GEFS members remain separate and preserve provider member identities; no member averaging was substituted"])
     if product and product.upper() == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Callable, Mapping
+from types import SimpleNamespace
 from ingest.adapters.noaa_s3 import MAX_GEFS_MEMBER_BYTES, NOAA_GEFS_S3_BASE, _gefs_keys_by_upstream, gefs_member_identifiers, gefs_member_url
 from ingest.adapters.noaa_s3 import NOAAGEFSEnsembleAdapter
 from ingest.contract import FetchWindow, ResourceBounds, RunCandidate
@@ -15,6 +16,7 @@ GEFS_FIELDS=("temperature_2m","dew_point_2m","relative_humidity_2m","wind_u_10m"
 GEFS_MEMBER_COUNT=31; GEFS_IDX_BYTES=1024*1024; GEFS_CACHE_MAX_BYTES=704*1024**2
 GEFS_OUTPUT_ALLOWANCE_BYTES=GEFS_CACHE_MAX_BYTES; GEFS_MARGIN_BYTES=128*1024**2
 GEFS_PRODUCT_SET="pgrb2ap5"; GEFS_MAX_LEAD=384
+_COORDINATOR = None
 
 def members_with_values(field) -> tuple[str, ...]:
     """Member labels with at least one finite, unmasked native cell."""
@@ -249,3 +251,65 @@ def validate_normalized_payload(payload:bytes,entry:GEFSQueryEntry,workspace:Pat
             if entry.provenance.get("source_id")!="noaa-gefs" or entry.provenance.get("provider_run_id")!=entry.key.run_id or datetime.fromisoformat(str(entry.provenance.get("run_time")))!=entry.key.run_time or entry.provenance.get("product")!=f"Global Ensemble Forecast System ({entry.key.product_set})" or entry.provenance.get("quality",{}).get("status") not in {"passed","suspect"}: raise ValueError("GEFS normalized provenance or QC is invalid")
         finally:
             store.close()
+
+
+class GEFSQueryCoordinator:
+    """Resolve selected time and expose the cached native member family."""
+    def __init__(self, service: GEFSQueryService | None = None, *, workspace: Path = Path("/work")):
+        self.service = service or GEFSQueryService(GEFSBoundedLoader(workspace), workspace=workspace)
+
+    @staticmethod
+    def request_key(selected_time: datetime) -> GEFSRequestKey:
+        if selected_time.tzinfo is None:
+            raise ValueError("GEFS selected time must be aware")
+        selected = selected_time.astimezone(UTC)
+        config = get_config("noaa-gefs")
+        latency = config.publication_latency
+        if latency is None or latency.estimate_seconds is None:
+            raise ValueError("GEFS publication latency is undeclared")
+        available = selected - timedelta(seconds=latency.estimate_seconds)
+        cycle = (available.hour // 6) * 6
+        run = available.replace(hour=cycle, minute=0, second=0, microsecond=0)
+        elapsed = int((selected - run).total_seconds() // 3600)
+        lead = (elapsed // 3) * 3
+        valid = run + timedelta(hours=lead)
+        if lead < 0 or lead > GEFS_MAX_LEAD or not timedelta(0) <= selected-valid < timedelta(hours=3):
+            raise ValueError("GEFS selection has no applicable native lead")
+        return GEFSRequestKey(run.strftime("%Y%m%d%H"), run, lead, GEFS_PRODUCT_SET,
+                              declared_members(), GEFS_FIELDS,
+                              (("east",-46.0),("north",50.5),("south",45.0),("west",-58.0)))
+
+    def query(self, selected_time: datetime) -> GEFSQueryEntry:
+        return self.service.query(self.request_key(selected_time))
+
+    def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *,
+                     member: str | None = None, statistic: str | None = None,
+                     quantile: float | None = None, threshold: float | None = None,
+                     comparison: str | None = None):
+        from .store import LiveStore, _ensemble_point_fields
+        entry = self.query(selected_time)
+        with tempfile.TemporaryDirectory(prefix="gefs-demand-read-") as directory:
+            path=Path(directory)/"noaa_gefs_members.zarr.zip"; path.write_bytes(entry.payload)
+            import xarray, zarr
+            zipped=zarr.storage.ZipStore(str(path),mode="r"); dataset=xarray.open_zarr(zipped,consolidated=False)
+            sampler=LiveStore.__new__(LiveStore); sampler.skipped=[]; sampler.unmodelled=[]
+            try:
+                artifact=SimpleNamespace(source_id="noaa-gefs",logical_name="noaa_gefs_members",
+                    revision_id=f"demand:{__import__('hashlib').sha256(entry.payload).hexdigest()}",
+                    provenance=entry.provenance,run_time=entry.key.run_time,retrieved_at=entry.fetched_at,native_crs="EPSG:4326")
+                samples=sampler._sample_dataset(dataset,artifact,latitude,longitude,entry.valid_time,
+                                                member=member,statistic=statistic)
+            finally:
+                dataset.close(); zipped.close()
+        if member is not None:
+            samples=[sample for sample in samples if sample.member==member]
+        fields=_ensemble_point_fields(sampler,samples,valid_time=entry.valid_time,reference=selected_time,
+            statistic=statistic,quantile=quantile,threshold=threshold,comparison=comparison,reader_disabled=())
+        return fields, None, ["noaa-gefs"]
+
+
+def gefs_query_coordinator() -> GEFSQueryCoordinator:
+    global _COORDINATOR
+    if _COORDINATOR is None:
+        _COORDINATOR=GEFSQueryCoordinator()
+    return _COORDINATOR

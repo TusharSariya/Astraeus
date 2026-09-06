@@ -899,6 +899,30 @@ def test_consensus_uses_parallel_demand_sources_without_store_fallback(monkeypat
     assert any("no retained forecast artifact" in notice for notice in payload["notices"])
 
 
+def test_gefs_direct_route_requires_axis_address_and_preserves_named_member(monkeypatch, data_mode):
+    import weather_api.gefs_query as gefs_query
+    selected = now()
+    class DemandGEFS:
+        def point_fields(self, latitude, longitude, valid_time, *, member=None, statistic=None, **_kwargs):
+            if member is None and statistic is None:
+                return [], None, ["noaa-gefs"]
+            assert member == "gec00" and statistic is None
+            class Store(EmptyStore):
+                def sample_point(inner, *_args, **_kwargs):
+                    return [_sample("noaa-gefs", "temperature_2m", 8.0, "degC", valid_time)]
+            fields, _, _ = live_point_fields(Store(), latitude, longitude, valid_time)
+            provenance = fields[0].provenance.model_copy(update={"member": "gec00", "member_control": True})
+            return [fields[0].model_copy(update={"provenance": provenance})], None, ["noaa-gefs"]
+    monkeypatch.setattr(gefs_query, "gefs_query_coordinator", lambda: DemandGEFS())
+    data_mode("live")
+    unavailable = client.get(f"{PREFIX}/point", params={"valid_time": selected.isoformat(), "product": "GEFS"}).json()
+    assert unavailable["data_mode"] == "unavailable" and "requires a member" in unavailable["selection"]["reason"]
+    payload = client.get(f"{PREFIX}/point", params={"valid_time": selected.isoformat(), "product": "GEFS", "member": "gec00"}).json()
+    assert payload["data_mode"] == "live"
+    assert payload["fields"][0]["provenance"]["member"] == "gec00"
+    assert payload["fields"][0]["provenance"]["member_control"] is True
+
+
 def test_consensus_demand_sources_overlap_and_fail_independently(monkeypatch, data_mode):
     import threading
     import weather_api.gfs_query as gfs_query
