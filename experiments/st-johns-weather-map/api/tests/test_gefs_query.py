@@ -79,4 +79,4 @@ def test_f012_cloud_interval_requires_exact_six_hours():
 
 def test_f000_cannot_advertise_averaged_cloud_without_native_label():
  with pytest.raises(ValueError,match="f000"):
-  GEFSQueryService(lambda k:entry(k),preflight=lambda _:demand_operation_bounds()).query(key(0))
+  GEFSQueryService(lambda k:entry(k,intervals={m:(RUN-timedelta(hours=6),RUN) for m in k.members}),preflight=lambda _:demand_operation_bounds()).query(key(0))
