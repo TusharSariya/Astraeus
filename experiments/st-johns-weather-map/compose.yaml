@@ -108,6 +108,9 @@ services:
       retries: 3
       start_period: 60s
     restart: unless-stopped
+    mem_limit: 4g
+    tmpfs:
+      - /tmp:size=3g,mode=1777
     networks: [weather]
 
   postgres:
