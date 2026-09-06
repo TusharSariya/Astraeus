@@ -19,6 +19,14 @@ import type {
   SpaceWeatherReading, SpaceWeatherResponse, SpaceWeatherSeries,
 } from './types'
 
+export function demandLayerRefreshIdentity(product: string | undefined, source: DataSource, snapshot: EvidenceSnapshot): string {
+  if (product !== 'GFS' && product !== 'HRDPS') return 'unscoped:pending'
+  const sourceId = product === 'GFS' ? 'noaa-gfs' : 'eccc-hrdps'
+  const attribution = Object.values(snapshot.fieldSources).find((item) => item.sourceId === sourceId)
+  if (source !== 'live' || snapshot.selectedSourceId !== sourceId || !attribution) return `${product}:pending`
+  return `${product}:${attribution.runTime ?? 'unknown-run'}:${attribution.validTime ?? 'unknown-valid'}:${attribution.artifactRevision ?? 'unknown-revision'}`
+}
+
 /** Scrub resolution. Five minutes is finer than the fastest layer published
  *  (radar, every six), so no layer's frames are unreachable between steps. */
 const SCRUB_STEP_MINUTES = 5
@@ -655,12 +663,6 @@ export default function App() {
       setCatalog(result.sources)
       setCatalogError(result.error)
     }).catch(() => undefined)
-    loadLayers(controller.signal).then((result) => {
-      setLayers(result.layers)
-      setLayerNotices(result.notices)
-      setLayersError(result.error)
-      setLayersLoading(false)
-    }).catch(() => undefined)
     // Station markers are drawn from a hardcoded picker list, so this is the
     // only thing that can say whether anything has actually been ingested for
     // one. Until it answers, every station reads as coverage unknown.
@@ -685,6 +687,23 @@ export default function App() {
     return () => controller.abort()
   }, [])
 
+  const demandLayerProduct = selectedProduct === 'GFS' || selectedProduct === 'HRDPS' ? selectedProduct : undefined
+  const demandLayerIdentity = demandLayerRefreshIdentity(demandLayerProduct, dataSource, snapshot)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setLayersLoading(true)
+    loadLayers(demandLayerProduct, controller.signal).then((result) => {
+      if (!controller.signal.aborted) {
+        setLayers(result.layers)
+        setLayerNotices(result.notices)
+        setLayersError(result.error)
+        setLayersLoading(false)
+      }
+    }).catch(() => undefined)
+    return () => controller.abort()
+  }, [demandLayerIdentity]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const controller = new AbortController()
     // Availability metadata follows the selected source. It never downloads a
@@ -707,9 +726,11 @@ export default function App() {
     setSnapshot(unavailableSnapshot)
 
     loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources, member: selectedMember }).then((result) => {
-      setSnapshot(result.snapshot)
-      setDataSource(result.source)
-      setSourceError(result.error ?? '')
+      if (!controller.signal.aborted) {
+        setSnapshot(result.snapshot)
+        setDataSource(result.source)
+        setSourceError(result.error ?? '')
+      }
     }).catch(() => undefined)
 
     if (mode === 'expert') {

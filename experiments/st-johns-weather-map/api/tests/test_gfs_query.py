@@ -532,3 +532,67 @@ def test_shared_timeline_refuses_an_unknown_selected_product(monkeypatch):
     assert response.data_mode.value == "unavailable"
     assert all(not item.available_products for item in response.items)
     assert response.notices == ["NOAA has no timestamp-demand timeline implementation"]
+
+def test_gfs_scoped_layers_advertise_only_the_native_demand_raster(monkeypatch):
+    from fastapi.testclient import TestClient
+    import sys
+    app_module = sys.modules['weather_api.app']
+    from weather_api import gfs_query
+    stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    class Coordinator:
+        def cached_valid_times(self): return (stamp,)
+    monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
+    monkeypatch.setattr(gfs_query, 'gfs_query_coordinator', lambda: Coordinator())
+    body = TestClient(app_module.app).get(f'{app_module.PREFIX}/layers', params={'product':'GFS'}).json()
+    assert body['data_mode'] == 'live'
+    assert [layer['id'] for layer in body['layers']] == ['noaa-gfs-demand-total-cloud']
+    layer = body['layers'][0]
+    assert layer['evidence_basis'] == 'demand_query'
+    assert layer['units'] == 'percent'
+    assert layer['field'] == 'total_cloud_geometric'
+    assert layer['times'] == [stamp.isoformat().replace('+00:00','Z')]
+    assert layer['raster_available'] is True and layer['legend_available'] is False
+
+def test_native_geometric_cloud_raster_preserves_percent_and_missing_alpha(tmp_path):
+    import io
+    import numpy as np
+    from PIL import Image
+    from ingest.grib import write_zarr
+    valid = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    run = valid - timedelta(hours=6)
+    dataset = xarray.Dataset(
+        {'total_cloud_geometric': (('valid_time','latitude','longitude'), np.array([[[0.0,50.0],[np.nan,100.0]]]))},
+        coords={'valid_time':[valid.replace(tzinfo=None)], 'latitude':[1.5,0.5], 'longitude':[0.5,1.5]},
+    )
+    dataset['total_cloud_geometric'].attrs['units']='percent'
+    path=write_zarr(dataset,tmp_path/'surface.zip')
+    entry=GFSQueryEntry(KEY,run,valid,valid+timedelta(minutes=2),'c'*64,{'logical_names':['surface']},{'surface':{'product':'Global Forecast System','native_crs':'EPSG:4326'}},(path.read_bytes(),))
+    coordinator=object.__new__(GFSQueryCoordinator); coordinator.query=lambda _selected: entry
+    image, returned=coordinator.total_cloud_raster(valid,bounds={'south':0,'west':0,'north':2,'east':2},width=2,height=2,crs='EPSG:4326')
+    pixels=np.asarray(Image.open(io.BytesIO(image.payload)).convert('RGBA'))
+    assert pixels[:,:,3].tolist()==[[0,127],[0,255]]
+    assert np.all(pixels[:,:,:3]==255)
+    assert image.units=='percent' and image.valid_time==valid and image.run_time==run
+    assert returned is entry
+
+def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    from fastapi.testclient import TestClient
+    from weather_api import gfs_query
+    from weather_api.grids import RenderedGridImage
+    app_module=sys.modules['weather_api.app']; valid=datetime(2026,9,6,18,tzinfo=UTC); run=valid-timedelta(hours=6); fetched=valid+timedelta(minutes=2)
+    entry=SimpleNamespace(fetched_at=fetched, content_digest='c'*64)
+    image=RenderedGridImage(b'png','image/png',valid,run,'EPSG:4326','percent','noaa-gfs','Global Forecast System','public domain','NOAA/NCEP')
+    class Coordinator:
+        def total_cloud_raster(self,*args,**kwargs): return image,entry
+    monkeypatch.setenv('WEATHER_DATA_MODE','live'); monkeypatch.setattr(gfs_query,'gfs_query_coordinator',lambda:Coordinator())
+    response=TestClient(app_module.app).get(f'{app_module.PREFIX}/layers/noaa-gfs-demand-total-cloud/raster',params={'valid_time':valid.isoformat(),'south':0,'west':0,'north':2,'east':2,'width':2,'height':2})
+    assert response.status_code==200
+    assert response.headers['x-weather-evidence-basis']=='demand_query'
+    assert response.headers['x-weather-source-id']=='noaa-gfs'
+    assert response.headers['x-weather-valid-time']==valid.isoformat()
+    assert response.headers['x-weather-reference-time']==run.isoformat()
+    assert response.headers['x-weather-retrieval-time']==fetched.isoformat()
+    assert response.headers['x-weather-upstream-completion-time']==fetched.isoformat()
+    assert response.headers['x-weather-content-digest']=='c'*64

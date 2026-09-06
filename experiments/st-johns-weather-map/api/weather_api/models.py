@@ -1014,6 +1014,9 @@ class Layer(StrictModel):
     product: str
     units: str
     semantics: str
+    evidence_class: EvidenceClass | None = None
+    family: str | None = None
+    field_key: str | None = None
     #: Exactly the valid times this layer published, at its own cadence. Empty
     #: means the artifact carries no time coordinate, never that it covers all
     #: hours: a client must not synthesise frames for a layer that declared none.
@@ -1040,7 +1043,7 @@ class Layer(StrictModel):
     #:     passed ingest QC, and no value from it is sampled by ``/point`` or
     #:     counted in ``/timeline``. Display evidence, not audited evidence, and
     #:     an interface must say so where a reader can see it.
-    evidence_basis: Literal["published_artifact", "live_proxy"] = "published_artifact"
+    evidence_basis: Literal["published_artifact", "live_proxy", "demand_query"] = "published_artifact"
     #: Where a layer index should file this layer. Derived here from
     #: ``evidence_basis`` and ``kind`` so a client never has to infer it from
     #: the shape of an id. ``satellite`` is observed imagery relayed live:

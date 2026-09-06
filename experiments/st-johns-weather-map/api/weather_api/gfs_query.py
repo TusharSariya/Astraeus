@@ -157,6 +157,12 @@ class GFSQueryService:
                         self._inflight.pop(key, None)
             return future.result()
 
+    def cached_valid_times(self) -> tuple[datetime, ...]:
+        """Native instants already cached; this method performs no provider I/O."""
+        with self._lock:
+            current = self._clock()
+            return tuple(sorted({entry.valid_time for expiry, entry in self._entries.values() if current < expiry}))
+
 
 def hides_legacy_published_gfs_layer(source_id: str) -> bool:
     """Keep pre-demand GFS artifacts audit-readable without advertising them as live layers."""
@@ -221,6 +227,9 @@ class GFSQueryCoordinator:
                 return self._cache.query(key)
             finally:
                 self._prepared.pop(key, None)
+
+    def cached_valid_times(self) -> tuple[datetime, ...]:
+        return self._cache.cached_valid_times()
 
     def point_fields(self, latitude: float, longitude: float, selected_time: datetime) -> tuple[list[Any], Any, list[str]]:
         """Answer one point through the existing evidence/provenance builder.
@@ -364,6 +373,38 @@ class GFSQueryCoordinator:
                         )
                     )
         return levels
+
+    def total_cloud_raster(self, selected_time: datetime, *, bounds: Mapping[str, float], width: int, height: int, crs: str):
+        """Render the cached native total-cloud grid without publishing it."""
+        from . import grids  # noqa: PLC0415
+        entry = self.query(selected_time)
+        try:
+            index = tuple(entry.values["logical_names"]).index("surface")
+        except ValueError as error:
+            raise grids.GridUnavailable("selected GFS response carries no surface grid") from error
+        with tempfile.TemporaryDirectory(prefix="gfs-demand-raster-") as directory:
+            path = Path(directory) / "surface.zarr.zip"
+            path.write_bytes(entry.payloads[index])
+            import xarray  # noqa: PLC0415
+            import zarr  # noqa: PLC0415
+            zipped = zarr.storage.ZipStore(str(path), mode="r")
+            dataset = xarray.open_zarr(zipped, consolidated=False)
+            artifact = SimpleNamespace(
+                source_id="noaa-gfs", logical_name="surface",
+                revision_id=f"demand:{entry.content_digest}:surface",
+                provenance=entry.provenance["surface"], run_time=entry.run_time,
+                retrieved_at=entry.fetched_at, native_crs="EPSG:4326",
+            )
+            class Store:
+                def current(self): return [artifact]
+                def open(self, _artifact): return dataset
+            try:
+                spec = grids.rendered_grid_spec("noaa-gfs-demand-total-cloud")
+                assert spec is not None
+                return grids.render_grid(Store(), spec, bounds=bounds, width=width, height=height, crs=crs, valid_time=entry.valid_time), entry
+            finally:
+                dataset.close()
+                zipped.close()
 
     def timeline_times(self, reference: datetime) -> tuple[tuple[datetime, ...], Mapping[str, object]]:
         """Return actual native frame keys from one bounded, coalesced S3 listing."""

@@ -259,6 +259,9 @@ function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | 
   return {
     sourceId: typeof provenance.source_id === 'string' ? provenance.source_id : null,
     product: typeof provenance.product === 'string' ? provenance.product : null,
+    runTime: text(provenance.run_time),
+    validTime: text(provenance.valid_time),
+    artifactRevision: text(provenance.artifact_revision),
     provider: String(provenance.provider ?? 'Unknown provider'),
     // The catalogue axis. Read from the value first, then from provenance;
     // never from `field.field`, which is an API field name and not a promise
@@ -821,7 +824,7 @@ export const LAYER_GROUP_LABELS: Record<LayerGroup, string> = {
   alert: 'Alerts',
   forecast_proxy: 'Forecast · live proxy',
   published_model: 'Published model grids',
-  rendered_grid: 'Rendered grids (drawn here from stored model data)',
+  rendered_grid: 'Rendered grids',
   unknown: 'Undeclared group',
 }
 
@@ -913,9 +916,11 @@ function isLayer(value: unknown): value is LayerItem {
   return typeof candidate.id === 'string' && typeof candidate.title === 'string' && typeof candidate.semantics === 'string'
 }
 
-export async function loadLayers(signal?: AbortSignal): Promise<LayersResult> {
+export async function loadLayers(product?: string, signal?: AbortSignal): Promise<LayersResult> {
   try {
-    const response = await fetch(`${prefix}/layers`, { signal, headers: { Accept: 'application/json' } })
+    const params = new URLSearchParams()
+    if (product) params.set('product', product)
+    const response = await fetch(`${prefix}/layers${params.size ? `?${params}` : ''}`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) return { layers: [], dataMode: 'unavailable', error: `layer catalogue returned ${response.status}`, notices: [] }
     const body: unknown = await response.json()
     if (!body || typeof body !== 'object' || !Array.isArray((body as { layers?: unknown }).layers)) {
@@ -1321,6 +1326,7 @@ export function flowObjectUrls(flow: FlowTexture): string[] {
  *  without being told which is which. An absent or unrecognised basis fails
  *  closed to unknown — never to the stronger of the two. */
 export function describeEvidenceBasis(basis: string | undefined | null, group?: string): string {
+  if (basis === 'demand_query') return 'Fetched and validated for the selected timestamp, then rendered here from the provider\'s native grid; cached briefly to avoid repeated provider requests.'
   if (basis === 'live_proxy') return 'Live-proxied imagery, rendered by the provider at request time. Not a published artifact: it has not passed ingest, QC or atomic publication.'
   if (basis === 'published_artifact' && group === 'rendered_grid') {
     // The one case where the drawn pixels come from the artifact itself: the
