@@ -7,6 +7,8 @@ from time import sleep
 
 import pytest
 import xarray
+import json
+import zipfile
 
 from weather_api.gfs_query import GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey
 from ingest.contract import Artifact, RunCandidate, RunResult
@@ -255,3 +257,41 @@ def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_
     assert response.selection.selected_source_id == "noaa-gfs"
     assert response.fields[0].provenance.valid_time == valid_time
     assert any("no temporal interpolation" in notice for notice in response.notices)
+
+
+def test_production_loader_invokes_locked_child_and_refuses_failed_validation(tmp_path, monkeypatch):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    idx = "1:0:d=2026090612:TMP:2 m above ground:3 hour fcst:\n2:4:d=2026090612:HGT:surface:3 hour fcst:\n"
+
+    class Client:
+        def get_bytes(self, _url, *, max_bytes):
+            assert max_bytes == MAX_IDX_BYTES
+            return idx.encode()
+
+    class Adapter:
+        _base_url = "https://example"
+        _bounds = {"north": 50.5, "south": 45.0, "west": -58.0, "east": -46.0}
+        def _get_client(self): return Client()
+        def discover(self, _window):
+            return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+
+    calls = []
+    def child(*, command, stdin, destination, limits, timeout_seconds):
+        calls.append((command, json.loads(stdin), limits, timeout_seconds))
+        manifest = {
+            "source_id": "noaa-gfs", "provider_run_id": "gfs-2026090612",
+            "run_time": run_time.isoformat(), "retrieved_at": (run_time + timedelta(minutes=1)).isoformat(),
+            "complete": False, "qc_passed": True,
+            "artifacts": [{"logical_name": "surface", "name": "surface.zip", "provenance": {}}],
+        }
+        with zipfile.ZipFile(destination, "w") as bundle:
+            bundle.writestr("result.json", json.dumps(manifest))
+            bundle.writestr("artifacts/surface.zip", b"payload")
+
+    monkeypatch.setattr("weather_api.gfs_query.run_bounded_process", child)
+    coordinator = GFSQueryCoordinator(Adapter(), now=lambda: run_time)
+    with pytest.raises(ValueError, match="incomplete or failed-QC"):
+        coordinator.query(run_time + timedelta(hours=3))
+    assert len(calls) == 1
+    assert calls[0][2].address_space_bytes == 1024**3
+    assert calls[0][2].output_bytes == 64 * 1024**2

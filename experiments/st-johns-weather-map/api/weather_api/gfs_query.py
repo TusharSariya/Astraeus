@@ -301,7 +301,11 @@ class GFSQueryCoordinator:
             )
             with zipfile.ZipFile(bundle_path) as bundle:
                 info = json.loads(bundle.read("result.json"))
+                if info.get("source_id") != "noaa-gfs" or not info.get("complete") or not info.get("qc_passed"):
+                    raise ValueError("GFS bounded child returned an incomplete or failed-QC selection")
                 artifacts = info["artifacts"]
+                if not artifacts or len(artifacts) > 2:
+                    raise ValueError("GFS bounded child returned an invalid artifact set")
                 payloads = tuple(bundle.read(f"artifacts/{artifact['name']}") for artifact in artifacts)
             digest = hashlib.sha256(b"".join(payloads)).hexdigest()
             provenance = {artifact["logical_name"]: artifact["provenance"] for artifact in artifacts}
