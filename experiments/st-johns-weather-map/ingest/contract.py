@@ -47,11 +47,6 @@ class FetchWindow:
     now: datetime
     back_hours: float = WINDOW_BACK.total_seconds() / 3600.0
     forward_hours: float = WINDOW_FORWARD.total_seconds() / 3600.0
-    # Set by the worker after consulting the restart cache.  Adapters already
-    # use ``covers`` at the point where they construct payload requests, so an
-    # exact selection here narrows indexed files, per-time URLs and members
-    # without changing the provider run identity.
-    selected_valid_times_ns: frozenset[int] | None = None
 
     @property
     def start(self) -> datetime:
@@ -62,22 +57,7 @@ class FetchWindow:
         return self.now + timedelta(hours=self.forward_hours)
 
     def covers(self, moment: datetime) -> bool:
-        if not self.start <= moment <= self.end:
-            return False
-        if self.selected_valid_times_ns is None:
-            return True
-        from .validate import to_nanoseconds  # local import avoids a contract cycle
-
-        return to_nanoseconds(moment) in self.selected_valid_times_ns
-
-    def selecting(self, valid_times_ns: tuple[int, ...]) -> "FetchWindow":
-        """Return this window narrowed to exact missing frame keys."""
-        return FetchWindow(
-            now=self.now,
-            back_hours=self.back_hours,
-            forward_hours=self.forward_hours,
-            selected_valid_times_ns=frozenset(valid_times_ns),
-        )
+        return self.start <= moment <= self.end
 
 
 @dataclass(frozen=True)

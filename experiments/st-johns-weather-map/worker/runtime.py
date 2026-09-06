@@ -184,7 +184,6 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
         return SourceOutcome(config.source_id, "cancelled", "discovery returned no candidate run")
 
     candidate = candidates[0]
-    fetch_window = window
     # Ask the store what is present before fetching. A restart whose window is
     # already satisfied issues no bulk request at all; a store that cannot be
     # asked fails the source, because refetching everything on an unreadable
@@ -196,21 +195,19 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
             return SourceOutcome(config.source_id, "failed", f"the store could not be asked what is present: {error!r}")
         if plan.satisfied:
             return SourceOutcome(config.source_id, "succeeded", plan.reason, 0)
-        if plan.missing:
-            if plan.present and not bool(getattr(adapter, "partial_fetch_supported", False)):
-                return SourceOutcome(
-                    config.source_id,
-                    "failed",
-                    "partial cache repair is unsupported for this adapter's artifact representation; "
-                    "retained frames stay visible and no provider payload was requested",
-                    0,
-                )
-            fetch_window = window.selecting(plan.missing)
+        if plan.missing and set(plan.present).intersection(plan.wanted):
+            return SourceOutcome(
+                config.source_id,
+                "failed",
+                "partial cache repair is unsupported for this adapter's artifact representation; "
+                "retained frames stay visible and adapter.fetch was not called",
+                0,
+            )
     if heartbeat is not None:
         heartbeat()
     with tempfile.TemporaryDirectory(prefix=f"{config.source_id}-") as workdir:
         try:
-            result = adapter.fetch(candidate, fetch_window, Path(workdir))
+            result = adapter.fetch(candidate, window, Path(workdir))
         except AdapterUnavailable as error:
             return SourceOutcome(config.source_id, "cancelled", f"candidate unusable: {error}")
         except Exception as error:

@@ -55,5 +55,6 @@ Choose the durable publication unit before aggregate repair proceeds:
 Option 1 matches the requirement that retained frames are neither re-fetched
 nor re-uploaded. It requires an accepted clarification because it adds identity
 dimensions and a manifest/read contract absent from the current OpenSpec and
-database schema. Until that choice is accepted and implemented, no current
-aggregate adapter should set `partial_fetch_supported = True`.
+database schema. Until that choice is accepted and implemented, the worker refuses partial
+aggregate fetches without any generic opt-in. Candidate coverage still absent
+from other adapters and payload-bearing discovery remain required follow-ups.

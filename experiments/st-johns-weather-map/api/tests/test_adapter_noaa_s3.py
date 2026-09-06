@@ -383,32 +383,37 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
         assert upper_ds[name].attrs["units"] == "m s-1"
 
 
-def test_noaa_gfs_fetch_requests_only_selected_missing_lead(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """The worker's exact restart selection reaches the indexed GRIB request."""
+@pytest.mark.parametrize("cache_state", ["full", "partial"])
+def test_noaa_gfs_worker_uses_declared_leads_before_payload(cache_state, monkeypatch):
+    from types import SimpleNamespace
+    from ingest.validate import to_nanoseconds
+    from worker.runtime import run_source
+
     client = _four_lead_client()
-    adapter = NOAAS3Adapter(client=client)
-    download_calls = []
-
-    def mock_download_ranges(url, dest, ranges, max_bytes):
-        download_calls.append((url, ranges, max_bytes))
-        dest.write_bytes(b"dummy_grib_subset")
-        return 1000
-
-    monkeypatch.setattr(client, "download_ranges", mock_download_ranges)
-    monkeypatch.setattr("ingest.adapters.noaa_s3.open_grib", make_mock_open_grib(full_message_set()))
-    monkeypatch.setattr("ingest.adapters.noaa_s3.crop_to_bbox", lambda ds, bounds: ds)
-
+    adapter = NOAAS3Adapter(client=client, max_lead_hours=3)
     now = datetime(2026, 8, 29, 13, tzinfo=UTC)
-    full_window = FetchWindow(now=now, back_hours=1, forward_hours=2)
-    missing = datetime(2026, 8, 29, 14, tzinfo=UTC)
-    selected = full_window.selecting((int(numpy.datetime64(missing.replace(tzinfo=None), "ns").astype("int64")),))
+    candidate = adapter.discover(FetchWindow(now=now))[0]
+    expected = [datetime.fromisoformat(value) for value in candidate.detail["valid_times"]]
+    assert len(expected) == 4
+    held = expected if cache_state == "full" else expected[:1]
+    reads = []
 
-    result = adapter.fetch(adapter.discover(full_window)[0], selected, tmp_path)
+    class Cache:
+        def present_keys(self, source_id, run_id):
+            reads.append((source_id, run_id))
+            return {to_nanoseconds(value) for value in held}
+        def stage_and_publish(self, result):
+            pytest.fail("a retained GFS run must not be re-published")
 
-    assert result.complete and result.qc_passed
-    assert len(download_calls) == 1
-    assert download_calls[0][0].endswith(".f002")
-    assert result.provider_run_id == "gfs-2026082912"
+    def refuse_ranges(*args, **kwargs):
+        pytest.fail("a retained GFS run must not request provider ranges")
+    monkeypatch.setattr(client, "download_ranges", refuse_ranges)
+    result = run_source(adapter, SimpleNamespace(source_id="noaa-gfs"), Cache(), reference=now)
+    assert reads == [("noaa-gfs", candidate.provider_run_id)]
+    assert result.state == ("succeeded" if cache_state == "full" else "failed")
+    assert result.published == 0
+    if cache_state == "partial":
+        assert "partial cache repair is unsupported" in result.detail
 
 
 def test_noaa_gfs_message_scalar_levels_survive_assembly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

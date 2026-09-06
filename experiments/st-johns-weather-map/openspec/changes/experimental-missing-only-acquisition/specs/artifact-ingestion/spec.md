@@ -1,22 +1,25 @@
 ## ADDED Requirements
 
-### Requirement: Partial cache acquisition fails closed without a safe publication representation
-When the restart cache reports only some declared valid times for a provider
-run, the worker SHALL pass the exact missing valid times to an adapter that
-explicitly declares partial-fetch support. An adapter without that declaration
-SHALL receive no payload fetch, and the outcome SHALL preserve the retained
-revision while naming partial repair as unsupported. The declaration SHALL NOT
-permit replacement of an already-published `(source_id, provider_run_id,
-valid_time)` with different bytes.
+### Requirement: Partial aggregate cache acquisition is refused pending a publication contract
+When the restart cache reports both retained and missing requested valid times
+for a provider run, the worker SHALL refuse `adapter.fetch` and SHALL preserve
+retained revisions. No generic adapter flag SHALL authorize partial publication.
+This barrier does not establish field/member completeness and does not prevent
+payloads that an adapter already retrieved during discovery; those are explicit
+remaining work, not zero-transfer claims.
 
-#### Scenario: Selectable indexed request
-- **WHEN** the cache holds one of several declared times and the adapter declares a safe partial representation
-- **THEN** the adapter's request-construction window covers only missing times while the provider run id remains unchanged
+#### Scenario: GFS full cache
+- **WHEN** GFS discovery declares its bounded expected lead times and the cache reports every requested time present
+- **THEN** the actual worker reports a no-op success and makes no GRIB range request
 
-#### Scenario: Aggregate artifact has no verified merge representation
-- **WHEN** the cache is partial and the adapter has not declared partial-fetch support
-- **THEN** the source fails before `fetch`, reports that retained frames remain visible, and publishes nothing
+#### Scenario: GFS partial aggregate cache
+- **WHEN** some requested GFS times are retained and some are missing
+- **THEN** the actual worker refuses fetch, reports partial repair unsupported, and publishes nothing
 
-#### Scenario: Cache state is unknown
+#### Scenario: Retained times do not overlap the request
+- **WHEN** same-run retained keys are entirely outside the requested time set
+- **THEN** they do not block an otherwise cold-window fetch
+
+#### Scenario: Store state is unknown
 - **WHEN** the store cannot answer which run times are present
-- **THEN** the source fails before `fetch` and does not interpret the unknown state as an empty cache
+- **THEN** the worker fails before fetch rather than assuming an empty cache
