@@ -195,6 +195,14 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
             return SourceOutcome(config.source_id, "failed", f"the store could not be asked what is present: {error!r}")
         if plan.satisfied:
             return SourceOutcome(config.source_id, "succeeded", plan.reason, 0)
+        if plan.missing and set(plan.present).intersection(plan.wanted):
+            return SourceOutcome(
+                config.source_id,
+                "failed",
+                "partial cache repair is unsupported for this adapter's artifact representation; "
+                "retained frames stay visible and adapter.fetch was not called",
+                0,
+            )
     if heartbeat is not None:
         heartbeat()
     with tempfile.TemporaryDirectory(prefix=f"{config.source_id}-") as workdir:

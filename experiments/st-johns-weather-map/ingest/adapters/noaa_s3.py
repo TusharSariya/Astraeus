@@ -386,6 +386,14 @@ class NOAAS3Adapter:
                                     "date_str": date_str,
                                     "cycle": cycle_str,
                                     "run_dt": run_dt,
+                                    # Expected instants use the same bounded lead
+                                    # schedule as fetch; availability is checked
+                                    # there, never inferred from this declaration.
+                                    "valid_times": [
+                                        (run_dt + timedelta(hours=lead)).isoformat()
+                                        for lead in range(self._max_lead_hours + 1)
+                                        if window.covers(run_dt + timedelta(hours=lead))
+                                    ],
                                 },
                             )
                         )
