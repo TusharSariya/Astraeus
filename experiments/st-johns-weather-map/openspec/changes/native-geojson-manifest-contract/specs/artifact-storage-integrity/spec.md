@@ -6,7 +6,8 @@ existing immutable-object staging and single `publish_run` transaction for all
 required artifacts. Validation or publication failure SHALL leave the prior
 current run unchanged. Source-time-less snapshots SHALL follow the existing
 latest-and-previous complete-run retention rule and SHALL NOT participate in
-valid-time window arithmetic.
+valid-time window arithmetic. The previous revision SHALL be retained for
+audit and recovery only; it SHALL NOT remain route-eligible after supersession.
 
 #### Scenario: Fourth hurricane artifact fails validation
 - **WHEN** three required artifacts validate and the fourth fails

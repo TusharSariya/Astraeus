@@ -21,8 +21,10 @@ Approve the single recommended contract in `design.md`: extend `RunManifest`
 with a mutually exclusive native-GeoJSON schema, keep `qc_passed` as the
 shared validator's computed publication gate while explicitly reporting
 provider QC as unknown, keep atomic run publication and latest-and-previous
-retention unchanged, and add snapshot-identity lookup beside the frame-exact
-features lookup. Provider properties remain source fields, not canonical
+retention unchanged, refuse snapshot service after a proposed 24-hour
+receipt-age ceiling, and add current-snapshot identity lookup beside the
+frame-exact features lookup. The previous revision remains audit-only.
+Provider properties remain source fields, not canonical
 meteorological fields, and retrieval time never becomes a valid frame.
 
 This is a proposal only. It does not change accepted specifications, registry

@@ -100,19 +100,29 @@ superseded identity returns 404; an integrity or store failure returns
 `data_mode: unavailable` and never falls back. A layer may expose snapshot
 identities while its frame `times` remains empty.
 
+The recommended API eligibility ceiling is 24 hours from the latest HTTP
+completion in the required receipt set. This is a proposed acquisition-age
+safety limit, not a provider cadence, source valid time or claim that the
+guidance remains meteorologically fresh for 24 hours. At age greater than
+86,400 seconds the current snapshot route returns unavailable with an expired
+reason and no fallback, even if no refresh succeeded. An absent or unmeasurable
+receipt completion time is immediately unavailable.
+
 Retention uses the already accepted latest-and-previous complete-run rule per
-logical stream. Query snapshots do not enter valid-time window arithmetic and
-are never retained because their requested window overlaps the evidence
-window. Staged-debris cleanup, digest verification and row-before-object purge
-ordering remain unchanged.
+logical stream. Only the current, unexpired identity is route-eligible. The
+previous complete revision is retained solely for integrity audit and atomic
+failure recovery; direct lookup returns 404 because it is superseded. Query
+snapshots do not enter valid-time window arithmetic. Staged-debris cleanup,
+digest verification and row-before-object purge ordering remain unchanged.
 
 This recommendation is one indivisible contract choice. Approval means that
 `qc_passed` remains the shared validator's computed publication-safety gate,
 while provenance separately and explicitly reports `format_valid`,
 `scope: structural_format`, and `provider_qc: unknown`. It also means that a
 source-time-less document is addressed only by immutable snapshot identity and
-uses the existing latest-and-previous complete-run retention rule. Retrieval
-time remains receipt provenance and is never eligible as a frame time.
+uses the 24-hour receipt-age refusal above with the existing latest-and-previous
+retention rule. Retrieval time remains receipt provenance and is never eligible
+as a frame time.
 
 ## Valid alternatives
 
