@@ -23,13 +23,16 @@ layouts or responsive-phone studies in this run.
 
 ## Immediate runtime blocker
 
-The worker-level resource preflight repair from #159 merged in PR162 at
-`464b12e0505f6ce1beb692ac4981f62fa84ec3ae`. Scheduler-eligible adapters that
-lack measured discovery and complete-operation resource bounds now fail closed;
-source-specific measurements and bounded writers remain active #159 work. #123
-and #137 are active, #118 is closed, and #158 awaits owner resolution. Agent
-capacity is available through explicitly authorized completed-thread reuse; keep
-claims and isolated worktrees coordinated through the root orchestrator.
+The worker-level #159 preflight and payload-discovery reservation seams merged
+through PR166 at `86355f9c81f956eb2d7a123a7e940f3ee6bb9066`.
+Scheduler-eligible adapters without measured complete-operation bounds remain
+fail-closed while source-specific memory and physical-allocation enforcement is
+implemented. #118 is closed; #123/#137 partial proofs merged in PR165/PR164 but
+their contracts remain in #167/#168; #158 awaits the owner's fragment choice;
+#133 awaits its contract/publication path and #105 is active. The owner
+authorizes completed-thread reuse. The root
+orchestrator delegates implementation and independent evidence review while
+keeping claims and isolated worktrees coordinated.
 
 ## Mandatory inputs and boundaries
 
@@ -64,8 +67,8 @@ be filled from later rows. At most three implementation tickets are active.
 First complete the new audit/repair follow-ups: #158 missing-only acquisition
 after partial cache hits, and #159 resource preflight before payload retrieval.
 Both are native children of #70 and native blockers of final verification #97.
-Their issue bodies record inspected worker/store seams; they are not yet
-implemented or tested fixes.
+The shared #159 gate is implemented and tested; source-specific bounds remain
+incremental work. #158 remains pending the owner's fragment choice.
 
 | Batch | Tasks |
 | --- | --- |

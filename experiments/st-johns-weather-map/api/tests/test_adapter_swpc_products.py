@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -20,11 +24,32 @@ from ingest.adapters.swpc_products import (
     SWPCScalesAdapter,
 )
 from ingest.contract import AdapterUnavailable, FetchWindow
-from ingest.http import PoliteClient, USER_AGENT
+from ingest.http import MaxBytesExceeded, PoliteClient, USER_AGENT
+from ingest.isolation import BoundedProcessError
+from ingest import kp1m_isolated
 
 UTC = timezone.utc
 NOW = datetime(2026, 9, 5, 20, 0, tzinfo=UTC)
 WINDOW = FetchWindow(now=NOW)
+
+
+@pytest.fixture(autouse=True)
+def local_kp_child(monkeypatch):
+    """Exercise adapter protocol on Darwin; kernel enforcement is Linux-tested."""
+    def run(mode, raw, destination):
+        output = destination or Path("/tmp/unused-kp-inspect")
+        result = subprocess.run(
+            [sys.executable, "-m", "ingest.kp1m_isolated", mode, str(output)],
+            input=raw, capture_output=True, check=False,
+            env={**os.environ, "PYTHONPATH": str(Path(kp1m_isolated.__file__).resolve().parents[1])},
+        )
+        if result.returncode:
+            from ingest.isolation import BoundedProcessError
+            raise BoundedProcessError(result.stderr.decode())
+        return SimpleNamespace(output_path=destination, stdout=result.stdout)
+
+    from pathlib import Path
+    monkeypatch.setattr(SWPCKp1mAdapter, "_isolated", staticmethod(run))
 
 
 def client(payload) -> PoliteClient:
@@ -110,6 +135,57 @@ def test_kp1m_refuses_non_finite_numeric_rows(field, value):
 
     with pytest.raises(AdapterUnavailable, match=f"non-finite {field}"):
         SWPCKp1mAdapter(client=client([row])).discover(WINDOW)
+
+
+def test_kp1m_complete_operation_bounds_cover_one_isolated_artifact():
+    bounds = SWPCKp1mAdapter(client=client([])).operation_bounds(WINDOW)
+
+    assert bounds.received_bytes == 512 * 1024
+    assert bounds.store_bytes == 512 * 1024
+    assert bounds.filesystem_bytes == 512 * 1024
+    assert bounds.margin_bytes == 4096
+
+
+def test_kp1m_maps_transport_limit_to_unavailable_without_candidate(monkeypatch):
+    adapter = SWPCKp1mAdapter(client=client([]))
+    monkeypatch.setattr(
+        adapter._client,
+        "get_bytes_with_headers",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(MaxBytesExceeded("too large")),
+    )
+
+    with pytest.raises(AdapterUnavailable, match="isolated discovery failed"):
+        adapter.discover(WINDOW)
+
+
+def test_kp1m_removes_promoted_output_when_reply_is_invalid(tmp_path, monkeypatch):
+    rows = [{"time_tag": "2026-09-05T19:58:00", "kp_index": 1, "estimated_kp": 1, "kp": "1Z"}]
+    adapter = SWPCKp1mAdapter(client=client(rows))
+    candidate = adapter.discover(WINDOW)[0]
+
+    def invalid_reply(_mode, _raw, destination):
+        destination.write_bytes(b"promoted")
+        return SimpleNamespace(output_path=destination, stdout=b"not-json")
+
+    monkeypatch.setattr(adapter, "_isolated", invalid_reply)
+    with pytest.raises(AdapterUnavailable, match="normalization failed"):
+        adapter.fetch(candidate, WINDOW, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_kp1m_leaves_no_output_when_bounded_child_fails(tmp_path, monkeypatch):
+    rows = [{"time_tag": "2026-09-05T19:58:00", "kp_index": 1, "estimated_kp": 1, "kp": "1Z"}]
+    adapter = SWPCKp1mAdapter(client=client(rows))
+    candidate = adapter.discover(WINDOW)[0]
+    monkeypatch.setattr(
+        adapter,
+        "_isolated",
+        lambda *_args: (_ for _ in ()).throw(BoundedProcessError("allocation limit")),
+    )
+
+    with pytest.raises(AdapterUnavailable, match="normalization failed"):
+        adapter.fetch(candidate, WINDOW, tmp_path)
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_alert_collision_at_one_issue_instant_fails_closed():
