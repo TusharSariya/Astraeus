@@ -28,6 +28,18 @@ provider-to-existing-client path. Application map #38 owns later visual redesign
 Revise #201 and #208 against this route before merging their preserved work;
 reuse bounded transport, decode, native semantics, API, and client components,
 but do not require persistent artifact publication or full-horizon prefetch.
+PR207 merged at `855493dbdbb86d5c99357955d06ab3dbd83a8856` and closes the
+CYYT TAF slice under this corrected architecture. `GET /aviation/taf` now
+queries one canonical provider product/station request, caps and validates the
+complete response, caches it for the provider's effective `max-age`,
+conditionally revalidates its ETag, coalesces process-local concurrent fills,
+and applies the selected timestamp only when filtering native half-open groups.
+The Workbench consumes the live result directly. No ArtifactStore publication,
+model-run retention, background refresh job, or two-run evidence store is part
+of that path. Exact live review observed a 5,908-byte response, `max-age=60`, a
+matching 304 revalidation, and three applicable native groups; the experiment
+remains `operational: false`.
+
 Migrate the already demonstrated HRDPS, METAR/SPECI and Kp paths to this same
 demand-query contract in bounded follow-ups; their existing implementations and
 evidence remain useful until replaced, but scheduled bulk acquisition is not
@@ -69,7 +81,10 @@ features were never selected and does not revert merged safety work.
 
 ## Measured baseline
 
-Current main is `9a58dccc74d0b6f8b3ca7f6d50eba5286bff5345` after the reviewed HRDPS implementation, exact-memory admission fix and contract backfill.
+Current main is `855493dbdbb86d5c99357955d06ab3dbd83a8856` after the corrected
+TAF timestamp-demand integration. The earlier HRDPS persistent-ingestion proof
+remains in history as measurement and native-field evidence; it is not the
+current delivery architecture.
 The registry contains 123 records: 21 are `implemented-unverified`. Seventeen
 records intersected ingestible configuration and a registered adapter, but only
 `awc-metar-speci` and `noaa-swpc-kp` implemented both finite discovery and
