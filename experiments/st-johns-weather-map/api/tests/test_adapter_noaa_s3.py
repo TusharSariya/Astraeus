@@ -383,6 +383,41 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
         assert upper_ds[name].attrs["units"] == "m s-1"
 
 
+@pytest.mark.parametrize("cache_state", ["full", "partial"])
+def test_noaa_gfs_worker_uses_declared_leads_before_payload(cache_state, monkeypatch):
+    from types import SimpleNamespace
+    from ingest.contract import DiscoveryBounds
+    from ingest.validate import to_nanoseconds
+    from worker.runtime import run_source
+
+    client = _four_lead_client()
+    adapter = NOAAS3Adapter(client=client, max_lead_hours=3)
+    monkeypatch.setattr(adapter, "discovery_bounds", lambda _window: DiscoveryBounds(1 << 20), raising=False)
+    now = datetime(2026, 8, 29, 13, tzinfo=UTC)
+    candidate = adapter.discover(FetchWindow(now=now))[0]
+    expected = [datetime.fromisoformat(value) for value in candidate.detail["valid_times"]]
+    assert len(expected) == 4
+    held = expected if cache_state == "full" else expected[:1]
+    reads = []
+
+    class Cache:
+        def present_keys(self, source_id, run_id):
+            reads.append((source_id, run_id))
+            return {to_nanoseconds(value) for value in held}
+        def stage_and_publish(self, result):
+            pytest.fail("a retained GFS run must not be re-published")
+
+    def refuse_ranges(*args, **kwargs):
+        pytest.fail("a retained GFS run must not request provider ranges")
+    monkeypatch.setattr(client, "download_ranges", refuse_ranges)
+    result = run_source(adapter, SimpleNamespace(source_id="noaa-gfs"), Cache(), reference=now)
+    assert reads == [("noaa-gfs", candidate.provider_run_id)]
+    assert result.state == ("succeeded" if cache_state == "full" else "failed")
+    assert result.published == 0
+    if cache_state == "partial":
+        assert "partial cache repair is unsupported" in result.detail
+
+
 def test_noaa_gfs_message_scalar_levels_survive_assembly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Regression for the message-scalar bug: each GRIB message carries its own
     scalar level coordinate (heightAboveGround = 2 for t2m, = 10 for u10, plus

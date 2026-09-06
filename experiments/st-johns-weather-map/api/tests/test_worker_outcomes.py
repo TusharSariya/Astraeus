@@ -58,6 +58,7 @@ class _Adapter:
         self._result = result
         self._times = tuple(times)
         self.fetched = 0
+        self.fetch_window: Any = None
 
     def discover(self, window: Any) -> list[RunCandidate]:
         return [RunCandidate(
@@ -70,6 +71,7 @@ class _Adapter:
 
     def fetch(self, candidate: Any, window: Any, workdir: Path) -> RunResult:
         self.fetched += 1
+        self.fetch_window = window
         assert self._result is not None, "this adapter must never be asked to fetch"
         return self._result
 
@@ -141,14 +143,26 @@ def test_noop_is_not_reported_as_cancelled_or_failed() -> None:
     assert outcome.state not in {"cancelled", "failed"}
 
 
-def test_a_partly_filled_window_still_fetches(tmp_path: Path) -> None:
+def test_unrelated_retained_times_do_not_block_a_cold_window(tmp_path: Path) -> None:
+    adapter = _Adapter(result=_result(tmp_path))
+    store = _Store(present={to_nanoseconds(T0 - timedelta(hours=1))})
+    outcome = run_source(adapter, _Config(), store, reference=T0)
+    assert outcome.state == "succeeded"
+    assert adapter.fetched == 1
+    assert store.published == 1
+
+
+def test_partial_aggregate_without_merge_support_fails_before_payload(tmp_path: Path) -> None:
     adapter = _Adapter(result=_result(tmp_path))
     store = _Store(present={to_nanoseconds(TIMES[0])})
 
     outcome = run_source(adapter, _Config(), store, reference=T0)
 
-    assert adapter.fetched == 1
-    assert outcome.state == "succeeded" and outcome.published == 1
+    assert outcome.state == "failed"
+    assert "partial cache repair is unsupported" in outcome.detail
+    assert "retained frames stay visible" in outcome.detail
+    assert adapter.fetched == 0
+    assert store.published == 0
 
 
 def test_a_store_that_cannot_be_asked_fails_the_source_without_fetching() -> None:
