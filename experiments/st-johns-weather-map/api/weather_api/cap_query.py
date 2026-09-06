@@ -260,6 +260,7 @@ class CAPQueryService:
                     raw, receipt = self._client.get_bytes_with_receipt(url, max_bytes=CAP_DOCUMENT_MAX_BYTES)
                     if receipt.get("byte_size") != len(raw) or receipt.get("sha256") != hashlib.sha256(raw).hexdigest():
                         raise CapQueryUnavailable("ECCC CAP transport receipt does not match the response body")
+                    receipts.append(receipt)
                     document = json.loads(raw)
                     features = _validate_collection(document)
                 except Exception as error:
@@ -267,7 +268,6 @@ class CAPQueryService:
                 encoded_total += len(raw)
                 if encoded_total > CAP_CACHE_MAX_BYTES:
                     raise CapQueryUnavailable("ECCC CAP combined response exceeds the cache byte ceiling", partial_features=merged.values(), completed_receipts=receipts)
-                receipts.append(receipt)
                 for feature in features:
                     key = _feature_key(feature)
                     prior = merged.get(key)

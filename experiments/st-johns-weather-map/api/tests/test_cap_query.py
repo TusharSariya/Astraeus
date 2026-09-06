@@ -142,8 +142,10 @@ def test_historical_selection_and_invalid_native_validity_fail_closed():
 
 @pytest.mark.parametrize("payload", [{}, {"type": "FeatureCollection", "features": "bad"}])
 def test_malformed_collection_is_unavailable(payload):
-    with pytest.raises(CapQueryUnavailable, match="FeatureCollection|feature list"):
+    with pytest.raises(CapQueryUnavailable, match="FeatureCollection|feature list") as caught:
         CAPQueryService(client=Client([payload, collection()]), boxes=BOXES, clock=Clock()).query(NOW)
+    assert len(caught.value.completed_receipts) == 1
+    assert caught.value.completed_receipts[0]["byte_size"] > 0
 
 
 def test_conflicting_duplicate_identity_and_bad_receipt_fail_closed():
