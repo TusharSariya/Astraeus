@@ -36,12 +36,13 @@ used by ADSB.lol:
 - <https://github.com/wiedehopf/readsb/blob/dev/comm_b.c>
 - <https://github.com/adsblol/website/blob/main/content/en/docs/acknowledgements/open-source.md>
 
-The free API therefore offers weather-looking values only inside records for
-recently tracked aircraft. Consuming them would necessarily collect aircraft
-identity, position, motion, and recency data. A bounding box around Avalon
-would select transient aircraft rather than a stable geographic observation
-source, and an empty response could mean no aircraft reception rather than no
-weather. No raw tracking collection was performed to test coverage.
+The free API therefore offers weather-looking values only inside responses
+that also contain aircraft identity, position, motion, and recency fields. A
+weather-only ingestion path would need an explicit contract for filtering and
+retaining only its approved subset. A bounding box around Avalon would select
+transient aircraft rather than a stable geographic observation source, and an
+empty response could mean no aircraft reception rather than no weather. No raw
+tracking collection was performed to test coverage.
 
 ## Permission disposition
 
@@ -64,15 +65,16 @@ weather map: the public API couples derived estimates to raw tracking records,
 does not expose documented ambient pressure, and provides no stable Avalon
 coverage or weather-product semantics. Keep completion false and QC unknown.
 
-The owner can make one of two bounded choices:
+The bounded choices are:
 
 1. Exclude ADSB.lol from #115 because it is an aircraft tracking source whose
    documented weather-looking fields are derived estimates.
-2. Authorize a separate proposal for derived aircraft meteorology, including
-   whether aircraft tracking may be collected, the `readsb` calculation and
-   uncertainty contract, altitude/time/geography sampling semantics, sparse
-   coverage behavior, ODbL delivery obligations, and source QC. Direct BDS 4,4
-   meteorology would require a separate raw Mode S acquisition and decoder
-   contract and remains outside the authorized scope.
+2. Consider a finished proposal for a separate derived aircraft meteorology
+   contract, including an explicit response-filtering and retention scope, the
+   `readsb` calculation and uncertainty contract, altitude/time/geography
+   sampling semantics, sparse coverage behavior, ODbL delivery obligations,
+   and source QC. This disposition remains deferred until that contract is
+   accepted. Direct BDS 4,4 meteorology would require a separate raw Mode S
+   acquisition and decoder contract and remains outside the current scope.
 
 This audit does not close #115; the remaining product contracts stay pending.
