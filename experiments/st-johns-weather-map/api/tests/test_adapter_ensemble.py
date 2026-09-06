@@ -750,6 +750,7 @@ def test_reps_member_artifact_round_trips_through_reader_and_http(
     assert all(sample.value is not None for sample in samples)
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
     monkeypatch.setattr(api_module, "live_store", lambda: harness)
+    monkeypatch.setattr(api_module, "now", lambda: datetime(2026, 9, 5, 18, tzinfo=UTC))
     response = TestClient(app).get(
         "/api/experiments/weather/v0/point",
         params={

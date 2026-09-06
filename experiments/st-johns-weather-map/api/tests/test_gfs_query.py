@@ -10,10 +10,11 @@ import xarray
 import json
 import zipfile
 
-from weather_api.gfs_query import GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey
+from weather_api.gfs_query import GFS_TIMELINE_LISTING_MAX_BYTES, GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey, hides_legacy_published_gfs_layer
 from ingest.contract import Artifact, RunCandidate, RunResult
 from ingest.adapters.noaa_s3 import MAX_IDX_BYTES
 from ingest.grib import write_zarr
+from ingest.grib import RH_PHASE_MIXED_LINEAR_253K_273K
 
 UTC = timezone.utc
 KEY = GFSRequestKey(
@@ -224,6 +225,67 @@ def test_cached_native_payload_uses_existing_point_evidence_builder(tmp_path):
     assert sources == ["noaa-gfs"]
 
 
+def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, monkeypatch):
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    valid_time = run_time + timedelta(hours=3)
+    path = tmp_path / "surface.zarr.zip"
+    variables = {}
+    for pressure, temperature, humidity in ((850, 8.0, 81.0), (700, -3.0, 76.0), (500, -18.5, 72.0)):
+        variables[f"temperature_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[temperature]]], {"units": "degC"})
+        variables[f"relative_humidity_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[humidity]]], {"units": "percent", "rh_phase_convention": RH_PHASE_MIXED_LINEAR_253K_273K})
+        variables[f"wind_u_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[3.0]]], {"units": "m s-1"})
+        variables[f"wind_v_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[4.0]]], {"units": "m s-1"})
+    variables["wind_u_300hPa"] = (("valid_time", "latitude", "longitude"), [[[3.0]]], {"units": "m s-1"})
+    variables["wind_v_300hPa"] = (("valid_time", "latitude", "longitude"), [[[4.0]]], {"units": "m s-1"})
+    dataset = xarray.Dataset(
+        variables,
+        coords={"valid_time": [valid_time.replace(tzinfo=None)], "latitude": [47.56], "longitude": [-52.71]},
+    )
+    write_zarr(dataset, path)
+    provenance = {
+        "source_id": "noaa-gfs", "producer": "NOAA / NCEP", "product": "Global Forecast System",
+        "native_resolution": "0.25 deg", "native_crs": "EPSG:4326", "adapter_version": "test",
+        "quality": {"status": "passed", "flags": []},
+        "coverage": {"status": "complete", "expected": len(variables), "present": len(variables)},
+        "evidence_classes": ["retrieved"],
+    }
+    cached = GFSQueryEntry(
+        KEY, run_time, valid_time, valid_time + timedelta(minutes=2), "b" * 64,
+        {"logical_names": ["surface"]}, {"surface": provenance}, (path.read_bytes(),),
+    )
+    coordinator = object.__new__(GFSQueryCoordinator)
+    coordinator.query = lambda _selected: cached
+
+    levels = coordinator.profile_levels(47.5615, -52.7126, valid_time, (1000, 850, 700, 500, 300))
+
+    assert [level.pressure_hpa for level in levels] == [850, 700, 500, 300]
+    assert 1000 not in [level.pressure_hpa for level in levels]
+    fields = {field.field: field for field in levels[2].fields}
+    assert fields["temperature"].value == -18.5
+    assert fields["relative_humidity"].value == 72.0
+    assert fields["relative_humidity"].phase == "mixed"
+    assert fields["wind_speed"].value == 5.0
+    assert fields["wind_speed"].provenance.evidence_class == "derived_here"
+    assert fields["temperature"].provenance.valid_time == valid_time
+    assert fields["temperature"].provenance.run_time == run_time
+    wind_300 = {field.field: field for field in levels[-1].fields}
+    assert wind_300["wind_speed"].value == 5.0
+    assert wind_300["wind_speed"].provenance.derivation_version
+    assert {item.field for item in wind_300["wind_speed"].provenance.derivation_inputs} == {"wind_u_300hPa", "wind_v_300hPa"}
+    assert not {"wind_u_300hPa", "wind_v_300hPa"} & set(wind_300)
+
+    import weather_api.gfs_query as gfs_query
+    from weather_api.app import get_profile
+
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: coordinator)
+    response = get_profile(47.5615, -52.7126, valid_time, "GFS")
+    assert response.data_mode.value == "live"
+    assert [level.pressure_hpa for level in response.levels] == [850, 700, 500, 300]
+    assert response.valid_time == valid_time
+    assert "native timestep" in response.notices[0]
+
+
 def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_path, monkeypatch):
     from weather_api.app import _live_point
     import weather_api.gfs_query as gfs_query
@@ -261,6 +323,84 @@ def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_
     assert response.fields[0].provenance.run_stale is False
     assert response.fields[0].provenance.run_stale_reason is None
     assert any("no temporal interpolation" in notice for notice in response.notices)
+
+
+def test_timeline_lists_actual_native_keys_once_without_fetching_grib_payloads():
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    keys = [0, 120, 121, 123, 342, 384, 385]
+    xml = "<ListBucketResult><IsTruncated>false</IsTruncated>" + "".join(
+        f"<Contents><Key>gfs.20260906/12/atmos/gfs.t12z.pgrb2.0p25.f{lead:03d}.idx</Key></Contents>" for lead in keys
+    ) + "</ListBucketResult>"
+
+    class Client:
+        calls = []
+        def get_bytes_with_receipt(self, url, *, max_bytes):
+            self.calls.append((url, max_bytes))
+            return xml.encode(), {"url": url, "bytes": len(xml), "completed_at": run_time.isoformat()}
+
+    class Adapter:
+        _base_url = "https://example.invalid"
+        client = Client()
+        def _get_client(self): return self.client
+        def discover(self, _window):
+            return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+
+    coordinator = GFSQueryCoordinator(Adapter(), now=lambda: run_time + timedelta(hours=6))
+    first, receipt = coordinator.timeline_times(run_time + timedelta(hours=6))
+    second, repeated_receipt = coordinator.timeline_times(run_time + timedelta(hours=6))
+
+    # f121 is not on the post-f120 native three-hour cadence. f384 is a real
+    # provider lead but falls beyond 14 days from this six-hour-old request.
+    assert first == tuple(run_time + timedelta(hours=lead) for lead in (0, 120, 123, 342))
+    assert second == first
+    assert repeated_receipt == receipt
+    assert len(Adapter.client.calls) == 1
+    assert Adapter.client.calls[0][1] == GFS_TIMELINE_LISTING_MAX_BYTES
+    assert "list-type=2" in Adapter.client.calls[0][0]
+
+
+def test_timeline_metadata_does_not_wait_for_a_selected_payload_query():
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    xml = b"<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>gfs.20260906/12/atmos/gfs.t12z.pgrb2.0p25.f006.idx</Key></Contents></ListBucketResult>"
+
+    class Client:
+        def get_bytes_with_receipt(self, _url, *, max_bytes):
+            assert max_bytes == GFS_TIMELINE_LISTING_MAX_BYTES
+            return xml, {"bytes": len(xml)}
+
+    class Adapter:
+        _base_url = "https://example.invalid"
+        def _get_client(self): return Client()
+        def discover(self, _window):
+            return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+
+    coordinator = GFSQueryCoordinator(Adapter(), now=lambda: run_time + timedelta(hours=6))
+    coordinator._lock.acquire()
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            result = pool.submit(coordinator.timeline_times, run_time + timedelta(hours=6)).result(timeout=1)
+    finally:
+        coordinator._lock.release()
+    assert result[0] == (run_time + timedelta(hours=6),)
+
+
+@pytest.mark.parametrize("xml", [
+    "<ListBucketResult><IsTruncated>true</IsTruncated></ListBucketResult>",
+    "<!DOCTYPE x [<!ENTITY y 'z'>]><ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>",
+    "<unexpected><IsTruncated>false</IsTruncated></unexpected>",
+])
+def test_timeline_refuses_incomplete_or_declared_xml(xml):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    class Client:
+        def get_bytes_with_receipt(self, _url, *, max_bytes):
+            assert max_bytes == GFS_TIMELINE_LISTING_MAX_BYTES
+            return xml.encode(), {}
+    class Adapter:
+        _base_url = "https://example.invalid"
+        def _get_client(self): return Client()
+        def discover(self, _window): return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+    with pytest.raises(ValueError):
+        GFSQueryCoordinator(Adapter(), now=lambda: run_time).timeline_times(run_time)
 
 
 def test_production_loader_invokes_locked_child_and_refuses_failed_validation(tmp_path, monkeypatch):
@@ -302,3 +442,93 @@ def test_production_loader_invokes_locked_child_and_refuses_failed_validation(tm
     assert calls[0][2].output_bytes == 64 * 1024**2
     escaped = json.dumps({"idx_text_by_lead": {3: "\x00" * MAX_IDX_BYTES}}).encode()
     assert len(escaped) <= calls[0][2].stdin_bytes
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_timeline_coalesces_eight_concurrent_listing_outcomes(fail):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    xml = b"<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>gfs.20260906/12/atmos/gfs.t12z.pgrb2.0p25.f006.idx</Key></Contents></ListBucketResult>"
+    entered, release = Event(), Event()
+
+    class Client:
+        calls = 0
+        def get_bytes_with_receipt(self, _url, *, max_bytes):
+            assert max_bytes == GFS_TIMELINE_LISTING_MAX_BYTES
+            self.calls += 1
+            entered.set()
+            assert release.wait(timeout=2)
+            if fail:
+                raise RuntimeError("listing unavailable")
+            return xml, {"bytes": len(xml)}
+
+    class Adapter:
+        _base_url = "https://example.invalid"
+        client = Client()
+        def _get_client(self): return self.client
+        def discover(self, _window):
+            return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+
+    coordinator = GFSQueryCoordinator(Adapter(), now=lambda: run_time + timedelta(hours=6))
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        calls = [pool.submit(coordinator.timeline_times, run_time + timedelta(hours=6)) for _ in range(8)]
+        assert entered.wait(timeout=2)
+        sleep(0.05)
+        release.set()
+        if fail:
+            for call in calls:
+                with pytest.raises(RuntimeError, match="listing unavailable"):
+                    call.result()
+        else:
+            assert all(call.result()[0] == (run_time + timedelta(hours=6),) for call in calls)
+    assert Adapter.client.calls == 1
+
+
+def test_only_legacy_published_gfs_layers_are_hidden_from_demand_catalogue():
+    assert hides_legacy_published_gfs_layer("noaa-gfs") is True
+    assert hides_legacy_published_gfs_layer("eccc-hrdps") is False
+
+
+def test_shared_timeline_includes_only_provider_listed_gfs_hours(monkeypatch):
+    import sys
+    from weather_api import gfs_query, hrdps_query
+    from weather_api.app import get_timeline
+
+    reference = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    native = reference - timedelta(minutes=17)
+
+    class GFS:
+        def timeline_times(self, _reference):
+            return ((native,), {"bytes": 123})
+
+    class HRDPS:
+        def timeline_times(self, _reference):
+            return ()
+
+    app_module = sys.modules["weather_api.app"]
+    monkeypatch.setattr(app_module, "now", lambda: reference)
+    monkeypatch.setattr(app_module, "fixture_mode", lambda: False)
+    monkeypatch.setattr(app_module, "live_store", lambda: None)
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: GFS())
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: HRDPS())
+
+    response = get_timeline("GFS")
+
+    assert response.data_mode.value == "live"
+    item = next(item for item in response.items if item.valid_time_utc == native.replace(minute=0, second=0, microsecond=0))
+    assert item.available_products == ["noaa-gfs"]
+    assert any("provider-advertised demand availability" in notice for notice in response.notices)
+
+
+def test_shared_timeline_refuses_an_unknown_selected_product(monkeypatch):
+    import sys
+    from weather_api.app import get_timeline
+
+    reference = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    app_module = sys.modules["weather_api.app"]
+    monkeypatch.setattr(app_module, "now", lambda: reference)
+    monkeypatch.setattr(app_module, "fixture_mode", lambda: False)
+
+    response = get_timeline("NOAA")
+
+    assert response.data_mode.value == "unavailable"
+    assert all(not item.available_products for item in response.items)
+    assert response.notices == ["NOAA has no timestamp-demand timeline implementation"]

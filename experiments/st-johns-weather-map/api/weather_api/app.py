@@ -430,7 +430,7 @@ def _resolved_coverage(store: object, reference: datetime) -> tuple[dict[datetim
 
 
 @app.get(f"{PREFIX}/timeline", response_model=TimelineResponse)
-def get_timeline() -> TimelineResponse:
+def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
     reference = now()
     start, end = window_start(reference), window_end(reference)
     tiers = horizon_tiers(reference)
@@ -441,18 +441,44 @@ def get_timeline() -> TimelineResponse:
         # has no retrieved run to be covered by.
         fixture_items = [item.model_copy(update={"tier": tier_of(item.valid_time_utc, reference)}) for item in timeline(reference)]
         return TimelineResponse(data_mode=DataMode.FIXTURE, start=start, end=end, items=fixture_items, boundary=boundary, tiers=tiers)
+    if response_mode() is DataMode.UNAVAILABLE:
+        return TimelineResponse(
+            data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference),
+            boundary=boundary, tiers=tiers,
+            notices=["WEATHER_DATA_MODE is not a recognized live mode; no demand availability can be resolved"],
+        )
+
+    selected_product = product.upper() if product else None
+    if selected_product not in {None, "HRDPS", "GFS"}:
+        return TimelineResponse(
+            data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference),
+            boundary=boundary, tiers=tiers,
+            notices=[f"{product} has no timestamp-demand timeline implementation"],
+        )
 
     demand_products: dict[datetime, list[str]] = {}
     demand_notices: list[str] = []
-    try:
-        from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
-        for stamp in hrdps_query_coordinator().timeline_times(reference):
-            if start <= stamp <= end:
-                demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-hrdps")
-    except Exception as error:  # noqa: BLE001 - a provider miss is an unavailable source, not a route failure
-        demand_notices.append(
-            f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
-        )
+    if selected_product == "HRDPS":
+        try:
+            from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+            for stamp in hrdps_query_coordinator().timeline_times(reference):
+                if start <= stamp <= end:
+                    demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-hrdps")
+        except Exception as error:  # noqa: BLE001 - a provider miss is an unavailable source, not a route failure
+            demand_notices.append(
+                f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
+            )
+    if selected_product == "GFS":
+        try:
+            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+            stamps, _receipt = gfs_query_coordinator().timeline_times(reference)
+            for stamp in stamps:
+                if start <= stamp <= end:
+                    demand_products.setdefault(_floor_to_hour(stamp), []).append("noaa-gfs")
+        except Exception as error:  # noqa: BLE001 - an unavailable listing must not fail the shared route
+            demand_notices.append(
+                f"noaa-gfs demand availability could not be resolved: {type(error).__name__}"
+            )
 
     store = live_store()
     if store is None:
@@ -460,7 +486,7 @@ def get_timeline() -> TimelineResponse:
             return TimelineResponse(
                 data_mode=DataMode.LIVE, start=start, end=end,
                 items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
-                notices=[*demand_notices, "persistent artifact coverage is unavailable; HRDPS hours are provider-advertised demand availability"],
+                notices=[*demand_notices, "persistent artifact coverage is unavailable; provider-advertised demand availability covers only the listed demand-source hours"],
             )
         return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=[*demand_notices, "no live artifact store is reachable; no hour can be said to have a published product"])
     try:
@@ -471,7 +497,7 @@ def get_timeline() -> TimelineResponse:
             return TimelineResponse(
                 data_mode=DataMode.LIVE, start=start, end=end,
                 items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
-                notices=[*demand_notices, "the legacy artifact store raised; HRDPS hours are provider-advertised demand availability"],
+                notices=[*demand_notices, "the legacy artifact store raised; provider-advertised demand availability covers only the listed demand-source hours"],
             )
         # No hour is said to hold a product AND no hour is said to have aged
         # out: with the store unreadable, either claim would be a guess.
@@ -941,6 +967,13 @@ def get_layers() -> LayersResponse:
     notices = skip_notices(store)
     layers: list[Layer] = []
     for artifact in artifacts:
+        from .gfs_query import hides_legacy_published_gfs_layer  # noqa: PLC0415
+        if hides_legacy_published_gfs_layer(artifact.source_id):
+            notices.append(
+                f"{artifact.source_id}-{artifact.logical_name} is retained for audit but is not a current demand-query raster; "
+                "native GFS raster delivery remains unavailable"
+            )
+            continue
         if goes_satellite.claims(artifact):
             # The cloud-mask artifact is offered once, by the satellite
             # module below, with its real semantics; the generic entry would
@@ -1052,12 +1085,15 @@ def get_layers() -> LayersResponse:
     notices.extend(proxy_notices)
     layers.extend(proxied)
 
-    # HRDPS stored artifacts are retained for audit but are no longer a live
+    # HRDPS and GFS stored artifacts are retained for audit but are no longer a live
     # delivery path.  The source's provider proxies above remain; a retained
     # model_run must not silently outrank the selected-time query architecture.
     layers = [
         item for item in layers
-        if not (item.id.startswith("eccc-hrdps-") and item.evidence_basis == wms.PUBLISHED_ARTIFACT)
+        if not (
+            item.evidence_basis == wms.PUBLISHED_ARTIFACT
+            and (item.id.startswith("eccc-hrdps-") or item.id.startswith("noaa-gfs-"))
+        )
     ]
 
     if not layers:
@@ -1161,7 +1197,7 @@ def _live_point(
             fields=fields,
             notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied"],
         )
-    if product and product.upper() in {"GFS", "NOAA"}:
+    if product and product.upper() == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
 
@@ -2363,12 +2399,41 @@ def get_profile(
     latitude: float = Query(default=47.5615, ge=-90, le=90),
     longitude: float = Query(default=-52.7126, ge=-180, le=180),
     valid_time: datetime | None = None,
-    product: str | None = None,
+    product: str | None = Query(default=None),
 ) -> ProfileResponse:
     require_core_coverage(latitude, longitude)
     time = requested_time(valid_time)
     if fixture_mode():
         return ProfileResponse(data_mode=DataMode.FIXTURE, latitude=latitude, longitude=longitude, valid_time=time, levels=profile_levels(time))
+
+    if product and product.upper() == "GFS":
+        try:
+            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+
+            levels = gfs_query_coordinator().profile_levels(latitude, longitude, time, PROFILE_PRESSURES)
+        except Exception as error:
+            LOGGER.exception("GFS demand profile failed at %s,%s for %s", latitude, longitude, time.isoformat())
+            return ProfileResponse(
+                data_mode=DataMode.UNAVAILABLE,
+                latitude=latitude,
+                longitude=longitude,
+                valid_time=time,
+                levels=unavailable_profile_levels(time, PROFILE_PRESSURES, flags=["demand_query_unavailable:noaa-gfs"]),
+                notices=[f"GFS selected timestamp is unavailable: {type(error).__name__}"],
+            )
+        actual_time = levels[0].fields[0].provenance.valid_time if levels and levels[0].fields else None
+        return ProfileResponse(
+            data_mode=DataMode.LIVE if levels else DataMode.UNAVAILABLE,
+            latitude=latitude,
+            longitude=longitude,
+            valid_time=time,
+            levels=levels or unavailable_profile_levels(time, PROFILE_PRESSURES, flags=["demand_query_empty:noaa-gfs"]),
+            notices=(
+                [f"GFS profile values are from native timestep {actual_time.isoformat()}; no temporal interpolation was applied"]
+                if actual_time is not None
+                else ["GFS returned no validated pressure-level values for the selected timestamp"]
+            ),
+        )
 
     def unavailable(reason: str, flag: str, notices: list[str], *, flags: Sequence[str] = (), last_valid_time: datetime | None = None) -> ProfileResponse:
         return ProfileResponse(

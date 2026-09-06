@@ -173,6 +173,22 @@ describe('TimelineDock renders the boundary and the no-coverage note', () => {
     expect(screen.getByText('planning tier holds no published frames')).toBeInTheDocument()
   })
 
+  it('shows provider-advertised demand hours separately from fetched coverage', () => {
+    const timeline: TimelineResponse = {
+      data_mode: 'live', start: '2026-09-01T12:00:00Z', end: '2026-09-16T12:00:00Z',
+      items: [
+        { valid_time_utc: '2026-09-02T13:00:00Z', valid_time_newfoundland: '', available_products: ['noaa-gfs'], coverage: [] },
+        { valid_time_utc: '2026-09-02T14:00:00Z', valid_time_newfoundland: '', available_products: ['noaa-gfs'], coverage: [] },
+      ],
+    }
+    render(<TimelineDock {...baseProps({ timeline })} />)
+
+    expect(screen.getByText(/noaa-gfs demand availability · 2 provider-advertised native hours/i)).toHaveTextContent(
+      /metadata only; values are fetched when selected/i,
+    )
+    expect(screen.getByText(/No active layer published a frame/i)).toBeInTheDocument()
+  })
+
   it('draws no boundary tick and no empty-planning note when the timeline is unavailable', () => {
     render(<TimelineDock {...baseProps({ timeline: null })} />)
     expect(screen.queryByText('+24h | planning')).not.toBeInTheDocument()

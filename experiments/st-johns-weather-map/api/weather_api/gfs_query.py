@@ -9,13 +9,16 @@ import hashlib
 import tempfile
 import sys
 import zipfile
+import re
+import xml.etree.ElementTree as ElementTree
 from collections import OrderedDict
 from concurrent.futures import Future
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable, Mapping
+from urllib.parse import urlencode
 
 from ingest.adapters.noaa_s3 import (
     GFS_IDX_SELECTORS,
@@ -30,6 +33,10 @@ from ingest.contract import FetchWindow, RunCandidate
 from ingest.isolation import ProcessAllocationLimits, run_bounded_process
 
 GFS_OBJECT_CACHE_TTL_SECONDS = 600.0
+GFS_TIMELINE_LISTING_MAX_BYTES = 1024 * 1024
+GFS_TIMELINE_LISTING_MAX_KEYS = 1000
+GFS_TIMELINE_LISTING_MAX_NODES = 8 * GFS_TIMELINE_LISTING_MAX_KEYS + 64
+_GFS_LISTED_LEAD = re.compile(r"\.f(\d{3})\.idx$")
 GFS_CACHE_MAX_ENTRIES = 4
 GFS_CACHE_MAX_BYTES = 256 * 1024 * 1024
 GFS_DEMAND_WORKSPACE_BYTES = 192 * 1024 * 1024
@@ -151,6 +158,11 @@ class GFSQueryService:
             return future.result()
 
 
+def hides_legacy_published_gfs_layer(source_id: str) -> bool:
+    """Keep pre-demand GFS artifacts audit-readable without advertising them as live layers."""
+    return source_id == "noaa-gfs"
+
+
 class GFSQueryCoordinator:
     """Resolve one selection and load one exact GFS object-range request."""
 
@@ -166,15 +178,20 @@ class GFSQueryCoordinator:
         self._clock = clock
         self._now = now
         self._lock = threading.Lock()
+        self._candidate_lock = threading.Lock()
+        self._timeline_lock = threading.Lock()
         self._candidate: tuple[float, RunCandidate] | None = None
         self._indices: OrderedDict[str, tuple[float, str, Mapping[str, object] | None]] = OrderedDict()
+        self._timeline: tuple[float, str, tuple[datetime, ...], Mapping[str, object]] | None = None
+        self._timeline_inflight: Future[tuple[tuple[datetime, ...], Mapping[str, object]]] | None = None
         self._prepared: dict[GFSRequestKey, RunCandidate] = {}
         self._bounded_fetch = bounded_fetch
         self._cache = GFSQueryService(self._load, clock=clock)
 
     def query(self, selected_time: datetime) -> GFSQueryEntry:
-        with self._lock:
+        with self._candidate_lock:
             candidate = self._discover()
+        with self._lock:
             if candidate.run_time is None:
                 raise ValueError("GFS discovery returned no producer run time")
             native_time = gfs_native_time_at_or_before(candidate.run_time, selected_time)
@@ -257,6 +274,169 @@ class GFSQueryCoordinator:
                 return samples
 
         return live_point_fields(_Samples(), latitude, longitude, entry.valid_time)
+
+    def profile_levels(self, latitude: float, longitude: float, selected_time: datetime, pressures: tuple[int, ...]) -> list[Any]:
+        """Answer the existing pressure-level profile from one cached frame."""
+        from .store import (  # noqa: PLC0415
+            WIND_METHOD,
+            LiveStore,
+            _derived_evidence_field,
+            _registered_wind,
+            live_profile_levels,
+        )
+        from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS  # noqa: PLC0415
+
+        entry = self.query(selected_time)
+        by_pressure: dict[int, list[Any]] = {}
+        with tempfile.TemporaryDirectory(prefix="gfs-demand-profile-") as directory:
+            sampler = LiveStore.__new__(LiveStore)
+            sampler.skipped = []
+            sampler.unmodelled = []
+            for index, logical_name in enumerate(entry.values["logical_names"]):
+                path = Path(directory) / f"{logical_name}.zarr.zip"
+                path.write_bytes(entry.payloads[index])
+                import xarray  # noqa: PLC0415
+                import zarr  # noqa: PLC0415
+
+                zipped = zarr.storage.ZipStore(str(path), mode="r")
+                dataset = xarray.open_zarr(zipped, consolidated=False)
+                try:
+                    provenance = dict(entry.provenance[logical_name])
+                    provenance.setdefault("run_time", entry.run_time.isoformat())
+                    artifact = SimpleNamespace(
+                        source_id="noaa-gfs",
+                        logical_name=logical_name,
+                        revision_id=f"demand:{entry.content_digest}:{logical_name}",
+                        provenance=provenance,
+                        run_time=entry.run_time,
+                        retrieved_at=entry.fetched_at,
+                        native_crs=provenance.get("native_crs", "EPSG:4326"),
+                    )
+                    for pressure in pressures:
+                        found = sampler._sample_dataset(dataset, artifact, latitude, longitude, entry.valid_time, pressure=pressure)
+                        if found:
+                            by_pressure.setdefault(pressure, []).extend(found)
+                finally:
+                    dataset.close()
+                    zipped.close()
+
+        class _Samples:
+            skipped = sampler.skipped
+            unmodelled = sampler.unmodelled
+
+            @staticmethod
+            def sample_profile(*_args: object, **_kwargs: object) -> dict[int, list[Any]]:
+                return by_pressure
+
+        levels = live_profile_levels(_Samples(), latitude, longitude, entry.valid_time, pressures)
+        for level in levels:
+            samples = {sample.variable: sample for sample in by_pressure.get(level.pressure_hpa, [])}
+            suffix = f"_{level.pressure_hpa}hPa"
+            u_name, v_name = f"wind_u{suffix}", f"wind_v{suffix}"
+            u, v = samples.get(u_name), samples.get(v_name)
+            # Pressure-level components are derivation inputs, not standalone
+            # profile readings. The profile exposes the same registered wind
+            # representation as its existing fixture and UI contract.
+            level.fields = [
+                field.model_copy(update={"field": "temperature"}) if field.key == "temperature_pressure"
+                else field.model_copy(update={"field": "relative_humidity"}) if field.key == "relative_humidity_pressure"
+                else field
+                for field in level.fields
+                if field.field not in {u_name, v_name}
+            ]
+            if u is not None and v is not None and u.value is not None and v.value is not None:
+                speed, direction = _registered_wind(u.value, v.value)
+                for name, derived, units in (
+                    ("wind_speed", speed, WIND_SPEED_UNITS),
+                    ("wind_direction", direction, WIND_DIRECTION_UNITS),
+                ):
+                    level.fields.append(
+                        _derived_evidence_field(
+                            _Samples(),
+                            field_name=name,
+                            basis=replace(u, variable=name, value=derived.value, units=units),
+                            inputs=[(u_name, u), (v_name, v)],
+                            method=WIND_METHOD,
+                            value=derived.value,
+                            derivation=derived.derivation,
+                            derivation_version=derived.version,
+                            reference=datetime.now(UTC),
+                        )
+                    )
+        return levels
+
+    def timeline_times(self, reference: datetime) -> tuple[tuple[datetime, ...], Mapping[str, object]]:
+        """Return actual native frame keys from one bounded, coalesced S3 listing."""
+        if reference.tzinfo is None:
+            raise ValueError("reference must be timezone-aware")
+        current = self._clock()
+        with self._timeline_lock:
+            if self._timeline is not None and current < self._timeline[0]:
+                return self._timeline[2], self._timeline[3]
+        with self._candidate_lock:
+            candidate = self._discover()
+        with self._timeline_lock:
+            if self._timeline is not None and current < self._timeline[0] and self._timeline[1] == candidate.provider_run_id:
+                return self._timeline[2], self._timeline[3]
+            future = self._timeline_inflight
+            owner = future is None
+            if owner:
+                future = Future()
+                self._timeline_inflight = future
+        assert future is not None
+        if not owner:
+            return future.result()
+        try:
+            if candidate.run_time is None:
+                raise ValueError("GFS candidate has no producer run time")
+            date_str, cycle = str(candidate.detail["date_str"]), str(candidate.detail["cycle"])
+            prefix = f"gfs.{date_str}/{cycle}/atmos/gfs.t{cycle}z.pgrb2.0p25.f"
+            query = urlencode({"list-type": "2", "max-keys": GFS_TIMELINE_LISTING_MAX_KEYS, "prefix": prefix})
+            body, receipt = self._adapter._get_client().get_bytes_with_receipt(
+                f"{self._adapter._base_url}?{query}", max_bytes=GFS_TIMELINE_LISTING_MAX_BYTES
+            )
+            upper = body.upper()
+            if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
+                raise ValueError("GFS listing declarations are unsupported")
+            root = ElementTree.fromstring(body)
+            if root.tag.rsplit("}", 1)[-1] != "ListBucketResult":
+                raise ValueError("GFS listing has an unexpected root")
+            nodes = list(root.iter())
+            if len(nodes) > GFS_TIMELINE_LISTING_MAX_NODES:
+                raise ValueError("GFS listing exceeds structural node bound")
+            contents = [node for node in nodes if node.tag.rsplit("}", 1)[-1] == "Contents"]
+            if len(contents) > GFS_TIMELINE_LISTING_MAX_KEYS:
+                raise ValueError("GFS listing exceeds key bound")
+            truncated = next((node.text for node in nodes if node.tag.rsplit("}", 1)[-1] == "IsTruncated"), "false")
+            if str(truncated).lower() != "false":
+                raise ValueError("GFS listing was truncated")
+            leads: set[int] = set()
+            for node in nodes:
+                if node.tag.rsplit("}", 1)[-1] != "Key" or not isinstance(node.text, str) or not node.text.startswith(prefix):
+                    continue
+                match = _GFS_LISTED_LEAD.search(node.text)
+                if match:
+                    lead = int(match.group(1))
+                    if lead <= 384 and (lead <= 120 or lead % 3 == 0):
+                        leads.add(lead)
+            start = reference.astimezone(UTC) - timedelta(hours=24)
+            end = reference.astimezone(UTC) + timedelta(days=14)
+            times = tuple(
+                candidate.run_time + timedelta(hours=lead)
+                for lead in sorted(leads)
+                if start <= candidate.run_time + timedelta(hours=lead) <= end
+            )
+            result = (times, receipt)
+            with self._timeline_lock:
+                self._timeline = (current + GFS_OBJECT_CACHE_TTL_SECONDS, candidate.provider_run_id, times, receipt)
+            future.set_result(result)
+            return result
+        except BaseException as error:
+            future.set_exception(error)
+            raise
+        finally:
+            with self._timeline_lock:
+                self._timeline_inflight = None
 
     def _discover(self) -> RunCandidate:
         current = self._clock()
