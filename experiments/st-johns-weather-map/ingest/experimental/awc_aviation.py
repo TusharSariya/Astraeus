@@ -9,14 +9,17 @@ from ingest.contract import AdapterUnavailable,Artifact,DiscoveryBounds,FetchWin
 from ingest.http import MaxBytesExceeded,PoliteClient,RetriesExhausted
 from ingest.manifest import declared_classes,unresolved_manifest_validation
 UTC=timezone.utc; MAX_GZIP=2*1024*1024; MAX_DECODED=16*1024*1024; URLS={"pirep_airep":"https://aviationweather.gov/data/cache/aircraftreports.cache.csv.gz","sigmet":"https://aviationweather.gov/data/cache/airsigmets.cache.csv.gz"}
-def _read(body:bytes)->tuple[list[str],int]:
+def _read(body:bytes)->tuple[list[str],int,int]:
  try:
-  raw=gzip.GzipFile(fileobj=BytesIO(body)).read(MAX_DECODED+1)
-  if len(raw)>MAX_DECODED: raise ValueError('decoded ceiling')
-  rows=csv.reader(StringIO(raw.decode('utf-8'))); header=next(rows); count=sum(1 for _ in rows)
+  stream=gzip.GzipFile(fileobj=BytesIO(body)); chunks=[]; total=0
+  while chunk:=stream.read(65536):
+   total+=len(chunk)
+   if total>MAX_DECODED: raise ValueError('decoded ceiling')
+   chunks.append(chunk)
+  raw=b''.join(chunks); rows=csv.reader(StringIO(raw.decode('utf-8'))); header=next(rows); count=sum(1 for _ in rows)
  except Exception as e: raise AdapterUnavailable(f'awc aviation: invalid bounded gzip CSV: {e}') from e
  if not header: raise AdapterUnavailable('awc aviation: empty CSV header')
- return header,count
+ return header,count,len(raw)
 class AWCAviationNativeAdapter:
  source_id='awc-aviation-native'; adapter_version='awc-aviation-native-v1'
  def __init__(self,client:PoliteClient|None=None): self._client=client or PoliteClient()
@@ -27,7 +30,10 @@ class AWCAviationNativeAdapter:
   gate=unresolved_manifest_validation(self.source_id,'native aviation fields have no accepted field, safety, manifest, or API contract'); paths=[]; artifacts=[]; completed=[];workdir.mkdir(parents=True,exist_ok=True)
   try:
    for kind,url in URLS.items():
-    body,h=self._client.get_bytes_with_headers(url,max_bytes=MAX_GZIP); done=datetime.now(UTC); header,n=_read(body);path=workdir/f'{kind}.csv.gz';paths.append(path);path.write_bytes(body);sha=hashlib.sha256(body).hexdigest(); artifacts.append(Artifact(kind,'application/gzip',path,{'source_id':self.source_id,'source_uri':url,'upstream_sha256':sha,'artifact_sha256':sha,'csv_header_positions':header,'record_count':n,'source_qc':{'status':'unknown'},'quality':gate.as_quality(),'operational':False,**declared_classes(['retrieved'])}));completed.append(done)
+    getattr_completion=getattr(self._client,'get_bytes_with_headers_completed',None)
+    if callable(getattr_completion): body,h,done=getattr_completion(url,max_bytes=MAX_GZIP)
+    else: body,h=self._client.get_bytes_with_headers(url,max_bytes=MAX_GZIP); done=datetime.now(UTC)
+    header,n,decoded=_read(body);path=workdir/f'{kind}.csv.gz';paths.append(path);path.write_bytes(body);sha=hashlib.sha256(body).hexdigest(); artifacts.append(Artifact(kind,'application/gzip',path,{'source_id':self.source_id,'source_uri':url,'upstream_sha256':sha,'artifact_sha256':sha,'encoded_bytes':len(body),'decoded_bytes':decoded,'encoded_sha256':sha,'transport_completed_at':done.isoformat(),'response_headers':dict(h),'csv_header_positions':header,'record_count':n,'source_qc':{'status':'unknown'},'quality':gate.as_quality(),'operational':False,**declared_classes(['retrieved'])}));completed.append(done)
   except BaseException:
    for p in paths:p.unlink(missing_ok=True)
    raise
