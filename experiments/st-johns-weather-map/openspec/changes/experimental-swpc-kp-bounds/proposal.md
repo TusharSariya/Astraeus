@@ -6,4 +6,4 @@ with enforced address-space and single-file limits. This is an experimental
 implementation under the accepted capacity policy; it does not change a
 normative status.
 
-Spec-Refs: WXCAP-BUDGET-001, WXCAP-BUDGET-002, WXCAP-BUDGET-003, WXSTORE-CAP-001
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-005, GOV-SPEC-006
