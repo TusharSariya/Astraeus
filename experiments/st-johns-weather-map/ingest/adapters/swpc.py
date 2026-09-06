@@ -154,6 +154,9 @@ class SWPCKpAdapter:
         return self._client or PoliteClient()
 
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        # The worker calls this before reserving resources or issuing discovery
+        # requests; reject an unmeasured allocation geometry at that boundary.
+        self._require_measured_filesystem(Path(tempfile.gettempdir()))
         return ResourceBounds(
             store_bytes=2 * KP_PROCESS_LIMITS.output_bytes,
             filesystem_bytes=2 * KP_PROCESS_LIMITS.output_bytes,
