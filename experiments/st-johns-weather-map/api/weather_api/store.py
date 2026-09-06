@@ -1892,11 +1892,12 @@ def retained_runs(store: Any) -> list[RetainedRun]:
     declared_run_times: dict[tuple[str, str], datetime | None] = {}
     for artifact in artifacts:
         key = (str(artifact.source_id), str(artifact.provider_run_id))
+        declared_frames = (getattr(artifact, "provenance", None) or {}).get("valid_times") or ()
         artifact_stamps = _revision_frame_stamps(artifact, store)
         folded.setdefault(key, []).extend(artifact_stamps)
         if declared_run_times.get(key) is None:
             declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
-            if declared_run_times[key] is None and str(artifact.source_id) == "eccc-hrdps" and artifact_stamps:
+            if declared_run_times[key] is None and not declared_frames and str(artifact.source_id) == "eccc-hrdps" and artifact_stamps:
                 declared_run_times[key] = min(artifact_stamps)
     runs: list[RetainedRun] = []
     for (source_id, provider_run_id), stamps in folded.items():
@@ -1969,11 +1970,12 @@ def retained_layer_runs(store: Any) -> dict[str, list[LayerRun]]:
             str(artifact.source_id),
             str(artifact.provider_run_id),
         )
+        declared_frames = (getattr(artifact, "provenance", None) or {}).get("valid_times") or ()
         artifact_stamps = _revision_frame_stamps(artifact, store)
         folded.setdefault(key, set()).update(artifact_stamps)
         if declared_run_times.get(key) is None:
             declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
-            if declared_run_times[key] is None and str(artifact.source_id) == "eccc-hrdps" and artifact_stamps:
+            if declared_run_times[key] is None and not declared_frames and str(artifact.source_id) == "eccc-hrdps" and artifact_stamps:
                 declared_run_times[key] = min(artifact_stamps)
 
     by_layer: dict[str, list[LayerRun]] = {}

@@ -723,7 +723,7 @@ def _run_derived_passes(store: Any, *, heartbeat: Callable[[], None] | None = No
     """Run bounded display derivations, or refuse before invoking either one."""
     if store is None:
         return
-    if not store.has_active_reservation:
+    if not getattr(store, "has_active_reservation", False):
         log("derived display artifacts skipped: no active bounded reservation")
         return
     try:
