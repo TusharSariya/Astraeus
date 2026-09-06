@@ -236,6 +236,8 @@ def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, 
         variables[f"relative_humidity_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[humidity]]], {"units": "percent", "rh_phase_convention": RH_PHASE_MIXED_LINEAR_253K_273K})
         variables[f"wind_u_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[3.0]]], {"units": "m s-1"})
         variables[f"wind_v_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[4.0]]], {"units": "m s-1"})
+    variables["wind_u_300hPa"] = (("valid_time", "latitude", "longitude"), [[[3.0]]], {"units": "m s-1"})
+    variables["wind_v_300hPa"] = (("valid_time", "latitude", "longitude"), [[[4.0]]], {"units": "m s-1"})
     dataset = xarray.Dataset(
         variables,
         coords={"valid_time": [valid_time.replace(tzinfo=None)], "latitude": [47.56], "longitude": [-52.71]},
@@ -255,11 +257,11 @@ def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, 
     coordinator = object.__new__(GFSQueryCoordinator)
     coordinator.query = lambda _selected: cached
 
-    levels = coordinator.profile_levels(47.5615, -52.7126, valid_time, (850, 700, 500, 300))
+    levels = coordinator.profile_levels(47.5615, -52.7126, valid_time, (1000, 850, 700, 500, 300))
 
-    assert [level.pressure_hpa for level in levels] == [850, 700, 500]
+    assert [level.pressure_hpa for level in levels] == [850, 700, 500, 300]
     assert 1000 not in [level.pressure_hpa for level in levels]
-    fields = {field.field: field for field in levels[-1].fields}
+    fields = {field.field: field for field in levels[2].fields}
     assert fields["temperature"].value == -18.5
     assert fields["relative_humidity"].value == 72.0
     assert fields["relative_humidity"].phase == "mixed"
@@ -267,6 +269,11 @@ def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, 
     assert fields["wind_speed"].provenance.evidence_class == "derived_here"
     assert fields["temperature"].provenance.valid_time == valid_time
     assert fields["temperature"].provenance.run_time == run_time
+    wind_300 = {field.field: field for field in levels[-1].fields}
+    assert wind_300["wind_speed"].value == 5.0
+    assert wind_300["wind_speed"].provenance.derivation_version
+    assert {item.field for item in wind_300["wind_speed"].provenance.derivation_inputs} == {"wind_u_300hPa", "wind_v_300hPa"}
+    assert not {"wind_u_300hPa", "wind_v_300hPa"} & set(wind_300)
 
     import weather_api.gfs_query as gfs_query
     from weather_api.app import get_profile
@@ -274,7 +281,7 @@ def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, 
     monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: coordinator)
     response = get_profile(47.5615, -52.7126, valid_time, "GFS")
     assert response.data_mode.value == "live"
-    assert [level.pressure_hpa for level in response.levels] == [850, 700, 500]
+    assert [level.pressure_hpa for level in response.levels] == [850, 700, 500, 300]
     assert response.valid_time == valid_time
     assert "native timestep" in response.notices[0]
 
