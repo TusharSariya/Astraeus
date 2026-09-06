@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Mapping
@@ -29,6 +30,7 @@ class GFSQueryEntry:
     content_digest: str
     values: Mapping[str, object]
     provenance: Mapping[str, object]
+    byte_size: int
 
 
 class GFSQueryService:
@@ -39,15 +41,19 @@ class GFSQueryService:
         loader: Callable[[GFSRequestKey], GFSQueryEntry],
         *,
         ttl_seconds: float = 600.0,
+        max_entries: int = 4,
+        max_bytes: int = 256 * 1024 * 1024,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        if ttl_seconds <= 0:
-            raise ValueError("GFS cache TTL must be positive")
+        if ttl_seconds <= 0 or max_entries <= 0 or max_bytes <= 0:
+            raise ValueError("GFS cache TTL, entry count and byte ceiling must be positive")
         self._loader = loader
         self._ttl = ttl_seconds
         self._clock = clock
+        self._max_entries = max_entries
+        self._max_bytes = max_bytes
         self._lock = threading.Lock()
-        self._entries: dict[GFSRequestKey, tuple[float, GFSQueryEntry]] = {}
+        self._entries: OrderedDict[GFSRequestKey, tuple[float, GFSQueryEntry]] = OrderedDict()
         self._inflight: dict[GFSRequestKey, threading.Event] = {}
         self._failures: dict[GFSRequestKey, BaseException] = {}
 
@@ -57,7 +63,10 @@ class GFSQueryService:
                 now = self._clock()
                 cached = self._entries.get(key)
                 if cached is not None and now < cached[0]:
+                    self._entries.move_to_end(key)
                     return cached[1]
+                if cached is not None:
+                    self._entries.pop(key)
                 event = self._inflight.get(key)
                 if event is None:
                     event = threading.Event()
@@ -71,8 +80,16 @@ class GFSQueryService:
                     entry = self._loader(key)
                     if entry.key != key:
                         raise ValueError("GFS loader returned a different provider request identity")
+                    if entry.byte_size <= 0 or entry.byte_size > self._max_bytes:
+                        raise ValueError("GFS normalized cache entry exceeds its finite byte ceiling")
                     with self._lock:
                         self._entries[key] = (self._clock() + self._ttl, entry)
+                        self._entries.move_to_end(key)
+                        while (
+                            len(self._entries) > self._max_entries
+                            or sum(item.byte_size for _, item in self._entries.values()) > self._max_bytes
+                        ):
+                            self._entries.popitem(last=False)
                     return entry
                 except BaseException as error:
                     with self._lock:

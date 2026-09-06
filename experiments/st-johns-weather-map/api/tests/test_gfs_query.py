@@ -22,7 +22,7 @@ def entry(key=KEY):
     return GFSQueryEntry(
         key=key, run_time=datetime(2026, 9, 6, 12, tzinfo=UTC), valid_time=instant,
         fetched_at=instant, content_digest="a" * 64, values={"temperature_2m": 12.0},
-        provenance={"source_id": "noaa-gfs"},
+        provenance={"source_id": "noaa-gfs"}, byte_size=1024,
     )
 
 
@@ -73,4 +73,24 @@ def test_loader_cannot_replace_canonical_request_identity():
     service = GFSQueryService(lambda _key: entry(other))
 
     with pytest.raises(ValueError, match="different provider request identity"):
+        service.query(KEY)
+
+
+def test_cache_evicts_lru_entries_under_count_bound():
+    calls = []
+    service = GFSQueryService(lambda key: calls.append(key) or entry(key), max_entries=1)
+    other = GFSRequestKey("other", KEY.grib_url, KEY.ranges, KEY.fields, KEY.bounds)
+
+    service.query(KEY)
+    service.query(other)
+    service.query(KEY)
+
+    assert calls == [KEY, other, KEY]
+
+
+def test_cache_refuses_oversize_normalized_entry():
+    oversized = GFSQueryEntry(**{**entry().__dict__, "byte_size": 2048})
+    service = GFSQueryService(lambda _key: oversized, max_bytes=1024)
+
+    with pytest.raises(ValueError, match="finite byte ceiling"):
         service.query(KEY)
