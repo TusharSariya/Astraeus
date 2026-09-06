@@ -91,3 +91,30 @@ def test_member_presence_uses_finite_native_cells_not_aligned_coordinate():
 def test_member_presence_treats_masked_and_all_nan_as_absent():
  field=xr.DataArray(np.ma.array([[1.0],[2.0]],mask=[[True],[False]]),dims=("member","cell"),coords={"member":["gec00","gep01"]})
  assert members_with_values(field)==("gep01",)
+
+def test_bounded_loader_validates_child_bundle_identity_and_shape(tmp_path):
+ import json,zipfile
+ def runner(**kwargs):
+  request=json.loads(kwargs["stdin"]); output=kwargs["destination"]
+  intervals={m:[(RUN+timedelta(hours=18)).isoformat(),(RUN+timedelta(hours=24)).isoformat()] for m in request["members"]}
+  info={"run_id":request["run_id"],"run_time":request["run_time"],"lead":request["lead"],"valid_time": (RUN+timedelta(hours=24)).isoformat(),"fetched_at":RUN.isoformat(),"members_present":request["members"],"mandatory_failures":{},"optional_absences":{},"cloud_intervals":intervals,"provenance":{"source_id":"noaa-gefs"}}
+  with zipfile.ZipFile(output,"w") as bundle:
+   bundle.writestr("result.json",json.dumps(info)); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
+ loaded=GEFSBoundedLoader(tmp_path,runner=runner)(key(24)); loaded.validate()
+ assert loaded.members_present==declared_members() and loaded.valid_time==RUN+timedelta(hours=24)
+
+def test_bounded_loader_refuses_wrong_child_identity(tmp_path):
+ import json,zipfile
+ def runner(**kwargs):
+  request=json.loads(kwargs["stdin"]); output=kwargs["destination"]
+  info={"run_id":"wrong","run_time":request["run_time"],"lead":request["lead"],"valid_time":RUN.isoformat(),"fetched_at":RUN.isoformat(),"members_present":[],"mandatory_failures":{},"optional_absences":{},"cloud_intervals":{},"provenance":{}}
+  with zipfile.ZipFile(output,"w") as bundle:
+   bundle.writestr("result.json",json.dumps(info)); bundle.writestr("artifacts/noaa_gefs_members.zarr.zip",b"zip")
+ with pytest.raises(ValueError,match="different run identity"):GEFSBoundedLoader(tmp_path,runner=runner)(key())
+
+def test_selected_loader_refuses_receiptless_adapter_before_provider_io(tmp_path):
+ from ingest.adapters.noaa_s3 import NOAAGEFSEnsembleAdapter
+ class Client:
+  def get_text(self,*_args): pytest.fail("provider I/O occurred")
+ with pytest.raises(ValueError,match="receipt capture"):
+  GEFSSelectedLoader(NOAAGEFSEnsembleAdapter(client=Client()),tmp_path)

@@ -111,6 +111,8 @@ class GEFSSelectedLoader:
     """Run the existing bounded member decoder for one canonical run/lead."""
 
     def __init__(self, adapter: NOAAGEFSEnsembleAdapter, workspace: Path) -> None:
+        if not getattr(adapter, "_capture_transport_receipts", False):
+            raise ValueError("GEFS selected demand requires receipt capture before provider I/O")
         self.adapter, self.workspace = adapter, workspace
 
     def __call__(self, key: GEFSRequestKey) -> GEFSQueryEntry:
@@ -154,3 +156,27 @@ class GEFSSelectedLoader:
             fetched_at = max(datetime.fromisoformat(str(item["completed_at"])) for item in receipts)
             return GEFSQueryEntry(key, valid_time, fetched_at, present, mandatory, optional,
                                   payload, artifact.provenance, intervals)
+
+GEFS_CHILD_LIMITS = __import__("ingest.isolation",fromlist=["ProcessAllocationLimits"]).ProcessAllocationLimits(
+    address_space_bytes=GEFS_MEMORY_LIMIT_BYTES, output_bytes=GEFS_OUTPUT_ALLOWANCE_BYTES,
+    stdin_bytes=64*1024, stdout_bytes=64*1024, stderr_bytes=1024*1024,
+)
+
+class GEFSBoundedLoader:
+    """Execute provider transport and decode in a limited child; validate one bundle."""
+    def __init__(self, workspace: Path, *, runner=None):
+        from ingest.isolation import run_bounded_process
+        self.workspace, self.runner = workspace, runner or run_bounded_process
+    def __call__(self,key:GEFSRequestKey)->GEFSQueryEntry:
+        import sys, zipfile
+        request=json.dumps({"run_id":key.run_id,"run_time":key.run_time.isoformat(),"lead":key.lead,"product_set":key.product_set,"members":key.members,"fields":key.fields,"bounds":key.bounds},sort_keys=True).encode()
+        with tempfile.TemporaryDirectory(prefix="gefs-parent-",dir=self.workspace) as directory:
+            bundle_path=Path(directory)/"gefs-result.zip"
+            self.runner(command=[sys.executable,"-m","weather_api.gefs_query_worker","{output}"],stdin=request,destination=bundle_path,limits=GEFS_CHILD_LIMITS,timeout_seconds=600)
+            with zipfile.ZipFile(bundle_path) as bundle:
+                if set(bundle.namelist())!={"result.json","artifacts/noaa_gefs_members.zarr.zip"}: raise ValueError("GEFS child returned unexpected bundle members")
+                if sum(item.file_size for item in bundle.infolist())>GEFS_CHILD_LIMITS.output_bytes: raise ValueError("GEFS child bundle exceeds output allowance")
+                info=json.loads(bundle.read("result.json")); payload=bundle.read("artifacts/noaa_gefs_members.zarr.zip")
+            if info["run_id"]!=key.run_id or datetime.fromisoformat(info["run_time"])!=key.run_time or int(info["lead"])!=key.lead: raise ValueError("GEFS child returned different run identity")
+            intervals={member:(datetime.fromisoformat(pair[0]),datetime.fromisoformat(pair[1])) for member,pair in info["cloud_intervals"].items()}
+            return GEFSQueryEntry(key,datetime.fromisoformat(info["valid_time"]),datetime.fromisoformat(info["fetched_at"]),tuple(info["members_present"]),info["mandatory_failures"],{m:tuple(v) for m,v in info["optional_absences"].items()},payload,info["provenance"],intervals)
