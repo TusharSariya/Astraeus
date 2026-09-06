@@ -1483,6 +1483,22 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     expect(screen.getByText(/\+2 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
   })
 
+  it('does not request TAF at animation-frame cadence', async () => {
+    const frame = driveFrames()
+    const fetchMock = routedFetch({})
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/aviation/taf'))).toBe(true))
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)) })
+    const before = fetchMock.mock.calls.filter(([url]) => String(url).includes('/aviation/taf')).length
+    await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
+    await frame(1000)
+    await frame(1010)
+    await frame(1020)
+    await frame(1030)
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/aviation/taf'))).toHaveLength(before)
+  })
+
   it('doubles and halves the speed within the ladder, clamping at both ends', async () => {
     const frame = driveFrames()
     vi.stubGlobal('fetch', routedFetch({}))

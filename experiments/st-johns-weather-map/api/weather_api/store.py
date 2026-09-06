@@ -851,6 +851,10 @@ class LiveStore:
             close()
         (self._cache_dir / f"{revision_id}.zarr.zip").unlink(missing_ok=True)
 
+    def release_artifact(self, artifact: Any) -> None:
+        """Close and remove one immutable local reader after a bounded native view."""
+        self._evict_dataset(str(artifact.revision_id))
+
     def source_activity(self) -> dict[str, datetime]:
         return self._store.source_activity()
 

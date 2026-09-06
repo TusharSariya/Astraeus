@@ -78,6 +78,19 @@ AWC_TAF_LIMITS = ProcessAllocationLimits(
     stdout_bytes=64 * 1024,
     stderr_bytes=16 * 1024,
 )
+TAF_PROVIDER_FIELD_DISPOSITIONS = {
+    "wspd": "published_as_wind_components", "wdir": "published_as_wind_components",
+    "wgst": "published_as_wind_gust", "visib": "published_as_visibility",
+    "clouds": "published_as_ordered_cloud_layers", "vertVis": "preserved_native_group_metadata",
+    "wxString": "published_as_raw_weather_and_fog_flags", "fcstChange": "preserved_native_group_metadata",
+    "probability": "preserved_native_group_metadata", "timeFrom": "published_as_group_interval",
+    "timeTo": "published_as_group_interval", "timeBec": "preserved_native_group_metadata",
+    "cavok": "preserved_native_group_metadata", "altim": "unsupported_preserved_in_raw_report",
+    "temp": "unsupported_preserved_in_raw_report", "icgTurb": "unsupported_preserved_in_raw_report",
+    "notDecoded": "unsupported_preserved_in_raw_report", "wshearDir": "unsupported_preserved_in_raw_report",
+    "wshearHgt": "unsupported_preserved_in_raw_report", "wshearSpd": "unsupported_preserved_in_raw_report",
+    "windVariable": "preserved_native_group_metadata",
+}
 
 # A METAR is a human-coded report: pressure, visibility, cloud and a variable
 # wind direction are all legitimately absent from a valid observation, so they
@@ -675,7 +688,7 @@ def validate_taf_structure(
         if group.get("visib") is None and not group.get("cavok"):
             errors.append(f"self_contained_visibility@{index}")
         clouds = group.get("clouds")
-        has_sky = isinstance(clouds, list) or group.get("vertVis") is not None or bool(group.get("cavok"))
+        has_sky = (isinstance(clouds, list) and bool(clouds)) or group.get("vertVis") is not None or bool(group.get("cavok"))
         if not has_sky:
             errors.append(f"self_contained_sky@{index}")
     complete = not errors and bool(groups)
@@ -800,7 +813,7 @@ class AWCTafAdapter:
             dt = datetime.fromtimestamp(int(t_from), tz=UTC)
             t_to = period.get("timeTo")
             end = datetime.fromtimestamp(int(t_to), tz=UTC) if t_to else dt
-            if dt <= window.end and end >= window.start:
+            if dt < window.end and end > window.start:
                 valid_fcsts.append((dt, period))
 
         if not valid_fcsts:
@@ -829,11 +842,35 @@ class AWCTafAdapter:
 
         for i, (_dt, period) in enumerate(valid_fcsts):
             stamp = times[i].strftime("%Y-%m-%dT%H:%M:%SZ")
-            group_presence.append({
-                key: ("decoded_absence" if period.get(key) is None else "decoded_value")
-                if key in period else "not_stated_in_change_group"
-                for key in ("wspd", "wdir", "wgst", "visib", "wxString", "clouds", "vertVis")
-            })
+            def state(*keys: str) -> str:
+                if any(key not in period for key in keys):
+                    return "not_stated_in_change_group"
+                if any(period.get(key) is None for key in keys):
+                    return "decoded_absence"
+                return "decoded_value"
+            presence = {
+                "wind_u_10m": state("wspd", "wdir"), "wind_v_10m": state("wspd", "wdir"),
+                "wind_gust_10m": state("wgst"), "visibility": state("visib"),
+                "total_cloud_okta": state("clouds"), "weather_fog_code": state("wxString"),
+                "weather_fog_vicinity_code": state("wxString"), "weather_mist_code": state("wxString"),
+            }
+            clouds = period.get("clouds")
+            for layer in range(1, MAX_CLOUD_LAYERS + 1):
+                if "clouds" not in period:
+                    layer_state = "not_stated_in_change_group"
+                    cloud = None
+                elif not isinstance(clouds, list) or layer > len(clouds):
+                    layer_state = "decoded_absence"
+                    cloud = None
+                else:
+                    layer_state = "decoded_value"
+                    cloud = clouds[layer - 1]
+                presence[f"cloud_layer_{layer}_cover_code"] = layer_state
+                presence[f"cloud_layer_{layer}_cover"] = layer_state
+                presence[f"cloud_layer_{layer}_base"] = (
+                    "decoded_absence" if layer_state == "decoded_value" and cloud.get("base") is None else layer_state
+                )
+            group_presence.append(presence)
             vis = parse_visibility_meters(period.get("visib"))
             if vis is not None:
                 vis_arr[i, 0, 0] = vis
@@ -887,6 +924,7 @@ class AWCTafAdapter:
                 "taf_change_groups": [item[1].get("fcstChange") or "" for item in valid_fcsts],
                 "taf_probabilities": [item[1].get("probability") for item in valid_fcsts],
                 "taf_group_presence_json": json.dumps(group_presence, separators=(",", ":")),
+                "taf_provider_field_dispositions_json": json.dumps(TAF_PROVIDER_FIELD_DISPOSITIONS, separators=(",", ":"), sort_keys=True),
             },
         )
 
@@ -911,6 +949,7 @@ class AWCTafAdapter:
             "native_report": {"raw_taf": taf.get("rawTAF", ""), "issue_time": taf.get("issueTime"),
                               "valid_time_from": int(taf["validTimeFrom"]), "valid_time_to": int(taf["validTimeTo"]),
                               "forecast_group_count": len(valid_fcsts)},
+            "provider_field_dispositions": TAF_PROVIDER_FIELD_DISPOSITIONS,
             # A report is retrieved exactly as the station coded it; the
             # manifest is what says so, so the declaration comes from there
             # rather than being written out again here.

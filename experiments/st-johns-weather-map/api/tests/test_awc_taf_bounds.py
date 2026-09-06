@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from ingest.adapters.awc import AWC_TAF_ARTIFACT_BYTES, AWC_TAF_DOCUMENT_BYTES, AWCTafAdapter
+from ingest.adapters.awc import AWC_TAF_ARTIFACT_BYTES, AWC_TAF_DOCUMENT_BYTES, AWCTafAdapter, validate_taf_structure
 from ingest.awc_taf_isolated import _decode
 from ingest.contract import AdapterUnavailable, FetchWindow
 
@@ -52,3 +52,34 @@ def test_declared_taf_limits_cover_all_enforced_channels(monkeypatch):
     assert bounds.store_bytes == bounds.filesystem_bytes == AWC_TAF_ARTIFACT_BYTES
     assert bounds.margin_bytes == 8192
     assert bounds.filesystem_bytes + bounds.margin_bytes == 65536 + 4096 + 4096
+
+@pytest.mark.parametrize("mutation", [
+    {"fcstChange": "UNKNOWN"},
+    {"fcstChange": "PROB", "probability": 101},
+    {"fcstChange": "BECMG", "timeBec": None},
+    {"wspd": float("nan")},
+    {"wdir": 361},
+    {"visib": "not-a-number"},
+    {"wxString": ["FG"]},
+    {"clouds": [{"cover": "BOGUS", "base": 100}]},
+    {"clouds": [{"cover": "FEW", "base": float("inf")}]},
+    {"unexpected": 1},
+])
+def test_strict_decoder_rejects_invalid_present_fields(mutation):
+    with pytest.raises(AdapterUnavailable):
+        _decode(payload(report(group(**mutation))), WINDOW)
+
+
+def test_strict_decoder_accepts_variable_direction():
+    decoded = _decode(payload(report(group(wdir="VRB"))), WINDOW)
+    assert decoded["fcsts"][0]["wdir"] == "VRB"
+
+
+def test_structural_validation_accepts_vrb_but_refuses_empty_sky_declaration():
+    stamp = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    vrb = group(wdir="VRB", clouds=[{"cover": "OVC", "base": 400}])
+    assert validate_taf_structure({}, [(stamp, vrb)], []).complete
+    empty = group(wdir="VRB", clouds=[])
+    result = validate_taf_structure({}, [(stamp, empty)], [])
+    assert not result.complete
+    assert "self_contained_sky@0" in result.detail

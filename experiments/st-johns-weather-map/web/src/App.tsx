@@ -438,6 +438,15 @@ export default function App() {
     if (selectedMs === reference.getTime()) return undefined
     return validTime.toISOString().replace(/\.\d{3}Z$/, 'Z')
   }, [selectedMs, reference, validTime])
+  // TAF groups are minute-coded native intervals. Keep their read keyed to
+  // the displayed evidence minute so animation frames cannot create one HTTP
+  // request per paint while a deliberate minute selection still refreshes it.
+  const tafEvidenceAt = useMemo(() => {
+    if (!snapshot.validAt) return null
+    const instant = new Date(snapshot.validAt)
+    instant.setUTCSeconds(0, 0)
+    return instant.toISOString().replace(/\.000Z$/, 'Z')
+  }, [snapshot.validAt])
 
   // The axis a scrub snaps onto when display interpolation is off: the union
   // of the active visible layers' published frame instants in the window.
@@ -515,11 +524,14 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController()
     setTafError(null)
-    loadTaf(validTime.toISOString(), controller.signal).then(setTaf).catch((error: unknown) => {
-      if (!controller.signal.aborted) { setTaf(null); setTafError(error instanceof Error ? error.message : 'TAF unavailable') }
-    })
-    return () => controller.abort()
-  }, [validTime])
+    if (!tafEvidenceAt) { setTaf(null); return () => controller.abort() }
+    const timer = window.setTimeout(() => {
+      loadTaf(tafEvidenceAt, controller.signal).then(setTaf).catch((error: unknown) => {
+        if (!controller.signal.aborted) { setTaf(null); setTafError(error instanceof Error ? error.message : 'TAF unavailable') }
+      })
+    }, 250)
+    return () => { window.clearTimeout(timer); controller.abort() }
+  }, [tafEvidenceAt])
 
   // Published frames of the active layers: the ticks under the scrubber and
   // the jump targets. Exactly what /layers returned, never an invented
