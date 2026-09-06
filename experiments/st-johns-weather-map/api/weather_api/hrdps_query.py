@@ -31,12 +31,16 @@ HRDPS_POINT_FIELDS = (
     "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure",
     "total_cloud_opacity",
 )
-HRDPS_PROFILE_FIELDS = tuple(dict.fromkeys((
-    *HRDPS_PROFILE_VARS,
-    *HRDPS_STEERING_VARS,
-    *HRDPS_OMEGA_VARS,
-    *HRDPS_THERMO_VARS,
-)))
+def hrdps_profile_fields(pressures) -> tuple[str, ...]:
+    """Only provider fields the requested profile levels can expose."""
+    available = set(HRDPS_PROFILE_VARS) | set(HRDPS_STEERING_VARS) | set(HRDPS_OMEGA_VARS) | set(HRDPS_THERMO_VARS)
+    ordered: list[str] = []
+    for pressure in pressures:
+        for prefix in ("relative_humidity", "temperature", "geopotential_height", "wind_u", "wind_v", "omega"):
+            name = f"{prefix}_{int(pressure)}hPa"
+            if name in available and name not in ordered:
+                ordered.append(name)
+    return tuple(ordered)
 HRDPS_CACHE_TTL_SECONDS = 600.0
 HRDPS_CACHE_MAX_ENTRIES = 4
 HRDPS_CACHE_MAX_BYTES = 64 * 1024 * 1024
@@ -145,7 +149,7 @@ class HRDPSQueryCoordinator:
             raise ValueError("HRDPS latest native time is too old for the selection")
         # This gate precedes even bounded directory discovery: listings are
         # provider payload too, so an unsupported runtime never opens one.
-        self._adapter.operation_bounds(FetchWindow(now=selected_time, back_hours=0, forward_hours=0))
+        self._adapter.demand_operation_bounds(len(fields))
         with self._lock:
             candidate = self._discover(selected_time)
             assert candidate.run_time is not None
@@ -176,7 +180,10 @@ class HRDPSQueryCoordinator:
 
     def profile_levels(self, latitude: float, longitude: float, selected_time: datetime, pressures):
         from .store import live_profile_levels
-        entry = self.query(selected_time, fields=HRDPS_PROFILE_FIELDS)
+        fields = hrdps_profile_fields(pressures)
+        if not fields:
+            raise ValueError("HRDPS has no declared profile field at the requested pressures")
+        entry = self.query(selected_time, fields=fields)
         by_pressure = {}
         sampler = None
         for pressure in pressures:

@@ -13,7 +13,7 @@ from ingest.contract import RunCandidate
 from ingest.grib import write_zarr
 from weather_api.hrdps_query import (
     HRDPS_POINT_FIELDS,
-    HRDPS_PROFILE_FIELDS,
+    hrdps_profile_fields,
     HRDPSQueryEntry,
     HRDPSQueryCoordinator,
     HRDPSQueryService,
@@ -123,7 +123,7 @@ def test_hrdps_point_demand_bypasses_artifact_store(monkeypatch) -> None:
 
 def test_coordinator_preflights_before_discovery() -> None:
     class Adapter:
-        def operation_bounds(self, _window):
+        def demand_operation_bounds(self, _field_count):
             raise RuntimeError("unsupported runtime")
         def discover(self, _window):
             pytest.fail("provider discovery happened before platform preflight")
@@ -162,7 +162,7 @@ def test_ordinary_selection_resolves_latest_native_hour() -> None:
 
     class Adapter:
         bounds = {"south": 46.0, "north": 48.0, "west": -54.0, "east": -51.0}
-        def operation_bounds(self, _window): return object()
+        def demand_operation_bounds(self, _field_count): return object()
         def discover(self, _window): return [candidate]
 
     class Coordinator(HRDPSQueryCoordinator):
@@ -171,11 +171,13 @@ def test_ordinary_selection_resolves_latest_native_hour() -> None:
     result = Coordinator(adapter=Adapter()).query(datetime(2026, 9, 6, 14, 37, tzinfo=UTC))
     assert result.valid_time == datetime(2026, 9, 6, 14, tzinfo=UTC)
     assert result.key.lead == 2
+    profile_fields = hrdps_profile_fields([1000, 850, 700, 500])
     profile = Coordinator(adapter=Adapter()).query(
-        datetime(2026, 9, 6, 14, 37, tzinfo=UTC), fields=HRDPS_PROFILE_FIELDS
+        datetime(2026, 9, 6, 14, 37, tzinfo=UTC), fields=profile_fields
     )
-    assert profile.key.fields == HRDPS_PROFILE_FIELDS
-    assert set(HRDPS_POINT_FIELDS) != set(HRDPS_PROFILE_FIELDS)
+    assert profile.key.fields == profile_fields
+    assert len(profile_fields) == 19
+    assert set(HRDPS_POINT_FIELDS) != set(profile_fields)
 
 
 def test_real_zarr_sampler_serves_point_and_profile(tmp_path: Path, monkeypatch) -> None:

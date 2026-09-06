@@ -449,6 +449,7 @@ HRDPS_ARTIFACT_BYTES = 512 * 1024 * 1024
 HRDPS_FILESYSTEM_BYTES = 2816 * 1024 * 1024
 HRDPS_MARGIN_BYTES = 128 * 1024 * 1024
 HRDPS_MEMORY_LIMIT_BYTES = 4 * 1024 * 1024 * 1024
+HRDPS_DEMAND_CACHE_BYTES = 64 * 1024 * 1024
 HRDPS_DISCOVERY_REQUESTS = 2 * (1 + 2 * HRDPS_MAX_CYCLES_PER_DATE)
 HRDPS_RECEIVED_BYTES = (
     (HRDPS_DISCOVERY_REQUESTS + HRDPS_MAX_LEADS) * HRDPS_LISTING_BYTES
@@ -520,26 +521,29 @@ class ECCCDataMartAdapter:
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
         if self.source_id != "eccc-hrdps":
             raise AdapterUnavailable(f"{self.source_id}: complete-operation bounds are not measured")
+        raise AdapterUnavailable("eccc-hrdps scheduled full-run ingestion is disabled; use selected-timestamp demand queries")
+
+    def demand_operation_bounds(self, field_count: int) -> ResourceBounds:
+        """Conservative one-native-lead envelope, checked before discovery."""
+        if self.source_id != "eccc-hrdps" or not 0 < field_count <= len(HRDPS_VARS):
+            raise AdapterUnavailable("HRDPS demand field count is outside the declared source set")
         memory_limit = Path("/sys/fs/cgroup/memory.max")
         try:
-            raw_limit = memory_limit.read_text().strip()
-            available = int(raw_limit)
+            available = int(memory_limit.read_text().strip())
         except (OSError, ValueError) as error:
-            raise AdapterUnavailable("HRDPS requires a finite Linux cgroup memory limit") from error
+            raise AdapterUnavailable("HRDPS demand decode requires a finite Linux cgroup memory limit") from error
         if available != HRDPS_MEMORY_LIMIT_BYTES:
-            raise AdapterUnavailable("HRDPS requires the measured and enforced 4 GiB cgroup memory limit")
-        if getattr(ctypes.CDLL(None), "malloc_trim", None) is None:
-            raise AdapterUnavailable("HRDPS decoder allocator cannot return closed native buffers")
+            raise AdapterUnavailable("HRDPS demand decode requires the measured 4 GiB cgroup memory limit")
         temporary = Path(tempfile.gettempdir())
         geometry = os.statvfs(temporary)
         capacity = geometry.f_blocks * geometry.f_frsize
-        free = geometry.f_bavail * geometry.f_frsize
+        physical = 2 * HRDPS_DEMAND_CACHE_BYTES + min(download_parallelism(), field_count) * HRDPS_FILE_BYTES
         if capacity > 3 * 1024 * 1024 * 1024:
-            raise AdapterUnavailable("HRDPS temporary filesystem lacks the enforced 3 GiB operation ceiling")
-        if free < HRDPS_FILESYSTEM_BYTES + HRDPS_MARGIN_BYTES:
-            raise AdapterUnavailable("HRDPS temporary filesystem cannot hold the complete-operation reservation")
-        return ResourceBounds(HRDPS_ARTIFACT_BYTES, HRDPS_FILESYSTEM_BYTES,
-                              HRDPS_MARGIN_BYTES, HRDPS_RECEIVED_BYTES)
+            raise AdapterUnavailable("HRDPS demand temporary filesystem lacks the enforced 3 GiB ceiling")
+        if geometry.f_bavail * geometry.f_frsize < physical + HRDPS_MARGIN_BYTES:
+            raise AdapterUnavailable("HRDPS demand temporary filesystem cannot hold the selected-lead allowance")
+        received = HRDPS_DISCOVERY_REQUESTS * HRDPS_LISTING_BYTES + field_count * HRDPS_FILE_BYTES
+        return ResourceBounds(HRDPS_DEMAND_CACHE_BYTES, physical, HRDPS_MARGIN_BYTES, received)
 
     def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
         return DiscoveryBounds(self.operation_bounds(window).received_bytes)

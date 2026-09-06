@@ -114,17 +114,19 @@ def make_adapter(client: PoliteClient, *, var_map=HRDPS_VARS, **kwargs) -> ECCCD
     )
 
 
-def test_hrdps_complete_operation_bounds_require_kernel_memory_and_filesystem_caps(monkeypatch, tmp_path):
+def test_hrdps_demand_bounds_require_kernel_memory_and_filesystem_caps(monkeypatch, tmp_path):
     adapter = make_adapter(make_mock_client({}))
     monkeypatch.setattr("ingest.adapters.eccc_datamart.tempfile.gettempdir", lambda: str(tmp_path))
     monkeypatch.setattr(Path, "read_text", lambda _self: str(4 * 1024**3))
     monkeypatch.setattr("ingest.adapters.eccc_datamart.ctypes.CDLL",lambda _name:type("Allocator",(),{"malloc_trim":lambda *_args:1})())
     geometry = type("Geometry", (), {"f_blocks": 3 * 1024**3 // 4096, "f_bavail": 3 * 1024**3 // 4096, "f_frsize": 4096})()
     monkeypatch.setattr("ingest.adapters.eccc_datamart.os.statvfs", lambda _path: geometry)
-    bounds = adapter.operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=UTC)))
-    assert (bounds.store_bytes, bounds.filesystem_bytes, bounds.margin_bytes, bounds.received_bytes) == (
-        HRDPS_ARTIFACT_BYTES, HRDPS_FILESYSTEM_BYTES, HRDPS_MARGIN_BYTES, HRDPS_RECEIVED_BYTES,
-    )
+    bounds = adapter.demand_operation_bounds(7)
+    assert bounds.store_bytes == 64 * 1024**2
+    assert bounds.filesystem_bytes == 2 * 64 * 1024**2 + 6 * 10 * 1024**2
+    assert bounds.margin_bytes == HRDPS_MARGIN_BYTES
+    with pytest.raises(AdapterUnavailable, match="scheduled full-run ingestion is disabled"):
+        adapter.operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=UTC)))
 
 
 @pytest.mark.parametrize("memory_limit", ["max", str(2 * 1024**3), str(3 * 1024**3), str(5 * 1024**3)])
@@ -132,8 +134,8 @@ def test_hrdps_refuses_every_memory_limit_except_measured_4_gib(monkeypatch, tmp
     adapter = make_adapter(make_mock_client({}))
     monkeypatch.setattr("ingest.adapters.eccc_datamart.tempfile.gettempdir", lambda: str(tmp_path))
     monkeypatch.setattr(Path, "read_text", lambda _self: memory_limit)
-    with pytest.raises(AdapterUnavailable, match="finite Linux|measured and enforced 4 GiB"):
-        adapter.operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=UTC)))
+    with pytest.raises(AdapterUnavailable, match="finite Linux|measured 4 GiB"):
+        adapter.demand_operation_bounds(7)
 
 
 def test_hrdps_refuses_unconstrained_temporary_filesystem(monkeypatch, tmp_path):
@@ -143,8 +145,8 @@ def test_hrdps_refuses_unconstrained_temporary_filesystem(monkeypatch, tmp_path)
     monkeypatch.setattr("ingest.adapters.eccc_datamart.ctypes.CDLL",lambda _name:type("Allocator",(),{"malloc_trim":lambda *_args:1})())
     geometry = type("Geometry", (), {"f_blocks": 4 * 1024**3 // 4096, "f_bavail": 4 * 1024**3 // 4096, "f_frsize": 4096})()
     monkeypatch.setattr("ingest.adapters.eccc_datamart.os.statvfs", lambda _path: geometry)
-    with pytest.raises(AdapterUnavailable, match="3 GiB operation ceiling"):
-        adapter.operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=UTC)))
+    with pytest.raises(AdapterUnavailable, match="3 GiB ceiling"):
+        adapter.demand_operation_bounds(7)
 
 
 def stamp_files(date_str: str, hour: str, *, names: tuple[str, ...] = ("TMP", "DPT")) -> list[str]:
