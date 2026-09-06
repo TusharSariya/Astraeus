@@ -60,6 +60,12 @@ class TafCacheEntry:
     fetched_at: datetime
     expires_at_monotonic: float
     etag: str | None
+    last_revalidation: Mapping[str, object] | None = None
+
+
+def _safe_request_headers(headers: Mapping[str, str]) -> dict[str, str]:
+    allowed = {"accept", "accept-encoding", "if-none-match", "user-agent"}
+    return {key.lower(): value for key, value in headers.items() if key.lower() in allowed}
 
 
 def _max_age(headers: Mapping[str, str]) -> int:
@@ -132,6 +138,10 @@ class TafQueryService:
         self._entry: TafCacheEntry | None = None
         self._condition = threading.Condition()
         self._fetching = False
+        self._generation = 0
+        self._last_error: TafQueryUnavailable | None = None
+        self._last_error_generation = -1
+        self._retry_after_monotonic = 0.0
 
     def _fetch(self, prior: TafCacheEntry | None) -> TafCacheEntry:
         request_headers = {"Accept": "application/json", "Accept-Encoding": "identity"}
@@ -146,10 +156,10 @@ class TafQueryService:
                     raise TafQueryUnavailable("AWC returned 304 without a cached TAF")
                 headers = {k.lower(): v for k, v in response.headers.items()}
                 ttl = _max_age(headers or prior.response_headers)
-                return TafCacheEntry(**{**prior.__dict__, "request_headers": request_headers,
-                                        "response_headers": headers or prior.response_headers,
-                                        "transport_completed_at": completed, "fetched_at": completed,
-                                        "expires_at_monotonic": self._clock() + ttl})
+                revalidation = {"status": 304, "request_headers": _safe_request_headers(response.request.headers),
+                                "response_headers": headers, "transport_completed_at": completed}
+                return TafCacheEntry(**{**prior.__dict__, "expires_at_monotonic": self._clock() + ttl,
+                                        "last_revalidation": revalidation})
             if response.status_code != 200:
                 raise TafQueryUnavailable(f"AWC TAF returned HTTP {response.status_code}")
             declared = response.headers.get("content-length")
@@ -180,28 +190,42 @@ class TafQueryService:
                     raise TafQueryUnavailable(f"AWC TAF group {index} is not structurally complete")
         ttl = _max_age(headers)
         return TafCacheEntry(report, hashlib.sha256(body).hexdigest(), len(body), AWC_TAF_URL,
-                             request_headers, headers, completed, completed, self._clock() + ttl, headers.get("etag"))
+                             _safe_request_headers(response.request.headers), headers, completed, completed,
+                             self._clock() + ttl, headers.get("etag"))
 
     def entry(self) -> TafCacheEntry:
         with self._condition:
+            observed_generation = self._generation
             while True:
                 now = self._clock()
                 if self._entry is not None and now < self._entry.expires_at_monotonic:
                     return self._entry
+                if self._last_error is not None and now < self._retry_after_monotonic:
+                    raise TafQueryUnavailable(str(self._last_error))
                 if not self._fetching:
                     self._fetching = True
+                    self._generation += 1
+                    fetch_generation = self._generation
                     prior = self._entry
                     break
                 self._condition.wait()
+                if self._last_error is not None and self._last_error_generation > observed_generation:
+                    raise TafQueryUnavailable(str(self._last_error))
         try:
             replacement = self._fetch(prior)
-        except Exception:
+        except Exception as error:
+            unavailable = error if isinstance(error, TafQueryUnavailable) else TafQueryUnavailable(str(error))
             with self._condition:
+                self._last_error = unavailable
+                self._last_error_generation = fetch_generation
+                self._retry_after_monotonic = self._clock() + 1.0
                 self._fetching = False
                 self._condition.notify_all()
-            raise
+            raise unavailable
         with self._condition:
             self._entry = replacement
+            self._last_error = None
+            self._retry_after_monotonic = 0.0
             self._fetching = False
             self._condition.notify_all()
             return replacement
@@ -236,9 +260,11 @@ class TafQueryService:
                 "valid_time_from": taf["validTimeFrom"], "valid_time_to": taf["validTimeTo"], "raw_taf": taf["rawTAF"],
                 "quality": {"status": "passed"}, "provider_field_dispositions": TAF_PROVIDER_FIELD_DISPOSITIONS,
                 "native_report_metadata": {k: v for k, v in taf.items() if k not in {"fcsts", "rawTAF"}},
+                "applicable": bool(groups), "applicability_reason": None if groups else "no native TAF group applies at this timestamp",
                 "acquisition": {"provider_url": entry.provider_url, "request_headers": dict(entry.request_headers),
                                 "response_headers": dict(entry.response_headers), "transport_completed_at": entry.transport_completed_at,
-                                "fetched_at": entry.fetched_at, "body_sha256": entry.body_sha256, "body_bytes": entry.body_bytes},
+                                "fetched_at": entry.fetched_at, "body_sha256": entry.body_sha256, "body_bytes": entry.body_bytes,
+                                "last_revalidation": entry.last_revalidation},
                 "groups": groups}
 
 
