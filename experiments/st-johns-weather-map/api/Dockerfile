@@ -10,7 +10,7 @@ ENV PATH="/app/api/.venv/bin:${PATH}" \
     PYTHONPATH=/app
 
 COPY api/pyproject.toml api/uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project --extra grib
 COPY ingest /app/ingest
 # The catalogue modules only, not the tests or fixtures: ``weather_api.models``
 # and ``ingest.manifest`` import ``registry.fields``, ``store`` imports
@@ -18,7 +18,7 @@ COPY ingest /app/ingest
 # catalogue it describes.
 COPY registry /app/registry
 COPY api/weather_api ./weather_api
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --extra grib
 
 EXPOSE 8000
 CMD ["uv", "run", "uvicorn", "weather_api.app:app", "--host", "0.0.0.0", "--port", "8000"]

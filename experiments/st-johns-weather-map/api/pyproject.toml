@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Fixture-first API for the isolated St. John's weather evidence experiment"
 requires-python = ">=3.13,<3.14"
 # cfgrib is loaded through xarray's engine="cfgrib" rather than imported by
-# name, and needs the ecCodes system library present in the worker image.
+# name, and needs the ecCodes runtime in each process that decodes GRIB.
 dependencies = [
   "boto3==1.43.83",
   "cfgrib==0.9.15.1",
@@ -24,7 +24,7 @@ dependencies = [
   "zarr==3.3.0",
 ]
 
-# The worker image selects this extra so the ecCodes C library arrives as a
+# The worker and timestamp-demand API images select this extra so the ecCodes C library arrives as a
 # manylinux wheel matching the pinned python bindings, instead of Debian's
 # 2.28.0 apt package. The API image does not select it and never loads GRIB.
 [project.optional-dependencies]
