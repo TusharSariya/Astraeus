@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from threading import Event
 from time import sleep
 
 import pytest
 
-from weather_api.gfs_query import GFSQueryEntry, GFSQueryService, GFSRequestKey
+from weather_api.gfs_query import GFSQueryCoordinator, GFSQueryEntry, GFSQueryService, GFSRequestKey
+from ingest.contract import Artifact, RunCandidate, RunResult
+from ingest.adapters.noaa_s3 import MAX_IDX_BYTES
 
 UTC = timezone.utc
 KEY = GFSRequestKey(
@@ -127,3 +129,48 @@ def test_cache_configuration_cannot_exceed_source_ceiling():
         GFSQueryService(entry, max_entries=5)
     with pytest.raises(ValueError, match="source-local ceiling"):
         GFSQueryService(entry, max_bytes=256 * 1024 * 1024 + 1)
+
+
+def test_coordinator_fetches_one_native_lead_then_serves_exact_cache_hit(tmp_path, monkeypatch):
+    run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    idx = "1:0:d=2026090612:TMP:2 m above ground:3 hour fcst:\n2:4:d=2026090612:HGT:surface:3 hour fcst:\n"
+
+    class Client:
+        def __init__(self):
+            self.calls = []
+        def get_bytes(self, url, *, max_bytes):
+            self.calls.append((url, max_bytes))
+            return idx.encode()
+
+    class Adapter:
+        _base_url = "https://example"
+        _bounds = {"north": 50.5, "south": 45.0, "west": -58.0, "east": -46.0}
+        def __init__(self):
+            self.client = Client()
+            self.discoveries = 0
+            self.fetches = []
+        def _get_client(self): return self.client
+        def discover(self, window):
+            self.discoveries += 1
+            return [RunCandidate("gfs-2026090612", run_time, detail={"date_str": "20260906", "cycle": "12"})]
+        def fetch_selected(self, candidate, selected, workdir):
+            self.fetches.append(selected)
+            path = workdir / "surface.zip"
+            path.write_bytes(b"normalized")
+            return RunResult("noaa-gfs", candidate.provider_run_id, run_time, selected, True, True,
+                             [Artifact("surface", "application/zarr+zip", path, {"source_id": "noaa-gfs"})])
+
+    adapter = Adapter()
+    coordinator = GFSQueryCoordinator(adapter, now=lambda: run_time)
+    selected = run_time + timedelta(hours=3, minutes=17)
+
+    first = coordinator.query(selected)
+    second = coordinator.query(selected)
+
+    assert first is second
+    assert first.valid_time == run_time + timedelta(hours=3)
+    assert first.payloads == (b"normalized",)
+    assert adapter.discoveries == 1
+    assert adapter.fetches == [run_time + timedelta(hours=3)]
+    assert len(adapter.client.calls) == 1
+    assert adapter.client.calls[0][1] == MAX_IDX_BYTES

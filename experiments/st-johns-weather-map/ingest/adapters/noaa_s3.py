@@ -474,7 +474,6 @@ class NOAAS3Adapter:
         date_str = candidate.detail.get("date_str")
         cycle_str = candidate.detail.get("cycle")
         run_dt = candidate.run_time or window.now
-        retrieved_at = datetime.now(UTC)
 
         if not date_str or not cycle_str:
             date_str = run_dt.strftime("%Y%m%d")
@@ -506,7 +505,10 @@ class NOAAS3Adapter:
             idx_url = f"{grib_url}.idx"
 
             try:
-                idx_text = client.get_bytes(idx_url, max_bytes=MAX_IDX_BYTES).decode("utf-8")
+                retained_indices = candidate.detail.get("idx_text_by_lead", {})
+                idx_text = retained_indices.get(lead_h)
+                if idx_text is None:
+                    idx_text = client.get_bytes(idx_url, max_bytes=MAX_IDX_BYTES).decode("utf-8")
             except Exception as error:
                 decode_errors.append(f"idx:{idx_url}")
                 _log.warning("Missing GFS idx sidecar at %s: %s", idx_url, error)
@@ -682,7 +684,7 @@ class NOAAS3Adapter:
             source_id=self.source_id,
             provider_run_id=candidate.provider_run_id,
             run_time=run_dt,
-            retrieved_at=retrieved_at,
+            retrieved_at=datetime.now(UTC),
             complete=validation.complete,
             qc_passed=validation.qc_passed,
             artifacts=artifacts,

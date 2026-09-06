@@ -5,11 +5,25 @@ from __future__ import annotations
 import threading
 import time
 import json
+import hashlib
+import tempfile
 from collections import OrderedDict
 from concurrent.futures import Future
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Callable, Mapping
+
+from ingest.adapters.noaa_s3 import (
+    GFS_IDX_SELECTORS,
+    MAX_IDX_BYTES,
+    NOAAS3Adapter,
+    cap_open_range,
+    gfs_native_lead,
+    gfs_native_time_at_or_before,
+    select_gfs_ranges,
+)
+from ingest.contract import FetchWindow, RunCandidate
 
 GFS_OBJECT_CACHE_TTL_SECONDS = 600.0
 GFS_CACHE_MAX_ENTRIES = 4
@@ -121,3 +135,100 @@ class GFSQueryService:
                     with self._lock:
                         self._inflight.pop(key, None)
             return future.result()
+
+
+class GFSQueryCoordinator:
+    """Resolve one selection and load one exact GFS object-range request."""
+
+    def __init__(
+        self,
+        adapter: NOAAS3Adapter | None = None,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        now: Callable[[], datetime],
+    ) -> None:
+        self._adapter = adapter or NOAAS3Adapter()
+        self._clock = clock
+        self._now = now
+        self._lock = threading.Lock()
+        self._candidate: tuple[float, RunCandidate] | None = None
+        self._indices: OrderedDict[str, tuple[float, str]] = OrderedDict()
+        self._prepared: dict[GFSRequestKey, RunCandidate] = {}
+        self._cache = GFSQueryService(self._load, clock=clock)
+
+    def query(self, selected_time: datetime) -> GFSQueryEntry:
+        with self._lock:
+            candidate = self._discover()
+            if candidate.run_time is None:
+                raise ValueError("GFS discovery returned no producer run time")
+            native_time = gfs_native_time_at_or_before(candidate.run_time, selected_time)
+            lead = gfs_native_lead(candidate.run_time, native_time)
+            date_str = str(candidate.detail["date_str"])
+            cycle = str(candidate.detail["cycle"])
+            stem = f"gfs.t{cycle}z.pgrb2.0p25.f{lead:03d}"
+            grib_url = f"{self._adapter._base_url}/gfs.{date_str}/{cycle}/atmos/{stem}"
+            idx_url = f"{grib_url}.idx"
+            idx_text = self._index(idx_url)
+            ranges, _present = select_gfs_ranges(idx_text)
+            ranges = cap_open_range(ranges)
+            key = GFSRequestKey(
+                index_url=idx_url,
+                grib_url=grib_url,
+                ranges=tuple((item.start, int(item.end)) for item in ranges if item.end is not None),
+                fields=tuple(f"{parameter}:{level}" for parameter, level in sorted(GFS_IDX_SELECTORS)),
+                bounds=tuple(sorted((str(name), float(value)) for name, value in self._adapter._bounds.items())),
+            )
+            self._prepared[key] = RunCandidate(
+                candidate.provider_run_id,
+                candidate.run_time,
+                list(candidate.urls),
+                {**candidate.detail, "idx_text_by_lead": {lead: idx_text}},
+            )
+            try:
+                return self._cache.query(key)
+            finally:
+                self._prepared.pop(key, None)
+
+    def _discover(self) -> RunCandidate:
+        current = self._clock()
+        if self._candidate is not None and current < self._candidate[0]:
+            return self._candidate[1]
+        candidate = self._adapter.discover(FetchWindow(now=self._now()))[0]
+        self._candidate = (current + GFS_OBJECT_CACHE_TTL_SECONDS, candidate)
+        return candidate
+
+    def _index(self, url: str) -> str:
+        current = self._clock()
+        cached = self._indices.get(url)
+        if cached is not None and current < cached[0]:
+            self._indices.move_to_end(url)
+            return cached[1]
+        text = self._adapter._get_client().get_bytes(url, max_bytes=MAX_IDX_BYTES).decode("utf-8")
+        self._indices[url] = (current + GFS_OBJECT_CACHE_TTL_SECONDS, text)
+        while len(self._indices) > GFS_CACHE_MAX_ENTRIES:
+            self._indices.popitem(last=False)
+        return text
+
+    def _load(self, key: GFSRequestKey) -> GFSQueryEntry:
+        candidate = self._prepared[key]
+        with tempfile.TemporaryDirectory(prefix="gfs-demand-") as directory:
+            result = self._adapter.fetch_selected(candidate, self._selected_time(key, candidate), Path(directory))
+            payloads = tuple(artifact.payload_path.read_bytes() for artifact in result.artifacts)
+            digest = hashlib.sha256(b"".join(payloads)).hexdigest()
+            provenance = {artifact.logical_name: artifact.provenance for artifact in result.artifacts}
+        return GFSQueryEntry(
+            key=key,
+            run_time=result.run_time,
+            valid_time=self._selected_time(key, candidate),
+            fetched_at=result.retrieved_at,
+            content_digest=digest,
+            values={"logical_names": [artifact.logical_name for artifact in result.artifacts]},
+            provenance=provenance,
+            payloads=payloads,
+        )
+
+    @staticmethod
+    def _selected_time(key: GFSRequestKey, candidate: RunCandidate) -> datetime:
+        lead = int(key.grib_url.rsplit(".f", 1)[1])
+        assert candidate.run_time is not None
+        return candidate.run_time + timedelta(hours=lead)
