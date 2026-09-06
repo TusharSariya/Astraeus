@@ -25,11 +25,23 @@ from ingest.manifest import declared_classes, unresolved_manifest_validation
 UTC = timezone.utc
 CWFIS_DOWNLOADS = "https://cwfis.cfs.nrcan.gc.ca/downloads/hotspots"
 CWFIS_WFS = "https://cwfis.cfs.nrcan.gc.ca/geoserver/public/ows"
+FIRMS_ORIGIN = "https://firms.modaps.eosdis.nasa.gov"
+FIRMS_INDEX = f"{FIRMS_ORIGIN}/api/active_fire_files/all?format=json"
 MAX_LISTING_BYTES = 256 * 1024
 MAX_WFS_BYTES = 2 * 1024 * 1024
 MAX_CSV_BYTES = 32 * 1024 * 1024
+MAX_FIRMS_INDEX_BYTES = 512 * 1024
+MAX_FIRMS_CSV_BYTES = 32 * 1024 * 1024
 _DATED_CSV = re.compile(r"^(?:in)?(\d{8})\.csv$")
 RECEIPT_HEADERS = ("content-type", "content-length", "etag", "last-modified", "date")
+
+
+def _get_bytes_with_completion(client: PoliteClient, url: str, *, max_bytes: int) -> tuple[bytes, Mapping[str, str], datetime]:
+    completed_read = getattr(client, "get_bytes_with_headers_completed", None)
+    if callable(completed_read):
+        return completed_read(url, max_bytes=max_bytes)
+    body, headers = client.get_bytes_with_headers(url, max_bytes=max_bytes)
+    return body, headers, datetime.now(UTC)
 
 
 def _receipt(url: str, body: bytes, headers: dict[str, str], completed: datetime) -> dict[str, Any]:
@@ -96,8 +108,7 @@ class CWFISFireProductsAdapter:
     def _listed_date(self, directory: str, *, prefix: str = "") -> tuple[str, dict[str, Any]]:
         url = f"{directory}/"
         try:
-            body, headers = self._client.get_bytes_with_headers(url, max_bytes=MAX_LISTING_BYTES)
-            completed = datetime.now(UTC)
+            body, headers, completed = _get_bytes_with_completion(self._client, url, max_bytes=MAX_LISTING_BYTES)
             names = parse_directory_listing(body.decode("utf-8"))
         except (MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, UnicodeError, ValueError, OSError) as error:
             raise AdapterUnavailable(f"{self.source_id}: unavailable listing {url}: {error}") from error
@@ -131,8 +142,7 @@ class CWFISFireProductsAdapter:
         try:
             for kind, url, maximum in requests:
                 try:
-                    body, headers = self._client.get_bytes_with_headers(url, max_bytes=maximum)
-                    completed = datetime.now(UTC)
+                    body, headers, completed = _get_bytes_with_completion(self._client, url, max_bytes=maximum)
                 except (MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, ValueError, OSError) as error:
                     raise AdapterUnavailable(f"{self.source_id}: unavailable {kind}: {error}") from error
                 receipt = _receipt(url, body, headers, completed)
@@ -156,6 +166,7 @@ class CWFISFireProductsAdapter:
                     "acquisition": {"listing": listings, "response": receipt,
                                     "query_window": {"start": window.start.isoformat(), "end": window.end.isoformat()}}, "upstream_sha256": digest,
                     "artifact_sha256": digest, "sha256": digest, "field_dispositions": inventory,
+                    "field_interpretation": {"values": "verbatim native source strings or JSON values", "units": "uncontracted", "times": "verbatim, not normalized", "masks": "uncontracted"},
                     **({"record_count": rows, "source_file_date": str(names["hotspot_csv"] if kind == "daily_hotspots" else names["cffeps_csv"])} if kind != "wfs_hotspots" else {"feature_count": len(wfs["document"]["features"]), "source_snapshot": wfs["snapshot"]}),
                     "source_qc": {"status": "unknown", "flags": ["provider_quality_not_contracted"]},
                     "quality": validation.as_quality(), "operational": False, "adapter_version": self.adapter_version,
@@ -170,9 +181,98 @@ class CWFISFireProductsAdapter:
                          artifacts=artifacts, native_crs=None, notes="source records retained; publication blocked by unresolved contract")
 
 
-class FIRMSPermissionRequiredAdapter:
-    """Explicitly refuse MAP_KEY-gated MODIS/VIIRS paths without handling secrets."""
-    source_id = "nasa-firms-hotspots"
+class FIRMSActiveFireDownloadsAdapter:
+    """Bounded public FIRMS Canada 24-hour MODIS/VIIRS CSV acquisition.
+
+    FIRMS's MAP_KEY-gated area API is deliberately not used. Its public active-fire
+    index advertises the selected download paths, which are retained as native CSV
+    source records and remain nonpublishable pending an accepted field contract.
+    """
+
+    source_id = "nasa-firms-active-fire-downloads"
+    adapter_version = "firms-active-fire-downloads-v1"
+    product = "NASA FIRMS public Canada 24-hour active fire source records"
+    _sensors = ("modis", "snpp", "noaa20", "noaa21")
+
+    def __init__(self, client: PoliteClient | None = None, *, index: str = FIRMS_INDEX, origin: str = FIRMS_ORIGIN) -> None:
+        self._client = client or PoliteClient()
+        self._index, self._origin = index, origin.rstrip("/")
+
+    def discovery_bounds(self, _window: FetchWindow) -> DiscoveryBounds:
+        return DiscoveryBounds(received_bytes=MAX_FIRMS_INDEX_BYTES)
+
+    def resource_bounds(self, _candidate: RunCandidate, _window: FetchWindow) -> ResourceBounds:
+        total = len(self._sensors) * MAX_FIRMS_CSV_BYTES
+        return ResourceBounds(store_bytes=total, filesystem_bytes=total, margin_bytes=total, received_bytes=total)
 
     def discover(self, _window: FetchWindow) -> list[RunCandidate]:
-        raise AdapterUnavailable("nasa-firms-hotspots: official MODIS/VIIRS API requires a MAP_KEY; permission is not configured")
+        try:
+            body, headers, completed = _get_bytes_with_completion(self._client, self._index, max_bytes=MAX_FIRMS_INDEX_BYTES)
+            document = json.loads(body)
+        except (MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, UnicodeError, json.JSONDecodeError, ValueError, OSError) as error:
+            raise AdapterUnavailable(f"{self.source_id}: unavailable public download index: {error}") from error
+        if not isinstance(document, Mapping) or not isinstance(document.get("csv"), Mapping):
+            raise AdapterUnavailable(f"{self.source_id}: public download index has no CSV catalogue")
+        paths: dict[str, str] = {}
+        for sensor in self._sensors:
+            regions = document["csv"].get(sensor)
+            options = regions.get("Canada") if isinstance(regions, Mapping) else None
+            selected = [path for path in options if isinstance(path, str) and path.endswith("_Canada_24h.csv")] if isinstance(options, list) else []
+            if len(selected) != 1 or not selected[0].startswith("/data/active_fire/") or ".." in selected[0]:
+                raise AdapterUnavailable(f"{self.source_id}: public index has no safe Canada 24-hour CSV for {sensor}")
+            paths[sensor] = selected[0]
+        return [RunCandidate(provider_run_id="firms-public-canada-24h", run_time=None,
+                             urls=[self._index, *(f"{self._origin}{path}" for path in paths.values())],
+                             detail={"paths": paths, "index": _receipt(self._index, body, headers, completed)})]
+
+    def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
+        paths, index_receipt = candidate.detail.get("paths"), candidate.detail.get("index")
+        if not isinstance(paths, Mapping) or set(paths) != set(self._sensors) or not isinstance(index_receipt, Mapping):
+            raise AdapterUnavailable(f"{self.source_id}: invalid candidate discovery state")
+        validation = unresolved_manifest_validation(self.source_id, "native FIRMS fields have no owner-approved field, unit, mask, or API contract")
+        workdir.mkdir(parents=True, exist_ok=True)
+        artifacts: list[Artifact] = []
+        completions: list[datetime] = []
+        try:
+            for sensor in self._sensors:
+                path = paths[sensor]
+                if not isinstance(path, str) or not path.startswith("/data/active_fire/") or ".." in path:
+                    raise AdapterUnavailable(f"{self.source_id}: unsafe public CSV path")
+                url = f"{self._origin}{path}"
+                try:
+                    body, headers, completed = _get_bytes_with_completion(self._client, url, max_bytes=MAX_FIRMS_CSV_BYTES)
+                except (MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, ValueError, OSError) as error:
+                    raise AdapterUnavailable(f"{self.source_id}: unavailable {sensor} CSV: {error}") from error
+                fields, rows = _csv_inventory(body)
+                output = workdir / f"firms_{sensor}.csv"
+                output.write_bytes(body)
+                digest = hashlib.sha256(body).hexdigest()
+                artifacts.append(Artifact(f"firms_{sensor}_canada_24h", "text/csv", output, {
+                    "source_id": self.source_id, "producer": "NASA FIRMS / LANCE",
+                    "product": self.product, "source_uri": url, "provider_run_id": candidate.provider_run_id,
+                    "valid_times": [], "acquisition": {"index": dict(index_receipt), "response": _receipt(url, body, headers, completed),
+                    "query_window": {"start": window.start.isoformat(), "end": window.end.isoformat()}},
+                    "upstream_sha256": digest, "artifact_sha256": digest, "sha256": digest,
+                    "field_dispositions": {field: "retrieved" for field in fields}, "record_count": rows,
+                    "field_interpretation": {"values": "verbatim native CSV strings", "units": "uncontracted", "times": "verbatim, not normalized", "masks": "uncontracted"},
+                    "source_qc": {"status": "unknown", "flags": ["provider_quality_not_contracted"]},
+                    "quality": validation.as_quality(), "operational": False, "adapter_version": self.adapter_version,
+                    **declared_classes(["retrieved"]),
+                }))
+                completions.append(completed)
+        except BaseException:
+            for artifact in artifacts:
+                artifact.payload_path.unlink(missing_ok=True)
+            raise
+        return RunResult(source_id=self.source_id, provider_run_id=candidate.provider_run_id, run_time=None,
+                         retrieved_at=max(completions), complete=validation.complete, qc_passed=validation.qc_passed,
+                         artifacts=artifacts, native_crs=None,
+                         notes="public download records retained; publication blocked by unresolved contract")
+
+
+class FIRMSPermissionRequiredAdapter:
+    """Explicitly refuse only the MAP_KEY-gated FIRMS area API without handling secrets."""
+    source_id = "nasa-firms-area-api"
+
+    def discover(self, _window: FetchWindow) -> list[RunCandidate]:
+        raise AdapterUnavailable("nasa-firms-area-api: official area API requires a MAP_KEY; use public download adapter or configure permission separately")

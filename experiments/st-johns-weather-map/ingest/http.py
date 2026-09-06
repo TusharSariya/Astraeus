@@ -13,6 +13,7 @@ import random
 import re
 import threading
 import time
+from datetime import datetime, timezone
 from collections import Counter, defaultdict
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
@@ -265,11 +266,24 @@ class PoliteClient:
         headers: Mapping[str, str] | None = None,
         chunk_size: int = 1 << 16,
     ) -> tuple[bytes, Mapping[str, str]]:
-        """Read a decoded response body under a hard byte ceiling.
+        """Read a decoded response body under a hard byte ceiling."""
+        body, response_headers, _completed = self.get_bytes_with_headers_completed(
+            url, max_bytes=max_bytes, headers=headers, chunk_size=chunk_size
+        )
+        return body, response_headers
 
-        The response stays streamed until each chunk has passed the ceiling,
-        so an incorrect or absent Content-Length cannot make httpx buffer an
-        unbounded body before the caller can refuse it.
+    def get_bytes_with_headers_completed(
+        self,
+        url: str,
+        *,
+        max_bytes: int,
+        headers: Mapping[str, str] | None = None,
+        chunk_size: int = 1 << 16,
+    ) -> tuple[bytes, Mapping[str, str], datetime]:
+        """As :meth:`get_bytes_with_headers`, with UTC completion after the final byte.
+
+        Adapters that retain raw-response provenance use this timestamp instead
+        of recording a later bookkeeping time.
         """
         if max_bytes <= 0:
             raise ValueError("max_bytes must be positive")
@@ -297,7 +311,7 @@ class PoliteClient:
                         f"{url} exceeded the {max_bytes} byte ceiling"
                     )
                 chunks.append(chunk)
-            return b"".join(chunks), dict(response.headers)
+            return b"".join(chunks), dict(response.headers), datetime.now(timezone.utc)
         finally:
             response.close()
 

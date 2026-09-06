@@ -73,3 +73,61 @@ def test_invalid_csv_or_oversize_cleans_all_prior_artifacts(tmp_path: Path) -> N
 def test_firms_permission_is_explicit_without_secret_handling() -> None:
     with pytest.raises(AdapterUnavailable, match="requires a MAP_KEY"):
         FIRMSPermissionRequiredAdapter().discover(WINDOW)
+
+
+def firms_client(*, index: bytes, rows: dict[str, bytes]) -> PoliteClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/active_fire_files/all":
+            return httpx.Response(200, content=index, headers={"content-type": "application/json"})
+        for sensor, content in rows.items():
+            if request.url.path.endswith(f"/{sensor}_Canada_24h.csv"):
+                return httpx.Response(200, content=content)
+        raise AssertionError(request.url.path)
+    result = PoliteClient(min_host_interval_seconds=0, attempts=1)
+    result._client = httpx.Client(transport=httpx.MockTransport(handler), headers={"User-Agent": USER_AGENT})
+    return result
+
+
+def firms_index() -> bytes:
+    return json.dumps({"csv": {sensor: {"Canada": [f"/data/active_fire/{sensor}_Canada_24h.csv"]}
+                               for sensor in ("modis", "snpp", "noaa20", "noaa21")}}).encode()
+
+
+def test_public_firms_modis_and_viirs_downloads_are_retained_nonpublishably(tmp_path: Path) -> None:
+    from ingest.experimental.fire_products import FIRMSActiveFireDownloadsAdapter
+    raw = {sensor: b"latitude,longitude,acq_date,acq_time,confidence\n47.5,-52.7,2026-09-06,0012,n\n"
+           for sensor in ("modis", "snpp", "noaa20", "noaa21")}
+    adapter = FIRMSActiveFireDownloadsAdapter(client=firms_client(index=firms_index(), rows=raw),
+                                              index="https://fixture.invalid/api/active_fire_files/all?format=json",
+                                              origin="https://fixture.invalid")
+    result = adapter.fetch(adapter.discover(WINDOW)[0], WINDOW, tmp_path)
+    assert not result.complete and result.qc_passed and result.run_time is None
+    assert len(result.artifacts) == 4
+    assert [item.logical_name for item in result.artifacts] == [
+        "firms_modis_canada_24h", "firms_snpp_canada_24h", "firms_noaa20_canada_24h", "firms_noaa21_canada_24h"]
+    assert all(item.provenance["field_dispositions"]["acq_time"] == "retrieved" for item in result.artifacts)
+    assert all(item.provenance["upstream_sha256"] == item.provenance["artifact_sha256"] for item in result.artifacts)
+
+
+def test_public_firms_index_rejects_unsafe_or_missing_sensor_path() -> None:
+    from ingest.experimental.fire_products import FIRMSActiveFireDownloadsAdapter
+    unsafe = json.dumps({"csv": {sensor: {"Canada": [f"/data/active_fire/{sensor}_Canada_24h.csv"]}
+                                  for sensor in ("modis", "snpp", "noaa20", "noaa21")}}).replace(
+                                      "/data/active_fire/modis_Canada_24h.csv", "/data/active_fire/../modis_Canada_24h.csv").encode()
+    adapter = FIRMSActiveFireDownloadsAdapter(client=firms_client(index=unsafe, rows={}),
+                                              index="https://fixture.invalid/api/active_fire_files/all?format=json",
+                                              origin="https://fixture.invalid")
+    with pytest.raises(AdapterUnavailable, match="safe Canada"):
+        adapter.discover(WINDOW)
+
+
+def test_receipts_use_transport_completion_when_available(tmp_path: Path) -> None:
+    wfs = b'{"type":"FeatureCollection","features":[]}'
+    mock = client(wfs=wfs, hotspot=b"lat,lon\n47.5,-52.7\n", cffeps=b"lat,lon\n47.5,-52.7\n")
+    completed = datetime(2026, 9, 6, 5, 30, 0, tzinfo=UTC)
+    original = mock.get_bytes_with_headers_completed
+    mock.get_bytes_with_headers_completed = lambda url, *, max_bytes: (*original(url, max_bytes=max_bytes)[:2], completed)  # type: ignore[method-assign]
+    adapter = CWFISFireProductsAdapter(client=mock, downloads="https://fixture.invalid/hotspots", wfs="https://fixture.invalid/ows")
+    result = adapter.fetch(adapter.discover(WINDOW)[0], WINDOW, tmp_path)
+    assert result.retrieved_at == completed
+    assert all(item.provenance["acquisition"]["response"]["completed_at"] == completed.isoformat() for item in result.artifacts)
