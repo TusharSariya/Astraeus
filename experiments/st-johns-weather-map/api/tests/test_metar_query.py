@@ -15,6 +15,7 @@ from weather_api.metar_query import MetarQueryService
 from weather_api.taf_query import TafQueryUnavailable
 from weather_api.fixtures import point_fields
 from weather_api.models import DataMode
+from weather_api.store import FIELD_BY_VARIABLE
 from ingest.awc_metar_isolated import _decode
 from ingest.contract import AdapterUnavailable, FetchWindow
 
@@ -219,6 +220,10 @@ def test_variable_wind_direction_and_native_metadata_are_preserved():
     }
     window=FetchWindow(AT.replace(hour=13),back_hours=2,forward_hours=0)
     assert _decode(json.dumps([row]).encode(),window)[0]==row
+
+
+def test_metar_gust_variable_has_a_canonical_point_field():
+    assert FIELD_BY_VARIABLE["wind_gust_10m"] == "wind_gust"
 
 
 def test_default_point_uses_demand_metar_when_legacy_store_is_unreachable(monkeypatch):

@@ -69,6 +69,7 @@ FIELD_BY_VARIABLE = {
     "precipitation_accumulation": "precipitation_accumulation",
     "wind_u_10m": "wind_u",
     "wind_v_10m": "wind_v",
+    "wind_gust_10m": "wind_gust",
     # Provider-declared cloud strata (e.g. GFS LCDC/MCDC/HCDC at the
     # provider's own low/middle/high cloud layers). These are retrieved
     # fields served as stored, not derivations; see the layer note below.
