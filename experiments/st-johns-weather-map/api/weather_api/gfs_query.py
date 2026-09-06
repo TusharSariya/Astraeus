@@ -35,6 +35,7 @@ from ingest.isolation import ProcessAllocationLimits, run_bounded_process
 GFS_OBJECT_CACHE_TTL_SECONDS = 600.0
 GFS_TIMELINE_LISTING_MAX_BYTES = 1024 * 1024
 GFS_TIMELINE_LISTING_MAX_KEYS = 1000
+GFS_TIMELINE_LISTING_MAX_NODES = 8 * GFS_TIMELINE_LISTING_MAX_KEYS + 64
 _GFS_LISTED_LEAD = re.compile(r"\.f(\d{3})\.idx$")
 GFS_CACHE_MAX_ENTRIES = 4
 GFS_CACHE_MAX_BYTES = 256 * 1024 * 1024
@@ -394,8 +395,11 @@ class GFSQueryCoordinator:
             if root.tag.rsplit("}", 1)[-1] != "ListBucketResult":
                 raise ValueError("GFS listing has an unexpected root")
             nodes = list(root.iter())
-            if len(nodes) > 3 * GFS_TIMELINE_LISTING_MAX_KEYS + 32:
+            if len(nodes) > GFS_TIMELINE_LISTING_MAX_NODES:
                 raise ValueError("GFS listing exceeds structural node bound")
+            contents = [node for node in nodes if node.tag.rsplit("}", 1)[-1] == "Contents"]
+            if len(contents) > GFS_TIMELINE_LISTING_MAX_KEYS:
+                raise ValueError("GFS listing exceeds key bound")
             truncated = next((node.text for node in nodes if node.tag.rsplit("}", 1)[-1] == "IsTruncated"), "false")
             if str(truncated).lower() != "false":
                 raise ValueError("GFS listing was truncated")

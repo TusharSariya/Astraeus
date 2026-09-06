@@ -1069,12 +1069,15 @@ def get_layers() -> LayersResponse:
     notices.extend(proxy_notices)
     layers.extend(proxied)
 
-    # HRDPS stored artifacts are retained for audit but are no longer a live
+    # HRDPS and GFS stored artifacts are retained for audit but are no longer a live
     # delivery path.  The source's provider proxies above remain; a retained
     # model_run must not silently outrank the selected-time query architecture.
     layers = [
         item for item in layers
-        if not (item.id.startswith("eccc-hrdps-") and item.evidence_basis == wms.PUBLISHED_ARTIFACT)
+        if not (
+            item.evidence_basis == wms.PUBLISHED_ARTIFACT
+            and (item.id.startswith("eccc-hrdps-") or item.id.startswith("noaa-gfs-"))
+        )
     ]
 
     if not layers:
