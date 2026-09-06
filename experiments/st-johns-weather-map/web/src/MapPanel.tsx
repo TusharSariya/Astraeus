@@ -504,7 +504,11 @@ export function MapPanel({
   // quietly within tolerance, by disclosed fallback beyond it, and by the
   // opt-in display composite for forecast imagery between two frames.
   const resolved = useMemo(
-    () => active.map(({ entry, layer }) => ({ entry, layer, resolution: resolveLayerFrame(layer, validTime, { interpolate, reference }) })),
+    () => active.map(({ entry, layer }) => ({
+      entry,
+      layer,
+      resolution: resolveLayerFrame(layer, validTime, { interpolate: interpolate && layer.evidence_basis !== 'demand_query', reference }),
+    })),
     [active, validTime, interpolate, reference],
   )
   const frameKey = resolved.map(({ layer, resolution }) => {
@@ -1286,7 +1290,9 @@ export function MapPanel({
     const entry = selections.find((item) => item.id === layer.id)
     const on = Boolean(entry?.visible)
     const undrawable = isUndrawable(layer)
-    const resolution = on ? resolveLayerFrame(layer, validTime, { interpolate, reference }) : null
+    const resolution = on ? resolveLayerFrame(layer, validTime, {
+      interpolate: interpolate && layer.evidence_basis !== 'demand_query', reference,
+    }) : null
     const note = resolution ? layerNoteFor(layer, resolution) : null
     const frame = resolution && (resolution.kind === 'exact' || resolution.kind === 'snapped') ? resolution.frame : null
     const state = states[layer.id]
@@ -1456,7 +1462,7 @@ export function MapPanel({
         {drawerOpen && (
           <div className="drawer-body" id={`layer-drawer-${label}`}>
             <p className="drawer-status" role="status">
-              {layersLoading ? 'Loading published layers\u2026' : layersError ? `No layers: ${layersError}` : layers.length === 0 ? 'No layers are published by the API.' : `${layers.length} published layers \u00b7 each drawn at its own frame`}
+              {layersLoading ? 'Loading available layers\u2026' : layersError ? `No layers: ${layersError}` : layers.length === 0 ? 'No layers are available from the API.' : `${layers.length} available layer${layers.length === 1 ? '' : 's'} \u00b7 each drawn at its own frame`}
             </p>
             {/* Layers by field family, above the evidence-basis groups. The
                 two groupings answer different questions — what a layer IS, and

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from threading import Event
 from time import sleep
@@ -533,25 +534,46 @@ def test_shared_timeline_refuses_an_unknown_selected_product(monkeypatch):
     assert all(not item.available_products for item in response.items)
     assert response.notices == ["NOAA has no timestamp-demand timeline implementation"]
 
-def test_gfs_scoped_layers_advertise_only_the_native_demand_raster(monkeypatch):
+def test_gfs_scoped_layers_advertise_native_geometric_cloud_strata(monkeypatch):
     from fastapi.testclient import TestClient
     import sys
     app_module = sys.modules['weather_api.app']
     from weather_api import gfs_query
     stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
     class Coordinator:
-        def cached_valid_times(self): return (stamp,)
+        def cached_cloud_availability(self):
+            return {field: (stamp,) for field in ('total_cloud_geometric', 'cloud_low', 'cloud_middle', 'cloud_high')}
     monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
     monkeypatch.setattr(gfs_query, 'gfs_query_coordinator', lambda: Coordinator())
     body = TestClient(app_module.app).get(f'{app_module.PREFIX}/layers', params={'product':'GFS'}).json()
     assert body['data_mode'] == 'live'
-    assert [layer['id'] for layer in body['layers']] == ['noaa-gfs-demand-total-cloud']
+    assert [layer['id'] for layer in body['layers']] == [
+        'noaa-gfs-demand-total-cloud', 'noaa-gfs-demand-cloud-low',
+        'noaa-gfs-demand-cloud-middle', 'noaa-gfs-demand-cloud-high',
+    ]
     layer = body['layers'][0]
     assert layer['evidence_basis'] == 'demand_query'
     assert layer['units'] == 'percent'
     assert layer['field'] == 'total_cloud_geometric'
     assert layer['times'] == [stamp.isoformat().replace('+00:00','Z')]
     assert layer['raster_available'] is True and layer['legend_available'] is False
+    assert [layer['field'] for layer in body['layers'][1:]] == ['cloud_low', 'cloud_middle', 'cloud_high']
+    assert all('geometric' in layer['semantics'] and 'opacity' in layer['semantics'] for layer in body['layers'])
+
+
+def test_gfs_scoped_layers_exclude_an_absent_optional_stratum(monkeypatch):
+    from fastapi.testclient import TestClient
+    import sys
+    app_module = sys.modules['weather_api.app']
+    from weather_api import gfs_query
+    stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    class Coordinator:
+        def cached_cloud_availability(self):
+            return {'total_cloud_geometric': (), 'cloud_low': (stamp,), 'cloud_middle': (), 'cloud_high': (stamp,)}
+    monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
+    monkeypatch.setattr(gfs_query, 'gfs_query_coordinator', lambda: Coordinator())
+    body = TestClient(app_module.app).get(f'{app_module.PREFIX}/layers', params={'product': 'GFS'}).json()
+    assert [layer['id'] for layer in body['layers']] == ['noaa-gfs-demand-cloud-low', 'noaa-gfs-demand-cloud-high']
 
 def test_native_geometric_cloud_raster_preserves_percent_and_missing_alpha(tmp_path):
     import io
@@ -575,6 +597,51 @@ def test_native_geometric_cloud_raster_preserves_percent_and_missing_alpha(tmp_p
     assert image.units=='percent' and image.valid_time==valid and image.run_time==run
     assert returned is entry
 
+
+def test_native_cloud_strata_rasters_select_exact_fields_without_substitution(tmp_path):
+    import io
+    import numpy as np
+    from PIL import Image
+    from ingest.grib import write_zarr
+    valid = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    run = valid - timedelta(hours=6)
+    values = {
+        'cloud_low': [[[0.0, 25.0], [np.nan, 100.0]]],
+        'cloud_middle': [[[0.0, 50.0], [np.nan, 100.0]]],
+        'cloud_high': [[[0.0, 75.0], [np.nan, 100.0]]],
+    }
+    dataset = xarray.Dataset(
+        {name: (('valid_time', 'latitude', 'longitude'), np.asarray(data)) for name, data in values.items()},
+        coords={'valid_time': [valid.replace(tzinfo=None)], 'latitude': [1.5, 0.5], 'longitude': [0.5, 1.5]},
+    )
+    for name in values:
+        dataset[name].attrs['units'] = 'percent'
+    path = write_zarr(dataset, tmp_path / 'surface.zip')
+    entry = GFSQueryEntry(KEY, run, valid, valid + timedelta(minutes=2), 'c' * 64,
+        {'logical_names': ['surface'], 'surface_fields': list(values)}, {'surface': {'product': 'Global Forecast System', 'native_crs': 'EPSG:4326'}}, (path.read_bytes(),))
+    coordinator = object.__new__(GFSQueryCoordinator); coordinator.query = lambda _selected: entry
+    expected_alpha = {
+        'noaa-gfs-demand-cloud-low': [[0, 64], [0, 255]],
+        'noaa-gfs-demand-cloud-middle': [[0, 127], [0, 255]],
+        'noaa-gfs-demand-cloud-high': [[0, 191], [0, 255]],
+    }
+    for layer_id, expected in expected_alpha.items():
+        image, returned = coordinator.cloud_raster(valid, layer_id=layer_id,
+            bounds={'south': 0, 'west': 0, 'north': 2, 'east': 2}, width=2, height=2, crs='EPSG:4326')
+        pixels = np.asarray(Image.open(io.BytesIO(image.payload)).convert('RGBA'))
+        assert pixels[:, :, 3].tolist() == expected
+        assert np.all(pixels[:, :, :3] == 255)
+        assert image.units == 'percent' and image.valid_time == valid and returned is entry
+    sparse_path = write_zarr(dataset.drop_vars('cloud_middle'), tmp_path / 'sparse-surface.zip')
+    sparse = replace(entry, values={'logical_names': ['surface'], 'surface_fields': ['cloud_low', 'cloud_high']}, payloads=(sparse_path.read_bytes(),))
+    coordinator.query = lambda _selected: sparse
+    low, _ = coordinator.cloud_raster(valid, layer_id='noaa-gfs-demand-cloud-low',
+        bounds={'south': 0, 'west': 0, 'north': 2, 'east': 2}, width=2, height=2, crs='EPSG:4326')
+    assert low.payload
+    with pytest.raises(Exception, match='does not carry cloud_middle'):
+        coordinator.cloud_raster(valid, layer_id='noaa-gfs-demand-cloud-middle',
+            bounds={'south': 0, 'west': 0, 'north': 2, 'east': 2}, width=2, height=2, crs='EPSG:4326')
+
 def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
     import sys
     from types import SimpleNamespace
@@ -584,8 +651,11 @@ def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
     app_module=sys.modules['weather_api.app']; valid=datetime(2026,9,6,18,tzinfo=UTC); run=valid-timedelta(hours=6); fetched=valid+timedelta(minutes=2)
     entry=SimpleNamespace(fetched_at=fetched, content_digest='c'*64)
     image=RenderedGridImage(b'png','image/png',valid,run,'EPSG:4326','percent','noaa-gfs','Global Forecast System','public domain','NOAA/NCEP')
+    called = []
     class Coordinator:
-        def total_cloud_raster(self,*args,**kwargs): return image,entry
+        def cloud_raster(self,*args,**kwargs):
+            called.append(kwargs['layer_id'])
+            return image,entry
     monkeypatch.setenv('WEATHER_DATA_MODE','live'); monkeypatch.setattr(gfs_query,'gfs_query_coordinator',lambda:Coordinator())
     response=TestClient(app_module.app).get(f'{app_module.PREFIX}/layers/noaa-gfs-demand-total-cloud/raster',params={'valid_time':valid.isoformat(),'south':0,'west':0,'north':2,'east':2,'width':2,'height':2})
     assert response.status_code==200
@@ -596,3 +666,31 @@ def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
     assert response.headers['x-weather-retrieval-time']==fetched.isoformat()
     assert response.headers['x-weather-upstream-completion-time']==fetched.isoformat()
     assert response.headers['x-weather-content-digest']=='c'*64
+    assert called == ['noaa-gfs-demand-total-cloud']
+
+
+def test_each_gfs_cloud_stratum_routes_to_its_exact_layer_identity(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    from fastapi.testclient import TestClient
+    from weather_api import gfs_query
+    from weather_api.grids import RenderedGridImage
+    app_module = sys.modules['weather_api.app']
+    valid = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    entry = SimpleNamespace(fetched_at=valid, content_digest='d' * 64)
+    image = RenderedGridImage(b'png', 'image/png', valid, valid - timedelta(hours=6), 'EPSG:4326', 'percent', 'noaa-gfs', 'Global Forecast System', 'public domain', 'NOAA/NCEP')
+    called = []
+    class Coordinator:
+        def cloud_raster(self, *args, **kwargs):
+            called.append(kwargs['layer_id'])
+            return image, entry
+    monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
+    monkeypatch.setattr(gfs_query, 'gfs_query_coordinator', lambda: Coordinator())
+    layer_ids = ['noaa-gfs-demand-cloud-low', 'noaa-gfs-demand-cloud-middle', 'noaa-gfs-demand-cloud-high']
+    for layer_id in layer_ids:
+        response = TestClient(app_module.app).get(f'{app_module.PREFIX}/layers/{layer_id}/raster', params={
+            'valid_time': valid.isoformat(), 'south': 0, 'west': 0, 'north': 2, 'east': 2, 'width': 2, 'height': 2,
+        })
+        assert response.status_code == 200
+        assert response.headers['x-weather-evidence-basis'] == 'demand_query'
+    assert called == layer_ids

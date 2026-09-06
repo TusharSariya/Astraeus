@@ -81,6 +81,13 @@ two-run retention, source admission or operational status.
 - **AND** a different field, frame, invalid bounds, unsupported CRS or oversized output fails explicitly without substituting an opacity-weighted field or a neighbouring frame
 - **AND** this single native field does not complete GFS raster or source coverage under #97 or the residual field issues
 
+#### Scenario: GFS native cloud strata remain distinct
+- **WHEN** the same selected surface entry contains native `LCDC:low cloud layer`, `MCDC:middle cloud layer`, and `HCDC:high cloud layer`
+- **THEN** the catalogue advertises three distinct retrieved geometric-percent layers without performing a provider request
+- **AND** each raster selects only its exact normalized low, middle, or high field, preserving native missing cells, zeroes, run, native-valid time, retrieval completion and content identity
+- **AND** an absent or invalid stratum fails independently without substitution from another stratum, whole-column `TCDC`, or ECCC optical cloud opacity
+- **AND** repeated renders of a cached selected frame perform no additional provider request
+
 ### Requirement: GFS accumulation identity is resolved before payload selection
 For a selected native GFS frame, the experiment SHALL parse every provider-declared
 `APCP:surface` statistical interval from the bounded `.idx` response and preserve

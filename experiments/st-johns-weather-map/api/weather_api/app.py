@@ -923,18 +923,24 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     if product is not None and product.upper() == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
-            times = gfs_query_coordinator().cached_valid_times()
+            availability = gfs_query_coordinator().cached_cloud_availability()
         except Exception as error:  # noqa: BLE001
             return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=[f"GFS demand raster availability could not be resolved: {type(error).__name__}"])
+        capabilities = (
+            ("noaa-gfs-demand-total-cloud", "GFS total cloud", "total_cloud_geometric", "entire-atmosphere"),
+            ("noaa-gfs-demand-cloud-low", "GFS low cloud", "cloud_low", "low-layer"),
+            ("noaa-gfs-demand-cloud-middle", "GFS middle cloud", "cloud_middle", "middle-layer"),
+            ("noaa-gfs-demand-cloud-high", "GFS high cloud", "cloud_high", "high-layer"),
+        )
         return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
-            id="noaa-gfs-demand-total-cloud", title="GFS total cloud (selected-time native grid)",
-            kind="raster", field="total_cloud_geometric", product="GFS", units="percent",
-            evidence_class="retrieved", family="cloud_cover", field_key="total_cloud_geometric",
-            semantics="NOAA GFS entire-atmosphere geometric total cloud rendered here from the selected native grid; nearest cell, never interpolated or compared as opacity",
-            times=list(times), cadence_seconds=None, staleness_tolerance_seconds=3600,
+            id=layer_id, title=f"{title} (selected-time native grid)",
+            kind="raster", field=field, product="GFS", units="percent",
+            evidence_class="retrieved", family="cloud_cover", field_key=field,
+            semantics=f"NOAA GFS native geometric {stratum} cloud cover rendered from the selected grid; nearest cell, never interpolated, substituted between strata, or compared as opacity",
+            times=list(availability[field]), cadence_seconds=None, staleness_tolerance_seconds=3600,
             z_index=Z_INDEX_BY_KIND["raster"], evidence_basis="demand_query", group="rendered_grid",
-            raster_available=bool(times), legend_available=False,
-        )], notices=["GFS raster values are fetched only for the selected native timestamp; advertised hours are metadata, not fetched coverage"])
+            raster_available=bool(availability[field]), legend_available=False,
+        ) for layer_id, title, field, stratum in capabilities if availability[field]], notices=["GFS raster values are fetched only for the selected native timestamp; advertised hours are metadata, not fetched coverage"])
 
     store = live_store()
     if store is None:
@@ -1691,11 +1697,14 @@ def get_layer_raster(
         raise HTTPException(status_code=422, detail="bounds must be a south-west to north-east box")
     bounds = {"south": south, "west": west, "north": north, "east": east}
 
-    if layer_id == "noaa-gfs-demand-total-cloud":
+    if layer_id in {
+        "noaa-gfs-demand-total-cloud", "noaa-gfs-demand-cloud-low",
+        "noaa-gfs-demand-cloud-middle", "noaa-gfs-demand-cloud-high",
+    }:
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
-            image, entry = gfs_query_coordinator().total_cloud_raster(
-                moment, bounds=bounds, width=width, height=height, crs=requested_crs,
+            image, entry = gfs_query_coordinator().cloud_raster(
+                moment, layer_id=layer_id, bounds=bounds, width=width, height=height, crs=requested_crs,
             )
         except (grids.GridUnavailable, grids.GridNotPublished, grids.FrameNotStored, ValueError) as error:
             raise HTTPException(status_code=502, detail=f"{layer_id}: {error}") from error
