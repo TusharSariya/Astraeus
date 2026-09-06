@@ -1333,8 +1333,14 @@ class SolarWindLatest(StrictModel):
 
     ``measured_at`` is the instant the served ``bz_gsm_nt`` was measured -
     the newest record carrying a finite Bz, never a gap filled with zero.
-    ``feed_declared_spacecraft`` is whatever the feed's own source field said,
-    verbatim; no spacecraft is ever named beyond that.
+    ``feed_declared_spacecraft`` is the feed's own source token for the craft
+    that measured THIS value, verbatim; no spacecraft is ever named beyond
+    that. ``active`` is the feed's own primary flag on that row and
+    ``overall_quality`` its own quality integer, both served as retrieved
+    (``overall_quality`` keeps SWPC's ``-9999`` "no quality stated" sentinel
+    rather than reporting a clean zero), so a reader can see which craft the
+    provider called primary and what it said about the reading. Both are
+    ``None`` where the stored artifact carries no such flag.
     """
 
     available: bool
@@ -1344,6 +1350,8 @@ class SolarWindLatest(StrictModel):
     bt_nt: float | None
     measured_at: datetime | None
     feed_declared_spacecraft: str | None
+    active: bool | None = None
+    overall_quality: float | None = None
     freshness: Freshness
     notices: list[str] = Field(default_factory=list)
 

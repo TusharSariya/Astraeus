@@ -1,0 +1,52 @@
+{
+  "adapter_version": "swpc-scales-v1",
+  "api_readback": {
+    "artifact_sha256_verified_before_readback": true,
+    "data_mode": "live",
+    "evidence_classes": [
+      "retrieved"
+    ],
+    "http_status": 200,
+    "latest_fields_verified": 40,
+    "latest_value_unit_time_match": true,
+    "logical_name": "noaa_scales",
+    "measurement_scope": "planetary",
+    "missing_required_fields": [],
+    "newest_instant": "2026-09-05T20:42:00Z",
+    "operational": false,
+    "provider_run_id": "swpc-scales-202609052042",
+    "quality_status": "unknown",
+    "record_count": 1,
+    "revision_id": "capture-noaa-swpc-scales-652390e44dba9dd5",
+    "route": "/api/experiments/weather/v0/space-weather/products",
+    "source_id": "noaa-swpc-scales",
+    "structural_validation_status": "passed"
+  },
+  "artifact_byte_size": 11489,
+  "artifact_revision": "capture-noaa-swpc-scales-652390e44dba9dd5",
+  "artifact_sha256": "652390e44dba9dd54f962eaaad2b2f1a6fac51592aa44ffa229b90e384791069",
+  "byte_count": 1105,
+  "captured_at": "2026-09-05T20:44:02Z",
+  "complete": true,
+  "instant_count": 1,
+  "last_modified": "Sat, 05 Sep 2026 20:42:40 GMT",
+  "logical_name": "noaa_scales",
+  "newest_instant": "2026-09-05T20:42:00Z",
+  "notes": "NOAA scales at 2026-09-05T20:42:00Z across day offsets -1 0 1 2 3",
+  "oldest_instant": "2026-09-05T20:42:00Z",
+  "platforms": {
+    "day_offset": [
+      "-1",
+      "0",
+      "1",
+      "2",
+      "3"
+    ]
+  },
+  "provider_run_id": "swpc-scales-202609052042",
+  "record_count": 1,
+  "request_parameters": {},
+  "sha256": "a7ef2029c1bb949f84d8cc3e9636bc0dc53129040b53e9a46611425d911cdc4c",
+  "source_id": "noaa-swpc-scales",
+  "url": "https://services.swpc.noaa.gov/products/noaa-scales.json"
+}

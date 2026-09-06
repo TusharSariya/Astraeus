@@ -38,6 +38,12 @@ _MODULES = (
     "eccc_ogc",
     "goes_abi",
     "swpc",
+    # The free space-weather products (issue 89): the nine SWPC and GOES JSON
+    # feeds in ``swpc_products`` and GFZ Hp30 in ``gfz``. They land on separate
+    # branches, so the tolerance above is doing real work here: whichever of
+    # the two is present registers, and the other is simply not there yet.
+    "swpc_products",
+    "gfz",
 )
 
 

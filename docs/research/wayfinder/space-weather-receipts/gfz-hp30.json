@@ -1,0 +1,48 @@
+{
+  "adapter_version": "gfz-hp30-v1",
+  "api_readback": {
+    "artifact_sha256_verified_before_readback": true,
+    "data_mode": "live",
+    "evidence_classes": [
+      "retrieved"
+    ],
+    "http_status": 200,
+    "latest_fields_verified": 1,
+    "latest_value_unit_time_match": true,
+    "logical_name": "hp30",
+    "measurement_scope": "planetary",
+    "missing_required_fields": [],
+    "newest_instant": "2026-09-05T20:00:00Z",
+    "operational": false,
+    "provider_run_id": "gfz-hp30-202609052000",
+    "quality_status": "unknown",
+    "record_count": 47,
+    "revision_id": "capture-gfz-hp30-52b3c989c8e61c15",
+    "route": "/api/experiments/weather/v0/space-weather/products",
+    "source_id": "gfz-hp30",
+    "structural_validation_status": "passed"
+  },
+  "artifact_byte_size": 2680,
+  "artifact_revision": "capture-gfz-hp30-52b3c989c8e61c15",
+  "artifact_sha256": "52b3c989c8e61c157847f2757f3ecfeb7495e817566a91f6d569c704717d31d8",
+  "byte_count": 1411,
+  "captured_at": "2026-09-05T20:44:02Z",
+  "complete": true,
+  "instant_count": 47,
+  "last_modified": null,
+  "logical_name": "hp30",
+  "newest_instant": "2026-09-05T20:00:00Z",
+  "notes": "47 half-hour Hp30 values from 2026-09-04T21:00:00Z to 2026-09-05T20:00:00Z; licence CC BY 4.0; no per-value status declared by the feed",
+  "oldest_instant": "2026-09-04T21:00:00Z",
+  "platforms": {},
+  "provider_run_id": "gfz-hp30-202609052000",
+  "record_count": 47,
+  "request_parameters": {
+    "end": "2026-09-05T20:44:02Z",
+    "index": "Hp30",
+    "start": "2026-09-04T20:44:02Z"
+  },
+  "sha256": "514f25f8b6f0f884b6f82c5e00bfe5861895aa5f3aed45c51669e6007ba4b519",
+  "source_id": "gfz-hp30",
+  "url": "https://kp.gfz.de/app/json/?start=2026-09-04T20%3A44%3A02Z&end=2026-09-05T20%3A44%3A02Z&index=Hp30"
+}

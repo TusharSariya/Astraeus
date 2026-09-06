@@ -26,6 +26,20 @@ def _by_id() -> dict[str, dict]:
 
 
 class LedgerRecordTests(unittest.TestCase):
+    def test_current_gfz_kp_and_hp60_remain_catalogued(self) -> None:
+        sources = _by_id()
+        kp = sources["gfz-kp-current"]
+        hp60 = sources["gfz-hp60-current"]
+
+        self.assertEqual("catalogued", kp["status"])
+        self.assertEqual("catalogued", hp60["status"])
+        self.assertEqual(["kp_index", "kp_status"], kp["variables"][0]["names"])
+        self.assertEqual(["hp60_index"], hp60["variables"][0]["names"])
+        self.assertIn("unregistered", kp["integration"]["client"])
+        self.assertIn("unregistered", hp60["integration"]["client"])
+        self.assertNotIn("reach", kp)
+        self.assertNotIn("native_cadence_seconds", hp60)
+
     def test_firework_is_superseded_by_raqdps(self) -> None:
         sources = _by_id()
         firework = sources["eccc-raqdps-firework"]
@@ -156,14 +170,14 @@ class LedgerRecordTests(unittest.TestCase):
         _, errors = audit.validate()
         self.assertEqual([], errors)
 
-    def test_noaa_swpc_rtsw_is_catalogued(self) -> None:
+    def test_noaa_swpc_rtsw_condition_is_satisfied_by_v2_adapter(self) -> None:
         sources = _by_id()
         rtsw = sources["noaa-swpc-rtsw"]
 
-        self.assertEqual("catalogued", rtsw["status"])
+        self.assertEqual("implemented-unverified", rtsw["status"])
         self.assertEqual("passing", rtsw["fixture_status"])
         condition = rtsw["admission_condition"]
-        self.assertFalse(condition["satisfied"])
+        self.assertTrue(condition["satisfied"])
         self.assertIn("SWFO-L1", condition["condition"])
         self.assertIn("quality flag", condition["satisfied_by"])
 

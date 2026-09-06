@@ -1,0 +1,50 @@
+{
+  "adapter_version": "swpc-rtsw-v2",
+  "api_readback": {
+    "artifact_sha256_verified_before_readback": true,
+    "data_mode": "live",
+    "evidence_classes": [
+      "retrieved"
+    ],
+    "http_status": 200,
+    "latest_fields_verified": 60,
+    "latest_value_unit_time_match": true,
+    "logical_name": "solar_wind",
+    "measurement_scope": "l1",
+    "missing_required_fields": [],
+    "newest_instant": "2026-09-05T20:39:00Z",
+    "operational": false,
+    "provider_run_id": "swpc-rtsw-202609052039",
+    "quality_status": "unknown",
+    "record_count": 1443,
+    "revision_id": "capture-noaa-swpc-rtsw-5affb838d4e5f9bf",
+    "route": "/api/experiments/weather/v0/space-weather/products",
+    "source_id": "noaa-swpc-rtsw",
+    "structural_validation_status": "passed"
+  },
+  "artifact_byte_size": 139908,
+  "artifact_revision": "capture-noaa-swpc-rtsw-5affb838d4e5f9bf",
+  "artifact_sha256": "5affb838d4e5f9bf49cf86d78236ea3aff694fe3d06d97103fc35b27ccb0a3e9",
+  "byte_count": 1549610,
+  "captured_at": "2026-09-05T20:44:00Z",
+  "complete": true,
+  "instant_count": 1443,
+  "last_modified": "Sat, 05 Sep 2026 20:42:40 GMT",
+  "logical_name": "solar_wind",
+  "newest_instant": "2026-09-05T20:39:00Z",
+  "notes": "3674 records over 1443 instants x spacecraft ACE, IMAP, SOLAR1; active at the newest instant: SOLAR1",
+  "oldest_instant": "2026-09-04T20:43:00Z",
+  "platforms": {
+    "spacecraft": [
+      "ACE",
+      "IMAP",
+      "SOLAR1"
+    ]
+  },
+  "provider_run_id": "swpc-rtsw-202609052039",
+  "record_count": 3674,
+  "request_parameters": {},
+  "sha256": "f8267e78c7ea1e12389c4ed5f544f2873457bb5dec4c05f78af287b3f016c05c",
+  "source_id": "noaa-swpc-rtsw",
+  "url": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json"
+}

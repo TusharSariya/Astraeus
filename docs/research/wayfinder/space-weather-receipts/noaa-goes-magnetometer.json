@@ -1,0 +1,48 @@
+{
+  "adapter_version": "goes-magnetometer-v1",
+  "api_readback": {
+    "artifact_sha256_verified_before_readback": true,
+    "data_mode": "live",
+    "evidence_classes": [
+      "retrieved"
+    ],
+    "http_status": 200,
+    "latest_fields_verified": 5,
+    "latest_value_unit_time_match": true,
+    "logical_name": "goes_magnetometer",
+    "measurement_scope": "geosynchronous",
+    "missing_required_fields": [],
+    "newest_instant": "2026-09-05T20:41:00Z",
+    "operational": false,
+    "provider_run_id": "goes-magnetometer-202609052041",
+    "quality_status": "unknown",
+    "record_count": 1307,
+    "revision_id": "capture-noaa-goes-magnetometer-2b8feb8dbfdb0f45",
+    "route": "/api/experiments/weather/v0/space-weather/products",
+    "source_id": "noaa-goes-magnetometer",
+    "structural_validation_status": "passed"
+  },
+  "artifact_byte_size": 27243,
+  "artifact_revision": "capture-noaa-goes-magnetometer-2b8feb8dbfdb0f45",
+  "artifact_sha256": "2b8feb8dbfdb0f45cc9be1564fcf198b23dd65221ed8ab90848afc3fe3389e3d",
+  "byte_count": 237363,
+  "captured_at": "2026-09-05T20:44:04Z",
+  "complete": true,
+  "instant_count": 1307,
+  "last_modified": "Sat, 05 Sep 2026 20:42:44 GMT",
+  "logical_name": "goes_magnetometer",
+  "newest_instant": "2026-09-05T20:41:00Z",
+  "notes": "1307 minutes across satellites 19, newest 2026-09-05T20:41:00Z",
+  "oldest_instant": "2026-09-04T20:43:00Z",
+  "platforms": {
+    "satellite": [
+      "19"
+    ]
+  },
+  "provider_run_id": "goes-magnetometer-202609052041",
+  "record_count": 1307,
+  "request_parameters": {},
+  "sha256": "1713f47cdc3f695add4c1b61d52134c52c8b400f8c9ed6cf1ad99512e6c74263",
+  "source_id": "noaa-goes-magnetometer",
+  "url": "https://services.swpc.noaa.gov/json/goes/primary/magnetometers-1-day.json"
+}

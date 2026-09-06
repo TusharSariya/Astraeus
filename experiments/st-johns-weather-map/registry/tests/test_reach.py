@@ -273,13 +273,11 @@ class ReachSchemaTests(unittest.TestCase):
 
     def test_reach_summary_counts_the_records_that_declare_one(self) -> None:
         report = audit.summary(registry())
-        self.assertEqual(26, report["reach_declared"])
+        self.assertEqual(35, report["reach_declared"])
         self.assertEqual([], report["latency_measured"])
-        # 17 adapters after horizon-tiers, plus the four ensemble adapters
-        # (eccc-reps, ecmwf-aifs-ens, ecmwf-ens, noaa-gefs) registered by
-        # ensemble-families-and-member-statistics, none schedulable. The two
-        # SST capture adapters remain isolated and intentionally unregistered.
-        self.assertEqual(21, len(report["adapter_source_ids"]))
+        # Base 21 adapters plus nine space-weather adapters. SST contributes
+        # two reach declarations but its capture readers remain unregistered.
+        self.assertEqual(30, len(report["adapter_source_ids"]))
 
 
 if __name__ == "__main__":

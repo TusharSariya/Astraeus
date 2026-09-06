@@ -1,0 +1,64 @@
+{
+  "adapter_version": "gfz-kp-current-v1",
+  "api_readback": {
+    "artifact_sha256_verified_before_readback": true,
+    "data_mode": "live",
+    "evidence_classes": [
+      "retrieved"
+    ],
+    "http_status": 200,
+    "latest": [
+      {
+        "label": null,
+        "time": "2026-09-05T21:00:00Z",
+        "units": "flag",
+        "value": "pre",
+        "variable": "kp_status"
+      },
+      {
+        "label": null,
+        "time": "2026-09-05T21:00:00Z",
+        "units": "dimensionless",
+        "value": 0.0,
+        "variable": "kp_index"
+      }
+    ],
+    "latest_fields_verified": 2,
+    "latest_value_unit_time_match": true,
+    "logical_name": "kp",
+    "measurement_scope": "planetary",
+    "missing_required_fields": [],
+    "newest_instant": "2026-09-05T21:00:00Z",
+    "operational": false,
+    "provider_run_id": "gfz-kp-current-202609052100",
+    "quality_status": "unknown",
+    "record_count": 8,
+    "revision_id": "capture-gfz-kp-current-883442298c3ec2d1",
+    "route": "/api/experiments/weather/v0/space-weather/products",
+    "source_id": "gfz-kp-current",
+    "structural_validation_status": "passed"
+  },
+  "artifact_byte_size": 3613,
+  "artifact_revision": "capture-gfz-kp-current-883442298c3ec2d1",
+  "artifact_sha256": "883442298c3ec2d1f1bcc389fdd49d6867ec5575d0a3599ff7ed7af1234d9ba0",
+  "byte_count": 361,
+  "captured_at": "2026-09-05T23:47:21Z",
+  "complete": true,
+  "instant_count": 8,
+  "last_modified": null,
+  "logical_name": "kp",
+  "newest_instant": "2026-09-05T21:00:00Z",
+  "notes": "8 three-hour Kp values from 2026-09-05T00:00:00Z to 2026-09-05T21:00:00Z; licence CC BY 4.0; the Kp JSON status tokens are stored verbatim per value; their meanings are not reinterpreted",
+  "oldest_instant": "2026-09-05T00:00:00Z",
+  "platforms": {},
+  "provider_run_id": "gfz-kp-current-202609052100",
+  "record_count": 8,
+  "request_parameters": {
+    "end": "2026-09-05T23:47:21Z",
+    "index": "Kp",
+    "start": "2026-09-04T23:47:21Z"
+  },
+  "sha256": "eb68e7c3110314d63245ef8c14ab0992e9d1bcd4971b6a45d91273239726f60f",
+  "source_id": "gfz-kp-current",
+  "url": "https://kp.gfz.de/app/json/?start=2026-09-04T23%3A47%3A21Z&end=2026-09-05T23%3A47%3A21Z&index=Kp"
+}

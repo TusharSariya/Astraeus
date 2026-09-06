@@ -324,12 +324,23 @@ class PoliteClient:
         Aborting during the stream — not after — is what keeps a single
         mis-sized global file from consuming the 25 GiB cap.
         """
+        written, _headers = self.download_with_headers(url, destination, max_bytes=max_bytes, headers=headers, chunk_size=chunk_size)
+        return written
+
+    def download_with_headers(self, url: str, destination: Path, *, max_bytes: int, headers: Mapping[str, str] | None = None, chunk_size: int = 1 << 20) -> tuple[int, dict[str, str]]:
+        """``download``, also returning the response headers.
+
+        The space-weather receipts record the provider's own ``Last-Modified``
+        beside the byte count and digest, and that header is only available
+        from the streamed response, so this variant hands it back.
+        """
         if max_bytes <= 0:
             raise ValueError("max_bytes must be positive")
         destination.parent.mkdir(parents=True, exist_ok=True)
         written = 0
         response = self._request("GET", url, headers=headers, stream=True)
         try:
+            response_headers = {str(key): str(value) for key, value in response.headers.items()}
             declared = response.headers.get("Content-Length")
             if (
                 declared is not None
@@ -352,7 +363,7 @@ class PoliteClient:
             raise
         finally:
             response.close()
-        return written
+        return written, response_headers
 
     def download_ranges(
         self,
