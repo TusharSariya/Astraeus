@@ -47,6 +47,7 @@ it('maps native level-qualified HRDPS profile fields into the expert table', asy
       { field: 'temperature_850hPa', value: 9.8 },
       { field: 'relative_humidity_850hPa', value: 99.7 },
       { field: 'geopotential_height_850hPa', value: 1394.5 },
+      { field: 'wind_speed_850hPa', value: 5.0 },
     ] }],
   }), { status: 200, headers: { 'content-type': 'application/json' } })))
   await expect(loadProfile(
@@ -55,7 +56,7 @@ it('maps native level-qualified HRDPS profile fields into the expert table', asy
   )).resolves.toEqual({
     valid_time: '2026-09-06T19:00:00Z',
     levels: [{ pressure_hpa: 850, temperature_c: 9.8, dew_point_c: null,
-      relative_humidity_pct: 99.7, wind_speed_ms: null }],
+      relative_humidity_pct: 99.7, wind_speed_ms: 5.0 }],
   })
 })
 

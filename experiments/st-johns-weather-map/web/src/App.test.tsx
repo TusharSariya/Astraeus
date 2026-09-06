@@ -136,6 +136,7 @@ describe('weather workbench fail-closed behavior', () => {
         levels: [{ pressure_hpa: 850, fields: [
           { field: 'temperature_850hPa', value: 9.8 },
           { field: 'relative_humidity_850hPa', value: 99.7 },
+          { field: 'wind_speed_850hPa', value: 5.0 },
         ] }],
       },
     }))
@@ -144,6 +145,7 @@ describe('weather workbench fail-closed behavior', () => {
     await userEvent.click(await screen.findByText('Humidity & cloud profile'))
     expect(await screen.findByRole('cell', { name: '9.8°C' })).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: '99.7%' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: '5 m/s' })).toBeInTheDocument()
   })
 
   it('does not let an aborted profile response erase the newer selection', async () => {

@@ -269,11 +269,15 @@ def test_real_zarr_sampler_serves_point_and_profile(tmp_path: Path, monkeypatch)
         {
             "temperature_2m": (("valid_time", "latitude", "longitude"), [[[12.5]]], {"units": "degC", "level_type": "heightAboveGround", "level_value": 2}),
             "temperature_850hPa": (("valid_time", "latitude", "longitude"), [[[4.25]]], {"units": "degC", "level_type": "isobaricInhPa", "level_value": 850}),
+            "wind_u_850hPa": (("valid_time", "latitude", "longitude"), [[[3.0]]], {"units": "m s-1", "level_type": "isobaricInhPa", "level_value": 850}),
+            "wind_v_850hPa": (("valid_time", "latitude", "longitude"), [[[4.0]]], {"units": "m s-1", "level_type": "isobaricInhPa", "level_value": 850}),
         },
         coords={"valid_time": [np.datetime64(valid.replace(tzinfo=None), "ns")], "latitude": [47.56], "longitude": [-52.71]},
     )
     path = write_zarr(dataset, tmp_path / "selected.zarr.zip")
-    fields = {"temperature_2m": HRDPS_VARS["temperature_2m"], "temperature_850hPa": HRDPS_VARS["temperature_850hPa"]}
+    fields = {name: HRDPS_VARS[name] for name in (
+        "temperature_2m", "temperature_850hPa", "wind_u_850hPa", "wind_v_850hPa"
+    )}
     provenance = {
         "source_id": "eccc-hrdps", "producer": "Environment and Climate Change Canada",
         "product": "HRDPS", "native_resolution": "RLatLon0.0225", "native_crs": "EPSG:4326",
@@ -291,7 +295,13 @@ def test_real_zarr_sampler_serves_point_and_profile(tmp_path: Path, monkeypatch)
     profile, native = coordinator.profile_levels(47.56, -52.71, valid, [850])
     assert native == valid
     level = next(item for item in profile if item.pressure_hpa == 850)
-    assert [(item.field, item.value) for item in level.fields if item.value is not None] == [("temperature_850hPa", 4.25)]
+    by_field = {item.field: item for item in level.fields}
+    assert by_field["temperature_850hPa"].value == 4.25
+    assert by_field["wind_speed_850hPa"].value == 5.0
+    assert by_field["wind_direction_850hPa"].value == pytest.approx(216.9)
+    for name in ("wind_speed_850hPa", "wind_direction_850hPa"):
+        assert by_field[name].provenance.derivation == "wind_speed_and_direction_from_components"
+        assert by_field[name].provenance.vertical_level == "850 hPa"
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
     monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: coordinator)
     client = TestClient(app_module.app)
@@ -305,3 +315,6 @@ def test_real_zarr_sampler_serves_point_and_profile(tmp_path: Path, monkeypatch)
     })
     assert profile_response.status_code == 200
     assert profile_response.json()["valid_time"] == valid.isoformat().replace("+00:00", "Z")
+    response_fields = {item["field"]: item for item in profile_response.json()["levels"][0]["fields"]}
+    assert response_fields["wind_speed_850hPa"]["value"] == 5.0
+    assert response_fields["wind_direction_850hPa"]["provenance"]["derivation"] == "wind_speed_and_direction_from_components"
