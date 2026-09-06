@@ -352,7 +352,9 @@ FAMILIES: list[dict[str, Any]] = [
         ),
         "groups": {
             "surface_mass": "Mass concentration at the surface.",
+            "surface_mass_24h_mean": "Mass concentration at the surface as a trailing 24-hour running mean; never an instantaneous value.",
             "ozone_mass": "Ozone mass concentration at the surface.",
+            "ozone_mole_fraction": "Ozone mole fraction at the surface; not interchangeable with mass concentration without atmospheric state.",
             "nitrogen_dioxide_mass": "Nitrogen dioxide mass concentration at the surface.",
             "sulphur_dioxide_mass": "Sulphur dioxide mass concentration at the surface.",
             "carbon_monoxide_mass": "Carbon monoxide mass concentration at the surface.",
@@ -912,6 +914,9 @@ FIELDS: list[dict[str, Any]] = [
     _f("pm2_5_surface", "surface PM2.5 mass concentration", "kg m-3", "air_quality", "surface",
        "surface_mass", "Surface fine particulate mass concentration (RAQDPS SFC_PM2.5).",
        standard_name="mass_concentration_of_pm2p5_ambient_aerosol_particles_in_air"),
+    _f("pm2_5_surface_24h_mean", "24-hour running-mean surface PM2.5 mass concentration", "kg m-3", "air_quality", "surface",
+       "surface_mass_24h_mean", "A producer-published 24-hour running mean, not an instantaneous concentration.",
+       standard_name="mass_concentration_of_pm2p5_ambient_aerosol_particles_in_air"),
     _f("pm2_5_column", "column PM2.5 mass burden", "kg m-2", "air_quality",
        "entire atmosphere (column)", "column_mass",
        "Entire-column fine particulate mass burden (RAQDPS EATM_PM2.5). Not comparable with a "
@@ -925,6 +930,7 @@ FIELDS: list[dict[str, Any]] = [
        "measurement. Every AOD path into the evidence box is credential-blocked today.",
        standard_name="atmosphere_optical_thickness_due_to_ambient_aerosol_particles"),
     _f("ozone_surface", "surface ozone mass concentration", "kg m-3", "air_quality", "surface", "ozone_mass", "Surface ozone mass concentration."),
+    _f("ozone_surface_mole_fraction", "surface ozone mole fraction", "nmol mol-1", "air_quality", "surface", "ozone_mole_fraction", "Surface ozone reported in ppb, retained as nmol/mol without an atmosphere-dependent mass conversion."),
     _f("nitrogen_dioxide_surface", "surface nitrogen dioxide mass concentration", "kg m-3", "air_quality", "surface", "nitrogen_dioxide_mass", "Surface nitrogen dioxide mass concentration."),
     _f("sulphur_dioxide_surface", "surface sulphur dioxide mass concentration", "kg m-3", "air_quality", "surface", "sulphur_dioxide_mass", "Surface sulphur dioxide mass concentration."),
     _f("carbon_monoxide_surface", "surface carbon monoxide mass concentration", "kg m-3", "air_quality", "surface", "carbon_monoxide_mass", "Surface carbon monoxide mass concentration."),
@@ -1671,6 +1677,10 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
         "Hourly at 10 km, about 33 KB per step through GeoMet WCS; not retrieved yet."),
     _sf("eccc-raqdps", "pm2_5_column", "RAQDPS.EATM_PM2.5", "available-not-stored",
         "As pm2_5_surface. The aerosol term a transparency derivation would read."),
+    _sf("nl-air-quality-csv", "pm2_5_surface_24h_mean", "PM2_5_RUN_AVG", "available-not-stored",
+        "Provisional 24-hour running average in micrograms per cubic metre; isolated adapter only."),
+    _sf("nl-air-quality-csv", "ozone_surface_mole_fraction", "O3", "available-not-stored",
+        "Provisional ozone in ppb; isolated adapter only."),
     _sf("eccc-raqdps", "aerosol_optical_depth_550nm", None, "not-published",
         "No aerosol optical depth of any kind exists on GeoMet: zero matches for aod, aerosol or "
         "optical across all 6123 coverage ids. ECCC publishes mass concentration, never optical "
