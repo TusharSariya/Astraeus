@@ -9,10 +9,23 @@ import httpx
 import pytest
 
 from weather_api.swpc_rtsw_query import SWPCRTSWQueryService, SWPCRTSWUnavailable
+from weather_api.swpc_rtsw_worker import validated
 
 
 FIXTURE = Path(__file__).parent / "fixtures/space_weather/rtsw_mag_1m.json"
 NOW = datetime(2026, 9, 5, 17, 59, 30, tzinfo=UTC)
+
+
+def decode(body: bytes, at: datetime | None):
+    rows = validated(body)
+    if at is None:
+        return {"rows": len(rows)}
+    candidates = [(datetime.fromisoformat(row["time_tag"]).replace(tzinfo=UTC), row["source"], row) for row in rows if datetime.fromisoformat(row["time_tag"]).replace(tzinfo=UTC) <= at and isinstance(row["bz_gsm"], (int, float))]
+    newest = max(item[0] for item in candidates)
+    choices = [(source, row) for stamp, source, row in candidates if stamp == newest]
+    active = [item for item in choices if item[1]["active"] is True]
+    source, row = sorted(active if len(active) == 1 else choices, key=lambda item: item[0])[0]
+    return {"time": newest.isoformat(), "source": source, "row": row, "active_count": len(active)}
 
 
 def service(*, status: int = 200, delay: float = 0):
@@ -24,7 +37,7 @@ def service(*, status: int = 200, delay: float = 0):
             time.sleep(delay)
         calls.append(request)
         return httpx.Response(status, content=body, headers={"cache-control": "max-age=60"}, request=request)
-    return SWPCRTSWQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)), utcnow=lambda: NOW), calls
+    return SWPCRTSWQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)), utcnow=lambda: NOW, bounded_decode=decode), calls
 
 
 def test_selected_native_row_preserves_spacecraft_quality_and_transport():
@@ -67,7 +80,7 @@ def test_no_active_flag_is_disclosed_and_gap_is_never_zero():
     rows[-2]["active"] = None
     body = json.dumps(rows).encode()
     client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=body, headers={"cache-control": "max-age=60"}, request=request)))
-    wind = SWPCRTSWQueryService(client=client, utcnow=lambda: NOW).latest(NOW)
+    wind = SWPCRTSWQueryService(client=client, utcnow=lambda: NOW, bounded_decode=decode).latest(NOW)
     assert wind.measured_at < NOW and wind.bz_gsm_nt != 0
     assert wind.active is None
     assert "no spacecraft carried" in wind.notices[0]
@@ -87,6 +100,7 @@ def test_transport_failure_is_independently_unavailable():
     (lambda rows: rows[0].__setitem__("bt", "6.2"), "not finite numeric or null"),
     (lambda rows: rows[0].__setitem__("active", 1), "not boolean or null"),
     (lambda rows: rows.append(dict(rows[0])), "duplicates native time/source"),
+    (lambda rows: rows[0].__setitem__("time_tag", "not-a-time"), "invalid timestamp"),
 ])
 def test_every_native_row_field_and_identity_validates_without_silent_drop(mutation, message):
     rows = json.loads(FIXTURE.read_text())
@@ -94,7 +108,7 @@ def test_every_native_row_field_and_identity_validates_without_silent_drop(mutat
     body = json.dumps(rows).encode()
     client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=body, headers={"cache-control": "max-age=60"}, request=request)))
     with pytest.raises(SWPCRTSWUnavailable, match=message):
-        SWPCRTSWQueryService(client=client, utcnow=lambda: NOW).latest(NOW)
+        SWPCRTSWQueryService(client=client, utcnow=lambda: NOW, bounded_decode=decode).latest(NOW)
 
 
 def test_multiple_active_spacecraft_is_disclosed_before_deterministic_fallback():
@@ -105,6 +119,6 @@ def test_multiple_active_spacecraft_is_disclosed_before_deterministic_fallback()
     rows.append(duplicate)
     body = json.dumps(rows).encode()
     client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=body, headers={"cache-control": "max-age=60"}, request=request)))
-    wind = SWPCRTSWQueryService(client=client, utcnow=lambda: NOW).latest(NOW)
+    wind = SWPCRTSWQueryService(client=client, utcnow=lambda: NOW, bounded_decode=decode).latest(NOW)
     assert wind.feed_declared_spacecraft == "ACE" and wind.bz_gsm_nt == -2.0
     assert "multiple spacecraft carried" in wind.notices[0]
