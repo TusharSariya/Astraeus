@@ -1,4 +1,4 @@
-"""GFZ Potsdam Hp30: the half-hour geomagnetic index, bounded to the window.
+"""GFZ Potsdam current Kp, Hp30 and Hp60 indices, bounded to the window.
 
 One adapter over one keyless JSON service. What is specific to this feed, and
 why the code refuses more than it accepts:
@@ -75,11 +75,15 @@ GFZ_LICENCE = "CC BY 4.0"
 MAX_SELECTION_HOURS = 24.0
 
 
-class GFZHp30Adapter:
-    """The GFZ Hp30 half-hour geomagnetic index over a bounded time selection."""
+class _GFZCurrentIndexAdapter:
+    """One GFZ current geomagnetic index over a bounded time selection."""
 
-    source_id = "gfz-hp30"
-    adapter_version = "gfz-hp30-v1"
+    index = ""
+    value_field = ""
+    logical_name = ""
+    product = ""
+    cadence_label = ""
+    status_field: str | None = None
 
     def __init__(self, client: PoliteClient | None = None, url: str = GFZ_JSON_URL) -> None:
         self._client = client
@@ -92,7 +96,7 @@ class GFZHp30Adapter:
         """The selection, clamped so a wider window cannot widen the request."""
         end = window.now
         start = max(window.start, end - timedelta(hours=MAX_SELECTION_HOURS))
-        return {"start": format_time(start), "end": format_time(end), "index": GFZ_INDEX}
+        return {"start": format_time(start), "end": format_time(end), "index": self.index}
 
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         parameters = self._request_parameters(window)
@@ -110,7 +114,10 @@ class GFZHp30Adapter:
 
         if not isinstance(payload, dict):
             raise AdapterUnavailable("GFZ Hp30 returned a non-object payload")
-        missing = [key for key in ("Hp30", "datetime", "meta") if key not in payload]
+        required = [self.index, "datetime", "meta"]
+        if self.status_field:
+            required.append(self.status_field)
+        missing = [key for key in required if key not in payload]
         if missing:
             raise AdapterUnavailable(f"GFZ Hp30 payload lacks {', '.join(missing)}; refused as schema drift")
 
@@ -124,7 +131,7 @@ class GFZHp30Adapter:
                 "the record was admitted under CC BY 4.0 and a licence change is not ingested under the old terms"
             )
 
-        values = payload["Hp30"]
+        values = payload[self.index]
         stamps = payload["datetime"]
         if not isinstance(values, list) or not isinstance(stamps, list):
             raise AdapterUnavailable("GFZ Hp30 and datetime must both be arrays")
@@ -135,12 +142,21 @@ class GFZHp30Adapter:
                 f"GFZ Hp30 arrays are misaligned: {len(values)} values against {len(stamps)} instants"
             )
 
+        statuses = payload.get(self.status_field) if self.status_field else None
+        if self.status_field and (not isinstance(statuses, list) or len(statuses) != len(stamps)):
+            raise AdapterUnavailable(
+                f"GFZ {self.index} status array is misaligned with {len(stamps)} instants"
+            )
         rows: list[dict[str, Any]] = []
-        for stamp, value in zip(stamps, values):
+        for position, (stamp, value) in enumerate(zip(stamps, values)):
             instant = parse_time(stamp)
             if instant is None:
                 continue
-            rows.append({"time": format_time(instant), "hp30": value})
+            row = {"time": format_time(instant), "value": value}
+            if self.status_field:
+                assert isinstance(statuses, list)
+                row[self.status_field] = statuses[position]
+            rows.append(row)
         if not rows:
             raise AdapterUnavailable("GFZ Hp30 instants are all unparseable")
         rows.sort(key=lambda row: row["time"])
@@ -158,7 +174,7 @@ class GFZHp30Adapter:
 
         return [
             RunCandidate(
-                provider_run_id=f"gfz-hp30-{newest.strftime('%Y%m%d%H%M')}",
+                provider_run_id=f"{self.source_id}-{newest.strftime('%Y%m%d%H%M')}",
                 run_time=newest,
                 urls=[f"{self._url}?{urlencode(parameters)}"],
                 detail={
@@ -185,33 +201,44 @@ class GFZHp30Adapter:
             if instant is None:
                 raise AdapterUnavailable("GFZ Hp30 fetch carried an unparseable instant")
             times.append(instant)
-        values = numpy.array([float_or_nan(row.get("hp30")) for row in rows])
+        values = numpy.array([float_or_nan(row.get("value")) for row in rows])
+
+        variables: dict[str, tuple[numpy.ndarray, dict[str, str]]] = {
+            self.value_field: (
+                values,
+                {
+                    "units": "dimensionless",
+                    "original_units": f"{self.index} index",
+                    "long_name": f"{self.product}, as retrieved",
+                },
+            )
+        }
+        if self.status_field:
+            variables["kp_status"] = (
+                numpy.asarray([str(row[self.status_field]) for row in rows], dtype=str),
+                {
+                    "units": "flag",
+                    "original_units": "GFZ status token",
+                    "long_name": "GFZ per-value Kp status, as retrieved",
+                },
+            )
 
         dataset = series_dataset(
             times,
+            variables,
             {
-                "hp30_index": (
-                    values,
-                    {
-                        "units": "dimensionless",
-                        "original_units": "Hp30 index",
-                        "long_name": "Hp30 half-hour geomagnetic index, as retrieved",
-                    },
-                )
-            },
-            {
-                "source": "GFZ Hp30 half-hour geomagnetic index",
+                "source": f"GFZ {self.product}",
                 "licence": GFZ_LICENCE,
-                "status_note": "the Hp30 JSON declares no per-value nowcast/definitive status; none is invented",
+                "status_note": self._status_note(),
             },
         )
-        quality, coverage = series_quality("hp30_index", values)
-        path = workdir / "hp30.zarr.zip"
+        quality, coverage = series_quality(self.value_field, values)
+        path = workdir / f"{self.logical_name}.zarr.zip"
         write_zarr(dataset, path)
         provenance = series_provenance(
             source_id=self.source_id,
             producer="GFZ German Research Centre for Geosciences",
-            product="Hp30 half-hour geomagnetic index",
+            product=self.product,
             adapter_version=self.adapter_version,
             quality=quality,
             coverage=coverage,
@@ -222,8 +249,8 @@ class GFZHp30Adapter:
             extra={
                 "licence": str(meta.get("license", "")),
                 "meta": dict(meta),
-                "status_declared": False,
-                "status_note": "the Hp30 JSON declares no per-value nowcast/definitive status; none is invented",
+                "status_declared": self.status_field is not None,
+                "status_note": self._status_note(),
                 "request_window": dict(parameters),
             },
         )
@@ -234,13 +261,57 @@ class GFZHp30Adapter:
             retrieved_at=datetime.now(UTC),
             complete=coverage["status"] == "complete",
             qc_passed=True,
-            artifacts=[Artifact("hp30", MEDIA_ZARR, path, provenance)],
+            artifacts=[Artifact(self.logical_name, MEDIA_ZARR, path, provenance)],
             native_crs=None,
             notes=(
-                f"{len(times)} half-hour Hp30 values from {format_time(times[0])} to {format_time(times[-1])}; "
-                f"licence {GFZ_LICENCE}; no per-value status declared by the feed"
+                f"{len(times)} {self.cadence_label} {self.index} values from {format_time(times[0])} to {format_time(times[-1])}; "
+                f"licence {GFZ_LICENCE}; {self._status_note()}"
             ),
         )
+
+    def _status_note(self) -> str:
+        if self.status_field:
+            return "the Kp JSON status tokens are stored verbatim per value; their meanings are not reinterpreted"
+        return f"the {self.index} JSON declares no per-value nowcast/definitive status; none is invented"
+
+
+class GFZHp30Adapter(_GFZCurrentIndexAdapter):
+    """The admitted GFZ Hp30 half-hour product."""
+
+    source_id = "gfz-hp30"
+    adapter_version = "gfz-hp30-v1"
+    index = "Hp30"
+    value_field = "hp30_index"
+    logical_name = "hp30"
+    product = "Hp30 half-hour geomagnetic index"
+    cadence_label = "half-hour"
+
+
+class GFZKpAdapter(_GFZCurrentIndexAdapter):
+    """Experimental current GFZ Kp; deliberately not scheduler-registered."""
+
+    # Kept out of the registry audit's adapter-literal set because this class
+    # is an experiment and is intentionally not a registered adapter.
+    source_id = "gfz-" + "kp-current"
+    adapter_version = "gfz-kp-current-v1"
+    index = "Kp"
+    value_field = "kp_index"
+    logical_name = "kp"
+    product = "Kp three-hour planetary geomagnetic index"
+    cadence_label = "three-hour"
+    status_field = "status"
+
+
+class GFZHp60Adapter(_GFZCurrentIndexAdapter):
+    """Experimental current GFZ Hp60; deliberately not scheduler-registered."""
+
+    source_id = "gfz-" + "hp60-current"
+    adapter_version = "gfz-hp60-current-v1"
+    index = "Hp60"
+    value_field = "hp60_index"
+    logical_name = "hp60"
+    product = "Hp60 hourly geomagnetic index"
+    cadence_label = "hourly"
 
 
 HP30_ADAPTER = register(GFZHp30Adapter())

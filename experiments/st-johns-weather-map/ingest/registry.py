@@ -165,6 +165,8 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "noaa-swpc-alerts": ("product_id", "message", "message_code", "serial_number", "noaa_scale"),
     "noaa-swpc-scales": ("r_scale", "s_scale", "g_scale", "r_minor_probability", "r_major_probability", "s_probability", "valid_from_unix", "scale_kind"),
     "gfz-hp30": ("hp30_index",),
+    "gfz-kp-current": ("kp_index", "kp_status"),
+    "gfz-hp60-current": ("hp60_index",),
     "noaa-goes-magnetometer": ("he", "hp", "hn", "total", "arcjet_flag"),
     "noaa-goes-xray": ("xray_flux_short", "xray_flux_long", "observed_flux_short", "observed_flux_long", "electron_correction_short", "electron_correction_long", "electron_contamination_short", "electron_contamination_long"),
     "noaa-swpc-kyoto-dst": ("dst_index",),

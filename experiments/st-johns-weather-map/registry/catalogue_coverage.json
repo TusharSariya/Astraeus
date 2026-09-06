@@ -168,8 +168,10 @@
       "noaa-swpc-stereo-a",
       "noaa-swpc-kp-hourly-prediction"
     ],
-    "GFZ Hp30": [
-      "gfz-hp30"
+    "GFZ current geomagnetic indices": [
+      "gfz-hp30",
+      "gfz-kp-current",
+      "gfz-hp60-current"
     ],
     "CelesTrak GP and Space-Track": [
       "celestrak-gp",

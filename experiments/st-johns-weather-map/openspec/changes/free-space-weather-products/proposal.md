@@ -50,6 +50,9 @@ stays `operational: false`; registry status stays a ceiling.
   `reprocessed` with producer Kyoto WDC and intermediary NOAA SWPC.
 - **`ingest/adapters/gfz.py`** (new): GFZ Hp30 over a bounded 24-hour
   selection, licence checked against the response's own `meta.license`.
+  Follow-up issue 150 adds unregistered experimental readers for current GFZ
+  Kp and Hp60 over the same bound. Kp's per-value `status` token is retained;
+  Hp60 declares none. Both remain `catalogued` and cannot be scheduled.
 - **Registry**: the ten records gain reach, native cadence and parseable
   freshness so they schedule; the RTSW admission condition is recorded as
   satisfied by the v2 adapter; the plasma access endpoint is corrected with
