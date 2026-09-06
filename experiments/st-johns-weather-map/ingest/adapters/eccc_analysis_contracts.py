@@ -35,8 +35,8 @@ class DeferredPath:
 
 
 PRODUCT_CONTRACTS = {
-    "raqdps": ProductContract(
-        "eccc-raqdps", "RAQDPS", "GeoMet WCS 2.0.1",
+    "raqdps_hourly": ProductContract(
+        "eccc-raqdps", "RAQDPS hourly", "GeoMet WCS 2.0.1",
         (
             CoverageField("RAQDPS.SFC_PM2.5", "pm2_5_surface"),
             CoverageField("RAQDPS.EATM_PM2.5", "pm2_5_column"),
@@ -50,9 +50,14 @@ PRODUCT_CONTRACTS = {
             CoverageField("RAQDPS.EAtm_PM2.5-WildfireSmokePlume", "raw__raqdps_smoke_pm2_5_column"),
             CoverageField("RAQDPS.Sfc_PM10-WildfireSmokePlume", "raw__raqdps_smoke_pm10_surface"),
             CoverageField("RAQDPS.EAtm_PM10-WildfireSmokePlume", "raw__raqdps_smoke_pm10_column"),
+        ), timedelta(hours=1), "hourly forecast valid time plus explicit reference time",
+    ),
+    "raqdps_statistics": ProductContract(
+        "eccc-raqdps", "RAQDPS 24-hour smoke statistics", "GeoMet WCS 2.0.1",
+        (
             CoverageField("RAQDPS.Sfc_PM2.5-WildireSmokePlume-DAvg", "raw__raqdps_smoke_pm2_5_surface_24h_mean"),
             CoverageField("RAQDPS.Sfc_PM2.5-WildireSmokePlume-DMax", "raw__raqdps_smoke_pm2_5_surface_24h_max"),
-        ), timedelta(hours=1), "forecast valid time plus explicit reference time",
+        ), timedelta(hours=24), "24-hour statistic valid time plus explicit reference time",
     ),
     "rdaqa_preliminary": ProductContract(
         "eccc-rdaqa", "RDAQA preliminary analysis", "GeoMet WCS 2.0.1",
@@ -164,7 +169,7 @@ def fetch_unresolved_product(
     from ingest.adapters.eccc_geomet_wcs import fetch_artifact
 
     contract = product_contract(name)
-    model = "raqdps" if name == "raqdps" else "rdaqa"
+    model = "raqdps" if name.startswith("raqdps_") else "rdaqa"
     artifacts = [
         fetch_artifact(
             client, field, valid_time=valid_time, reference_time=reference_time,

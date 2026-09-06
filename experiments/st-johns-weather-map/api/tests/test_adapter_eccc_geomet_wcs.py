@@ -534,3 +534,38 @@ def test_live_rdps_seeing_artifact_and_api_readback(tmp_path, monkeypatch):
 
     samples = LiveHarness().sample_point(47.56, -52.71, valid)
     assert any(sample.variable == FIELD.variable and sample.value is not None for sample in samples)
+
+
+def test_source_scoped_raw_field_is_not_exposed_by_normal_point_route(tmp_path, monkeypatch):
+    field = CoverageField("RDAQA-FW_10km_PM2.5", "raw__rdaqa_smoke_pm2_5_surface")
+    client = GeoMetWCSClient(client=FixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet")
+    artifact = fetch_artifact(client, field, valid_time=VALID, reference_time=RUN,
+                              workdir=tmp_path / "raw", model="rdaqa")
+    import zarr
+    zipped = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")
+    dataset = xarray.open_zarr(zipped, consolidated=False)
+    current = CurrentArtifact(
+        source_id="eccc-rdaqa", logical_name=artifact.logical_name, revision_id="staged-raw",
+        object_key="unused", media_type=artifact.media_type, byte_size=artifact.byte_size,
+        provenance=artifact.provenance, published_at=VALID, run_time=RUN, retrieved_at=VALID,
+        provider_run_id="staged-only", native_crs="EPSG:4326",
+    )
+
+    class Harness(LiveStore):
+        def __init__(self):
+            super().__init__(artifact_store=None, cache_dir=tmp_path)
+        def current(self):
+            return [current]
+        def open(self, _artifact):
+            return dataset
+        def assert_object_store_reachable(self):
+            pass
+
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(api_module, "live_store", Harness)
+    response = TestClient(app).get(
+        "/api/experiments/weather/v0/point",
+        params={"latitude": 47.56, "longitude": -52.71, "valid_time": VALID.isoformat()},
+    )
+    assert response.status_code == 200
+    assert field.variable not in {item["field"] for item in response.json()["fields"]}

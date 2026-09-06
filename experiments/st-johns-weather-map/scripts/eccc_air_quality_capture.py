@@ -15,11 +15,11 @@ from pathlib import Path
 import xarray
 import zarr
 
-from ingest.adapters.eccc_analysis_contracts import PRODUCT_CONTRACTS
+from ingest.adapters.eccc_analysis_contracts import PRODUCT_CONTRACTS, fetch_unresolved_product
 from ingest.adapters.eccc_geomet_wcs import GeoMetWCSClient, fetch_artifact
 from ingest.resources import acquisition_budget
 
-PRODUCTS = ("raqdps", "rdaqa_preliminary", "rdaqa_final", "rdaqa_smoke")
+PRODUCTS = ("raqdps_hourly", "raqdps_statistics", "rdaqa_preliminary", "rdaqa_final", "rdaqa_smoke")
 
 
 def main() -> None:
@@ -35,40 +35,30 @@ def main() -> None:
         with acquisition_budget(args.cap_bytes) as budget:
             for product in PRODUCTS:
                 contract = PRODUCT_CONTRACTS[product]
-                for field in contract.fields:
-                    capability = client.metadata(field.coverage_id)
-                    valid_time = capability.time.default
-                    reference_time = capability.reference_time.default if capability.reference_time else None
-                    artifact = fetch_artifact(
-                        client,
-                        field,
-                        valid_time=valid_time,
-                        reference_time=reference_time,
-                        workdir=root / product,
-                        model="raqdps" if product == "raqdps" else "rdaqa",
-                    )
+                first = client.metadata(contract.fields[0].coverage_id)
+                valid_time = first.time.default
+                reference_time = first.reference_time.default if first.reference_time else None
+                result = fetch_unresolved_product(
+                    client, product, valid_time=valid_time, reference_time=reference_time,
+                    workdir=root / product,
+                )
+                if result.complete or result.qc_passed is not True:
+                    raise RuntimeError(f"{product} did not return the expected structural-only refusal")
+                for field, artifact in zip(contract.fields, result.artifacts, strict=True):
                     store = zarr.storage.ZipStore(str(artifact.payload_path), mode="r")
                     try:
                         stored_units = xarray.open_zarr(store, consolidated=False)[field.variable].attrs["units"]
                     finally:
                         store.close()
                     rows.append({
-                        "product": product,
-                        "coverage_id": field.coverage_id,
-                        "variable": field.variable,
-                        "valid_time": artifact.provenance["valid_time"],
-                        "run_time": artifact.provenance["run_time"],
+                        "product": product, "coverage_id": field.coverage_id, "variable": field.variable,
+                        "valid_time": artifact.provenance["valid_time"], "run_time": artifact.provenance["run_time"],
                         "http_completed_at": artifact.provenance["http_completed_at"],
-                        "url": artifact.provenance["source_uri"],
-                        "headers": artifact.provenance["http_response_headers"],
+                        "url": artifact.provenance["source_uri"], "headers": artifact.provenance["http_response_headers"],
                         "raw": artifact.provenance["raw_response"],
-                        "artifact": {
-                            "path": str(artifact.payload_path),
-                            "bytes": artifact.byte_size,
-                            "sha256": artifact.provenance["sha256"],
-                        },
-                        "units_as_published": artifact.provenance["units_as_published"],
-                        "stored_units": stored_units,
+                        "artifact": {"path": str(artifact.payload_path), "bytes": artifact.byte_size, "sha256": artifact.provenance["sha256"]},
+                        "units_as_published": artifact.provenance["units_as_published"], "stored_units": stored_units,
+                        "group_complete": result.complete, "group_qc_passed": result.qc_passed, "group_notes": result.notes,
                     })
     finally:
         client.close()

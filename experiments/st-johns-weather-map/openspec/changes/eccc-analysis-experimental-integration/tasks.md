@@ -33,6 +33,6 @@
 
 - [x] Enumerate all selected live RAQDPS and RDAQA WCS fields, units, levels, phases, run/valid-time identity, and unsupported catalogue mappings.
 - [x] Preserve actual HTTP completion time, response headers, raw hashes, geometry, and units in each isolated artifact.
-- [x] Prove every selected raw grid against normalized storage and actual point-API HTTP readback.
+- [x] Prove every selected raw grid against normalized storage and test-harness HTTP serialization; prove source-scoped raw fields remain absent from the normal point route.
 - [ ] Owner accepts canonical PM10-column, gas mole-fraction, smoke-attribution, time-average, and RDAQA analysis-phase field contracts before a full RunManifest can publish.
 - [ ] Only after acceptance: add the canonical mappings, validate the complete product with `validate_run`, and consider registration separately.

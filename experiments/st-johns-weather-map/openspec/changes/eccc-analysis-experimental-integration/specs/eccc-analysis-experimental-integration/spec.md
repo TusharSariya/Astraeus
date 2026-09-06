@@ -11,3 +11,9 @@ The experimental WCS path SHALL enumerate and retain every selected RAQDPS and R
 - **WHEN** a selected RAQDPS or RDAQA gas coverage publishes `mol/mol` and the catalogue maps that species only as mass concentration
 - **THEN** the experimental reader preserves the raw mole-fraction units and source identity
 - **AND** the complete product remains nonpublishable pending an accepted canonical contract
+
+#### Scenario: Source-scoped field reaches the normal point route
+
+- **WHEN** a staged source-scoped raw field has no accepted catalogue and manifest mapping
+- **THEN** the normal point route omits it
+- **AND** test-only injected mappings are described as serialization evidence rather than admission
