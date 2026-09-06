@@ -918,6 +918,20 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             data_mode=DataMode.UNAVAILABLE, layers=[],
             notices=[f"{product} has no timestamp-demand layer implementation"],
         )
+    if product is not None and product.upper() == "GFS":
+        try:
+            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+            times = gfs_query_coordinator().cached_valid_times()
+        except Exception as error:  # noqa: BLE001
+            return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=[f"GFS demand raster availability could not be resolved: {type(error).__name__}"])
+        return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
+            id="noaa-gfs-demand-total-cloud", title="GFS total cloud (selected-time native grid)",
+            kind="raster", field="total_cloud_geometric", product="GFS", units="percent",
+            semantics="NOAA GFS entire-atmosphere geometric total cloud rendered here from the selected native grid; nearest cell, never interpolated or compared as opacity",
+            times=list(times), cadence_seconds=None, staleness_tolerance_seconds=3600,
+            z_index=Z_INDEX_BY_KIND["raster"], evidence_basis="demand_query", group="rendered_grid",
+            raster_available=bool(times), legend_available=False,
+        )], notices=["GFS raster values are fetched only for the selected native timestamp; advertised hours are metadata, not fetched coverage"])
 
     store = live_store()
     if store is None:
@@ -1598,6 +1612,19 @@ def get_layer_raster(
     if south >= north or west >= east:
         raise HTTPException(status_code=422, detail="bounds must be a south-west to north-east box")
     bounds = {"south": south, "west": west, "north": north, "east": east}
+
+    if layer_id == "noaa-gfs-demand-total-cloud":
+        try:
+            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+            image, entry = gfs_query_coordinator().total_cloud_raster(
+                moment, bounds=bounds, width=width, height=height, crs=requested_crs,
+            )
+        except (grids.GridUnavailable, grids.GridNotPublished, grids.FrameNotStored, ValueError) as error:
+            raise HTTPException(status_code=502, detail=f"{layer_id}: {error}") from error
+        headers = image.headers(layer_id=layer_id)
+        headers["X-Weather-Evidence-Basis"] = "demand_query"
+        headers["X-Weather-Retrieval-Time"] = entry.fetched_at.isoformat()
+        return Response(content=image.payload, media_type=image.content_type, headers=headers)
 
     grid_spec = grids.rendered_grid_spec(layer_id)
     if grid_spec is not None:

@@ -532,3 +532,23 @@ def test_shared_timeline_refuses_an_unknown_selected_product(monkeypatch):
     assert response.data_mode.value == "unavailable"
     assert all(not item.available_products for item in response.items)
     assert response.notices == ["NOAA has no timestamp-demand timeline implementation"]
+
+def test_gfs_scoped_layers_advertise_only_the_native_demand_raster(monkeypatch):
+    from fastapi.testclient import TestClient
+    import sys
+    app_module = sys.modules['weather_api.app']
+    from weather_api import gfs_query
+    stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    class Coordinator:
+        def cached_valid_times(self): return (stamp,)
+    monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
+    monkeypatch.setattr(gfs_query, 'gfs_query_coordinator', lambda: Coordinator())
+    body = TestClient(app_module.app).get(f'{app_module.PREFIX}/layers', params={'product':'GFS'}).json()
+    assert body['data_mode'] == 'live'
+    assert [layer['id'] for layer in body['layers']] == ['noaa-gfs-demand-total-cloud']
+    layer = body['layers'][0]
+    assert layer['evidence_basis'] == 'demand_query'
+    assert layer['units'] == 'percent'
+    assert layer['field'] == 'total_cloud_geometric'
+    assert layer['times'] == [stamp.isoformat().replace('+00:00','Z')]
+    assert layer['raster_available'] is True and layer['legend_available'] is False

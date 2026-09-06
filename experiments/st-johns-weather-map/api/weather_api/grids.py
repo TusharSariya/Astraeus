@@ -150,6 +150,10 @@ WEONG_DISCLOSURE = (
 
 RENDERED_GRID_SPECS: tuple[RenderedGridSpec, ...] = (
     RenderedGridSpec(
+        "noaa-gfs-demand-total-cloud", "noaa-gfs", "surface", "total_cloud_geometric",
+        "total_cloud_geometric", "geometric total cloud cover", "entire atmosphere",
+    ),
+    RenderedGridSpec(
         "noaa-gfs-surface-cloud-low", "noaa-gfs", "surface", "cloud_low",
         "cloud_low", "low cloud cover", "low cloud layer",
     ),
