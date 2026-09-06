@@ -14,9 +14,12 @@ MUST NOT be clamped to the request window.
 
 Structural completeness SHALL be evaluated by group type, not by the generic
 timestamp-grid coverage ratio. The initial prevailing group and every `FM`
-group are self-contained and SHALL contain decoded wind speed and direction,
-visibility, and a sky declaration. `CAVOK` satisfies visibility, weather and
-sky together when AWC preserves it as such. A null or empty `wxString` in a
+group are self-contained and SHALL contain decoded wind speed plus either a
+numeric direction or an explicit variable-wind marker, visibility, and a sky
+declaration. A decoded cloud list, vertical visibility, or known clear-sky code
+satisfies sky. `CAVOK` satisfies visibility, weather and sky together when AWC
+preserves it as such. Variable wind SHALL leave u/v missing rather than receive
+an invented bearing. A null or empty `wxString` in a
 self-contained group is an explicit decoded absence of significant weather,
 not a missing field. Gust is optional. A BECMG, TEMPO or PROB group MAY omit
 unchanged fields. AWC sometimes expands such fields into decoded JSON: a
