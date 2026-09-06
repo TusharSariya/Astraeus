@@ -127,6 +127,15 @@ def test_hrdps_complete_operation_bounds_require_kernel_memory_and_filesystem_ca
     )
 
 
+@pytest.mark.parametrize("memory_limit", ["max", str(2 * 1024**3), str(3 * 1024**3), str(5 * 1024**3)])
+def test_hrdps_refuses_every_memory_limit_except_measured_4_gib(monkeypatch, tmp_path, memory_limit):
+    adapter = make_adapter(make_mock_client({}))
+    monkeypatch.setattr("ingest.adapters.eccc_datamart.tempfile.gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(Path, "read_text", lambda _self: memory_limit)
+    with pytest.raises(AdapterUnavailable, match="finite Linux|measured and enforced 4 GiB"):
+        adapter.operation_bounds(FetchWindow(datetime(2026, 9, 6, tzinfo=UTC)))
+
+
 def test_hrdps_refuses_unconstrained_temporary_filesystem(monkeypatch, tmp_path):
     adapter = make_adapter(make_mock_client({}))
     monkeypatch.setattr("ingest.adapters.eccc_datamart.tempfile.gettempdir", lambda: str(tmp_path))
