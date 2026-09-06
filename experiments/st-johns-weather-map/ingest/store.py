@@ -221,6 +221,11 @@ class RetainedArtifact:
     valid_time_end: datetime | None
     retrieval_run_time: datetime | None
 
+    @property
+    def object_key(self) -> str:
+        """Immutable object identity retained in the staged provenance."""
+        return str(self.provenance["object_key"])
+
 
 def sha256_of(path: Path, *, chunk_size: int = 1 << 20) -> str:
     digest = hashlib.sha256()
