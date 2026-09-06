@@ -1130,6 +1130,16 @@ def _live_point(
     belong to and whether a statistic over them is answerable are all facts
     the store and the derivation registry hold.
     """
+    def demand_metar() -> tuple[list[EvidenceField], list[str]]:
+        try:
+            from .metar_query import metar_query_service  # noqa: PLC0415
+
+            observations, observed_at, _entry = metar_query_service().point_fields(latitude, longitude, time)
+            return observations, [f"awc-metar-speci latest observation at {observed_at.isoformat()} is shown with its own source provenance"]
+        except Exception as error:
+            LOGGER.info("METAR demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
+            return [], ["awc-metar-speci has no validated observation less than one hour old at or before this selection"]
+
     if product and product.upper() == "HRDPS":
         try:
             from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
@@ -1153,13 +1163,14 @@ def _live_point(
                 source_id="eccc-hrdps", product="HRDPS",
             )
         actual_time = fields[0].provenance.valid_time
+        observations, observation_notices = demand_metar()
         return PointResponse(
             data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
             selection=Selection(mode="fallback", selected_source_id="eccc-hrdps",
                                 selected_product_id="hrdps", badge="HRDPS selected model",
                                 reason=f"Selected HRDPS native timestep {actual_time.isoformat()}"),
-            fields=fields,
-            notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied"],
+            fields=fields + observations,
+            notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
         )
     if product and product.upper() in {"GFS", "NOAA"}:
         try:
@@ -1190,6 +1201,7 @@ def _live_point(
                 product="GFS",
             )
         actual_time = fields[0].provenance.valid_time
+        observations, observation_notices = demand_metar()
         return PointResponse(
             data_mode=DataMode.LIVE,
             latitude=latitude,
@@ -1202,12 +1214,19 @@ def _live_point(
                 badge="GFS selected model",
                 reason=f"Selected GFS native timestep {actual_time.isoformat()}",
             ),
-            fields=fields,
-            notices=[f"GFS values are from native timestep {actual_time.isoformat()}; no temporal interpolation was applied"],
+            fields=fields + observations,
+            notices=[f"GFS values are from native timestep {actual_time.isoformat()}; no temporal interpolation was applied", *observation_notices],
         )
 
+    demand_observations, demand_notices = demand_metar()
     store = live_store()
     if store is None:
+        if demand_observations:
+            return PointResponse(
+                data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+                selection=unavailable_selection("no forecast model is available; current METAR observation is shown separately"),
+                fields=demand_observations, notices=["no live artifact store is reachable", *demand_notices],
+            )
         return _unavailable_point(latitude, longitude, time, reason="no live artifact store is reachable", flags=["live_store_unreachable"], notices=["no live artifact store is reachable"])
     try:
         fields, consensus, sources = live_point_fields(
@@ -1219,7 +1238,9 @@ def _live_point(
         LOGGER.exception("live point sampling failed at %s,%s for %s", latitude, longitude, time.isoformat())
         return _unavailable_point(latitude, longitude, time, reason="the live artifact store raised while sampling", flags=["live_store_error"], notices=["the live artifact store raised while sampling published artifacts"])
 
-    notices = skip_notices(store)
+    fields = [item for item in fields if item.provenance.source_id != "awc-metar-speci"] + demand_observations
+    sources = sorted({*sources, *(item.provenance.source_id for item in demand_observations)})
+    notices = [*skip_notices(store), *demand_notices]
     if product and product.lower() not in CONSENSUS_PRODUCTS:
         selected = product.upper()
         source_id = PRODUCT_SOURCE_IDS.get(selected)
