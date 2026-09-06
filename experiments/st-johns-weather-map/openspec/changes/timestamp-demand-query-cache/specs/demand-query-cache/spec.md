@@ -132,3 +132,8 @@ scheduled refresh, or substitute the current document for historical evidence.
 #### Scenario: Identical current-alert misses are concurrent
 - **WHEN** multiple callers resolve to the same complete set of canonical provider box requests
 - **THEN** one bounded upstream operation runs, each completed request preserves effective headers, final-byte completion, byte count and body digest, and a fresh repeat adds no provider request
+
+#### Scenario: Current-Alerts advertises no cache validator
+- **WHEN** the bounded provider response has no Cache-Control freshness, ETag, Last-Modified, or Expires header, as observed on 2026-09-06
+- **THEN** the experiment uses a finite 60-second source-local policy ceiling and performs a complete bounded 200 retrieval after expiry
+- **AND** it does not invent a conditional validator or serve an expired response as current

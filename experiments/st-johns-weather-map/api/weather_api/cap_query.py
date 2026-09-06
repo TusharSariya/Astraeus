@@ -21,6 +21,7 @@ CAP_DOCUMENT_MAX_BYTES = 2 * 1024 * 1024
 CAP_FEATURES_PER_BOX = 50
 CAP_CACHE_MAX_BYTES = 8 * 1024 * 1024
 CAP_MAX_AGE_SECONDS = 300
+CAP_POLICY_TTL_SECONDS = 60
 CAP_MAX_BOXES = 4
 CAP_FAILURE_BACKOFF_SECONDS = 30.0
 
@@ -105,7 +106,7 @@ def _validate_collection(document: object) -> list[dict[str, object]]:
             _validate_geometry(geometry, index)
         properties = feature["properties"]
         assert isinstance(properties, Mapping)
-        for name in ("identifier", "senderName", "headline", "description", "sent", "expires", "severity", "urgency", "certainty"):
+        for name in ("identifier", "sent", "expires"):
             if _property(properties, name) in (None, "") and _property(properties, f"properties.{name}") in (None, ""):
                 raise CapQueryUnavailable(f"ECCC CAP feature {index} is missing native {name}")
         for name in ("sent", "effective", "onset", "expires"):
@@ -167,8 +168,14 @@ def _max_age(headers: Mapping[str, object], completed: datetime) -> tuple[int, i
         if separator and name.lower() == "max-age" and value.isdigit():
             seconds = int(value)
             break
-    if seconds is None or not 1 <= seconds <= CAP_MAX_AGE_SECONDS:
-        raise CapQueryUnavailable("ECCC CAP response has no supported finite max-age")
+    if seconds is None:
+        # Live inventory on 2026-09-06 returned no Cache-Control, Expires, ETag,
+        # or Last-Modified.  Use a short experiment-owned ceiling and refetch a
+        # complete bounded document after expiry; do not invent conditional
+        # validation the provider did not advertise.
+        return CAP_POLICY_TTL_SECONDS, CAP_POLICY_TTL_SECONDS
+    if not 1 <= seconds <= CAP_MAX_AGE_SECONDS:
+        raise CapQueryUnavailable("ECCC CAP response max-age exceeds the supported finite bound")
     age_text = str(headers.get("age", headers.get("Age", "0"))).strip()
     if not age_text.isdigit():
         raise CapQueryUnavailable("ECCC CAP response has an invalid Age header")

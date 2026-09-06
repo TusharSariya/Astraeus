@@ -179,6 +179,18 @@ def test_failed_miss_has_finite_negative_backoff():
     assert client.calls == 3
 
 
+def test_missing_provider_validator_uses_finite_policy_ttl():
+    client = Client([collection(), collection()])
+    original = client.get_bytes_with_receipt
+    def no_cache_header(url, *, max_bytes):
+        body, receipt = original(url, max_bytes=max_bytes)
+        receipt["response_headers"] = {"date": NOW.strftime("%a, %d %b %Y %H:%M:%S GMT")}
+        return body, receipt
+    client.get_bytes_with_receipt = no_cache_header
+    entry = CAPQueryService(client=client, boxes=BOXES, clock=Clock()).entry()
+    assert entry.expires_at_monotonic == 160
+
+
 def test_geometry_boxes_and_completion_require_exact_bounded_shapes():
     valid = feature("valid", sent="2026-09-06T20:00:00Z", effective="2026-09-06T20:00:00Z", expires="2026-09-06T22:00:00Z")
     open_ring = {**valid, "geometry": {"type": "Polygon", "coordinates": [[[-53, 47], [-52, 47], [-52, 48], [-53, 48]]]}}
