@@ -2,6 +2,8 @@
 
 Status: draft; owner decision pending.
 
+Affected release profiles: none; this contract remains experimental.
+
 ## Why
 
 The existing experiment treats all 16 pressure surfaces shown by Open-Meteo's
