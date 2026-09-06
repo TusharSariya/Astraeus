@@ -389,6 +389,9 @@ class Provenance(StrictModel):
     intermediary: str | None = None
     intermediary_method: str | None = None
     adapter_version: str
+    #: Immutable artifact revision sampled for this value. Live evidence must
+    #: expose it so a receipt and API value can be compared byte-for-byte.
+    artifact_revision: str | None = None
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
     #: echoing the request back would overstate where the reading came from.

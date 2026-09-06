@@ -8,7 +8,7 @@ The API SHALL derive `/catalog`, `/sources/status`, refresh validation, product 
 
 #### Scenario: The catalogue is the whole registry
 - **WHEN** `/catalog` is requested in any data mode
-- **THEN** it returns one record per registry source (63 records), each carrying producer, product, state, status reason, role, consensus eligibility, exact variables, levels, coverage, cadence, horizon, authentication, licence, attribution, caching, archival, redistribution, schema version, documentation URL, access endpoint, integration, schedulability, fixture status and live-smoke status
+- **THEN** it returns one record per registry source (65 records), each carrying producer, product, state, status reason, role, consensus eligibility, exact variables, levels, coverage, cadence, horizon, authentication, licence, attribution, caching, archival, redistribution, schema version, documentation URL, access endpoint, integration, schedulability, fixture status and live-smoke status
 
 #### Scenario: A source id the registry does not know
 - **WHEN** `POST /refresh` names a source id absent from the registry

@@ -171,6 +171,8 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
     "noaa-goes-xray": ("xray_flux_short", "xray_flux_long", "observed_flux_short", "observed_flux_long", "electron_correction_short", "electron_correction_long", "electron_contamination_short", "electron_contamination_long"),
     "noaa-swpc-kyoto-dst": ("dst_index",),
     "noaa-swpc-ovation": ("aurora_probability",),
+    "metoffice-ostia-sst": ("sea_surface_temperature", "sea_surface_temperature_uncertainty", "sea_surface_temperature_mask"),
+    "noaa-oisst-v2-1": ("sea_surface_temperature", "sea_surface_temperature_uncertainty"),
     # HRDPS and RDPS carry the default surface set plus the cloud steering
     # winds, the vertical velocity, the RH/temperature profile at the same
     # levels and the nine-level low-cloud profile with its AGL datum; all are
@@ -194,6 +196,7 @@ VARIABLE_OVERRIDES: dict[str, tuple[str, ...]] = {
 CONTEXT_BOX_SOURCES = frozenset({
     "noaa-gfs", "noaa-gefs", "ecmwf-ifs", "ecmwf-ens", "ecmwf-aifs-single",
     "ecmwf-aifs-ens", "dwd-icon-global", "eccc-gdps", "eccc-geps", "noaa-goes-east", "noaa-swpc-ovation",
+    "metoffice-ostia-sst", "noaa-oisst-v2-1",
 })
 
 # Only categories where *every* member carries forecast lead times get
