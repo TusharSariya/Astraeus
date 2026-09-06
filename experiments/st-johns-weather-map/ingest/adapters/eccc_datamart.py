@@ -518,6 +518,9 @@ class ECCCDataMartAdapter:
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
         if self.source_id != "eccc-hrdps":
             raise AdapterUnavailable(f"{self.source_id}: complete-operation bounds are not measured")
+        raise AdapterUnavailable("eccc-hrdps is served only by the selected-timestamp demand query")
+        # The historical full-run path remains below as retained measurement
+        # documentation; it is unreachable by the scheduler after migration.
         memory_limit = Path("/sys/fs/cgroup/memory.max")
         try:
             raw_limit = memory_limit.read_text().strip()
@@ -691,6 +694,58 @@ class ECCCDataMartAdapter:
         )
 
     # --- retrieval -------------------------------------------------------
+    def fetch_selected(
+        self,
+        candidate: RunCandidate,
+        selected_time: datetime,
+        workdir: Path,
+        *,
+        fields: tuple[str, ...],
+    ) -> RunResult:
+        """Fetch one exact native lead and an explicit finite field set.
+
+        This is the source-local demand-query seam.  The selected timestamp is
+        resolved to a native lead before any payload request; it never widens
+        into the adapter's historical 25-lead ingestion window.
+        """
+        if candidate.run_time is None:
+            raise AdapterUnavailable(f"{self.source_id}: candidate carries no run time")
+        delta = selected_time - candidate.run_time
+        lead_seconds = delta.total_seconds()
+        if lead_seconds < 0 or lead_seconds % 3600:
+            raise AdapterUnavailable(f"{self.source_id}: selected time is not an exact native hourly lead")
+        lead = int(lead_seconds // 3600)
+        lead_token = f"{lead:03d}"
+        available = tuple(str(value) for value in candidate.detail.get("available_hours", ()))
+        if lead_token not in available or lead >= HRDPS_MAX_LEADS:
+            raise AdapterUnavailable(f"{self.source_id}: selected native lead {lead_token} is unavailable")
+        unknown = set(fields) - set(self.var_map)
+        if unknown:
+            raise AdapterUnavailable(f"{self.source_id}: unsupported selected fields: {', '.join(sorted(unknown))}")
+        selected = ECCCDataMartAdapter(
+            source_id=self.source_id,
+            model_subpath=self.model_subpath,
+            grid_token=self.grid_token,
+            var_map={name: self.var_map[name] for name in fields},
+            bounds=self.bounds,
+            adapter_version=self.adapter_version,
+            client=self._get_client(),
+            base_url=self._base_url,
+            fallback_days=self._fallback_days,
+            datamart_fallback_path=self._declared_fallback,
+        )
+        narrowed = RunCandidate(
+            provider_run_id=candidate.provider_run_id,
+            run_time=candidate.run_time,
+            urls=list(candidate.urls),
+            detail={**candidate.detail, "available_hours": [lead_token]},
+        )
+        return selected.fetch(
+            narrowed,
+            FetchWindow(now=selected_time, back_hours=0, forward_hours=0),
+            workdir,
+        )
+
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         client = self._get_client()
         cycle_url = candidate.detail.get("cycle_url", "")

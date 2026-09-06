@@ -1067,6 +1067,37 @@ def _live_point(
     belong to and whether a statistic over them is answerable are all facts
     the store and the derivation registry hold.
     """
+    if product and product.upper() == "HRDPS":
+        try:
+            from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+
+            fields, _consensus, _sources = hrdps_query_coordinator().point_fields(latitude, longitude, time)
+        except Exception as error:
+            LOGGER.exception("HRDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason=f"HRDPS selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:eccc-hrdps"],
+                notices=["eccc-hrdps could not retrieve and validate the exact selected native timestep"],
+                source_id="eccc-hrdps", product="HRDPS",
+            )
+        if not fields:
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason="HRDPS has no native value at this coordinate and selected timestamp",
+                flags=["demand_query_empty:eccc-hrdps"],
+                notices=["eccc-hrdps returned no validated native value for the selected point"],
+                source_id="eccc-hrdps", product="HRDPS",
+            )
+        return PointResponse(
+            data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+            selection=Selection(mode="fallback", selected_source_id="eccc-hrdps",
+                                selected_product_id="hrdps", badge="HRDPS selected model",
+                                reason=f"Selected HRDPS native timestep {time.isoformat()}"),
+            fields=fields,
+            notices=[f"HRDPS values are from exact native timestep {time.isoformat()}; no temporal interpolation was applied"],
+        )
+
     store = live_store()
     if store is None:
         return _unavailable_point(latitude, longitude, time, reason="no live artifact store is reachable", flags=["live_store_unreachable"], notices=["no live artifact store is reachable"])
