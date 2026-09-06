@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astraeus.invalid/experiments/weather/live-query.schema.json",
+  "$defs": {
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latitude", "longitude", "valid_time", "product", "layer_ids"],
+      "properties": {
+        "latitude": {"type": "number", "minimum": -90, "maximum": 90},
+        "longitude": {"type": "number", "minimum": -180, "maximum": 180},
+        "valid_time": {"type": "string", "format": "date-time"},
+        "product": {"type": ["string", "null"]},
+        "layer_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshot_id", "selection", "selected_at", "expires_at", "state", "revision_set"],
+      "properties": {
+        "snapshot_id": {"type": "string", "minLength": 1},
+        "selection": {"$ref": "#/$defs/selection"},
+        "selected_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": "string", "format": "date-time"},
+        "state": {"enum": ["current", "changed", "expired", "unavailable"]},
+        "revision_set": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["manifest_revisions", "registry_revision", "field_catalogue_revision", "derivation_versions", "inventory_revision"],
+          "properties": {
+            "manifest_revisions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["source_id", "logical_stream", "revision_id"],
+                "properties": {
+                  "source_id": {"type": "string"},
+                  "logical_stream": {"type": "string"},
+                  "revision_id": {"type": "string"}
+                }
+              }
+            },
+            "registry_revision": {"type": "string"},
+            "field_catalogue_revision": {"type": "string"},
+            "derivation_versions": {"type": "object", "additionalProperties": {"type": "string"}},
+            "inventory_revision": {"type": "string"}
+          }
+        }
+      }
+    },
+    "refresh_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_snapshot_id", "selection"],
+      "properties": {
+        "baseline_snapshot_id": {"type": "string", "minLength": 1},
+        "selection": {"$ref": "#/$defs/selection"}
+      }
+    },
+    "fragment_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "fragment_key", "outcome", "manifest_revision"],
+      "properties": {
+        "source_id": {"type": "string"},
+        "fragment_key": {"type": "string"},
+        "outcome": {"enum": ["cache_hit", "published", "nothing_available", "blocked", "retrieval_failed", "quota_exceeded", "upstream_budget_exhausted"]},
+        "manifest_revision": {"type": ["string", "null"]}
+      }
+    },
+    "refresh_job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job_id", "idempotency_key", "baseline_snapshot_id", "state", "fragment_outcomes"],
+      "properties": {
+        "job_id": {"type": "string"},
+        "idempotency_key": {"type": "string"},
+        "baseline_snapshot_id": {"type": "string"},
+        "state": {"enum": ["queued", "running", "succeeded", "partial", "failed", "cancelled"]},
+        "fragment_outcomes": {"type": "array", "items": {"$ref": "#/$defs/fragment_outcome"}}
+      }
+    }
+  }
+}
