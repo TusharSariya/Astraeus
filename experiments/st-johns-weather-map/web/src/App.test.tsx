@@ -285,14 +285,21 @@ describe('weather workbench fail-closed behavior', () => {
     const taf = {
       data_mode: 'live', operational: false, station: 'CYYT', at: '2026-09-06T14:00:00Z', source_id: 'awc-taf',
       revision_id: 'revision-1', run_time: '2026-09-06T11:41:00Z', issue_time: '2026-09-06T11:41:00Z',
-      valid_time_from: 1788696000, valid_time_to: 1788782400, raw_taf: 'TAF CYYT', native_report_metadata: {}, groups: [],
+      valid_time_from: 1788696000, valid_time_to: 1788782400, raw_taf: 'TAF CYYT', native_report_metadata: {}, groups: [{
+        index: 0, time_from: '2026-09-06T12:00:00Z', time_to: '2026-09-07T12:00:00Z', change: '', probability: null,
+        time_bec: null, presence: {}, values: {}, native: {}, native_presence: {}, native_units: {},
+      }],
     }
-    const fetchMock = routedFetch({})
-    fetchMock.mockImplementation(async (url: string) => url.includes('/aviation/taf') ? response(taf) : routedFetch({})(url))
+    const other = routedFetch({ point: apiPoint([], undefined, 'unavailable') })
+    const fetchMock = routedFetch({ point: apiPoint([], undefined, 'unavailable') })
+    fetchMock.mockImplementation(async (url: string) => url.includes('/aviation/taf') ? response(taf) : other(url))
     vi.stubGlobal('fetch', fetchMock)
     render(<App />)
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
-    expect(await screen.findByText(/2026-09-06T12:00:00\.000Z.*2026-09-07T12:00:00\.000Z UTC/)).toBeInTheDocument()
+    expect((await screen.findAllByText(/2026-09-06T12:00:00\.000Z.*2026-09-07T12:00:00\.000Z UTC/)).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Live TAF · other evidence unavailable')).toBeInTheDocument()
+    expect(screen.getByText('LIVE TAF · OTHER EVIDENCE UNAVAILABLE')).toBeInTheDocument()
+    expect(screen.queryByText('NO LIVE EVIDENCE RETRIEVED')).not.toBeInTheDocument()
   })
 
   it('renders the fixture banner for a data_mode:"fixture" response and never claims Live API', async () => {

@@ -63,6 +63,14 @@ const bannerCopy: Record<Exclude<DataSource, 'live'>, string> = {
   unavailable: 'NO LIVE EVIDENCE RETRIEVED',
 }
 
+function tafInterval(start: string, end: string): string {
+  const startIso = new Date(start).toISOString()
+  const endIso = new Date(end).toISOString()
+  return startIso.slice(0, 10) !== endIso.slice(0, 10)
+    ? `${startIso}–${endIso} UTC`
+    : `${nlTime(start)}–${nlTime(end)} NT`
+}
+
 /** "derived · MetPy" beside any value the API says it computed rather than
  *  read, with the API's own derivation sentence as the tooltip. */
 function derivedChip(attribution: FieldAttribution | undefined): string | null {
@@ -838,6 +846,7 @@ export default function App() {
     setLocation({ id: `coordinates-${latitude}-${longitude}`, name: `Coordinates ${latitude.toFixed(3)}, ${longitude.toFixed(3)}`, latitude, longitude, kind: 'map' })
   }
 
+  const hasLiveTaf = taf?.data_mode === 'live'
   const mapField = dataSource === 'live' ? 'Response-backed evidence points'
     : dataSource === 'mixed' ? 'Mixed live and fixture evidence points'
       : dataSource === 'fixture' ? 'Development fixture evidence points'
@@ -884,7 +893,7 @@ export default function App() {
             <button type="submit">Go</button>
             {coordinateError && <small role="alert">{coordinateError}</small>}
           </form>
-          <div className={`source-state ${dataSource}`}><span>Data path</span><strong>{dataPathCopy[dataSource]}</strong></div>
+          <div className={`source-state ${dataSource}`}><span>Data path</span><strong>{hasLiveTaf && dataSource !== 'live' ? 'Live TAF · other evidence unavailable' : dataPathCopy[dataSource]}</strong></div>
         </section>
   )
 
@@ -968,7 +977,7 @@ export default function App() {
 
   return (
     <div className={`workbench ${mode === 'simple' ? 'app-shell' : ''} ${dataSource === 'fixture' ? 'fixture-mode' : ''}`}>
-      {dataSource !== 'live' && <div className={`fixture-watermark ${dataSource}`} role="status">{bannerCopy[dataSource]}</div>}
+      {dataSource !== 'live' && <div className={`fixture-watermark ${dataSource}`} role="status">{hasLiveTaf ? 'LIVE TAF · OTHER EVIDENCE UNAVAILABLE' : bannerCopy[dataSource]}</div>}
       {masthead}
 
       <main className={mode === 'simple' ? 'app-main' : undefined}>
@@ -1324,7 +1333,7 @@ export default function App() {
               <code>{taf.raw_taf}</code>
               {taf.groups.length === 0 ? <p role="status">No native group interval contains this instant.</p> : <ol className="taf-groups">{taf.groups.map((group) => <li key={group.index}>
                 <strong>{group.change || 'Prevailing'}{group.probability === null ? '' : ` · ${group.probability}%`}</strong>
-                <time>{nlTime(group.time_from)}–{nlTime(group.time_to)} NT</time>
+                <time>{tafInterval(group.time_from, group.time_to)}</time>
                 {group.time_bec === null ? null : <small>Becomes at {nlTime(new Date(group.time_bec * 1000).toISOString())} NT</small>}
                 <dl>{Object.entries(group.native).map(([name, value]) => <div key={`native-${name}`}><dt>{name}</dt><dd>{value === null || value === '' || value === false ? group.native_presence[name] : typeof value === 'object' ? JSON.stringify(value) : String(value)}{value === null || value === false ? '' : ` ${group.native_units[name] ?? ''}`}</dd></div>)}</dl>
                 <dl>{Object.entries(group.values).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value === null ? group.presence[name] ?? 'missing' : value}</dd></div>)}</dl>
