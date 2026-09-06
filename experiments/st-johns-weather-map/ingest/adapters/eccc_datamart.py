@@ -635,6 +635,11 @@ class ECCCDataMartAdapter:
                         "date_str": date_str,
                         "cycle_url": cycle_url,
                         "available_hours": hours,
+                        "valid_times": [
+                            (run_dt + timedelta(hours=int(hour))).isoformat()
+                            for hour in hours
+                            if int(hour) < HRDPS_MAX_LEADS
+                        ],
                         "run_stamp": run_dt.strftime("%Y%m%dT%HZ"),
                         # Which of the record's paths actually answered. It
                         # travels onto the artifact so a served value can say

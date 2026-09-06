@@ -156,6 +156,11 @@ def test_hrdps_discover():
     window = FetchWindow(now=now)
 
     candidates = adapter.discover(window)
+    assert candidates[0].detail["valid_times"] == [
+        "2026-08-29T12:00:00+00:00",
+        "2026-08-29T13:00:00+00:00",
+        "2026-08-29T14:00:00+00:00",
+    ]
     assert len(candidates) >= 1
     newest = candidates[0]
     assert newest.provider_run_id == "2026082912"
