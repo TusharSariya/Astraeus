@@ -113,7 +113,11 @@ def main() -> int:
         rows = decode(sys.stdin.buffer.read(), mode)
         if action == "normalize":
             _write(rows, mode, Path(sys.argv[3]))
-        print(json.dumps({"count": len(rows), "times": [row[0].isoformat() for row in rows]}, separators=(",", ":")))
+        print(json.dumps({
+            "count": len(rows),
+            "times": [row[0].isoformat() for row in rows],
+            "rows": [[row[0].isoformat(), row[1], row[2]] for row in rows],
+        }, separators=(",", ":")))
         return 0
     except Exception as error:
         print(str(error), file=sys.stderr)

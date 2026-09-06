@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
+from ingest.kp3h_isolated import decode
 from weather_api.swpc_kp_query import SWPCKpQueryService
 
 
@@ -15,6 +16,9 @@ class BoundsProbe:
 
     def demand_operation_bounds(self) -> None:
         self.calls += 1
+
+    def demand_decode(self, raw: bytes, mode: str):
+        return decode(raw, mode)
 
 
 def observed_body() -> bytes:

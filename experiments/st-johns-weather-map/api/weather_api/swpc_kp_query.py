@@ -14,7 +14,6 @@ from typing import Callable, Mapping
 import httpx
 
 from ingest.adapters.swpc import KP_DOCUMENT_BYTES, KP_FORECAST_URL, KP_OBSERVED_URL, SWPCKpAdapter
-from ingest.kp3h_isolated import decode
 from ingest.contract import FetchWindow
 from .models import Freshness, KpAcquisition, SpaceWeatherReading, SpaceWeatherSeries
 from .taf_query import TafQueryUnavailable, _freshness
@@ -118,7 +117,7 @@ class SWPCKpQueryService:
             request_headers = _safe_headers(response.request.headers)
             response_headers = {key.lower(): value for key, value in response.headers.items()}
         try:
-            rows = decode(body, mode)
+            rows = self._adapter.demand_decode(body, mode)
         except Exception as error:
             raise SWPCKpUnavailable(f"SWPC {mode} Kp validation failed: {error}") from error
         statuses = {0: "observed", 1: "estimated", 2: "predicted"}
