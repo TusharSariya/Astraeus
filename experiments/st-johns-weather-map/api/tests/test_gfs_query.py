@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from threading import Event
+from time import sleep
 
 import pytest
 
@@ -22,7 +24,7 @@ def entry(key=KEY):
     return GFSQueryEntry(
         key=key, run_time=datetime(2026, 9, 6, 12, tzinfo=UTC), valid_time=instant,
         fetched_at=instant, content_digest="a" * 64, values={"temperature_2m": 12.0},
-        provenance={"source_id": "noaa-gfs"}, byte_size=1024,
+        provenance={"source_id": "noaa-gfs"}, payloads=(b"x" * 1024,),
     )
 
 
@@ -68,6 +70,30 @@ def test_concurrent_identical_misses_coalesce_to_one_provider_load():
     assert all(result is results[0] for result in results)
 
 
+def test_concurrent_failure_is_one_generation_and_one_provider_load():
+    started = Event()
+    release = Event()
+    calls = []
+
+    def fail(key):
+        calls.append(key)
+        started.set()
+        release.wait(timeout=2)
+        raise OSError("provider unavailable")
+
+    service = GFSQueryService(fail)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(service.query, KEY) for _ in range(8)]
+        assert started.wait(timeout=1)
+        sleep(0.05)
+        release.set()
+        for future in futures:
+            with pytest.raises(OSError, match="unavailable"):
+                future.result()
+
+    assert calls == [KEY]
+
+
 def test_loader_cannot_replace_canonical_request_identity():
     other = GFSRequestKey("other", KEY.grib_url, KEY.ranges, KEY.fields, KEY.bounds)
     service = GFSQueryService(lambda _key: entry(other))
@@ -89,8 +115,15 @@ def test_cache_evicts_lru_entries_under_count_bound():
 
 
 def test_cache_refuses_oversize_normalized_entry():
-    oversized = GFSQueryEntry(**{**entry().__dict__, "byte_size": 2048})
+    oversized = GFSQueryEntry(**{**entry().__dict__, "payloads": (b"x" * 2048,)})
     service = GFSQueryService(lambda _key: oversized, max_bytes=1024)
 
     with pytest.raises(ValueError, match="finite byte ceiling"):
         service.query(KEY)
+
+
+def test_cache_configuration_cannot_exceed_source_ceiling():
+    with pytest.raises(ValueError, match="source-local ceiling"):
+        GFSQueryService(entry, max_entries=5)
+    with pytest.raises(ValueError, match="source-local ceiling"):
+        GFSQueryService(entry, max_bytes=256 * 1024 * 1024 + 1)
