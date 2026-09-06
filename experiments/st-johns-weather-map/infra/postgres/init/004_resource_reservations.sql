@@ -107,6 +107,15 @@ BEGIN
         RAISE EXCEPTION 'run % is not publishable: complete=%, qc_passed=%', candidate_run, run_complete, run_qc
           USING ERRCODE = 'integrity_constraint_violation';
     END IF;
+    IF EXISTS (
+        SELECT 1 FROM weather_experiment.artifact_revisions
+         WHERE run_id=candidate_run AND state='staged'
+           AND (reservation_operation_id IS DISTINCT FROM candidate_operation
+                OR reservation_fencing_token IS DISTINCT FROM candidate_token)
+    ) THEN
+        RAISE EXCEPTION 'run % contains staged artifacts owned by another reservation', candidate_run
+          USING ERRCODE = 'integrity_constraint_violation';
+    END IF;
     FOR staged IN
         SELECT revision_id, logical_name, valid_time_end FROM weather_experiment.artifact_revisions
          WHERE run_id = candidate_run AND state = 'staged'
@@ -202,3 +211,13 @@ BEGIN
     END IF;
 END;
 $$;
+
+-- Mutation entry points are worker capabilities, never ambient schema rights.
+REVOKE EXECUTE ON FUNCTION weather_experiment.acquire_resource_reservation(uuid,text,text,uuid,text,text,text,text,bigint,bigint,bigint,bigint,bigint) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION weather_experiment.assert_active_reservation(uuid,bigint) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION weather_experiment.publish_run(uuid,uuid,bigint) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION weather_experiment.publish_run(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION weather_experiment.publish_revision(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION weather_experiment.revoke_expired_reservations() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION weather_experiment.begin_reservation_cleanup(uuid,bigint) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION weather_experiment.release_clean_reservation(uuid,bigint) FROM PUBLIC;

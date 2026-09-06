@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator, Sequence
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from .contract import Artifact, RunResult
@@ -239,6 +240,24 @@ class ArtifactStore:
         self._host_epoch = os.environ.get("WEATHER_WORKER_HOST_EPOCH") or str(uuid4())
         self._host_lock: Any = None
 
+    def _store_key(self) -> str:
+        """Return a stable, non-secret identity for the physical hot store."""
+        database = urlsplit(self.config.database_url)
+        endpoint = urlsplit(self.config.endpoint)
+        identity = "|".join((
+            database.hostname or "", str(database.port or ""), database.path.lstrip("/"),
+            endpoint.scheme.lower(), endpoint.hostname or "", str(endpoint.port or ""),
+            endpoint.path.rstrip("/"), self.config.bucket,
+        ))
+        return hashlib.sha256(identity.encode()).hexdigest()
+
+    @staticmethod
+    def _approved_workspace(root: Path, operation_id: str, candidate: Path) -> Path:
+        expected = root.resolve() / f"weather-reservation-{operation_id}"
+        if candidate.is_symlink() or candidate.resolve() != expected or expected.parent != root.resolve():
+            raise ReservationLost("reservation workspace is outside the approved root; capacity remains charged")
+        return expected
+
     def reconcile_durable_reservations(self, filesystem_path: Path) -> int:
         """Exclusively fence and clean prior-epoch allocations on this host.
 
@@ -257,7 +276,8 @@ class ArtifactStore:
         device = str(path.stat().st_dev)
         lock_dir = Path(lock_dir_raw)
         lock_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        lock_path = lock_dir / f"{host_id}-{device}.lock"
+        lock_name = hashlib.sha256(f"{host_id}|{device}".encode()).hexdigest()
+        lock_path = lock_dir / f"{lock_name}.lock"
         handle = lock_path.open("a+")
         try:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -284,24 +304,27 @@ class ArtifactStore:
             reservation = ReservationIdentity(
                 str(row[0]), int(row[1]), str(row[2]), str(row[3]), str(row[4]), str(row[5]), Path(row[6]), row[7]
             )
-            self.reap_reservation(reservation, allocator_stopped=True)
+            self.reap_reservation(reservation, allocator_stopped=True, workspace_root=path)
         return len(rows)
 
-    def reap_reservation(self, reservation: ReservationIdentity, *, allocator_stopped: bool) -> None:
+    def reap_reservation(
+        self, reservation: ReservationIdentity, *, allocator_stopped: bool, workspace_root: Path
+    ) -> None:
         """Clean one fenced reservation; proof that its allocator stopped is mandatory."""
         if not allocator_stopped:
             raise ReservationLost("allocator stop was not proven; capacity remains charged")
+        workspace = self._approved_workspace(workspace_root, reservation.operation_id, reservation.workspace_path)
         with self.connection() as connection, connection.cursor() as cursor:
             cursor.execute("SELECT weather_experiment.begin_reservation_cleanup(%s,%s)",
                            (reservation.operation_id, reservation.fencing_token))
         try:
-            shutil.rmtree(reservation.workspace_path)
+            shutil.rmtree(workspace)
         except FileNotFoundError:
             pass
         except Exception as error:
             self._mark_revoking(reservation, f"local cleanup failed: {error}")
             raise ReservationLost("local cleanup failed; capacity remains charged") from error
-        if reservation.workspace_path.exists():
+        if workspace.exists():
             raise ReservationLost("local cleanup could not be verified; capacity remains charged")
         self._cleanup_remote_reservation(reservation)
         with self.connection() as connection, connection.cursor() as cursor:
@@ -445,7 +468,7 @@ class ArtifactStore:
         operation_id = str(uuid4())
         owner = owner_id or f"{stable_host}:{socket.gethostname()}:{os.getpid()}"
         workspace = path / f"weather-reservation-{operation_id}"
-        store_key = f"{self.config.database_url}|{self.config.bucket}"
+        store_key = self._store_key()
         usage = shutil.disk_usage(path)
         try:
             with self.connection() as connection, connection.cursor() as cursor:

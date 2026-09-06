@@ -21,7 +21,21 @@ def test_local_cleanup_failure_is_observable_and_keeps_reservation_revoking(tmp_
     assert marked==["local cleanup failed: busy"] and lease.workspace_path.exists()
 
 def test_reaper_requires_positive_proof_that_allocator_stopped(tmp_path):
-    with pytest.raises(ReservationLost,match="stop was not proven"): store().reap_reservation(identity(tmp_path/"workspace"),allocator_stopped=False)
+    with pytest.raises(ReservationLost,match="stop was not proven"): store().reap_reservation(identity(tmp_path/"workspace"),allocator_stopped=False,workspace_root=tmp_path)
+
+def test_store_identity_excludes_credentials_and_survives_rotation():
+    first=ArtifactStore(StoreConfig("postgresql://alice:first@db:5432/weather","https://minio:9000","bucket","key","secret"))
+    rotated=ArtifactStore(StoreConfig("postgresql://bob:second@db:5432/weather","https://minio:9000","bucket","other","changed"))
+    assert first._store_key()==rotated._store_key()
+    assert all(secret not in first._store_key() for secret in ("alice","first","key","secret"))
+
+def test_reaper_refuses_a_ledger_path_outside_approved_root(tmp_path):
+    approved=tmp_path/"approved"; approved.mkdir()
+    outside=tmp_path/"must-survive"; outside.mkdir()
+    lease=identity(outside)
+    with pytest.raises(ReservationLost,match="outside the approved root"):
+        store().reap_reservation(lease,allocator_stopped=True,workspace_root=approved)
+    assert outside.exists()
 
 class Cursor:
     def __init__(self): self.rows=[]

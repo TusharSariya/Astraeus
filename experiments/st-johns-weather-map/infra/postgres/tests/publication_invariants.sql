@@ -61,6 +61,27 @@ VALUES ('aaaaaaaa-1111-1111-1111-111111111111', '11111111-1111-1111-1111-1111111
 SELECT pg_temp.assert(pg_temp.publish_fenced('11111111-1111-1111-1111-111111111111') = 1,
                       'a complete, QC-passed run publishes its artifact');
 
+INSERT INTO weather_experiment.model_runs (run_id, source_id, provider_run_id, run_time, retrieved_at, complete, qc_passed)
+VALUES ('12121212-1212-1212-1212-121212121212', 'eccc-hrdps', 'mixed-run', now(), now(), true, true);
+INSERT INTO weather_experiment.resource_reservations
+  (operation_id,owner_id,host_id,host_epoch,device_id,workspace_path,workload_kind,store_key,store_bytes,filesystem_bytes,margin_bytes,deadline_at)
+VALUES
+ ('13131313-1313-1313-1313-131313131313','owner-a','host',gen_random_uuid(),'1','/tmp/a','ingestion','mixed',100,100,0,clock_timestamp()+interval '2 hours'),
+ ('14141414-1414-1414-1414-141414141414','owner-b','host',gen_random_uuid(),'1','/tmp/b','ingestion','mixed',100,100,0,clock_timestamp()+interval '2 hours');
+INSERT INTO weather_experiment.artifact_revisions
+ (revision_id,run_id,logical_name,object_key,media_type,byte_size,sha256,state,complete,qc_passed,reservation_operation_id,reservation_fencing_token)
+SELECT '15151515-1515-1515-1515-151515151515'::uuid,'12121212-1212-1212-1212-121212121212'::uuid,'mixed-a','staging/a','application/octet-stream',1,repeat('1',64),'staged'::weather_experiment.revision_state,true,true,operation_id,fencing_token
+ FROM weather_experiment.resource_reservations WHERE operation_id='13131313-1313-1313-1313-131313131313'
+UNION ALL
+SELECT '16161616-1616-1616-1616-161616161616'::uuid,'12121212-1212-1212-1212-121212121212'::uuid,'mixed-b','staging/b','application/octet-stream',1,repeat('2',64),'staged'::weather_experiment.revision_state,true,true,operation_id,fencing_token
+ FROM weather_experiment.resource_reservations WHERE operation_id='14141414-1414-1414-1414-141414141414';
+SELECT pg_temp.expect_failure(
+  format('SELECT weather_experiment.publish_run(''12121212-1212-1212-1212-121212121212'',''13131313-1313-1313-1313-131313131313'',%s)',
+    (SELECT fencing_token FROM weather_experiment.resource_reservations WHERE operation_id='13131313-1313-1313-1313-131313131313')),
+  'a run split across reservation owners cannot publish a subset');
+SELECT pg_temp.assert(NOT EXISTS(SELECT 1 FROM weather_experiment.current_artifacts WHERE source_id='eccc-hrdps' AND logical_name IN ('mixed-a','mixed-b')),
+  'mixed reservation refusal advances no current pointer');
+
 -- The incomplete run: artifact rows deliberately claim complete/qc_passed, the
 -- parent run does not. Under 001 this would have published.
 INSERT INTO weather_experiment.model_runs (run_id, source_id, provider_run_id, run_time, retrieved_at, complete, qc_passed)

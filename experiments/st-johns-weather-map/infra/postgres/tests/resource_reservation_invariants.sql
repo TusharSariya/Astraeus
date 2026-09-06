@@ -5,6 +5,9 @@ BEGIN IF condition THEN RAISE NOTICE 'PASS  %',label; ELSE RAISE EXCEPTION 'FAIL
 CREATE OR REPLACE FUNCTION pg_temp.expect_failure(statement text,label text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN BEGIN EXECUTE statement; EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'PASS  %  (rejected: %)',label,left(SQLERRM,100); RETURN; END;
 RAISE EXCEPTION 'FAIL  % - statement was accepted',label; END; $$;
+SELECT pg_temp.assert(NOT has_function_privilege('public','weather_experiment.acquire_resource_reservation(uuid,text,text,uuid,text,text,text,text,bigint,bigint,bigint,bigint,bigint)','EXECUTE'),'PUBLIC cannot acquire reservations');
+SELECT pg_temp.assert(NOT has_function_privilege('public','weather_experiment.publish_run(uuid,uuid,bigint)','EXECUTE'),'PUBLIC cannot publish fenced runs');
+SELECT pg_temp.assert(NOT has_function_privilege('public','weather_experiment.begin_reservation_cleanup(uuid,bigint)','EXECUTE'),'PUBLIC cannot begin reservation cleanup');
 SELECT * FROM weather_experiment.acquire_resource_reservation('10000000-0000-0000-0000-000000000001','task-owner','host-a','10000000-0000-0000-0000-000000000002','7','/tmp/task','task','store-a',600,700,100,1000000000,2000);
 SELECT pg_temp.assert((SELECT deadline_at-admitted_at BETWEEN interval '14 minutes 59 seconds' AND interval '15 minutes 1 second' FROM weather_experiment.resource_reservations WHERE operation_id='10000000-0000-0000-0000-000000000001'),'task reservation uses the fixed database-server 15 minute deadline');
 SELECT * FROM weather_experiment.acquire_resource_reservation('20000000-0000-0000-0000-000000000001','ingest-owner','host-b','20000000-0000-0000-0000-000000000002','7','/tmp/ingest','ingestion','store-b',600,700,100,1000000000,2000);

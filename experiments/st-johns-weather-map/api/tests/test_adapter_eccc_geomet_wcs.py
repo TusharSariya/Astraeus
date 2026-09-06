@@ -278,6 +278,7 @@ def test_fixture_artifact_round_trips_through_the_astraeus_live_api_sampler(tmp_
 def test_every_representative_round_trips_raw_to_artifact_reader_and_http(
     tmp_path, monkeypatch, model, field,
 ):
+    monkeypatch.setattr(api_module, "now", lambda: VALID)
     client = GeoMetWCSClient(client=FixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet")
     artifact = fetch_artifact(client, field, valid_time=VALID, reference_time=RUN,
                               workdir=tmp_path / field.variable, model=model)
@@ -537,6 +538,7 @@ def test_live_rdps_seeing_artifact_and_api_readback(tmp_path, monkeypatch):
 
 
 def test_source_scoped_raw_field_is_not_exposed_by_normal_point_route(tmp_path, monkeypatch):
+    monkeypatch.setattr(api_module, "now", lambda: VALID)
     field = CoverageField("RDAQA-FW_10km_PM2.5", "raw__rdaqa_smoke_pm2_5_surface")
     client = GeoMetWCSClient(client=FixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet")
     artifact = fetch_artifact(client, field, valid_time=VALID, reference_time=RUN,
