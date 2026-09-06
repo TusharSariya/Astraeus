@@ -156,24 +156,11 @@ def test_rasterize_dispatches_on_coordinate_dimensionality():
 
 # --- the layers ------------------------------------------------------------
 
-def test_the_hrdps_total_cloud_layer_is_offered_from_the_stored_grid(monkeypatch, data_mode):
+def test_the_hrdps_stored_total_cloud_layer_is_hidden_after_demand_cutover(monkeypatch, data_mode):
     use_store(monkeypatch, data_mode, CloudStore(cloud_dataset()))
     payload = client.get(f"{PREFIX}/layers").json()
     by_id = {layer["id"]: layer for layer in payload["layers"]}
-    layer = by_id["eccc-hrdps-surface-total-cloud"]
-    assert layer["group"] == "rendered_grid"
-    assert layer["field"] == "total_cloud_opacity"
-    assert layer["product"] == "ECCC-HRDPS"
-    assert layer["units"] == "percent"
-    assert layer["evidence_basis"] == "published_artifact"
-    assert layer["raster_available"] is True
-    assert layer["legend_available"] is True
-    semantics = layer["semantics"]
-    assert "rendered by this experiment from the retrieved ECCC-HRDPS field" in semantics
-    assert "native grid RLatLon0.0225" in semantics
-    assert "eccc-hrdps artifact" in semantics
-    stamps = [stamp.isoformat() for stamp in frame_times()]
-    assert [datetime.fromisoformat(stamp).isoformat() for stamp in layer["times"]] == stamps
+    assert "eccc-hrdps-surface-total-cloud" not in by_id
 
 
 def test_the_rdps_twin_is_offered_under_the_same_rules(monkeypatch, data_mode):

@@ -14,7 +14,7 @@ from registry.source_data import registry
 from weather_api.app import PREFIX, app
 from weather_api.fixtures import NO_ENSEMBLE_MEMBERS_NOTICE, NEWFOUNDLAND, SOURCES, now, timeline, window_end, window_start
 from weather_api.models import ENSEMBLE_STATISTIC_ENTRIES, THRESHOLD_COMPARISONS
-from weather_api.store import Sample, schedulable_source_ids
+from weather_api.store import Sample, live_point_fields, schedulable_source_ids
 
 UTC = timezone.utc
 NDT = timedelta(hours=-2, minutes=-30)
@@ -484,7 +484,17 @@ def test_product_selection_never_claims_a_source_that_published_nothing(monkeypa
             raise OSError("provider unavailable")
 
     import weather_api.gfs_query as gfs_query
+    import weather_api.hrdps_query as hrdps_query
+
+    class DemandHRDPS:
+        @staticmethod
+        def point_fields(latitude, longitude, valid_time):
+            fields, consensus, _sources = live_point_fields(HrdpsWithNeighbours(), latitude, longitude, valid_time)
+            selected = [item for item in fields if item.provenance.source_id == "eccc-hrdps"]
+            return selected, consensus, ["eccc-hrdps"]
+
     monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: UnavailableGFS())
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: DemandHRDPS())
     use_live_store(monkeypatch, data_mode, HrdpsWithNeighbours())
     hrdps = client.get(f"{PREFIX}/point", params={"product": "HRDPS"}).json()
     assert hrdps["data_mode"] == "live"
@@ -495,14 +505,11 @@ def test_product_selection_never_claims_a_source_that_published_nothing(monkeypa
         by_source.setdefault(item["provenance"]["source_id"], []).append(item)
     # HRDPS's own values are exactly what HRDPS published, nothing borrowed in.
     assert [item["value"] for item in by_source["eccc-hrdps"]] == [9.25]
-    # The METAR observations survive, and every one of them says it is METAR's.
-    metar = {item["field"]: item["value"] for item in by_source["awc-metar-speci"]}
-    assert metar["visibility"] == 9656.0
-    assert metar["cloud_layer_1_cover"] == 25.0 and metar["cloud_layer_1_base"] == 609.6
-    # A competing model is not an observation: RDPS's 11.5 appears nowhere.
+    # A selected-time demand response contains only the requested model. Stored
+    # neighbours cannot ride along into the provider query result.
+    assert "awc-metar-speci" not in by_source
     assert "eccc-rdps" not in by_source
     assert 11.5 not in {item["value"] for item in hrdps["fields"]}
-    assert any("awc-metar-speci" in notice and "alongside HRDPS" in notice for notice in hrdps["notices"])
 
     payload = client.get(f"{PREFIX}/point", params={"product": "GFS"}).json()
     assert_no_evidence_was_invented(payload)
@@ -559,9 +566,16 @@ def test_a_taf_never_rides_along_as_an_observation(monkeypatch, data_mode):
             ]
 
     use_live_store(monkeypatch, data_mode, HrdpsMetarAndTaf())
+    import weather_api.hrdps_query as hrdps_query
+    class DemandHRDPS:
+        @staticmethod
+        def point_fields(latitude, longitude, valid_time):
+            fields, consensus, _sources = live_point_fields(HrdpsMetarAndTaf(), latitude, longitude, valid_time)
+            selected = [item for item in fields if item.provenance.source_id == "eccc-hrdps"]
+            return selected, consensus, ["eccc-hrdps"]
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: DemandHRDPS())
     payload = client.get(f"{PREFIX}/point", params={"product": "HRDPS"}).json()
-    assert {item["provenance"]["source_id"] for item in payload["fields"]} == {"eccc-hrdps", "awc-metar-speci"}
-    assert any("awc-metar-speci" in notice and "awc-taf" not in notice for notice in payload["notices"])
+    assert {item["provenance"]["source_id"] for item in payload["fields"]} == {"eccc-hrdps"}
 
 
 def _sample(source_id: str, variable: str, value: float | None, units: str, valid_time: datetime) -> Sample:
@@ -583,6 +597,12 @@ def test_wind_is_served_as_speed_and_direction_with_its_derivation_disclosed(mon
             ]
 
     use_live_store(monkeypatch, data_mode, HrdpsWind())
+    import weather_api.hrdps_query as hrdps_query
+    class DemandHRDPS:
+        @staticmethod
+        def point_fields(latitude, longitude, valid_time):
+            return live_point_fields(HrdpsWind(), latitude, longitude, valid_time)
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: DemandHRDPS())
     payload = client.get(f"{PREFIX}/point", params={"product": "HRDPS"}).json()
     assert payload["data_mode"] == "live"
     by_field = {item["field"]: item for item in payload["fields"]}

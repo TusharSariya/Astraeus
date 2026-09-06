@@ -451,27 +451,12 @@ class MultiGridStore(GridStore):
         return next(dataset for other, dataset in self._pairs if other.object_key == artifact.object_key)
 
 
-def test_the_weong_layer_is_offered_and_names_itself_generated(monkeypatch, data_mode):
+def test_the_retained_hrdps_weong_layer_is_hidden_after_demand_cutover(monkeypatch, data_mode):
     weong = weong_artifact()
     use_store(monkeypatch, data_mode, MultiGridStore([(gfs_artifact(), grid_dataset()), (weong, weong_dataset())]))
     payload = client.get(f"{PREFIX}/layers").json()
     by_id = {layer["id"]: layer for layer in payload["layers"]}
-    layer = by_id["eccc-hrdps-low-cloud-weong"]
-    assert layer["group"] == "rendered_grid"
-    assert layer["field"] == "total_cloud_weong"
-    assert layer["units"] == "percent"
-    assert layer["evidence_basis"] == "published_artifact"
-    assert layer["raster_available"] is True
-    # The disclosure is in the title AND in the semantics, so neither a menu
-    # that shows only titles nor a reader who opens the semantics can meet
-    # this layer without being told it is generated.
-    assert "generated" in layer["title"]
-    assert "WEonG" in layer["title"]
-    assert "GENERATED:" in layer["semantics"]
-    assert "technote v2.4.1 sec 7.9" in layer["semantics"]
-    assert "display only" in layer["semantics"]
-    # And the retrieved layer next to it says nothing of the kind: the
-    # provider's own field is untouched and undisclosed as generated.
+    assert "eccc-hrdps-low-cloud-weong" not in by_id
     assert "GENERATED" not in by_id["noaa-gfs-surface-cloud-low"]["semantics"]
 
 
@@ -491,7 +476,7 @@ def test_the_weong_layer_is_absent_when_its_artifact_is(monkeypatch, data_mode):
     assert not any("low-cloud-weong" in notice for notice in payload["notices"])
 
 
-def test_the_derived_grid_is_offered_once_and_only_with_its_disclosure(monkeypatch, data_mode):
+def test_the_retained_hrdps_derived_grid_is_not_a_current_layer(monkeypatch, data_mode):
     """The generic `/layers` path stands aside for a grid rendered here.
 
     Without that, the same artifact would be listed twice: once by
@@ -502,7 +487,7 @@ def test_the_derived_grid_is_offered_once_and_only_with_its_disclosure(monkeypat
     use_store(monkeypatch, data_mode, MultiGridStore([(gfs_artifact(), grid_dataset()), (weong, weong_dataset())]))
     payload = client.get(f"{PREFIX}/layers").json()
     matching = [layer["id"] for layer in payload["layers"] if "low_cloud_weong" in layer["id"] or "low-cloud-weong" in layer["id"]]
-    assert matching == ["eccc-hrdps-low-cloud-weong"]
+    assert matching == []
 
 
 def test_the_weong_raster_draws_the_derived_variable_not_the_retrieved_one(monkeypatch, data_mode):

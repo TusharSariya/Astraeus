@@ -705,8 +705,12 @@ export default function App() {
     }).catch(() => undefined)
 
     if (mode === 'expert') {
-      loadProfile(location, validTimeIso, controller.signal).then((prof) => {
-        setProfile(prof)
+      setProfile(null)
+      loadProfile(location, validTimeIso, selectedProduct ?? undefined, controller.signal).then((prof) => {
+        // A location, timestamp, mode or source change aborts this request.
+        // loadProfile deliberately maps transport failures to null, so check
+        // the signal here before that null can overwrite the newer response.
+        if (!controller.signal.aborted) setProfile(prof)
       }).catch(() => undefined)
     }
 

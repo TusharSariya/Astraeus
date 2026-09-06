@@ -671,10 +671,11 @@ export async function loadPoint(location: LocationPoint, validTime?: string, pro
   }
 }
 
-export async function loadProfile(location: LocationPoint, validTime?: string, signal?: AbortSignal): Promise<import('./types').ProfileResponse | null> {
+export async function loadProfile(location: LocationPoint, validTime?: string, product?: string, signal?: AbortSignal): Promise<import('./types').ProfileResponse | null> {
   try {
     const params = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude) })
     if (validTime) params.set('valid_time', validTime)
+    if (product) params.set('product', product)
     const response = await fetch(`${prefix}/profile?${params}`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) return null
     const data: unknown = await response.json()
@@ -682,10 +683,14 @@ export async function loadProfile(location: LocationPoint, validTime?: string, s
     const profile = data as { valid_time: string; levels: Array<{ pressure_hpa: number; fields: ApiEvidenceField[] }> }
     const levels = profile.levels.map((lvl) => ({
       pressure_hpa: lvl.pressure_hpa,
-      temperature_c: numericField(lvl.fields, 'temperature'),
-      dew_point_c: numericField(lvl.fields, 'dew_point'),
-      relative_humidity_pct: numericField(lvl.fields, 'relative_humidity'),
-      wind_speed_ms: numericField(lvl.fields, 'wind_speed'),
+      // Stored profile responses historically used generic names while the
+      // selected-time HRDPS response preserves its native level-qualified
+      // catalogue key. Accept exactly those two declared shapes; never carry
+      // a value from a different pressure into this row.
+      temperature_c: numericField(lvl.fields, `temperature_${lvl.pressure_hpa}hPa`) ?? numericField(lvl.fields, 'temperature'),
+      dew_point_c: numericField(lvl.fields, `dew_point_${lvl.pressure_hpa}hPa`) ?? numericField(lvl.fields, 'dew_point'),
+      relative_humidity_pct: numericField(lvl.fields, `relative_humidity_${lvl.pressure_hpa}hPa`) ?? numericField(lvl.fields, 'relative_humidity'),
+      wind_speed_ms: numericField(lvl.fields, `wind_speed_${lvl.pressure_hpa}hPa`) ?? numericField(lvl.fields, 'wind_speed'),
     }))
     return { valid_time: profile.valid_time, levels }
   } catch {

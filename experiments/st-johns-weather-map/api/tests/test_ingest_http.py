@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from datetime import datetime
 
 import httpx
 import pytest
@@ -54,6 +55,26 @@ def build_client(
         follow_redirects=True,
     )
     return client
+
+
+def test_download_receipt_uses_effective_headers_and_final_byte_completion(tmp_path: Path) -> None:
+    requested: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(request)
+        return httpx.Response(200, headers={"ETag": '"abc"'}, content=b"payload")
+
+    destination = tmp_path / "payload.bin"
+    with build_client(handler) as client:
+        receipt = client.download_with_receipt(URL, destination, max_bytes=32, headers={"Accept": "application/x-grib2"})
+    assert destination.read_bytes() == b"payload"
+    assert receipt["byte_size"] == 7
+    assert receipt["sha256"] == "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5"
+    assert receipt["request_headers"] == {
+        "accept": "application/x-grib2", "accept-encoding": "gzip", "user-agent": USER_AGENT,
+    }
+    assert receipt["url"] == URL
+    assert isinstance(receipt["completed_at"], datetime)
 
 
 def test_a_transient_failure_is_retried_and_then_succeeds(sleeps):

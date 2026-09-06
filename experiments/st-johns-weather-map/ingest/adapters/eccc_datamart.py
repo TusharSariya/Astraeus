@@ -449,6 +449,7 @@ HRDPS_ARTIFACT_BYTES = 512 * 1024 * 1024
 HRDPS_FILESYSTEM_BYTES = 2816 * 1024 * 1024
 HRDPS_MARGIN_BYTES = 128 * 1024 * 1024
 HRDPS_MEMORY_LIMIT_BYTES = 4 * 1024 * 1024 * 1024
+HRDPS_DEMAND_CACHE_BYTES = 64 * 1024 * 1024
 HRDPS_DISCOVERY_REQUESTS = 2 * (1 + 2 * HRDPS_MAX_CYCLES_PER_DATE)
 HRDPS_RECEIVED_BYTES = (
     (HRDPS_DISCOVERY_REQUESTS + HRDPS_MAX_LEADS) * HRDPS_LISTING_BYTES
@@ -499,6 +500,7 @@ class ECCCDataMartAdapter:
         base_url: str = ECCC_DATAMART_BASE,
         fallback_days: int = 1,
         datamart_fallback_path: str | None = None,
+        capture_transport_receipts: bool = False,
     ) -> None:
         self.source_id = source_id
         self.model_subpath = model_subpath
@@ -511,6 +513,7 @@ class ECCCDataMartAdapter:
         self._base_url = base_url.rstrip("/")
         self._fallback_days = max(0, fallback_days)
         self._declared_fallback = datamart_fallback_path
+        self._capture_transport_receipts = capture_transport_receipts
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
@@ -518,26 +521,34 @@ class ECCCDataMartAdapter:
     def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
         if self.source_id != "eccc-hrdps":
             raise AdapterUnavailable(f"{self.source_id}: complete-operation bounds are not measured")
+        raise AdapterUnavailable("eccc-hrdps scheduled full-run ingestion is disabled; use selected-timestamp demand queries")
+
+    def demand_operation_bounds(self, field_count: int) -> ResourceBounds:
+        """Conservative one-native-lead envelope, checked before discovery."""
+        if self.source_id != "eccc-hrdps" or not 0 < field_count <= len(HRDPS_VARS):
+            raise AdapterUnavailable("HRDPS demand field count is outside the declared source set")
         memory_limit = Path("/sys/fs/cgroup/memory.max")
         try:
-            raw_limit = memory_limit.read_text().strip()
-            available = int(raw_limit)
+            available = int(memory_limit.read_text().strip())
         except (OSError, ValueError) as error:
-            raise AdapterUnavailable("HRDPS requires a finite Linux cgroup memory limit") from error
+            raise AdapterUnavailable("HRDPS demand decode requires a finite Linux cgroup memory limit") from error
         if available != HRDPS_MEMORY_LIMIT_BYTES:
-            raise AdapterUnavailable("HRDPS requires the measured and enforced 4 GiB cgroup memory limit")
-        if getattr(ctypes.CDLL(None), "malloc_trim", None) is None:
-            raise AdapterUnavailable("HRDPS decoder allocator cannot return closed native buffers")
+            raise AdapterUnavailable("HRDPS demand decode requires the measured 4 GiB cgroup memory limit")
         temporary = Path(tempfile.gettempdir())
         geometry = os.statvfs(temporary)
         capacity = geometry.f_blocks * geometry.f_frsize
-        free = geometry.f_bavail * geometry.f_frsize
+        # fetch() retains every selected GRIB until its decode pass begins, so
+        # the complete-operation reservation must charge all requested files,
+        # not only the concurrently open transfer slots.  The two cache-sized
+        # allowances cover the private writer workspace and promoted ZIP; the
+        # existing margin covers measured filesystem/block variance.
+        physical = 2 * HRDPS_DEMAND_CACHE_BYTES + field_count * HRDPS_FILE_BYTES
         if capacity > 3 * 1024 * 1024 * 1024:
-            raise AdapterUnavailable("HRDPS temporary filesystem lacks the enforced 3 GiB operation ceiling")
-        if free < HRDPS_FILESYSTEM_BYTES + HRDPS_MARGIN_BYTES:
-            raise AdapterUnavailable("HRDPS temporary filesystem cannot hold the complete-operation reservation")
-        return ResourceBounds(HRDPS_ARTIFACT_BYTES, HRDPS_FILESYSTEM_BYTES,
-                              HRDPS_MARGIN_BYTES, HRDPS_RECEIVED_BYTES)
+            raise AdapterUnavailable("HRDPS demand temporary filesystem lacks the enforced 3 GiB ceiling")
+        if geometry.f_bavail * geometry.f_frsize < physical + HRDPS_MARGIN_BYTES:
+            raise AdapterUnavailable("HRDPS demand temporary filesystem cannot hold the selected-lead allowance")
+        received = HRDPS_DISCOVERY_REQUESTS * HRDPS_LISTING_BYTES + field_count * HRDPS_FILE_BYTES
+        return ResourceBounds(HRDPS_DEMAND_CACHE_BYTES, physical, HRDPS_MARGIN_BYTES, received)
 
     def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
         return DiscoveryBounds(self.operation_bounds(window).received_bytes)
@@ -691,6 +702,59 @@ class ECCCDataMartAdapter:
         )
 
     # --- retrieval -------------------------------------------------------
+    def fetch_selected(
+        self,
+        candidate: RunCandidate,
+        selected_time: datetime,
+        workdir: Path,
+        *,
+        fields: tuple[str, ...],
+    ) -> RunResult:
+        """Fetch one exact native lead and an explicit finite field set.
+
+        This is the source-local demand-query seam.  The selected timestamp is
+        resolved to a native lead before any payload request; it never widens
+        into the adapter's historical 25-lead ingestion window.
+        """
+        if candidate.run_time is None:
+            raise AdapterUnavailable(f"{self.source_id}: candidate carries no run time")
+        delta = selected_time - candidate.run_time
+        lead_seconds = delta.total_seconds()
+        if lead_seconds < 0 or lead_seconds % 3600:
+            raise AdapterUnavailable(f"{self.source_id}: selected time is not an exact native hourly lead")
+        lead = int(lead_seconds // 3600)
+        lead_token = f"{lead:03d}"
+        available = tuple(str(value) for value in candidate.detail.get("available_hours", ()))
+        if lead_token not in available or lead >= HRDPS_MAX_LEADS:
+            raise AdapterUnavailable(f"{self.source_id}: selected native lead {lead_token} is unavailable")
+        unknown = set(fields) - set(self.var_map)
+        if unknown:
+            raise AdapterUnavailable(f"{self.source_id}: unsupported selected fields: {', '.join(sorted(unknown))}")
+        selected = ECCCDataMartAdapter(
+            source_id=self.source_id,
+            model_subpath=self.model_subpath,
+            grid_token=self.grid_token,
+            var_map={name: self.var_map[name] for name in fields},
+            bounds=self.bounds,
+            adapter_version=self.adapter_version,
+            client=self._get_client(),
+            base_url=self._base_url,
+            fallback_days=self._fallback_days,
+            datamart_fallback_path=self._declared_fallback,
+            capture_transport_receipts=True,
+        )
+        narrowed = RunCandidate(
+            provider_run_id=candidate.provider_run_id,
+            run_time=candidate.run_time,
+            urls=list(candidate.urls),
+            detail={**candidate.detail, "available_hours": [lead_token]},
+        )
+        return selected.fetch(
+            narrowed,
+            FetchWindow(now=selected_time, back_hours=0, forward_hours=0),
+            workdir,
+        )
+
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         client = self._get_client()
         cycle_url = candidate.detail.get("cycle_url", "")
@@ -707,6 +771,7 @@ class ECCCDataMartAdapter:
 
         hourly_datasets: list[xarray.Dataset] = []
         decode_errors: list[str] = []
+        transport_receipts: list[dict[str, object]] = []
         for hour_str in target_hours:
             valid_time = run_time + timedelta(hours=int(hour_str))
             if not window.covers(valid_time):
@@ -756,19 +821,36 @@ class ECCCDataMartAdapter:
             if planned:
                 with ThreadPoolExecutor(max_workers=max(1, min(download_parallelism(), len(planned)))) as pool:
                     futures = {
-                        pool.submit(client.download, file_url, local_grib, max_bytes=HRDPS_FILE_BYTES): (canonical_name, match_file, file_url, local_grib)
+                        pool.submit(
+                            client.download_with_receipt if self._capture_transport_receipts else client.download,
+                            file_url, local_grib, max_bytes=HRDPS_FILE_BYTES,
+                        ): (canonical_name, match_file, file_url, local_grib)
                         for canonical_name, match_file, file_url, local_grib in planned
                     }
                     for future in as_completed(futures):
                         canonical_name, match_file, file_url, local_grib = futures[future]
                         try:
-                            future.result()
+                            download_result = future.result()
                         except Exception as error:
                             decode_errors.append(f"download:{match_file}")
                             _log.warning("Failed to download %s: %s", file_url, error)
                             local_grib.unlink(missing_ok=True)
                             continue
                         fetched[canonical_name] = local_grib
+                        if self._capture_transport_receipts:
+                            transport_receipts.append({
+                                "field": canonical_name,
+                                "url": download_result["url"],
+                                "request_headers": download_result["request_headers"],
+                                "bytes": download_result["byte_size"],
+                                "sha256": download_result["sha256"],
+                                "completed_at": download_result["completed_at"].isoformat(),
+                                "response_headers": {
+                                    str(name).lower(): str(value)
+                                    for name, value in download_result["response_headers"].items()
+                                    if str(name).lower() in {"cache-control", "content-length", "content-type", "date", "etag", "last-modified"}
+                                },
+                            })
 
             for canonical_name, match_file, file_url, local_grib in planned:
                 if canonical_name not in fetched:
@@ -888,6 +970,8 @@ class ECCCDataMartAdapter:
                 "filesystem_margin_bytes": HRDPS_MARGIN_BYTES,
                 "memory_cgroup_bytes": HRDPS_MEMORY_LIMIT_BYTES,
             }
+        if transport_receipts:
+            provenance["transport_receipts"] = sorted(transport_receipts, key=lambda item: str(item["field"]))
 
         artifact = Artifact(
             logical_name="surface",

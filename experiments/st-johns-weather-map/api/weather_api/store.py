@@ -1645,13 +1645,13 @@ def configured_mode() -> str:
     """
     global _data_mode
     if _data_mode is None:
-        raw = os.environ.get(DATA_MODE_ENV, "").strip().lower()
-        if raw not in {LIVE_MODE, FIXTURE_MODE}:
-            if raw:
-                LOGGER.error("%s=%r is not %r or %r; failing closed to %s", DATA_MODE_ENV, raw, LIVE_MODE, FIXTURE_MODE, UNAVAILABLE_MODE)
+        supplied = os.environ.get(DATA_MODE_ENV, "")
+        raw = supplied if supplied in {LIVE_MODE, FIXTURE_MODE} else UNAVAILABLE_MODE
+        if raw == UNAVAILABLE_MODE:
+            if supplied:
+                LOGGER.error("%s=%r is not %r or %r; failing closed to %s", DATA_MODE_ENV, supplied, LIVE_MODE, FIXTURE_MODE, UNAVAILABLE_MODE)
             else:
                 LOGGER.error("%s is unset; failing closed to %s", DATA_MODE_ENV, UNAVAILABLE_MODE)
-            raw = UNAVAILABLE_MODE
         _data_mode = raw
     return _data_mode
 
@@ -3254,12 +3254,14 @@ def live_point_fields(
 
 def live_profile_levels(store: LiveStore, latitude: float, longitude: float, valid_time: datetime, pressures: Sequence[int]) -> list[Any]:
     from .models import EvidenceField, ProfileLevel, catalogue_key_for  # noqa: PLC0415
+    from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS  # noqa: PLC0415
 
     reference = datetime.now(UTC)
     levels: list[ProfileLevel] = []
     isolated: set[str] = set()
     for pressure, samples in sorted(store.sample_profile(latitude, longitude, valid_time, pressures).items(), key=lambda item: -item[0]):
         fields = []
+        variables = {sample.variable: sample for sample in samples}
         for sample in samples:
             name = FIELD_BY_VARIABLE.get(sample.variable, sample.variable)
             catalogue_key = catalogue_key_for(sample.variable)
@@ -3286,6 +3288,29 @@ def live_profile_levels(store: LiveStore, latitude: float, longitude: float, val
                     provenance=provenance,
                 )
             )
+        u_name, v_name = f"wind_u_{pressure}hPa", f"wind_v_{pressure}hPa"
+        u, v = variables.get(u_name), variables.get(v_name)
+        if u is not None and v is not None and u.value is not None and v.value is not None:
+            speed, direction = _registered_wind(u.value, v.value)
+            for name, derived, units in (
+                (f"wind_speed_{pressure}hPa", speed, WIND_SPEED_UNITS),
+                (f"wind_direction_{pressure}hPa", direction, WIND_DIRECTION_UNITS),
+            ):
+                basis = replace(u, variable=name, value=derived.value, units=units)
+                fields.append(
+                    _derived_evidence_field(
+                        store,
+                        field_name=name,
+                        basis=basis,
+                        inputs=[(u_name, u), (v_name, v)],
+                        method=WIND_METHOD,
+                        value=derived.value,
+                        derivation=derived.derivation,
+                        derivation_version=derived.version,
+                        flags=derived.flags,
+                        reference=reference,
+                    )
+                )
         if fields:
             levels.append(ProfileLevel(pressure_hpa=pressure, fields=fields))
     return levels

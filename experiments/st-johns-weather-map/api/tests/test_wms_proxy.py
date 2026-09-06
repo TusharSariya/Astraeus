@@ -159,7 +159,7 @@ def test_published_layer_titles_and_groups_come_from_recorded_provenance_and_geo
     payload = client.get(f"{PREFIX}/layers").json()
     by_id = {item["id"]: item for item in payload["layers"]}
 
-    assert by_id["eccc-hrdps-surface"]["group"] == "published_model"
+    assert "eccc-hrdps-surface" not in by_id
     assert by_id["awc-metar-speci-surface"]["group"] == "observation"
     assert by_id["eccc-radar-radar"]["group"] == "observation"
     assert by_id["eccc-cap-alerts-alerts"]["group"] == "alert"
@@ -167,7 +167,6 @@ def test_published_layer_titles_and_groups_come_from_recorded_provenance_and_geo
 
     # Titles are composed from the product the adapter recorded; nothing is
     # looked up in a prose table keyed by id.
-    assert by_id["eccc-hrdps-surface"]["title"].startswith("ECCC-HRDPS surface")
     assert by_id["awc-metar-speci-surface"]["title"].startswith("CYYT METAR/SPECI surface")
     count, polygons = by_id["eccc-cap-alerts-alerts"]["title"], by_id["eccc-cap-alerts-alerts_features"]["title"]
     assert count != polygons

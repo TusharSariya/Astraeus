@@ -442,23 +442,47 @@ def get_timeline() -> TimelineResponse:
         fixture_items = [item.model_copy(update={"tier": tier_of(item.valid_time_utc, reference)}) for item in timeline(reference)]
         return TimelineResponse(data_mode=DataMode.FIXTURE, start=start, end=end, items=fixture_items, boundary=boundary, tiers=tiers)
 
+    demand_products: dict[datetime, list[str]] = {}
+    demand_notices: list[str] = []
+    try:
+        from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+        for stamp in hrdps_query_coordinator().timeline_times(reference):
+            if start <= stamp <= end:
+                demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-hrdps")
+    except Exception as error:  # noqa: BLE001 - a provider miss is an unavailable source, not a route failure
+        demand_notices.append(
+            f"eccc-hrdps demand availability could not be resolved: {type(error).__name__}"
+        )
+
     store = live_store()
     if store is None:
-        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["no live artifact store is reachable; no hour can be said to have a published product"])
+        if demand_products:
+            return TimelineResponse(
+                data_mode=DataMode.LIVE, start=start, end=end,
+                items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
+                notices=[*demand_notices, "persistent artifact coverage is unavailable; HRDPS hours are provider-advertised demand availability"],
+            )
+        return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=[*demand_notices, "no live artifact store is reachable; no hour can be said to have a published product"])
     try:
         coverage = store.published_products()
     except Exception:
         LOGGER.exception("published product coverage could not be read")
+        if demand_products:
+            return TimelineResponse(
+                data_mode=DataMode.LIVE, start=start, end=end,
+                items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
+                notices=[*demand_notices, "the legacy artifact store raised; HRDPS hours are provider-advertised demand availability"],
+            )
         # No hour is said to hold a product AND no hour is said to have aged
         # out: with the store unreadable, either claim would be a guess.
         return TimelineResponse(data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference), boundary=boundary, tiers=tiers, notices=["the live artifact store raised while resolving published coverage"])
 
-    notices = skip_notices(store)
+    notices = [*demand_notices, *skip_notices(store)]
     aged_out, aged_out_notices = _aged_out_sources(store)
     notices.extend(aged_out_notices)
     coverage_at, coverage_resolved, coverage_notices = _resolved_coverage(store, reference)
     notices.extend(coverage_notices)
-    if not coverage:
+    if not coverage and not demand_products:
         return TimelineResponse(
             data_mode=DataMode.UNAVAILABLE, start=start, end=end,
             items=_window_items(reference, aged_out=aged_out, coverage_at=coverage_at, coverage_resolved=coverage_resolved),
@@ -477,6 +501,11 @@ def get_timeline() -> TimelineResponse:
             # the frame's own time stays exact in /layers.
             hour = _floor_to_hour(stamp)
             bucket = products_at.setdefault(hour, [])
+            if source_id not in bucket:
+                bucket.append(source_id)
+    for hour, source_ids in demand_products.items():
+        bucket = products_at.setdefault(hour, [])
+        for source_id in source_ids:
             if source_id not in bucket:
                 bucket.append(source_id)
     # A source with coverage is not aged out, whatever the record says it once
@@ -853,14 +882,33 @@ def get_layers() -> LayersResponse:
             data_mode=DataMode.FIXTURE,
             layers=[_unattributed_layer(layer, FIXTURE_RUN_REASON) for layer in LAYERS],
         )
+    if response_mode() is DataMode.UNAVAILABLE:
+        return LayersResponse(
+            data_mode=DataMode.UNAVAILABLE, layers=[],
+            notices=["WEATHER_DATA_MODE is not a recognized live mode; no layer can be offered"],
+        )
 
     store = live_store()
     if store is None:
+        proxied, proxy_notices = _proxied_forecast_layers()
+        if proxied:
+            return LayersResponse(
+                data_mode=DataMode.LIVE,
+                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
+                notices=["no live artifact store is reachable; only timestamp-demand provider proxies are offered", *proxy_notices],
+            )
         return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["no live artifact store is reachable; no layer can be offered"])
     try:
         artifacts = store.current()
     except Exception:
         LOGGER.exception("published artifacts could not be listed for the layer index")
+        proxied, proxy_notices = _proxied_forecast_layers()
+        if proxied:
+            return LayersResponse(
+                data_mode=DataMode.LIVE,
+                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
+                notices=["the legacy artifact store raised; only timestamp-demand provider proxies are offered", *proxy_notices],
+            )
         return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["the live artifact store raised while listing published artifacts"])
     if not artifacts:
         # Nothing is published, but the forward window can still be shown as
@@ -881,6 +929,13 @@ def get_layers() -> LayersResponse:
         coverage = store.published_layer_times()
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
+        proxied, proxy_notices = _proxied_forecast_layers()
+        if proxied:
+            return LayersResponse(
+                data_mode=DataMode.LIVE,
+                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
+                notices=["the legacy artifact store raised while reading coverage; only timestamp-demand provider proxies are offered", *proxy_notices],
+            )
         return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["the live artifact store raised while reading layer time coverage"])
 
     notices = skip_notices(store)
@@ -997,6 +1052,14 @@ def get_layers() -> LayersResponse:
     notices.extend(proxy_notices)
     layers.extend(proxied)
 
+    # HRDPS stored artifacts are retained for audit but are no longer a live
+    # delivery path.  The source's provider proxies above remain; a retained
+    # model_run must not silently outrank the selected-time query architecture.
+    layers = [
+        item for item in layers
+        if not (item.id.startswith("eccc-hrdps-") and item.evidence_basis == wms.PUBLISHED_ARTIFACT)
+    ]
+
     if not layers:
         aged_out, aged_notices = _aged_out_sources(store)
         return LayersResponse(
@@ -1067,6 +1130,37 @@ def _live_point(
     belong to and whether a statistic over them is answerable are all facts
     the store and the derivation registry hold.
     """
+    if product and product.upper() == "HRDPS":
+        try:
+            from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+
+            fields, _consensus, _sources = hrdps_query_coordinator().point_fields(latitude, longitude, time)
+        except Exception as error:
+            LOGGER.exception("HRDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason=f"HRDPS selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:eccc-hrdps"],
+                notices=["eccc-hrdps could not retrieve and validate the exact selected native timestep"],
+                source_id="eccc-hrdps", product="HRDPS",
+            )
+        if not fields:
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason="HRDPS has no native value at this coordinate and selected timestamp",
+                flags=["demand_query_empty:eccc-hrdps"],
+                notices=["eccc-hrdps returned no validated native value for the selected point"],
+                source_id="eccc-hrdps", product="HRDPS",
+            )
+        actual_time = fields[0].provenance.valid_time
+        return PointResponse(
+            data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+            selection=Selection(mode="fallback", selected_source_id="eccc-hrdps",
+                                selected_product_id="hrdps", badge="HRDPS selected model",
+                                reason=f"Selected HRDPS native timestep {actual_time.isoformat()}"),
+            fields=fields,
+            notices=[f"HRDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied"],
+        )
     if product and product.upper() in {"GFS", "NOAA"}:
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
@@ -2269,6 +2363,7 @@ def get_profile(
     latitude: float = Query(default=47.5615, ge=-90, le=90),
     longitude: float = Query(default=-52.7126, ge=-180, le=180),
     valid_time: datetime | None = None,
+    product: str | None = None,
 ) -> ProfileResponse:
     require_core_coverage(latitude, longitude)
     time = requested_time(valid_time)
@@ -2281,6 +2376,17 @@ def get_profile(
             levels=unavailable_profile_levels(time, PROFILE_PRESSURES, flags=[flag, *flags], last_valid_time=last_valid_time),
             notices=[*notices, reason],
         )
+
+    if product and product.upper() == "HRDPS":
+        try:
+            from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+            levels, native_time = hrdps_query_coordinator().profile_levels(latitude, longitude, time, PROFILE_PRESSURES)
+        except Exception as error:
+            LOGGER.exception("HRDPS demand profile failed for %s", time.isoformat())
+            return unavailable(f"HRDPS selected profile is unavailable: {type(error).__name__}", "demand_query_unavailable:eccc-hrdps", [])
+        return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude,
+                               valid_time=native_time, levels=levels,
+                               notices=[f"HRDPS pressure fields were fetched for native timestep {native_time.isoformat()} only"])
 
     store = live_store()
     if store is None:

@@ -35,8 +35,8 @@ USER_AGENT = (
 
 
 def _effective_request_headers(response: httpx.Response) -> dict[str, str]:
-    """The non-secret request headers relevant to a public payload receipt."""
-    allowed = {"user-agent", "accept-encoding", "range"}
+    """Non-secret effective headers that identify a public payload request."""
+    allowed = {"accept", "accept-encoding", "if-none-match", "range", "user-agent"}
     return {key.lower(): value for key, value in response.request.headers.items() if key.lower() in allowed}
 
 RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
@@ -476,11 +476,21 @@ class PoliteClient:
         beside the byte count and digest, and that header is only available
         from the streamed response, so this variant hands it back.
         """
+        receipt = self.download_with_receipt(
+            url, destination, max_bytes=max_bytes, headers=headers, chunk_size=chunk_size
+        )
+        return int(receipt["byte_size"]), dict(receipt["response_headers"])
+
+    def download_with_receipt(self, url: str, destination: Path, *, max_bytes: int,
+                              headers: Mapping[str, str] | None = None,
+                              chunk_size: int = 1 << 20) -> dict[str, object]:
+        """Stream one file and timestamp immediately after its final byte."""
         if max_bytes <= 0:
             raise ValueError("max_bytes must be positive")
         destination.parent.mkdir(parents=True, exist_ok=True)
         written = 0
         response = self._request("GET", url, headers=headers, stream=True)
+        digest = hashlib.sha256()
         try:
             response_headers = {str(key): str(value) for key, value in response.headers.items()}
             declared = response.headers.get("Content-Length")
@@ -501,12 +511,21 @@ class PoliteClient:
                             f"{url} exceeded the {max_bytes} byte ceiling"
                         )
                     handle.write(chunk)
+                    digest.update(chunk)
+            completed = datetime.now(timezone.utc)
         except BaseException:
             destination.unlink(missing_ok=True)
             raise
         finally:
             response.close()
-        return written, response_headers
+        return {
+            "url": str(response.request.url),
+            "request_headers": _effective_request_headers(response),
+            "response_headers": response_headers,
+            "completed_at": completed,
+            "byte_size": written,
+            "sha256": digest.hexdigest(),
+        }
 
     def download_ranges(
         self,

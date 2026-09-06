@@ -71,6 +71,12 @@ services:
       retries: 12
       start_period: 10s
     restart: unless-stopped
+    # Selected-timestamp HRDPS decode reuses the independently measured hard
+    # worker envelope. The query refuses before discovery/payload unless both
+    # limits are visible with these exact values.
+    mem_limit: 4g
+    tmpfs:
+      - /tmp:size=3g,mode=1777
     networks: [weather]
 
   worker:
