@@ -256,7 +256,7 @@ class HarnessStore(LiveStore):
         pass
 
 
-def test_actual_astraeus_api_reads_all_126_fields_from_both_grids_with_test_local_catalogue(tmp_path, monkeypatch):
+def test_actual_reader_reads_all_126_fields_without_default_point_fallback(tmp_path, monkeypatch):
     adapter = WeatherNext3StatisticsAdapter(ALL_FIELDS_EVIDENCE)
     result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
     currents, datasets = [], {}
@@ -300,16 +300,11 @@ def test_actual_astraeus_api_reads_all_126_fields_from_both_grids_with_test_loca
     )
     assert response.status_code == 200, response.text
     fields = {item["field"]: item for item in response.json()["fields"] if item["provenance"]["source_id"] == SOURCE_ID}
-    assert set(fields) == set(EXPECTED_FIELDS)
-    for name, value in expected.items():
-        if value is None:
-            assert fields[name]["value"] is None and fields[name]["absence_state"] == "null"
-        else:
-            assert fields[name]["value"] == pytest.approx(value)
-            assert fields[name]["provenance"]["evidence_class"] == "retrieved"
+    assert fields == {}
+    assert "No retained forecast artifact was read or substituted" in response.json()["notices"]
 
 
-def test_six_field_box_reaches_real_reader_and_http_with_every_selected_value(tmp_path, monkeypatch):
+def test_six_field_box_reaches_real_reader_without_default_point_fallback(tmp_path, monkeypatch):
     adapter = WeatherNext3StatisticsAdapter(EVIDENCE)
     result = adapter.fetch(adapter.discover(window())[0], window(), tmp_path)
     artifact = result.artifacts[0]
@@ -341,7 +336,8 @@ def test_six_field_box_reaches_real_reader_and_http_with_every_selected_value(tm
     assert response.status_code == 200, response.text
     actual = {item["field"]: item["value"] for item in response.json()["fields"]
               if item["provenance"]["source_id"] == SOURCE_ID}
-    assert actual == pytest.approx(expected)
+    assert actual == {}
+    assert "No retained forecast artifact was read or substituted" in response.json()["notices"]
 
 
 def test_partial_experimental_result_cannot_advance_actual_store_publication(tmp_path, monkeypatch):

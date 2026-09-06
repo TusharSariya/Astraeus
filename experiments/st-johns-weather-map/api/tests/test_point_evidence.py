@@ -698,18 +698,18 @@ def test_the_five_absence_states_are_named_once_and_stay_distinct():
     assert len(set(ABSENCE_STATES)) == 5
 
 
-def test_aged_out_is_reported_with_the_last_valid_time_the_store_held(empty_live_store):
+def test_default_demand_point_does_not_substitute_an_aged_out_store_record(empty_live_store):
     empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-hrdps": HELD_UNTIL})
 
     payload = _client.get(f"{PREFIX}/point").json()
 
     assert payload["data_mode"] == "unavailable"
-    assert HELD_UNTIL.isoformat() in payload["selection"]["reason"]
+    assert "no migrated demand source returned applicable point evidence" in payload["selection"]["reason"]
     for field in payload["fields"]:
         assert field["value"] is None
-        assert AGED_OUT_FLAG in field["provenance"]["quality"]["flags"]
-        assert "aged_out:eccc-hrdps" in field["provenance"]["quality"]["flags"]
-        assert datetime.fromisoformat(field["provenance"]["last_valid_time"]) == HELD_UNTIL
+        assert AGED_OUT_FLAG not in field["provenance"]["quality"]["flags"]
+        assert "no_retrieval" in field["provenance"]["quality"]["flags"]
+        assert field["provenance"]["last_valid_time"] is None
         # The QC status keeps its four values; ageing out is a flag, never a
         # fifth status, because a value's verdict is not changed by its removal.
         assert field["provenance"]["quality"]["status"] in {"passed", "suspect", "failed", "unknown"}
@@ -727,12 +727,11 @@ def test_a_source_that_never_published_here_reports_null_not_aged_out(empty_live
         assert "no_retrieval" in field["provenance"]["quality"]["flags"]
 
 
-def test_aged_out_is_not_no_retrieval(empty_live_store):
-    """They are different claims: one says we had it, the other says we never did."""
+def test_default_demand_point_ignores_retained_age_history(empty_live_store):
     empty_live_store.setattr(_api_module, "last_valid_times", lambda store: {"eccc-hrdps": HELD_UNTIL})
     payload = _client.get(f"{PREFIX}/point").json()
     flags = payload["fields"][0]["provenance"]["quality"]["flags"]
-    assert AGED_OUT_FLAG in flags and "no_retrieval" not in flags
+    assert AGED_OUT_FLAG not in flags and "no_retrieval" in flags
 
 
 def test_a_selected_product_that_aged_out_names_itself(empty_live_store):
@@ -758,8 +757,7 @@ def test_a_selected_product_that_was_never_held_is_still_null(empty_live_store):
         assert field["provenance"]["last_valid_time"] is None
 
 
-def test_an_unreadable_last_valid_time_record_reports_unavailable_not_an_absence(empty_live_store):
-    """Guessing between aged out and null is itself a fabrication."""
+def test_default_demand_point_never_reads_unreadable_retained_age_history(empty_live_store):
 
     def raising(store):
         raise StoreUnavailable("the last valid time table is unreachable")
@@ -769,7 +767,7 @@ def test_an_unreadable_last_valid_time_record_reports_unavailable_not_an_absence
 
     assert payload["data_mode"] == "unavailable"
     assert all(AGED_OUT_FLAG not in field["provenance"]["quality"]["flags"] for field in payload["fields"])
-    assert any("aged out" in notice for notice in payload["notices"])
+    assert any("No retained forecast artifact was read or substituted" in notice for notice in payload["notices"])
 
 
 def test_the_profile_reports_aged_out_the_same_way(empty_live_store):
@@ -1136,28 +1134,17 @@ def test_an_ensemble_statistic_quality_is_no_better_than_the_worst_member():
     assert "derived" in computed.provenance.quality.flags
 
 
-def test_the_live_point_request_carries_the_ensemble_parameters_to_the_sampler(empty_live_store):
-    """Seam D end to end: the five request parameters reach the store unchanged.
-
-    A parameter dropped between the query string and the sampler would answer
-    a member request with the deterministic response and no notice at all,
-    which reads as "this family publishes nothing" rather than "nobody asked".
-    """
-    from weather_api.science import build_consensus  # noqa: PLC0415
-
-    seen: dict[str, Any] = {}
-
-    def record(store, latitude, longitude, valid_time, **request):
-        seen.update(request)
-        return [], build_consensus([]), []
-
-    empty_live_store.setattr(_api_module, "live_point_fields", record)
-    _client.get(
+def test_default_demand_point_does_not_send_ensemble_parameters_to_retained_store(empty_live_store):
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("default demand composition must not call the retained sampler")
+    empty_live_store.setattr(_api_module, "live_point_fields", forbidden)
+    response = _client.get(
         f"{PREFIX}/point",
         params={"member": "all", "statistic": "ensemble_threshold_probability", "quantile": 0.9, "threshold": 5.0, "comparison": "ge"},
     )
 
-    assert seen == {"member": "all", "statistic": "ensemble_threshold_probability", "quantile": 0.9, "threshold": 5.0, "comparison": "ge"}
+    assert response.status_code == 200
+    assert response.json()["data_mode"] == "unavailable"
 
 
 def test_an_ensemble_value_whose_family_is_unknown_is_refused_service():

@@ -40,10 +40,13 @@ of that path. Exact live review observed a 5,908-byte response, `max-age=60`, a
 matching 304 revalidation, and three applicable native groups; the experiment
 remains `operational: false`.
 
-Migrate the already demonstrated HRDPS, METAR/SPECI and Kp paths to this same
-demand-query contract in bounded follow-ups; their existing implementations and
-evidence remain useful until replaced, but scheduled bulk acquisition is not
-the final application architecture.
+HRDPS, METAR/SPECI, and NOAA SWPC Kp now use this timestamp-demand contract.
+PR221 (`baa7f78f00db1c806fb8cc20f9855bee7b8b8144`) completed Kp: current
+observed and forecast documents are bounded, cached by canonical provider
+request, conditionally revalidated, and filtered locally for the selected
+instant. Scheduled Kp acquisition is disabled and retained Kp is not presented
+as current demand evidence. Their historical publication evidence remains an
+audit record, not an application prerequisite.
 Merged integrity and provenance safeguards remain available where the cache or a
 source-specific implementation actually uses them. OpenSpec status changes still
 require the normal owner-controlled workflow.

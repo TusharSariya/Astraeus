@@ -679,7 +679,7 @@ def test_live_capture_receipt_matches_the_request_shape_the_adapter_forms():
         assert entry["retained_in_git"] is False
 
 
-def test_reps_member_artifact_round_trips_through_reader_and_http(
+def test_reps_member_artifact_round_trips_through_reader_without_default_point_fallback(
     monkeypatch, tmp_path: Path
 ):
     # The artifact is built here from the synthetic member fixtures, in the
@@ -763,10 +763,7 @@ def test_reps_member_artifact_round_trips_through_reader_and_http(
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["operational"] is False
-    assert {item["field"] for item in body["fields"]} >= {
-        "total_cloud_opacity",
-        "wind_speed_10m",
-    }
+    assert all(item["provenance"]["source_id"] != "eccc-reps" for item in body["fields"])
 
 
 # ------------------------------------------------------------------ 2. AIFS-ENS

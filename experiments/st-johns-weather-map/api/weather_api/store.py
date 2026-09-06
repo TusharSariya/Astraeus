@@ -2646,6 +2646,41 @@ def _consensus_candidates(samples: Sequence[Sample]) -> list[Any]:
     return candidates
 
 
+def consensus_candidates_from_fields(fields: Sequence[Any]) -> list[Any]:
+    """Apply the same registry eligibility to demand-built temperature fields.
+
+    The original fields remain the response evidence.  This projection carries
+    only the attributes the consensus policy reads, avoiding a lossy round trip
+    through the artifact ``Sample`` model.
+    """
+    from .science import ConsensusCandidate  # noqa: PLC0415
+
+    candidates = []
+    for field in fields:
+        provenance = field.provenance
+        if (
+            field.field != "temperature" or field.value is None
+            or provenance.evidence_class != "retrieved"
+            or provenance.member is not None
+            or provenance.freshness.status != "fresh"
+            or provenance.quality.status != "passed"
+            or provenance.run_stale is not False
+        ):
+            continue
+        config = _registry_config(provenance.source_id)
+        if config is None or not config.may_enter_consensus:
+            continue
+        candidates.append(ConsensusCandidate(
+            source_id=provenance.source_id,
+            forecast_centre=config.consensus_family or config.producer,
+            family=config.category,
+            value=field.value,
+            is_eccc_regional=config.consensus_family == "ECCC" and config.category == "deterministic_forecast",
+            is_ensemble=config.category == "ensemble",
+        ))
+    return candidates
+
+
 def _flag_is_present(sample: Sample | None) -> bool | None:
     """True/False for a sampled 0/1 present-weather flag, None when it was not read.
 

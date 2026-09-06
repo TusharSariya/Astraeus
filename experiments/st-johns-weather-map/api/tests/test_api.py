@@ -415,8 +415,19 @@ def assert_no_evidence_was_invented(payload: dict) -> None:
     assert payload["notices"], "an outage has to be named"
 
 
-@pytest.mark.parametrize(("store", "flag"), [(BrokenStore(), "live_store_error"), (EmptyStore(), "no_published_artifact")], ids=["store-raises", "nothing-published"])
+@pytest.mark.parametrize(("store", "flag"), [(BrokenStore(), "demand_consensus_unavailable"), (EmptyStore(), "demand_consensus_unavailable")], ids=["store-raises", "nothing-published"])
 def test_a_live_failure_reports_unavailable_instead_of_a_fixture_number(monkeypatch, data_mode, store, flag):
+    import weather_api.gfs_query as gfs_query
+    import weather_api.hrdps_query as hrdps_query
+    import weather_api.metar_query as metar_query
+
+    class Unavailable:
+        def point_fields(self, *_args, **_kwargs):
+            raise OSError("provider unavailable")
+
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: Unavailable())
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: Unavailable())
+    monkeypatch.setattr(metar_query, "metar_query_service", lambda: Unavailable())
     use_live_store(monkeypatch, data_mode, store)
     response = client.get(f"{PREFIX}/point")
     assert response.status_code == 200, response.text
@@ -844,3 +855,159 @@ def test_every_declared_member_threshold_comparison_is_accepted(name):
 def test_a_member_quantile_outside_the_unit_interval_is_refused(value):
     response = client.get(f"{PREFIX}/point", params={"statistic": "ensemble_quantile", "quantile": value})
     assert response.status_code == 422
+
+
+def test_consensus_uses_parallel_demand_sources_without_store_fallback(monkeypatch, data_mode):
+    """Two deterministic demand results stay visible but cannot form consensus."""
+    import weather_api.gfs_query as gfs_query
+    import weather_api.hrdps_query as hrdps_query
+    import weather_api.metar_query as metar_query
+
+    selected = now()
+
+    class OneSource:
+        def __init__(self, source, value):
+            self.source = source
+            self.value = value
+
+        def point_fields(self, latitude, longitude, valid_time):
+            class Store(EmptyStore):
+                def sample_point(inner, *_args, **_kwargs):
+                    return [_sample(self.source, "temperature_2m", self.value, "degC", valid_time)]
+            fields, consensus, sources = live_point_fields(Store(), latitude, longitude, valid_time)
+            fields = [item.model_copy(update={"provenance": item.provenance.model_copy(update={"run_stale": False, "freshness": item.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0, "threshold_seconds": 3600}), "quality": item.provenance.quality.model_copy(update={"status": "passed"})})}) for item in fields]
+            return fields, consensus, sources
+
+    class NoMetar:
+        def point_fields(self, *_args):
+            raise OSError("no observation")
+
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: OneSource("eccc-hrdps", 9.0))
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: OneSource("noaa-gfs", 11.0))
+    monkeypatch.setattr(metar_query, "metar_query_service", lambda: NoMetar())
+    monkeypatch.setattr(api_module, "live_store", lambda: (_ for _ in ()).throw(AssertionError("store fallback")))
+    data_mode("live")
+
+    payload = client.get(f"{PREFIX}/point", params={"valid_time": selected.isoformat(), "product": "consensus"}).json()
+    assert payload["selection"]["badge"] == "HRDPS primary - consensus unavailable"
+    assert payload["selection"]["reason"] == "minimum consensus evidence not met"
+    by_source = {item["provenance"]["source_id"]: item for item in payload["fields"]}
+    assert by_source["eccc-hrdps"]["value"] == 9.0
+    assert by_source["noaa-gfs"]["value"] == 11.0
+    assert by_source["eccc-hrdps"]["provenance"]["normalized_units"] == "degC"
+    assert by_source["noaa-gfs"]["provenance"]["valid_time"] == selected.isoformat().replace("+00:00", "Z")
+    assert any("no retained forecast artifact" in notice for notice in payload["notices"])
+
+
+def test_consensus_demand_sources_overlap_and_fail_independently(monkeypatch, data_mode):
+    import threading
+    import weather_api.gfs_query as gfs_query
+    import weather_api.hrdps_query as hrdps_query
+    import weather_api.metar_query as metar_query
+
+    selected = now()
+    entered = {"eccc-hrdps": threading.Event(), "noaa-gfs": threading.Event()}
+
+    class Demand:
+        def __init__(self, source, fail=False): self.source, self.fail = source, fail
+        def point_fields(self, latitude, longitude, valid_time):
+            entered[self.source].set()
+            other = "noaa-gfs" if self.source == "eccc-hrdps" else "eccc-hrdps"
+            assert entered[other].wait(1), "demand calls did not overlap"
+            if self.fail: raise ValueError("malformed source response")
+            class Store(EmptyStore):
+                def sample_point(inner, *_args, **_kwargs):
+                    return [_sample("eccc-hrdps", "temperature_2m", 8.5, "degC", valid_time)]
+            fields, consensus, sources = live_point_fields(Store(), latitude, longitude, valid_time)
+            fields = [item.model_copy(update={"provenance": item.provenance.model_copy(update={"run_stale": False, "freshness": item.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0, "threshold_seconds": 3600}), "quality": item.provenance.quality.model_copy(update={"status": "passed"})})}) for item in fields]
+            return fields, consensus, sources
+
+    class NoMetar:
+        def point_fields(self, *_args): raise OSError
+
+    monkeypatch.setattr(hrdps_query, "hrdps_query_coordinator", lambda: Demand("eccc-hrdps"))
+    monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: Demand("noaa-gfs", fail=True))
+    monkeypatch.setattr(metar_query, "metar_query_service", lambda: NoMetar())
+    monkeypatch.setattr(api_module, "live_store", lambda: (_ for _ in ()).throw(AssertionError("store fallback")))
+    data_mode("live")
+
+    payload = client.get(f"{PREFIX}/point", params={"valid_time": selected.isoformat()}).json()
+    assert payload["selection"]["selected_source_id"] == "eccc-hrdps"
+    assert {item["provenance"]["source_id"] for item in payload["fields"]} == {"eccc-hrdps"}
+    assert any("noaa-gfs demand evidence is unavailable" in notice for notice in payload["notices"])
+
+
+@pytest.mark.parametrize("mutation", ["member", "stale", "failed_qc", "non_temperature"])
+def test_demand_consensus_candidate_preserves_existing_guards(mutation):
+    from weather_api.store import consensus_candidates_from_fields
+
+    selected = now()
+    class Store(EmptyStore):
+        def sample_point(self, *_args, **_kwargs):
+            variable = "visibility" if mutation == "non_temperature" else "temperature_2m"
+            units = "m" if mutation == "non_temperature" else "degC"
+            return [_sample("eccc-hrdps", variable, 9.0, units, selected)]
+    fields, _consensus, _sources = live_point_fields(Store(), 47.6, -52.7, selected)
+    field = fields[0]
+    updates = {"run_stale": False}
+    if mutation == "member": updates["member"] = "p01"
+    if mutation == "stale": updates["freshness"] = field.provenance.freshness.model_copy(update={"status": "stale"})
+    if mutation == "failed_qc": updates["quality"] = field.provenance.quality.model_copy(update={"status": "failed"})
+    field = field.model_copy(update={"provenance": field.provenance.model_copy(update=updates)})
+    assert consensus_candidates_from_fields([field]) == []
+
+
+def test_repeated_consensus_request_adds_zero_upstream_loads_per_source(monkeypatch):
+    """Production source caches absorb the second route call before their loaders."""
+    from weather_api.gfs_query import GFSQueryEntry, GFSQueryService, GFSRequestKey
+    from weather_api.hrdps_query import HRDPSQueryEntry, HRDPSQueryService, HRDPSRequestKey
+    selected = now()
+
+    class CachedCoordinator:
+        def __init__(self, source, value, service, key):
+            self.source, self.value = source, value
+            self.service, self.key = service, key
+            self.upstream_calls = 0
+
+        def point_fields(self, latitude, longitude, valid_time):
+            self.service.query(self.key)
+            class Store(EmptyStore):
+                def sample_point(inner, *_args, **_kwargs):
+                    return [_sample(self.source, "temperature_2m", self.value, "degC", valid_time)]
+            fields, consensus, sources = live_point_fields(Store(), latitude, longitude, valid_time)
+            fields = [item.model_copy(update={"provenance": item.provenance.model_copy(update={
+                "run_stale": False,
+                "freshness": item.provenance.freshness.model_copy(update={"status": "fresh", "age_seconds": 0, "threshold_seconds": 3600}),
+                "quality": item.provenance.quality.model_copy(update={"status": "passed"}),
+            })}) for item in fields]
+            return fields, consensus, sources
+
+    hkey = HRDPSRequestKey("https://provider/hrdps/", "run", 0, ("temperature_2m",), ())
+    gkey = GFSRequestKey("https://provider/gfs.idx", "https://provider/gfs", ((0, 1),), ("TMP:2 m",), ())
+    hrdps = CachedCoordinator("eccc-hrdps", 8.5, None, hkey)
+    gfs = CachedCoordinator("noaa-gfs", 7.5, None, gkey)
+    def load_hrdps(key):
+        hrdps.upstream_calls += 1
+        return HRDPSQueryEntry(key, selected, selected, selected, "a" * 64, b"zip", {})
+    def load_gfs(key):
+        gfs.upstream_calls += 1
+        return GFSQueryEntry(key, selected, selected, selected, "b" * 64, {}, {}, (b"payload",))
+    hrdps.service = HRDPSQueryService(load_hrdps)
+    gfs.service = GFSQueryService(load_gfs)
+    monkeypatch.setattr("weather_api.hrdps_query.hrdps_query_coordinator", lambda: hrdps)
+    monkeypatch.setattr("weather_api.gfs_query.gfs_query_coordinator", lambda: gfs)
+    monkeypatch.setattr("weather_api.metar_query.metar_query_service", lambda: type("NoMetar", (), {"point_fields": staticmethod(lambda *_args: (_ for _ in ()).throw(OSError()))})())
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    client = TestClient(app)
+    params = {"latitude": 47.6, "longitude": -52.7, "valid_time": selected.isoformat()}
+
+    first = client.get("/api/experiments/weather/v0/point", params=params)
+    first_counts = (hrdps.upstream_calls, gfs.upstream_calls)
+    second = client.get("/api/experiments/weather/v0/point", params=params)
+
+    assert first.status_code == second.status_code == 200
+    assert first_counts == (1, 1)
+    assert (hrdps.upstream_calls, gfs.upstream_calls) == first_counts
+    assert [(item["value"], item["provenance"]["source_id"]) for item in first.json()["fields"]] == [
+        (item["value"], item["provenance"]["source_id"]) for item in second.json()["fields"]
+    ]
