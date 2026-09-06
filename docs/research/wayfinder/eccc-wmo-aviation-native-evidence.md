@@ -40,3 +40,21 @@ Finite acquisition should cap the date/product/issuer/hour listings, number of f
 - Do not acquire non-CZQX AIRMET as Newfoundland evidence.
 - Do not map IWXXM hazards, TAF conditions, or FD groups to canonical values without product-specific field/time/QC contracts.
 - Do not register, schedule, publish, or call issue #115 complete from these access findings. Each selected path still needs measured complete-operation bounds, immutable receipts with actual HTTP completion, a full native inventory, manifest validation, and independent artifact/API proof if an approved delivery route exists.
+
+## Bounded capture result
+
+The final post-main capture is summarized in
+[`eccc-wmo-aviation-capture-receipt.json`](eccc-wmo-aviation-capture-receipt.json).
+Raw artifacts, every response header, directory receipts, exact native
+inventories, and exact transport-completion records remain outside Git at
+`/private/tmp/astraeus-eccc-wmo-aviation-capture-20260906T0730Z`. The capture
+retained 32,662-byte CYYT TAF and 4,182-byte CZQX SIGMET bulletin XML plus all
+three 7,809-byte `FDCN01/02/03` documents. XML inventory accounts for every
+element and attribute QName occurrence. Each FDCN inventory accounts for all
+229 nonblank lines and preserves the native YYT and two-line `WPM 47N 49W`
+selections. All five raw hashes match the retained artifacts. Both acquisition
+runs state `complete: false`, source QC unknown, and `operational: false`.
+
+There is deliberately no API readback claim: no approved delivery contract or
+registered adapter exists for these native products. A test-only API route
+would not prove an authorized product boundary.

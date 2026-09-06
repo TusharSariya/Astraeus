@@ -1,0 +1,53 @@
+{
+  "capture_scope": "bounded native evidence only; no API, science, safety, or admission",
+  "complete": false,
+  "source_qc": "unknown",
+  "scratch_receipt": "/private/tmp/astraeus-eccc-wmo-aviation-capture-20260906T0730Z/capture-receipt.json",
+  "artifacts": [
+    {
+      "logical_name": "taf-cyyt",
+      "url": "https://dd.weather.gc.ca/today/aviation/iwxxm/taf/cwao/05/A_LTCN38CWAO060500_C_CWAO_20260906050000.xml",
+      "bytes": 32662,
+      "sha256": "02a0207c082c0b4093b5c434b0c5592bc95f946e47a1902585d8f3470e0b2e87",
+      "artifact_revision": "sha256:02a0207c082c0b4093b5c434b0c5592bc95f946e47a1902585d8f3470e0b2e87",
+      "transport_completed_at": "2026-09-06T06:21:05.651464+00:00",
+      "inventory": {"element_occurrences": 307, "element_qnames": 41, "attribute_occurrences": 204, "attribute_qnames": 12, "native_time_occurrences": 34}
+    },
+    {
+      "logical_name": "sigmet-czqx",
+      "url": "https://dd.weather.gc.ca/today/aviation/iwxxm/sigmet/czqx/03/A_LSCN27CWAO060320_C_CWAO_20260906032055.xml",
+      "bytes": 4182,
+      "sha256": "7d6da0c5f75295dba7662f3aaa08a08a4cbe1878054d9e58d7224390f5d81180",
+      "artifact_revision": "sha256:7d6da0c5f75295dba7662f3aaa08a08a4cbe1878054d9e58d7224390f5d81180",
+      "transport_completed_at": "2026-09-06T06:21:06.092315+00:00",
+      "inventory": {"element_occurrences": 46, "element_qnames": 29, "attribute_occurrences": 15, "attribute_qnames": 5, "native_time_occurrences": 5}
+    },
+    {
+      "logical_name": "fdcn01",
+      "url": "https://dd.weather.gc.ca/20260906/WXO-DD/bulletins/alphanumeric/20260906/FD/CWAO/02/FDCN01_CWAO_060320___49601",
+      "bytes": 7809,
+      "sha256": "96a92b9a4513130fcf333dc11c6e0dc1396d484a8ff99a08ab42c7cba949b66d",
+      "artifact_revision": "sha256:96a92b9a4513130fcf333dc11c6e0dc1396d484a8ff99a08ab42c7cba949b66d",
+      "transport_completed_at": "2026-09-06T06:21:07.158917+00:00",
+      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"]}
+    },
+    {
+      "logical_name": "fdcn02",
+      "url": "https://dd.weather.gc.ca/20260906/WXO-DD/bulletins/alphanumeric/20260906/FD/CWAO/02/FDCN02_CWAO_060330___21020",
+      "bytes": 7809,
+      "sha256": "0e0d8f0688c07153086c144e1f76f0957d48493b96bacd19f7e426edc7497e74",
+      "artifact_revision": "sha256:0e0d8f0688c07153086c144e1f76f0957d48493b96bacd19f7e426edc7497e74",
+      "transport_completed_at": "2026-09-06T06:21:07.658689+00:00",
+      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"]}
+    },
+    {
+      "logical_name": "fdcn03",
+      "url": "https://dd.weather.gc.ca/20260906/WXO-DD/bulletins/alphanumeric/20260906/FD/CWAO/02/FDCN03_CWAO_060330___32484",
+      "bytes": 7809,
+      "sha256": "8d9d8258fae3e509edfb906bf305b5467135d46346aa8909496965fa2c43416d",
+      "artifact_revision": "sha256:8d9d8258fae3e509edfb906bf305b5467135d46346aa8909496965fa2c43416d",
+      "transport_completed_at": "2026-09-06T06:21:08.159479+00:00",
+      "inventory": {"nonblank_lines": 229, "accounted_lines": 229, "selected_rows": ["YYT", "WPM 47N 49W"]}
+    }
+  ]
+}

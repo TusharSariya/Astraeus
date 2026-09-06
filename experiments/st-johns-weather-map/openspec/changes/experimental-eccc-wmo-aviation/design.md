@@ -34,3 +34,13 @@ tracked files. Artifacts state source QC unknown, `operational: false`, and an
 unresolved manifest verdict with `complete: false`. Public HTTPS access is not
 treated as accepted redistribution permission. No registry, scheduler, API,
 science, safety, or admission path is added.
+
+## Retained live evidence
+
+The post-main capture under
+`/private/tmp/astraeus-eccc-wmo-aviation-capture-20260906T0730Z` retains raw
+artifacts, all response/listing headers, full inventories, and exact transport
+completion. Its committed compact receipt records two IWXXM documents and the
+complete three-period FDCN family. Raw payloads remain outside Git. This is
+native acquisition evidence only; it does not satisfy the unresolved API,
+field, rights, quality, or safety contracts.
