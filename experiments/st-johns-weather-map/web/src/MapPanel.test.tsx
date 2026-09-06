@@ -1131,6 +1131,27 @@ describe('MapPanel layer drawer', () => {
     expect(screen.queryByText(/stored noaa-gfs artifact/i)).not.toBeInTheDocument()
   })
 
+  it('never composites adjacent frames for a selected-time demand layer', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(rasterResponse({
+      'X-Weather-Evidence-Basis': 'demand_query', 'X-Weather-Image-Basis': 'rendered_grid',
+      'X-Weather-Source-Id': 'noaa-gfs', 'X-Weather-Valid-Time': '2026-08-30T03:00:00Z',
+    }, ['X-Weather-Wms-Layer']))
+    vi.stubGlobal('fetch', fetchMock)
+    const demand: LayerItem = {
+      id: 'noaa-gfs-demand-cloud-low', title: 'GFS low cloud', kind: 'raster', field: 'cloud_low',
+      product: 'GFS', units: 'percent', semantics: 'native geometric low cloud',
+      times: ['2026-08-30T03:00:00Z', '2026-08-30T05:00:00Z'], cadence_seconds: null,
+      staleness_tolerance_seconds: 3600, evidence_basis: 'demand_query', raster_available: true,
+      legend_available: false, group: 'rendered_grid', evidence_class: 'retrieved', family: 'cloud_cover',
+    }
+    render(panel({ layers: [demand], selections: [{ id: demand.id, visible: true, opacity: 0.85 }], interpolate: true }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(String(fetchMock.mock.calls[0][0])).toContain('valid_time=2026-08-30T03%3A00%3A00Z')
+    expect(screen.queryByText(/display compositing/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/1 available layer/i)).toBeInTheDocument()
+    expect(screen.queryByText(/published layer/i)).not.toBeInTheDocument()
+  })
+
   it('shows a stored grid that has no map image as a disabled row with the one reason, and no contradicting sentence', () => {
     vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
     render(panel({ layers: [storedGrid], selections: [{ id: storedGrid.id, visible: true, opacity: 0.85 }] }))
@@ -1254,7 +1275,7 @@ describe('MapPanel layer drawer', () => {
   it('holds the loading sentence in the drawer header rather than an empty list', () => {
     vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
     render(panel({ layers: [], selections: [], layersLoading: true }))
-    expect(screen.getByRole('status')).toHaveTextContent('Loading published layers…')
+    expect(screen.getByRole('status')).toHaveTextContent('Loading available layers…')
   })
 
   // Change evidence-classes-and-derived-here: a layer states how its values

@@ -1444,7 +1444,7 @@ export default function App() {
                   label="Variable"
                   value={''}
                   onChange={(value) => { if (value !== '') toggleLayer(value) }}
-                  emptyReason={layersLoading ? 'Loading published layers…' : layersError ? `Layers unavailable: ${layersError}` : 'No layer published by the API'}
+                  emptyReason={layersLoading ? 'Loading available layers…' : layersError ? `Layers unavailable: ${layersError}` : 'No layer available from the API'}
                   options={layers.length > 0 ? [{ value: '', label: 'Add a layer to the stack' }, ...layers.map((layer) => ({ value: layer.id, label: `${selections.some((entry) => entry.id === layer.id) ? '✓ ' : ''}${layer.title} (${layer.units})`, title: layer.semantics }))] : []}
                 />
               </FieldControl>
