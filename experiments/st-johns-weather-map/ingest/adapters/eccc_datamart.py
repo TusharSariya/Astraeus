@@ -524,10 +524,8 @@ class ECCCDataMartAdapter:
             available = int(raw_limit)
         except (OSError, ValueError) as error:
             raise AdapterUnavailable("HRDPS requires a finite Linux cgroup memory limit") from error
-        if available > HRDPS_MEMORY_LIMIT_BYTES:
-            raise AdapterUnavailable("HRDPS cgroup memory limit is not constrained to the measured 4 GiB ceiling")
-        if available < 2 * 1024 * 1024 * 1024:
-            raise AdapterUnavailable("HRDPS cgroup memory limit is below the measured decoder requirement")
+        if available != HRDPS_MEMORY_LIMIT_BYTES:
+            raise AdapterUnavailable("HRDPS requires the measured and enforced 4 GiB cgroup memory limit")
         if getattr(ctypes.CDLL(None), "malloc_trim", None) is None:
             raise AdapterUnavailable("HRDPS decoder allocator cannot return closed native buffers")
         temporary = Path(tempfile.gettempdir())

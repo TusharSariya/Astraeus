@@ -30,7 +30,7 @@ features were never selected and does not revert merged safety work.
 
 ## Measured baseline
 
-Current main is `490fc56df0a86eb7613b37509efaf1dedb1d8edf` after reviewed PR173.
+Current main is `ad49c99782cbb7331a3d42abb8cd9bb3ee839780` after reviewed PR199.
 The registry contains 123 records: 21 are `implemented-unverified`. Seventeen
 records intersect ingestible configuration and a registered adapter, but only
 `awc-metar-speci` and `noaa-swpc-kp` currently implement both finite discovery
@@ -55,22 +55,28 @@ reservation implementation in [PR173](https://github.com/TusharSariya/Astraeus/p
 and the deferred shared-snapshot contract in
 [PR195](https://github.com/TusharSariya/Astraeus/pull/195).
 
-## Immediate milestone and source definition of done
+## Completed first slice, next source, and definition of done
 
-[#196](https://github.com/TusharSariya/Astraeus/issues/196) is the first required
-vertical slice and blocks final verification #97. It adds source-specific finite
-bounds for the existing `eccc-hrdps` source and proves a fresh bounded
-`POST /refresh` job through worker discovery/fetch, atomic immutable publication,
-real `/point`, `/timeline`, and `/layers` responses, and existing web-client
-consumption. It preserves all selected HRDPS field dispositions; #187 continues
-to own the additional 195 vertical catalogue IDs.
+[#196](https://github.com/TusharSariya/Astraeus/issues/196) is complete via
+[PR199](https://github.com/TusharSariya/Astraeus/pull/199). The reviewed and
+merged trees were identical. On preserved PostgreSQL and MinIO volumes, the
+bounded HRDPS path published one immutable 48-field, 25-time artifact, served a
+consistent 14:00Z revision through `/point`, `/timeline`, `/layers`, `/profile`
+and the existing Brief and Workbench, then completed an explicit refresh with
+zero provider payload because the retained run was complete. Independent proof
+compared 1,200 GRIB field-time inputs and 26,462,400 cells with zero value,
+unit, shape or hash mismatches. The source remains experimental and
+non-operational; #187 still owns the additional 195 HRDPS vertical catalogue
+IDs.
 
-The initial running-stack observation is an acceptance failure, not a baseline
-success: HRDPS returned 13 null point fields, the timeline reported zero of 361
-hours covered, and no HRDPS artifact was published. The running containers also
-appeared to expose the older 118-record catalogue while current main declares
-123, so #196 must pin the image/commit under test before attributing behavior to
-current main.
+[#201](https://github.com/TusharSariya/Astraeus/issues/201) is the next bounded
+vertical slice. It targets the already registered CYYT `awc-taf` source because
+the existing client already presents CYYT TAF evidence, while this adapter still
+fails closed before provider payload retrieval. It must extend only measured AWC
+bounds that the TAF endpoint and body actually support, preserve every eligible
+TAF field and change-group disposition, and prove normal refresh through
+artifact, real API and the existing Brief/Workbench. Other aviation products
+remain with #115; remaining source bounds remain with #159.
 
 Every subsequent source follows the same definition of done:
 
@@ -89,8 +95,6 @@ Every subsequent source follows the same definition of done:
 7. Pass relevant API, registry/profile, SQL/storage, strict OpenSpec, specctl and
    CI gates, followed by independent evidence review.
 
-After HRDPS, select the next eligible source by the smallest missing work to meet
-this same definition, rather than by how much isolated acquisition code exists.
 Continue until #97 can verify all required source dispositions and integrations.
 
 ## Deferred work and retained safeguards
@@ -130,8 +134,9 @@ current main before final gates, and make conventional commits/PRs with exact
 ## Current worktrees and claims
 
 - Root user checkout contains unrelated work and must not be mutated.
-- #196 HRDPS implementation is assigned to the payload/resource lead in a fresh
-  isolated main-based worktree.
+- #196 HRDPS is merged and closed; its bounded evidence remains outside Git for audit.
+- #201 CYYT TAF implementation is assigned to the payload/resource lead in a fresh
+  isolated current-main worktree, with independent review by the GeoMet lead.
 - `/private/tmp/astraeus-live-query-snapshot-api`, branch
   `execution/live-query-snapshot-api`, preserves two local API commits and is
   paused; do not merge it under the corrective sequence.
@@ -139,8 +144,8 @@ current main before final gates, and make conventional commits/PRs with exact
   `execution/scoped-weather-db-roles`, preserves uncommitted scoped-role work and
   is paused.
 - The #158 fragment worktree remains preserved and paused.
-- This tracker update is isolated at
-  `/private/tmp/astraeus-corrective-source-execution`.
+- This completion/next-slice handoff update is isolated at
+  `/private/tmp/astraeus-source-handoff-hrdps`.
 
 Research and handoff prose are non-normative. Only the owner changes accepted,
 verified, or superseded specification status.
