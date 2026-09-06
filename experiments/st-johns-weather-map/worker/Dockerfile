@@ -18,7 +18,13 @@ COPY api/pyproject.toml api/uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project --extra grib --extra derive
 
 COPY ingest ./ingest
-COPY registry/source_data.py ./registry/source_data.py
+# Same catalogue modules as the API image: ``ingest.manifest`` imports
+# ``registry.fields``, and the schema travels with the catalogue.
+COPY registry/__init__.py registry/fields.py registry/source_data.py \
+     registry/fields.schema.json registry/schema.json ./registry/
+# The single sliding-window definition lives in the API package;
+# ``ingest.window`` loads this one file by path.
+COPY api/weather_api/config.py ./api/weather_api/config.py
 COPY worker/runtime.py worker/entrypoint.sh ./worker/
 RUN chmod 0555 /app/worker/entrypoint.sh
 

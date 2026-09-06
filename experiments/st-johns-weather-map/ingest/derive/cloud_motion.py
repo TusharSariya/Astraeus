@@ -54,6 +54,7 @@ from ingest.derive.methods import (  # noqa: F401 - re-exported for tests
     method_catalogue,
 )
 from ingest.grib import write_zarr
+from ingest.manifest import declared_classes
 from ingest.store import sha256_of
 
 UTC = timezone.utc
@@ -69,9 +70,9 @@ UTC = timezone.utc
 #: different field from the provider's and borrowing the other's flow would be
 #: a displacement fitted to the wrong picture.
 CLOUD_MOTION_SOURCES: dict[tuple[str, str], tuple[str, ...]] = {
-    ("noaa-gfs", "surface"): ("cloud_low", "cloud_middle", "cloud_high", "total_cloud"),
-    ("eccc-hrdps", "surface"): ("total_cloud",),
-    ("eccc-rdps", "surface"): ("total_cloud",),
+    ("noaa-gfs", "surface"): ("cloud_low", "cloud_middle", "cloud_high", "total_cloud_geometric"),
+    ("eccc-hrdps", "surface"): ("total_cloud_opacity",),
+    ("eccc-rdps", "surface"): ("total_cloud_opacity",),
     ("eccc-hrdps", "low_cloud_weong"): ("total_cloud_weong",),
     ("eccc-rdps", "low_cloud_weong"): ("total_cloud_weong",),
 }
@@ -414,6 +415,11 @@ def derive_cloud_motion(store: Any, surface: Any, variables: Iterable[str], work
         "base_object_key": surface.object_key,
         "interpolation_methods": method_catalogue(),
         "quality": {"status": "passed", "flags": ["derived", "display_only"], "per_variable": quality},
+        # An interpolation between retrieved frames, drawn and never served:
+        # generated_display is the class, and it is what keeps this artifact
+        # off /point and /profile now that admission reads the declaration
+        # instead of matching a logical name.
+        **declared_classes(["generated_display"]),
     }
     return RunResult(
         source_id=surface.source_id,

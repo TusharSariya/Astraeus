@@ -56,27 +56,27 @@ def motion_dataset(
     times = frame_times()
     shape = (1,) + LAT2D.shape
     data_vars = {
-        "total_cloud_u01": (("pair", "y", "x"), numpy.full(shape, u, dtype="float32")),
-        "total_cloud_v01": (("pair", "y", "x"), numpy.full(shape, v, dtype="float32")),
-        "total_cloud_u10": (("pair", "y", "x"), numpy.full(shape, -u, dtype="float32")),
-        "total_cloud_v10": (("pair", "y", "x"), numpy.full(shape, -v, dtype="float32")),
-        "total_cloud_confidence": (("pair", "y", "x"), numpy.full(shape, confidence, dtype="float32")),
+        "total_cloud_opacity_u01": (("pair", "y", "x"), numpy.full(shape, u, dtype="float32")),
+        "total_cloud_opacity_v01": (("pair", "y", "x"), numpy.full(shape, v, dtype="float32")),
+        "total_cloud_opacity_u10": (("pair", "y", "x"), numpy.full(shape, -u, dtype="float32")),
+        "total_cloud_opacity_v10": (("pair", "y", "x"), numpy.full(shape, -v, dtype="float32")),
+        "total_cloud_opacity_confidence": (("pair", "y", "x"), numpy.full(shape, confidence, dtype="float32")),
     }
     if advect_weight is not None:
-        data_vars["total_cloud_advect_weight"] = (("pair", "y", "x"), numpy.full(shape, advect_weight, dtype="float32"))
+        data_vars["total_cloud_opacity_advect_weight"] = (("pair", "y", "x"), numpy.full(shape, advect_weight, dtype="float32"))
     if tangents is not None:
         start_u, end_u = tangents
         data_vars.update({
-            "total_cloud_vs_u": (("pair", "y", "x"), numpy.full(shape, start_u, dtype="float32")),
-            "total_cloud_vs_v": (("pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
-            "total_cloud_ve_u": (("pair", "y", "x"), numpy.full(shape, end_u, dtype="float32")),
-            "total_cloud_ve_v": (("pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
+            "total_cloud_opacity_vs_u": (("pair", "y", "x"), numpy.full(shape, start_u, dtype="float32")),
+            "total_cloud_opacity_vs_v": (("pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
+            "total_cloud_opacity_ve_u": (("pair", "y", "x"), numpy.full(shape, end_u, dtype="float32")),
+            "total_cloud_opacity_ve_v": (("pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
         })
     if visibility is not None:
         first, second = visibility
         data_vars.update({
-            "total_cloud_vis0": (("pair", "y", "x"), numpy.full(shape, first, dtype="float32")),
-            "total_cloud_vis1": (("pair", "y", "x"), numpy.full(shape, second, dtype="float32")),
+            "total_cloud_opacity_vis0": (("pair", "y", "x"), numpy.full(shape, first, dtype="float32")),
+            "total_cloud_opacity_vis1": (("pair", "y", "x"), numpy.full(shape, second, dtype="float32")),
         })
     return xarray.Dataset(
         data_vars,
@@ -241,9 +241,9 @@ def envelope_dataset(a: float, b: float, *, method_id: str = "residual-advection
     """
     base = motion_dataset()
     shape = (1,) + LAT2D.shape
-    base["total_cloud_res_s"] = (("pair", "y", "x"), numpy.full(shape, a / 4.0, dtype="float32"))
-    base["total_cloud_gen_a"] = (("pair", "y", "x"), numpy.full(shape, a, dtype="float32"))
-    base["total_cloud_gen_b"] = (("pair", "y", "x"), numpy.full(shape, b, dtype="float32"))
+    base["total_cloud_opacity_res_s"] = (("pair", "y", "x"), numpy.full(shape, a / 4.0, dtype="float32"))
+    base["total_cloud_opacity_gen_a"] = (("pair", "y", "x"), numpy.full(shape, a, dtype="float32"))
+    base["total_cloud_opacity_gen_b"] = (("pair", "y", "x"), numpy.full(shape, b, dtype="float32"))
     expanded = base.expand_dims({"method": [method_id]})
     expanded.attrs = dict(base.attrs)
     return expanded
@@ -341,7 +341,7 @@ def test_an_artifact_without_envelope_coefficients_is_a_404_for_them(monkeypatch
     # One honest rung down, named: the client then draws the advection mix
     # alone rather than inventing coefficients of its own.
     residual_registry(monkeypatch)
-    dataset = envelope_dataset(12.0, 0.0).drop_vars(["total_cloud_gen_a", "total_cloud_gen_b"])
+    dataset = envelope_dataset(12.0, 0.0).drop_vars(["total_cloud_opacity_gen_a", "total_cloud_opacity_gen_b"])
     use_store(monkeypatch, data_mode, MotionStore(motion=dataset))
     response = client.get(flow_url(texture="residual", method="residual-advection"))
     assert response.status_code == 404
@@ -433,7 +433,7 @@ def test_an_artifact_without_visibility_weights_is_a_404_for_them(monkeypatch, d
     # is the construction already approved, rather than inventing a
     # reliability of its own from the frames it holds.
     visibility_registry(monkeypatch)
-    dataset = visibility_motion_dataset(0.8, 0.2).drop_vars(["total_cloud_vis0", "total_cloud_vis1"])
+    dataset = visibility_motion_dataset(0.8, 0.2).drop_vars(["total_cloud_opacity_vis0", "total_cloud_opacity_vis1"])
     use_store(monkeypatch, data_mode, MotionStore(motion=dataset))
     response = client.get(flow_url(texture="visibility", method="error-variance-blend"))
     assert response.status_code == 404
@@ -506,12 +506,12 @@ def bench_motion_dataset(per_method: dict[str, float]) -> xarray.Dataset:
         return numpy.stack([numpy.full((1,) + LAT2D.shape, value, dtype="float32") for value in values])
 
     data_vars = {
-        "total_cloud_u01": (("method", "pair", "y", "x"), stacked(list(per_method.values()))),
-        "total_cloud_v01": (("method", "pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
-        "total_cloud_u10": (("method", "pair", "y", "x"), stacked([-value for value in per_method.values()])),
-        "total_cloud_v10": (("method", "pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
-        "total_cloud_confidence": (("method", "pair", "y", "x"), numpy.ones(shape, dtype="float32")),
-        "total_cloud_advect_weight": (("method", "pair", "y", "x"), numpy.ones(shape, dtype="float32")),
+        "total_cloud_opacity_u01": (("method", "pair", "y", "x"), stacked(list(per_method.values()))),
+        "total_cloud_opacity_v01": (("method", "pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
+        "total_cloud_opacity_u10": (("method", "pair", "y", "x"), stacked([-value for value in per_method.values()])),
+        "total_cloud_opacity_v10": (("method", "pair", "y", "x"), numpy.zeros(shape, dtype="float32")),
+        "total_cloud_opacity_confidence": (("method", "pair", "y", "x"), numpy.ones(shape, dtype="float32")),
+        "total_cloud_opacity_advect_weight": (("method", "pair", "y", "x"), numpy.ones(shape, dtype="float32")),
     }
     return xarray.Dataset(
         data_vars,
@@ -595,7 +595,7 @@ def test_the_methods_endpoint_reports_the_bench_and_its_scores(monkeypatch, data
     scored = CurrentArtifact(**{**row.__dict__, "provenance": {
         **row.provenance,
         "derivation_version": "cloud-motion-bench-v4",
-        "quality": {"status": "derived", "per_variable": {"total_cloud": {
+        "quality": {"status": "derived", "per_variable": {"total_cloud_opacity": {
             "per_method": {"baseline": {
                 "advect_weight_median": 0.44,
                 "options": {"applied": True, "steering_reached": 0.9, "prior_weight": 0.5},
@@ -650,7 +650,7 @@ def _scored_row(per_method: dict[str, dict]) -> CurrentArtifact:
     return CurrentArtifact(**{**row.__dict__, "provenance": {
         **row.provenance,
         "derivation_version": "cloud-motion-bench-v6",
-        "quality": {"status": "derived", "per_variable": {"total_cloud": {"per_method": per_method}}},
+        "quality": {"status": "derived", "per_variable": {"total_cloud_opacity": {"per_method": per_method}}},
     }})
 
 

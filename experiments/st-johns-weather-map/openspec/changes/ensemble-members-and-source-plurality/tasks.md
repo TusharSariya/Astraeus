@@ -149,10 +149,12 @@ under `ingest/`, `api/` or `web/`, and any registry status promotion.
   Verify result: 0. Both original scenarios carried over unchanged; one added
   for a reprocessed record.
 
-- [ ] 2b.5 Implementation, NOT in this change: add the delivery-kind field to
+- [x] 2b.5 Implementation, NOT in this change: add the delivery-kind field to
   `registry/schema.json` and every record in `registry/source_data.py`, the
   audit rule that refuses a reprocessed record as display primary, the
   provenance fields, and the interface label.
+  Carried 2026-09-02 to `evidence-classes-and-derived-here` task 4.0, which
+  owns the implementation; ticked here as a pointer only.
 
 ## 3. Registry corrections
 
@@ -205,13 +207,27 @@ under `ingest/`, `api/` or `web/`, and any registry status promotion.
 
 ## 6. Owner gates (owner decisions; agents do not tick these)
 
-- [ ] 6.1 Accept the removal of consensus. It is a behaviour change readers
+- [x] 6.1 Accept the removal of consensus. It is a behaviour change readers
   will see, and no implementation may start before it.
-- [ ] 6.2 Decide whether WeatherNext 2 is worth pursuing at all given that it
+  Owner decision 2026-09-02 (wayfinder ticket 17, ADR 0001): consensus stays
+  removed; same-field cross-centre blending is forbidden; only registry
+  derivations within one family and run may reduce values.
+- [x] 6.2 Decide whether WeatherNext 2 is worth pursuing at all given that it
   publishes no cloud variable, and if so whether the restricted real-time
   terms will be accepted or only the Creative Commons historic tier used.
-- [ ] 6.3 Decide whether GeoMet WCS becomes the main ECCC route now that three
+  Owner decision 2026-09-02 (wayfinder tickets 25 and 28): pursue it through
+  Open-Meteo, cloud fields as `intermediary_derived`, the rest
+  `reprocessed`; the direct restricted real-time tier is admitted for
+  research use, `credential_required`, failing closed without keys.
+- [x] 6.3 Decide whether GeoMet WCS becomes the main ECCC route now that three
   Datamart feeds have been withdrawn, and accept the upstream-call cost of a
   per-layer coverage fan-out against the budget `geomet-wms-access` enforces.
-- [ ] 6.4 Decide the ensemble ingest order, given that GEFS is 31 files per
+  Owner decision 2026-09-02 (wayfinder tickets 6, 18 and 24): GeoMet WCS is
+  the ECCC spine, subsetting server side to the evidence box; every published
+  field of every admitted GeoMet source is stored, so the fan-out cost is
+  accepted and scheduled from producer cadence.
+- [x] 6.4 Decide the ensemble ingest order, given that GEFS is 31 files per
   lead and REPS is a large GeoMet fan-out against an upstream call budget.
+  Owner decision 2026-09-02 (wayfinder ticket 22): REPS, AIFS-ENS, IFS ENS,
+  GEFS, GEPS reductions, ICON-EPS; non-subsettable feeds store
+  catalogue-family fields only.

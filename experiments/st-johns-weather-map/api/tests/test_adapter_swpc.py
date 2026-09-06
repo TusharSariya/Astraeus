@@ -95,6 +95,7 @@ def test_kp_publishes_observed_and_forecast_separately(tmp_path: Path):
 
     result = adapter.fetch(candidate, WINDOW, tmp_path)
     names = [a.logical_name for a in result.artifacts]
+    assert all(a.provenance["evidence_classes"] == ["retrieved"] for a in result.artifacts)
     assert names == ["kp_observed", "kp_forecast"]
     assert result.complete is True
 
@@ -149,13 +150,14 @@ def test_rtsw_series_has_no_coordinates_and_keeps_gaps(tmp_path: Path):
     result = adapter.fetch(candidate, WINDOW, tmp_path)
     dataset = open_artifact(result.artifacts[0])
     assert result.artifacts[0].logical_name == "solar_wind"
-    assert list(dataset.dims) == ["valid_time"]
+    assert list(dataset.dims) == ["valid_time", "spacecraft"]
     assert "latitude" not in dataset.coords and "longitude" not in dataset.coords
-    assert float(dataset["bz_gsm"].values[1]) == -4.1
+    assert list(dataset.spacecraft.values) == ["SOLAR1"]
+    assert float(dataset["bz_gsm"].sel(spacecraft="SOLAR1").values[1]) == -4.1
     # A missing reading stays a gap, never zero.
-    assert numpy.isnan(dataset["bz_gsm"].values[2])
+    assert numpy.isnan(dataset["bz_gsm"].sel(spacecraft="SOLAR1").values[2])
     # The spacecraft name is whatever the feed declared, recorded verbatim.
-    assert result.artifacts[0].provenance["feed_declared_spacecraft"] == "SOLAR1"
+    assert result.artifacts[0].provenance["spacecraft"] == ["SOLAR1"]
     assert "DSCOVR" not in json.dumps(result.artifacts[0].provenance)
 
 
@@ -218,6 +220,7 @@ def test_registry_cadences_parse_and_no_lead_hours_category():
         assert config.cycle_seconds == cadence_seconds, source_id
         assert config.freshness_threshold_seconds is not None, source_id
         assert config.ingestible is True, source_id
+        assert config.admission_condition_outstanding is False, source_id
         assert config.category == "space_weather"
     assert "space_weather" not in FORECAST_CATEGORIES
 

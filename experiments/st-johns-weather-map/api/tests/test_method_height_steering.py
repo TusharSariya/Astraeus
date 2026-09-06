@@ -67,7 +67,7 @@ def model_dataset(*, frames: int = 3, winds: dict[int, tuple[float, float]] | No
          for step in range(frames)]
     )
     data = {
-        "total_cloud": (("valid_time", "y", "x"),
+        "total_cloud_opacity": (("valid_time", "y", "x"),
                         numpy.stack([blob_field(6 + 3 * step) for step in range(frames)])),
     }
     for level, (u, v) in winds.items():
@@ -104,9 +104,9 @@ def height_companion(height_m, *, scan: datetime = START, cells: int = 48) -> xa
 
 
 def context(dataset: xarray.Dataset, *, frames: int = 3) -> MethodContext:
-    stack = dataset["total_cloud"].values
+    stack = dataset["total_cloud_opacity"].values
     return MethodContext(
-        variable="total_cloud",
+        variable="total_cloud_opacity",
         frames=[stack[index] for index in range(frames)],
         indices=tuple(range(frames)),
         interval_seconds=INTERVAL,
@@ -237,7 +237,7 @@ def test_each_cell_takes_the_wind_at_its_own_observed_cloud_top():
     dataset = model_dataset(winds={850: (10.0, 0.0), 700: (0.0, 10.0), 500: (-10.0, 0.0)})
     height = numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[850])
     height[:, 12:] = ISA_LEVEL_HEIGHT_M[500]
-    prior, observed = _height_steering_prior(dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, height)
+    prior, observed = _height_steering_prior(dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, height)
     assert observed == pytest.approx(1.0)
     assert (prior[:, :12, 0] > 0).all()   # low cloud, 850 wind, eastward
     assert (prior[:, 12:, 0] < 0).all()   # high cloud, 500 wind, westward
@@ -248,13 +248,13 @@ def test_a_top_between_two_levels_is_interpolated_between_their_winds():
     dataset = model_dataset(winds={850: (10.0, 0.0), 700: (0.0, 10.0), 500: (-10.0, 0.0)})
     midway = 0.5 * (ISA_LEVEL_HEIGHT_M[850] + ISA_LEVEL_HEIGHT_M[700])
     prior, _ = _height_steering_prior(
-        dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, midway)
+        dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, midway)
     )
     at_850, _ = _height_steering_prior(
-        dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[850])
+        dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[850])
     )
     at_700, _ = _height_steering_prior(
-        dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[700])
+        dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[700])
     )
     assert numpy.allclose(prior, 0.5 * (at_850 + at_700), atol=1e-9)
 
@@ -264,14 +264,14 @@ def test_a_top_outside_the_levels_is_clamped_and_never_extrapolated():
     # the highest wind that WAS published; extrapolating the shear beyond
     # 500 hPa would be inventing a wind at a level nothing was measured at.
     dataset = model_dataset(winds={850: (10.0, 0.0), 700: (0.0, 10.0), 500: (-10.0, 0.0)})
-    aloft, _ = _height_steering_prior(dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, 14000.0))
+    aloft, _ = _height_steering_prior(dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, 14000.0))
     at_500, _ = _height_steering_prior(
-        dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[500])
+        dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[500])
     )
     assert numpy.allclose(aloft, at_500, atol=1e-12)
-    ground, _ = _height_steering_prior(dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, 50.0))
+    ground, _ = _height_steering_prior(dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, 50.0))
     at_850, _ = _height_steering_prior(
-        dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[850])
+        dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, ISA_LEVEL_HEIGHT_M[850])
     )
     assert numpy.allclose(ground, at_850, atol=1e-12)
 
@@ -283,15 +283,15 @@ def test_with_no_observed_height_the_prior_is_exactly_the_shipped_one():
     # approximation of the single-level prior - it is the same numbers, so the
     # two methods can only ever differ where a real cloud top says they should.
     dataset = model_dataset(winds={850: (10.0, 3.0), 700: (4.0, -6.0), 500: (-8.0, 1.0)})
-    assigned, observed = _height_steering_prior(dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, None)
-    shipped = _steering_prior(dataset, "total_cloud", (0, 1), INTERVAL, SHAPE)
+    assigned, observed = _height_steering_prior(dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, None)
+    shipped = _steering_prior(dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE)
     assert observed == pytest.approx(0.0)
     assert shipped is not None
     assert numpy.allclose(assigned, shipped, atol=1e-12)
     # And the same holds cell by cell where only PART of the field was observed.
     partial = numpy.full(SHAPE, numpy.nan)
     partial[:, :8] = ISA_LEVEL_HEIGHT_M[500]
-    mixed, fraction = _height_steering_prior(dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, partial)
+    mixed, fraction = _height_steering_prior(dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, partial)
     assert fraction == pytest.approx(8.0 / SHAPE[1])
     assert numpy.allclose(mixed[:, 8:], shipped[:, 8:], atol=1e-12)
     assert not numpy.allclose(mixed[:, :8], shipped[:, :8], atol=1e-6)
@@ -313,7 +313,7 @@ def test_a_missing_level_degrades_to_the_single_level_prior():
     # returns None here and its `motion` falls back to the shipped prior
     # rather than failing the motion artifact the whole map depends on.
     dataset = model_dataset(winds={700: (5.0, 0.0)})
-    assert _height_steering_prior(dataset, "total_cloud", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, 3000.0)) is None
+    assert _height_steering_prior(dataset, "total_cloud_opacity", (0, 1), INTERVAL, SHAPE, numpy.full(SHAPE, 3000.0)) is None
     motions = HeightSteeringMethod(use_prior=True).motion(context(dataset))
     assert len(motions) == 2
     assert all(numpy.isfinite(motion.flow01).all() for motion in motions)
@@ -351,7 +351,7 @@ def test_configure_publishes_both_numbers_and_names_the_assignment(monkeypatch):
     assert notes["held_out_improvement_without_prior"] is not None
     # A single `level_hpa` would be a false claim about a per-cell assignment.
     assert "per cell" in notes["level_assignment"]
-    assert notes["fallback_level_hpa"] == STEERING_LEVEL_BY_VARIABLE["total_cloud"]
+    assert notes["fallback_level_hpa"] == STEERING_LEVEL_BY_VARIABLE["total_cloud_opacity"]
 
 
 def test_the_observed_fraction_is_reported_so_the_claim_is_checkable(monkeypatch):

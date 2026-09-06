@@ -68,8 +68,11 @@ full fidelity) and the planning window (to 14 days ahead from global products).
 
 **Registry state**:
 The ceiling a source may reach: operational, implemented-unverified,
-catalogued, credential-blocked, licence-blocked, link-only, partnership-only,
+catalogued, credential-required, licence-blocked, link-only, partnership-only,
 unavailable, rejected, superseded. A live retrieval never promotes a state.
+The state this glossary once called credential-blocked is written
+`credential-required` in the registry, because the name should say the source
+is admitted and waiting on a key, not that it was refused.
 
 ### Activities
 
@@ -93,3 +96,66 @@ _Avoid_: spot, location, station (a station is an instrument)
 **Camera geometry**:
 The registered position, bearing, field of view and horizon landmarks of a
 camera, which make its frames usable as an input to cloud and fog derivation.
+
+**Verdict**:
+A profile's derived-here answer at a focus: one state (unresolved, stopped,
+unchecked, unscorable, outside window or scored), its hard stops, its grades,
+the window rule that applied, and the fields that drove it. Shown beside the
+raw evidence, never in place of it. Four verdicts, one per profile, always
+sit together and are never ranked.
+_Avoid_: rating, recommendation, forecast
+
+**Limiting criterion**:
+The graded criterion of a verdict that lost the most weight against its
+threshold. Named beside the score so a reader sees why before how much.
+_Avoid_: worst factor, blocker (a blocker is a hard stop)
+
+**Coverage**:
+How much of a profile a verdict stands on: the weight evaluated against the
+weight declared, with the weight reachable at all (declared minus blocked)
+stated apart. A verdict under the profile's floor is unscorable, not low.
+_Avoid_: confidence, completeness
+
+**Grading curve**:
+A profile's declared mapping from one field's value to the share of a
+criterion's weight that is lost, named from a registered set (step, linear,
+exponential, band) with its anchors declared as thresholds. Tunable in the
+profile file, never in code.
+_Avoid_: scoring function, formula, penalty
+
+**Source precedence**:
+The per-tier order in which admitted sources are asked to supply one field
+to a verdict. Exactly one source answers for a field in one verdict, and a
+fall to the next source is disclosed on the value.
+_Avoid_: fallback chain, best source, blend
+
+**Verdict strip**:
+One profile's verdicts laid along the horizon at the cadence the driving
+sources issue, hourly in the core window and coarser beyond. A picker for the
+shared instant, never a second clock.
+_Avoid_: timeline, forecast bar
+
+### Reading
+
+**Focus**:
+The point and instant every view reads at once, with the site named when the
+point is a registered one. One focus is shared by every open view.
+_Avoid_: selection, cursor, context
+
+**View**:
+One way of reading the evidence at the focus: Map, Series, Sky, Activity or
+Sources. Views do not own data; they read the focus.
+_Avoid_: mode, dashboard, panel, tab
+
+**Layer stack**:
+The ordered set of layers the Map view draws at once, each with its opacity.
+Layers in one stack keep their own frames and their own evidence classes; a
+stack never blends them. On-map compare arrangements (swipe, side by side)
+are not part of a stack.
+
+**Saved stack**:
+A named layer stack a reader keeps to load again: the ordered layers and
+their opacities, nothing more. Kept in the reader's browser and handed over
+by URL. Not an activity profile; a profile may ship a built-in saved stack.
+_Avoid_: profile, preset, workspace
+_Avoid_: overlay set, active layers

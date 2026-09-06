@@ -17,7 +17,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from collections import OrderedDict
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 UTC = timezone.utc
 LOGGER = logging.getLogger(__name__)
@@ -34,15 +34,38 @@ EXPERIMENT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(EXPERIMENT_ROOT) not in sys.path:  # ingest/ ships beside api/ in both images
     sys.path.insert(0, str(EXPERIMENT_ROOT))
 
+from ingest.grib import CONTROL_COORD, MEMBER_DIM  # noqa: E402  (sys.path is set above)
+from registry import fields as catalogue  # noqa: E402  (sys.path is set above)
+
+from .config import (  # noqa: E402
+    AGED_OUT_FLAG,
+    KEEP_COMPLETE_RUNS,
+    STORAGE_CAP,
+    STORAGE_CAP_BYTES,
+    sliding_window,
+)
+
 # Canonical artifact variable -> API evidence field. Adapters write the left
 # hand side (ingest.registry.DEFAULT_VARIABLES); the API speaks the right.
+#
+# This table is the served set - which stored variables ``/point`` answers for
+# at all - not a naming authority. What a variable *means* comes from
+# ``catalogue.resolve``: the four cloud keys below are four different
+# quantities, and each is served under its own name because serving them under
+# one is the collision this catalogue exists to stop.
 FIELD_BY_VARIABLE = {
     "temperature_2m": "temperature",
     "dew_point_2m": "dew_point",
     "relative_humidity_2m": "relative_humidity",
     "mean_sea_level_pressure": "mean_sea_level_pressure",
     "visibility": "visibility",
-    "total_cloud": "total_cloud",
+    # Opacity-weighted (ECCC GEM), geometric overlap (GFS, IFS, ICON),
+    # six-hour mean (GEFS) and observed dome cover (METAR/TAF). Named
+    # separately here because they are not interchangeable readings.
+    "total_cloud_opacity": "total_cloud_opacity",
+    "total_cloud_geometric": "total_cloud_geometric",
+    "total_cloud_mean_6h": "total_cloud_mean_6h",
+    "total_cloud_okta": "total_cloud_okta",
     "precipitation_accumulation": "precipitation_accumulation",
     "wind_u_10m": "wind_u",
     "wind_v_10m": "wind_v",
@@ -62,6 +85,11 @@ FIELD_BY_VARIABLE = {
     # can never pass the sampling filter and appear here; they are served only
     # by /space-weather via read_series.
     "aurora_probability": "aurora_probability",
+    # Producer-specific Level-4 SST analyses and their own uncertainty/mask.
+    # These are raw evidence fields; no fog state is inferred from them.
+    "sea_surface_temperature": "sea_surface_temperature",
+    "sea_surface_temperature_uncertainty": "sea_surface_temperature_uncertainty",
+    "sea_surface_temperature_mask": "sea_surface_temperature_mask",
 }
 
 # METAR/TAF cloud layers, published per layer as retrieved (cover code, cover
@@ -76,20 +104,64 @@ CLOUD_LAYER_VARIABLES = tuple(
 )
 FIELD_BY_VARIABLE.update({name: name for name in CLOUD_LAYER_VARIABLES})
 
+# GOES-19 ABI L2+ experiment fields. Each name is a canonical catalogue key;
+# quality_flag remains in the artifact for provenance/QC and is deliberately
+# absent here, so it cannot be mistaken for a physical reading.
+GOES_ABI_L2_FIELDS = (
+    "cloud_fraction_layer_1", "cloud_fraction_layer_2", "cloud_fraction_layer_3",
+    "cloud_fraction_layer_4", "cloud_fraction_layer_5", "cloud_fraction_total_satellite",
+    "cloud_layer_flag", "cloud_top_phase",
+    "cloud_top_temperature", "cloud_optical_depth", "cloud_particle_size",
+    "convective_available_potential_energy", "lifted_index", "total_totals_index",
+    "showalter_index", "k_index", "sea_surface_skin_temperature",
+    "relative_humidity_pressure", "temperature_pressure", "precipitation_rate",
+)
+FIELD_BY_VARIABLE.update({name: name for name in GOES_ABI_L2_FIELDS})
+
 # The upper-air wind components must pass the sampling filter to reach the
 # derivation below, so they map to themselves here; DERIVATION_INPUTS then
 # keeps them out of the served fields, exactly like the 10 m components.
 FIELD_BY_VARIABLE.update({name: name for name in ("wind_u_200hPa", "wind_v_200hPa", "wind_u_300hPa", "wind_v_300hPa")})
 
+# Experimental issue-100 composition/radiation artifacts use exact catalogue
+# keys as their API names. Their sources remain unregistered and unscheduled;
+# this only lets a retained immutable artifact prove frame-exact readback.
+FIELD_BY_VARIABLE.update({name: name for name in (
+    "aerosol_optical_depth_550nm", "pm2_5_surface", "pm10_surface", "ozone_surface",
+    "nitrogen_dioxide_surface", "sulphur_dioxide_surface", "carbon_monoxide_surface", "dust_surface",
+    "downward_shortwave_flux_hour_mean", "downward_shortwave_flux_instant",
+    "direct_shortwave_flux_hour_mean", "direct_shortwave_flux_instant",
+    "diffuse_shortwave_flux_hour_mean", "diffuse_shortwave_flux_instant",
+    "direct_normal_irradiance_hour_mean", "direct_normal_irradiance_instant",
+    "global_tilted_irradiance_hour_mean", "global_tilted_irradiance_instant",
+    "terrestrial_radiation_flux_hour_mean", "terrestrial_radiation_flux_instant",
+)})
+
 # Levels stated per variable where the artifact-wide default ("surface") would
-# be untrue. Explicit and short rather than inferred from GRIB attrs.
+# be untrue. The level-expanded upper-air variables are no longer listed: the
+# catalogue resolves ``wind_u_200hPa`` to the one profile key plus "200 hPa",
+# so the level is read from the catalogue rather than restated here, and a new
+# level costs no entry. What stays is the column field, whose level the
+# catalogue states on the field itself rather than on the name.
 VARIABLE_LEVELS = {
-    "wind_u_200hPa": "200 hPa",
-    "wind_v_200hPa": "200 hPa",
-    "wind_u_300hPa": "300 hPa",
-    "wind_v_300hPa": "300 hPa",
-    "precipitable_water": "entire atmosphere (column)",
+    "precipitable_water": catalogue.field("precipitable_water").level,
 }
+
+
+def variable_level(name: str, artifact_level: str) -> str:
+    """The level one sampled variable carries.
+
+    A level-expanded artifact variable answers with the level its name carried;
+    everything else keeps the level the artifact itself declared, because that
+    is a retrieved fact and the catalogue's level convention is not.
+    """
+    try:
+        resolved = catalogue.resolve(name)
+    except catalogue.UnknownFieldKey:
+        return VARIABLE_LEVELS.get(name, artifact_level)
+    if resolved.level:
+        return resolved.level
+    return VARIABLE_LEVELS.get(name, artifact_level)
 
 # Sampled so they can be derived from, never served as readings: a reader asks
 # for a wind speed and a direction, not the components a model stores. The
@@ -114,9 +186,15 @@ WIND_COMPONENT_PAIRS = (
 FOG_INPUTS = frozenset({"weather_fog_code", "weather_fog_vicinity_code", "weather_mist_code"})
 FIELD_BY_VARIABLE.update({name: name for name in FOG_INPUTS})
 
+#: What the fog derivation reads, kept as prose for the layer notes. The
+#: served provenance names the registry entry instead - a reader is owed a
+#: name they can look up, not a paragraph - and the entry's citation carries
+#: the coding rules: FG (with FZFG, MIFG, BCFG, PRFG) and VCFG are fog
+#: evidence, BR is mist and is not.
 FOG_DERIVATION = (
-    "ingest.meteorology.fog_state from the METAR/TAF present-weather group: FG (incl. FZFG, MIFG, BCFG, PRFG) "
-    "and VCFG count as fog evidence; BR is mist and does not; no provider fog diagnostic, so 'not_indicated' cannot be produced"
+    "the METAR/TAF present-weather group, read by the registered "
+    "fog_state_from_present_weather method; no provider fog diagnostic exists here, so 'not_indicated' "
+    "cannot be produced"
 )
 FOG_DERIVATION_VERSION = "fog-state-present-weather-v1"
 
@@ -141,6 +219,129 @@ class ArtifactIntegrityError(RuntimeError):
     """Downloaded bytes do not match the size and digest recorded at publication."""
 
 
+class ProvenanceUnmodelled(ValueError):
+    """One artifact's provenance cannot be modelled, so that artifact answers null.
+
+    An unknown evidence class, a status outside the four the contract allows,
+    a missing required field. ``open`` already skips a corrupt artifact and
+    keeps answering from the rest; this is the same isolation applied to
+    provenance, because one unmodelled field used to take down every source in
+    a response.
+    """
+
+
+# --- derivation method registry -------------------------------------------
+# Every ``derived_here`` value names an enabled entry in ``ingest.derive
+# .registry``. The registry owns the entry names, the three switch levels
+# (entry ``enabled``, ``WEATHER_DERIVED_HERE``, the reader's own set) and the
+# physical-range rules; this module asks it and reports what it says. There is
+# no second copy of any of that here, and a registry that cannot be imported
+# is not a reason to serve an unregistered construction: every method is then
+# treated as unavailable and every derived value is refused with a notice.
+
+
+#: The registry entry names this module's served derivations carry. They are
+#: spelled here so the API can name a method even when the registry cannot be
+#: imported, and ``test_point_evidence`` pins them against the registry's own
+#: constants so the two can never drift apart silently.
+RELATIVE_HUMIDITY_METHOD = "relative_humidity_from_dewpoint_liquid"
+WIND_METHOD = "wind_speed_and_direction_from_components"
+FOG_STATE_METHOD = "fog_state_from_present_weather"
+
+
+@dataclass(frozen=True)
+class RegisteredDerivation:
+    """One registry-gated result: the value, its entry, and the range flags.
+
+    ``derivation`` and ``version`` are the entry's own name and version, never
+    a free-text description: a reader who is told a number was constructed is
+    owed the name of the construction that the registry can be searched for.
+    """
+
+    value: Any = None
+    derivation: str | None = None
+    version: str | None = None
+    flags: tuple[str, ...] = ()
+
+
+def derivation_registry() -> Any | None:
+    """The derivation method registry module, or ``None`` when unreadable.
+
+    Imported lazily, as everything from ``ingest`` is on this path, and read
+    through this one accessor so a test can see the fail-closed branch.
+    """
+    try:
+        from ingest.derive import registry  # noqa: PLC0415
+
+        return registry
+    except Exception as error:  # an absent or invalid registry: fail closed
+        LOGGER.warning("the derivation method registry could not be read: %s: %s", type(error).__name__, error)
+        return None
+
+
+def derivation_refusal(method: str, *, reader_disabled: Sequence[str] = ()) -> str:
+    """``""`` when this method may produce a value now, else why it may not.
+
+    The registry's own refusal codes (``unregistered_method``,
+    ``method_disabled``, ``deployment_refused``, ``reader_disabled``) are
+    carried through verbatim, so a notice names the level that refused and a
+    reader is never told a method is missing when it is merely switched off.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return f"the derivation method registry could not be read, so {method} is not an enabled entry"
+    try:
+        refusal = registry.resolve(method, reader_disabled=list(reader_disabled))
+    except Exception as error:
+        return f"the derivation method registry raised for {method} ({type(error).__name__}); it is treated as not enabled"
+    if refusal is None:
+        return ""
+    return f"{refusal.code}: {refusal.detail} ({method})"
+
+
+# --- the member axis -------------------------------------------------------
+# A member-bearing artifact is not sampled unless the request addressed the
+# member axis. Averaging 21 REPS members into one cell because nobody said
+# which member they wanted would produce exactly the unnamed ensemble number
+# this project refuses, so silence is answered with a notice instead.
+
+#: The request value that means "every member the family publishes".
+MEMBER_ALL = "all"
+
+#: The notice a member-bearing artifact leaves when nothing addressed its
+#: member axis. Suffixed with the revision id, so a reader can see which
+#: artifact went unread rather than only that something did.
+MEMBER_DIMENSION_UNADDRESSED = "member_dimension_unaddressed"
+
+#: The flag on a field whose value carries a member axis but whose family the
+#: registry record does not state. Such a value is never served: a number that
+#: cannot name its family is the unattributed ensemble number.
+ENSEMBLE_FAMILY_UNKNOWN_FLAG = "ensemble_family_unknown"
+
+#: The family name a provider's own published reduction enters a derive-time
+#: check under. ``ingest.derive.registry.PROVIDER_REDUCTION_FAMILIES`` holds
+#: it, and a member set carrying it makes ``provider_reduction_mixed`` fire
+#: rather than the reduction being averaged in beside real members.
+PROVIDER_REDUCTION_FAMILY = "ensemble_reduction"
+
+
+def ensemble_declaration(source_id: str) -> Any | None:
+    """The source's ``EnsembleDeclaration``, or ``None`` where it has none.
+
+    Read from the registry record through the ingest config, never inferred
+    from a source id or from the shape of an artifact: which family a member
+    belongs to is a fact the record states.
+    """
+    config = _registry_config(source_id)
+    return getattr(config, "ensemble", None) if config is not None else None
+
+
+def ensemble_family(source_id: str) -> str | None:
+    declaration = ensemble_declaration(source_id)
+    family = getattr(declaration, "family", None)
+    return str(family) if family else None
+
+
 @dataclass(frozen=True)
 class SkippedArtifact:
     """One artifact that could not be read, kept so the skip is reported.
@@ -154,25 +355,83 @@ class SkippedArtifact:
     reason: str
 
 
+@dataclass(frozen=True)
+class UnmodelledArtifact:
+    """One artifact whose provenance the model refuses, and the fields it lost.
+
+    Its fields are reported as null with a notice naming the artifact and the
+    reason; every other artifact in the same response answers normally, and
+    the response's ``data_mode`` reflects those, never this one.
+    """
+
+    source_id: str
+    revision_id: str
+    reason: str
+    fields: tuple[str, ...] = ()
+
+
 def _is_geojson(media_type: str) -> bool:
     return media_type.split(";")[0].strip() == "application/geo+json"
 
 
-def _is_display_only(artifact: Any) -> bool:
-    """True for a derived artifact that exists only to be drawn.
+def artifact_manifest(artifact: Any) -> Any:
+    """The evidence-class declaration one artifact carries, modelled.
 
-    Two derivations are published beside the retrieved fields: the
-    interpolation motion that the shader reads, and the WEonG low-cloud
-    repair, which is GENERATED - it holds cloud values that no provider
-    published. The governing rule allows a generated value on a display path
-    and forbids it on a data path, so neither may be sampled for /point,
-    /profile or /cross-section. The flag is read from provenance rather than
-    matched by name because the motion artifact's logical name now varies with
-    the layer it supports (``cloud_motion_low_cloud_weong``), and a name list
-    silently stops covering a new derivation the moment one is added.
+    Raises :class:`ProvenanceUnmodelled` when the artifact declares no classes
+    or declares one the contract does not know. Nothing is inferred here from
+    a derivation name, an ``evidence_basis``, a generated flag or a logical
+    name: each of those was a signal added for one feature, and reading them
+    is how a generated repair reached ``/point`` on 2026-09-01. An artifact
+    that says nothing about its classes cannot be modelled, and an artifact
+    that cannot be modelled answers null for its own fields only.
     """
+    from .models import ArtifactManifest  # noqa: PLC0415
+
     provenance = getattr(artifact, "provenance", None) or {}
-    return bool(provenance.get("derived") or provenance.get("generated"))
+    declared = provenance.get("evidence_classes")
+    if not declared:
+        raise ProvenanceUnmodelled(
+            f"{getattr(artifact, 'source_id', 'unknown')}/{getattr(artifact, 'logical_name', 'unknown')} "
+            "declares no evidence_classes; a value's class is required and is never inferred"
+        )
+    try:
+        return ArtifactManifest(
+            source_id=str(getattr(artifact, "source_id", "unknown")),
+            logical_name=str(getattr(artifact, "logical_name", "unknown")),
+            evidence_classes=list(declared),
+            evidence_class_by_variable=dict(provenance.get("evidence_class_by_variable") or {}),
+        )
+    except Exception as error:
+        raise ProvenanceUnmodelled(str(error)) from error
+
+
+def _is_display_only(manifest: Any) -> bool:
+    """True for an artifact whose declared classes include ``generated_display``.
+
+    The interpolation motion the shader reads and the generated WEonG
+    low-cloud repair hold values no provider published. The governing rule
+    allows a generated value on a display path and forbids it on a data path,
+    so neither may be sampled for ``/point``, ``/profile`` or
+    ``/cross-section``. Exclusion reads the class, so a rename cannot restore
+    the value to a data path.
+    """
+    from .models import DISPLAY_ONLY_CLASSES  # noqa: PLC0415
+
+    return bool(set(manifest.evidence_classes) & DISPLAY_ONLY_CLASSES)
+
+
+def _served_fields(dataset: Any) -> tuple[str, ...]:
+    """The API field names an artifact would have answered for.
+
+    Used to report exactly what an isolated artifact lost, so a null carries
+    the name of the field it stands in for rather than a bare notice.
+    """
+    names = []
+    for variable in getattr(dataset, "data_vars", ()):
+        name = FIELD_BY_VARIABLE.get(str(variable))
+        if name is not None and name not in names:
+            names.append(name)
+    return tuple(names)
 
 
 def _parse_iso(raw: Any) -> datetime | None:
@@ -270,6 +529,8 @@ class LayerCoverage:
     sites: list[tuple[float, float]]
     #: True when latitude and longitude both vary, i.e. a real field.
     gridded: bool
+    #: Successfully read empty vector artifacts at the requested exact frame.
+    empty_observations: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -299,8 +560,17 @@ class SeriesData:
     variables: dict[str, SeriesVariable]
     run_time: datetime | None
     retrieved_at: datetime | None
+    revision_id: str = "unknown"
+    provider_run_id: str | None = None
     provenance: dict[str, Any] = field(default_factory=dict)
     attrs: dict[str, Any] = field(default_factory=dict)
+    #: The categorical axes the stored series carries beside time, with their
+    #: labels exactly as stored: ``{"spacecraft": ["ACE", "IMAP", "SOLAR1"]}``
+    #: for an interleaved L1 feed. Empty on a plain time series. A variable
+    #: on such an axis is served once per label as ``name@label`` unless the
+    #: caller selected one label, so a reading is never detached from the
+    #: platform that measured it.
+    dimensions: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -314,12 +584,19 @@ class Sample:
     #: meaning string of the stored flag (``"OVC"``), never the bare integer.
     value: float | str | None
     units: str
+    #: How this value came to exist, read from the artifact's own declaration.
+    #: Never inferred, and never defaulted: an artifact that declares nothing
+    #: is isolated before a sample is ever built from it.
+    evidence_class: str
     level: str
     valid_time: datetime
     run_time: datetime | None
     retrieved_at: datetime | None
     native_crs: str
     provenance: dict[str, Any] = field(default_factory=dict)
+    #: The revision this value was read from, so a notice can name the exact
+    #: artifact rather than the source that published several.
+    revision_id: str = "unknown"
     #: The coordinate of the grid cell the value was actually read from - not
     #: the coordinate that was asked for. At HRDPS's 2.5 km spacing the two
     #: differ by a real distance, and reporting the request back would claim a
@@ -334,6 +611,35 @@ class Sample:
     #: grid). Never an interpolation: no value here is computed from more than
     #: one published cell.
     sample_method: str = "rectilinear"
+    #: The saturation phase a humidity value is defined over, translated from
+    #: the ``catalogue.PHASE_ATTRIBUTE`` the producer's own specific humidity
+    #: was measured into. None everywhere else, and None where a humidity value
+    #: carries a convention the catalogue does not recognise - which is a
+    #: refusal to compare, never a guess.
+    phase: str | None = None
+    #: The provider's own member identifier this value was read at, and whether
+    #: that member is the family's control run. Set together and only on a
+    #: value taken off a member axis; ``None`` on every other value, including
+    #: a provider's own published reduction, which is one cell and not a
+    #: member.
+    member: str | None = None
+    member_control: bool | None = None
+    #: The ensemble family the source's registry record declares, and the
+    #: shape it declares (``members`` or ``reduction``). ``ensemble_family`` is
+    #: ``None`` where the record states no family, which is not a family to
+    #: serve under but the reason not to serve the value at all.
+    ensemble_family: str | None = None
+    ensemble_shape: str | None = None
+    #: The member count the family declares and the members that did not
+    #: resolve, from the artifact's own ``members`` provenance block. Carried
+    #: on the sample so a statistic can name what it covered without reopening
+    #: the artifact, and never invented where the block is absent.
+    members_declared: int | None = None
+    members_missing: tuple[str, ...] = ()
+    #: The window a time-averaged member field is a mean over, from the
+    #: variable's own ``averaging_window_hours`` attribute. None on an
+    #: instantaneous field.
+    averaging_window_hours: float | None = None
 
 
 def _coordinate_name(dataset: Any, candidates: Sequence[str]) -> str | None:
@@ -449,6 +755,21 @@ def _is_flag_coded(attrs: Any) -> bool:
     return attrs.get("flag_values") is not None and attrs.get("flag_meanings") is not None
 
 
+def _averaging_window(attrs: Any) -> float | None:
+    """The window a time-averaged variable is a mean over, in hours.
+
+    Read from the producer's own record label as ``ingest.grib`` stamped it. A
+    window that will not parse is ``None``: a mean whose window is unstated is
+    not readable as a mean, and inventing a window would state one the
+    producer never issued.
+    """
+    try:
+        window = float(attrs.get("averaging_window_hours"))
+    except (TypeError, ValueError):
+        return None
+    return window if window > 0 else None
+
+
 def _nearest_time_index(dataset: Any, name: str, moment: datetime) -> Any:
     import numpy  # noqa: PLC0415
 
@@ -471,10 +792,25 @@ class LiveStore:
         # in a long-running API process, because every new run mints new ids.
         self._datasets: OrderedDict[str, Any] = OrderedDict()
         self.skipped: list[SkippedArtifact] = []
+        #: Artifacts whose provenance could not be modelled on this call. Kept
+        #: apart from ``skipped`` so the caller can report their fields as null
+        #: with a notice while every other artifact answers normally.
+        self.unmodelled: list[UnmodelledArtifact] = []
 
     # --- resolution ------------------------------------------------------
     def current(self) -> list[Any]:
         return self._store.current_artifacts()
+
+    def retained_artifacts(self) -> list[Any]:
+        """Retained revisions, current and superseded, for coverage.
+
+        Separate from :meth:`current` because coverage has to see the previous
+        complete run: when a short cycle reaches less far than its
+        predecessor, the leads only the older run published are still
+        retained evidence, and asking only what is current would report them
+        as covered by nothing.
+        """
+        return self._store.retained_artifacts()
 
     def assert_object_store_reachable(self) -> None:
         """Fail closed when the object store is unreachable.
@@ -499,7 +835,18 @@ class LiveStore:
     def _forget_stale_datasets(self, current_revisions: set[str]) -> None:
         """Drop cached datasets whose revision is no longer published."""
         for revision_id in [key for key in self._datasets if key not in current_revisions]:
-            self._datasets.pop(revision_id, None)
+            self._evict_dataset(revision_id)
+        # Include files left by earlier processes and non-Zarr readers.
+        for path in self._cache_dir.glob("*.zarr.zip"):
+            if path.name.removesuffix(".zarr.zip") not in current_revisions:
+                self._evict_dataset(path.name.removesuffix(".zarr.zip"))
+
+    def _evict_dataset(self, revision_id: str) -> None:
+        dataset = self._datasets.pop(revision_id, None)
+        close = getattr(dataset, "close", None)
+        if close is not None:
+            close()
+        (self._cache_dir / f"{revision_id}.zarr.zip").unlink(missing_ok=True)
 
     def source_activity(self) -> dict[str, datetime]:
         return self._store.source_activity()
@@ -520,7 +867,12 @@ class LiveStore:
         """
         destination = self._cache_dir / f"{artifact.revision_id}.zarr.zip"
         if destination.exists():  # only ever written after verification below
+            destination.touch()
             return destination
+        # Bound disk copies too, including JSON artifacts and previous processes.
+        cached_paths = sorted(self._cache_dir.glob("*.zarr.zip"), key=lambda p: p.stat().st_mtime)
+        while len(cached_paths) >= MAX_CACHED_DATASETS:
+            self._evict_dataset(cached_paths.pop(0).name.removesuffix(".zarr.zip"))
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_suffix(".part")
         digest = hashlib.sha256()
@@ -563,7 +915,7 @@ class LiveStore:
         dataset = xarray.open_zarr(store, consolidated=False)
         self._datasets[artifact.revision_id] = dataset
         while len(self._datasets) > MAX_CACHED_DATASETS:
-            self._datasets.popitem(last=False)
+            self._evict_dataset(next(iter(self._datasets)))
         return dataset
 
     # --- sampling --------------------------------------------------------
@@ -589,9 +941,62 @@ class LiveStore:
             )
         )
 
-    def sample_point(self, latitude: float, longitude: float, valid_time: datetime) -> list[Sample]:
-        """Nearest published grid value per source and variable."""
+    def _record_unmodelled(self, artifact: Any, error: BaseException, fields: Sequence[str] = ()) -> None:
+        """Isolate one artifact whose provenance the model refuses.
+
+        The failure is recorded with the artifact's source id, revision id and
+        reason, and reported as a skip so the caller's notices name it. It
+        never propagates: the other artifacts answer.
+        """
+        source_id = str(getattr(artifact, "source_id", "unknown"))
+        revision_id = str(getattr(artifact, "revision_id", "unknown"))
+        reason = f"provenance could not be modelled: {error}"
+        LOGGER.warning("artifact %s from %s: %s", revision_id, source_id, reason)
+        entry = UnmodelledArtifact(source_id=source_id, revision_id=revision_id, reason=reason, fields=tuple(fields))
+        self.unmodelled.append(entry)
+        self.skipped.append(SkippedArtifact(source_id=source_id, revision_id=revision_id, reason=reason))
+
+    def _note_member_dimension(self, artifact: Any) -> None:
+        """Say that a member-bearing artifact was left unread, and why.
+
+        Not a failure: the artifact is intact and every value in it is
+        available. What is missing is a request that names a member or asks
+        for a statistic over them, and collapsing the axis without one would
+        serve a number no member holds.
+        """
+        revision_id = str(getattr(artifact, "revision_id", "unknown"))
+        self.skipped.append(
+            SkippedArtifact(
+                source_id=str(getattr(artifact, "source_id", "unknown")),
+                revision_id=revision_id,
+                reason=(
+                    f"{MEMBER_DIMENSION_UNADDRESSED}:{revision_id}; the artifact carries a "
+                    f"{MEMBER_DIM} dimension and the request named neither a member nor a "
+                    "statistic, so no value was taken from it"
+                ),
+            )
+        )
+
+    def sample_point(
+        self,
+        latitude: float,
+        longitude: float,
+        valid_time: datetime,
+        *,
+        member: str | None = None,
+        statistic: str | None = None,
+    ) -> list[Sample]:
+        """Nearest published grid value per source and variable.
+
+        ``member`` (a provider's own identifier or ``all``) and ``statistic``
+        are what address a member axis. A member-bearing artifact is sampled
+        only when one of them is set; otherwise it yields no value and leaves
+        the ``member_dimension_unaddressed`` notice, because a request that
+        never mentioned members must not be answered with one member's value
+        or with a silent mean over all of them.
+        """
         self.skipped = []
+        self.unmodelled = []
         self.assert_object_store_reachable()
         artifacts = self.current()
         self._forget_stale_datasets({str(item.revision_id) for item in artifacts})
@@ -604,20 +1009,33 @@ class LiveStore:
                 # artifact told every caller that evidence had been lost when
                 # none had. Alerts are served by /layers/{id}/features.
                 continue
-            if _is_display_only(artifact):
-                # Derived display-only imagery (interpolation motion, the
+            try:
+                manifest = artifact_manifest(artifact)
+            except ProvenanceUnmodelled as error:
+                # Name the fields this artifact would have answered for, so
+                # its nulls carry field names rather than a bare notice. A
+                # dataset that will not open loses only the names.
+                try:
+                    lost = _served_fields(self.open(artifact))
+                except Exception:
+                    lost = ()
+                self._record_unmodelled(artifact, error, lost)
+                continue
+            if _is_display_only(manifest):
+                # Display-only construction (interpolation motion, the
                 # generated WEonG low-cloud repair); it carries no retrieved
-                # reading and must never reach a data path.
+                # reading and must never reach a data path. Excluded by its
+                # declared class, with no name matching involved.
                 continue
             try:
                 dataset = self.open(artifact)
             except Exception as error:
                 self._record_skip(artifact, error)
                 continue
-            samples.extend(self._sample_dataset(dataset, artifact, latitude, longitude, valid_time))
+            samples.extend(self._sample_dataset(dataset, artifact, latitude, longitude, valid_time, manifest=manifest, member=member, statistic=statistic))
         return samples
 
-    def _sample_dataset(self, dataset: Any, artifact: Any, latitude: float, longitude: float, valid_time: datetime, *, pressure: int | None = None) -> list[Sample]:
+    def _sample_dataset(self, dataset: Any, artifact: Any, latitude: float, longitude: float, valid_time: datetime, *, pressure: int | None = None, manifest: Any | None = None, member: str | None = None, statistic: str | None = None) -> list[Sample]:
         lat_name = _coordinate_name(dataset, LATITUDE_COORDINATES)
         lon_name = _coordinate_name(dataset, LONGITUDE_COORDINATES)
         if lat_name is None or lon_name is None:
@@ -676,13 +1094,93 @@ class LiveStore:
             distance = _corrected_distance_degrees(latitude, longitude, cell_latitude, cell_longitude)
             sample_method = "rectilinear"
 
+        selected_valid_time = valid_time
+        if time_name is not None:
+            import pandas  # noqa: PLC0415
+
+            selected_valid_time = pandas.Timestamp(located[time_name].values).to_pydatetime().replace(tzinfo=UTC)
+
         provenance = dict(artifact.provenance or {})
         level = provenance.get("vertical_level", "surface" if pressure is None else f"{pressure} hPa")
+        if manifest is None:
+            try:
+                manifest = artifact_manifest(artifact)
+            except ProvenanceUnmodelled as error:
+                self._record_unmodelled(artifact, error, _served_fields(dataset))
+                return []
+        # Read once per artifact: which family this source's record declares,
+        # what it declares about its members, and what the artifact itself
+        # published. None of it is inferred from the dataset.
+        declaration = ensemble_declaration(artifact.source_id)
+        family = ensemble_family(artifact.source_id)
+        shape = getattr(declaration, "shape", None)
+        members_block = provenance.get("members") if isinstance(provenance.get("members"), dict) else {}
+        declared_count = members_block.get("declared", getattr(declaration, "member_count", None))
+        members_missing = tuple(str(item) for item in members_block.get("missing", ()) or ())
+        addressed = member is not None or statistic is not None
+        noted_member_dimension = False
+
         samples: list[Sample] = []
         for variable in dataset.data_vars:
             name = str(variable)
             if name not in FIELD_BY_VARIABLE and pressure is None:
                 continue
+            try:
+                evidence_class = manifest.class_for(name)
+            except Exception as error:
+                # A value whose class the artifact never stated. Isolate the
+                # artifact rather than guessing: an unknown class is served as
+                # unavailable with a reason, never as retrieved.
+                self._record_unmodelled(artifact, error, _served_fields(dataset))
+                return []
+            attrs = dataset[name].attrs
+            common: dict[str, Any] = {
+                "source_id": artifact.source_id,
+                "logical_name": artifact.logical_name,
+                "variable": name,
+                "units": str(attrs.get("units", "unknown")),
+                "evidence_class": evidence_class,
+                "level": variable_level(name, str(level)),
+                "valid_time": selected_valid_time,
+                "run_time": artifact.run_time,
+                "retrieved_at": artifact.retrieved_at,
+                "native_crs": artifact.native_crs or provenance.get("native_crs", "unknown"),
+                "revision_id": str(getattr(artifact, "revision_id", "unknown")),
+                "sampled_latitude": cell_latitude,
+                "sampled_longitude": cell_longitude,
+                "sample_distance_km": round(distance * KM_PER_DEGREE, 3),
+                "sample_method": sample_method,
+                # Read off the value, not off the source id: the phase is
+                # a measured property of the producer's own saturation
+                # function, and two products of one producer may differ.
+                "phase": catalogue.phase_from_convention(attrs.get(catalogue.PHASE_ATTRIBUTE)),
+                "ensemble_family": family,
+                "ensemble_shape": shape,
+                "averaging_window_hours": _averaging_window(attrs),
+            }
+
+            if MEMBER_DIM in getattr(dataset[name], "dims", ()):
+                if not addressed:
+                    # Nothing addressed the axis. Say so once for the artifact
+                    # and take no value: neither the first member nor a mean
+                    # over all of them is what was asked for.
+                    if not noted_member_dimension:
+                        self._note_member_dimension(artifact)
+                        noted_member_dimension = True
+                    continue
+                samples.extend(
+                    self._member_samples(
+                        located,
+                        name,
+                        provenance=provenance,
+                        common=common,
+                        member=member,
+                        declared=declared_count,
+                        members_missing=members_missing,
+                    )
+                )
+                continue
+
             raw = located[name].values
             value: float | str | None
             try:
@@ -691,35 +1189,69 @@ class LiveStore:
                 value = None
             if value is not None and value != value:  # NaN is absence, not a reading
                 value = None
-            attrs = dataset[name].attrs
             if value is not None and _is_flag_coded(attrs):
                 # A flag-coded variable is served as the meaning the artifact
                 # declared for that flag, exactly as retrieved; a flag the
                 # table does not define is None, never a bare integer.
                 value = _flag_meaning(attrs, value)
+            samples.append(Sample(value=value, provenance=provenance, members_declared=declared_count, **common))
+        return samples
+
+    def _member_samples(
+        self,
+        located: Any,
+        name: str,
+        *,
+        provenance: dict[str, Any],
+        common: dict[str, Any],
+        member: str | None,
+        declared: int | None,
+        members_missing: tuple[str, ...],
+    ) -> list[Sample]:
+        """One :class:`Sample` per member the request addressed.
+
+        Each member keeps its own identifier and its own control flag: no
+        member ever stands in for the family, and the axis is never collapsed
+        here. A named member that the artifact does not publish yields nothing
+        at all rather than the nearest one.
+        """
+        try:
+            identifiers = [str(item) for item in located[MEMBER_DIM].values.tolist()]
+        except Exception:
+            return []
+        try:
+            controls = [bool(item) for item in located[CONTROL_COORD].values.tolist()]
+        except Exception:
+            # A member axis with no control coordinate: the family may publish
+            # no control. False is what the artifact says, never a guess that
+            # one of these members is it.
+            controls = [False] * len(identifiers)
+        samples: list[Sample] = []
+        for index, identifier in enumerate(identifiers):
+            if member is not None and member != MEMBER_ALL and member != identifier:
+                continue
+            try:
+                value: float | None = float(located[name].isel({MEMBER_DIM: index}).values)
+            except (TypeError, ValueError, IndexError, KeyError):
+                value = None
+            if value is not None and value != value:  # NaN is absence, not a reading
+                value = None
             samples.append(
                 Sample(
-                    source_id=artifact.source_id,
-                    logical_name=artifact.logical_name,
-                    variable=name,
                     value=value,
-                    units=str(dataset[name].attrs.get("units", "unknown")),
-                    level=VARIABLE_LEVELS.get(name, str(level)),
-                    valid_time=valid_time,
-                    run_time=artifact.run_time,
-                    retrieved_at=artifact.retrieved_at,
-                    native_crs=artifact.native_crs or provenance.get("native_crs", "unknown"),
                     provenance=provenance,
-                    sampled_latitude=cell_latitude,
-                    sampled_longitude=cell_longitude,
-                    sample_distance_km=round(distance * KM_PER_DEGREE, 3),
-                    sample_method=sample_method,
+                    member=identifier,
+                    member_control=controls[index] if index < len(controls) else False,
+                    members_declared=declared if declared is not None else len(identifiers),
+                    members_missing=members_missing,
+                    **common,
                 )
             )
         return samples
 
     def sample_profile(self, latitude: float, longitude: float, valid_time: datetime, pressures: Sequence[int]) -> dict[int, list[Sample]]:
         self.skipped = []
+        self.unmodelled = []
         self.assert_object_store_reachable()
         artifacts = self.current()
         self._forget_stale_datasets({str(item.revision_id) for item in artifacts})
@@ -727,20 +1259,25 @@ class LiveStore:
         for artifact in artifacts:
             if _is_geojson(artifact.media_type):
                 continue  # see sample_point: no gridded values to sample
-            if _is_display_only(artifact):
-                continue  # see sample_point: a derived display artifact is not evidence
+            try:
+                manifest = artifact_manifest(artifact)
+            except ProvenanceUnmodelled as error:
+                self._record_unmodelled(artifact, error)
+                continue
+            if _is_display_only(manifest):
+                continue  # see sample_point: a display construction is not evidence
             try:
                 dataset = self.open(artifact)
             except Exception as error:
                 self._record_skip(artifact, error)
                 continue
             for pressure in pressures:
-                found = self._sample_dataset(dataset, artifact, latitude, longitude, valid_time, pressure=pressure)
+                found = self._sample_dataset(dataset, artifact, latitude, longitude, valid_time, pressure=pressure, manifest=manifest)
                 if found:
                     result.setdefault(pressure, []).extend(found)
         return result
 
-    def read_series(self, source_id: str, logical_name: str) -> SeriesData | None:
+    def read_series(self, source_id: str, logical_name: str, *, select: Mapping[str, str] | None = None) -> SeriesData | None:
         """A coordinate-free time series from one published artifact, as stored.
 
         The read path is the same one ``sample_point`` uses - resolution
@@ -750,6 +1287,15 @@ class LiveStore:
         a dataset carrying horizontal coordinates is refused here (it is a
         field, served by sampling), and the returned series carries no
         coordinates for a caller to mistake for local evidence.
+
+        A series may carry one categorical axis beside time - the measuring
+        platform of an interleaved feed (``spacecraft``, ``satellite``). Its
+        labels are reported in ``SeriesData.dimensions``; a variable on that
+        axis is served per label as ``name@label``, or under its plain name
+        when ``select`` names the label wanted (``{"spacecraft": "SOLAR1"}``).
+        A label the artifact does not carry is a skip, not an empty series,
+        and a dataset with more than one such axis is refused as a shape this
+        reader does not understand.
 
         Returns ``None`` when no current artifact matches; an unreadable or
         wrong-shaped artifact is recorded in ``skipped`` and also yields
@@ -779,22 +1325,62 @@ class LiveStore:
         import pandas  # noqa: PLC0415
 
         times = [pandas.Timestamp(value).to_pydatetime().replace(tzinfo=UTC) for value in dataset[time_name].values]
-        variables: dict[str, SeriesVariable] = {}
-        for name in dataset.data_vars:
-            array = dataset[str(name)]
+        extra_dims = [str(dim) for dim in dataset.dims if str(dim) != time_name]
+        if len(extra_dims) > 1:
+            self._record_skip(artifact, ValueError(f"dataset carries {len(extra_dims)} axes beside time ({', '.join(extra_dims)}); a series has at most one platform axis"))
+            return None
+        dimensions: dict[str, list[str]] = {}
+        chosen: dict[str, str] = {}
+        for dim in extra_dims:
+            if dim not in dataset.coords:
+                self._record_skip(artifact, ValueError(f"axis {dim} carries no labels; a platform axis must name its platforms"))
+                return None
+            labels = [str(label) for label in dataset[dim].values]
+            wanted = (select or {}).get(dim)
+            if wanted is not None:
+                if wanted not in labels:
+                    self._record_skip(artifact, ValueError(f"axis {dim} carries no label {wanted!r}; it carries {', '.join(labels)}"))
+                    return None
+                chosen[dim] = wanted
+            dimensions[dim] = labels
+        for dim in select or {}:
+            if dim not in extra_dims:
+                self._record_skip(artifact, ValueError(f"dataset carries no axis {dim} to select on"))
+                return None
+
+        def _values(array: Any) -> list[float | str | None]:
             attrs = array.attrs
             values: list[float | str | None] = []
             for raw in array.values:
-                try:
-                    value: float | str | None = float(raw)
-                except (TypeError, ValueError):
+                value: float | str | None
+                if isinstance(raw, str):
+                    value = raw  # an issued text product, verbatim
+                else:
+                    try:
+                        value = float(raw)
+                    except (TypeError, ValueError):
+                        value = None
+                if isinstance(value, float) and value != value:  # NaN is absence, not a reading
                     value = None
-                if value is not None and value != value:  # NaN is absence, not a reading
-                    value = None
-                if value is not None and _is_flag_coded(attrs):
+                if isinstance(value, float) and _is_flag_coded(attrs):
                     value = _flag_meaning(attrs, value)
                 values.append(value)
-            variables[str(name)] = SeriesVariable(values=values, units=str(attrs.get("units", "unknown")))
+            return values
+
+        variables: dict[str, SeriesVariable] = {}
+        for name in dataset.data_vars:
+            array = dataset[str(name)]
+            units = str(array.attrs.get("units", "unknown"))
+            platform_dims = [dim for dim in extra_dims if dim in array.dims]
+            if not platform_dims:
+                variables[str(name)] = SeriesVariable(values=_values(array), units=units)
+                continue
+            dim = platform_dims[0]
+            if dim in chosen:
+                variables[str(name)] = SeriesVariable(values=_values(array.sel({dim: chosen[dim]})), units=units)
+                continue
+            for label in dimensions[dim]:
+                variables[f"{name}@{label}"] = SeriesVariable(values=_values(array.sel({dim: label})), units=units)
         return SeriesData(
             source_id=artifact.source_id,
             logical_name=artifact.logical_name,
@@ -802,8 +1388,11 @@ class LiveStore:
             variables=variables,
             run_time=artifact.run_time,
             retrieved_at=artifact.retrieved_at,
+            revision_id=artifact.revision_id,
+            provider_run_id=artifact.provider_run_id,
             provenance=dict(artifact.provenance or {}),
             attrs=dict(dataset.attrs),
+            dimensions={dim: labels for dim, labels in dimensions.items()},
         )
 
     def published_layer_times(self) -> dict[str, LayerCoverage]:
@@ -889,7 +1478,7 @@ class LiveStore:
             gridded=False,
         )
 
-    def _geojson_features(self, artifact: Any, valid_time: datetime) -> list[dict[str, Any]]:
+    def _geojson_features(self, artifact: Any, valid_time: datetime) -> list[dict[str, Any]] | None:
         """The stored features, stamped with the frame they were asked for.
 
         The geometry is passed through exactly as published; only provenance is
@@ -898,13 +1487,16 @@ class LiveStore:
         """
         try:
             document = self._read_geojson(artifact)
+            if document.get("type") != "FeatureCollection" or not isinstance(document.get("features"), list):
+                raise ValueError("stored vector artifact is not a GeoJSON FeatureCollection")
         except Exception as error:
             self._record_skip(artifact, error)
-            return []
+            return None
         collected: list[dict[str, Any]] = []
         for feature in document.get("features") or []:
-            if not isinstance(feature, dict):
-                continue
+            if not isinstance(feature, dict) or feature.get("type") != "Feature":
+                self._record_skip(artifact, ValueError("stored collection contains an invalid feature"))
+                return None
             properties = dict(feature.get("properties") or {})
             properties.update(
                 {
@@ -936,7 +1528,26 @@ class LiveStore:
         features: list[dict[str, Any]] = []
         for artifact in artifacts:
             if _is_geojson(artifact.media_type):
-                features.extend(self._geojson_features(artifact, valid_time))
+                artifact_coverage = self._geojson_coverage(artifact)
+                if artifact_coverage is None or valid_time not in artifact_coverage.times:
+                    continue
+                stored = self._geojson_features(artifact, valid_time)
+                if stored is None:
+                    continue
+                features.extend(stored)
+                if not stored:
+                    provenance = dict(artifact.provenance or {})
+                    observation = {
+                        "source_id": artifact.source_id,
+                        "logical_name": artifact.logical_name,
+                        "revision_id": str(artifact.revision_id),
+                        "provider_run_id": artifact.provider_run_id,
+                        "valid_time": valid_time.isoformat(),
+                        "bounds": provenance.get("bounds"),
+                        "interval_start": provenance.get("interval_start"),
+                        "interval_end": provenance.get("interval_end"),
+                    }
+                    coverage = replace(coverage, empty_observations=(*coverage.empty_observations, observation))
                 continue
             try:
                 dataset = self.open(artifact)
@@ -1075,6 +1686,489 @@ def reset_live_store() -> None:
     reset_data_mode()
 
 
+# --- retention: the window, the purge, and what was held ------------------
+# Retention is the sliding valid-time window used as a restart cache. The
+# rules themselves live in SQL (infra/postgres/init/003_retention_window.sql)
+# because publication and purge have to commit together and because the object
+# keys freed by a purge must be queued by the same transaction that deleted
+# their rows. What lives here is the query surface: what the store holds, how
+# far each stream ever reached, and the sweep that drains freed objects out of
+# MinIO after their rows are already gone.
+#
+# Every function takes the artifact store rather than reaching for a global,
+# so the worker and the API can call the same code against the same store.
+
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+
+#: Distinguishes "the caller passed nothing" from "the caller passed an empty
+#: mapping", which for an absence report are different claims: the first means
+#: ask the store, the second means the store was asked and holds no record.
+_MISSING: Any = object()
+
+
+def valid_time_nanoseconds(moment: datetime) -> int:
+    """One instant as integer nanoseconds since the epoch.
+
+    The idempotency key compares frame times as integers, never as floats and
+    never as formatted strings: a microsecond of float error, or one adapter
+    writing ``+00:00`` where another writes ``Z``, would read as a missing
+    frame and refetch a run that is already on disk.
+    """
+    if moment.tzinfo is None:
+        raise ValueError("an offsetless instant has no place on the timeline")
+    delta = moment.astimezone(UTC) - _EPOCH
+    return ((delta.days * 86400 + delta.seconds) * 1_000_000 + delta.microseconds) * 1000
+
+
+@dataclass(frozen=True)
+class PurgeResult:
+    """What one purge did. Rows first; objects are a separate, resumable sweep."""
+
+    revisions: int
+    objects_deleted: int
+    objects_missing: int
+
+
+def artifact_store(store: Any) -> Any:
+    """The metadata store behind whatever the caller was holding.
+
+    The API passes its :class:`LiveStore` reader and the worker passes the
+    ``ingest.store.ArtifactStore`` itself. Retention is one set of rules over
+    one store, so it unwraps here rather than being written twice.
+    """
+    return getattr(store, "_store", store)
+
+
+def _cursor(store: Any):
+    """A cursor on the artifact store's own connection, or ``StoreUnavailable``.
+
+    A store that cannot be asked is never treated as an empty one. That
+    distinction is the whole point of the restart cache: refetching everything
+    because the metadata store blinked is how a restart becomes an outage on
+    the constraint that actually binds.
+    """
+    target = artifact_store(store)
+    try:
+        return target.connection()
+    except Exception as error:  # noqa: BLE001 - any driver failure is the same answer
+        raise StoreUnavailable(f"the artifact store could not be asked what it holds: {error}") from error
+
+
+def published_frame_times(store: Any, *, source_ids: Sequence[str] | None = None) -> dict[tuple[str, str], set[int]]:
+    """Frame times already published, keyed by ``(source_id, provider_run_id)``.
+
+    Times are integer nanoseconds. This is the question a restarting worker
+    asks before fetching anything: only the frames absent from this answer are
+    fetched. Raises :class:`StoreUnavailable` rather than returning an empty
+    mapping, because an unknown cache state is not an empty one.
+    """
+    clause, params = "", []
+    if source_ids is not None:
+        clause = "AND r.source_id = ANY(%s)"
+        params = [list(source_ids)]
+    present: dict[tuple[str, str], set[int]] = {}
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                SELECT r.source_id, r.provider_run_id, a.provenance -> 'valid_times',
+                       a.valid_time_start, a.valid_time_end
+                  FROM weather_experiment.artifact_revisions a
+                  JOIN weather_experiment.model_runs r ON r.run_id = a.run_id
+                 WHERE a.state IN ('published', 'superseded')
+                   {clause}
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"published frame times could not be read: {error}") from error
+
+    for source_id, provider_run_id, declared, span_start, span_end in rows:
+        key = (str(source_id), str(provider_run_id))
+        held = present.setdefault(key, set())
+        stamps = [moment for moment in (_parse_iso(value) for value in (declared or ())) if moment is not None]
+        if not stamps:
+            # No declared frame list. The span is the only thing that can be
+            # answered for, and answering with its edges is narrower than
+            # claiming every hour between them: a frame wrongly reported
+            # present is a frame that never gets fetched.
+            stamps = [moment for moment in (span_start, span_end) if moment is not None]
+        held.update(valid_time_nanoseconds(moment) for moment in stamps)
+    return present
+
+
+@dataclass(frozen=True)
+class RetainedRun:
+    """One retained run of one source, as coverage needs to see it.
+
+    ``run_time`` is the adapter's own declaration and nothing else. The
+    ``model_runs`` column of the same name is stamped with the retrieval time
+    when an adapter declared none, so folding the two together would let a
+    retrieval instant be served as a run time - and a run age, and a
+    ``run_stale`` verdict - computed from a number no producer ever stated.
+    Where the adapter declared nothing this is ``None``, and the caller says
+    so rather than substituting.
+
+    ``frame_start``/``frame_end`` bound the frames the run actually published,
+    read the way :func:`published_frame_times` reads them: the declared valid
+    times when the revision listed any, else the revision's own valid-time
+    span. A declared reach is a promise; this is the delivery.
+    """
+
+    source_id: str
+    provider_run_id: str
+    run_time: datetime | None
+    frame_start: datetime | None
+    frame_end: datetime | None
+
+    def published_span_covers(self, instant: datetime) -> bool:
+        if self.frame_start is None or self.frame_end is None:
+            return False
+        return self.frame_start <= instant <= self.frame_end
+
+
+def _revision_frame_stamps(artifact: Any) -> list[datetime]:
+    """The frames one retained revision can be said to have published.
+
+    The same rule :func:`published_frame_times` applies: the declared valid
+    times where the revision listed them, else the two edges of its recorded
+    span. Nothing between the edges is claimed, because a frame wrongly
+    reported present is a frame nobody fetches.
+    """
+    declared = (getattr(artifact, "provenance", None) or {}).get("valid_times") or ()
+    stamps = [moment for moment in (_parse_iso(value) for value in declared) if moment is not None]
+    if stamps:
+        return stamps
+    edges = (getattr(artifact, "valid_time_start", None), getattr(artifact, "valid_time_end", None))
+    return [moment for moment in (_parse_iso(value) for value in edges) if moment is not None]
+
+
+def retained_runs(store: Any) -> list[RetainedRun]:
+    """The runs this deployment still holds, folded from retained revisions.
+
+    Raises :class:`StoreUnavailable` when the store cannot answer, because an
+    unknown retention state is not an empty one: reporting "nothing covers
+    this instant" for a store that simply could not be read would be a claim
+    about the evidence rather than about the request.
+    """
+    reader = getattr(store, "retained_artifacts", None)
+    if reader is None:
+        raise StoreUnavailable("this artifact store cannot report retained revisions")
+    try:
+        artifacts = reader()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001 - any driver failure is the same answer
+        raise StoreUnavailable(f"retained revisions could not be read: {error}") from error
+
+    folded: dict[tuple[str, str], list[datetime]] = {}
+    declared_run_times: dict[tuple[str, str], datetime | None] = {}
+    for artifact in artifacts:
+        key = (str(artifact.source_id), str(artifact.provider_run_id))
+        folded.setdefault(key, []).extend(_revision_frame_stamps(artifact))
+        if declared_run_times.get(key) is None:
+            declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
+    runs: list[RetainedRun] = []
+    for (source_id, provider_run_id), stamps in folded.items():
+        runs.append(
+            RetainedRun(
+                source_id=source_id,
+                provider_run_id=provider_run_id,
+                run_time=declared_run_times.get((source_id, provider_run_id)),
+                frame_start=min(stamps) if stamps else None,
+                frame_end=max(stamps) if stamps else None,
+            )
+        )
+    return sorted(runs, key=lambda run: (run.source_id, run.provider_run_id))
+
+
+@dataclass(frozen=True)
+class LayerRun:
+    """One retained run of one source, as one layer's frame index needs it.
+
+    :class:`RetainedRun` folds a run to its two edges, which is all a
+    containment test needs. A layer index needs the stamps themselves, because
+    each frame is attributed to the run that produced it and a short cycle puts
+    two runs in one index.
+
+    ``run_time`` is the adapter's own declaration and nothing else, for the
+    reason :class:`RetainedRun` gives: the ``model_runs`` column of the same
+    name is a retrieval stamp where the adapter declared nothing, and a run age
+    computed from a retrieval instant is a staleness verdict nobody stated.
+    """
+
+    layer_id: str
+    source_id: str
+    provider_run_id: str
+    run_time: datetime | None
+    times: list[datetime]
+
+
+def retained_layer_runs(store: Any) -> dict[str, list[LayerRun]]:
+    """Every retained run, per layer, with the frames it published.
+
+    Read from the same ``retained_artifacts`` revisions coverage reads, so the
+    previous run kept under the two-run ceiling is visible here too: that is
+    what lets ``/layers`` serve the leads a short newest run does not reach
+    without inventing them.
+
+    Runs come back newest first, a run with no declared run time last. That
+    order is what decides attribution where two runs published the same frame:
+    the newer evidence answers for the instant, and the older run keeps only
+    the leads the newer one lacks.
+
+    Raises :class:`StoreUnavailable` when the store cannot answer. An unknown
+    retention state is not an empty one, and the caller says so rather than
+    reporting every frame as run-less.
+    """
+    reader = getattr(store, "retained_artifacts", None)
+    if reader is None:
+        raise StoreUnavailable("this artifact store cannot report retained revisions")
+    try:
+        artifacts = reader()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001 - any driver failure is the same answer
+        raise StoreUnavailable(f"retained revisions could not be read: {error}") from error
+
+    folded: dict[tuple[str, str, str], set[datetime]] = {}
+    declared_run_times: dict[tuple[str, str, str], datetime | None] = {}
+    for artifact in artifacts:
+        key = (
+            layer_id_for(str(artifact.source_id), str(getattr(artifact, "logical_name", ""))),
+            str(artifact.source_id),
+            str(artifact.provider_run_id),
+        )
+        folded.setdefault(key, set()).update(_revision_frame_stamps(artifact))
+        if declared_run_times.get(key) is None:
+            declared_run_times[key] = _parse_iso((getattr(artifact, "provenance", None) or {}).get("run_time"))
+
+    by_layer: dict[str, list[LayerRun]] = {}
+    for (layer_id, source_id, provider_run_id), stamps in folded.items():
+        by_layer.setdefault(layer_id, []).append(
+            LayerRun(
+                layer_id=layer_id,
+                source_id=source_id,
+                provider_run_id=provider_run_id,
+                run_time=declared_run_times.get((layer_id, source_id, provider_run_id)),
+                times=sorted(stamps),
+            )
+        )
+    for runs in by_layer.values():
+        runs.sort(key=lambda run: (run.run_time is None, -(run.run_time.timestamp() if run.run_time else 0.0), run.provider_run_id))
+    return by_layer
+
+
+#: Said where the run that produced a frame declared no reference time of its
+#: own. The retrieval instant recorded beside the run is not a substitute, so
+#: the age - and the verdict - stay unknown.
+NO_RUN_TIME_REASON = "the adapter declared no run time, so the age of this run cannot be computed"
+
+#: Said where the producer states no run cadence, so there is no threshold to
+#: compare an age against.
+NO_RUN_CADENCE_REASON = "the source declares no run cadence, so there is no staleness threshold to compare against"
+
+
+#: Said for a source that publishes observations rather than runs. Not a
+#: staleness claim in either direction: there is no run to be stale.
+NO_RUN_CONCEPT_REASON = "observation layer: no run concept"
+
+
+def source_has_run_concept(source_id: str) -> bool:
+    """Whether this source publishes runs at all, per its registry category.
+
+    Read from the record, never from the shape of an id or the presence of a
+    cadence field: an observation source with no run is a different fact from a
+    forecast source whose cadence could not be resolved, and the two get
+    different reasons.
+    """
+    category = source_category(source_id)
+    if category is None:
+        return False
+    try:
+        from ingest.registry import FORECAST_CATEGORIES  # noqa: PLC0415
+    except Exception:  # noqa: BLE001 - no registry is not a claim about runs
+        return True
+    return category in FORECAST_CATEGORIES
+
+
+def run_stale_verdict(
+    run_time: datetime | None, cadence_seconds: int | None, reference: datetime
+) -> tuple[int | None, bool | None, str | None]:
+    """``(run_age_seconds, run_stale, run_stale_reason)`` for one run.
+
+    The one place the rule lives: a run is stale when its age exceeds twice the
+    producer's declared run cadence - one missed run is a delay, two is a source
+    that has stopped publishing. The verdict is only ever reached where both
+    halves of the comparison are known; either missing gives ``None`` with the
+    reason, because ``False`` would report an unmeasurable run as current.
+    """
+    if run_time is None:
+        return None, None, NO_RUN_TIME_REASON
+    age = int((reference - run_time).total_seconds())
+    if cadence_seconds is None or cadence_seconds <= 0:
+        return age, None, NO_RUN_CADENCE_REASON
+    return age, age > 2 * cadence_seconds, None
+
+
+def source_run_staleness(
+    source_id: str, run_time: datetime | None, reference: datetime
+) -> tuple[int | None, bool | None, str | None, int | None]:
+    """``(age, run_stale, reason, run_cadence_seconds)`` for one source's run.
+
+    :func:`run_stale_verdict` with the two registry reads in front of it, so
+    ``/layers`` and ``/point`` reach the same verdict from the same record. An
+    observation source stops here with its own reason rather than falling
+    through to "no cadence declared", which would read as a missing declaration
+    on a record that correctly has none.
+    """
+    if not source_has_run_concept(source_id):
+        return None, None, NO_RUN_CONCEPT_REASON, None
+    cadence = source_run_cadence_seconds(source_id)
+    age, stale, reason = run_stale_verdict(run_time, cadence, reference)
+    return age, stale, reason, cadence
+
+
+def source_reach(source_id: str) -> Any | None:
+    """The declared reach of a source, or ``None`` when it declares none."""
+    config = _registry_config(source_id)
+    return getattr(config, "reach", None) if config is not None else None
+
+
+def source_run_cadence_seconds(source_id: str) -> int | None:
+    """The declared producer run cadence of a source, in seconds."""
+    config = _registry_config(source_id)
+    cadence = getattr(config, "run_cadence_seconds", None) if config is not None else None
+    return int(cadence) if cadence else None
+
+
+def stream_last_valid_times(store: Any) -> dict[tuple[str, str], datetime]:
+    """The last valid time held per ``(source_id, logical_name)``.
+
+    A stream absent from this mapping was never held here, so its absence is
+    ``null`` and must never be reported as aged out.
+    """
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT source_id, logical_name, last_valid_time "
+                "FROM weather_experiment.stream_last_valid_time"
+            )
+            rows = cursor.fetchall()
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"the last valid time record could not be read: {error}") from error
+    return {(str(source_id), str(name)): moment for source_id, name, moment in rows}
+
+
+def last_valid_times(store: Any) -> dict[str, datetime]:
+    """The last valid time held per source, folded over its logical streams."""
+    folded: dict[str, datetime] = {}
+    for (source_id, _name), moment in stream_last_valid_times(store).items():
+        held = folded.get(source_id)
+        if held is None or moment > held:
+            folded[source_id] = moment
+    return folded
+
+
+def record_last_valid_time(store: Any, *, source_id: str, logical_name: str, valid_time: datetime) -> None:
+    """Record how far one stream reached, so a later absence can say so.
+
+    Publication records this itself inside ``publish_run``; this is the seam
+    for a caller that holds frames the publication path did not stamp. The
+    record is never lowered.
+    """
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT weather_experiment.record_last_valid_time(%s, %s, %s)",
+                (source_id, logical_name, valid_time),
+            )
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"the last valid time could not be recorded for {source_id}/{logical_name}: {error}") from error
+
+
+def purge_outside_window(store: Any, *, now: datetime | None = None, sweep: bool = True) -> PurgeResult:
+    """Purge every frame whose valid time has left the window, then sweep.
+
+    The row deletion and the last-valid-time record commit together in the
+    database; the object deletion is a separate, resumable sweep, because the
+    metadata row is the record of truth and an object that outlives its row is
+    a leak while a row that outlives its object is a pointer at nothing.
+    """
+    moment = (now or datetime.now(UTC)).astimezone(UTC)
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.purge_outside_window(%s)", (moment,))
+            row = cursor.fetchone()
+            revisions = int(row[0]) if row else 0
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"the retention purge could not run: {error}") from error
+    deleted, missing = drain_purged_objects(store) if sweep else (0, 0)
+    return PurgeResult(revisions=revisions, objects_deleted=deleted, objects_missing=missing)
+
+
+def drain_purged_objects(store: Any, *, batch: int = 1000) -> tuple[int, int]:
+    """Drain retention work, keeping failed deletions queued for retry."""
+    from ingest.purge import drain_objects
+
+    try:
+        return drain_objects(artifact_store(store), batch=batch)
+    except StoreUnavailable:
+        raise
+    except Exception as error:
+        raise StoreUnavailable(f"the purge queue could not be drained: {error}") from error
+
+
+def reclaimable_bytes(store: Any, *, now: datetime | None = None) -> int:
+    """Bytes a projection may count on being freed: those already out of window.
+
+    Never includes an in-window frame. Trading evidence a request could name
+    for room to fetch more is an eviction of visible data under another name,
+    which the storage-integrity requirement forbids.
+    """
+    moment = (now or datetime.now(UTC)).astimezone(UTC)
+    try:
+        with _cursor(store) as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.reclaimable_bytes(%s)", (moment,))
+            row = cursor.fetchone()
+            return int(row[0]) if row else 0
+    except StoreUnavailable:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise StoreUnavailable(f"reclaimable bytes could not be read: {error}") from error
+
+
+def assert_room_for(store: Any, additional_bytes: int, *, replacing_bytes: int = 0, now: datetime | None = None) -> None:
+    """Refuse a download that would exceed the cap, before any bytes are fetched.
+
+    Room is projected against the configured hot quota, counting the two-run
+    staging overlap that is already on disk. Only bytes already outside the
+    window are credited as reclaimable, so the projection can never be
+    satisfied by planning to purge an in-window frame, and it is never
+    satisfied by evicting a currently visible revision: reaching the cap fails
+    closed, and there is nowhere to spill to.
+    """
+    from ingest.store import QuotaExceeded  # noqa: PLC0415  (the worker owns the error type)
+
+    target = artifact_store(store)
+    cap = getattr(getattr(target, "config", None), "cap_bytes", None) or STORAGE_CAP_BYTES
+    projected = target.used_bytes() - replacing_bytes + additional_bytes - reclaimable_bytes(target, now=now)
+    if projected > cap:
+        raise QuotaExceeded(
+            f"the {STORAGE_CAP} hot storage cap would be exceeded: projected {projected} bytes against a cap of {cap}. "
+            "No visible revision is evicted and there is no cold tier to spill to."
+        )
+
+
 # --- evidence assembly ---------------------------------------------------
 # Samples become API evidence here so that every live value carries the same
 # provenance shape as a fixture value, including when it is missing.
@@ -1106,43 +2200,122 @@ def live_provenance(
     reference: datetime,
     derivation: str | None = None,
     derivation_version: str | None = None,
+    derivation_citation: str | None = None,
+    derivation_inputs: Sequence[Any] = (),
+    quality: Any | None = None,
     contributors: Sequence[str] = (),
+    ensemble: Any | None = None,
 ) -> Any:
-    from .models import ContributorProvenance, Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
+    """Provenance for one sampled value.
+
+    ``evidence_class`` comes from the sample, which read it from the
+    artifact's own declaration; a value whose class could not be resolved
+    never reaches here, because its artifact was isolated first. A
+    ``ProvenanceUnmodelled`` is raised where the model refuses what the
+    artifact recorded, so the caller can isolate that artifact instead of
+    failing the whole response.
+    """
+    from .models import ContributorProvenance  # noqa: PLC0415
 
     config = _registry_config(sample.source_id)
     provenance = sample.provenance
     threshold = (config.freshness_threshold_seconds if config and config.freshness_threshold_seconds else 21600)
     age = int((reference - sample.retrieved_at).total_seconds()) if sample.retrieved_at else None
-    quality = provenance.get("quality") or {}
-    coverage = provenance.get("coverage") or {}
     contributor_records = []
     for source_id in contributors:
         other = _registry_config(source_id)
         if other is not None:
             contributor_records.append(ContributorProvenance(source_id=source_id, provider=other.producer, product=other.product, licence=other.licence, attribution=other.attribution))
+    try:
+        return _build_live_provenance(
+            sample,
+            config=config,
+            provenance=provenance,
+            quality=quality,
+            threshold=threshold,
+            age=age,
+            contributors=contributors,
+            contributor_records=contributor_records,
+            derivation=derivation,
+            derivation_version=derivation_version,
+            derivation_citation=derivation_citation,
+            derivation_inputs=derivation_inputs,
+            reference=reference,
+            ensemble=ensemble,
+        )
+    except Exception as error:  # an unknown class, a status outside the four
+        raise ProvenanceUnmodelled(f"{sample.source_id}/{sample.logical_name} {sample.variable}: {error}") from error
+
+
+def _build_live_provenance(
+    sample: Sample,
+    *,
+    config: Any,
+    provenance: dict[str, Any],
+    quality: Any | None,
+    threshold: int,
+    age: int | None,
+    contributors: Sequence[str],
+    contributor_records: list[Any],
+    derivation: str | None,
+    derivation_version: str | None,
+    derivation_citation: str | None,
+    derivation_inputs: Sequence[Any],
+    reference: datetime,
+    ensemble: Any | None = None,
+) -> Any:
+    from .models import Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
+
+    stored = provenance.get("quality") or {}
+    # A derived value's quality is handed in already computed from its inputs;
+    # everything else reports the QC the artifact recorded.
+    resolved_quality = quality if quality is not None else Quality(status=stored.get("status", "unknown"), flags=list(stored.get("flags", [])))
+    coverage = provenance.get("coverage") or {}
+    # The run staleness of the value's own run, and only from the adapter's own
+    # declaration: ``sample.run_time`` carries the ``model_runs`` stamp, which is
+    # the retrieval instant where nothing was declared, and a run age computed
+    # from that would be a verdict no producer ever stated.
+    _age, run_stale, run_stale_reason, _cadence = source_run_staleness(
+        sample.source_id, _parse_iso(provenance.get("run_time")), reference
+    )
     return Provenance(
         data_mode=DataMode.LIVE,
+        evidence_class=sample.evidence_class,
         source_id=sample.source_id,
+        artifact_revision=sample.revision_id,
         provider=config.producer if config else sample.source_id,
         product=config.product if config else sample.logical_name,
         forecast_centre=provenance.get("forecast_centre", config.producer if config else "unknown"),
         run_time=sample.run_time,
         valid_time=sample.valid_time,
         retrieval_time=sample.retrieved_at or reference,
-        member=provenance.get("member"),
+        # The member the value was actually read at wins over anything the
+        # artifact's own provenance says about the run as a whole: one value
+        # off a member axis names its own member, never the family's.
+        member=sample.member if sample.member is not None else provenance.get("member"),
+        member_control=sample.member_control,
+        ensemble=ensemble,
         vertical_level=sample.level,
         original_units=str(provenance.get("original_units", {}).get(sample.variable, sample.units)) if isinstance(provenance.get("original_units"), dict) else sample.units,
         normalized_units=sample.units,
         native_resolution=str(provenance.get("native_resolution", "unknown")),
         native_crs=sample.native_crs,
-        quality=Quality(status=quality.get("status", "unknown"), flags=list(quality.get("flags", []))),
+        quality=resolved_quality,
         coverage=Coverage(status=coverage.get("status", "unknown"), fraction=coverage.get("fraction")),
         freshness=Freshness.evaluate(age, threshold),
         licence=config.licence if config else "see contributing provider",
         attribution=config.attribution if config else "see contributing provider",
         derivation=derivation,
         derivation_version=derivation_version,
+        derivation_citation=derivation_citation,
+        derivation_inputs=list(derivation_inputs),
+        # The producing record's own declaration, so every value says whose
+        # cell it is. The artifact may state an intermediary of its own (a
+        # per-artifact override); where it does not, the record's stands.
+        delivery_kind=provenance.get("delivery_kind", getattr(config, "delivery_kind", None)),
+        source_display_primary=getattr(config, "display_primary", None),
+        intermediary=provenance.get("intermediary", getattr(config, "intermediary", None)),
+        intermediary_method=provenance.get("intermediary_method", getattr(config, "intermediary_method", None)),
         adapter_version=str(provenance.get("adapter_version", "unknown")),
         sampled_latitude=sample.sampled_latitude,
         sampled_longitude=sample.sampled_longitude,
@@ -1150,6 +2323,259 @@ def live_provenance(
         sample_method=sample.sample_method,
         contributing_evidence=list(contributors),
         contributors=contributor_records,
+        run_stale=run_stale,
+        run_stale_reason=run_stale_reason,
+    )
+
+
+def _note(store: Any, *, source_id: str, revision_id: str, reason: str) -> None:
+    """Record a notice against the store, whatever kind of store it is.
+
+    The point path is handed a store by the caller, and a caller's double need
+    not be a :class:`LiveStore`. A notice that cannot be recorded must not cost
+    the response the evidence it does have.
+    """
+    skipped = getattr(store, "skipped", None)
+    if isinstance(skipped, list):
+        skipped.append(SkippedArtifact(source_id=source_id, revision_id=revision_id, reason=reason))
+
+
+def _derived_input_records(inputs: Sequence[tuple[str, Sample]]) -> list[Any]:
+    """Each input a derivation read, with its own lineage, for provenance."""
+    from .models import DerivedInput, Quality  # noqa: PLC0415
+
+    records = []
+    for name, sample in inputs:
+        config = _registry_config(sample.source_id)
+        stored = sample.provenance.get("quality") or {}
+        records.append(
+            DerivedInput(
+                field=name,
+                source_id=sample.source_id,
+                product=config.product if config else sample.logical_name,
+                valid_time=sample.valid_time,
+                units=sample.units,
+                evidence_class=sample.evidence_class,
+                quality=Quality(status=stored.get("status", "unknown"), flags=list(stored.get("flags", []))),
+                run_time=sample.run_time,
+            )
+        )
+    return records
+
+
+def _input_qualities(inputs: Sequence[tuple[str, Sample]]) -> list[Any]:
+    from .models import Quality  # noqa: PLC0415
+
+    qualities = []
+    for _name, sample in inputs:
+        stored = sample.provenance.get("quality") or {}
+        qualities.append(Quality(status=stored.get("status", "unknown"), flags=list(stored.get("flags", []))))
+    return qualities
+
+
+def _disqualifying_input(inputs: Sequence[tuple[str, Sample]]) -> str:
+    """The reason an input disqualifies a derivation, or ``""``.
+
+    Only a retrieved value may be read by a derivation: deriving over a
+    reprocessed or intermediary-derived value would compound one
+    intermediary's transformation with this stack's own, and an uncalibrated
+    instrument has no place under a physical construction.
+    """
+    from .models import DERIVATION_INPUT_CLASSES  # noqa: PLC0415
+
+    for name, sample in inputs:
+        if sample.evidence_class not in DERIVATION_INPUT_CLASSES:
+            return f"its input {name} from {sample.source_id} is {sample.evidence_class}, and only a retrieved value may be a derivation input"
+    return ""
+
+
+def _registered_relative_humidity(temperature_c: float, dewpoint_c: float) -> RegisteredDerivation:
+    """Relative humidity through its registry entry, or nothing.
+
+    The construction, the three switch levels and the physical-range rule all
+    live in the registry; this only carries the result across. A registry that
+    cannot be read yields no value, and the caller's refusal notice says why.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation()
+    derived = registry.derive_relative_humidity(temperature_c, dewpoint_c)
+    if derived.method is None:
+        return RegisteredDerivation()
+    return RegisteredDerivation(value=derived.value, derivation=derived.method.name, version=derived.method.version, flags=tuple(derived.flags))
+
+
+def _registered_wind(u_ms: float, v_ms: float) -> tuple[RegisteredDerivation, RegisteredDerivation]:
+    """Wind speed and direction from one entry, each with its own range flags.
+
+    A speed is clamped and a bearing is folded, so the two results carry
+    different flags even though one construction produced both.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation(), RegisteredDerivation()
+    derived = registry.derive_wind(u_ms, v_ms)
+    if derived.method is None:
+        return RegisteredDerivation(), RegisteredDerivation()
+    name, version = derived.method.name, derived.method.version
+    return (
+        RegisteredDerivation(value=derived.speed, derivation=name, version=version, flags=tuple(derived.speed_flags)),
+        RegisteredDerivation(value=derived.direction, derivation=name, version=version, flags=tuple(derived.direction_flags)),
+    )
+
+
+def _registered_fog_state(*, visibility_m: float | None, fog_code: bool) -> RegisteredDerivation:
+    """The fog state through its registry entry.
+
+    ``provider_diagnostic`` is ``None`` because no provider retrieved here
+    publishes a fog diagnostic, so the only live states are
+    ``evidence_present`` and ``unknown``: an absent FG code is not a finding
+    of no fog, and ``not_indicated`` is never produced.
+    """
+    registry = derivation_registry()
+    if registry is None:
+        return RegisteredDerivation()
+    derived = registry.derive_fog_state(provider_diagnostic=None, visibility_m=visibility_m, fog_code=fog_code)
+    if derived.method is None:
+        return RegisteredDerivation()
+    return RegisteredDerivation(value=derived.value, derivation=derived.method.name, version=derived.method.version)
+
+
+def _method_citation(method: str) -> str | None:
+    """The entry's citation to the published construction, from the registry."""
+    registry = derivation_registry()
+    if registry is None:
+        return None
+    try:
+        return str(registry.provenance(method).get("derivation_citation")) or None
+    except Exception:
+        return None
+
+
+def storage_for(source_id: str, key: str | None, value: Any) -> str:
+    """What this deployment does about the field a value stands for.
+
+    A value that was actually served is ``stored`` - it is here, in hand. A
+    null is where the three answers matter: the catalogue's per-source mapping
+    knows whether the producer publishes the field and this deployment does not
+    fetch it (``available-not-stored``) or the producer leaves the gap
+    (``not-published``), and neither is the same as a reading that is simply
+    missing from this run.
+    """
+    if value is not None or key is None:
+        return "stored"
+    return catalogue.storage_of(source_id, key) or "stored"
+
+
+def _uncatalogued_field(store: Any, sample: Sample, field_name: str, valid_time: datetime, reference: datetime) -> Any:
+    """A variable the catalogue cannot resolve, refused with its name recorded.
+
+    Not served, not guessed at, and not silently dropped either: the field is
+    present and null so a reader can see the refusal, and the notice names the
+    variable and the artifact it came from so the catalogue can be extended.
+    """
+    from .models import EvidenceField  # noqa: PLC0415
+
+    _note(
+        store,
+        source_id=sample.source_id,
+        revision_id=sample.revision_id,
+        reason=(
+            f"variable {sample.variable!r} is not a catalogue key, so it is not served "
+            f"(uncatalogued_field); {sample.source_id}/{sample.logical_name} must be re-keyed "
+            "or the catalogue extended"
+        ),
+    )
+    return EvidenceField(
+        field=field_name,
+        value=None,
+        key=None,
+        storage="stored",
+        provenance=unavailable_provenance(
+            valid_time,
+            units=sample.units,
+            flags=["uncatalogued_field"],
+            source_id=sample.source_id,
+            product=sample.logical_name,
+            level=sample.level,
+            reference=reference,
+            evidence_class=sample.evidence_class,
+        ),
+    )
+
+
+def _derived_evidence_field(
+    store: LiveStore,
+    *,
+    field_name: str,
+    basis: Sample,
+    inputs: Sequence[tuple[str, Sample]],
+    method: str,
+    value: Any,
+    derivation: str | None,
+    derivation_version: str | None,
+    flags: Sequence[str] = (),
+    phase: str | None = None,
+    reference: datetime,
+) -> Any:
+    """One ``derived_here`` value, or the same field null with a notice.
+
+    All four conditions hold together or nothing is served: every input is a
+    retrieved value listed with its own provenance, the method is an enabled
+    registry entry named with its version and citation, the result is bounded
+    to the method's declared physical range, and the quality is no better than
+    the worst input's.
+
+    The registry applied the range rule before the value arrived here and said
+    which rule it applied; ``range_refused`` means the entry refused the
+    result rather than bounding it, so the field is null like any other failed
+    condition.
+    """
+    from .models import EvidenceField, Quality, catalogue_key_for  # noqa: PLC0415
+
+    key = catalogue_key_for(field_name)
+    flags = list(flags)
+    refusal = _disqualifying_input(inputs)
+    if not refusal:
+        refusal = derivation_refusal(method)
+    if not refusal and "range_refused" in flags:
+        refusal = f"the result left the physical range {method} declares and the entry's range rule refuses it"
+    if not refusal and value is None:
+        refusal = f"{method} produced no value from the inputs it was given"
+    if refusal:
+        _note(store, source_id=basis.source_id, revision_id=basis.revision_id, reason=f"{field_name} was not derived because {refusal}; nothing was substituted")
+        return EvidenceField(
+            field=field_name,
+            value=None,
+            key=key,
+            storage=storage_for(basis.source_id, key, None),
+            provenance=unavailable_provenance(
+                basis.valid_time,
+                units=basis.units,
+                flags=["derivation_refused"],
+                source_id=basis.source_id,
+                product=basis.logical_name,
+                level=basis.level,
+                reference=reference,
+                evidence_class="derived_here",
+            ),
+        )
+    return EvidenceField(
+        field=field_name,
+        value=value,
+        key=key,
+        phase=phase,
+        storage="stored",
+        provenance=live_provenance(
+            replace(basis, evidence_class="derived_here"),
+            field_name=field_name,
+            reference=reference,
+            derivation=derivation or method,
+            derivation_version=derivation_version,
+            derivation_citation=_method_citation(method),
+            derivation_inputs=_derived_input_records(inputs),
+            quality=Quality.worst_of(_input_qualities(inputs), flags=list(flags)),
+        ),
     )
 
 
@@ -1159,6 +2585,15 @@ def _consensus_candidates(samples: Sequence[Sample]) -> list[Any]:
     candidates = []
     for sample in samples:
         if sample.variable != "temperature_2m" or sample.value is None:
+            continue
+        if sample.member is not None:
+            # One member is not the family's forecast. A member row entering
+            # the centre mean would put a single perturbation beside a
+            # deterministic model as though the two were the same object.
+            continue
+        if sample.evidence_class != "retrieved":
+            # A reprocessed, intermediary-derived or uncalibrated value is
+            # never the display primary and never feeds a construction.
             continue
         config = _registry_config(sample.source_id)
         if config is None or not config.may_enter_consensus:
@@ -1190,35 +2625,517 @@ def _flag_is_present(sample: Sample | None) -> bool | None:
     return bool(sample.value)
 
 
-def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid_time: datetime) -> tuple[list[Any], Any, list[str]]:
-    """Build live evidence fields, the consensus result, and the source ids used."""
-    from .models import EvidenceField  # noqa: PLC0415
-    from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS, build_consensus, fog_state, resolve_relative_humidity, resolve_wind  # noqa: PLC0415
+# --- ensemble members and the statistics over them --------------------------
+# Every number here names four things on its own face: the family and run it
+# came from, which statistic it is, the member set it covers, and whether a
+# provider published it or this deployment computed it. A value that cannot
+# name all four is not served, because that is exactly the unnamed ensemble
+# number the retired consensus badge demonstrated.
+
+
+def _is_time_averaged(registry: Any, variable: str) -> bool:
+    """Whether this catalogue key is a mean over a window rather than an instant.
+
+    The registry's own ``TIME_AVERAGED_FIELDS`` is the authority; nothing here
+    infers a window from a key's spelling.
+    """
+    from .models import catalogue_key_for  # noqa: PLC0415
+
+    key = catalogue_key_for(variable)
+    return key is not None and key in getattr(registry, "TIME_AVERAGED_FIELDS", frozenset())
+
+
+def _same_quantity_family(left: str, right: str) -> bool:
+    """Whether two catalogue keys belong to one quantity family."""
+    from .models import catalogue_key_for  # noqa: PLC0415
+
+    left_key, right_key = catalogue_key_for(left), catalogue_key_for(right)
+    if left_key is None or right_key is None:
+        return False
+    try:
+        return catalogue.field(left_key).family == catalogue.field(right_key).family
+    except Exception:
+        return False
+
+
+def _member_quality_status(sample: Sample) -> str:
+    stored = sample.provenance.get("quality") or {}
+    return str(stored.get("status", "unknown"))
+
+
+def _ensemble_provenance(
+    *,
+    family: str,
+    statistic: str | None,
+    computed_here: bool,
+    member_set: Any | None = None,
+    refusal: str | None = None,
+    quantile: float | None = None,
+    threshold: float | None = None,
+    threshold_units: str | None = None,
+    comparison: str | None = None,
+    averaging_window_hours: float | None = None,
+) -> Any:
+    from .models import EnsembleProvenance  # noqa: PLC0415
+
+    return EnsembleProvenance(
+        family=family,
+        statistic=statistic,
+        computed_here=computed_here,
+        member_set=member_set,
+        refusal=refusal,
+        quantile=quantile,
+        threshold=threshold,
+        threshold_units=threshold_units,
+        comparison=comparison,
+        averaging_window_hours=averaging_window_hours,
+    )
+
+
+def _member_sets_for(registry: Any, samples: Sequence[Sample]) -> list[Any]:
+    """One ``MemberSet`` per family, run and field, from what actually resolved.
+
+    Grouped by the *resolved* family and run rather than by the request,
+    because the artifacts are what carry them: two families or two runs
+    arriving for one field become two sets, and the derive step refuses them
+    by that shape rather than by anything asserted here. A provider's own
+    reduction enters under the reduction family so that it is refused beside
+    members rather than averaged in with them.
+    """
+    groups: dict[tuple[str, str, Any, str], list[Sample]] = {}
+    for sample in samples:
+        family = PROVIDER_REDUCTION_FAMILY if sample.member is None else sample.ensemble_family
+        if family is None:
+            # A member whose family the record does not state. It is not
+            # served at all, so it enters no set either.
+            continue
+        groups.setdefault((family, sample.source_id, sample.run_time, sample.variable), []).append(sample)
+    sets = []
+    for (family, source_id, run_time, variable), group in sorted(groups.items(), key=lambda item: (item[0][0], item[0][1], str(item[0][2]), item[0][3])):
+        members = tuple(
+            registry.MemberValue(
+                member=item.member if item.member is not None else item.source_id,
+                control=bool(item.member_control),
+                value=item.value if isinstance(item.value, float) else None,
+                quality_status=_member_quality_status(item),
+            )
+            for item in group
+        )
+        declared = max((item.members_declared or 0) for item in group) or len(members)
+        # A member the artifact named as missing keeps its name on the set, so
+        # a partial statistic can say which members it did not cover.
+        missing = tuple(dict.fromkeys(name for item in group for name in item.members_missing))
+        members += tuple(
+            registry.MemberValue(member=name, control=False, value=None, quality_status="unknown")
+            for name in missing
+            if name not in {item.member for item in members}
+        )
+        sets.append(
+            registry.MemberSet(
+                family=family,
+                source_id=source_id,
+                run_time=run_time,
+                field=variable,
+                declared=max(declared, len(members)),
+                members=members,
+                time_averaged=any(item.averaging_window_hours is not None for item in group),
+            )
+        )
+    return sets
+
+
+def _statistic_field(
+    store: Any,
+    registry: Any,
+    *,
+    field_name: str,
+    basis: Sample,
+    members: Sequence[Sample],
+    statistic: str,
+    result: Any,
+    reference: datetime,
+) -> Any:
+    """One statistic as an evidence field: the number, or the refusal.
+
+    A refusal is not an absence. The value is null and the quality carries
+    ``statistic_refused`` with the condition code on the provenance, while the
+    data mode stays live and the members go on being served beside it: the
+    data is present and it is the request that was not answerable.
+    """
+    from .models import (  # noqa: PLC0415
+        PARTIAL_MEMBER_SET_FLAG,
+        STATISTIC_REFUSED_FLAG,
+        EnsembleMemberSet,
+        EvidenceField,
+        Quality,
+        catalogue_key_for,
+    )
+
+    key = catalogue_key_for(basis.variable)
+    refusal = result.condition_failed or (result.refusal.code if result.refusal is not None else None)
+    partial = result.members_used < result.members_declared
+    flags = list(dict.fromkeys([*result.flags, *( [PARTIAL_MEMBER_SET_FLAG] if partial else [])]))
+    if refusal is not None:
+        flags = list(dict.fromkeys([*flags, STATISTIC_REFUSED_FLAG]))
+    member_set = EnsembleMemberSet(
+        family=basis.ensemble_family or "",
+        source_id=basis.source_id,
+        run_time=basis.run_time,
+        members_declared=result.members_declared,
+        members_used=result.members_used,
+        members_missing=list(result.members_missing),
+        control_included=result.control_included,
+        partial=partial,
+    )
+    units = basis.units
+    if statistic == registry.ENSEMBLE_THRESHOLD_PROBABILITY:
+        units = "1"
+    elif statistic == registry.ENSEMBLE_MEMBER_COUNT:
+        units = "count"
+    ensemble = _ensemble_provenance(
+        family=basis.ensemble_family or "",
+        statistic=statistic,
+        computed_here=True,
+        member_set=member_set,
+        refusal=refusal,
+        quantile=result.quantile,
+        threshold=result.threshold,
+        threshold_units=result.threshold_units,
+        comparison=result.comparison,
+        averaging_window_hours=basis.averaging_window_hours,
+    )
+    if refusal is not None:
+        _note(
+            store,
+            source_id=basis.source_id,
+            revision_id=basis.revision_id,
+            reason=(
+                f"{field_name}: {statistic} was refused ({refusal}); the members it would have "
+                "covered are served unchanged and nothing was computed over the part that passed"
+            ),
+        )
+    value = result.value if refusal is None else None
+    return EvidenceField(
+        field=field_name,
+        value=value,
+        key=key,
+        storage=storage_for(basis.source_id, key, value),
+        provenance=live_provenance(
+            replace(basis, variable=field_name, value=value, units=units, evidence_class="derived_here", member=None, member_control=None),
+            field_name=field_name,
+            reference=reference,
+            derivation=statistic,
+            derivation_version=getattr(result.method, "version", None),
+            derivation_citation=_method_citation(statistic),
+            derivation_inputs=_derived_input_records([(field_name, item) for item in members]),
+            quality=Quality(status=result.quality_status, flags=flags),
+            ensemble=ensemble,
+        ),
+    )
+
+
+def _ensemble_point_fields(
+    store: Any,
+    samples: Sequence[Sample],
+    *,
+    valid_time: datetime,
+    reference: datetime,
+    statistic: str | None,
+    quantile: float | None,
+    threshold: float | None,
+    comparison: str | None,
+    reader_disabled: Sequence[str],
+) -> list[Any]:
+    """The per-member values, and the statistic over them where one was asked.
+
+    The members come first and unconditionally: a statistic is never served
+    without them, and a statistic that is refused costs the members nothing.
+    """
+    from .models import EvidenceField, catalogue_key_for  # noqa: PLC0415
+
+    fields: list[Any] = []
+    members = [item for item in samples if item.member is not None]
+    if not members:
+        return fields
+
+    unknown: set[tuple[str, str]] = set()
+    for sample in members:
+        name = FIELD_BY_VARIABLE.get(sample.variable)
+        if name is None:
+            continue
+        key = catalogue_key_for(sample.variable)
+        if key is None:
+            if (name, sample.source_id) not in unknown:
+                unknown.add((name, sample.source_id))
+                fields.append(_uncatalogued_field(store, sample, name, valid_time, reference))
+            continue
+        if sample.ensemble_family is None:
+            # A number whose family its record does not state cannot name
+            # where it came from, so it is not served at all.
+            if (name, sample.source_id) in unknown:
+                continue
+            unknown.add((name, sample.source_id))
+            _note(
+                store,
+                source_id=sample.source_id,
+                revision_id=sample.revision_id,
+                reason=(
+                    f"{name}: {sample.source_id} publishes a member axis and its registry record "
+                    f"states no ensemble family ({ENSEMBLE_FAMILY_UNKNOWN_FLAG}), so no member value "
+                    "is served under an unnamed family"
+                ),
+            )
+            fields.append(
+                EvidenceField(
+                    field=name,
+                    value=None,
+                    key=key,
+                    storage=storage_for(sample.source_id, key, None),
+                    provenance=unavailable_provenance(
+                        valid_time,
+                        units=sample.units,
+                        flags=[ENSEMBLE_FAMILY_UNKNOWN_FLAG],
+                        source_id=sample.source_id,
+                        product=sample.logical_name,
+                        level=sample.level,
+                        reference=reference,
+                        evidence_class=sample.evidence_class,
+                    ),
+                )
+            )
+            continue
+        try:
+            provenance = live_provenance(
+                sample,
+                field_name=name,
+                reference=reference,
+                ensemble=_ensemble_provenance(
+                    family=sample.ensemble_family,
+                    # One member's own reading is not a summary of any set, so
+                    # it names no statistic and was computed nowhere.
+                    statistic=None,
+                    computed_here=False,
+                    member_set=None,
+                    averaging_window_hours=sample.averaging_window_hours,
+                ),
+            )
+        except ProvenanceUnmodelled as error:
+            _note(store, source_id=sample.source_id, revision_id=sample.revision_id, reason=str(error))
+            continue
+        fields.append(
+            EvidenceField(
+                field=name,
+                value=sample.value,
+                key=key,
+                phase=sample.phase if catalogue.requires_phase(key) else None,
+                storage=storage_for(sample.source_id, key, sample.value),
+                provenance=provenance,
+            )
+        )
+
+    if statistic is None:
+        return fields
+    registry = derivation_registry()
+    if registry is None:
+        # Fail closed: with no registry there is no enabled entry, so no
+        # statistic is served and the members stand alone.
+        _note(store, source_id=members[0].source_id, revision_id=members[0].revision_id, reason=f"the derivation method registry could not be read, so {statistic} was not computed")
+        return fields
+
+    # Everything that could enter a statistic for one field: the members, and
+    # any provider reduction of the same field, so that mixing the two is
+    # refused here rather than quietly averaged.
+    contributing: dict[str, list[Sample]] = {}
+    for sample in samples:
+        if sample.member is not None or sample.ensemble_shape == "reduction":
+            contributing.setdefault(sample.variable, []).append(sample)
+    for variable, group in sorted(contributing.items()):
+        name = FIELD_BY_VARIABLE.get(variable)
+        if name is None or catalogue_key_for(variable) is None:
+            continue
+        group_members = [item for item in group if item.member is not None]
+        if not group_members:
+            continue  # a reduction with no members here is retrieved evidence, not a statistic
+        # The averaged-versus-instantaneous fence. A six-hour mean of cloud and
+        # an instantaneous cloud fraction are two quantities, so where the same
+        # family publishes both on the member axis they enter the derive step
+        # together and are refused there, rather than one silently summarising
+        # the other. Two instantaneous keys of one family (wind's components)
+        # differ in no such way and stay apart.
+        mixed = [
+            item for item in samples
+            if item.member is not None
+            and item.variable != variable
+            and _same_quantity_family(item.variable, variable)
+            and _is_time_averaged(registry, item.variable) != _is_time_averaged(registry, variable)
+        ]
+        member_sets = _member_sets_for(registry, [*group, *mixed])
+        try:
+            result = registry.derive_ensemble_statistic(
+                statistic,
+                member_sets,
+                quantile=quantile,
+                threshold=threshold,
+                threshold_units=group_members[0].units,
+                comparison=comparison,
+                reader_disabled=list(reader_disabled),
+            )
+        except Exception as error:
+            _note(store, source_id=group_members[0].source_id, revision_id=group_members[0].revision_id, reason=f"{name}: {statistic} raised and produced no value ({type(error).__name__}: {error})")
+            continue
+        basis = next((item for item in group_members if item.ensemble_family is not None), None)
+        if basis is None:
+            continue  # no member names a family, so nothing may be served over them
+        try:
+            fields.append(
+                _statistic_field(
+                    store, registry,
+                    field_name=name, basis=basis, members=group_members,
+                    statistic=statistic, result=result, reference=reference,
+                )
+            )
+        except ProvenanceUnmodelled as error:
+            _note(store, source_id=basis.source_id, revision_id=basis.revision_id, reason=str(error))
+    return fields
+
+
+def live_point_fields(
+    store: LiveStore,
+    latitude: float,
+    longitude: float,
+    valid_time: datetime,
+    *,
+    member: str | None = None,
+    statistic: str | None = None,
+    quantile: float | None = None,
+    threshold: float | None = None,
+    comparison: str | None = None,
+    reader_disabled: Sequence[str] = (),
+) -> tuple[list[Any], Any, list[str]]:
+    """Build live evidence fields, the consensus result, and the source ids used.
+
+    ``member`` and ``statistic`` are the two things that address a member
+    axis; the remaining three shape the statistic the derivation registry
+    computes. All six are passed through from the request rather than assumed
+    here: a quantile with no convention and a threshold with no comparison are
+    requests this API refuses to guess at.
+    """
+    from ingest.grib import RH_PHASE_LIQUID_WATER  # noqa: PLC0415
+
+    from .models import EvidenceField, catalogue_key_for  # noqa: PLC0415
+    from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS, build_consensus  # noqa: PLC0415
 
     reference = datetime.now(UTC)
-    samples = store.sample_point(latitude, longitude, valid_time)
+    # The member axis is addressed only where the request addressed it, so a
+    # store that samples no members at all - a caller's double, a deployment
+    # holding none - is called exactly as it always was.
+    addressing = {"member": member, "statistic": statistic} if member is not None or statistic is not None else {}
+    samples = store.sample_point(latitude, longitude, valid_time, **addressing)
     if not samples:
         return [], build_consensus([]), []
 
     consensus = build_consensus(_consensus_candidates(samples))
     fields: list[EvidenceField] = []
+    # An artifact whose provenance the model refuses answers null for its own
+    # fields and takes nothing else down with it.
+    unmodelled = list(getattr(store, "unmodelled", []) or [])
+    isolated: set[str] = {item.revision_id for item in unmodelled}
+    for item in unmodelled:
+        fields.extend(
+            EvidenceField(
+                field=name,
+                value=None,
+                provenance=unavailable_provenance(valid_time, units="unknown", flags=["provenance_unmodelled"], source_id=item.source_id, product=item.revision_id, reference=reference),
+            )
+            for name in item.fields
+        )
     if consensus.available:
         representative = next(sample for sample in samples if sample.source_id in consensus.contributors and sample.variable == "temperature_2m")
         fields.append(EvidenceField(field="temperature", value=consensus.value, provenance=live_provenance(representative, field_name="temperature", reference=reference, contributors=list(consensus.contributors))))
 
+    # A member value is served under its own member identity, beside any
+    # statistic asked for over the set it belongs to, and never through the
+    # generic path, which would serve one member as the family's value.
+    fields.extend(
+        _ensemble_point_fields(
+            store,
+            [item for item in samples if item.revision_id not in isolated],
+            valid_time=valid_time,
+            reference=reference,
+            statistic=statistic,
+            quantile=quantile,
+            threshold=threshold,
+            comparison=comparison,
+            reader_disabled=reader_disabled,
+        )
+    )
+
     seen: set[tuple[str, str]] = {("temperature", "consensus")} if consensus.available else set()
     for sample in samples:
+        if sample.member is not None:
+            continue  # served above, with its member identity on it
         name = FIELD_BY_VARIABLE.get(sample.variable)
         if name is None or sample.variable in DERIVATION_INPUTS or sample.variable in FOG_INPUTS or (name == "temperature" and consensus.available):
             continue
-        key = (name, sample.source_id)
-        if key in seen:
+        seen_key = (name, sample.source_id)
+        if seen_key in seen:
             continue
-        seen.add(key)
-        fields.append(EvidenceField(field=name, value=sample.value, provenance=live_provenance(sample, field_name=name, reference=reference)))
+        seen.add(seen_key)
+        # The catalogue decides what a variable is before anything is served
+        # from it. A name it cannot resolve is refused here rather than served
+        # under whatever the API's own table happened to call it.
+        catalogue_key = catalogue_key_for(sample.variable)
+        if catalogue_key is None:
+            fields.append(_uncatalogued_field(store, sample, name, valid_time, reference))
+            continue
+        try:
+            provenance = live_provenance(
+                sample,
+                field_name=name,
+                reference=reference,
+                # A provider's own published reduction is retrieved evidence
+                # and stays the provider's: it names its family and the fact
+                # that this deployment computed nothing, and it names no
+                # statistic, because which reduction a cell is belongs to the
+                # key the producer published it under.
+                ensemble=(
+                    _ensemble_provenance(
+                        family=sample.ensemble_family,
+                        statistic=None,
+                        computed_here=False,
+                        member_set=None,
+                        averaging_window_hours=sample.averaging_window_hours,
+                    )
+                    if sample.ensemble_shape == "reduction" and sample.ensemble_family is not None
+                    else None
+                ),
+            )
+        except ProvenanceUnmodelled as error:
+            # Per-artifact isolation: this artifact's fields go null with a
+            # notice naming it, and every other source still answers.
+            if sample.revision_id not in isolated:
+                isolated.add(sample.revision_id)
+                _note(store, source_id=sample.source_id, revision_id=sample.revision_id, reason=str(error))
+            fields.append(EvidenceField(field=name, value=None, key=catalogue_key, storage=storage_for(sample.source_id, catalogue_key, None), provenance=unavailable_provenance(valid_time, units=sample.units, flags=["provenance_unmodelled"], source_id=sample.source_id, product=sample.logical_name, level=sample.level, reference=reference)))
+            continue
+        fields.append(
+            EvidenceField(
+                field=name,
+                value=sample.value,
+                key=catalogue_key,
+                phase=sample.phase if catalogue.requires_phase(catalogue_key) else None,
+                storage=storage_for(sample.source_id, catalogue_key, sample.value),
+                provenance=provenance,
+            )
+        )
 
     by_source: dict[str, dict[str, Sample]] = {}
     for sample in samples:
+        if sample.revision_id in isolated or sample.member is not None:
+            # A member row is not the source's value, so it never becomes the
+            # input to a humidity, wind or fog construction served without a
+            # member identity on it.
+            continue
         by_source.setdefault(sample.source_id, {})[sample.variable] = sample
     # A derived field borrows the lineage of its inputs (source, run, cell,
     # freshness) but not their units: the provenance must state the units of
@@ -1227,9 +3144,27 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
     for source_id, variables in by_source.items():
         temperature, dewpoint = variables.get("temperature_2m"), variables.get("dew_point_2m")
         if "relative_humidity_2m" not in variables and temperature is not None and dewpoint is not None and temperature.value is not None and dewpoint.value is not None:
-            value, derivation, version = resolve_relative_humidity(None, temperature.value, dewpoint.value)
-            basis = replace(temperature, variable="relative_humidity", value=value, units="percent")
-            fields.append(EvidenceField(field="relative_humidity", value=value, provenance=live_provenance(basis, field_name="relative_humidity", reference=reference, derivation=derivation, derivation_version=version)))
+            derived = _registered_relative_humidity(temperature.value, dewpoint.value)
+            basis = replace(temperature, variable="relative_humidity", value=derived.value, units="percent")
+            fields.append(
+                _derived_evidence_field(
+                    store,
+                    field_name="relative_humidity",
+                    basis=basis,
+                    inputs=[("temperature", temperature), ("dew_point", dewpoint)],
+                    method=RELATIVE_HUMIDITY_METHOD,
+                    value=derived.value,
+                    derivation=derived.derivation,
+                    derivation_version=derived.version,
+                    flags=derived.flags,
+                    # The registered method evaluates Bolton's saturation
+                    # vapour pressure over liquid water explicitly, so the
+                    # phase is the method's own declaration rather than an
+                    # assumption about the inputs.
+                    phase=catalogue.phase_from_convention(RH_PHASE_LIQUID_WATER),
+                    reference=reference,
+                )
+            )
 
         # Fog from the present-weather group. No provider fog diagnostic exists
         # here (``provider_diagnostic=None``), so the only live values are
@@ -1238,37 +3173,87 @@ def live_point_fields(store: LiveStore, latitude: float, longitude: float, valid
         fog, vicinity = variables.get("weather_fog_code"), variables.get("weather_fog_vicinity_code")
         if fog is not None or vicinity is not None:
             visibility = variables.get("visibility")
-            fog_code = _flag_is_present(fog) is True or _flag_is_present(vicinity) is True
-            state = fog_state(
-                provider_diagnostic=None,
+            derived = _registered_fog_state(
                 visibility_m=visibility.value if visibility is not None and isinstance(visibility.value, float) else None,
-                fog_code=fog_code,
+                fog_code=_flag_is_present(fog) is True or _flag_is_present(vicinity) is True,
             )
             basis = replace(fog if fog is not None else vicinity, variable="fog_state", value=None, units="category")
-            fields.append(EvidenceField(field="fog_state", value=state, provenance=live_provenance(basis, field_name="fog_state", reference=reference, derivation=FOG_DERIVATION, derivation_version=FOG_DERIVATION_VERSION)))
+            inputs = [(name, item) for name, item in (("weather_fog_code", fog), ("weather_fog_vicinity_code", vicinity), ("visibility", visibility)) if item is not None]
+            fields.append(
+                _derived_evidence_field(
+                    store,
+                    field_name="fog_state",
+                    basis=basis,
+                    inputs=inputs,
+                    method=FOG_STATE_METHOD,
+                    value=derived.value,
+                    derivation=derived.derivation,
+                    derivation_version=derived.version,
+                    reference=reference,
+                )
+            )
 
         for u_name, v_name, speed_field, direction_field in WIND_COMPONENT_PAIRS:
             u, v = variables.get(u_name), variables.get(v_name)
             if u is None or v is None or u.value is None or v.value is None:
                 continue
-            speed, direction, derivation, version = resolve_wind(u.value, v.value)
-            for name, value, units in ((speed_field, speed, WIND_SPEED_UNITS), (direction_field, direction, WIND_DIRECTION_UNITS)):
-                basis = replace(u, variable=name, value=value, units=units)
-                fields.append(EvidenceField(field=name, value=value, provenance=live_provenance(basis, field_name=name, reference=reference, derivation=derivation, derivation_version=version)))
+            speed, direction = _registered_wind(u.value, v.value)
+            for name, derived, units in ((speed_field, speed, WIND_SPEED_UNITS), (direction_field, direction, WIND_DIRECTION_UNITS)):
+                basis = replace(u, variable=name, value=derived.value, units=units)
+                fields.append(
+                    _derived_evidence_field(
+                        store,
+                        field_name=name,
+                        basis=basis,
+                        inputs=[(u_name, u), (v_name, v)],
+                        method=WIND_METHOD,
+                        value=derived.value,
+                        derivation=derived.derivation,
+                        derivation_version=derived.version,
+                        flags=derived.flags,
+                        reference=reference,
+                    )
+                )
 
-    return fields, consensus, sorted(by_source)
+    # The single place the point field list is finalised, so no path can serve
+    # a field with an element of the output contract missing.
+    return [enforce_output_contract(item) for item in fields], consensus, sorted(by_source)
 
 
 def live_profile_levels(store: LiveStore, latitude: float, longitude: float, valid_time: datetime, pressures: Sequence[int]) -> list[Any]:
-    from .models import EvidenceField, ProfileLevel  # noqa: PLC0415
+    from .models import EvidenceField, ProfileLevel, catalogue_key_for  # noqa: PLC0415
 
     reference = datetime.now(UTC)
     levels: list[ProfileLevel] = []
+    isolated: set[str] = set()
     for pressure, samples in sorted(store.sample_profile(latitude, longitude, valid_time, pressures).items(), key=lambda item: -item[0]):
-        fields = [
-            EvidenceField(field=FIELD_BY_VARIABLE.get(sample.variable, sample.variable), value=sample.value, provenance=live_provenance(sample, field_name=sample.variable, reference=reference))
-            for sample in samples
-        ]
+        fields = []
+        for sample in samples:
+            name = FIELD_BY_VARIABLE.get(sample.variable, sample.variable)
+            catalogue_key = catalogue_key_for(sample.variable)
+            if catalogue_key is None:
+                fields.append(_uncatalogued_field(store, sample, name, valid_time, reference))
+                continue
+            try:
+                provenance = live_provenance(sample, field_name=sample.variable, reference=reference)
+            except ProvenanceUnmodelled as error:
+                # One artifact's provenance failure loses that artifact's
+                # levels, never the profile.
+                if sample.revision_id not in isolated:
+                    isolated.add(sample.revision_id)
+                    _note(store, source_id=sample.source_id, revision_id=sample.revision_id, reason=str(error))
+                fields.append(EvidenceField(field=name, value=None, key=catalogue_key, storage=storage_for(sample.source_id, catalogue_key, None), provenance=unavailable_provenance(valid_time, units=sample.units, flags=["provenance_unmodelled"], source_id=sample.source_id, product=sample.logical_name, level=sample.level, reference=reference)))
+                continue
+            fields.append(
+                EvidenceField(
+                    field=name,
+                    value=sample.value,
+                    key=catalogue_key,
+                    phase=sample.phase if catalogue.requires_phase(catalogue_key) else None,
+                    storage=storage_for(sample.source_id, catalogue_key, sample.value),
+                    provenance=provenance,
+                )
+            )
         if fields:
             levels.append(ProfileLevel(pressure_hpa=pressure, fields=fields))
     return levels
@@ -1280,16 +3265,9 @@ def live_profile_levels(store: LiveStore, latitude: float, longitude: float, val
 # serving it is honest in every mode; what it must never do is claim a source is
 # ``active`` or fresh on the strength of being declared.
 
-_REGISTRY_STATE_CEILING = {
-    "implementing": "implementing",
-    "credential_required": "credential_required",
-    "licence_review": "licence_review",
-    "unavailable": "unavailable",
-    "duplicate_evidence": "duplicate_evidence",
-    "unsupported_field": "unsupported_field",
-    "retired": "retired",
-    "rejected": "rejected",
-}
+# The ceiling table itself lives in ``registry/admission.py``, which the audit
+# and the ingest registry read too, so no two of them can disagree about what a
+# state means or about which state is unreachable.
 
 
 def _registry_records() -> list[dict[str, Any]]:
@@ -1300,7 +3278,9 @@ def _registry_records() -> list[dict[str, Any]]:
 
 def registry_source_records() -> list[Any]:
     """Every registry record as a catalogue entry, in registry order."""
-    from .models import SourceRecord, SourceState  # noqa: PLC0415
+    from registry.admission import ceiling_state  # noqa: PLC0415
+
+    from .models import SourceFieldEntry, SourceRecord, SourceState  # noqa: PLC0415
 
     import ingest.adapters  # noqa: F401, PLC0415 - register present families
     from ingest.registry import ingest_configs, registered_adapters  # noqa: PLC0415
@@ -1318,10 +3298,30 @@ def registry_source_records() -> list[Any]:
                 category=str(record["category"]),
                 producer=str(record["producer"]),
                 product=str(record["product"]),
-                state=SourceState(_REGISTRY_STATE_CEILING.get(str(record["status"]), "unavailable")),
+                state=SourceState(ceiling_state(str(record["status"]))),
                 status_reason=str(record["reason"]),
                 role=str(record["poc_role"]),
+                # Copied from the record, never inferred: the registry is the
+                # only place that knows whether a value is the producer's own
+                # cell or an aggregator's rendering of it.
+                delivery_kind=record.get("delivery_kind"),
+                intermediary=(record.get("intermediary") or {}).get("name"),
+                display_primary=bool(record.get("display_primary", True)),
                 may_enter_consensus=bool(record.get("consensus", {}).get("eligible", False)),
+                # Straight from the catalogue's per-source mapping. A field the
+                # producer publishes and this deployment does not fetch is
+                # listed here as `available-not-stored`, so it is visible
+                # rather than indistinguishable from a field nobody publishes.
+                fields=[
+                    SourceFieldEntry(
+                        key=item.key,
+                        family=catalogue.family_of(item.key),
+                        storage=item.storage,
+                        upstream=item.upstream,
+                        note=item.note,
+                    )
+                    for item in catalogue.source_mapping(source_id)
+                ],
                 exact_variables=[str(name) for name in variables.get("names", [])],
                 levels=[str(level) for level in variables.get("levels", [])],
                 geographic_coverage=str(record["coverage"]),
@@ -1360,6 +3360,34 @@ def schedulable_source_ids() -> set[str]:
         for source_id, config in ingest_configs().items()
         if config.ingestible and source_id in adapter_ids
     }
+
+
+def unschedulable_detail(source_ids: Sequence[str]) -> str:
+    """Why each named id cannot be scheduled, in the order it was given.
+
+    A refusal that only said "not schedulable" would leave the caller guessing
+    whether the id is credential-gated, merely catalogued, or admitted subject
+    to a check nobody has recorded yet. Each entry names the record's own
+    declared state, and where an admission condition stands against the record
+    it names the condition text as well, because that is the sentence the owner
+    wrote about what is outstanding.
+    """
+    from registry.admission import condition_outstanding  # noqa: PLC0415
+
+    records = {str(record["id"]): record for record in _registry_records()}
+    entries: list[str] = []
+    for source_id in source_ids:
+        record = records.get(source_id)
+        if record is None:
+            entries.append(f"{source_id} (unknown)")
+            continue
+        state = str(record["status"])
+        if condition_outstanding(record):
+            condition = str((record.get("admission_condition") or {}).get("condition", "unstated"))
+            entries.append(f"{source_id} ({state}; condition outstanding: {condition})")
+        else:
+            entries.append(f"{source_id} ({state})")
+    return "source ids are not schedulable: " + ", ".join(entries)
 
 
 def known_source_ids() -> set[str]:
@@ -1410,6 +3438,12 @@ def registry_source_statuses(activity: dict[str, datetime] | None = None, *, ref
 # exist only where a report carried that layer, and an empty response
 # enumerating six null layers would assert a slot structure nothing retrieved.
 
+#: The cloud entry is the opacity-weighted key, not a generic "total cloud":
+#: this list has always described the ECCC-shaped surface response (2 m air,
+#: 10 m wind, the provider strata, the CYYT observation fields), and the four
+#: cloud keys are four quantities. A geometric or six-hour-mean null belongs to
+#: a response those sources would have answered, and enumerating all four here
+#: would assert a set of members nothing was ever asked for.
 UNAVAILABLE_POINT_FIELDS: tuple[tuple[str, str], ...] = (
     ("temperature", "degC"),
     ("relative_humidity", "percent"),
@@ -1421,25 +3455,51 @@ UNAVAILABLE_POINT_FIELDS: tuple[tuple[str, str], ...] = (
     ("cloud_low", "percent"),
     ("cloud_middle", "percent"),
     ("cloud_high", "percent"),
-    ("total_cloud", "percent"),
+    ("total_cloud_opacity", "percent"),
     ("fog_state", "category"),
     ("radar_echo", "category"),
 )
 
-UNAVAILABLE_PROFILE_FIELDS: tuple[tuple[str, str], ...] = (
-    ("temperature", "degC"),
-    ("dew_point", "degC"),
-    ("relative_humidity", "percent"),
-    ("wind_speed", "m s-1"),
+#: Field name, units and the catalogue key each stands for at a pressure level.
+#: Dew point is absent because the catalogue carries no dew point on pressure
+#: levels: it has ``dew_point_2m``, ``_40m``, ``_80m`` and ``_120m`` and one
+#: humidity profile field. Listing a null "dew point" here would either claim
+#: the 2 m key at 850 hPa or serve a field with no key at all, and neither is
+#: allowed. The gap belongs to the catalogue, not to this response.
+UNAVAILABLE_PROFILE_FIELDS: tuple[tuple[str, str, str], ...] = (
+    ("temperature", "degC", "temperature_pressure"),
+    ("relative_humidity", "percent", "relative_humidity_pressure"),
+    ("wind_speed", "m s-1", "wind_speed_pressure"),
 )
 
 
-def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable", level: str = "unavailable", reference: datetime | None = None) -> Any:
-    from .models import Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
+def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable", level: str = "unavailable", reference: datetime | None = None, evidence_class: str = "retrieved", last_valid_time: datetime | None = None) -> Any:
+    """The provenance of a value that does not exist.
+
+    ``evidence_class`` is required on every provenance, so this placeholder
+    states the class the absent value would have carried - ``retrieved`` for a
+    field nothing retrieved, ``derived_here`` for a derivation that was
+    refused. What says the value is absent is the null value beside it, the
+    ``unavailable`` data mode and the ``no_retrieval`` flag, never the class.
+
+    ``last_valid_time`` is set only for an aged-out absence, and the
+    ``aged_out`` flag is only ever set beside it: the model refuses one
+    without the other, because a deployment that never held a frame must not
+    claim it held one and lost it.
+    """
+    from .models import BLOCKED_FLAG, Coverage, DataMode, Freshness, Provenance, Quality  # noqa: PLC0415
 
     moment = reference or datetime.now(UTC)
+    stated = list(dict.fromkeys(flags))
+    # ``no_retrieval`` says an attempt produced nothing. It is stated for the
+    # plain null absence only: an aged-out field was retrieved and purged, and
+    # a blocked field was refused before any attempt was owed, so claiming a
+    # failed retrieval on either would fold three distinct states into one.
+    if last_valid_time is None and BLOCKED_FLAG not in stated:
+        stated = list(dict.fromkeys(["no_retrieval", *stated]))
     return Provenance(
         data_mode=DataMode.UNAVAILABLE,
+        evidence_class=evidence_class,
         source_id=source_id,
         provider="unavailable",
         product=product,
@@ -1454,26 +3514,201 @@ def unavailable_provenance(valid_time: datetime, *, units: str, flags: Sequence[
         normalized_units=units,
         native_resolution="unavailable",
         native_crs="unavailable",
-        quality=Quality(status="unknown", flags=["no_retrieval", *flags]),
+        quality=Quality(status="unknown", flags=stated),
         coverage=Coverage(status="unknown", fraction=None),
         freshness=Freshness.evaluate(None, None),
         licence="unavailable",
         attribution="unavailable",
         adapter_version="unavailable",
+        last_valid_time=last_valid_time,
     )
 
 
-def unavailable_point_fields(valid_time: datetime, *, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable") -> list[Any]:
+def unavailable_point_fields(valid_time: datetime, *, flags: Sequence[str], source_id: str = "unavailable", product: str = "unavailable", last_valid_time: datetime | None = None) -> list[Any]:
     from .models import EvidenceField  # noqa: PLC0415
 
     reference = datetime.now(UTC)
     return [
-        EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=units, flags=flags, source_id=source_id, product=product, reference=reference))
+        EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=units, flags=flags, source_id=source_id, product=product, reference=reference, last_valid_time=last_valid_time))
         for name, units in UNAVAILABLE_POINT_FIELDS
     ]
 
 
-def unavailable_profile_levels(valid_time: datetime, pressures: Sequence[int], *, flags: Sequence[str]) -> list[Any]:
+#: The five absence states a reader is ever shown, by name. Kept in one place
+#: so the API, the legend and the tests cannot come to disagree about how many
+#: there are - the absence of a badge must never carry meaning.
+ABSENCE_STATES: tuple[str, ...] = (
+    "null",                     # never retrieved; nothing was ever held
+    "blocked",                  # a licence, credential or partnership prevents retrieval
+    "aged_out",                 # held here and purged when its valid time left the window
+    "retrieval_failed",         # an attempt was made and broke; a retry may clear it
+    "available-not-stored",     # the producer publishes it and this deployment does not fetch it
+)
+
+
+def absence_state(store: Any, source_id: str, *, held: Any = _MISSING) -> tuple[str, datetime | None]:
+    """Which absence a source's silence is, and the last valid time if any.
+
+    Three answers, and the third is not an absence at all:
+
+    - ``("aged_out", <last valid time>)`` when the store recorded holding
+      frames for this source and holds none now.
+    - ``("null", None)`` when there is no such record, because a deployment
+      that never held a frame must not claim it did.
+    - :class:`StoreUnavailable` propagates when the record cannot be read,
+      so the caller reports ``unavailable`` rather than guessing which of the
+      two applies. Guessing between them is itself a fabrication.
+
+    ``held`` is the already-resolved mapping from :func:`last_valid_times`,
+    for a caller answering for many sources in one response; omit it and one
+    query is made.
+    """
+    known = last_valid_times(store) if held is _MISSING else held
+    moment = known.get(source_id)
+    return ("aged_out", moment) if moment is not None else ("null", None)
+
+
+def aged_out_flags(source_id: str, *, extra: Sequence[str] = ()) -> list[str]:
+    """The QC flags an aged-out absence carries, naming the source."""
+    return [AGED_OUT_FLAG, f"{AGED_OUT_FLAG}:{source_id}", *extra]
+
+
+def blocked_reason_for(source: Mapping[str, Any]) -> Any | None:
+    """Why this registry record may not be redistributed, or None where it may.
+
+    Read from the record rather than from a list of source ids, for the same
+    reason the evidence class is declared rather than inferred: a licence that
+    changes changes the record, and a block that outlives its clause is a
+    refusal nobody can check. The three kinds are read in the order the design
+    pins them, so a record that both carries restricted terms and needs a
+    credential blocks on the terms: the credential would not unlock it.
+
+    ``terms`` names or quotes the clause doing the refusing. Where the record
+    states no clause the string says so rather than inventing one; a refusal
+    with an invented reason is worse than a refusal a reader can chase.
+    """
+    from .models import BlockedReason  # noqa: PLC0415
+
+    status = str(source.get("status") or "")
+    terms_block = source.get("restricted_terms") or {}
+    licence = source.get("licence") or {}
+    credential = source.get("credential") or {}
+    condition = source.get("admission_condition") or {}
+    source_id = str(source.get("id") or "unavailable")
+    unstated = f"{source_id}: the terms are not recorded in the registry"
+
+    if status == "licence-blocked" or terms_block.get("redistribution") is False:
+        kind, terms = "licence", (terms_block.get("terms_text") or licence.get("name") or unstated)
+    elif status == "credential-required":
+        name = credential.get("name")
+        kind = "credential"
+        terms = f"a credential this deployment does not hold: {name}" if name else unstated
+    elif status == "partnership-only":
+        kind, terms = "partnership", (licence.get("name") or unstated)
+    else:
+        return None
+
+    return BlockedReason(kind=kind, source_id=source_id, terms=str(terms), request=condition.get("condition") or None)
+
+
+def blocked_field(
+    field: str,
+    *,
+    valid_time: datetime,
+    reason: Any,
+    units: str,
+    key: str | None = None,
+    level: str | None = None,
+    product: str = "blocked",
+) -> Any:
+    """One field refused under current terms, served with its reason.
+
+    A block is not an absence of data: the field is known, and something
+    other than the weather is stopping it. So it carries the ``blocked`` flag
+    and the kind beside it, never ``no_retrieval``, and the reason travels on
+    the field where a reader can check the clause rather than in a notice.
+    """
+    from .models import BLOCKED_FLAG, EvidenceField  # noqa: PLC0415
+
+    provenance = unavailable_provenance(
+        valid_time,
+        units=units,
+        flags=[BLOCKED_FLAG, f"{BLOCKED_FLAG}:{reason.kind}"],
+        source_id=reason.source_id,
+        product=product,
+        level=level or "unavailable",
+    )
+    return EvidenceField(field=field, value=None, key=key, provenance=provenance, absence_state="blocked", blocked=reason)
+
+
+#: The output contract a profile reads, element by element, in the order they
+#: are checked. Each name is what a ``contract_incomplete`` flag reports, so
+#: the flag says which element was missing rather than only that one was.
+OUTPUT_CONTRACT_ELEMENTS: tuple[str, ...] = (
+    "absence_state",
+    "evidence_class",
+    "quality",
+    "freshness",
+    "source_id",
+    "comparability",
+)
+
+
+def missing_contract_element(field: Any) -> str | None:
+    """The first element of the output contract this field does not carry."""
+    provenance = field.provenance
+    if field.value is None and field.absence_state is None:
+        return "absence_state"
+    if not getattr(provenance, "evidence_class", None):
+        return "evidence_class"
+    if getattr(provenance, "quality", None) is None:
+        return "quality"
+    if getattr(provenance, "freshness", None) is None:
+        return "freshness"
+    if not (getattr(provenance, "source_id", None) or ""):
+        return "source_id"
+    # Comparability is required only where the catalogue files the field: a
+    # field with no key has no family to be compared within, and demanding a
+    # note it cannot have would null every uncatalogued field.
+    if field.key is not None and not (field.comparability or ""):
+        return "comparability"
+    return None
+
+
+def enforce_output_contract(field: Any) -> Any:
+    """Serve a field whole, or serve it null naming the element it lacks.
+
+    A partially served field is the dangerous case: a caller cannot tell an
+    evidence class that was omitted from one that was never required, so a
+    profile would read a gap as a permission. The field is therefore emptied
+    rather than trimmed - value null, plain ``null`` absence, no block reason -
+    and the flag names the missing element. Every other field in the response
+    still answers, because one field's incompleteness is not evidence about
+    any other.
+    """
+    from .models import CONTRACT_INCOMPLETE_FLAG, Provenance, Quality  # noqa: PLC0415
+
+    missing = missing_contract_element(field)
+    if missing is None:
+        return field
+
+    def stated(model: Any) -> dict[str, Any]:
+        """The model's declared fields, by name, so validation runs on rebuild.
+
+        Read from ``model_fields`` rather than ``model_dump`` because a dump
+        carries the computed fields too, and a computed field handed back as
+        an input is an extra key the strict model refuses.
+        """
+        return {name: getattr(model, name) for name in type(model).model_fields}
+
+    provenance = field.provenance
+    flags = [*provenance.quality.flags, f"{CONTRACT_INCOMPLETE_FLAG}:{missing}"]
+    quality = Quality.model_validate({**stated(provenance.quality), "flags": list(dict.fromkeys(flags))})
+    rebuilt = Provenance.model_validate({**stated(provenance), "quality": quality})
+    return field.model_copy(update={"value": None, "absence_state": "null", "blocked": None, "provenance": rebuilt})
+
+
+def unavailable_profile_levels(valid_time: datetime, pressures: Sequence[int], *, flags: Sequence[str], last_valid_time: datetime | None = None) -> list[Any]:
     from .models import EvidenceField, ProfileLevel  # noqa: PLC0415
 
     reference = datetime.now(UTC)
@@ -1481,8 +3716,8 @@ def unavailable_profile_levels(valid_time: datetime, pressures: Sequence[int], *
         ProfileLevel(
             pressure_hpa=pressure,
             fields=[
-                EvidenceField(field=name, value=None, provenance=unavailable_provenance(valid_time, units=units, flags=flags, level=f"{pressure} hPa", reference=reference))
-                for name, units in UNAVAILABLE_PROFILE_FIELDS
+                EvidenceField(field=name, value=None, key=key, provenance=unavailable_provenance(valid_time, units=units, flags=flags, level=f"{pressure} hPa", reference=reference, last_valid_time=last_valid_time))
+                for name, units, key in UNAVAILABLE_PROFILE_FIELDS
             ],
         )
         for pressure in pressures

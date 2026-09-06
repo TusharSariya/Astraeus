@@ -715,6 +715,7 @@ def test_undetected_radar_is_no_echo_and_never_zero_precipitation(tmp_path: Path
 
     provenance = result.artifacts[0].provenance
     assert provenance["undetected_scans"] == len(RADAR_TIMES)
+    assert provenance["evidence_classes"] == ["retrieved"]
     assert set(provenance["echo_semantics"].values()) == {"no_detected_precipitating_echo"}
     assert "no detected precipitating echo" in dataset["precipitation_rate"].attrs["semantics"]
     assert dataset["radar_echo"].attrs["flag_meanings"].startswith("no_detected_precipitating_echo")
@@ -1028,7 +1029,7 @@ def test_the_pressure_level_humidity_profile_is_published_with_its_levels(tmp_pa
     profile = next(item for item in result.artifacts if item.logical_name == "profile")
     dataset = open_artifact(profile.payload_path)
     assert list(dataset["pressure"].values) == [float(level) for level in PROFILE_LEVELS_HPA]
-    assert dataset["relative_humidity"].attrs["units"] == "percent"
+    assert dataset["relative_humidity_pressure"].attrs["units"] == "percent"
     assert profile.provenance["levels_returned"] == list(PROFILE_LEVELS_HPA)
     assert profile.provenance["quality"]["status"] == "passed"
 
@@ -1045,7 +1046,7 @@ def test_the_humidity_profile_is_usable_without_registering_an_adapter(tmp_path:
     )
     assert profile is not None
     assert profile.levels_returned == (850, 700, 500)
-    assert profile.dataset["relative_humidity"].values.ravel().tolist() == [70.0, 70.0, 70.0]
+    assert profile.dataset["relative_humidity_pressure"].values.ravel().tolist() == [70.0, 70.0, 70.0]
 
 
 def test_a_profile_where_no_level_answered_is_none_not_an_empty_profile():

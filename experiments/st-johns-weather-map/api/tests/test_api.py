@@ -12,7 +12,8 @@ import sys as _sys
 import weather_api.app  # noqa: F401  (registers the module for monkeypatching)
 from registry.source_data import registry
 from weather_api.app import PREFIX, app
-from weather_api.fixtures import NEWFOUNDLAND, SOURCES, now, timeline, window_end, window_start
+from weather_api.fixtures import NO_ENSEMBLE_MEMBERS_NOTICE, NEWFOUNDLAND, SOURCES, now, timeline, window_end, window_start
+from weather_api.models import ENSEMBLE_STATISTIC_ENTRIES, THRESHOLD_COMPARISONS
 from weather_api.store import Sample, schedulable_source_ids
 
 UTC = timezone.utc
@@ -59,7 +60,7 @@ def test_catalog_is_the_whole_registry_and_never_claims_an_active_source():
     assert payload["operational"] is False
     ids = [source["id"] for source in payload["sources"]]
     assert ids == [record["id"] for record in registry()["sources"]]
-    assert len(ids) == 63
+    assert len(ids) >= 65
     assert "active" not in {source["state"] for source in payload["sources"]}
     assert all(source["status_reason"] and source["fixture_status"] for source in payload["sources"])
     assert {source["id"] for source in payload["sources"] if source["schedulable"]} == schedulable_source_ids()
@@ -73,12 +74,12 @@ def test_the_fixture_catalogue_only_names_real_registry_ids():
     assert {source.id for source in SOURCES} <= {record["id"] for record in registry()["sources"]}
 
 
-def test_timeline_has_exact_now_minus_three_to_plus_twenty_four_window_and_local_offsets():
+def test_timeline_has_exact_now_minus_twenty_four_to_plus_fourteen_days_and_local_offsets():
     payload = client.get(f"{PREFIX}/timeline").json()
     start = datetime.fromisoformat(payload["start"])
     end = datetime.fromisoformat(payload["end"])
-    assert (end - start).total_seconds() == 27 * 3600
-    assert len(payload["items"]) == 28
+    assert (end - start).total_seconds() == 360 * 3600
+    assert len(payload["items"]) == 361
     stamps = [datetime.fromisoformat(item["valid_time_utc"]) for item in payload["items"]]
     assert stamps[0] == start and stamps[-1] == end
     assert all(later - earlier == timedelta(hours=1) for earlier, later in zip(stamps, stamps[1:]))
@@ -86,8 +87,8 @@ def test_timeline_has_exact_now_minus_three_to_plus_twenty_four_window_and_local
         local = datetime.fromisoformat(item["valid_time_newfoundland"])
         assert local == stamp.astimezone(NEWFOUNDLAND)
         assert local.utcoffset() in {NDT, NST}
-    assert "CYYT METAR/SPECI" in payload["items"][3]["available_products"]
-    assert all("CYYT METAR/SPECI" not in item["available_products"] for item in payload["items"][4:])
+    assert "CYYT METAR/SPECI" in payload["items"][24]["available_products"]
+    assert all("CYYT METAR/SPECI" not in item["available_products"] for item in payload["items"][25:])
 
 
 def test_newfoundland_offsets_are_zoneinfo_driven_across_dst():
@@ -172,7 +173,7 @@ def test_refresh_rejects_a_source_the_scheduler_could_never_run(source_id):
     """A blocked or unwired registry id is not a job.
 
     Registry eligibility is necessary but insufficient: ``eccc-radiosonde``
-    is implementing with known freshness but has no registered adapter.
+    is catalogued because no registered adapter claims its id.
 
     Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
     """
@@ -192,6 +193,77 @@ def test_source_status_reports_registry_state_and_never_claims_live_activity():
     assert all(item["state"] != "active" for item in payload["statuses"])
     assert all(item["state"] == record["status"] for record in registry()["sources"] for item in [by_id[record["id"]]])
     assert all(item["last_retrieval"] is None and item["freshness"]["status"] == "unknown" for item in payload["statuses"])
+
+
+def test_source_status_never_emits_active_or_operational():
+    """The two unreachable words, and nothing outside the ten states.
+
+    ``active`` is not a state at all any more and ``operational`` is a state no
+    record may declare and no response may emit: the ceiling lowers it to
+    ``unavailable`` before it reaches the enum. Anything else emitted would be
+    a vocabulary this deployment has not agreed to.
+
+    Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
+    """
+    from registry.admission import STATES
+
+    payload = client.get(f"{PREFIX}/sources/status").json()
+    emitted = {item["state"] for item in payload["statuses"]}
+    assert "active" not in emitted
+    assert "operational" not in emitted
+    assert emitted <= set(STATES), sorted(emitted - set(STATES))
+    catalog = client.get(f"{PREFIX}/catalog").json()
+    record_states = {record["state"] for record in catalog["sources"]}
+    assert "active" not in record_states and "operational" not in record_states
+    assert record_states <= set(STATES), sorted(record_states - set(STATES))
+
+
+def test_refresh_naming_a_catalogued_source_is_refused_with_its_state():
+    """A refusal names the id and the state it was refused for.
+
+    "not schedulable" alone would leave the caller guessing whether the id is
+    blocked, merely catalogued, or admitted subject to a check.
+
+    Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
+    """
+    catalogued = sorted(
+        record["id"] for record in registry()["sources"] if record["status"] == "catalogued"
+    )
+    assert catalogued, "the registry declares no catalogued source"
+    source_id = catalogued[0]
+    response = client.post(f"{PREFIX}/refresh", json={"source_ids": [source_id]})
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail.startswith("source ids are not schedulable:")
+    assert f"{source_id} (catalogued)" in detail
+
+
+def test_refresh_names_an_outstanding_admission_condition(monkeypatch):
+    """An admission subject to an unrecorded check is not an admission.
+
+    The condition text the owner wrote is what the refusal must carry, so the
+    caller is told what is outstanding rather than only that something is.
+
+    Spec-Refs: experiments/st-johns-weather-map/openspec/specs/source-registry-catalogue/spec.md
+    """
+    import weather_api.store as store_module
+
+    conditioned = {
+        "id": "synthetic-conditional",
+        "status": "implemented-unverified",
+        "admission_condition": {
+            "condition": "the Atlantic-domain check over the evidence box is unrecorded",
+            "satisfied_by": "a recorded probe covering the box",
+            "satisfied": False,
+            "recorded_on": "2026-09-02",
+        },
+    }
+    monkeypatch.setattr(store_module, "_registry_records", lambda: [conditioned])
+    detail = store_module.unschedulable_detail(["synthetic-conditional"])
+    assert detail.startswith("source ids are not schedulable:")
+    assert "condition outstanding:" in detail
+    assert "the Atlantic-domain check over the evidence box is unrecorded" in detail
+    assert "synthetic-conditional (implemented-unverified;" in detail
 
 
 def test_a_fixture_deployment_is_ready_but_says_so():
@@ -245,11 +317,11 @@ def test_rolling_window_boundaries_are_inclusive(pick):
     assert datetime.fromisoformat(response.json()["valid_time"]).tzinfo is not None
 
 
-def test_window_is_exactly_three_hours_back_and_twenty_four_forward():
+def test_window_is_exactly_twenty_four_hours_back_and_fourteen_days_forward():
     reference = now()
     assert reference.minute == reference.second == reference.microsecond == 0
-    assert reference - window_start(reference) == timedelta(hours=3)
-    assert window_end(reference) - reference == timedelta(hours=24)
+    assert reference - window_start(reference) == timedelta(hours=24)
+    assert window_end(reference) - reference == timedelta(days=14)
 
 
 def test_profile_and_cross_section_enforce_same_space_time_boundaries():
@@ -314,6 +386,8 @@ class EmptyStore(BrokenStore):
 def use_live_store(monkeypatch, data_mode, store) -> None:
     data_mode("live")
     monkeypatch.setattr(api_module, "live_store", lambda: store)
+
+
 
 
 def assert_no_evidence_was_invented(payload: dict) -> None:
@@ -396,7 +470,7 @@ def test_product_selection_never_claims_a_source_that_published_nothing(monkeypa
             return [
                 Sample(
                     source_id="eccc-hrdps", logical_name="surface", variable="temperature_2m", value=9.25,
-                    units="degC", level="2 m above ground", valid_time=valid_time, run_time=None,
+                    units="degC", evidence_class="retrieved", level="2 m above ground", valid_time=valid_time, run_time=None,
                     retrieved_at=None, native_crs="EPSG:4326", provenance={},
                 ),
                 _sample("eccc-rdps", "temperature_2m", 11.5, "degC", valid_time),
@@ -486,7 +560,7 @@ def test_a_taf_never_rides_along_as_an_observation(monkeypatch, data_mode):
 
 def _sample(source_id: str, variable: str, value: float | None, units: str, valid_time: datetime) -> Sample:
     return Sample(
-        source_id=source_id, logical_name="surface", variable=variable, value=value, units=units,
+        source_id=source_id, logical_name="surface", variable=variable, value=value, units=units, evidence_class="retrieved",
         level="surface", valid_time=valid_time, run_time=None, retrieved_at=None, native_crs="EPSG:4326", provenance={},
     )
 
@@ -512,7 +586,9 @@ def test_wind_is_served_as_speed_and_direction_with_its_derivation_disclosed(mon
     assert direction["value"] == 90.0 and direction["provenance"]["normalized_units"] == "degree"
     for item in (speed, direction):
         assert item["provenance"]["source_id"] == "eccc-hrdps"
-        assert "MetPy" in item["provenance"]["derivation"]
+        assert item["provenance"]["derivation"] == "wind_speed_and_direction_from_components"
+        assert item["provenance"]["evidence_class"] == "derived_here"
+        assert "MetPy" in item["provenance"]["derivation_citation"]
         assert item["provenance"]["derivation_version"] == "metpy-1.7.1-wind-v1"
 
 
@@ -547,7 +623,7 @@ def test_the_timeline_lists_only_hours_that_actually_have_a_published_artifact(m
     use_live_store(monkeypatch, data_mode, EmptyStore())
     payload = client.get(f"{PREFIX}/timeline").json()
     assert payload["data_mode"] == "unavailable"
-    assert len(payload["items"]) == 28
+    assert len(payload["items"]) == 361
     assert all(item["available_products"] == [] for item in payload["items"])
     assert payload["notices"]
 
@@ -569,8 +645,8 @@ def test_a_frame_landing_off_the_hour_still_populates_its_hour(monkeypatch, data
 
     The timeline is an hourly index, so it has to say which HOUR holds a
     published frame. Keying it on the exact artifact stamp meant only a frame
-    that happened to land on the hour ever matched, and 25 of 28 hours read as
-    empty while their evidence sat a few minutes away.
+    that happened to land on the hour ever matched, and almost every hour read
+    as empty while its evidence sat a few minutes away.
     """
     hour = now()
 
@@ -644,7 +720,7 @@ def test_a_live_source_status_never_promotes_a_source_to_active(monkeypatch, dat
     payload = client.get(f"{PREFIX}/sources/status").json()
     by_id = {item["source_id"]: item for item in payload["statuses"]}
     assert payload["data_mode"] == "mixed"
-    assert by_id["eccc-hrdps"]["state"] == "implementing"
+    assert by_id["eccc-hrdps"]["state"] == "implemented-unverified"
     assert by_id["eccc-hrdps"]["freshness"]["status"] == "fresh"
     assert by_id["eccc-hrdps"]["data_mode"] == "live"
     assert all(item["state"] != "active" for item in payload["statuses"])
@@ -657,3 +733,79 @@ def test_a_refresh_cannot_be_faked_into_a_fixture_job_when_the_live_store_is_dow
     monkeypatch.setattr(api_module, "live_store", lambda: None)
     response = client.post(f"{PREFIX}/refresh", json={"source_ids": ["eccc-hrdps"]})
     assert response.status_code == 503
+
+
+# --- the member request parameters ----------------------------------------
+# ``/point`` takes a member or a statistic (Seam D). Fixture mode holds no
+# member axis, so it answers the request with the ordinary snapshot and a
+# notice, and fabricates nothing.
+
+def test_the_point_endpoint_declares_the_member_request_parameters():
+    parameters = {item["name"] for item in client.get("/openapi.json").json()["paths"][f"{PREFIX}/point"]["get"]["parameters"]}
+    assert {"member", "statistic", "quantile", "threshold", "comparison"} <= parameters
+
+
+def test_a_fixture_member_request_is_answered_with_a_notice_and_no_fabricated_member():
+    payload = client.get(f"{PREFIX}/point", params={"member": "01"}).json()
+    assert NO_ENSEMBLE_MEMBERS_NOTICE in payload["notices"]
+    assert payload["fields"], "the ordinary fixture fields are still served"
+    assert all(item["provenance"]["member"] is None for item in payload["fields"])
+    assert all(item["provenance"]["member_control"] is None for item in payload["fields"])
+    assert all(item["provenance"]["ensemble"] is None for item in payload["fields"])
+
+
+def test_a_fixture_request_for_every_member_fabricates_no_member_set():
+    payload = client.get(f"{PREFIX}/point", params={"member": "all"}).json()
+    assert payload["notices"] == [NO_ENSEMBLE_MEMBERS_NOTICE]
+    assert all(item["provenance"]["ensemble"] is None for item in payload["fields"])
+
+
+def test_a_fixture_statistic_request_computes_no_statistic_over_the_memberless_snapshot():
+    payload = client.get(f"{PREFIX}/point", params={"statistic": "ensemble_mean"}).json()
+    assert NO_ENSEMBLE_MEMBERS_NOTICE in payload["notices"]
+    assert all(item["provenance"]["derivation"] != "ensemble_mean" for item in payload["fields"])
+    assert all(item["provenance"]["ensemble"] is None for item in payload["fields"])
+
+
+def test_a_selected_product_still_answers_a_member_request_with_the_notice():
+    """The product branch returns early, so it has to carry the notice too."""
+    payload = client.get(f"{PREFIX}/point", params={"product": "REPS", "member": "01"}).json()
+    assert NO_ENSEMBLE_MEMBERS_NOTICE in payload["notices"]
+    assert all(item["provenance"]["member"] is None for item in payload["fields"])
+
+
+def test_a_point_request_naming_no_member_or_statistic_earns_no_ensemble_notice():
+    assert NO_ENSEMBLE_MEMBERS_NOTICE not in client.get(f"{PREFIX}/point").json()["notices"]
+
+
+@pytest.mark.parametrize("name", ["mean", "ensemble_statistics_within_run", "ensemble_median", ""])
+def test_an_unregistered_member_statistic_is_refused_rather_than_answered(name):
+    """The caller's short name and the umbrella entry are not statistics a
+    value may name, and neither is answered with the nearest entry."""
+    response = client.get(f"{PREFIX}/point", params={"statistic": name})
+    assert response.status_code == 422
+    assert "statistic" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("name", list(ENSEMBLE_STATISTIC_ENTRIES))
+def test_every_registered_member_statistic_name_is_accepted(name):
+    assert client.get(f"{PREFIX}/point", params={"statistic": name}).status_code == 200
+
+
+@pytest.mark.parametrize("name", ["above", "gte", "=", ""])
+def test_an_unknown_member_threshold_comparison_is_refused(name):
+    response = client.get(f"{PREFIX}/point", params={"statistic": "ensemble_threshold_probability", "threshold": 0.0, "comparison": name})
+    assert response.status_code == 422
+    assert "comparison" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("name", list(THRESHOLD_COMPARISONS))
+def test_every_declared_member_threshold_comparison_is_accepted(name):
+    params = {"statistic": "ensemble_threshold_probability", "threshold": 0.0, "comparison": name}
+    assert client.get(f"{PREFIX}/point", params=params).status_code == 200
+
+
+@pytest.mark.parametrize("value", [-0.1, 1.5])
+def test_a_member_quantile_outside_the_unit_interval_is_refused(value):
+    response = client.get(f"{PREFIX}/point", params={"statistic": "ensemble_quantile", "quantile": value})
+    assert response.status_code == 422

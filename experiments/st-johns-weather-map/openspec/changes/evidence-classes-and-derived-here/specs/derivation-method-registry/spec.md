@@ -51,8 +51,10 @@ The following constructions SHALL be registry entries before this change is
 applied: relative humidity from temperature and dew point (liquid phase,
 MetPy); wind speed and direction from u and v; the ensemble statistics (mean,
 spread, quantiles, threshold probabilities, counts) within one family and
-run; sector sampling of a gridded field along a bearing from a site; and the
-Sun and Moon geometry fields from the pinned DE442 ephemeris.
+run; sector sampling of a gridded field along a bearing from a site; the fog
+state read from the METAR/TAF present-weather group, which `/point` already
+serves as a derivation and which is therefore refused until it is registered;
+and the Sun and Moon geometry fields from the pinned DE442 ephemeris.
 
 #### Scenario: Relative humidity is served after this change
 - **WHEN** relative humidity is derived for a source that published none

@@ -1,0 +1,359 @@
+{
+  "_note": "Hand-trimmed receipt sample of the 2026-09-05 bounded GeoMet WCS probe. Payload bodies and rebuilt Zarr artifacts are deliberately absent: per the owner decision of 2026-09-05 (issue #70) only receipts (endpoint, request parameters, byte counts, checksums, capture times) live in Git. The full probe is reproduced with scripts/probe-geomet-wcs.py.",
+  "_trimmed_from": "docs/evidence/geomet-wcs-2026-09-05.json (689528 bytes, removed from history)",
+  "endpoint": "https://geo.weather.gc.ca/geomet/",
+  "request_parameters": {
+    "SERVICE": "WCS",
+    "VERSION": "2.0.1",
+    "REQUEST": "GetCoverage",
+    "FORMAT": "image/tiff",
+    "SUBSET": [
+      "long(-55.0,-51.0)",
+      "lat(46.5,48.5)"
+    ],
+    "SCALESIZE": "long(<width>),lat(<height>) per requested_shape",
+    "TIME": "advertised valid time",
+    "DIM_REFERENCE_TIME": "advertised run time"
+  },
+  "retrieved_at": "2026-09-05T15:05:33.463593+00:00",
+  "elapsed_seconds": 392.041,
+  "wcs_coverage_count": 5589,
+  "prefix_counts": {
+    "gdps_15km_and_geml_25km": 474,
+    "hrdps": 377,
+    "rdps": 438
+  },
+  "full_family_inventory_count": 1289,
+  "full_family_inventory_sample": [
+    {
+      "coverage_id": "GDPS-GEML_25km_AirTemp_1000mb",
+      "destination": "isolated raw__<coverage_id> artifact only; future source contract",
+      "disposition": "advertised-capability-only-deferred",
+      "reason": "semantic normalization and production admission are not established",
+      "variable": null
+    },
+    {
+      "coverage_id": "GDPS-WEonG_15km_AirTemp",
+      "destination": "weong_air_temp",
+      "disposition": "advertised-selected-capability",
+      "reason": "issue-79 selected field; exact canonical mapping is declared",
+      "variable": "weong_air_temp"
+    }
+  ],
+  "selected_contract": {
+    "gdps": {
+      "advertised": 80,
+      "missing": 0,
+      "not-published": 5
+    },
+    "hrdps": {
+      "advertised": 83,
+      "missing": 0,
+      "not-published": 5
+    },
+    "rdps": {
+      "advertised": 82,
+      "missing": 0,
+      "not-published": 5
+    }
+  },
+  "selected_fields_counts": {
+    "gdps": 85,
+    "hrdps": 88,
+    "rdps": 87
+  },
+  "selected_fields_sample": {
+    "gdps": [
+      {
+        "coverage_id": "GDPS_15km_AirTemp_40m",
+        "disposition": "advertised",
+        "variable": "temperature_40m"
+      },
+      {
+        "coverage_id": "GDPS_15km_AirTemp_80m",
+        "disposition": "advertised",
+        "variable": "temperature_80m"
+      }
+    ],
+    "hrdps": [
+      {
+        "coverage_id": "HRDPS.CONTINENTAL_TT_40m",
+        "disposition": "advertised",
+        "variable": "temperature_40m"
+      },
+      {
+        "coverage_id": "HRDPS.CONTINENTAL_TT_80m",
+        "disposition": "advertised",
+        "variable": "temperature_80m"
+      }
+    ],
+    "rdps": [
+      {
+        "coverage_id": "RDPS_10km_AirTemp_40m",
+        "disposition": "advertised",
+        "variable": "temperature_40m"
+      },
+      {
+        "coverage_id": "RDPS_10km_AirTemp_80m",
+        "disposition": "advertised",
+        "variable": "temperature_80m"
+      }
+    ]
+  },
+  "selected_acquisition": {
+    "bounds": {
+      "east": -51.0,
+      "north": 48.5,
+      "south": 46.5,
+      "west": -55.0
+    },
+    "byte_cap": 2147483648,
+    "elapsed_cap_seconds": 2700,
+    "requested": true,
+    "scope": "one latest advertised valid time per each of 245 selected coverages over the exact small Avalon API bbox",
+    "total_transfer_bytes": 5919436,
+    "result_count": 245,
+    "results": [
+      {
+        "artifact_bytes": 21711,
+        "coverage_id": "HRDPS.CONTINENTAL_HR_40m",
+        "elapsed_seconds": 1.43,
+        "finite_cells": 15842,
+        "maximum": 100.33519744873047,
+        "minimum": 86.76020050048828,
+        "nodata_cells": 0,
+        "run_time": "2026-09-05T06:00:00+00:00",
+        "sha256": "1c24cd8a01f4b44c32afe3dffaba1e9ecfdb024975c2ad29d0fc71b8625a79c5",
+        "status": "retrieved-artifact-roundtrip",
+        "transfer_bytes": 63840,
+        "units_as_published": "%",
+        "units_recognised": true,
+        "valid_time": "2026-09-07T06:00:00+00:00",
+        "variable": "relative_humidity_40m",
+        "sampling_geometry": "pixel_is_area_cell_centres",
+        "sampling_resolution_degrees": [
+          0.02247191011235955,
+          0.02247191011235955
+        ],
+        "requested_shape": [
+          89,
+          178
+        ],
+        "resampling": "server_resampled_method_unknown"
+      },
+      {
+        "artifact_bytes": 5911,
+        "coverage_id": "HRDPS-WEonG_2.5km_SkyState",
+        "elapsed_seconds": 1.644,
+        "finite_cells": 15842,
+        "maximum": 10.0,
+        "minimum": 9.0,
+        "nodata_cells": 0,
+        "run_time": "2026-09-05T06:00:00+00:00",
+        "sha256": "e2788849e4e634e57ff8635364002dbffd83f17f2510e1d834219429372001e1",
+        "status": "retrieved-artifact-roundtrip",
+        "transfer_bytes": 63840,
+        "units_as_published": null,
+        "units_recognised": false,
+        "valid_time": "2026-09-07T06:00:00+00:00",
+        "variable": "weong_sky_state",
+        "sampling_geometry": "pixel_is_area_cell_centres",
+        "sampling_resolution_degrees": [
+          0.02247191011235955,
+          0.02247191011235955
+        ],
+        "requested_shape": [
+          89,
+          178
+        ],
+        "resampling": "server_resampled_method_unknown"
+      },
+      {
+        "artifact_bytes": 5065,
+        "coverage_id": "RDPS_10km_SeeingIndex",
+        "elapsed_seconds": 1.478,
+        "finite_cells": 1035,
+        "maximum": 5.0,
+        "minimum": 0.0,
+        "nodata_cells": 0,
+        "run_time": "2026-09-05T06:00:00+00:00",
+        "sha256": "1cd8c2fda1eb5f6c211621eb37808cd41fdd65a96f2598d67136ea29d9f35ed9",
+        "status": "retrieved-artifact-roundtrip",
+        "transfer_bytes": 4558,
+        "units_as_published": "unlabelled class index",
+        "units_recognised": true,
+        "valid_time": "2026-09-08T18:00:00+00:00",
+        "variable": "seeing_class_eccc",
+        "sampling_geometry": "pixel_is_area_cell_centres",
+        "sampling_resolution_degrees": [
+          0.08695652173913043,
+          0.08888888888888889
+        ],
+        "requested_shape": [
+          23,
+          45
+        ],
+        "resampling": "server_resampled_method_unknown"
+      },
+      {
+        "artifact_bytes": 5073,
+        "coverage_id": "RDPS_10km_SkyTransparencyIndex",
+        "elapsed_seconds": 1.504,
+        "finite_cells": 1035,
+        "maximum": 3.0,
+        "minimum": 0.0,
+        "nodata_cells": 0,
+        "run_time": "2026-09-05T06:00:00+00:00",
+        "sha256": "97de9712c59c046f3902d5d8bb63e59062c48b6d1c3b9339a2c07dc99179fd2d",
+        "status": "retrieved-artifact-roundtrip",
+        "transfer_bytes": 4558,
+        "units_as_published": "unlabelled class index",
+        "units_recognised": true,
+        "valid_time": "2026-09-08T18:00:00+00:00",
+        "variable": "transparency_class_eccc",
+        "sampling_geometry": "pixel_is_area_cell_centres",
+        "sampling_resolution_degrees": [
+          0.08695652173913043,
+          0.08888888888888889
+        ],
+        "requested_shape": [
+          23,
+          45
+        ],
+        "resampling": "server_resampled_method_unknown"
+      },
+      {
+        "artifact_bytes": 4539,
+        "coverage_id": "GDPS-WEonG_15km_LiquidFogVisibility",
+        "elapsed_seconds": 1.491,
+        "finite_cells": 378,
+        "maximum": 10000.0,
+        "minimum": 10000.0,
+        "nodata_cells": 0,
+        "run_time": "2026-09-05T00:00:00+00:00",
+        "sha256": "c9ae32928a7029fabceb9080d05ee142b3dfdd3bfe19bdb6678fd59bb67a1755",
+        "status": "retrieved-artifact-roundtrip",
+        "transfer_bytes": 1930,
+        "units_as_published": "m",
+        "units_recognised": true,
+        "valid_time": "2026-09-11T00:00:00+00:00",
+        "variable": "weong_liquid_fog_visibility",
+        "sampling_geometry": "pixel_is_area_cell_centres",
+        "sampling_resolution_degrees": [
+          0.14285714285714285,
+          0.14814814814814814
+        ],
+        "requested_shape": [
+          14,
+          27
+        ],
+        "resampling": "server_resampled_method_unknown"
+      }
+    ]
+  },
+  "representative_artifacts": [
+    {
+      "bytes": 21711,
+      "coverage_id": "HRDPS.CONTINENTAL_HR_40m",
+      "operational": false,
+      "resampling": "server_resampled_method_unknown",
+      "run_identity_status": "requested_unverified",
+      "run_time": "2026-09-05T06:00:00+00:00",
+      "sampling_geometry": "pixel_is_area_cell_centres",
+      "sampling_resolution_degrees": [
+        0.022471910112359564,
+        0.022471910112359557
+      ],
+      "sha256": "1c24cd8a01f4b44c32afe3dffaba1e9ecfdb024975c2ad29d0fc71b8625a79c5",
+      "status": "retrieved-artifact-roundtrip",
+      "valid_time": "2026-09-07T06:00:00+00:00"
+    },
+    {
+      "bytes": 5911,
+      "coverage_id": "HRDPS-WEonG_2.5km_SkyState",
+      "operational": false,
+      "resampling": "server_resampled_method_unknown",
+      "run_identity_status": "requested_unverified",
+      "run_time": "2026-09-05T06:00:00+00:00",
+      "sampling_geometry": "pixel_is_area_cell_centres",
+      "sampling_resolution_degrees": [
+        0.022471910112359564,
+        0.022471910112359557
+      ],
+      "sha256": "e2788849e4e634e57ff8635364002dbffd83f17f2510e1d834219429372001e1",
+      "status": "retrieved-artifact-roundtrip",
+      "valid_time": "2026-09-07T06:00:00+00:00"
+    },
+    {
+      "bytes": 5065,
+      "coverage_id": "RDPS_10km_SeeingIndex",
+      "operational": false,
+      "resampling": "server_resampled_method_unknown",
+      "run_identity_status": "requested_unverified",
+      "run_time": "2026-09-05T06:00:00+00:00",
+      "sampling_geometry": "pixel_is_area_cell_centres",
+      "sampling_resolution_degrees": [
+        0.08695652173913065,
+        0.08888888888888889
+      ],
+      "sha256": "1cd8c2fda1eb5f6c211621eb37808cd41fdd65a96f2598d67136ea29d9f35ed9",
+      "status": "retrieved-artifact-roundtrip",
+      "valid_time": "2026-09-08T18:00:00+00:00"
+    },
+    {
+      "bytes": 5073,
+      "coverage_id": "RDPS_10km_SkyTransparencyIndex",
+      "operational": false,
+      "resampling": "server_resampled_method_unknown",
+      "run_identity_status": "requested_unverified",
+      "run_time": "2026-09-05T06:00:00+00:00",
+      "sampling_geometry": "pixel_is_area_cell_centres",
+      "sampling_resolution_degrees": [
+        0.08695652173913065,
+        0.08888888888888889
+      ],
+      "sha256": "97de9712c59c046f3902d5d8bb63e59062c48b6d1c3b9339a2c07dc99179fd2d",
+      "status": "retrieved-artifact-roundtrip",
+      "valid_time": "2026-09-08T18:00:00+00:00"
+    },
+    {
+      "bytes": 4539,
+      "coverage_id": "GDPS-WEonG_15km_LiquidFogVisibility",
+      "operational": false,
+      "resampling": "server_resampled_method_unknown",
+      "run_identity_status": "requested_unverified",
+      "run_time": "2026-09-05T00:00:00+00:00",
+      "sampling_geometry": "pixel_is_area_cell_centres",
+      "sampling_resolution_degrees": [
+        0.14285714285714318,
+        0.14814814814814797
+      ],
+      "sha256": "c9ae32928a7029fabceb9080d05ee142b3dfdd3bfe19bdb6678fd59bb67a1755",
+      "status": "retrieved-artifact-roundtrip",
+      "valid_time": "2026-09-11T00:00:00+00:00"
+    }
+  ],
+  "representative_profile_artifact": {
+    "bytes": 58067,
+    "coverage_ids": [
+      "HRDPS.CONTINENTAL.PRES_HR.850",
+      "HRDPS.CONTINENTAL.PRES_HR.700"
+    ],
+    "operational": false,
+    "pressure_levels_hpa": [
+      850,
+      700
+    ],
+    "resampling": "server_resampled_method_unknown",
+    "run_identity_status": "requested_unverified",
+    "run_time": "2026-09-05T06:00:00+00:00",
+    "sha256": "403a6401f9650e65eb36fc49180e1bcf7d2a22ba59f9af07738ed529c4da52af",
+    "sampling_geometry": "pixel_is_area_cell_centres",
+    "sampling_resolution_degrees": [
+      0.022471910112359564,
+      0.022471910112359557
+    ],
+    "status": "retrieved-profile-artifact-roundtrip",
+    "valid_time": "2026-09-07T06:00:00+00:00"
+  }
+}

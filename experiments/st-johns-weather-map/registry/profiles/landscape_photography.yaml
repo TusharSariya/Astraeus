@@ -1,0 +1,111 @@
+id: landscape_photography
+version: 1
+title: Landscape photography
+families:
+- cloud_cover
+- cloud_geometry
+- visibility
+- precipitation
+- wind
+- astronomy_geometry
+- marine
+thresholds:
+  precip_block:
+    field: precipitation_rate
+    default: 2.5
+    units: mm h-1
+    comparison: ge
+  cloud_sector_high:
+    field: total_cloud_opacity
+    default: 60.0
+    units: percent
+    comparison: ge
+  cloud_top_high:
+    field: cloud_top_height
+    default: 3000.0
+    units: m
+    comparison: ge
+  fog_present:
+    field: fog_closure
+    default: 0.5
+    units: '1'
+    comparison: ge
+  vis_low:
+    field: visibility
+    default: 5000.0
+    units: m
+    comparison: le
+  wind_high:
+    field: wind_speed_10m
+    default: 12.0
+    units: m s-1
+    comparison: ge
+  sun_altitude_thresh:
+    field: sun_altitude
+    default: -6.0
+    units: degree
+    comparison: ge
+  wave_height_high:
+    field: significant_wave_height
+    default: 2.0
+    units: m
+    comparison: ge
+weights:
+  cloud: 0.2
+  cloud_top: 0.1
+  fog: 0.1
+  visibility: 0.15
+  wind: 0.1
+  sun: 0.15
+  marine: 0.2
+hard_stops:
+- name: heavy_rain
+  field: precipitation_rate
+  threshold: precip_block
+graded_criteria:
+- name: cloud_sector_load
+  field: total_cloud_opacity
+  threshold: cloud_sector_high
+  weight: cloud
+- name: cloud_top_load
+  field: cloud_top_height
+  threshold: cloud_top_high
+  weight: cloud_top
+- name: fog_risk
+  field: fog_closure
+  threshold: fog_present
+  weight: fog
+- name: visibility_poor
+  field: visibility
+  threshold: vis_low
+  weight: visibility
+- name: wind_load
+  field: wind_speed_10m
+  threshold: wind_high
+  weight: wind
+- name: sun_altitude_load
+  field: sun_altitude
+  threshold: sun_altitude_thresh
+  weight: sun
+- name: sea_state_load
+  field: significant_wave_height
+  threshold: wave_height_high
+  weight: marine
+window:
+  rule: sunrise_sunset_margin
+  geometry_entry: de442_sun_moon_geometry
+  geometry_fields:
+  - sun_altitude
+  - sun_azimuth
+  params:
+    margin_minutes: 45.0
+site_needs:
+  horizon_required: true
+  sectors:
+  - name: sun_azimuth_cloud
+    field: total_cloud_opacity
+    bearing_deg: 90.0
+    width_deg: 40.0
+    max_range_km: 100.0
+blocked_fields: []
+wanted_not_catalogued: []

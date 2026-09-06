@@ -1,0 +1,11 @@
+{
+  "index_sha256": "9695220cd86d9c380fcaefd1ceb71bc9f952a2ae80ed7bfa57f5a4e9c5d857da",
+  "raw_bytes": 126157,
+  "raw_sha256": "9d165320e0c84943b46a3b6040ea031ee18d984a2be65d31c38e61e60909f075",
+  "provider_run_id": "2026090512",
+  "run_time": "2026-09-05T12:00:00+00:00",
+  "urls": [
+    "https://noaa-nam-pds.s3.amazonaws.com/nam.20260905/nam.t12z.awphys00.tm00.grib2",
+    "https://noaa-nam-pds.s3.amazonaws.com/nam.20260905/nam.t12z.awphys00.tm00.grib2.idx"
+  ]
+}

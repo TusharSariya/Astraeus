@@ -1,0 +1,208 @@
+{
+ "_fixture_note": "Hand-trimmed from the 2026-09-05T15:17:54Z Open-Meteo JMA GSM pressure-profile response (sha256 42236695c629af965784d787e80f3013b1f2335910a7ceab728351f4b9145669): first valid hour, canonical temperature/wind arrays only.",
+ "latitude": 47.5,
+ "longitude": -52.5,
+ "utc_offset_seconds": 0,
+ "timezone": "GMT",
+ "elevation": 21.0,
+ "hourly_units": {
+  "time": "iso8601",
+  "temperature_1000hPa": "\u00b0C",
+  "wind_speed_1000hPa": "m/s",
+  "wind_direction_1000hPa": "\u00b0",
+  "temperature_975hPa": "\u00b0C",
+  "wind_speed_975hPa": "m/s",
+  "wind_direction_975hPa": "\u00b0",
+  "temperature_950hPa": "\u00b0C",
+  "wind_speed_950hPa": "m/s",
+  "wind_direction_950hPa": "\u00b0",
+  "temperature_925hPa": "\u00b0C",
+  "wind_speed_925hPa": "m/s",
+  "wind_direction_925hPa": "\u00b0",
+  "temperature_900hPa": "\u00b0C",
+  "wind_speed_900hPa": "m/s",
+  "wind_direction_900hPa": "\u00b0",
+  "temperature_850hPa": "\u00b0C",
+  "wind_speed_850hPa": "m/s",
+  "wind_direction_850hPa": "\u00b0",
+  "temperature_800hPa": "\u00b0C",
+  "wind_speed_800hPa": "m/s",
+  "wind_direction_800hPa": "\u00b0",
+  "temperature_700hPa": "\u00b0C",
+  "wind_speed_700hPa": "m/s",
+  "wind_direction_700hPa": "\u00b0",
+  "temperature_600hPa": "\u00b0C",
+  "wind_speed_600hPa": "m/s",
+  "wind_direction_600hPa": "\u00b0",
+  "temperature_500hPa": "\u00b0C",
+  "wind_speed_500hPa": "m/s",
+  "wind_direction_500hPa": "\u00b0",
+  "temperature_400hPa": "\u00b0C",
+  "wind_speed_400hPa": "m/s",
+  "wind_direction_400hPa": "\u00b0",
+  "temperature_300hPa": "\u00b0C",
+  "wind_speed_300hPa": "m/s",
+  "wind_direction_300hPa": "\u00b0",
+  "temperature_250hPa": "\u00b0C",
+  "wind_speed_250hPa": "m/s",
+  "wind_direction_250hPa": "\u00b0",
+  "temperature_200hPa": "\u00b0C",
+  "wind_speed_200hPa": "m/s",
+  "wind_direction_200hPa": "\u00b0",
+  "temperature_150hPa": "\u00b0C",
+  "wind_speed_150hPa": "m/s",
+  "wind_direction_150hPa": "\u00b0",
+  "temperature_100hPa": "\u00b0C",
+  "wind_speed_100hPa": "m/s",
+  "wind_direction_100hPa": "\u00b0"
+ },
+ "hourly": {
+  "time": [
+   "2026-09-05T15:00"
+  ],
+  "temperature_1000hPa": [
+   14.4
+  ],
+  "wind_speed_1000hPa": [
+   9.63
+  ],
+  "wind_direction_1000hPa": [
+   100
+  ],
+  "temperature_975hPa": [
+   null
+  ],
+  "wind_speed_975hPa": [
+   null
+  ],
+  "wind_direction_975hPa": [
+   null
+  ],
+  "temperature_950hPa": [
+   null
+  ],
+  "wind_speed_950hPa": [
+   null
+  ],
+  "wind_direction_950hPa": [
+   null
+  ],
+  "temperature_925hPa": [
+   8.3
+  ],
+  "wind_speed_925hPa": [
+   10.32
+  ],
+  "wind_direction_925hPa": [
+   100
+  ],
+  "temperature_900hPa": [
+   null
+  ],
+  "wind_speed_900hPa": [
+   null
+  ],
+  "wind_direction_900hPa": [
+   null
+  ],
+  "temperature_850hPa": [
+   5.2
+  ],
+  "wind_speed_850hPa": [
+   9.55
+  ],
+  "wind_direction_850hPa": [
+   105
+  ],
+  "temperature_800hPa": [
+   null
+  ],
+  "wind_speed_800hPa": [
+   null
+  ],
+  "wind_direction_800hPa": [
+   null
+  ],
+  "temperature_700hPa": [
+   1.8
+  ],
+  "wind_speed_700hPa": [
+   3.64
+  ],
+  "wind_direction_700hPa": [
+   175
+  ],
+  "temperature_600hPa": [
+   -4.2
+  ],
+  "wind_speed_600hPa": [
+   6.9
+  ],
+  "wind_direction_600hPa": [
+   197
+  ],
+  "temperature_500hPa": [
+   -12.4
+  ],
+  "wind_speed_500hPa": [
+   8.67
+  ],
+  "wind_direction_500hPa": [
+   203
+  ],
+  "temperature_400hPa": [
+   -23.9
+  ],
+  "wind_speed_400hPa": [
+   8.36
+  ],
+  "wind_direction_400hPa": [
+   203
+  ],
+  "temperature_300hPa": [
+   -39.5
+  ],
+  "wind_speed_300hPa": [
+   20.81
+  ],
+  "wind_direction_300hPa": [
+   215
+  ],
+  "temperature_250hPa": [
+   -51.0
+  ],
+  "wind_speed_250hPa": [
+   19.8
+  ],
+  "wind_direction_250hPa": [
+   224
+  ],
+  "temperature_200hPa": [
+   -59.0
+  ],
+  "wind_speed_200hPa": [
+   18.8
+  ],
+  "wind_direction_200hPa": [
+   233
+  ],
+  "temperature_150hPa": [
+   -54.5
+  ],
+  "wind_speed_150hPa": [
+   20.38
+  ],
+  "wind_direction_150hPa": [
+   255
+  ],
+  "temperature_100hPa": [
+   -53.0
+  ],
+  "wind_speed_100hPa": [
+   13.54
+  ],
+  "wind_direction_100hPa": [
+   260
+  ]
+ }
+}

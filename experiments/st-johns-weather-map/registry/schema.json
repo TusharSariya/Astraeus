@@ -19,12 +19,108 @@
     "nonempty": {"type": "string", "minLength": 1},
     "url": {"type": "string", "pattern": "^https://"},
     "status": {
-      "enum": ["active", "implementing", "credential_required", "licence_review", "unavailable", "duplicate_evidence", "unsupported_field", "retired", "rejected"]
+      "description": "The ten admission states. 'operational' is listed so the vocabulary is complete and so the ceiling table has a value to map, but no record may declare it: the audit refuses it on every record.",
+      "enum": ["operational", "implemented-unverified", "catalogued", "credential-required", "licence-blocked", "link-only", "partnership-only", "unavailable", "rejected", "superseded"]
+    },
+    "delivery_kind": {
+      "description": "How this source's values reach the deployment. 'published_cell' is the producer's own grid or observation; 'reprocessed' is an intermediary's transformation of the producer's field; 'intermediary_derived' is a value the intermediary computed from the producer's fields by the intermediary's own method, which the producer never published.",
+      "enum": ["published_cell", "reprocessed", "intermediary_derived"]
+    },
+    "reach": {
+      "description": "How far a run of this source can cover, as valid time relative to its run time, in hours. Negative earliest_hours means before the run time. per_cycle states latest_hours by UTC run hour where the cycles differ; a record that omits it reaches the same distance on every cycle. An observation covers its own instant: 0 to 0.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["earliest_hours", "latest_hours"],
+      "properties": {
+        "earliest_hours": {"type": "number"},
+        "latest_hours": {"type": "number"},
+        "per_cycle": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"pattern": "^(?:[01][0-9]|2[0-3])$"},
+          "additionalProperties": {"type": "number"}
+        }
+      }
+    },
+    "publication_latency": {
+      "description": "How long after its run time this source has been observed to publish, held apart from the cadence because it is measured rather than promised. estimate_seconds is null when nothing is measured and no seed exists; measured is true only once this deployment has observed a publication; basis names where a non-null estimate came from, and is 'none' when there is nothing to name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimate_seconds", "observation_count", "last_observed", "measured", "basis"],
+      "properties": {
+        "estimate_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "observation_count": {"type": "integer", "minimum": 0},
+        "last_observed": {"type": ["string", "null"], "format": "date-time"},
+        "measured": {"type": "boolean"},
+        "basis": {"$ref": "#/$defs/nonempty"}
+      }
+    },
+    "verification_state": {"enum": ["verified", "unverified"]},
+    "ensemble": {
+      "description": "How one admitted ensemble family is shaped, retrieved and stored. Present on every record whose category is 'ensemble' and on no other. build_order is the owner's declared admission order, so a partial build is a prefix of the list rather than an implementation convention. member_count is null where the family publishes reductions instead of members, and where nothing about the family was measured at all (verification.evidence 'none'), because a member count that was assumed cannot be used to check completeness. control is null only where the family publishes no members; a family that publishes members declares how its control is identified, with a null identifier where no measurement locates it, which is a reason not to schedule the family rather than a licence to promote a perturbed member into its place. A family carrying any 'unverified' verification field is not schedulable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "build_order", "shape", "subsetting", "storage_scope", "member_count", "control", "reductions", "gaps", "verification", "schedulable", "schedulable_reason"],
+      "properties": {
+        "family": {"enum": ["REPS", "AIFS-ENS", "IFS ENS", "GEFS", "GEPS reductions", "ICON-EPS"]},
+        "build_order": {"type": "integer", "minimum": 1, "maximum": 6},
+        "shape": {"enum": ["members", "reduction"]},
+        "subsetting": {"enum": ["server_side", "none"]},
+        "storage_scope": {"enum": ["every_published_field", "family_fields_only"]},
+        "member_count": {"type": ["integer", "null"], "exclusiveMinimum": 0},
+        "control": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["identifier", "rule", "separate_retrieval"],
+          "properties": {
+            "identifier": {"type": ["string", "null"], "minLength": 1},
+            "rule": {"$ref": "#/$defs/nonempty"},
+            "separate_retrieval": {"type": "boolean"}
+          }
+        },
+        "reductions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["mean", "spread", "percentile", "threshold_probability"]}
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "reason"],
+            "properties": {"field": {"$ref": "#/$defs/nonempty"}, "reason": {"$ref": "#/$defs/nonempty"}}
+          }
+        },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["member_count", "access_path", "cadence", "evidence"],
+          "properties": {
+            "member_count": {"$ref": "#/$defs/verification_state"},
+            "access_path": {"$ref": "#/$defs/verification_state"},
+            "cadence": {"$ref": "#/$defs/verification_state"},
+            "evidence": {"$ref": "#/$defs/nonempty"}
+          }
+        },
+        "schedulable": {"type": "boolean"},
+        "schedulable_reason": {"$ref": "#/$defs/nonempty"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"shape": {"const": "reduction"}}, "required": ["shape"]},
+          "then": {"properties": {"member_count": {"type": "null"}, "control": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"shape": {"const": "members"}}, "required": ["shape"]},
+          "then": {"properties": {"control": {"type": "object"}, "reductions": {"maxItems": 0}}}
+        }
+      ]
     },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "category", "status", "reason", "producer", "product", "documentation_urls", "access_endpoints", "integration", "variables", "coverage", "cadence", "forecast_horizon", "authentication", "licence", "attribution", "caching", "archival", "redistribution", "schema_version", "freshness_threshold", "poc_role", "consensus", "fixture_status", "live_smoke_test_status"],
+      "required": ["id", "category", "status", "reason", "producer", "product", "documentation_urls", "access_endpoints", "integration", "variables", "coverage", "cadence", "forecast_horizon", "authentication", "licence", "attribution", "caching", "archival", "redistribution", "schema_version", "freshness_threshold", "poc_role", "consensus", "delivery_kind", "display_primary", "fixture_status", "live_smoke_test_status"],
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
         "category": {"$ref": "#/$defs/nonempty"},
@@ -33,7 +129,7 @@
         "producer": {"$ref": "#/$defs/nonempty"},
         "product": {"$ref": "#/$defs/nonempty"},
         "documentation_urls": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/url"}},
-        "access_endpoints": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/url"}},
+        "access_endpoints": {"type": "array", "minItems": 0, "items": {"$ref": "#/$defs/url"}},
         "integration": {
           "type": "object", "additionalProperties": false,
           "required": ["kind", "client", "metadata_contract"],
@@ -65,9 +161,101 @@
           "type": "object", "additionalProperties": false, "required": ["eligible", "family", "reason"],
           "properties": {"eligible": {"type": "boolean"}, "family": {"type": ["string", "null"]}, "reason": {"$ref": "#/$defs/nonempty"}}
         },
+        "delivery_kind": {"$ref": "#/$defs/delivery_kind"},
+        "display_primary": {
+          "description": "Whether this record's values may be what the map shows first. Only a published_cell record may be; the audit enforces it here rather than leaving it to the display layer.",
+          "type": "boolean"
+        },
+        "intermediary": {
+          "type": "object", "additionalProperties": false, "required": ["name", "method", "transformations"],
+          "properties": {
+            "name": {"$ref": "#/$defs/nonempty"},
+            "method": {"type": ["string", "null"], "minLength": 1},
+            "transformations": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/nonempty"}}
+          }
+        },
+        "field_delivery_kinds": {
+          "description": "Per-field delivery kind, because one intermediary may deliver reprocessed and intermediary-derived fields for the same producer.",
+          "type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/delivery_kind"}
+        },
+        "reach": {"$ref": "#/$defs/reach"},
+        "run_cadence_seconds": {
+          "description": "Producer run cadence in seconds, on a forecast record. Declared, never defaulted: a record whose prose states no resolvable cadence declares none.",
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "native_cadence_seconds": {
+          "description": "Native publication interval in seconds, on an observation or nowcast record. The layer's own resolution, which is also its staleness tolerance.",
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "publication_latency": {"$ref": "#/$defs/publication_latency"},
+        "datamart_fallback_path": {
+          "description": "The dated WXO-DD Datamart layout an ECCC model adapter falls back to when the primary path answers nothing, with {YYYYMMDD}, {HH} and {FFF} placeholders. Declared only where an adapter documents the path.",
+          "type": "string",
+          "pattern": "^https://dd\\.weather\\.gc\\.ca/\\{YYYYMMDD\\}/WXO-DD/"
+        },
         "fixture_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
-        "live_smoke_test_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]}
-      }
+        "live_smoke_test_status": {"enum": ["passing", "planned", "blocked", "not_applicable"]},
+        "ensemble": {"$ref": "#/$defs/ensemble"},
+        "credential": {
+          "description": "Names the credential a credential-required source needs and where to register for it. There is deliberately no value field: the registry says which secret is needed, never what it is.",
+          "type": "object", "additionalProperties": false, "required": ["name", "registration_url"],
+          "properties": {
+            "name": {"type": "string", "pattern": "^WEATHER_SECRET_[A-Z0-9_]+$"},
+            "registration_url": {"$ref": "#/$defs/url"}
+          }
+        },
+        "restricted_terms": {
+          "description": "The verbatim clause that admits this source for research use only, with where it was read and when. 'redistribution' is const false because a record carrying this block is one whose terms forbid passing the values on.",
+          "type": "object", "additionalProperties": false, "required": ["terms_text", "terms_source_url", "redistribution", "read_date"],
+          "properties": {
+            "terms_text": {"$ref": "#/$defs/nonempty"},
+            "terms_source_url": {"$ref": "#/$defs/url"},
+            "redistribution": {"const": false},
+            "read_date": {"type": "string", "format": "date"}
+          }
+        },
+        "admission_condition": {
+          "description": "What is outstanding before this record may be scheduled, and what would satisfy it. Nothing in the running system flips 'satisfied'; a person records it after doing the work.",
+          "type": "object", "additionalProperties": false, "required": ["condition", "satisfied_by", "satisfied", "recorded_on"],
+          "properties": {
+            "condition": {"$ref": "#/$defs/nonempty"},
+            "satisfied_by": {"$ref": "#/$defs/nonempty"},
+            "satisfied": {"type": "boolean"},
+            "recorded_on": {"type": "string", "format": "date"}
+          }
+        },
+        "superseded_by": {
+          "description": "The record that replaced this one. Required on status 'superseded' so that no record can be retired without naming where a reader should look instead.",
+          "type": "object", "additionalProperties": false, "required": ["source_id", "detail"],
+          "properties": {
+            "source_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+            "detail": {"$ref": "#/$defs/nonempty"}
+          }
+        },
+        "cameras": {
+          "description": "The camera ids this record's terms and admission_condition govern, each a registry/cameras/<id>.yaml record.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"category": {"const": "ensemble"}}, "required": ["category"]},
+          "then": {"required": ["ensemble"]},
+          "else": {"not": {"required": ["ensemble"]}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "credential-required"}}, "required": ["status"]},
+          "then": {"required": ["credential"]}
+        },
+        {
+          "if": {"properties": {"status": {"const": "superseded"}}, "required": ["status"]},
+          "then": {"required": ["superseded_by"]}
+        }
+      ]
     }
   }
 }

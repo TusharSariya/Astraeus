@@ -97,7 +97,7 @@ def pair_with(a: numpy.ndarray, b: numpy.ndarray | None = None, *, flow: numpy.n
 
 def context(frames: list[numpy.ndarray], dataset=None) -> MethodContext:
     return MethodContext(
-        variable="total_cloud",
+        variable="total_cloud_opacity",
         frames=frames,
         indices=tuple(range(len(frames))),
         interval_seconds=INTERVAL,
@@ -141,7 +141,7 @@ def run_dataset(
         for step in range(count)
     ])
     variables = {
-        "total_cloud": (("valid_time", "y", "x"), numpy.stack(frames), {"units": "percent"}),
+        "total_cloud_opacity": (("valid_time", "y", "x"), numpy.stack(frames), {"units": "percent"}),
         "relative_humidity_700hPa": (
             ("valid_time", "y", "x"), humidity,
             {"units": "percent", "rh_phase_convention": convention},
@@ -486,21 +486,21 @@ def test_the_omega_bow_reads_the_runs_own_vertical_velocity_and_clamps_it():
     frames = developing(lambda t: t)
     shape = SHAPE
     rising = run_dataset(frames, omega=(0.0, -0.5))
-    bow, reached = _omega_bow(rising, "total_cloud", (0, 1), shape,
+    bow, reached = _omega_bow(rising, "total_cloud_opacity", (0, 1), shape,
                               numpy.full(shape, 90.0), numpy.full(shape, 98.0))
     # Stronger ASCENT at the end of the interval: the tendency is negative,
     # the closure's bracket is negative, so the bow moistens.
     assert float(bow[0, 0]) > 0.0
     assert reached == pytest.approx(1.0)
     sinking = run_dataset(frames, omega=(0.0, 0.5))
-    dry_bow, _ = _omega_bow(sinking, "total_cloud", (0, 1), shape,
+    dry_bow, _ = _omega_bow(sinking, "total_cloud_opacity", (0, 1), shape,
                             numpy.full(shape, 90.0), numpy.full(shape, 98.0))
     assert float(dry_bow[0, 0]) < 0.0
     # The clamp: the implied per-hour multiplier is bounded, so one absurd
     # omega cell cannot dominate the timing. 1.2 of a 94 percent mid-interval
     # RH is the ceiling, and the bow is 2 * RH_mid * (m - 1).
     absurd = run_dataset(frames, omega=(0.0, -500.0))
-    huge, _ = _omega_bow(absurd, "total_cloud", (0, 1), shape,
+    huge, _ = _omega_bow(absurd, "total_cloud_opacity", (0, 1), shape,
                          numpy.full(shape, 90.0), numpy.full(shape, 98.0))
     assert float(huge[0, 0]) == pytest.approx(2.0 * 94.0 * 0.2, rel=1e-6)
 
@@ -511,7 +511,7 @@ def test_absent_omega_is_a_no_op_and_says_so():
     # bow and `omega_reached = 0`, never a small shift invented from nothing.
     frames = developing(lambda t: t)
     without = run_dataset(frames, omega=None)
-    bow, reached = _omega_bow(without, "total_cloud", (0, 1), SHAPE,
+    bow, reached = _omega_bow(without, "total_cloud_opacity", (0, 1), SHAPE,
                               numpy.full(SHAPE, 90.0), numpy.full(SHAPE, 98.0))
     assert reached == 0.0
     assert numpy.array_equal(bow, numpy.zeros(SHAPE))
@@ -697,7 +697,7 @@ def test_a_vetoed_method_is_silenced_in_all_three_stored_fields():
     generator = numpy.random.default_rng(11)
     frames = [generator.uniform(0.0, 100.0, (32, 32)) for _ in range(4)]
     variable = MethodContext(
-        variable="total_cloud", frames=frames, indices=(0, 1, 2, 3), interval_seconds=INTERVAL
+        variable="total_cloud_opacity", frames=frames, indices=(0, 1, 2, 3), interval_seconds=INTERVAL
     )
     pairs = [(None, None, frames[index], frames[index + 1]) for index in range(3)]
     fields, _ = _derive_one_method(ResidualGenerativeMethod(gain=1.0), variable, pairs)

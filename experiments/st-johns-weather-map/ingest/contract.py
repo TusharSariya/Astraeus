@@ -13,6 +13,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from .window import WINDOW_BACK, WINDOW_FORWARD
+
 UTC = timezone.utc
 
 # Avalon core matches api.weather_api.fixtures.AVALON_CORE_BOUNDS. The context
@@ -20,17 +22,31 @@ UTC = timezone.utc
 AVALON_CORE_BOUNDS = {"south": 46.5, "west": -55.0, "north": 48.5, "east": -51.0}
 ATLANTIC_CONTEXT_BOUNDS = {"south": 40.0, "west": -70.0, "north": 55.0, "east": -40.0}
 
+# The evidence box every gridded source is subset to on ingest (CONTEXT.md,
+# storage window decision #20): 45.0 to 50.5 N, 58.0 to 46.0 W. Stated once
+# here so an adapter that crops to it names the same numbers the registry's
+# coverage checks and ``weather_api.sites.EVIDENCE_BOX`` name.
+EVIDENCE_BOX_BOUNDS = {"south": 45.0, "west": -58.0, "north": 50.5, "east": -46.0}
+
 # The location this experiment answers for.
 ST_JOHNS = (47.5615, -52.7126)
 
 
 @dataclass(frozen=True)
 class FetchWindow:
-    """The rolling evidence window: three hours back, twenty-four forward."""
+    """The sliding evidence window: 24 hours back, 14 days forward.
+
+    The offsets are not literals here. `evidence-window-timeline` requires the
+    same window to bound the API's accepted ``valid_time``, this
+    ``FetchWindow``, the manifest QC gate and what the store retains, defined
+    in exactly one place; that place is ``weather_api.config``, re-exported by
+    ``ingest.window``. ``back_hours`` and ``forward_hours`` stay as overrides
+    for a caller that deliberately wants a narrower window in a test.
+    """
 
     now: datetime
-    back_hours: int = 3
-    forward_hours: int = 24
+    back_hours: float = WINDOW_BACK.total_seconds() / 3600.0
+    forward_hours: float = WINDOW_FORWARD.total_seconds() / 3600.0
 
     @property
     def start(self) -> datetime:

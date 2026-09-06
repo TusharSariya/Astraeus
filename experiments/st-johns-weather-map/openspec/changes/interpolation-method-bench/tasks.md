@@ -102,6 +102,8 @@ merge cost. One module per method makes the next one a new file.
       Still to record: the artifact size before and after, which needs a
       stored-size comparison the running stack does not expose directly.
 
+## 7. Additional methods
+
 - [x] 7.1 `intermediate-flow` - Super SloMo's quadratic-in-t intermediate
       flow from both `F01` and `F10` (both already stored, `F10` never
       served), instead of assuming the forward flow inverts.

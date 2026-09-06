@@ -1,6 +1,6 @@
 """NOAA SWPC space-weather adapters: planetary Kp, real-time solar wind, OVATION.
 
-Three adapters over the keyless SWPC JSON services, in the AWC pattern:
+Four adapters over the keyless SWPC JSON services, in the AWC pattern:
 injectable PoliteClient and URLs, JSON parsed in ``discover`` and carried
 through ``RunCandidate.detail``, xarray to zipped Zarr.
 
@@ -9,22 +9,34 @@ Honesty rules specific to space weather:
 - Observed and forecast Kp are separate artifacts; the forecast keeps the
   provider's own per-value ``observed|estimated|predicted`` status as a
   flag-coded variable. No lead hours are synthesized.
-- The Kp and solar-wind series carry deliberately NO latitude/longitude:
-  a planetary quantity must never reach ``/point`` wearing a sample
-  distance. Only the OVATION grid - genuinely gridded - keeps coordinates.
+- These series carry deliberately NO latitude/longitude: a planetary or L1
+  quantity must never reach ``/point`` wearing a sample distance. Only the
+  OVATION grid - genuinely gridded - keeps coordinates.
 - Every timestamp comes from the feed itself; an OVATION payload without its
   own Observation/Forecast Time is refused, never wall-clock stamped.
-- The solar-wind source is described as the SWPC real-time solar wind feed;
-  no spacecraft is named here because the feed's own ``source`` field is the
-  only authority on which spacecraft measured.
+- DSCOVR is gone from the real-time solar wind feed. Nothing here names a
+  spacecraft: the feed's own ``source`` token per record is the only
+  authority, so the L1 series is stored on a ``spacecraft`` axis whose
+  labels are those tokens verbatim (SWFO-L1 as ``SOLAR1``, ``ACE``,
+  ``IMAP``), and a reading is never detached from the craft that took it.
+  Which craft the feed calls primary is the feed's own ``active`` flag,
+  stored per row like any other value rather than resolved away here.
+- Every quality flag the feed serves is stored, including the ``-9999``
+  sentinel SWPC puts in ``max_data_flag``, verbatim and un-recoded: a
+  reading whose quality the provider could not state must not arrive
+  looking clean. A null stays NaN; a spacecraft absent at an instant stays
+  NaN in that cell.
 """
 
 from __future__ import annotations
 
 import logging
+import shutil
+import tempfile
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import numpy
 import xarray
@@ -40,7 +52,22 @@ from ingest.contract import (
 )
 from ingest.grib import write_zarr
 from ingest.http import PoliteClient
+from ingest.manifest import declared_classes
 from ingest.registry import register
+from ingest.space_weather import (
+    MAX_LARGE_FEED_BYTES,
+    FeedReceipt,
+    fetch_json,
+    flag_attrs,
+    flag_or_nan,
+    float_or_nan,
+    format_time,
+    parse_time,
+    platform_series_dataset,
+    records as _feed_records,
+    series_provenance,
+    series_quality,
+)
 
 UTC = timezone.utc
 _log = logging.getLogger(__name__)
@@ -49,6 +76,7 @@ SWPC_BASE = "https://services.swpc.noaa.gov"
 KP_OBSERVED_URL = f"{SWPC_BASE}/products/noaa-planetary-k-index.json"
 KP_FORECAST_URL = f"{SWPC_BASE}/products/noaa-planetary-k-index-forecast.json"
 RTSW_MAG_URL = f"{SWPC_BASE}/json/rtsw/rtsw_mag_1m.json"
+RTSW_WIND_URL = f"{SWPC_BASE}/json/rtsw/rtsw_wind_1m.json"
 OVATION_URL = f"{SWPC_BASE}/json/ovation_aurora_latest.json"
 
 KP_STATUS_VALUES = [0, 1, 2]
@@ -56,45 +84,18 @@ KP_STATUS_MEANINGS = "observed estimated predicted"
 _KP_STATUS_CODE = {"observed": 0, "estimated": 1, "predicted": 2}
 
 
-def _parse_time(value: Any) -> datetime | None:
-    """A feed ``time_tag`` (or OVATION time) as an aware UTC datetime."""
-    if not isinstance(value, str) or not value.strip():
-        return None
-    text = value.strip().replace("Z", "+00:00")
-    try:
-        stamp = datetime.fromisoformat(text)
-    except ValueError:
-        return None
-    if stamp.tzinfo is None:
-        stamp = stamp.replace(tzinfo=UTC)
-    return stamp.astimezone(UTC)
+#: The seam's parser and reader under the names this module has always
+#: exported. They are the same behaviour, defined once in
+#: ``ingest.space_weather`` so every space-weather adapter reads a feed the
+#: same way; the aliases stay because callers (and the live-smoke tripwire)
+#: import them from here.
+_parse_time = parse_time
+_float_or_nan = float_or_nan
 
 
-def _records(payload: Any, *, required: tuple[str, ...]) -> list[dict[str, Any]]:
-    """SWPC list payloads as dicts.
-
-    The products endpoints have served both a list of objects and a list of
-    rows with a header row; both are accepted, anything else is refused by
-    the caller receiving an empty list.
-    """
-    if not isinstance(payload, list) or not payload:
-        return []
-    if isinstance(payload[0], dict):
-        return [record for record in payload if isinstance(record, dict) and all(key in record for key in required)]
-    if isinstance(payload[0], list):
-        header = [str(name) for name in payload[0]]
-        if not all(name in header for name in required):
-            return []
-        return [dict(zip(header, row)) for row in payload[1:] if isinstance(row, list) and len(row) == len(header)]
-    return []
-
-
-def _float_or_nan(value: Any) -> float:
-    try:
-        result = float(value)
-    except (TypeError, ValueError):
-        return float("nan")
-    return result
+def _records(payload: Any, *, required: Sequence[str]) -> list[dict[str, Any]]:
+    """SWPC list payloads as dicts (objects or a header row); see the seam."""
+    return _feed_records(payload, required=required)
 
 
 def _series_dataset(times: list[datetime], variables: Mapping[str, tuple[numpy.ndarray, dict[str, Any]]], attrs: Mapping[str, Any]) -> xarray.Dataset:
@@ -186,6 +187,8 @@ class SWPCKpAdapter:
                 "adapter_version": self.adapter_version,
                 "quality": quality,
                 "coverage": coverage,
+                # The planetary indices as SWPC issued them.
+                **declared_classes(["retrieved"]),
             }
 
         observed_rows = sorted(
@@ -251,87 +254,315 @@ class SWPCKpAdapter:
         )
 
 
-class SWPCSolarWindAdapter:
-    """The SWPC real-time solar wind magnetometer series (1-minute)."""
+@dataclass(frozen=True)
+class _Field:
+    """One stored variable of an interleaved L1 feed.
 
-    source_id = "noaa-swpc-rtsw"
-    adapter_version = "swpc-rtsw-v1"
+    ``name`` is both the stored variable name and the feed's own key: the
+    two rtsw feeds spell every field exactly as the pinned contract does
+    (verified against a live capture, 2026-09-05), so there is no rename
+    to hide a drift behind. A field the feed stops serving becomes NaN
+    everywhere rather than silently disappearing.
+    """
 
-    def __init__(self, client: PoliteClient | None = None, url: str = RTSW_MAG_URL) -> None:
+    name: str
+    attrs: dict[str, Any]
+    #: Booleans go through ``flag_or_nan`` so ``false`` stays 0 and absent
+    #: stays NaN; numbers go through ``float_or_nan``.
+    flag: bool = False
+    #: Counted in provenance ``quality_flags_stored`` - the provider's own
+    #: quality statement about the row, stored, never used to filter here.
+    quality: bool = False
+
+
+def _measured(units: str, long_name: str, *, original: str | None = None) -> dict[str, Any]:
+    return {"units": units, "original_units": original or units, "long_name": long_name}
+
+
+def _verbatim_flag(long_name: str, *, sentinel: bool = False) -> dict[str, Any]:
+    """A provider integer kept exactly as served, sentinel included."""
+    attrs = {
+        "units": "dimensionless",
+        "original_units": "provider flag integer",
+        "long_name": long_name,
+    }
+    if sentinel:
+        # SWPC serves -9999 where it has no flag to give. It is stored as
+        # -9999, not as a gap and not as zero, so a consumer can tell
+        # "no quality stated" from "quality nominal".
+        attrs["sentinel_as_served"] = -9999
+    return attrs
+
+
+_ACTIVE_FIELD = _Field(
+    "active",
+    flag_attrs(["inactive", "active"], long_name="the feed's own primary-spacecraft flag for this row"),
+    flag=True,
+    quality=True,
+)
+
+RTSW_MAG_FIELDS: tuple[_Field, ...] = (
+    _Field("bt", _measured("nT", "interplanetary magnetic field total, as retrieved")),
+    _Field("bx_gse", _measured("nT", "interplanetary magnetic field Bx, GSE, as retrieved")),
+    _Field("by_gse", _measured("nT", "interplanetary magnetic field By, GSE, as retrieved")),
+    _Field("bz_gse", _measured("nT", "interplanetary magnetic field Bz, GSE, as retrieved")),
+    _Field("bx_gsm", _measured("nT", "interplanetary magnetic field Bx, GSM, as retrieved")),
+    _Field("by_gsm", _measured("nT", "interplanetary magnetic field By, GSM, as retrieved")),
+    _Field("bz_gsm", _measured("nT", "interplanetary magnetic field Bz, GSM, as retrieved")),
+    _Field("theta_gse", _measured("degree", "field latitude angle, GSE, as retrieved")),
+    _Field("phi_gse", _measured("degree", "field longitude angle, GSE, as retrieved")),
+    _Field("theta_gsm", _measured("degree", "field latitude angle, GSM, as retrieved")),
+    _Field("phi_gsm", _measured("degree", "field longitude angle, GSM, as retrieved")),
+    _Field("sample_size", _measured("dimensionless", "samples averaged into this minute, as retrieved")),
+    _Field("range", _measured("dimensionless", "magnetometer range as served; NaN where the feed serves null")),
+    _Field("scale", _measured("dimensionless", "magnetometer scale as served; NaN where the feed serves null")),
+    _Field("sensitivity", _measured("dimensionless", "magnetometer sensitivity as served; NaN where the feed serves null")),
+    _Field("manual_mode", flag_attrs(["false", "true"], long_name="provider manual-mode flag"), flag=True, quality=True),
+    _ACTIVE_FIELD,
+    _Field("max_telemetry_flag", _verbatim_flag("provider maximum telemetry flag, verbatim", sentinel=True), quality=True),
+    _Field("max_data_flag", _verbatim_flag("provider maximum data flag, verbatim", sentinel=True), quality=True),
+    _Field("overall_quality", _verbatim_flag("provider overall quality, verbatim", sentinel=True), quality=True),
+)
+
+_PLASMA_SPEED = "km s-1"
+RTSW_WIND_FIELDS: tuple[_Field, ...] = (
+    _Field("proton_speed", _measured(_PLASMA_SPEED, "solar wind proton bulk speed, as retrieved")),
+    _Field("alpha_speed", _measured(_PLASMA_SPEED, "solar wind alpha bulk speed, as retrieved")),
+    _Field("proton_temperature", _measured("K", "solar wind proton temperature, as retrieved")),
+    _Field("alpha_temperature", _measured("K", "solar wind alpha temperature, as retrieved")),
+    _Field("proton_density", _measured("cm-3", "solar wind proton number density, as retrieved")),
+    _Field("alpha_density", _measured("cm-3", "solar wind alpha number density, as retrieved")),
+    _Field("proton_vx_gse", _measured(_PLASMA_SPEED, "proton velocity Vx, GSE, as retrieved")),
+    _Field("proton_vy_gse", _measured(_PLASMA_SPEED, "proton velocity Vy, GSE, as retrieved")),
+    _Field("proton_vz_gse", _measured(_PLASMA_SPEED, "proton velocity Vz, GSE, as retrieved")),
+    _Field("proton_vx_gsm", _measured(_PLASMA_SPEED, "proton velocity Vx, GSM, as retrieved")),
+    _Field("proton_vy_gsm", _measured(_PLASMA_SPEED, "proton velocity Vy, GSM, as retrieved")),
+    _Field("proton_vz_gsm", _measured(_PLASMA_SPEED, "proton velocity Vz, GSM, as retrieved")),
+    _Field("alpha_vx_gse", _measured(_PLASMA_SPEED, "alpha velocity Vx, GSE, as retrieved")),
+    _Field("alpha_vy_gse", _measured(_PLASMA_SPEED, "alpha velocity Vy, GSE, as retrieved")),
+    _Field("alpha_vz_gse", _measured(_PLASMA_SPEED, "alpha velocity Vz, GSE, as retrieved")),
+    _Field("alpha_vx_gsm", _measured(_PLASMA_SPEED, "alpha velocity Vx, GSM, as retrieved")),
+    _Field("alpha_vy_gsm", _measured(_PLASMA_SPEED, "alpha velocity Vy, GSM, as retrieved")),
+    _Field("alpha_vz_gsm", _measured(_PLASMA_SPEED, "alpha velocity Vz, GSM, as retrieved")),
+    _Field("proton_sample_size", _measured("dimensionless", "proton samples averaged into this minute, as retrieved")),
+    _Field("alpha_sample_size", _measured("dimensionless", "alpha samples averaged into this minute, as retrieved")),
+    _ACTIVE_FIELD,
+    _Field("max_convergence_flag", _verbatim_flag("provider maximum convergence flag, verbatim"), quality=True),
+    _Field("max_data_flag", _verbatim_flag("provider maximum data flag, verbatim"), quality=True),
+    _Field("max_error_count_flag", _verbatim_flag("provider maximum error count flag, verbatim"), quality=True),
+    _Field("max_processing_flag", _verbatim_flag("provider maximum processing flag, verbatim"), quality=True),
+    _Field("max_range_flag", _verbatim_flag("provider maximum range flag, verbatim"), quality=True),
+    _Field("max_sample_count_flag", _verbatim_flag("provider maximum sample count flag, verbatim"), quality=True),
+    _Field("max_telemetry_flag", _verbatim_flag("provider maximum telemetry flag, verbatim"), quality=True),
+    _Field("overall_quality", _verbatim_flag("provider overall quality, verbatim"), quality=True),
+)
+
+
+def _parse_platform_records(
+    records: list[dict[str, Any]], fields: Sequence[_Field]
+) -> tuple[list[datetime], list[str], dict[str, numpy.ndarray]]:
+    """The one parser both interleaved L1 feeds use.
+
+    The rtsw feeds serve one record per (instant, spacecraft), newest first,
+    with the spacecraft in the record's own ``source`` token. This lays them
+    onto the union of the instants any spacecraft reported times the sorted
+    set of the tokens seen, so a spacecraft that did not report at an
+    instant holds NaN in that cell rather than borrowing its neighbour's
+    reading. A record without a parseable instant or a declared source is
+    dropped: it names no time and no craft, so it is not evidence.
+    """
+    rows: list[tuple[datetime, str, dict[str, Any]]] = []
+    for record in records:
+        stamp = _parse_time(record.get("time_tag"))
+        raw_source = record.get("source")
+        label = str(raw_source).strip() if isinstance(raw_source, str) else ""
+        if stamp is None or not label:
+            continue
+        rows.append((stamp, label, record))
+    if not rows:
+        raise AdapterUnavailable("the rtsw feed carried no record with both a parseable time_tag and a declared source")
+    times = sorted({stamp for stamp, _, _ in rows})
+    labels = sorted({label for _, label, _ in rows})
+    time_index = {stamp: index for index, stamp in enumerate(times)}
+    label_index = {label: index for index, label in enumerate(labels)}
+    arrays = {field.name: numpy.full((len(times), len(labels)), numpy.nan) for field in fields}
+    for stamp, label, record in rows:
+        row, column = time_index[stamp], label_index[label]
+        for field in fields:
+            raw = record.get(field.name)
+            arrays[field.name][row, column] = flag_or_nan(raw) if field.flag else float_or_nan(raw)
+    return times, labels, arrays
+
+
+def _active_at(times: list[datetime], labels: list[str], active: numpy.ndarray) -> str | None:
+    """The spacecraft the feed flagged active at the newest instant, if any."""
+    newest = active[-1]
+    flagged = [labels[index] for index, value in enumerate(newest) if value == 1.0]
+    return flagged[0] if len(flagged) == 1 else None
+
+
+class _RTSWFeedAdapter:
+    """Shared behaviour for the two interleaved real-time solar wind feeds.
+
+    Both are the same shape - one JSON list of per-(minute, spacecraft)
+    records under a byte ceiling - so discovery, the staleness guard and the
+    write differ only in which fields are stored and what the product is
+    called. Subclasses supply those; nothing else is per-feed.
+    """
+
+    source_id: str
+    adapter_version: str
+    logical_name: str
+    product: str
+    run_prefix: str
+    key_variable: str
+    fields: tuple[_Field, ...]
+    required_keys: tuple[str, ...]
+    required_physical_fields: tuple[str, ...]
+    default_url: str
+
+    def __init__(self, client: PoliteClient | None = None, url: str | None = None) -> None:
         self._client = client
-        self._url = url
+        self._url = url or self.default_url
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
 
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
-        client = self._get_client()
+        scratch = Path(tempfile.mkdtemp(prefix="rtsw-"))
         try:
-            records = _records(client.get(self._url).json(), required=("time_tag", "bz_gsm"))
-        except Exception as error:
-            raise AdapterUnavailable(f"SWPC RTSW endpoint unavailable: {error}") from error
+            payload, receipt = fetch_json(
+                self._get_client(), self._url, max_bytes=MAX_LARGE_FEED_BYTES, workdir=scratch
+            )
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+        records = _records(payload, required=self.required_keys)
         if not records:
-            raise AdapterUnavailable("SWPC RTSW returned no magnetometer records")
-        newest = max((t for t in (_parse_time(r.get("time_tag")) for r in records) if t is not None), default=None)
-        if newest is None:
-            raise AdapterUnavailable("SWPC RTSW records carry no parseable time_tag")
+            raise AdapterUnavailable(
+                f"{self._url} carried no record with {', '.join(self.required_keys)}; refused rather than guessed"
+            )
+        times, labels, _arrays = _parse_platform_records(records, self.fields)
+        newest = times[-1]
+        if newest < window.start:
+            # An HTTP 200 over a frozen feed is not evidence of now.
+            raise AdapterUnavailable(
+                f"{self._url} is stale behind HTTP 200: its newest instant {format_time(newest)} "
+                f"is older than the window start {format_time(window.start)}"
+            )
         return [
             RunCandidate(
-                provider_run_id=f"swpc-rtsw-{newest.strftime('%Y%m%d%H%M')}",
+                provider_run_id=f"{self.run_prefix}-{newest.strftime('%Y%m%d%H%M')}",
                 run_time=newest,
                 urls=[self._url],
-                detail={"records": records},
+                detail={
+                    "records": records,
+                    "receipt": receipt,
+                    "valid_times": [format_time(stamp) for stamp in times],
+                    "spacecraft": labels,
+                },
             )
         ]
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         records = candidate.detail.get("records") or []
-        if not records:
-            raise AdapterUnavailable("SWPC RTSW fetch carried no records")
-        rows = sorted(
-            ((t, r) for t, r in (((_parse_time(r.get("time_tag"))), r) for r in records) if t is not None),
-            key=lambda item: item[0],
-        )
-        if not rows:
-            raise AdapterUnavailable("SWPC RTSW records carry no parseable time_tag")
-        times = [t for t, _ in rows]
-        bz = numpy.array([_float_or_nan(r.get("bz_gsm")) for _, r in rows])
-        bt = numpy.array([_float_or_nan(r.get("bt")) for _, r in rows])
-        # The measuring spacecraft is whatever the feed itself declares.
-        sources = sorted({str(r.get("source")) for _, r in rows if r.get("source")})
-        dataset = _series_dataset(
+        receipt = candidate.detail.get("receipt")
+        if not records or not isinstance(receipt, FeedReceipt):
+            raise AdapterUnavailable(f"{self.source_id} fetch carried no records or no retrieval receipt")
+        times, labels, arrays = _parse_platform_records(records, self.fields)
+        declared = ", ".join(labels)
+        dataset = platform_series_dataset(
             times,
+            labels,
+            {field.name: (arrays[field.name], field.attrs) for field in self.fields},
             {
-                "bz_gsm": (bz, {"units": "nT", "original_units": "nT", "long_name": "interplanetary magnetic field Bz, GSM, as retrieved"}),
-                "bt": (bt, {"units": "nT", "original_units": "nT", "long_name": "interplanetary magnetic field total, as retrieved"}),
+                "source": self.product,
+                "feed_declared_spacecraft": declared,
+                "spacecraft_axis_note": "labels are the feed's own source tokens, verbatim; a spacecraft absent at an instant is NaN there",
             },
-            {"source": "SWPC real-time solar wind (magnetometer)", "feed_declared_spacecraft": ", ".join(sources) or "undeclared"},
+            platform_dim="spacecraft",
         )
-        quality, coverage = _series_quality("bz_gsm", bz)
-        path = workdir / "swpc_rtsw_mag.zarr.zip"
+        quality, coverage = series_quality(
+            self.key_variable,
+            arrays[self.key_variable],
+            required_fields={name: arrays[name] for name in self.required_physical_fields},
+        )
+        path = workdir / f"{self.logical_name}.zarr.zip"
         write_zarr(dataset, path)
-        provenance = {
-            "source_id": self.source_id,
-            "producer": "NOAA Space Weather Prediction Center",
-            "product": "Real-time solar wind magnetic field (1-minute)",
-            "native_resolution": "L1 point measurement (no spatial resolution)",
-            "native_crs": "not_applicable",
-            "adapter_version": self.adapter_version,
-            "quality": quality,
-            "coverage": coverage,
-            "feed_declared_spacecraft": ", ".join(sources) or "undeclared",
-        }
+        active_label = _active_at(times, labels, arrays["active"])
+        provenance = series_provenance(
+            source_id=self.source_id,
+            producer="NOAA Space Weather Prediction Center",
+            product=self.product,
+            adapter_version=self.adapter_version,
+            quality=quality,
+            coverage=coverage,
+            evidence_classes=["retrieved"],
+            receipts=[receipt],
+            native_resolution="L1 point measurement, 1-minute (no spatial resolution)",
+            measurement_scope="l1",
+            extra={
+                "spacecraft": labels,
+                "active_spacecraft_at_newest": active_label,
+                "quality_flags_stored": [field.name for field in self.fields if field.quality],
+                "feed_declared_spacecraft": declared,
+            },
+        )
         return RunResult(
             source_id=self.source_id,
             provider_run_id=candidate.provider_run_id,
             run_time=candidate.run_time or times[-1],
             retrieved_at=datetime.now(UTC),
-            complete=quality["status"] == "passed",
+            complete=coverage["status"] == "complete",
             qc_passed=True,
-            artifacts=[Artifact("solar_wind", MEDIA_ZARR, path, provenance)],
+            artifacts=[Artifact(self.logical_name, MEDIA_ZARR, path, provenance)],
             native_crs=None,
-            notes=f"{len(times)} 1-minute magnetometer records; spacecraft per feed: {', '.join(sources) or 'undeclared'}",
+            notes=(
+                f"{len(records)} records over {len(times)} instants x spacecraft {declared}; "
+                f"active at the newest instant: {active_label or 'none flagged'}"
+            ),
         )
+
+
+class SWPCSolarWindAdapter(_RTSWFeedAdapter):
+    """The real-time solar wind magnetometer feed, per spacecraft.
+
+    SWFO-L1 (the feed's ``SOLAR1``), ACE and IMAP are interleaved minute by
+    minute; which one the feed calls primary moves. Storing them on a
+    spacecraft axis with the feed's ``active`` flag per row is what lets a
+    reader say which craft measured the Bz it is looking at.
+    """
+
+    source_id = "noaa-swpc-rtsw"
+    adapter_version = "swpc-rtsw-v2"
+    logical_name = "solar_wind"
+    product = "Real-time solar wind magnetic field (1-minute, per spacecraft)"
+    run_prefix = "swpc-rtsw"
+    key_variable = "bz_gsm"
+    fields = RTSW_MAG_FIELDS
+    required_keys = ("time_tag", "source", "bz_gsm")
+    required_physical_fields = ("bz_gsm", "bt")
+    default_url = RTSW_MAG_URL
+
+
+class SWPCPlasmaAdapter(_RTSWFeedAdapter):
+    """The real-time solar wind plasma feed, per spacecraft.
+
+    The old ``products/solar-wind/plasma-7-day.json`` product is HTTP 404
+    (verified 2026-09-05); this rtsw wind feed is where the plasma moments
+    live, and it is a separate source because it is a separate retrieval
+    with its own receipt, its own quality flags and its own gaps.
+    """
+
+    source_id = "noaa-swpc-plasma"
+    adapter_version = "swpc-plasma-v1"
+    logical_name = "solar_wind_plasma"
+    product = "Real-time solar wind plasma (1-minute, per spacecraft)"
+    run_prefix = "swpc-plasma"
+    key_variable = "proton_speed"
+    fields = RTSW_WIND_FIELDS
+    required_keys = ("time_tag", "source", "proton_speed")
+    required_physical_fields = ("proton_speed", "proton_density", "proton_temperature")
+    default_url = RTSW_WIND_URL
 
 
 class SWPCOvationAdapter:
@@ -447,6 +678,7 @@ class SWPCOvationAdapter:
             "adapter_version": self.adapter_version,
             "quality": quality,
             "coverage": coverage,
+            **declared_classes(["retrieved"]),
             "observation_time": observation.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "model_disclosure": "OVATION model output; a nowcast, not an observation",
         }
@@ -465,4 +697,5 @@ class SWPCOvationAdapter:
 
 KP_ADAPTER = register(SWPCKpAdapter())
 RTSW_ADAPTER = register(SWPCSolarWindAdapter())
+PLASMA_ADAPTER = register(SWPCPlasmaAdapter())
 OVATION_ADAPTER = register(SWPCOvationAdapter())

@@ -193,7 +193,7 @@ def test_headers_declare_rendered_grid_provenance(monkeypatch, data_mode):
 
 # --------------------------------------------------------------- failures
 
-def test_frame_beyond_half_cadence_is_422(monkeypatch, data_mode):
+def test_frame_beyond_tolerance_is_422(monkeypatch, data_mode):
     use_store(monkeypatch, data_mode, MaskStore(mask_dataset()))
     late = scan_times()[-1] + timedelta(minutes=45)
     response = _raster({"valid_time": late.isoformat()})
@@ -229,7 +229,9 @@ def test_layer_listed_beside_untouched_proxies(monkeypatch, data_mode):
     assert entry["raster_available"] and entry["legend_available"]
     assert entry["upstream_wms_layer"] is None
     assert [datetime.fromisoformat(t) for t in entry["times"]] == scan_times()
-    assert entry["staleness_tolerance_seconds"] == satellite.STALENESS_TOLERANCE_SECONDS
+    # One native interval, derived from the stored ten-minute scans.
+    assert entry["staleness_tolerance_seconds"] == 600
+    assert satellite.STALENESS_TOLERANCE_SECONDS == 600  # the unknown-cadence fallback agrees
     assert "never a definitive statement of clear sky" in entry["semantics"]
     # The generic artifact-derived listing does not duplicate it.
     assert "noaa-goes-east-cloud_mask" not in by_id

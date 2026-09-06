@@ -131,11 +131,15 @@ def test_an_artifact_whose_geometry_is_unknown_is_not_offered_as_a_layer():
     assert layer_kind("application/octet-stream", None) is None
 
 
-def test_tolerance_is_half_a_cadence_so_a_fast_layer_is_not_answered_by_a_stale_frame():
-    # Radar publishes every six minutes; a fifteen-minute floor would have let a
-    # frame two sweeps old answer as current.
-    assert staleness_tolerance_seconds(360) == 180
-    assert staleness_tolerance_seconds(3600) == 1800
+def test_tolerance_is_one_native_interval_so_a_layer_answers_at_its_own_resolution():
+    # One native interval, not half of one: within a layer's own resolution
+    # there is a frame that genuinely belongs to the requested instant, so a
+    # six-minute radar layer tolerates six minutes rather than three.
+    assert staleness_tolerance_seconds(360) == 360
+    assert staleness_tolerance_seconds(3600) == 3600
+    # The coarser planning steps, where half a cadence was most wrong.
+    assert staleness_tolerance_seconds(10800) == 10800
+    assert staleness_tolerance_seconds(21600) == 21600
     # An underivable cadence still gets a bound rather than an open one.
     assert staleness_tolerance_seconds(None) == 900
 
@@ -168,3 +172,53 @@ def test_a_cell_with_no_value_produces_no_feature():
 
 def test_layer_ids_are_formed_in_one_place():
     assert layer_id_for("eccc-radar", "radar") == "eccc-radar-radar"
+
+
+def test_empty_vector_http_readback_distinguishes_observation_missing_and_failed(monkeypatch):
+    """GOES experiment: an empty stored interval is evidence only after a good read."""
+    import importlib
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    api = importlib.import_module("weather_api.app")
+    item = replace(
+        artifact(source_id="noaa-goes-glm", logical_name="glm_lcfa", media_type="application/geo+json"),
+        provenance={"valid_times": [START.isoformat()], "bounds": {"west": -58, "east": -46, "south": 45, "north": 50.5}},
+    )
+    store = StubStore([(item, None)])
+    monkeypatch.setattr(api, "now", lambda: START)
+    monkeypatch.setattr(api, "fixture_mode", lambda: False)
+    monkeypatch.setattr(api, "live_store", lambda: store)
+    monkeypatch.setattr(store, "_read_geojson", lambda _: {"type": "FeatureCollection", "features": []})
+    client = TestClient(api.app)
+    route = f"{api.PREFIX}/layers/noaa-goes-glm-glm_lcfa/features"
+    response = client.get(route, params={"valid_time": START.isoformat()})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data_mode"] == "live"
+    assert body["operational"] is False
+    assert body["features"] == []
+    assert body["empty_observations"][0]["revision_id"] == item.revision_id
+    assert body["empty_observations"][0]["valid_time"] == START.isoformat()
+
+    missing = client.get(route, params={"valid_time": (START + timedelta(seconds=20)).isoformat()}).json()
+    assert missing["data_mode"] == "unavailable"
+    assert missing["empty_observations"] == []
+
+    def failed_read(_):
+        raise OSError("object unavailable")
+
+    monkeypatch.setattr(store, "_read_geojson", failed_read)
+    failed = client.get(route, params={"valid_time": START.isoformat()}).json()
+    assert failed["data_mode"] == "unavailable"
+    assert failed["empty_observations"] == []
+
+    for malformed in ({}, {"type": "FeatureCollection", "features": [None]}):
+        monkeypatch.setattr(store, "_read_geojson", lambda _, doc=malformed: doc)
+        failed = client.get(route, params={"valid_time": START.isoformat()}).json()
+        assert failed["data_mode"] == "unavailable"
+        assert failed["empty_observations"] == []
+
+    monkeypatch.setattr(store, "current", lambda: [])
+    assert client.get(route, params={"valid_time": START.isoformat()}).status_code == 404

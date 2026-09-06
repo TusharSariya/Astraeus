@@ -1,0 +1,57 @@
+{
+  "adapter_version": "gfz-hp60-current-v1",
+  "api_readback": {
+    "artifact_sha256_verified_before_readback": true,
+    "data_mode": "live",
+    "evidence_classes": [
+      "retrieved"
+    ],
+    "http_status": 200,
+    "latest": [
+      {
+        "label": null,
+        "time": "2026-09-05T22:00:00Z",
+        "units": "dimensionless",
+        "value": 1.0,
+        "variable": "hp60_index"
+      }
+    ],
+    "latest_fields_verified": 1,
+    "latest_value_unit_time_match": true,
+    "logical_name": "hp60",
+    "measurement_scope": "planetary",
+    "missing_required_fields": [],
+    "newest_instant": "2026-09-05T22:00:00Z",
+    "operational": false,
+    "provider_run_id": "gfz-hp60-current-202609052200",
+    "quality_status": "unknown",
+    "record_count": 23,
+    "revision_id": "capture-gfz-hp60-current-12ec9e1ca98b6572",
+    "route": "/api/experiments/weather/v0/space-weather/products",
+    "source_id": "gfz-hp60-current",
+    "structural_validation_status": "passed"
+  },
+  "artifact_byte_size": 2561,
+  "artifact_revision": "capture-gfz-hp60-current-12ec9e1ca98b6572",
+  "artifact_sha256": "12ec9e1ca98b6572cfa0c1ec5986e47358dce9cc22f69a586a6c30d4360c1782",
+  "byte_count": 729,
+  "captured_at": "2026-09-05T23:47:22Z",
+  "complete": true,
+  "instant_count": 23,
+  "last_modified": null,
+  "logical_name": "hp60",
+  "newest_instant": "2026-09-05T22:00:00Z",
+  "notes": "23 hourly Hp60 values from 2026-09-05T00:00:00Z to 2026-09-05T22:00:00Z; licence CC BY 4.0; the Hp60 JSON declares no per-value nowcast/definitive status; none is invented",
+  "oldest_instant": "2026-09-05T00:00:00Z",
+  "platforms": {},
+  "provider_run_id": "gfz-hp60-current-202609052200",
+  "record_count": 23,
+  "request_parameters": {
+    "end": "2026-09-05T23:47:22Z",
+    "index": "Hp60",
+    "start": "2026-09-04T23:47:22Z"
+  },
+  "sha256": "28010359e92d8762ce494a89572ad826d20fdd5286979b9ad4ecf94bf1ad1106",
+  "source_id": "gfz-hp60-current",
+  "url": "https://kp.gfz.de/app/json/?start=2026-09-04T23%3A47%3A22Z&end=2026-09-05T23%3A47%3A22Z&index=Hp60"
+}

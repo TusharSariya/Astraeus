@@ -95,8 +95,14 @@ _FILE_RUN_STAMP = re.compile(r"(?P<date>\d{8})T(?P<hour>\d{2})Z")
 _CYCLE_DIR = re.compile(r"^\d{2}/?$")
 _LEAD_DIR = re.compile(r"^\d{3}/?$")
 
-# ``total_cloud`` is published from the message's own WMO keys, not from
-# ecCodes' concept files.
+# ``total_cloud_opacity`` is published from the message's own WMO keys, not
+# from ecCodes' concept files.
+#
+# The key says opacity because the quantity is opacity-weighted: ECCC GEM's
+# total cloud weights each layer by how much light it actually stops, so thin
+# cirrus reads near zero. GFS publishes a geometric maximum-random overlap
+# fraction under the same English words, which is why they are two catalogue
+# keys and not one (registry.fields, family cloud_cover).
 #
 # MSC publishes it (HRDPS ``TCDC_Sfc``, RDPS ``TotalCloudCover_Sfc``) and the
 # files download fine, but the message decodes with ``paramId=0`` and
@@ -246,7 +252,7 @@ def _profile_vars(rh_prefix: str, temp_prefix: str, height_prefix: str, token: s
       ``gpm``
 
     None decodes as ``unknown``, so no WMO-key declaration is needed here (see
-    the ``total_cloud`` comment above for the one field that does); only the
+    the ``total_cloud_opacity`` comment above for the one field that does); only the
     unit normalisation the adapter already applies, plus the measured
     saturation-phase stamp on every RH level.
 
@@ -303,7 +309,7 @@ HRDPS_VARS = {
     "wind_u_10m": ("UGRD", "AGL-10m"),
     "wind_v_10m": ("VGRD", "AGL-10m"),
     "mean_sea_level_pressure": ("PRMSL", "MSL"),
-    "total_cloud": ("TCDC", "Sfc"),
+    "total_cloud_opacity": ("TCDC", "Sfc"),
     **HRDPS_STEERING_VARS,
     **HRDPS_OMEGA_VARS,
     **HRDPS_THERMO_VARS,
@@ -317,7 +323,7 @@ RDPS_VARS = {
     "wind_u_10m": ("WindU", "AGL-10m"),
     "wind_v_10m": ("WindV", "AGL-10m"),
     "mean_sea_level_pressure": ("Pressure_MSL", "MSL"),
-    "total_cloud": ("TotalCloudCover", "Sfc"),
+    "total_cloud_opacity": ("TotalCloudCover", "Sfc"),
     **RDPS_STEERING_VARS,
     **RDPS_OMEGA_VARS,
     **RDPS_THERMO_VARS,
@@ -342,7 +348,7 @@ CANONICAL_FIELD_UNITS = {
     "wind_u_10m": ("m s-1", "10 m"),
     "wind_v_10m": ("m s-1", "10 m"),
     "mean_sea_level_pressure": ("hPa", "mean sea level"),
-    "total_cloud": ("percent", "column"),
+    "total_cloud_opacity": ("percent", "column"),
     **{f"wind_{component}_{level}hPa": ("m s-1", f"{level} hPa")
        for level in STEERING_LEVELS_HPA for component in ("u", "v")},
     **{f"omega_{level}hPa": ("Pa s-1", f"{level} hPa") for level in STEERING_LEVELS_HPA},
@@ -457,6 +463,7 @@ class ECCCDataMartAdapter:
         client: PoliteClient | None = None,
         base_url: str = ECCC_DATAMART_BASE,
         fallback_days: int = 1,
+        datamart_fallback_path: str | None = None,
     ) -> None:
         self.source_id = source_id
         self.model_subpath = model_subpath
@@ -468,6 +475,7 @@ class ECCCDataMartAdapter:
         self._client = client
         self._base_url = base_url.rstrip("/")
         self._fallback_days = max(0, fallback_days)
+        self._declared_fallback = datamart_fallback_path
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()
@@ -475,9 +483,43 @@ class ECCCDataMartAdapter:
     def model_root(self, date_str: str) -> str:
         return f"{self._base_url}/{date_str}/{DATED_PATH_SEGMENT}/{self.model_subpath}/"
 
+    # --- the declared dated WXO-DD fallback ------------------------------
+    def declared_fallback_path(self) -> str | None:
+        """The dated WXO-DD path this source's registry record declares.
+
+        Read from the record, not inferred: a path nobody declared is never
+        tried, because guessing a directory on a producer's tree is how a
+        fetch ends up naming a run it did not actually retrieve.
+        """
+        if self._declared_fallback is not None:
+            return self._declared_fallback or None
+        try:
+            from ingest.registry import get_config  # noqa: PLC0415
+
+            return get_config(self.source_id).datamart_fallback_path
+        except Exception:  # a record that cannot be read declares nothing
+            return None
+
+    def fallback_root(self, date_str: str, template: str | None = None) -> str | None:
+        """``template`` with ``{YYYYMMDD}`` filled in, cut back to its root.
+
+        The declared path is a full ``{YYYYMMDD}/WXO-DD/<model>/{HH}/{FFF}/``
+        template - the same shape the adapter already walks - so discovery
+        fills the date and stops where the cycle and lead placeholders begin;
+        ``fetch`` walks on from there exactly as it does under the primary.
+        """
+        declared = template if template is not None else self.declared_fallback_path()
+        if not declared:
+            return None
+        filled = declared.replace("{YYYYMMDD}", date_str)
+        root = filled.split("{", 1)[0]
+        return root if root.endswith("/") else f"{root}/"
+
     # --- discovery -------------------------------------------------------
     def _candidates_for_date(self, client: PoliteClient, date_str: str) -> list[RunCandidate]:
-        root_url = self.model_root(date_str)
+        return self._candidates_under_root(client, self.model_root(date_str), date_str)
+
+    def _candidates_under_root(self, client: PoliteClient, root_url: str, date_str: str) -> list[RunCandidate]:
         try:
             entries = client.list_directory(root_url)
         except Exception as error:
@@ -521,22 +563,55 @@ class ECCCDataMartAdapter:
                         "cycle_url": cycle_url,
                         "available_hours": hours,
                         "run_stamp": run_dt.strftime("%Y%m%dT%HZ"),
+                        # Which of the record's paths actually answered. It
+                        # travels onto the artifact so a served value can say
+                        # where it came from rather than where it usually does.
+                        "datamart_path": root_url,
                     },
                 )
             )
         return candidates
 
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
+        """The primary path, then the record's declared dated fallback.
+
+        The fallback is tried only where the record declares one; a source
+        that declares none reports its primary path alone and no alternative
+        is inferred from it. Whichever path answered is recorded on the
+        candidate and travels to ``RunResult.notes`` and every artifact's
+        provenance, so "which path answered" is a retrieved fact rather than
+        an assumption about the usual layout.
+        """
         client = self._get_client()
-        tried: list[str] = []
-        for day_offset in range(self._fallback_days + 1):
-            date_str = (window.now - timedelta(days=day_offset)).strftime("%Y%m%d")
-            tried.append(date_str)
-            candidates = self._candidates_for_date(client, date_str)
+        dates = [
+            (window.now - timedelta(days=day_offset)).strftime("%Y%m%d")
+            for day_offset in range(self._fallback_days + 1)
+        ]
+        primary = f"{self._base_url}/{{{','.join(dates)}}}/{DATED_PATH_SEGMENT}/{self.model_subpath}/"
+        for date_str in dates:
+            candidates = self._candidates_under_root(client, self.model_root(date_str), date_str)
             if candidates:
                 return candidates
+
+        declared = self.declared_fallback_path()
+        if not declared:
+            raise AdapterUnavailable(
+                f"{self.source_id}: no populated run cycle under {primary}; "
+                "the record declares no fallback path, and none is inferred"
+            )
+        for date_str in dates:
+            root_url = self.fallback_root(date_str, declared)
+            if not root_url or root_url == self.model_root(date_str):
+                # The declared fallback resolves to the path just tried; asking
+                # the same directory twice would not make it answer.
+                continue
+            candidates = self._candidates_under_root(client, root_url, date_str)
+            if candidates:
+                _log.info("%s: the declared fallback path answered: %s", self.source_id, root_url)
+                return candidates
         raise AdapterUnavailable(
-            f"{self.source_id}: no populated run cycle under {self._base_url}/{{{','.join(tried)}}}/{DATED_PATH_SEGMENT}/{self.model_subpath}/"
+            f"{self.source_id}: no populated run cycle under the primary path {primary} "
+            f"or the declared fallback path {declared}"
         )
 
     # --- retrieval -------------------------------------------------------
@@ -625,17 +700,17 @@ class ECCCDataMartAdapter:
                 if canonical_name not in fetched:
                     continue
                 try:
-                    # total_cloud's identity must be read from the message's own
+                    # The cloud field's identity must be read from the message's own
                     # WMO keys (see the map comment above), so those keys are
                     # requested for it and the declaration is applied - or the
                     # field is refused, never published with unknown units.
                     opened = (
                         open_grib(local_grib, read_keys=WMO_IDENTITY_READ_KEYS)
-                        if canonical_name == "total_cloud"
+                        if canonical_name == "total_cloud_opacity"
                         else open_grib(local_grib)
                     )
                     decoded = crop_to_bbox(opened, self.bounds)
-                    if canonical_name == "total_cloud" and not _cloud_units_declared(decoded):
+                    if canonical_name == "total_cloud_opacity" and not _cloud_units_declared(decoded):
                         decode_errors.append(f"undeclared_units:{match_file}")
                         continue
                     decoded = normalize_units(decoded)
@@ -708,8 +783,13 @@ class ECCCDataMartAdapter:
             "native_crs": "EPSG:4326",
             "adapter_version": self.adapter_version,
             "provider_run_stamp": candidate.detail.get("run_stamp", ""),
+            # Which declared path answered for this run: the primary, or the
+            # record's dated WXO-DD fallback.
+            "datamart_path": str(candidate.detail.get("datamart_path", "")),
             "quality": validation.as_quality(),
             "coverage": validation.as_coverage(),
+            # Model fields decoded from the producer's own GRIB, unmodified.
+            **manifest.as_manifest_block(),
         }
 
         artifact = Artifact(
@@ -728,7 +808,10 @@ class ECCCDataMartAdapter:
             qc_passed=validation.qc_passed,
             artifacts=[artifact],
             native_crs="EPSG:4326",
-            notes=f"Ingested {len(hourly_datasets)} forecast lead steps for {self.source_id}; {validation.detail}",
+            notes=(
+                f"Ingested {len(hourly_datasets)} forecast lead steps for {self.source_id} "
+                f"from {provenance['datamart_path'] or 'an unrecorded Datamart path'}; {validation.detail}"
+            ),
         )
 
 

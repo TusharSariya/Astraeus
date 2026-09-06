@@ -1,0 +1,214 @@
+{
+  "captured_at": "2026-09-06T00:56:45.608517+00:00",
+  "provider_request_count": 5,
+  "sources": {
+    "openmeteo-air-quality-particulates": {
+      "api_data_mode": "live",
+      "api_operational": false,
+      "api_provider_value_unit_time_source_revision_comparisons": 8,
+      "api_source_field_count": 8,
+      "api_status": 200,
+      "api_values": {
+        "aerosol_optical_depth_550nm": 0.11,
+        "carbon_monoxide_surface": 1.5600000000000002e-07,
+        "dust_surface": 0.0,
+        "nitrogen_dioxide_surface": 3.5000000000000003e-09,
+        "ozone_surface": 6.1e-08,
+        "pm10_surface": 1.06e-08,
+        "pm2_5_surface": 7.1e-09,
+        "sulphur_dioxide_surface": 6e-10
+      },
+      "artifact_bytes": 13000,
+      "artifact_revision": "openmeteo-air-quality-particulates-49b86508a428de10",
+      "artifact_sha256": "49b86508a428de106a9100ef7fa756208f807f7c777086bb10fd55e1534e3f8e",
+      "capture_time": "2026-09-06T00:56:47.247348+00:00",
+      "complete": true,
+      "field_disposition": {
+        "aerosol_optical_depth_550nm": "retrieved",
+        "carbon_monoxide_surface": "retrieved",
+        "dust_surface": "retrieved",
+        "nitrogen_dioxide_surface": "retrieved",
+        "ozone_surface": "retrieved",
+        "pm10_surface": "retrieved",
+        "pm2_5_surface": "retrieved",
+        "sulphur_dioxide_surface": "retrieved"
+      },
+      "qc_passed": true,
+      "receipts": [
+        {
+          "bytes": 1877,
+          "content_type": "application/json",
+          "parameters": {
+            "domains": [
+              "cams_global"
+            ],
+            "end_hour": [
+              "2026-09-06T23:00"
+            ],
+            "hourly": [
+              "pm2_5,pm10,aerosol_optical_depth,ozone,nitrogen_dioxide,sulphur_dioxide,carbon_monoxide,dust"
+            ],
+            "latitude": [
+              "47.5615"
+            ],
+            "longitude": [
+              "-52.7126"
+            ],
+            "start_hour": [
+              "2026-09-06T00:00"
+            ],
+            "timezone": [
+              "GMT"
+            ]
+          },
+          "retrieved_at": "2026-09-06T00:56:47.051813+00:00",
+          "sha256": "5016742170178fce735092d72f05bbcc9ecbdd4842a1c9dea754401d68e9d4b8",
+          "url": "https://air-quality-api.open-meteo.com/v1/air-quality"
+        },
+        {
+          "bytes": 594,
+          "content_type": "application/json",
+          "parameters": {},
+          "retrieved_at": "2026-09-06T00:56:47.192174+00:00",
+          "sha256": "8d7e1bd4dc4e5fd98c178a984dc4b8e8a9e213db7b8f17db579bf574bed862f2",
+          "url": "https://air-quality-api.open-meteo.com/data/cams_global/static/meta.json"
+        }
+      ],
+      "run_time": null
+    },
+    "openmeteo-cams-aod": {
+      "api_data_mode": "live",
+      "api_operational": false,
+      "api_provider_value_unit_time_source_revision_comparisons": 1,
+      "api_source_field_count": 1,
+      "api_status": 200,
+      "api_values": {
+        "aerosol_optical_depth_550nm": 0.11
+      },
+      "artifact_bytes": 4319,
+      "artifact_revision": "openmeteo-cams-aod-3ae5e5096a8d7ec4",
+      "artifact_sha256": "3ae5e5096a8d7ec43fd725eb5d1714a3203a56a7599e811fb8ff90368b3ce3aa",
+      "capture_time": "2026-09-06T00:56:46.464011+00:00",
+      "complete": true,
+      "field_disposition": {
+        "aerosol_optical_depth_550nm": "retrieved"
+      },
+      "qc_passed": true,
+      "receipts": [
+        {
+          "bytes": 855,
+          "content_type": "application/json",
+          "parameters": {
+            "domains": [
+              "cams_global"
+            ],
+            "end_hour": [
+              "2026-09-06T23:00"
+            ],
+            "hourly": [
+              "aerosol_optical_depth"
+            ],
+            "latitude": [
+              "47.5615"
+            ],
+            "longitude": [
+              "-52.7126"
+            ],
+            "start_hour": [
+              "2026-09-06T00:00"
+            ],
+            "timezone": [
+              "GMT"
+            ]
+          },
+          "retrieved_at": "2026-09-06T00:56:46.199267+00:00",
+          "sha256": "1cf72ed84ea02ebd1e62c603ce7912a04557e0ddb52fe9b361c4024538d99553",
+          "url": "https://air-quality-api.open-meteo.com/v1/air-quality"
+        },
+        {
+          "bytes": 594,
+          "content_type": "application/json",
+          "parameters": {},
+          "retrieved_at": "2026-09-06T00:56:46.341767+00:00",
+          "sha256": "8d7e1bd4dc4e5fd98c178a984dc4b8e8a9e213db7b8f17db579bf574bed862f2",
+          "url": "https://air-quality-api.open-meteo.com/data/cams_global/static/meta.json"
+        }
+      ],
+      "run_time": null
+    },
+    "openmeteo-lsa-saf-radiation": {
+      "api_data_mode": "live",
+      "api_operational": false,
+      "api_provider_value_unit_time_source_revision_comparisons": 12,
+      "api_source_field_count": 12,
+      "api_status": 200,
+      "api_values": {
+        "diffuse_shortwave_flux_hour_mean": 4.5,
+        "diffuse_shortwave_flux_instant": 0.0,
+        "direct_normal_irradiance_hour_mean": 0.0,
+        "direct_normal_irradiance_instant": 0.0,
+        "direct_shortwave_flux_hour_mean": 0.0,
+        "direct_shortwave_flux_instant": 0.0,
+        "downward_shortwave_flux_hour_mean": 4.5,
+        "downward_shortwave_flux_instant": 0.0,
+        "global_tilted_irradiance_hour_mean": 4.5,
+        "global_tilted_irradiance_instant": 0.0,
+        "terrestrial_radiation_flux_hour_mean": 110.9,
+        "terrestrial_radiation_flux_instant": 0.0
+      },
+      "artifact_bytes": 18339,
+      "artifact_revision": "openmeteo-lsa-saf-radiation-9b43f318bec80c5a",
+      "artifact_sha256": "9b43f318bec80c5ad5bcc0d1e8780e0352ae6d63a452bf27726fd7315056adcd",
+      "capture_time": "2026-09-06T00:56:47.959484+00:00",
+      "complete": true,
+      "field_disposition": {
+        "diffuse_shortwave_flux_hour_mean": "retrieved",
+        "diffuse_shortwave_flux_instant": "retrieved",
+        "direct_normal_irradiance_hour_mean": "retrieved",
+        "direct_normal_irradiance_instant": "retrieved",
+        "direct_shortwave_flux_hour_mean": "retrieved",
+        "direct_shortwave_flux_instant": "retrieved",
+        "downward_shortwave_flux_hour_mean": "retrieved",
+        "downward_shortwave_flux_instant": "retrieved",
+        "global_tilted_irradiance_hour_mean": "retrieved",
+        "global_tilted_irradiance_instant": "retrieved",
+        "terrestrial_radiation_flux_hour_mean": "retrieved",
+        "terrestrial_radiation_flux_instant": "retrieved"
+      },
+      "qc_passed": true,
+      "receipts": [
+        {
+          "bytes": 4798,
+          "content_type": "application/json",
+          "parameters": {
+            "end_date": [
+              "2026-09-06"
+            ],
+            "hourly": [
+              "shortwave_radiation,shortwave_radiation_instant,direct_radiation,direct_radiation_instant,diffuse_radiation,diffuse_radiation_instant,direct_normal_irradiance,direct_normal_irradiance_instant,global_tilted_irradiance,global_tilted_irradiance_instant,terrestrial_radiation,terrestrial_radiation_instant"
+            ],
+            "latitude": [
+              "47.5615"
+            ],
+            "longitude": [
+              "-52.7126"
+            ],
+            "models": [
+              "eumetsat_lsa_saf_msg"
+            ],
+            "start_date": [
+              "2026-09-05"
+            ],
+            "timezone": [
+              "GMT"
+            ]
+          },
+          "retrieved_at": "2026-09-06T00:56:47.898334+00:00",
+          "sha256": "f4053ee0ca816c213e99d1ea828b7ec93aae08b50d3ca3d4298bd3a9dd47efa3",
+          "url": "https://satellite-api.open-meteo.com/v1/archive"
+        }
+      ],
+      "run_time": null
+    }
+  }
+}

@@ -45,7 +45,7 @@ def artifact(*, source_id: str, logical_name: str, media_type: str = "applicatio
         object_key=f"artifacts/{source_id}/{logical_name}",
         media_type=media_type,
         byte_size=1024,
-        provenance={"units": "degC"},
+        provenance={"units": "degC", "evidence_classes": ["retrieved"]},
         published_at=STAMP,
         run_time=STAMP,
         retrieved_at=STAMP,
@@ -228,6 +228,16 @@ def test_a_regular_grid_still_takes_the_rectilinear_path():
     assert sample.sample_method == "rectilinear"
     assert sample.value == pytest.approx(9.25)
     assert sample.sampled_latitude is not None
+
+
+def test_sample_reports_the_selected_native_time_instead_of_the_request():
+    grid = artifact(source_id="noaa-gfs", logical_name="surface")
+    store = StubStore([(grid, rectilinear())])
+    requested = STAMP.replace(minute=30)
+
+    sample = store.sample_point(LATITUDE, LONGITUDE, requested)[0]
+
+    assert sample.valid_time == STAMP
 
 
 def test_the_nearest_cell_helper_returns_positional_indexers_for_one_cell():

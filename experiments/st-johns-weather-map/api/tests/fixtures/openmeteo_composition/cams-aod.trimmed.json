@@ -1,0 +1,1 @@
+{"_fixture_note":"Hand-trimmed representative CAMS global response; not current evidence.","latitude":47.6,"longitude":-52.7,"hourly_units":{"time":"iso8601","aerosol_optical_depth":""},"hourly":{"time":["2026-09-05T00:00","2026-09-05T01:00","2026-09-05T02:00"],"aerosol_optical_depth":[0.08,null,0.10]}}

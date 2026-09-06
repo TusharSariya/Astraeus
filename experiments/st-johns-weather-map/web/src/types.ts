@@ -29,6 +29,121 @@ export interface ProvenanceRow {
   /** Every `provenance.derivation` string this provider/product reported, one
    *  per derived field. Empty means every field of it was a provider value. */
   derivations: string[]
+  /** Every evidence class this provider/product reported, deduplicated in
+   *  first-seen order. A row carrying more than one says so. */
+  evidenceClasses: ResolvedEvidenceClass[]
+}
+
+/** How a value came to exist, as `provenance.evidence_class` declares it.
+ *  Required on every served value, with no default (ADR 0001). */
+export type EvidenceClass =
+  | 'retrieved'
+  | 'reprocessed'
+  | 'derived_here'
+  | 'intermediary_derived'
+  | 'generated_display'
+  | 'uncalibrated_observation'
+
+/** What the client resolved a declared class to. `unrecognised` covers both a
+ *  name outside the six and a provenance that declared none; both are shown
+ *  as unavailable with the reason, never as `retrieved`. */
+export type ResolvedEvidenceClass = EvidenceClass | 'unrecognised'
+
+/** How a source's values reach this deployment, as the registry declares it.
+ *  A separate axis from the evidence class: an `intermediary_derived` value is
+ *  still retrieved by this deployment. */
+export type DeliveryKind = 'published_cell' | 'reprocessed' | 'intermediary_derived'
+
+/** The declared phase of a humidity value. An attribute of the value, not part
+ *  of its key: liquid and mixed differ only below freezing, and two keys would
+ *  double every humidity field for a difference that vanishes above zero. */
+export type FieldPhase = 'liquid' | 'mixed'
+
+/** Where a field's data sits, as the catalogue's storage rule declares it.
+ *  `available-not-stored` and `not-published` are two different upstream facts
+ *  and neither is an absent VALUE; both stay distinct from `null`, `blocked`
+ *  and `aged_out`. */
+export type FieldStorage = 'stored' | 'available-not-stored' | 'not-published'
+
+/** One unordered pair of served members of one family, as `/point` answers it.
+ *  `reason` and `detail` are null when the pair is comparable. The client never
+ *  computes one of these: the phase rule needs the air temperature and the
+ *  catalogue's definitions, which live on the API side. */
+export interface ComparabilityPair {
+  family: string
+  a: string
+  b: string
+  comparable: boolean
+  reason: string | null
+  detail: string | null
+}
+
+/** One family's member set behind an ensemble value, as `provenance.ensemble.member_set`
+ *  declares it (Seam D). `membersMissing` is named wherever the set is partial,
+ *  never folded into a bare count. */
+export interface EnsembleMemberSet {
+  family: string
+  sourceId: string
+  runTime: string | null
+  membersDeclared: number
+  membersUsed: number
+  membersMissing: string[]
+  controlIncluded: boolean | null
+  partial: boolean
+}
+
+/** Everything an ensemble number needs to be labelled: the family and run it
+ *  came from, which statistic it is (null for a per-member value), the member
+ *  set it covers, and whether it was computed here or is a provider's own
+ *  reduction. A refused statistic carries `refusal` and no value. */
+export interface EnsembleProvenance {
+  family: string
+  statistic: string | null
+  computedHere: boolean
+  memberSet: EnsembleMemberSet | null
+  refusal: string | null
+  quantile: number | null
+  threshold: number | null
+  thresholdUnits: string | null
+  comparison: string | null
+  /** Set only on a time-averaged field (e.g. GEFS six-hour-mean total cloud).
+   *  Its presence is the averaged-versus-instantaneous fence. */
+  averagingWindowHours: number | null
+}
+
+/** One field of a `/catalog` source entry: what the source publishes, under
+ *  which catalogue key, and whether this deployment stores it. */
+export interface CatalogFieldEntry {
+  key: string
+  family: string
+  storage: FieldStorage | null
+  upstream: string | null
+  note: string | null
+}
+
+/** One input a `derived_here` value was computed from, as the response listed
+ *  it. Every field is what the API said; nothing is inferred from the input's
+ *  name. */
+export interface DerivationInput {
+  field: string
+  sourceId: string | null
+  product: string | null
+  validTime: string | null
+  /** The run the input came from, where the input had one. */
+  runTime: string | null
+  units: string | null
+  /** The input's own quality status, verbatim. Null when none was declared. */
+  quality: string | null
+  evidenceClass: ResolvedEvidenceClass
+  /** Exactly the class string the response carried for this input, or null. */
+  declaredClass: string | null
+}
+
+/** The registered derivation method a `derived_here` value names. */
+export interface DerivationMethod {
+  name: string
+  version: string | null
+  citation: string | null
 }
 
 /** Who produced the number a metric shows. Carried beside every displayed
@@ -40,10 +155,114 @@ export interface FieldAttribution {
   sourceId: string | null
   product: string | null
   provider: string
+  /** The catalogue key this value was served under, verbatim. Null when the
+   *  response declared none, which is said rather than guessed from the API
+   *  field name: a name and a catalogue key are not the same claim. */
+  fieldKey: string | null
+  /** The family the response put this value in. `ungrouped` when it declared
+   *  none — never inferred from how the key is spelled. */
+  family: string
+  /** The declared phase of a humidity value, or null for every other field and
+   *  for a humidity value that declared none. */
+  phase: FieldPhase | null
+  /** Whether this deployment stores the field. Null means the response
+   *  declared nothing, which is a gap in the response, not a fourth state. */
+  storage: FieldStorage | null
+  /** `uncatalogued_field`: the variable has no catalogue key, so the API
+   *  refused to serve a value for it and said so in a notice. */
+  uncatalogued: boolean
   /** The API's own description of a derived value (e.g. MetPy RH from dew
    *  point). Null means the field was read from the provider as published. */
   derivation: string | null
   derivationVersion: string | null
+  /** The declared class, resolved. `unrecognised` when the response carried a
+   *  class this client does not know, or none at all. */
+  evidenceClass: ResolvedEvidenceClass
+  /** The class string exactly as the response wrote it, for the reason line. */
+  declaredClass: string | null
+  /** `quality.status` and `quality.flags` as served; `derived` is a flag, not
+   *  a fifth status, so the four-status contract holds. */
+  qualityStatus: string | null
+  qualityFlags: string[]
+  /** `provenance.last_valid_time`: the newest valid time this deployment held
+   *  for the stream before its frames left the retention window, as an ISO
+   *  instant. Null when the response declared none — and an `aged_out` flag
+   *  with a null last valid time is never rendered as aged out, because the
+   *  edge of what was held is the whole content of that report. */
+  lastValidTime: string | null
+  /** The method and inputs a `derived_here` value names. Empty and null for
+   *  every other class; never synthesised from the derivation sentence. */
+  derivationMethod: DerivationMethod | null
+  derivationInputs: DerivationInput[]
+  /** The registry's delivery kind for the producing record, and the
+   *  intermediary it names. Null kind means the record declared none, which
+   *  renders no label at all. */
+  deliveryKind: DeliveryKind | null
+  intermediary: string | null
+  /** The intermediary's own method, where the intermediary documents one.
+   *  Null is "undocumented", which is said out loud rather than read as
+   *  "no transformation". */
+  intermediaryMethod: string | null
+  /** Whether this value may stand as a field's primary reading. The API
+   *  computes it from the class; the client additionally refuses a source the
+   *  catalogue marks `display_primary: false`. */
+  displayPrimaryEligible: boolean
+  /** `provenance.member`: the provider's own member identifier, set only on a
+   *  per-member value. Null for a statistic or a non-ensemble value. */
+  member: string | null
+  /** `provenance.member_control`: whether this member is the control run.
+   *  Null means the response declared nothing, not "not the control". */
+  memberControl: boolean | null
+  /** `provenance.ensemble`: present on every ensemble value, member or
+   *  statistic alike, and null for a value with no ensemble family. */
+  ensemble: EnsembleProvenance | null
+  /** `derivation_refused`: a derived value the registry conditions refused.
+   *  `provenance_unmodelled`: an artifact whose provenance could not be
+   *  modelled. Either renders as unavailable with the response's own notice. */
+  derivationRefused: boolean
+  provenanceUnmodelled: boolean
+  /** The response notice that explains this field's refusal, matched at
+   *  normalise time where both the field name and the notices are in hand.
+   *  Null when the value is a reading rather than a refusal. */
+  notice: string | null
+}
+
+/** One value for a field that is NOT its primary reading: a reprocessed,
+ *  intermediary-derived or uncalibrated value, or one from a source the
+ *  catalogue refuses as a primary. Shown beside the reading, never in it. */
+export interface FieldAlternative {
+  field: string
+  /** As rendered, already unit-converted where the metric converts. */
+  text: string
+  attribution: FieldAttribution
+}
+
+/** One value the response served, whatever became of it afterwards.
+ *
+ *  The metric grid renders a fixed list of field names; the family view must
+ *  render everything that was actually served, or a member the response
+ *  carried would vanish from the family it belongs to and the reader would see
+ *  a family with fewer members than the evidence has. So this is the response's
+ *  own list, in response order, primaries and alternatives alike. */
+export interface ServedFieldValue {
+  /** The API field name, exactly as served. */
+  field: string
+  /** The value as served, in the unit the response declared. Never converted:
+   *  a member is shown to be compared with its siblings, and rewriting its
+   *  unit is how a number stops matching the key beside it. */
+  text: string
+  /** Whether a number or string came back at all. False is not an error — a
+   *  field that is `available-not-stored` has no value by definition. */
+  hasValue: boolean
+  /** The numeric value as served, unconverted, or null for a non-numeric or
+   *  absent one. A difference is only ever taken between two of these. */
+  value: number | null
+  /** The unit the response declared for it, verbatim. Two members with
+   *  different declared units are never differenced. */
+  units: string | null
+  /** Whether this value is the one the interface shows as the field's reading. */
+  primary: boolean
+  attribution: FieldAttribution
 }
 
 export interface StoryStep {
@@ -82,6 +301,19 @@ export interface EvidenceSnapshot {
   fieldModes: Record<string, FieldDataMode>
   /** Per-field attribution for the field actually shown, keyed by API field name. */
   fieldSources: Record<string, FieldAttribution>
+  /** Values the same field carried that may not be its primary reading, keyed
+   *  by API field name. Rendered as alternative readings with their badge and
+   *  delivery label; never promoted into the metric. */
+  fieldAlternatives: Record<string, FieldAlternative[]>
+  /** Every value the response served, in response order, for the family view. */
+  servedFields: ServedFieldValue[]
+  /** The response's own `notices`, verbatim. They carry the reason a
+   *  derivation was refused or an artifact's provenance was not modelled. */
+  notices: string[]
+  /** One entry per unordered pair of served members within a family, exactly as
+   *  `/point` computed it. Empty against an API that does not serve it yet,
+   *  which the interface reads as "no pair is stated", never as "comparable". */
+  comparability: ComparabilityPair[]
   issuedAt: string
   validAt: string | null
   temperatureC: number | null
@@ -200,10 +432,43 @@ export interface SpaceWeatherResponse {
 
 export interface SpaceWeatherResult { spaceWeather: SpaceWeatherResponse | null; error: string | null }
 
+/** One source's standing at an hourly timeline instant, as `/timeline`
+ *  `coverage[]` declares it (Seam, design.md). Listed only when a retrieved
+ *  run actually covers the instant — a declared reach with no retrieved run
+ *  is absent here, not listed with a null run_time. */
+export interface CoverageEntry {
+  source_id: string
+  provider_run_id: string
+  run_time: string | null
+  run_cadence_seconds: number | null
+  run_age_seconds: number | null
+  run_stale: boolean | null
+  run_stale_reason: string | null
+}
+
+/** A horizon tier as a valid-time range: `core` (24 h back to 24 h ahead) or
+ *  `planning` (24 h ahead to 14 d ahead). Names no source. */
+export interface TierRange {
+  id: string
+  start: string
+  end: string
+}
+
 export interface TimelineItem {
   valid_time_utc: string
   valid_time_newfoundland: string
   available_products: string[]
+  /** Which tier this instant falls in. Optional: an older API has not
+   *  declared tiers yet. */
+  tier?: 'core' | 'planning'
+  /** Every source a retrieved run actually covers this instant with, sorted
+   *  source_id then run_time; `[]` means nothing covers it. Optional/absent
+   *  on an older API — absence is a different claim from an empty array and
+   *  the two are never conflated. */
+  coverage?: CoverageEntry[]
+  /** "nothing covers this instant" when `coverage` is `[]` and the store
+   *  answered; null otherwise. */
+  coverage_notice?: string | null
 }
 
 export interface TimelineResponse {
@@ -213,6 +478,12 @@ export interface TimelineResponse {
   start: string
   end: string
   items: TimelineItem[]
+  /** reference + 24 h: the core/planning boundary. Optional: an older API
+   *  has not declared one, and the boundary is then not marked at all rather
+   *  than guessed. */
+  boundary?: string
+  /** The two tier ranges, `core` then `planning`. Optional, same reason. */
+  tiers?: TierRange[]
 }
 
 export interface TimelineResult {
@@ -276,6 +547,49 @@ export interface LayerItem {
    *  the drawer derives a group from `evidence_basis` and `kind` instead —
    *  never from the id. */
   group?: string | null
+  /** How the layer's values came to exist, as `/layers` declares it. Absent or
+   *  unknown is `unrecognised`, said out loud in the drawer rather than read
+   *  as `retrieved`. */
+  evidence_class?: string
+  /** The field family this layer's quantity belongs to, as `/layers` declares
+   *  it. Optional: an older API omits it and the layer groups under
+   *  `ungrouped` rather than under a family guessed from `field`. */
+  family?: string
+  /** The catalogue key the layer draws, where the API names one separately
+   *  from its display `field`. */
+  field_key?: string
+  /** Whether this deployment stores the field behind the layer. */
+  storage?: string
+  /** The declared phase, for a humidity layer. */
+  phase?: string | null
+  /** The run time of this layer's newest run, and whether it is stale
+   *  (older than twice the declared producer run cadence). `run_stale_reason`
+   *  is required whenever `run_stale` is null (unknown run time or cadence,
+   *  or an observation layer with no run concept). */
+  run_time?: string | null
+  run_stale?: boolean | null
+  run_stale_reason?: string | null
+  run_cadence_seconds?: number | null
+  /** One entry per entry of `times`, same order: which run produced that
+   *  frame and whether that run is stale. Drives `runSegments.ts`. */
+  frames?: LayerFrame[]
+  /** Every run this layer index carries frames from, most useful when a
+   *  short cycle leaves a previous run serving leads the newest one lacks. */
+  runs?: LayerRun[]
+}
+
+export interface LayerFrame {
+  valid_time: string
+  run_time: string | null
+  provider_run_id: string | null
+  run_stale: boolean | null
+}
+
+export interface LayerRun {
+  provider_run_id: string
+  run_time: string | null
+  run_stale: boolean | null
+  frame_count: number
 }
 
 export interface LayersResult {
@@ -302,6 +616,18 @@ export interface CatalogSource {
   geographic_coverage: string
   licence: string
   attribution: string
+  /** How this record's values reach the deployment. Optional until every
+   *  record declares one; absent renders no label rather than a doubt. */
+  delivery_kind?: string
+  /** Named where the kind is `reprocessed` or `intermediary_derived`. */
+  intermediary?: string | null
+  /** False means the registry refuses this source as any field's primary
+   *  reading. Absent is not false: an undeclared record is not yet refused. */
+  display_primary?: boolean
+  /** What this source publishes, key by key, and whether this deployment
+   *  stores it. Optional until the API serves it; absent renders no field list
+   *  rather than an empty one, because "publishes nothing" is its own claim. */
+  fields?: CatalogFieldEntry[]
 }
 
 export interface CatalogResult {

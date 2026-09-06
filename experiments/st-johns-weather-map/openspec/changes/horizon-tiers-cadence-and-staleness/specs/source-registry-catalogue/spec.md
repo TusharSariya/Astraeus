@@ -28,9 +28,12 @@ latency SHALL be a measured quantity held beside it, carrying the estimate, the
 number of observations behind it and the instant of the most recent
 observation, seeded from
 `docs/research/wayfinder/planning-horizon-matrix.md` (ICON about T+3.5 h, GFS
-about T+5.3 h, ECMWF about T+7.6 h). A record with no measured latency SHALL
-report `latency_measured: false` with a null estimate and SHALL NOT have a
-default substituted, because an unmeasured latency is not a producer promise.
+about T+5.3 h, ECMWF about T+7.6 h). A record this deployment has observed no
+publication for SHALL report `latency_measured: false` (the registry block's
+own flag is `measured`) and SHALL NOT have a default substituted, because an
+unmeasured latency is not a producer promise. Its estimate SHALL be the
+research seed where one exists and `null` where none does; a non-null estimate
+SHALL name the basis it came from, and a basis of `"none"` SHALL be refused.
 
 #### Scenario: A seeded but unobserved latency
 - **WHEN** a record carries a research seed value and the deployment has observed no publication

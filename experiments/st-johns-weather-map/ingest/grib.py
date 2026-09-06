@@ -344,6 +344,15 @@ def strip_message_scalars(array: Any) -> Any:
     to know that a temperature is a screen-level temperature. Coordinates with a
     dimension - latitude and longitude, including the 2-D pair a rotated grid
     produces - are untouched.
+
+    The one message scalar that is *not* recoverable from the artifact's own
+    axes is ``number``, the GRIB ensemble member. Time, step and valid time can
+    all be read back off the assembled dataset; a member identity cannot, and
+    once dropped nothing downstream can say which member a value came from. So
+    it is kept as the attribute ``grib_number``, carrying the coded value
+    exactly as the message stated it, before the coordinate goes. A caller
+    assembling a member axis turns that into the provider's own identifier and
+    passes it to :func:`stack_members`.
     """
     level_type = str(array.attrs.get("GRIB_typeOfLevel", "") or "")
     attrs = dict(array.attrs)
@@ -353,6 +362,9 @@ def strip_message_scalars(array: Any) -> Any:
             continue
         key = str(name)
         drop.append(key)
+        if key == "number":
+            attrs.setdefault("grib_number", coord.item())
+            continue
         if key in _MESSAGE_SCALAR_COORDS:
             continue
         # The remaining scalar is the vertical level under its typeOfLevel name.
@@ -363,6 +375,140 @@ def strip_message_scalars(array: Any) -> Any:
     stripped = array.drop_vars(drop)
     stripped.attrs = attrs
     return stripped
+
+
+# --- the member axis -------------------------------------------------------
+#
+# An ensemble member is a first-class coordinate, never a suffix on a variable
+# name and never a separate artifact. The control is one value on that axis
+# with a flag set, because giving it its own record would make member
+# completeness uncheckable (21 members, or 20 plus one source?) and would put
+# it outside the axis every statistic is taken over.
+
+#: The dataset dimension and coordinate that carries a member identity.
+MEMBER_DIM = "member"
+
+#: The boolean coordinate, along ``member``, that flags the control member.
+CONTROL_COORD = "control"
+
+
+def stack_members(fields_by_member: Mapping[str, Any], *, control: str | None) -> Any:
+    """Assemble one field's per-member arrays onto a ``member`` axis.
+
+    ``fields_by_member`` maps the *provider's own* member identifier - REPS
+    ``01``..``21``, GEFS ``gec00`` and ``gep01``..``gep30``, ECMWF the GRIB
+    ``number`` as a string - to that member's decoded field. Identifiers are
+    read as text because that is what the providers publish; ``01`` and ``1``
+    are different tokens to different producers and neither is an integer here.
+
+    The returned array gains a leading ``member`` dimension with a string
+    coordinate of those identifiers, and a boolean ``control`` coordinate along
+    it. ``control`` names the identifier of the unperturbed run: the flag is set
+    on exactly that member. A family that publishes no control passes ``None``
+    and no member carries the flag. A run whose control was not retrieved passes
+    its identifier anyway with no matching key - the result then carries no
+    ``control=True`` member, which is what makes the run partial rather than a
+    complete run of one fewer member. That is also the two-file AIFS-ENS case:
+    the caller reads the ``cf`` file's field in under identifier ``0`` and the
+    ``pf`` file's fields under ``1``..``50``, and hands both to one call, so one
+    member axis is published from two retrievals.
+
+    Two members that would collapse onto one identifier raise :class:`GribError`
+    naming the values seen, because a silently collapsed ensemble is
+    indistinguishable from a deterministic field.
+    """
+    import numpy  # noqa: PLC0415
+    import xarray  # noqa: PLC0415
+
+    if not fields_by_member:
+        raise GribError("stack_members needs at least one member field")
+
+    identifiers: list[str] = []
+    arrays: list[Any] = []
+    seen: dict[str, list[str]] = {}
+    for key, array in fields_by_member.items():
+        identifier = str(key).strip()
+        if not identifier:
+            raise GribError(f"member identifier {key!r} is empty; the provider's own token is required")
+        seen.setdefault(identifier, []).append(repr(key))
+        identifiers.append(identifier)
+        arrays.append(array)
+
+    collisions = {identifier: values for identifier, values in seen.items() if len(values) > 1}
+    if collisions:
+        detail = "; ".join(f"{identifier} <- {', '.join(values)}" for identifier, values in sorted(collisions.items()))
+        raise GribError(f"members would collapse onto one identifier: {detail}")
+
+    for identifier, array in zip(identifiers, arrays):
+        if MEMBER_DIM in getattr(array, "dims", ()):
+            raise GribError(f"member {identifier} already carries a {MEMBER_DIM} dimension; it is one member, not a stack")
+
+    stacked = xarray.concat(arrays, dim=MEMBER_DIM) if len(arrays) > 1 else arrays[0].expand_dims(MEMBER_DIM)
+    stacked = stacked.assign_coords(
+        {
+            MEMBER_DIM: (MEMBER_DIM, numpy.array(identifiers, dtype=numpy.str_)),
+            CONTROL_COORD: (MEMBER_DIM, numpy.array([identifier == control for identifier in identifiers], dtype=bool)),
+        }
+    )
+    stacked.attrs = dict(arrays[0].attrs)
+    return stacked
+
+
+# --- time-averaged fields ---------------------------------------------------
+#
+# GEFS ``TCDC:entire atmosphere`` is never instantaneous: the ``.idx`` labels it
+# ``0-3 hour ave fcst`` at f003 and ``18-24 hour ave fcst`` at f024, so the
+# window is 3 h at the first step of each 6 h block and 6 h thereafter. A
+# six-hour mean of 50 percent is one sky at half cover or two skies, one clear
+# and one overcast, so the window is part of the quantity. It is read from the
+# producer's own record and never assumed from the lead.
+
+#: ``N-M hour ave fcst``. The range and the word ``ave`` are both required: an
+#: ``anl`` or an ``N hour fcst`` record states no window at all.
+_AVERAGING_LABEL = re.compile(
+    r"^\s*(?P<start>\d+(?:\.\d+)?)\s*-\s*(?P<end>\d+(?:\.\d+)?)\s*(?:hour|hr|h)s?\b[^:]*?\bave\b",
+    re.IGNORECASE,
+)
+
+
+def averaging_window_hours(window_label: str) -> float:
+    """The window ``window_label`` states, in hours, or raise.
+
+    ``18-24 hour ave fcst`` is 6 hours and ``0-3 hour ave fcst`` is 3. A label
+    that states no range, or states one but does not say it is an average, is
+    refused: the alternative is storing a mean whose window is a guess, and a
+    mean whose window is unknown is not a quantity anyone can weigh.
+    """
+    match = _AVERAGING_LABEL.match(window_label or "")
+    if match is None:
+        raise GribError(
+            f"averaging window unstated: {window_label!r} carries no 'N-M hour ave' range, "
+            "so the field states no window and must not be stored"
+        )
+    start, end = float(match.group("start")), float(match.group("end"))
+    if end <= start:
+        raise GribError(f"averaging window unstated: {window_label!r} does not run forwards in time")
+    return end - start
+
+
+def declare_time_average(variable: Any, *, window_label: str) -> Any:
+    """Stamp a time-averaged field with the window the producer's record states.
+
+    ``window_label`` is the producer's own record label - the ``.idx``
+    forecast-hour token, ``18-24 hour ave fcst`` - and it is carried verbatim as
+    ``averaging_window_basis`` so a reader can see where the number came from
+    rather than trusting it. Raises :class:`GribError` when the label states no
+    window; the caller then does not store the field.
+    """
+    hours = averaging_window_hours(window_label)
+    variable.attrs = {
+        **variable.attrs,
+        "cell_methods": "time: mean",
+        "averaging_window_hours": hours,
+        "averaging_window_basis": window_label,
+        "semantics": "mean over the stated window; not an instantaneous value",
+    }
+    return variable
 
 
 #: The ecCodes keys whose values identify a GRIB2 field independently of the

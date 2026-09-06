@@ -19,14 +19,23 @@ from typing import Any, Iterator, Sequence
 from uuid import uuid4
 
 from .contract import Artifact, RunResult
+from .validate import to_nanoseconds
+from .window import sliding_window
+from .purge import drain_objects, queue_objects
 
 UTC = timezone.utc
 
-LOCAL_STORAGE_CAP_BYTES = 25 * 1024**3
+#: The hot quota, from wayfinder ticket 20. There is no cold tier: reaching
+#: this cap is a failure that fails closed, never a condition resolved by
+#: evicting a visible revision or spilling bytes somewhere else.
+LOCAL_STORAGE_CAP_BYTES = 64 * 1024**3
+STORAGE_CAP_LABEL = "64 GiB"
 STAGING_PREFIX = "staging"
 PUBLISHED_PREFIX = "artifacts"
 ABANDONED_STAGING_AGE = timedelta(hours=1)
-OBSERVATION_RETENTION = timedelta(hours=3)
+#: Observations and nowcasts keep the full window's history rather than the
+#: three-hour high-cadence floor the old retention rule used.
+OBSERVATION_RETENTION = timedelta(hours=24)
 KEEP_COMPLETE_RUNS = 2
 
 
@@ -35,7 +44,64 @@ class StoreUnavailable(RuntimeError):
 
 
 class QuotaExceeded(RuntimeError):
-    """The 25 GiB local cap would be exceeded. Fail the job, never evict a visible revision."""
+    """The 64 GiB hot cap would be exceeded. Fail the job, never evict a visible revision."""
+
+
+class RunIdentityConflict(RuntimeError):
+    """A second fetch of a published key produced different bytes.
+
+    `artifact-ingestion` refuses this rather than replacing published evidence:
+    an artifact a reader may already have cited must not change under the same
+    ``(source_id, provider_run_id, valid_time)`` key. Both digests are named so
+    the disagreement can be investigated upstream.
+    """
+
+
+class UndeclaredEvidenceClasses(ValueError):
+    """An artifact reached staging without saying how its values came to exist.
+
+    Every value carries exactly one evidence class and every artifact records
+    the set it contains, so a data path can admit or exclude it by class
+    rather than by matching its name. Staging is the one gate every artifact
+    passes, so an undeclared artifact is refused here: the alternative is an
+    artifact that publishes and is then isolated at read time, which loses the
+    evidence silently and long after the mistake was made.
+    """
+
+
+def assert_classes_declared(artifact: Artifact) -> None:
+    """Refuse an artifact whose provenance declares no evidence classes."""
+    from .manifest import EVIDENCE_CLASSES  # noqa: PLC0415
+
+    provenance = artifact.provenance or {}
+    declared = provenance.get("evidence_classes")
+    if not declared:
+        raise UndeclaredEvidenceClasses(
+            f"{artifact.logical_name}: provenance declares no evidence_classes; "
+            "build it from RunManifest.as_manifest_block or ingest.manifest.declared_classes"
+        )
+    unknown = sorted({str(name) for name in declared if str(name) not in EVIDENCE_CLASSES})
+    if unknown:
+        raise UndeclaredEvidenceClasses(f"{artifact.logical_name}: {', '.join(unknown)} is not one of the six evidence classes")
+    stated = {str(name) for name in (provenance.get("evidence_class_by_variable") or {}).values()}
+    undeclared = sorted(stated - {str(name) for name in declared})
+    if undeclared:
+        raise UndeclaredEvidenceClasses(
+            f"{artifact.logical_name}: evidence_class_mismatch - values carry {', '.join(undeclared)}, "
+            "which the artifact does not declare"
+        )
+
+
+def _cap_label(cap_bytes: int) -> str:
+    """The cap as a reader sees it, so an outcome can name it.
+
+    `ingestion-worker-scheduling` requires the quota outcome to name the cap;
+    formatting it from the configured value rather than a literal keeps the
+    message honest if a deployment configures something else.
+    """
+    if cap_bytes % 1024**3 == 0:
+        return f"{cap_bytes // 1024**3} GiB"
+    return f"{cap_bytes / 1024**3:.2f} GiB"
 
 
 def _parse_cap(value: str | None) -> int:
@@ -97,6 +163,35 @@ class CurrentArtifact:
     retrieved_at: datetime | None
     provider_run_id: str
     native_crs: str | None
+
+
+@dataclass(frozen=True)
+class RetainedArtifact:
+    """A revision this deployment still holds, current or superseded.
+
+    ``current_artifacts`` answers "what is published now", which is the wrong
+    question for coverage: a short cycle keeps the previous complete run
+    serving the leads the newest run does not reach, and that run's revisions
+    are ``superseded``, not current. This read answers "what is retained",
+    under the same two-run ceiling ``prune`` enforces.
+
+    ``run_time`` is the ``model_runs`` column, which is stamped with the
+    retrieval time when the adapter declared no run time. It is therefore a
+    retrieval fact and never a run-time claim; the adapter-declared run time,
+    where there is one, is ``provenance["run_time"]``. Both are carried so the
+    reader can tell them apart rather than having them folded into one field.
+    """
+
+    source_id: str
+    logical_name: str
+    revision_id: str
+    provider_run_id: str
+    state: str
+    provenance: dict[str, Any]
+    published_at: datetime | None
+    valid_time_start: datetime | None
+    valid_time_end: datetime | None
+    retrieval_run_time: datetime | None
 
 
 def sha256_of(path: Path, *, chunk_size: int = 1 << 20) -> str:
@@ -194,10 +289,18 @@ class ArtifactStore:
             return int(cursor.fetchone()[0])
 
     def check_projection(self, additional_bytes: int, *, replacing_bytes: int = 0) -> None:
-        """Reserve room before downloading, as infra/STORAGE.md requires."""
+        """Reserve room before downloading, as infra/STORAGE.md requires.
+
+        The cap is never satisfied by planning to purge an in-window frame:
+        the projection reads what is stored and refuses, and retention runs on
+        its own rule. There is nowhere to spill to.
+        """
         projected = self.used_bytes() - replacing_bytes + additional_bytes
         if projected > self.config.cap_bytes:
-            raise QuotaExceeded("25 GiB local storage cap would be exceeded")
+            raise QuotaExceeded(
+                f"{_cap_label(self.config.cap_bytes)} hot storage cap would be exceeded: "
+                f"projected {projected} bytes against a cap of {self.config.cap_bytes} bytes"
+            )
 
     # --- staging and publication ----------------------------------------
     def stage(self, result: RunResult, artifact: Artifact, *, run_id: str | None = None) -> StagedRevision:
@@ -208,6 +311,7 @@ class ArtifactStore:
         """
         import json  # noqa: PLC0415
 
+        assert_classes_declared(artifact)
         run = run_id or self.record_run(result)
         byte_size = artifact.byte_size
         self.check_projection(byte_size)
@@ -259,6 +363,11 @@ class ArtifactStore:
         """
         if not result.artifacts:
             return []
+        # A published key must never change under a second fetch. Checked
+        # before the run row is touched, so a conflicting attempt neither
+        # stages bytes nor moves the run's flags: the published artifact stays
+        # visible and the source reports `run_identity_conflict`.
+        self.assert_run_identity(result)
         run_id = self.record_run(result)
         # A retry of the same provider cycle reuses this run row, so a previous
         # attempt's staged revisions are still attached to it. publish_run walks
@@ -272,6 +381,31 @@ class ArtifactStore:
         if result.complete and result.qc_passed:
             self.publish_run(run_id)
         return staged
+
+    def assert_run_identity(self, result: RunResult) -> None:
+        """Refuse a byte-different re-fetch of an already-published key.
+
+        Idempotency means a second fetch of `(source_id, provider_run_id,
+        valid_time)` publishes nothing new. Identical bytes are the ordinary
+        case and pass silently; different bytes mean the provider reissued a
+        run under the same stamp, which `artifact-ingestion` refuses outright
+        rather than replacing evidence a reader may already have cited.
+        """
+        published = self.published_digests(result.source_id, result.provider_run_id)
+        if not published:
+            return
+        conflicts: list[str] = []
+        for artifact in result.artifacts:
+            existing = published.get(artifact.logical_name)
+            if existing is None:
+                continue
+            digest = sha256_of(artifact.payload_path)
+            if digest != existing:
+                conflicts.append(f"{artifact.logical_name}: published {existing}, fetched {digest}")
+        if conflicts:
+            raise RunIdentityConflict(
+                f"run_identity_conflict for {result.source_id} run {result.provider_run_id}: " + "; ".join(conflicts)
+            )
 
     def discard_staged(self, run_id: str) -> int:
         """Drop every still-staged revision of one run, with its stored objects.
@@ -287,7 +421,8 @@ class ArtifactStore:
                 (run_id,),
             )
             keys = [row[0] for row in cursor.fetchall()]
-        self._delete_objects(keys)
+            queue_objects(cursor, keys)
+        drain_objects(self)
         return len(keys)
 
     def restart(self) -> int:
@@ -299,15 +434,102 @@ class ArtifactStore:
                 (cutoff,),
             )
             keys = [row[0] for row in cursor.fetchall()]
-        self._delete_objects(keys)
+            queue_objects(cursor, keys)
+        drain_objects(self)
         return len(keys)
+
+    # --- the restart-cache protocol --------------------------------------
+    #
+    # The three methods below are the seam this change fixes between the
+    # ingest owner and the storage owner; it is recorded in the change's
+    # design.md under "Seam". They are implemented over the existing schema so
+    # the worker side does not have to wait for the retention migration.
+
+    def sweep_abandoned_staging(self) -> int:
+        """Discard staging debris left by an interrupted run. Named alias of
+        :meth:`restart`, so the reconciliation reads as the three steps
+        `ingestion-worker-scheduling` names rather than as one legacy verb."""
+        return self.restart()
+
+    def present_keys(self, source_id: str, provider_run_id: str) -> set[int]:
+        """Valid times, in nanoseconds, already published under this run key.
+
+        The answer is what a restart must not fetch again. It is read from the
+        published revisions' own declared ``valid_times``: an artifact that
+        declared none contributes nothing, so the worker fetches it rather
+        than assuming a frame it cannot see is present. Guessing the other way
+        would silently drop evidence.
+
+        Raises :class:`StoreUnavailable` when the store cannot answer, because
+        `artifact-ingestion` requires the source to fail rather than read an
+        unknown cache state as an empty one.
+        """
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT a.provenance
+                  FROM weather_experiment.artifact_revisions a
+                  JOIN weather_experiment.model_runs r ON r.run_id = a.run_id
+                 WHERE r.source_id = %s AND r.provider_run_id = %s AND a.state = 'published'
+                """,
+                (source_id, provider_run_id),
+            )
+            rows = cursor.fetchall()
+        present: set[int] = set()
+        for row in rows:
+            present.update(_declared_valid_time_nanoseconds(row[0]))
+        return present
+
+    def published_digests(self, source_id: str, provider_run_id: str) -> dict[str, str]:
+        """SHA-256 per logical name already published under this run key.
+
+        A second fetch producing different bytes for one of these is a
+        ``run_identity_conflict``: the published artifact stays visible.
+        """
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT a.logical_name, a.sha256
+                  FROM weather_experiment.artifact_revisions a
+                  JOIN weather_experiment.model_runs r ON r.run_id = a.run_id
+                 WHERE r.source_id = %s AND r.provider_run_id = %s AND a.state = 'published'
+                """,
+                (source_id, provider_run_id),
+            )
+            return {str(row[0]): str(row[1]) for row in cursor.fetchall()}
+
+    def purge_outside_window(self, now: datetime | None = None) -> int:
+        """Purge every retained frame whose valid time left the window.
+
+        The rules live in ``weather_experiment.purge_outside_window`` rather
+        than here. There is one purge, not two: the database's version is the
+        one publication commits with, it records each stream's last valid time
+        before removing anything (which is what makes an aged-out report
+        possible at all), and it deletes the ``current_artifacts`` pointer in
+        the same transaction, which a row delete from here could not do
+        without tripping the foreign key.
+
+        Rows go before objects. The freed keys are queued by that transaction
+        and drained here, so an object already gone does not abort the sweep
+        and a sweep that dies mid-way resumes on the next call.
+        """
+        moment = now or datetime.now(UTC)
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute("SELECT weather_experiment.purge_outside_window(%s)", (moment,))
+            row = cursor.fetchone()
+            purged = int(row[0]) if row else 0
+        drain_objects(self)
+        return purged
 
     # --- retention -------------------------------------------------------
     def prune(self, *, now: datetime | None = None) -> int:
         """Keep the latest and previous complete run per logical stream.
 
-        High-cadence observations additionally keep three hours, matching the
-        registry's caching policy and infra/STORAGE.md.
+        The run-position fallback for revisions that declared no frame times,
+        which :meth:`purge_outside_window` deliberately leaves alone rather
+        than purging on a guess. Observations keep the full 24 hours the
+        window reaches back; the old three-hour high-cadence floor is gone
+        (infra/STORAGE.md).
         """
         moment = now or datetime.now(UTC)
         floor = moment - OBSERVATION_RETENTION
@@ -331,15 +553,9 @@ class ArtifactStore:
                 (KEEP_COMPLETE_RUNS, floor),
             )
             keys = [row[0] for row in cursor.fetchall()]
-        self._delete_objects(keys)
+            queue_objects(cursor, keys)
+        drain_objects(self)
         return len(keys)
-
-    def _delete_objects(self, keys: Sequence[str]) -> None:
-        for key in keys:
-            try:
-                self.s3.delete_object(Bucket=self.config.bucket, Key=key)
-            except Exception:  # object already gone; the row is the record of truth
-                continue
 
     # --- reads -----------------------------------------------------------
     def current_artifacts(self, *, source_ids: Sequence[str] | None = None) -> list[CurrentArtifact]:
@@ -364,6 +580,49 @@ class ArtifactStore:
             rows = cursor.fetchall()
         return [
             CurrentArtifact(row[0], row[1], str(row[2]), row[3], row[4], int(row[5]), row[6] or {}, row[7], row[8], row[9], row[10], row[11])
+            for row in rows
+        ]
+
+    def retained_artifacts(self, *, source_ids: Sequence[str] | None = None) -> list[RetainedArtifact]:
+        """Every revision still retained, current and superseded alike.
+
+        The ranking is the one :meth:`prune` enforces - the newest
+        ``KEEP_COMPLETE_RUNS`` revisions per ``(source_id, logical_name)`` -
+        so this read never reports a revision that retention has already
+        decided to drop. ``current_artifacts`` is untouched: it answers a
+        different question and its callers ask it deliberately.
+        """
+        clause, params = "", []
+        if source_ids is not None:
+            clause = "AND r.source_id = ANY(%s)"
+            params = [list(source_ids)]
+        with self.connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                WITH ranked AS (
+                    SELECT r.source_id, a.logical_name, a.revision_id, r.provider_run_id, a.state,
+                           a.provenance, a.published_at, a.valid_time_start, a.valid_time_end,
+                           r.run_time,
+                           row_number() OVER (
+                               PARTITION BY r.source_id, a.logical_name
+                               ORDER BY a.created_at DESC
+                           ) AS position
+                      FROM weather_experiment.artifact_revisions a
+                      JOIN weather_experiment.model_runs r ON r.run_id = a.run_id
+                     WHERE a.state IN ('published', 'superseded')
+                       {clause}
+                )
+                SELECT source_id, logical_name, revision_id, provider_run_id, state,
+                       provenance, published_at, valid_time_start, valid_time_end, run_time
+                  FROM ranked
+                 WHERE position <= %s
+                 ORDER BY source_id, logical_name, position
+                """,
+                [*params, KEEP_COMPLETE_RUNS],
+            )
+            rows = cursor.fetchall()
+        return [
+            RetainedArtifact(row[0], row[1], str(row[2]), str(row[3]), row[4], row[5] or {}, row[6], row[7], row[8], row[9])
             for row in rows
         ]
 
@@ -424,6 +683,32 @@ class ArtifactStore:
                 "INSERT INTO weather_experiment.jobs (state, requested_sources, detail, started_at, finished_at) VALUES (%s, %s, %s, now(), now())",
                 (state, [source_id], detail),
             )
+
+
+def _declared_valid_time_nanoseconds(provenance: Any) -> set[int]:
+    """The instants a revision's provenance says it covers, in nanoseconds.
+
+    An artifact that declares no ``valid_times`` returns the empty set, which
+    every caller here reads as "the store cannot say", never as "it covers
+    nothing".
+    """
+    block = provenance if isinstance(provenance, dict) else {}
+    stamps: set[int] = set()
+    for raw in block.get("valid_times") or ():
+        moment = _parse_instant(raw)
+        if moment is not None:
+            stamps.add(to_nanoseconds(moment))
+    return stamps
+
+
+def _parse_instant(raw: Any) -> datetime | None:
+    if isinstance(raw, datetime):
+        return raw
+    try:
+        text = str(raw).strip().replace("Z", "+00:00")
+        return datetime.fromisoformat(text)
+    except (TypeError, ValueError):
+        return None
 
 
 def _job_row(row: Sequence[Any]) -> dict[str, Any]:

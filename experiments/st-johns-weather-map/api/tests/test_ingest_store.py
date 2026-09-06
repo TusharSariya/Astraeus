@@ -7,6 +7,8 @@ arithmetic, neither of which needs a live service to be wrong.
 
 from __future__ import annotations
 
+import dataclasses
+
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,12 +17,14 @@ from typing import Any, Iterator, Sequence
 import pytest
 
 from ingest.contract import Artifact, RunResult
+from ingest.manifest import declared_classes
 from ingest.store import (
     LOCAL_STORAGE_CAP_BYTES,
     ArtifactStore,
     QuotaExceeded,
     StoreConfig,
     StoreUnavailable,
+    UndeclaredEvidenceClasses,
     _parse_cap,
     sha256_of,
 )
@@ -54,12 +58,25 @@ class RecordingCursor:
         return (f"id-{self._counter}",)
 
     def fetchall(self) -> list[tuple[Any, ...]]:
+        # ``_rows`` is the canned answer for the delete-and-return statements
+        # these tests assert on. The restart-cache reads have their own row
+        # shapes and no test here seeds them, so they answer empty rather than
+        # being handed object keys meant for a different query.
+        if self._last_kind in _EMPTY_BY_DEFAULT:
+            return []
         return list(self._rows)
+
+
+#: Restart-cache reads: a test that wants rows from one of these builds its own
+#: double, so the shared one must not improvise an answer of the wrong shape.
+_EMPTY_BY_DEFAULT = frozenset({"published_digests", "present_keys", "window_revisions"})
 
 
 def _statement_kind(sql: str) -> str:
     text = " ".join(sql.split()).lower()
     for marker, name in (
+        ("claim_purged_objects", "claim_purge"),
+        ("insert into weather_experiment.purged_objects", "queue_purge"),
         ("publish_run", "publish_run"),
         ("publish_revision", "publish"),
         ("with ranked", "prune_rows"),
@@ -68,6 +85,9 @@ def _statement_kind(sql: str) -> str:
         ("insert into weather_experiment.model_runs", "record_run"),
         ("insert into weather_experiment.artifact_revisions", "insert_revision"),
         ("sum(byte_size)", "used_bytes"),
+        ("a.logical_name, a.sha256", "published_digests"),
+        ("select a.provenance", "present_keys"),
+        ("a.revision_id, a.object_key, a.provenance", "window_revisions"),
     ):
         if marker in text:
             return name
@@ -127,7 +147,14 @@ class _Connection:
 def make_artifact(tmp_path: Path, *, name: str = "hrdps-surface", payload: bytes = b"zarr-bytes") -> Artifact:
     path = tmp_path / f"{name}.zarr.zip"
     path.write_bytes(payload)
-    return Artifact(logical_name=name, media_type="application/zarr+zip", payload_path=path, provenance={"native_resolution": "2.5 km"})
+    return Artifact(
+        logical_name=name,
+        media_type="application/zarr+zip",
+        payload_path=path,
+        # Staging refuses an artifact that does not say how its values came to
+        # exist, so the declaration is part of what a staged artifact is.
+        provenance={"native_resolution": "2.5 km", **declared_classes(["retrieved"])},
+    )
 
 
 def make_result(artifacts: list[Artifact], *, complete: bool = True, qc_passed: bool = True) -> RunResult:
@@ -146,7 +173,7 @@ def make_result(artifacts: list[Artifact], *, complete: bool = True, qc_passed: 
 # --- cap enforcement -----------------------------------------------------
 
 def test_cap_parses_the_units_the_compose_file_uses():
-    assert _parse_cap("25GiB") == LOCAL_STORAGE_CAP_BYTES
+    assert _parse_cap("64GiB") == LOCAL_STORAGE_CAP_BYTES
     assert _parse_cap("512MiB") == 512 * 1024**2
     assert _parse_cap("1GB") == 1000**3
     assert _parse_cap("4096") == 4096
@@ -158,7 +185,7 @@ def test_room_is_reserved_before_download_and_the_cap_is_inclusive(store, monkey
     instance, _ = store
     monkeypatch.setattr(instance, "used_bytes", lambda: LOCAL_STORAGE_CAP_BYTES - 1024)
     instance.check_projection(1024)
-    with pytest.raises(QuotaExceeded, match="25 GiB"):
+    with pytest.raises(QuotaExceeded, match="64 GiB"):
         instance.check_projection(1025)
 
 
@@ -204,6 +231,49 @@ def test_stage_uploads_the_object_before_recording_the_row_that_points_at_it(sto
     assert staged.byte_size == artifact.byte_size == len(b"a normalized zarr payload")
     assert staged.sha256 == sha256_of(artifact.payload_path)
     assert instance._client.objects[staged.object_key] == b"a normalized zarr payload"
+
+
+def test_an_artifact_that_declares_no_evidence_classes_is_never_staged(store, monkeypatch, tmp_path):
+    """Staging is the one gate every artifact passes.
+
+    An artifact that does not say how its values came to exist would publish
+    and then be isolated at read time, which loses the evidence silently and
+    long after the mistake was made. Refuse it where it is written instead.
+
+    Spec-Refs: "Every value declares exactly one evidence class"
+    (openspec/changes/evidence-classes-and-derived-here).
+    """
+    instance, events = store
+    monkeypatch.setattr(instance, "used_bytes", lambda: 0)
+    artifact = make_artifact(tmp_path)
+    undeclared = dataclasses.replace(artifact, provenance={"native_resolution": "2.5 km"})
+
+    with pytest.raises(UndeclaredEvidenceClasses, match="evidence_classes"):
+        instance.stage(make_result([undeclared]), undeclared)
+    assert [name for name, _ in events] == [], "nothing is uploaded or recorded for a refused artifact"
+
+
+def test_an_artifact_whose_values_carry_an_undeclared_class_is_never_staged(store, monkeypatch, tmp_path):
+    instance, events = store
+    monkeypatch.setattr(instance, "used_bytes", lambda: 0)
+    artifact = make_artifact(tmp_path)
+    mismatched = dataclasses.replace(
+        artifact,
+        provenance={"evidence_classes": ["retrieved"], "evidence_class_by_variable": {"low_cloud": "generated_display"}},
+    )
+
+    with pytest.raises(UndeclaredEvidenceClasses, match="evidence_class_mismatch"):
+        instance.stage(make_result([mismatched]), mismatched)
+
+
+def test_an_evidence_class_outside_the_six_is_never_staged(store, monkeypatch, tmp_path):
+    instance, events = store
+    monkeypatch.setattr(instance, "used_bytes", lambda: 0)
+    artifact = make_artifact(tmp_path)
+    unknown = dataclasses.replace(artifact, provenance={"evidence_classes": ["consensus"]})
+
+    with pytest.raises(UndeclaredEvidenceClasses, match="six evidence classes"):
+        instance.stage(make_result([unknown]), unknown)
 
 
 def test_publication_happens_only_after_every_artifact_is_staged(store, monkeypatch, tmp_path):
@@ -253,7 +323,7 @@ def test_pruning_removes_the_rows_first_and_only_then_the_objects(store):
 
     assert instance.prune(now=datetime(2026, 8, 29, 12, tzinfo=UTC)) == 2
     kinds = [name for name, _ in events]
-    assert kinds == ["prune_rows", "delete_object", "delete_object"]
+    assert kinds == ["prune_rows", "queue_purge", "queue_purge", "claim_purge", "delete_object", "delete_object"]
     assert instance._client.objects == {}
 
 
@@ -261,7 +331,7 @@ def test_restart_discards_abandoned_staging_objects(store):
     instance, events = store
     instance.returned_rows.append(("staging/eccc-hrdps/2026082906/abc/surface",))
     assert instance.restart() == 1
-    assert [name for name, _ in events] == ["discard_staging", "delete_object"]
+    assert [name for name, _ in events] == ["discard_staging", "queue_purge", "claim_purge", "delete_object"]
 
 
 def test_an_object_already_gone_does_not_abort_the_sweep(store):
@@ -282,7 +352,7 @@ def test_missing_configuration_is_reported_rather_than_defaulted():
     with pytest.raises(StoreUnavailable, match="WEATHER_MINIO_BUCKET"):
         StoreConfig.from_env({"WEATHER_DATABASE_URL": "postgresql://x", "WEATHER_MINIO_ENDPOINT": "http://x"})
     config = StoreConfig.from_env(
-        {"WEATHER_DATABASE_URL": "postgresql://x", "WEATHER_MINIO_ENDPOINT": "http://x", "WEATHER_MINIO_BUCKET": "b", "WEATHER_STORAGE_CAP": "25GiB"}
+        {"WEATHER_DATABASE_URL": "postgresql://x", "WEATHER_MINIO_ENDPOINT": "http://x", "WEATHER_MINIO_BUCKET": "b", "WEATHER_STORAGE_CAP": "64GiB"}
     )
     assert config.cap_bytes == LOCAL_STORAGE_CAP_BYTES
 
@@ -322,5 +392,5 @@ def test_discarding_a_runs_staging_never_touches_a_published_revision(store):
     """
     instance, events = store
     assert instance.discard_staged("some-run-id") == 0
-    assert [name for name, _ in events] == ["discard_run_staging"]
+    assert [name for name, _ in events] == ["discard_run_staging", "claim_purge"]
     assert events[0][1] == ("some-run-id",)

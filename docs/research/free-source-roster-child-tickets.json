@@ -1,0 +1,486 @@
+{
+  "schema_version": 1,
+  "wiring_rule": "Create each issue as a sub-issue of map 70; copy blocked_by_issues to the child; then block the parent_issue by the child. Never block a child by its parent.",
+  "create_now": [
+    {
+      "parent_issue": 78,
+      "title": "Implement Open-Meteo deterministic atmosphere and Bright Sky MOSMIX",
+      "included_roster_scope": [
+        "openmeteo-jma-gsm",
+        "openmeteo-arpege",
+        "openmeteo-ukmo-global",
+        "brightsky-dwd-mosmix-71801"
+      ],
+      "excluded_scope": "WeatherNext, marine, composition, archives, best_match and refused paths",
+      "blocked_by_issues": [
+        75,
+        72
+      ],
+      "key": "implement-open-meteo-deterministic-atmosphere-and-bright-sky-mosmix"
+    },
+    {
+      "parent_issue": 78,
+      "title": "Implement Open-Meteo marine and GFS-Wave retrieval",
+      "included_roster_scope": [
+        "openmeteo-gfs-wave",
+        "openmeteo-marine-currents-sealevel",
+        "openmeteo-glofas"
+      ],
+      "excluded_scope": "rejected duplicate SST, atmospheric models, composition and archive APIs",
+      "blocked_by_issues": [
+        75,
+        72
+      ],
+      "key": "implement-open-meteo-marine-and-gfs-wave-retrieval"
+    },
+    {
+      "parent_issue": 78,
+      "title": "Implement Open-Meteo composition and LSA SAF retrieval",
+      "included_roster_scope": [
+        "openmeteo-cams-aod",
+        "openmeteo-air-quality-particulates",
+        "openmeteo-lsa-saf-radiation"
+      ],
+      "excluded_scope": "native CAMS, rejected AQ indices/UV/pollen/beam splits and archives",
+      "blocked_by_issues": [
+        75,
+        72
+      ],
+      "key": "implement-open-meteo-composition-and-lsa-saf-retrieval"
+    },
+    {
+      "parent_issue": 85,
+      "title": "Implement GOES ABI expansion and GLM retrieval",
+      "included_roster_scope": [
+        "GOES CCLF, ACTPF, ACHTF, CODF/COD2KMF, CPSF, TPW, LVMP/LVTP, DSI, SSTF, DMW and RRQPEF",
+        "GOES GLM"
+      ],
+      "excluded_scope": "already implemented ACMF/ACHAF, aerosol owned by issue 86 and historical eras owned by issue 94",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-goes-abi-expansion-and-glm-retrieval"
+    },
+    {
+      "parent_issue": 85,
+      "title": "Implement VIIRS and JPSS cloud retrieval",
+      "included_roster_scope": [
+        "VIIRS JRR CloudBase/Height/Mask/Phase/CoverLayers/DCOMP/NCOMP for NOAA-20/21 and SNPP",
+        "JPSS blended TPW/rain products"
+      ],
+      "excluded_scope": "VIIRS aerosol owned by issue 86, raw-radiance research and historical acquisition",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-viirs-and-jpss-cloud-retrieval"
+    },
+    {
+      "parent_issue": 85,
+      "title": "Implement NUCAPS retrieved-profile acquisition",
+      "included_roster_scope": [
+        "NUCAPS EDR CrIS+ATMS retrieved profiles and selected BUFR delivery"
+      ],
+      "excluded_scope": "raw ATMS/CrIS radiances and unrelated radiosonde archives",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-nucaps-retrieved-profile-acquisition"
+    },
+    {
+      "parent_issue": 85,
+      "title": "Evaluate Copernicus MODIS and GPM atmospheric satellite paths",
+      "included_roster_scope": [
+        "Sentinel-3 SLSTR/OLCI",
+        "Sentinel-5P TROPOMI",
+        "MODIS Aqua/Terra cloud products",
+        "GPM IMERG Early/Late/Final"
+      ],
+      "excluded_scope": "automatic admission, aerosol-owned products and marine Sentinel-1",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "evaluate-copernicus-modis-and-gpm-atmospheric-satellite-paths"
+    },
+    {
+      "parent_issue": 85,
+      "title": "Resolve native Holyrood radar acquisition",
+      "included_roster_scope": [
+        "Holyrood CASHR per-site radar, DPQPE and dual-polarization products"
+      ],
+      "excluded_scope": "implemented national composite, unconfirmed raw volume assumptions and satellite products",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "resolve-native-holyrood-radar-acquisition"
+    },
+    {
+      "parent_issue": 86,
+      "title": "Implement native CAMS atmospheric-composition forecasts",
+      "included_roster_scope": [
+        "copernicus-cams"
+      ],
+      "excluded_scope": "Open-Meteo delivery owned by issue 78; ECCC RAQDPS/RDAQA and smoke-plume fields owned by issue 80; superseded FireWork; NL station CSV",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-native-cams-atmospheric-composition-forecasts"
+    },
+    {
+      "parent_issue": 86,
+      "title": "Implement NASA and NOAA aerosol observations",
+      "included_roster_scope": [
+        "MAIAC MCD19A2",
+        "VIIRS Deep Blue and JRR AOD/ADP",
+        "GOES ABI AOD"
+      ],
+      "excluded_scope": "cloud products owned by issue 85 and historical backfills",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-nasa-and-noaa-aerosol-observations"
+    },
+    {
+      "parent_issue": 86,
+      "title": "Implement AERONET and account-gated air-quality observations",
+      "included_roster_scope": [
+        "AERONET",
+        "OpenAQ",
+        "PurpleAir"
+      ],
+      "excluded_scope": "NL provincial CSV owned by issue 88 and model forecasts",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-aeronet-and-account-gated-air-quality-observations"
+    },
+    {
+      "parent_issue": 86,
+      "title": "Implement CWFIS and FIRMS fire products",
+      "included_roster_scope": [
+        "CWFIS WFS hotspots and daily CSV",
+        "CFFEPS emissions",
+        "NASA FIRMS MODIS/VIIRS"
+      ],
+      "excluded_scope": "superseded FireWork and unverified BlueSky viewer feeds",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-cwfis-and-firms-fire-products"
+    },
+    {
+      "parent_issue": 87,
+      "title": "Implement ocean wave and surge model grids",
+      "included_roster_scope": [
+        "CIOPS-East",
+        "RIOPS",
+        "RDWPS",
+        "GDWPS",
+        "GDSPS",
+        "RESPS",
+        "GIOPS",
+        "GEWPS",
+        "RTOFS/HYCOM",
+        "Copernicus Marine physics/waves"
+      ],
+      "excluded_scope": "Great-Lakes REWPS, observations, SST-only analyses and historical archives",
+      "blocked_by_issues": [
+        79
+      ],
+      "key": "implement-ocean-wave-and-surge-model-grids"
+    },
+    {
+      "parent_issue": 87,
+      "title": "Implement SST ice and satellite-ocean products",
+      "included_roster_scope": [
+        "OSTIA",
+        "MUR",
+        "OISST",
+        "Coral Reef Watch SST",
+        "IIP/CIS ice",
+        "PolarWatch/NSIDC ice",
+        "Sentinel-1 SAR/OCN",
+        "ASCAT winds"
+      ],
+      "excluded_scope": "atmospheric satellite products, out-of-box OSI SAF commitment and archives",
+      "blocked_by_issues": [
+        79
+      ],
+      "key": "implement-sst-ice-and-satellite-ocean-products"
+    },
+    {
+      "parent_issue": 87,
+      "title": "Implement buoy profile and water-level observations",
+      "included_roster_scope": [
+        "SmartAtlantic St. John's and validated NL stations",
+        "CIOOS Atlantic named products",
+        "Argo",
+        "DFO IWLS"
+      ],
+      "excluded_scope": "unproved out-of-box ONC/OceanSITES, mirrored duplicates and archives",
+      "blocked_by_issues": [
+        79
+      ],
+      "key": "implement-buoy-profile-and-water-level-observations"
+    },
+    {
+      "parent_issue": 87,
+      "title": "Implement federal and provincial hydrometric products",
+      "included_roster_scope": [
+        "eccc-hydrometric",
+        "provincial-hydrometric",
+        "Water Office CSV and verified WRMD paths"
+      ],
+      "excluded_scope": "Open-Meteo GloFAS owned by issue 78, unavailable municipal feeds and local-observation issue 88",
+      "blocked_by_issues": [
+        79
+      ],
+      "key": "implement-federal-and-provincial-hydrometric-products"
+    },
+    {
+      "parent_issue": 87,
+      "title": "Implement marine advisories and navigation hazards",
+      "included_roster_scope": [
+        "ccg-navwarn",
+        "ECCC marine forecasts/alerts and coastal flooding index",
+        "iceberg/ice advisories"
+      ],
+      "excluded_scope": "camera feeds, live AIS without rights and historical vessel density",
+      "blocked_by_issues": [
+        79
+      ],
+      "key": "implement-marine-advisories-and-navigation-hazards"
+    },
+    {
+      "parent_issue": 88,
+      "title": "Implement aviation hazards and reports",
+      "included_roster_scope": [
+        "awc-sigmet-airmet",
+        "awc-pirep-airep",
+        "ECCC IWXXM SIGMET/METAR/TAF",
+        "selected WMO aviation bulletins",
+        "ADSB.lol Mode-S weather after semantics review"
+      ],
+      "excluded_scope": "already implemented AWC METAR/TAF JSON and raw position tracking",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-aviation-hazards-and-reports"
+    },
+    {
+      "parent_issue": 88,
+      "title": "Implement SWOB partner WMO and city products",
+      "included_roster_scope": [
+        "named ECCC SWOB partner XML",
+        "citypage_weather",
+        "verified MetNotes payload if it reappears"
+      ],
+      "excluded_scope": "existing normalized SWOB adapter, dead empty paths and hydrometric products",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-swob-partner-wmo-and-city-products"
+    },
+    {
+      "parent_issue": 88,
+      "title": "Implement community weather and MADIS paths",
+      "included_roster_scope": [
+        "CoCoRaHS CAN-NL-2",
+        "CWOP/APRS",
+        "WeatherFlow/Tempest/AWEKAS/PWSweather/Weathercloud if eligible",
+        "noaa-madis",
+        "Netatmo and Weather Underground only after rights/access proof"
+      ],
+      "excluded_scope": "air-quality sensors owned by issue 86 and hydrometric feeds",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-community-weather-and-madis-paths"
+    },
+    {
+      "parent_issue": 88,
+      "title": "Implement NL provincial air-quality observations",
+      "included_roster_scope": [
+        "nl-air-quality-csv current provisional PM2.5/ozone"
+      ],
+      "excluded_scope": "NAPS annual archive, OpenAQ/PurpleAir and air-quality forecast models",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-nl-provincial-air-quality-observations"
+    },
+    {
+      "parent_issue": 91,
+      "title": "Implement terrain and canopy acquisition",
+      "included_roster_scope": [
+        "NRCan HRDEM/CDEM/LiDAR",
+        "Copernicus GLO-30",
+        "eligible Newfoundland terrain/canopy products"
+      ],
+      "excluded_scope": "GeoNB/GeoNova expansion, unsuitable GEDI primary use and commercial terrain",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-terrain-and-canopy-acquisition"
+    },
+    {
+      "parent_issue": 91,
+      "title": "Implement building and OSM obstruction acquisition",
+      "included_roster_scope": [
+        "OpenStreetMap footprints/heights/access/roads/barriers/trails",
+        "Microsoft Global Building Footprints",
+        "eligible municipal 3-D buildings"
+      ],
+      "excluded_scope": "commercial 3-D tiles and phone crowd workflows",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-building-and-osm-obstruction-acquisition"
+    },
+    {
+      "parent_issue": 91,
+      "title": "Implement night-light and sky-brightness evidence",
+      "included_roster_scope": [
+        "Black Marble",
+        "NOAA/EOG composites",
+        "Falchi restricted benchmark",
+        "Globe at Night",
+        "site SQM/photometer/all-sky observations"
+      ],
+      "excluded_scope": "treating observed radiance, modelled brightness and citizen/instrument observations as interchangeable",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-night-light-and-sky-brightness-evidence"
+    },
+    {
+      "parent_issue": 91,
+      "title": "Implement land and site-access records",
+      "included_roster_scope": [
+        "Canadian protected areas",
+        "NL Crown Lands/Land Use Atlas",
+        "St. John's MapCentre",
+        "Parks Canada Signal Hill/Cape Spear",
+        "Grand Concourse"
+      ],
+      "excluded_scope": "NB/NS/PEI expansion, commercial routing and inference that ownership proves access",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-land-and-site-access-records"
+    },
+    {
+      "parent_issue": 92,
+      "title": "Implement versioned IERS time inputs and supplementary kernels",
+      "included_roster_scope": [
+        "IERS Earth-orientation/time inputs",
+        "selected NAIF supplementary SPICE kernels"
+      ],
+      "excluded_scope": "already implemented DE442, superseded DE440/441 alternatives and software toolkits as sources",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-versioned-iers-time-inputs-and-supplementary-kernels"
+    },
+    {
+      "parent_issue": 92,
+      "title": "Implement eclipse and geometry validation catalogues",
+      "included_roster_scope": [
+        "JPL Horizons",
+        "USNO services",
+        "NASA solar/lunar eclipse catalogues and Besselian elements"
+      ],
+      "excluded_scope": "new event science or replacing DE442 without accepted authority",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-eclipse-and-geometry-validation-catalogues"
+    },
+    {
+      "parent_issue": 92,
+      "title": "Implement orbital and small-body catalogues",
+      "included_roster_scope": [
+        "celestrak-gp",
+        "JPL Small-Body Database",
+        "Minor Planet Center"
+      ],
+      "excluded_scope": "rejected Space-Track and unapproved pass scoring",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-orbital-and-small-body-catalogues"
+    },
+    {
+      "parent_issue": 92,
+      "title": "Implement meteor photometry and transient catalogues",
+      "included_roster_scope": [
+        "IMO",
+        "Global Meteor Network",
+        "NASA CNEOS",
+        "AMS",
+        "AAVSO",
+        "Gaia/IOTA",
+        "TNS/HEASARC/SIMBAD/VizieR/ZTF/ASAS-SN"
+      ],
+      "excluded_scope": "claiming current weather-map dependency or new module behavior without accepted specs",
+      "blocked_by_issues": [
+        75
+      ],
+      "key": "implement-meteor-photometry-and-transient-catalogues"
+    },
+    {
+      "parent_issue": 96,
+      "title": "Implement published NOAA AI-GFS and AI-GEFS retrieval",
+      "included_roster_scope": [
+        "current free NOAA-published AI-GFS and AI-GEFS products with exact model/version/initializer"
+      ],
+      "excluded_scope": "AIWP archives, local inference, paid endpoints and unnamed AI models",
+      "blocked_by_issues": [
+        75,
+        93
+      ],
+      "key": "implement-published-noaa-ai-gfs-and-ai-gefs-retrieval"
+    }
+  ],
+  "defer_until_issue_93_resolves": [
+    {
+      "parent_issue": 94,
+      "reason": "Issue 93 must select exact bounded archive windows before archive protocol/product children can be named without inventing scope."
+    },
+    {
+      "parent_issue": 96,
+      "reason": "Create one AIWP archive child per owner-selected model and initializer only after issue 93 sets the bounded historical acquisition plan."
+    }
+  ],
+  "created_issue_urls": {
+    "implement-open-meteo-deterministic-atmosphere-and-bright-sky-mosmix": "https://github.com/TusharSariya/Astraeus/issues/98",
+    "implement-open-meteo-marine-and-gfs-wave-retrieval": "https://github.com/TusharSariya/Astraeus/issues/99",
+    "implement-open-meteo-composition-and-lsa-saf-retrieval": "https://github.com/TusharSariya/Astraeus/issues/100",
+    "implement-goes-abi-expansion-and-glm-retrieval": "https://github.com/TusharSariya/Astraeus/issues/101",
+    "implement-viirs-and-jpss-cloud-retrieval": "https://github.com/TusharSariya/Astraeus/issues/102",
+    "implement-nucaps-retrieved-profile-acquisition": "https://github.com/TusharSariya/Astraeus/issues/103",
+    "evaluate-copernicus-modis-and-gpm-atmospheric-satellite-paths": "https://github.com/TusharSariya/Astraeus/issues/104",
+    "resolve-native-holyrood-radar-acquisition": "https://github.com/TusharSariya/Astraeus/issues/105",
+    "implement-native-cams-atmospheric-composition-forecasts": "https://github.com/TusharSariya/Astraeus/issues/106",
+    "implement-nasa-and-noaa-aerosol-observations": "https://github.com/TusharSariya/Astraeus/issues/107",
+    "implement-aeronet-and-account-gated-air-quality-observations": "https://github.com/TusharSariya/Astraeus/issues/108",
+    "implement-cwfis-and-firms-fire-products": "https://github.com/TusharSariya/Astraeus/issues/109",
+    "implement-ocean-wave-and-surge-model-grids": "https://github.com/TusharSariya/Astraeus/issues/110",
+    "implement-sst-ice-and-satellite-ocean-products": "https://github.com/TusharSariya/Astraeus/issues/111",
+    "implement-buoy-profile-and-water-level-observations": "https://github.com/TusharSariya/Astraeus/issues/112",
+    "implement-federal-and-provincial-hydrometric-products": "https://github.com/TusharSariya/Astraeus/issues/113",
+    "implement-marine-advisories-and-navigation-hazards": "https://github.com/TusharSariya/Astraeus/issues/114",
+    "implement-aviation-hazards-and-reports": "https://github.com/TusharSariya/Astraeus/issues/115",
+    "implement-swob-partner-wmo-and-city-products": "https://github.com/TusharSariya/Astraeus/issues/116",
+    "implement-community-weather-and-madis-paths": "https://github.com/TusharSariya/Astraeus/issues/117",
+    "implement-nl-provincial-air-quality-observations": "https://github.com/TusharSariya/Astraeus/issues/118",
+    "implement-terrain-and-canopy-acquisition": "https://github.com/TusharSariya/Astraeus/issues/119",
+    "implement-building-and-osm-obstruction-acquisition": "https://github.com/TusharSariya/Astraeus/issues/120",
+    "implement-night-light-and-sky-brightness-evidence": "https://github.com/TusharSariya/Astraeus/issues/121",
+    "implement-land-and-site-access-records": "https://github.com/TusharSariya/Astraeus/issues/122",
+    "implement-versioned-iers-time-inputs-and-supplementary-kernels": "https://github.com/TusharSariya/Astraeus/issues/123",
+    "implement-eclipse-and-geometry-validation-catalogues": "https://github.com/TusharSariya/Astraeus/issues/124",
+    "implement-orbital-and-small-body-catalogues": "https://github.com/TusharSariya/Astraeus/issues/125",
+    "implement-meteor-photometry-and-transient-catalogues": "https://github.com/TusharSariya/Astraeus/issues/126",
+    "implement-published-noaa-ai-gfs-and-ai-gefs-retrieval": "https://github.com/TusharSariya/Astraeus/issues/127"
+  }
+}

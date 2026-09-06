@@ -6,20 +6,19 @@ httpx transport, and sleeping is captured rather than performed.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Callable, Iterator
 
 import httpx
 import pytest
-
 from ingest import http as ingest_http
 from ingest.http import (
     DEFAULT_BACKOFF_SECONDS,
     DEFAULT_MAX_BACKOFF_SECONDS,
+    USER_AGENT,
     MaxBytesExceeded,
     PoliteClient,
     RetriesExhausted,
-    USER_AGENT,
     backoff_delay,
     parse_retry_after,
 )
@@ -44,7 +43,9 @@ def sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     return recorded
 
 
-def build_client(handler: Callable[[httpx.Request], httpx.Response], *, attempts: int = 5) -> PoliteClient:
+def build_client(
+    handler: Callable[[httpx.Request], httpx.Response], *, attempts: int = 5
+) -> PoliteClient:
     client = PoliteClient(attempts=attempts, min_host_interval_seconds=0.0)
     client._client = httpx.Client(
         transport=httpx.MockTransport(handler),
@@ -105,9 +106,8 @@ def test_a_non_retryable_status_fails_on_the_first_attempt(sleeps):
         seen.append(request)
         return httpx.Response(404)
 
-    with build_client(handler) as client:
-        with pytest.raises(httpx.HTTPStatusError):
-            client.get(URL)
+    with build_client(handler) as client, pytest.raises(httpx.HTTPStatusError):
+        client.get(URL)
     assert len(seen) == 1
     assert sleeps == []
 
@@ -117,7 +117,11 @@ def test_retry_after_overrides_the_computed_backoff(sleeps):
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(429, headers={"Retry-After": "7"}) if len(seen) == 1 else httpx.Response(200, text="ok")
+        return (
+            httpx.Response(429, headers={"Retry-After": "7"})
+            if len(seen) == 1
+            else httpx.Response(200, text="ok")
+        )
 
     with build_client(handler) as client:
         assert client.get_text(URL) == "ok"
@@ -143,7 +147,9 @@ def test_backoff_grows_exponentially_and_is_capped():
 
 def test_a_declared_oversize_body_is_refused_before_a_single_byte_lands(tmp_path: Path):
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, headers={"Content-Length": "1048576"}, stream=Chunked([b"x" * 1024]))
+        return httpx.Response(
+            200, headers={"Content-Length": "1048576"}, stream=Chunked([b"x" * 1024])
+        )
 
     destination = tmp_path / "oversize.grib2"
     with build_client(handler) as client:
@@ -163,6 +169,43 @@ def test_an_undeclared_oversize_body_is_abandoned_mid_stream(tmp_path: Path):
     assert not destination.exists()
 
 
+def test_bounded_in_memory_read_does_not_consume_the_rest_of_an_oversize_stream():
+    yielded: list[int] = []
+
+    class ObservedChunks(httpx.SyncByteStream):
+        def __iter__(self):
+            for index in range(100):
+                yielded.append(index)
+                yield b"x" * 1024
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, stream=ObservedChunks())
+
+    with build_client(handler) as client, pytest.raises(
+        MaxBytesExceeded, match="exceeded the"
+    ):
+        client.get_bytes(URL, max_bytes=4096, chunk_size=1024)
+    assert yielded == [0, 1, 2, 3, 4]
+
+
+def test_bounded_in_memory_read_refuses_declared_oversize_before_iteration():
+    yielded: list[int] = []
+
+    class NeverRead(httpx.SyncByteStream):
+        def __iter__(self):
+            yielded.append(1)
+            yield b"x"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, headers={"Content-Length": "9999"}, stream=NeverRead()
+        )
+
+    with build_client(handler) as client, pytest.raises(MaxBytesExceeded, match="above the"):
+        client.get_bytes(URL, max_bytes=4096)
+    assert yielded == []
+
+
 def test_a_body_within_the_ceiling_is_written_whole(tmp_path: Path):
     payload = b"GRIB" + b"\x00" * 2044
 
@@ -171,7 +214,9 @@ def test_a_body_within_the_ceiling_is_written_whole(tmp_path: Path):
 
     destination = tmp_path / "ok.grib2"
     with build_client(handler) as client:
-        assert client.download(URL, destination, max_bytes=4096, chunk_size=512) == len(payload)
+        assert client.download(URL, destination, max_bytes=4096, chunk_size=512) == len(
+            payload
+        )
     assert destination.read_bytes() == payload
 
 
@@ -195,24 +240,35 @@ def test_range_requests_send_the_header_and_reject_a_server_that_ignores_it():
             client.get_range(URL, 200, 100)
     assert requested == ["bytes=100-199", "bytes=100-"]
 
-    with build_client(lambda request: httpx.Response(200, content=b"whole file")) as client:
+    with build_client(
+        lambda request: httpx.Response(200, content=b"whole file")
+    ) as client:
         with pytest.raises(RetriesExhausted, match="ignored the Range header"):
             client.get_range(URL, 0, 10)
 
 
-def test_concatenated_ranges_stop_at_the_ceiling_and_leave_no_partial_file(tmp_path: Path):
+def test_concatenated_ranges_stop_at_the_ceiling_and_leave_no_partial_file(
+    tmp_path: Path,
+):
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(206, content=b"y" * 1024)
 
     destination = tmp_path / "subset.grib2"
     with build_client(handler) as client:
-        assert client.download_ranges(URL, destination, [(0, 1023), (2048, 3071)], max_bytes=4096) == 2048
+        assert (
+            client.download_ranges(
+                URL, destination, [(0, 1023), (2048, 3071)], max_bytes=4096
+            )
+            == 2048
+        )
         with pytest.raises(MaxBytesExceeded):
             client.download_ranges(URL, destination, [(0, 1023)] * 8, max_bytes=4096)
     assert not destination.exists()
 
 
-def test_per_host_pacing_delays_the_second_request_to_the_same_host(monkeypatch: pytest.MonkeyPatch):
+def test_per_host_pacing_delays_the_second_request_to_the_same_host(
+    monkeypatch: pytest.MonkeyPatch,
+):
     slept: list[float] = []
     monkeypatch.setattr(ingest_http.time, "sleep", slept.append)
     limiter = ingest_http.HostRateLimiter(min_interval_seconds=0.5)

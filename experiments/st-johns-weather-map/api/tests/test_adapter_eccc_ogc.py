@@ -105,6 +105,7 @@ def test_swob_fetch_creates_zarr(tmp_path: Path):
     assert len(result.artifacts) == 1
 
     artifact = result.artifacts[0]
+    assert artifact.provenance["evidence_classes"] == ["retrieved"], "a retrieved artifact declares how its values came to exist"
     assert artifact.logical_name == "surface"
     assert artifact.payload_path.exists()
 

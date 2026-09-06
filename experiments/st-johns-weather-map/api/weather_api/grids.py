@@ -162,12 +162,12 @@ RENDERED_GRID_SPECS: tuple[RenderedGridSpec, ...] = (
         "cloud_high", "high cloud cover", "high cloud layer",
     ),
     RenderedGridSpec(
-        "eccc-hrdps-surface-total-cloud", "eccc-hrdps", "surface", "total_cloud",
-        "total_cloud", "total cloud cover", "surface (whole-column cover)",
+        "eccc-hrdps-surface-total-cloud", "eccc-hrdps", "surface", "total_cloud_opacity",
+        "total_cloud_opacity", "total cloud cover (opacity-weighted)", "surface (whole-column cover)",
     ),
     RenderedGridSpec(
-        "eccc-rdps-surface-total-cloud", "eccc-rdps", "surface", "total_cloud",
-        "total_cloud", "total cloud cover", "surface (whole-column cover)",
+        "eccc-rdps-surface-total-cloud", "eccc-rdps", "surface", "total_cloud_opacity",
+        "total_cloud_opacity", "total cloud cover (opacity-weighted)", "surface (whole-column cover)",
     ),
     # The two derived layers. They read a DIFFERENT artifact from the layers
     # above - ``low_cloud_weong``, published by ``ingest.derive.weong_layer`` -
@@ -522,10 +522,10 @@ UNKNOWN_CADENCE_TOLERANCE_SECONDS = 900
 
 
 def frame_tolerance_seconds(cadence_seconds: int | None) -> int:
-    """Half a cadence, exactly the rule the layer index publishes."""
+    """One native interval, exactly the rule the layer index publishes."""
     if cadence_seconds is None or cadence_seconds <= 0:
         return UNKNOWN_CADENCE_TOLERANCE_SECONDS
-    return max(MIN_TOLERANCE_SECONDS, cadence_seconds // 2)
+    return max(MIN_TOLERANCE_SECONDS, cadence_seconds)
 
 
 def _modal_cadence(stamps: Sequence[datetime]) -> int | None:

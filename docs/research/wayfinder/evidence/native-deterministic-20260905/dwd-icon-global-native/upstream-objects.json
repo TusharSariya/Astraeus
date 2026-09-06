@@ -1,0 +1,256 @@
+{
+  "objects": [
+    {
+      "compressed_bytes": 1264317,
+      "compressed_sha256": "07c87c6431b6814e41bb7a302efee6a3d7d19e4dba634b04d4cfe01ec8ea0000",
+      "coordinate": true,
+      "level": null,
+      "path": "upstream-objects/clat.grib2.bz2",
+      "upstream": "clat",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clat/icon_global_icosahedral_time-invariant_2026090512_CLAT.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 1398282,
+      "compressed_sha256": "87f4adbec482c6ce91d5de8406118bb6ef3145aba69e4b29d274aa21fbb75b4d",
+      "coordinate": true,
+      "level": null,
+      "path": "upstream-objects/clon.grib2.bz2",
+      "upstream": "clon",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clon/icon_global_icosahedral_time-invariant_2026090512_CLON.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3328772,
+      "compressed_sha256": "a5a7374695c6eab0056798e74434f66438d5e8def821a5f480a348c4b59af8e2",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_T_2M.grib2.bz2",
+      "upstream": "t_2m",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t_2m/icon_global_icosahedral_single-level_2026090512_000_T_2M.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3470471,
+      "compressed_sha256": "1bb5bef6ec379f77e55c3f22cd7534833631acfb766ba0f89e4db9c95fd63b66",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_TD_2M.grib2.bz2",
+      "upstream": "td_2m",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/td_2m/icon_global_icosahedral_single-level_2026090512_000_TD_2M.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3514470,
+      "compressed_sha256": "eee2f94edc34103663c5f36fede8283cdbbdcab8a5b870fdafa4b8610f8d7182",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_U_10M.grib2.bz2",
+      "upstream": "u_10m",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u_10m/icon_global_icosahedral_single-level_2026090512_000_U_10M.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3522824,
+      "compressed_sha256": "7cba4c660b9a42be858378b77fbd8643bde37eb3bbf659fbb55c9e84869ae97a",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_V_10M.grib2.bz2",
+      "upstream": "v_10m",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v_10m/icon_global_icosahedral_single-level_2026090512_000_V_10M.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 2908614,
+      "compressed_sha256": "855f47a8f5951af294d37f4f717005fba52484896462c7626515f6b17c538d5a",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_PMSL.grib2.bz2",
+      "upstream": "pmsl",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/pmsl/icon_global_icosahedral_single-level_2026090512_000_PMSL.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 183,
+      "compressed_sha256": "bd81f7a91c46429b690b4abbee898b7a8b15b6487f922a748240d43b617661ae",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_TOT_PREC.grib2.bz2",
+      "upstream": "tot_prec",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/tot_prec/icon_global_icosahedral_single-level_2026090512_000_TOT_PREC.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4127211,
+      "compressed_sha256": "a22bdcad7f2226e68c4a6bb47e20884cfdf55586f34e8a623de06d11f3aa672e",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_CLCT.grib2.bz2",
+      "upstream": "clct",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clct/icon_global_icosahedral_single-level_2026090512_000_CLCT.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4565809,
+      "compressed_sha256": "dc51d5b0f483c42060753fadfe65eaedd84e928e73725e176409f9e006636573",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_CLCL.grib2.bz2",
+      "upstream": "clcl",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clcl/icon_global_icosahedral_single-level_2026090512_000_CLCL.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3165349,
+      "compressed_sha256": "3b160e81a795913a165e9a050860810414ee71b1528182afe77e3032bc22a8c9",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_CLCM.grib2.bz2",
+      "upstream": "clcm",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clcm/icon_global_icosahedral_single-level_2026090512_000_CLCM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 1848372,
+      "compressed_sha256": "f62bd43e27e3576e14860352c8c6fa3068eb48ff6e60980e03fac6c6664fa721",
+      "coordinate": false,
+      "level": null,
+      "path": "upstream-objects/icon_global_icosahedral_single-level_2026090512_000_CLCH.grib2.bz2",
+      "upstream": "clch",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/clch/icon_global_icosahedral_single-level_2026090512_000_CLCH.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4676393,
+      "compressed_sha256": "cc5338e7363f83264b54c89b09ddb7c713c410c297e953426ec6b883a6de977c",
+      "coordinate": false,
+      "level": 850,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_850_RELHUM.grib2.bz2",
+      "upstream": "relhum",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/relhum/icon_global_icosahedral_pressure-level_2026090512_000_850_RELHUM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4524853,
+      "compressed_sha256": "6416202d769971b8a665eb878579494ead021594919333cb76ae41b6c531a8da",
+      "coordinate": false,
+      "level": 700,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_700_RELHUM.grib2.bz2",
+      "upstream": "relhum",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/relhum/icon_global_icosahedral_pressure-level_2026090512_000_700_RELHUM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4372459,
+      "compressed_sha256": "7cf30f46250587e7314ee14bf07d8d8e7afd2500fb9af5bc3bd884e88e61d25f",
+      "coordinate": false,
+      "level": 500,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_500_RELHUM.grib2.bz2",
+      "upstream": "relhum",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/relhum/icon_global_icosahedral_pressure-level_2026090512_000_500_RELHUM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 4183788,
+      "compressed_sha256": "486b084ce3f68251c7460b75242b26f0f40b9c8faa514c5c8195ce0571137468",
+      "coordinate": false,
+      "level": 300,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_300_RELHUM.grib2.bz2",
+      "upstream": "relhum",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/relhum/icon_global_icosahedral_pressure-level_2026090512_000_300_RELHUM.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3236138,
+      "compressed_sha256": "754dd75515be1104ae4ecd23ef98e9192a901614827477c167af7f0bb70c98c9",
+      "coordinate": false,
+      "level": 850,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_850_T.grib2.bz2",
+      "upstream": "t",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t/icon_global_icosahedral_pressure-level_2026090512_000_850_T.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3036660,
+      "compressed_sha256": "da48343e708edebeff5b101c5329b9317705a2bc65d4ae4806cdbabe6fbf4936",
+      "coordinate": false,
+      "level": 700,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_700_T.grib2.bz2",
+      "upstream": "t",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t/icon_global_icosahedral_pressure-level_2026090512_000_700_T.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3264543,
+      "compressed_sha256": "2e8ab97121fbdfcde16498637f0648796c204fc5e5e0eca37167de950fe54ed6",
+      "coordinate": false,
+      "level": 500,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_500_T.grib2.bz2",
+      "upstream": "t",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t/icon_global_icosahedral_pressure-level_2026090512_000_500_T.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3117462,
+      "compressed_sha256": "c78adf5e179ca2f1f5a0ef6ecd2c79ba22b08fa4970ff362bc4ab162d167d49c",
+      "coordinate": false,
+      "level": 300,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_300_T.grib2.bz2",
+      "upstream": "t",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/t/icon_global_icosahedral_pressure-level_2026090512_000_300_T.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3640614,
+      "compressed_sha256": "dceb3b3d50e6af9c773882c3c69c55f517051ad001f839d2030f71401ee024cb",
+      "coordinate": false,
+      "level": 850,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_850_U.grib2.bz2",
+      "upstream": "u",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u/icon_global_icosahedral_pressure-level_2026090512_000_850_U.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3564170,
+      "compressed_sha256": "36440913741b090d8d08c47f8a6053d17cc2a96f81c1b245b2fc9414e59e4895",
+      "coordinate": false,
+      "level": 700,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_700_U.grib2.bz2",
+      "upstream": "u",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u/icon_global_icosahedral_pressure-level_2026090512_000_700_U.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3502971,
+      "compressed_sha256": "4b84ead53eceb71535c4ed669434a04025e4c3fed0fbf345aa2d4fa12c9c7684",
+      "coordinate": false,
+      "level": 500,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_500_U.grib2.bz2",
+      "upstream": "u",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u/icon_global_icosahedral_pressure-level_2026090512_000_500_U.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3625022,
+      "compressed_sha256": "4d0ecd4505b8616b1d0bcdbc06e2d47b65d5ff941a05d5048ab1793ab5236d9a",
+      "coordinate": false,
+      "level": 300,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_300_U.grib2.bz2",
+      "upstream": "u",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/u/icon_global_icosahedral_pressure-level_2026090512_000_300_U.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3641813,
+      "compressed_sha256": "9e292d24bf75dbd4528d4b6e0ffeb25adfff439e6fce7596925af59c2ae2a6ef",
+      "coordinate": false,
+      "level": 850,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_850_V.grib2.bz2",
+      "upstream": "v",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v/icon_global_icosahedral_pressure-level_2026090512_000_850_V.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3550686,
+      "compressed_sha256": "4ba86dbaae9bf8ec8429808e1000c4d597ce7a69e97ebdb1ebaa77c284c0ad78",
+      "coordinate": false,
+      "level": 700,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_700_V.grib2.bz2",
+      "upstream": "v",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v/icon_global_icosahedral_pressure-level_2026090512_000_700_V.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3469828,
+      "compressed_sha256": "9c1dfd4e3f7ad500fbc388ef5d611bc48d2eb7cccb740d318d3df62d4fc069df",
+      "coordinate": false,
+      "level": 500,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_500_V.grib2.bz2",
+      "upstream": "v",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v/icon_global_icosahedral_pressure-level_2026090512_000_500_V.grib2.bz2"
+    },
+    {
+      "compressed_bytes": 3587429,
+      "compressed_sha256": "366b502f0d8c5d6d1d7a6b1f8a3e809c9c922267678419414b275d6bed6750c3",
+      "coordinate": false,
+      "level": 300,
+      "path": "upstream-objects/icon_global_icosahedral_pressure-level_2026090512_000_300_V.grib2.bz2",
+      "upstream": "v",
+      "url": "https://opendata.dwd.de/weather/nwp/icon/grib/12/v/icon_global_icosahedral_pressure-level_2026090512_000_300_V.grib2.bz2"
+    }
+  ]
+}
