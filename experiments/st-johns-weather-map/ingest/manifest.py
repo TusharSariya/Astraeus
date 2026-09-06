@@ -449,7 +449,6 @@ class ValidationResult:
             "control": self.members.control,
             "control_retrieval": self.members.control_retrieval,
         }
-
     def as_storage_scope(self) -> dict[str, Any] | None:
         """The storage-scope provenance block, beside ``as_members``.
 
@@ -469,6 +468,23 @@ class ValidationResult:
         else:
             status = "partial"
         return {"status": status, "fraction": round(self.coverage_fraction, 4)}
+
+
+def unresolved_manifest_validation(source_id: str, reason: str) -> ValidationResult:
+    """Return a one-way nonpublishable verdict when no canonical manifest exists.
+
+    Experimental acquisition may retain a structurally checked native artifact
+    while its canonical field contract is still unresolved. Keeping this
+    lowering operation beside :class:`ValidationResult` prevents adapters from
+    constructing or asserting a verdict, and makes publication impossible.
+    """
+    return ValidationResult(
+        complete=True,
+        qc_passed=True,
+        coverage_fraction=0.0,
+        flags=(),
+        detail="",
+    ).failing("manifest_unresolved", f"{source_id}: {reason}")
 
 
 def _coordinate_name(dataset: Any, candidates: Sequence[str]) -> str | None:
