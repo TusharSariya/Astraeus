@@ -3,7 +3,7 @@ from datetime import datetime,timezone
 from pathlib import Path
 import httpx,pytest
 from ingest.contract import AdapterUnavailable,FetchWindow
-from ingest.experimental.eccc_local_products import ECCCPartnerSWOBNativeAdapter,ECCCCitypageNativeAdapter,PARTNER_STATIONS,MAX_XML,discover_metnotes
+from ingest.experimental.eccc_local_products import ECCCPartnerSWOBNativeAdapter,ECCCCitypageNativeAdapter,PARTNER_STATIONS,MAX_XML,MAX_XML_DEPTH,MAX_XML_NODES,discover_metnotes
 from ingest.http import PoliteClient,USER_AGENT
 from ingest.registry import get_adapter
 UTC=timezone.utc; NOW=datetime(2026,9,6,5,30,tzinfo=UTC); WINDOW=FetchWindow(NOW)
@@ -30,7 +30,24 @@ def test_partner_documents_are_complete_immutable_native_artifacts(tmp_path:Path
   rows={r['name']:r for r in artifact.provenance['native_element_inventory']}
   assert rows['air_temp']['uom']=='°C' and rows['air_temp']['qualifiers']==['qa_summary']
   assert rows['rnfl_amt_pst1hr']['has_value'] is False
-  assert 'All rights reserved' in artifact.provenance['provider_attribution']
+ assert 'All rights reserved' in artifact.provenance['provider_attribution']
+
+def test_partner_selects_newest_filename_and_requires_aware_observation_time(tmp_path:Path):
+ seen=[]
+ def h(req):
+  station=req.url.path.rstrip('/').split('/')[-1]
+  if req.url.path.endswith('/'):
+   return httpx.Response(200,content=listing(f'2026-09-06-0500-x-{station}-AUTO-swob.xml',f'2026-09-06-0400-x-{station}-AUTO-swob.xml'))
+  seen.append(req.url.path)
+  return httpx.Response(200,content=swob(req.url.path.split('/')[-2]))
+ a=ECCCPartnerSWOBNativeAdapter(client(h),base_url='https://fixture.invalid',day='20260906');a.fetch(a.discover(WINDOW)[0],WINDOW,tmp_path)
+ assert all('-0500-' in path for path in seen)
+ def naive(req):
+  station=req.url.path.rstrip('/').split('/')[-1]
+  if req.url.path.endswith('/'): return httpx.Response(200,content=listing(f'2026-09-06-0500-x-{station}-AUTO-swob.xml'))
+  return httpx.Response(200,content=swob(req.url.path.split('/')[-2]).replace(b'2026-09-06T05:00:00.000Z',b'2026-09-06T05:00:00'))
+ a=ECCCPartnerSWOBNativeAdapter(client(naive),base_url='https://fixture.invalid',day='20260906')
+ with pytest.raises(AdapterUnavailable,match='invalid observation time'): a.fetch(a.discover(WINDOW)[0],WINDOW,tmp_path)
 
 def test_partner_missing_station_malformed_and_oversize_fail_closed(tmp_path:Path):
  def missing(req): return httpx.Response(200,content=listing())
@@ -49,6 +66,31 @@ def test_partner_missing_station_malformed_and_oversize_fail_closed(tmp_path:Pat
  a=ECCCPartnerSWOBNativeAdapter(client(oversized),base_url='https://fixture.invalid',day='20260906')
  with pytest.raises(AdapterUnavailable,match='bounded request unavailable'): a.fetch(a.discover(WINDOW)[0],WINDOW,tmp_path)
 
+def test_xml_shape_and_partial_writes_fail_closed(monkeypatch,tmp_path:Path):
+ name='20260906T052448.467Z_MSC_CitypageWeather_s0000280_en.xml'
+ def city(body):
+  return ECCCCitypageNativeAdapter(client(lambda req:httpx.Response(200,content=listing(name) if req.url.path.endswith('/') else body)),base_url='https://fixture.invalid/NL')
+ deep=('<siteData><location><name code="s0000280"/></location>'+'<x>'*(MAX_XML_DEPTH+1)+'v'+'</x>'*(MAX_XML_DEPTH+1)+'</siteData>').encode()
+ a=city(deep)
+ with pytest.raises(AdapterUnavailable,match='exceeds depth'): a.fetch(a.discover(WINDOW)[0],WINDOW,tmp_path)
+ broad=('<siteData><location><name code="s0000280"/></location>'+'<x/>'*(MAX_XML_NODES+1)+'</siteData>').encode()
+ a=city(broad)
+ with pytest.raises(AdapterUnavailable,match='element nodes'): a.fetch(a.discover(WINDOW)[0],WINDOW,tmp_path)
+ a=city(CITY); candidate=a.discover(WINDOW)[0]; original=Path.write_bytes
+ def partial(path,data): original(path,data[:7]); raise OSError('injected partial write')
+ monkeypatch.setattr(Path,'write_bytes',partial)
+ with pytest.raises(OSError,match='partial write'): a.fetch(candidate,WINDOW,tmp_path)
+ assert list(tmp_path.iterdir())==[]
+ monkeypatch.setattr(Path,'write_bytes',original)
+ def partner(req):
+  station=req.url.path.rstrip('/').split('/')[-1]
+  if req.url.path.endswith('/'): return httpx.Response(200,content=listing(f'2026-09-06-0500-x-{station}-AUTO-swob.xml'))
+  return httpx.Response(200,content=swob(req.url.path.split('/')[-2]))
+ a=ECCCPartnerSWOBNativeAdapter(client(partner),base_url='https://fixture.invalid',day='20260906'); candidate=a.discover(WINDOW)[0]
+ monkeypatch.setattr(Path,'write_bytes',partial)
+ with pytest.raises(OSError,match='partial write'): a.fetch(candidate,WINDOW,tmp_path)
+ assert list(tmp_path.iterdir())==[]
+
 def test_city_xml_is_native_and_unpublishable(tmp_path:Path):
  name='20260906T052448.467Z_MSC_CitypageWeather_s0000280_en.xml'
  def h(req): return httpx.Response(200,content=listing(name) if req.url.path.endswith('/') else CITY,headers={'last-modified':'x'})
@@ -64,6 +106,15 @@ def test_city_xml_is_native_and_unpublishable(tmp_path:Path):
  assert uv['native_semantics']=={'category':'moderate'}
  assert index['native_code']=='5'
  assert result.artifacts[0].payload_path.read_bytes()==CITY
+
+def test_transport_completion_is_preserved(tmp_path:Path):
+ name='20260906T052448.467Z_MSC_CitypageWeather_s0000280_en.xml'; completed=datetime(2026,9,6,5,25,1,123456,tzinfo=UTC)
+ class FixedClient:
+  def get_bytes_with_headers_completed(self,url,*,max_bytes):
+   return (listing(name) if url.endswith('/') else CITY),{},completed
+ a=ECCCCitypageNativeAdapter(FixedClient(),base_url='https://fixture.invalid/NL'); result=a.fetch(a.discover(WINDOW)[0],WINDOW,tmp_path)
+ assert result.retrieved_at==completed
+ assert result.artifacts[0].provenance['acquisition']['document']['completed_at']==completed.isoformat()
 
 def test_city_identity_transport_and_metnotes_empty_fail_closed(tmp_path:Path):
  name='20260906T052448.467Z_MSC_CitypageWeather_s0000280_en.xml'

@@ -11,6 +11,14 @@ The isolated experiment SHALL fetch only the six selected partner SWOB stations 
 - **WHEN** any of the six required station listings or XML documents is absent, malformed, oversized or mismatched
 - **THEN** the partner run is unavailable and no staged station artifact survives
 
+#### Scenario: XML structure exceeds reviewed bounds
+- **WHEN** a bounded XML body exceeds 4096 element nodes or depth 64
+- **THEN** it is unavailable before recursive inventory and no partial artifact survives
+
+#### Scenario: Artifact write fails after creating bytes
+- **WHEN** either XML artifact write creates a partial file and then fails
+- **THEN** the adapter removes the partial file and propagates the failure
+
 #### Scenario: City page includes unmapped native fields
 - **WHEN** the St. John's XML contains current conditions, forecast periods, warnings or UV elements without an accepted canonical contract
 - **THEN** every leaf and every coded or unit-bearing structural element is inventoried and the immutable document remains nonpublishable

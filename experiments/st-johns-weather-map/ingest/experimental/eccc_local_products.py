@@ -25,6 +25,8 @@ CITY_BASE = "https://dd.weather.gc.ca/today/citypage_weather/NL"
 METNOTES_URL = "https://dd.weather.gc.ca/today/metnotes/"
 MAX_LISTING = 256 * 1024
 MAX_XML = 128 * 1024
+MAX_XML_NODES = 4096
+MAX_XML_DEPTH = 64
 HEADERS = ("content-type", "content-length", "etag", "last-modified", "date")
 PARTNER_STATIONS = (
     ("nl-water", "nlencl0001"), ("nl-water", "nlencl0013"), ("nl-water", "nlencl0015"),
@@ -42,8 +44,7 @@ def _receipt(url: str, body: bytes, headers: Mapping[str, str], completed: datet
 
 def _get(client: PoliteClient, url: str, cap: int, source: str) -> tuple[bytes, dict[str, Any]]:
     try:
-        body, headers = client.get_bytes_with_headers(url, max_bytes=cap)
-        completed = datetime.now(UTC)
+        body, headers, completed = client.get_bytes_with_headers_completed(url, max_bytes=cap)
     except (MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, OSError, ValueError) as error:
         raise AdapterUnavailable(f"{source}: bounded request unavailable: {error}") from error
     return body, _receipt(url, body, headers, completed)
@@ -53,9 +54,20 @@ def _xml(body: bytes, source: str) -> ET.Element:
     if b"<!DOCTYPE" in body.upper() or b"<!ENTITY" in body.upper():
         raise AdapterUnavailable(f"{source}: declarations with external/entity semantics are refused")
     try:
-        return ET.fromstring(body)
+        root = ET.fromstring(body)
     except ET.ParseError as error:
         raise AdapterUnavailable(f"{source}: malformed XML: {error}") from error
+    nodes = 0
+    stack = [(root, 1)]
+    while stack:
+        element, depth = stack.pop()
+        nodes += 1
+        if nodes > MAX_XML_NODES:
+            raise AdapterUnavailable(f"{source}: XML exceeds {MAX_XML_NODES} element nodes")
+        if depth > MAX_XML_DEPTH:
+            raise AdapterUnavailable(f"{source}: XML exceeds depth {MAX_XML_DEPTH}")
+        stack.extend((child, depth + 1) for child in element)
+    return root
 
 
 def _inventory(root: ET.Element) -> list[dict[str, Any]]:
@@ -108,7 +120,7 @@ class ECCCPartnerSWOBNativeAdapter:
             body,receipt=_get(self._client,url,MAX_LISTING,self.source_id)
             try: names=parse_directory_listing(body.decode("utf-8",errors="strict"),suffixes=(".xml",))
             except (UnicodeError,ValueError) as error: raise AdapterUnavailable(f"{self.source_id}: invalid listing: {error}") from error
-            matching=[n for n in names if _SWOB_NAME.fullmatch(n)]
+            matching=sorted(n for n in names if _SWOB_NAME.fullmatch(n))
             if not matching: raise AdapterUnavailable(f"{self.source_id}: no SWOB XML for {partner}/{station}")
             name=matching[-1]; products.append({"partner":partner,"station_dir":station,"name":name,"url":url+name}); receipts.append(receipt)
         digest=hashlib.sha256("\n".join(p["url"] for p in products).encode()).hexdigest()[:12]
@@ -122,7 +134,7 @@ class ECCCPartnerSWOBNativeAdapter:
                 or not all(isinstance(item,dict) for item in listings)):
             raise AdapterUnavailable(f"{self.source_id}: incomplete candidate")
         validation=unresolved_manifest_validation(self.source_id,"partner fields, QC codes, and redistribution contract are not accepted")
-        artifacts=[]; completions=[]; workdir.mkdir(parents=True,exist_ok=True)
+        artifacts=[]; completions=[]; staged_paths=[]; workdir.mkdir(parents=True,exist_ok=True)
         try:
             for index,product in enumerate(products):
                 body,receipt=_get(self._client,str(product["url"]),MAX_XML,self.source_id); root=_xml(body,self.source_id)
@@ -130,9 +142,13 @@ class ECCCPartnerSWOBNativeAdapter:
                 if root.tag.rsplit("}",1)[-1]!="ObservationCollection" or values.get("stn_id","").lower()!=str(product["station_dir"]).lower():
                     raise AdapterUnavailable(f"{self.source_id}: station/root identity mismatch")
                 stamp=values.get("date_tm");
-                try: observed=datetime.fromisoformat(str(stamp).replace("Z","+00:00"))
-                except ValueError as error: raise AdapterUnavailable(f"{self.source_id}: invalid observation time") from error
-                path=workdir/f"partner-{product['partner']}-{product['station_dir']}.xml"; path.write_bytes(body)
+                try:
+                    observed=datetime.fromisoformat(str(stamp).replace("Z","+00:00"))
+                    if observed.tzinfo is None or observed.utcoffset() is None:
+                        raise ValueError("observation time lacks an offset")
+                    observed=observed.astimezone(UTC)
+                except (TypeError, ValueError) as error: raise AdapterUnavailable(f"{self.source_id}: invalid observation time") from error
+                path=workdir/f"partner-{product['partner']}-{product['station_dir']}.xml"; staged_paths.append(path); path.write_bytes(body)
                 artifacts.append(Artifact(f"partner-{product['partner']}-{product['station_dir']}","application/xml",path,{
                     "source_id":self.source_id,"producer":"Environment and Climate Change Canada partner SWOB relay",
                     "partner":product["partner"],"station_id":values.get("stn_id"),"station_name":values.get("stn_nam"),
@@ -143,7 +159,7 @@ class ECCCPartnerSWOBNativeAdapter:
                     "operational":False,"adapter_version":self.adapter_version,**declared_classes(["uncalibrated_observation"])}))
                 completions.append(datetime.fromisoformat(receipt["completed_at"]))
         except BaseException:
-            for a in artifacts:a.payload_path.unlink(missing_ok=True)
+            for path in staged_paths:path.unlink(missing_ok=True)
             raise
         return RunResult(self.source_id,candidate.provider_run_id,None,max(completions),validation.complete,validation.qc_passed,artifacts,None,
                          "six named Avalon partner SWOB documents retained; canonical publication prohibited")
@@ -175,7 +191,11 @@ class ECCCCitypageNativeAdapter:
         names=[e for e in root.iter() if e.tag.rsplit("}",1)[-1]=="name"]
         if root.tag.rsplit("}",1)[-1]!="siteData" or not any(e.attrib.get("code")=="s0000280" for e in names): raise AdapterUnavailable(f"{self.source_id}: city document identity mismatch")
         validation=unresolved_manifest_validation(self.source_id,"city forecast periods, coded conditions, advisories, and UV fields lack an accepted native contract")
-        workdir.mkdir(parents=True,exist_ok=True);path=workdir/"citypage-s0000280-en.xml";path.write_bytes(body)
+        workdir.mkdir(parents=True,exist_ok=True);path=workdir/"citypage-s0000280-en.xml"
+        try: path.write_bytes(body)
+        except BaseException:
+            path.unlink(missing_ok=True)
+            raise
         artifact=Artifact("citypage-s0000280-en","application/xml",path,{"source_id":self.source_id,"producer":"Environment and Climate Change Canada","site_code":"s0000280","language":"en","issue_time":candidate.run_time.isoformat(),"native_element_inventory":_inventory(root),"acquisition":{"listings":listings,"document":receipt},"upstream_sha256":receipt["body_sha256"],"artifact_sha256":receipt["body_sha256"],"quality":validation.as_quality(),"source_qc":{"status":"unknown"},"operational":False,"adapter_version":self.adapter_version,**declared_classes(["retrieved"])})
         return RunResult(self.source_id,candidate.provider_run_id,candidate.run_time,datetime.fromisoformat(receipt["completed_at"]),validation.complete,validation.qc_passed,[artifact],None,"native city XML retained; publication prohibited")
 
