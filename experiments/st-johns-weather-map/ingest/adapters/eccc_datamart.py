@@ -49,7 +49,6 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import ctypes
-import hashlib
 import gc
 import logging
 import os
@@ -814,7 +813,7 @@ class ECCCDataMartAdapter:
                 with ThreadPoolExecutor(max_workers=max(1, min(download_parallelism(), len(planned)))) as pool:
                     futures = {
                         pool.submit(
-                            client.download_with_headers if self._capture_transport_receipts else client.download,
+                            client.download_with_receipt if self._capture_transport_receipts else client.download,
                             file_url, local_grib, max_bytes=HRDPS_FILE_BYTES,
                         ): (canonical_name, match_file, file_url, local_grib)
                         for canonical_name, match_file, file_url, local_grib in planned
@@ -830,19 +829,16 @@ class ECCCDataMartAdapter:
                             continue
                         fetched[canonical_name] = local_grib
                         if self._capture_transport_receipts:
-                            digest = hashlib.sha256()
-                            with local_grib.open("rb") as stream:
-                                for chunk in iter(lambda: stream.read(1 << 20), b""):
-                                    digest.update(chunk)
                             transport_receipts.append({
                                 "field": canonical_name,
-                                "url": file_url,
-                                "bytes": local_grib.stat().st_size,
-                                "sha256": digest.hexdigest(),
-                                "completed_at": datetime.now(UTC).isoformat(),
+                                "url": download_result["url"],
+                                "request_headers": download_result["request_headers"],
+                                "bytes": download_result["byte_size"],
+                                "sha256": download_result["sha256"],
+                                "completed_at": download_result["completed_at"].isoformat(),
                                 "response_headers": {
                                     str(name).lower(): str(value)
-                                    for name, value in download_result[1].items()
+                                    for name, value in download_result["response_headers"].items()
                                     if str(name).lower() in {"cache-control", "content-length", "content-type", "date", "etag", "last-modified"}
                                 },
                             })
