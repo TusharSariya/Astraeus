@@ -61,13 +61,15 @@ class SWPCKpQueryService:
 
     def __init__(self, *, client: httpx.Client | None = None,
                  adapter: SWPCKpAdapter | None = None,
-                 clock: Callable[[], float] = time.monotonic) -> None:
+                 clock: Callable[[], float] = time.monotonic,
+                 utcnow: Callable[[], datetime] = lambda: datetime.now(UTC)) -> None:
         self._client = client or httpx.Client(
             headers={"User-Agent": "astraeus-weather-experiment/0.1", "Accept-Encoding": "identity"},
             timeout=60, follow_redirects=False,
         )
         self._adapter = adapter or SWPCKpAdapter()
         self._clock = clock
+        self._utcnow = utcnow
         self._entry: KpEntry | None = None
         self._inflight: Future[KpEntry] | None = None
         self._failure: tuple[float, SWPCKpUnavailable] | None = None
@@ -88,7 +90,7 @@ class SWPCKpQueryService:
                     raise SWPCKpUnavailable(f"SWPC {mode} Kp 304 changed ETag")
                 freshness_headers = dict(headers)
                 freshness_headers.setdefault("cache-control", prior.response_headers.get("cache-control", ""))
-                completed = datetime.now(UTC)
+                completed = self._utcnow()
                 try:
                     max_age, ttl = _freshness(freshness_headers, completed)
                 except TafQueryUnavailable as error:
@@ -112,7 +114,7 @@ class SWPCKpQueryService:
                     raise SWPCKpUnavailable(f"SWPC {mode} Kp exceeds the {KP_DOCUMENT_BYTES}-byte ceiling")
                 chunks.append(chunk)
             body = b"".join(chunks)
-            completed = datetime.now(UTC)
+            completed = self._utcnow()
             effective_url = str(response.request.url)
             request_headers = _safe_headers(response.request.headers)
             response_headers = {key.lower(): value for key, value in response.headers.items()}
@@ -187,14 +189,20 @@ class SWPCKpQueryService:
         # Observations never use a future record. Forecast preserves provider
         # status and exposes entries from the selected instant onward; it does
         # not substitute the nearest entry for a gap.
-        native_start = min(row.time for row in document.readings)
         native_end = max(row.time for row in document.readings)
-        if not native_start <= at <= native_end:
-            selected = []
-        elif forecast:
-            selected = [row for row in document.readings if at <= row.time <= at + timedelta(days=14)]
+        if forecast:
+            # This endpoint is a mutable current outlook, not an archive. A
+            # selected instant before the first forecast row is valid only
+            # while it is within the current document's six-hour issuance
+            # context; future selections remain bounded by the document end.
+            current_lower = document.completed_at - timedelta(hours=6)
+            selected = [row for row in document.readings if at <= row.time <= at + timedelta(days=14)] \
+                if current_lower < at <= native_end else []
         else:
-            selected = [row for row in document.readings if at - timedelta(hours=24) <= row.time <= at]
+            eligible = [row for row in document.readings if row.time <= at]
+            newest = max((row.time for row in eligible), default=None)
+            selected = [row for row in eligible if at - timedelta(hours=24) <= row.time] \
+                if newest is not None and at - newest < timedelta(hours=6) else []
         anchor = max((row.time for row in document.readings if row.time <= at), default=None)
         age = int((at - anchor).total_seconds()) if anchor else None
         return SpaceWeatherSeries(

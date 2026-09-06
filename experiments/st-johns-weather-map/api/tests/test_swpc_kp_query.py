@@ -51,7 +51,8 @@ def service(*, forecast_status: int = 200):
                               headers={"Cache-Control": "max-age=60", "ETag": '"observed"'}, request=request)
 
     bounds = BoundsProbe()
-    query = SWPCKpQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)), adapter=bounds)  # type: ignore[arg-type]
+    query = SWPCKpQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)), adapter=bounds,
+                               utcnow=lambda: datetime(2026, 9, 6, 14, tzinfo=UTC))  # type: ignore[arg-type]
     return query, calls, bounds
 
 
@@ -77,6 +78,21 @@ def test_current_document_refuses_a_selection_outside_its_native_coverage() -> N
     observed, forecast = query.series(datetime(2026, 9, 5, 14, tzinfo=UTC))
     assert observed.available is False
     assert forecast.available is False
+
+
+def test_between_slots_keeps_fresh_observed_and_future_forecast_native_rows() -> None:
+    query, _calls, _bounds = service()
+    observed, forecast = query.series(datetime(2026, 9, 6, 16, tzinfo=UTC))
+    assert observed.available is True
+    assert observed.readings[-1].time.hour == 15
+    assert [(row.time.hour, row.status) for row in forecast.readings] == [(18, "predicted")]
+
+    # Before the first native outlook slot, current-document acquisition time
+    # establishes applicability without inventing a nearest Kp value.
+    _observed, forecast = query.series(datetime(2026, 9, 6, 11, tzinfo=UTC))
+    assert [(row.time.hour, row.status) for row in forecast.readings] == [
+        (12, "observed"), (15, "estimated"), (18, "predicted"),
+    ]
     observed, forecast = query.series(datetime(2026, 9, 7, 14, tzinfo=UTC))
     assert observed.available is False
     assert forecast.available is False
@@ -112,7 +128,8 @@ def test_expiry_conditionally_revalidates_both_documents_without_replacing_body_
                               headers={"Cache-Control": "max-age=60", "ETag": etag}, request=request)
 
     query = SWPCKpQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)),
-                               adapter=BoundsProbe(), clock=lambda: now[0])  # type: ignore[arg-type]
+                               adapter=BoundsProbe(), clock=lambda: now[0],
+                               utcnow=lambda: datetime(2026, 9, 6, 14, tzinfo=UTC))  # type: ignore[arg-type]
     first = query.entry()
     now[0] = 61
     second = query.entry()
@@ -133,7 +150,8 @@ def test_observed_failure_is_negative_cached_for_the_source_interval() -> None:
         return httpx.Response(503, request=request)
 
     query = SWPCKpQueryService(client=httpx.Client(transport=httpx.MockTransport(handler)),
-                               adapter=BoundsProbe())  # type: ignore[arg-type]
+                               adapter=BoundsProbe(),
+                               utcnow=lambda: datetime(2026, 9, 6, 14, tzinfo=UTC))  # type: ignore[arg-type]
     with pytest.raises(Exception, match="HTTP 503"):
         query.entry()
     with pytest.raises(Exception, match="HTTP 503"):
