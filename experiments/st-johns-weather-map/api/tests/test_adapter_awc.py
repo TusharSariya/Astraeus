@@ -28,8 +28,34 @@ from ingest.adapters.awc import (
 )
 from ingest.contract import AdapterUnavailable, FetchWindow
 from ingest.http import PoliteClient, USER_AGENT
+from ingest.isolation import BoundedProcessResult
 
 UTC = timezone.utc
+
+
+@pytest.fixture(autouse=True)
+def local_metar_decoder(monkeypatch: pytest.MonkeyPatch):
+    """Keep parsing unit tests portable; kernel enforcement has Linux tests."""
+    from ingest.awc_metar_isolated import _decode
+
+    def run(action: str, raw: bytes, window: FetchWindow, destination: Path | None):
+        rows = _decode(raw, window)
+        newest = max(int(row["obsTime"]) for row in rows)
+        reply: dict[str, Any] = {"count": len(rows), "newest": newest}
+        if action == "normalize":
+            assert destination is not None
+            result = AWCMetarAdapter().fetch(
+                __import__("ingest.contract", fromlist=["RunCandidate"]).RunCandidate(
+                    f"cyyt-metar-{newest}", datetime.fromtimestamp(newest, tz=UTC), [], {"records": rows}
+                ), window, destination.parent,
+            )
+            (destination.parent / "cyyt_metar.zarr.zip").replace(destination)
+            reply.update(run_time=result.run_time.isoformat(), complete=result.complete,
+                         qc_passed=result.qc_passed, provenance=result.artifacts[0].provenance,
+                         notes=result.notes)
+        return BoundedProcessResult(destination, json.dumps(reply).encode())
+
+    monkeypatch.setattr(AWCMetarAdapter, "_isolated", staticmethod(run))
 
 SAMPLE_METAR_JSON = [
     {
