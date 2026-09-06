@@ -71,6 +71,44 @@ class RunCandidate:
 
 
 @dataclass(frozen=True)
+class ResourceBounds:
+    """Conservative allocations required by one complete fetch operation.
+
+    These are admission bounds, not observations from a completed fetch.  An
+    adapter derives them from discovery metadata and measured source evidence
+    before the worker permits payload retrieval.
+    """
+
+    store_bytes: int
+    filesystem_bytes: int
+    margin_bytes: int
+    received_bytes: int
+
+    def validate(self) -> None:
+        for name, value in (
+            ("store_bytes", self.store_bytes),
+            ("filesystem_bytes", self.filesystem_bytes),
+            ("margin_bytes", self.margin_bytes),
+            ("received_bytes", self.received_bytes),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"resource bound {name} must be a non-negative integer")
+        if self.store_bytes == 0 or self.filesystem_bytes == 0 or self.received_bytes == 0:
+            raise ValueError("store, filesystem and received-byte bounds must be measured and non-zero")
+
+
+@dataclass(frozen=True)
+class DiscoveryBounds:
+    """Measured bytes permitted while enumerating candidate metadata."""
+
+    received_bytes: int
+
+    def validate(self) -> None:
+        if isinstance(self.received_bytes, bool) or not isinstance(self.received_bytes, int) or self.received_bytes <= 0:
+            raise ValueError("discovery received-byte bound must be a positive integer")
+
+
+@dataclass(frozen=True)
 class Artifact:
     """A normalized artifact staged locally, ready for MinIO upload.
 
@@ -119,8 +157,14 @@ class Adapter(Protocol):
 
     source_id: str
 
+    def discovery_bounds(self, window: FetchWindow) -> DiscoveryBounds:
+        """Return a measured finite metadata bound before discovery requests."""
+
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         """Return usable upstream runs, newest first. Must not download bulk."""
+
+    def resource_bounds(self, candidate: RunCandidate, window: FetchWindow) -> ResourceBounds:
+        """Return measured complete-operation bounds without reading payloads."""
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
         """Retrieve, subset and normalize one candidate into staged artifacts."""

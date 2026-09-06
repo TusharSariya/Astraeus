@@ -8,6 +8,7 @@ arithmetic, neither of which needs a live service to be wrong.
 from __future__ import annotations
 
 import dataclasses
+import shutil
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -22,6 +23,7 @@ from ingest.store import (
     LOCAL_STORAGE_CAP_BYTES,
     ArtifactStore,
     QuotaExceeded,
+    ResourceBudgetExceeded,
     StoreConfig,
     StoreUnavailable,
     UndeclaredEvidenceClasses,
@@ -195,6 +197,31 @@ def test_replacing_an_existing_revision_frees_its_bytes_in_the_projection(store,
     with pytest.raises(QuotaExceeded):
         instance.check_projection(1)
     instance.check_projection(1, replacing_bytes=1)
+
+
+def test_resource_reservation_includes_the_exact_hot_store_boundary(store, monkeypatch, tmp_path):
+    instance, _ = store
+    monkeypatch.setattr(instance, "used_bytes", lambda: LOCAL_STORAGE_CAP_BYTES - 1024)
+    monkeypatch.setattr(shutil, "disk_usage", lambda _path: shutil._ntuple_diskusage(10_000, 0, 10_000))
+
+    with instance.reserve_resources(store_bytes=1024, filesystem_bytes=2048, margin_bytes=256, filesystem_path=tmp_path):
+        pass
+    with pytest.raises(QuotaExceeded):
+        with instance.reserve_resources(store_bytes=1025, filesystem_bytes=2048, margin_bytes=256, filesystem_path=tmp_path):
+            pass
+
+
+def test_concurrent_reservations_share_hot_and_filesystem_capacity(store, monkeypatch, tmp_path):
+    instance, _ = store
+    monkeypatch.setattr(instance, "used_bytes", lambda: 0)
+    monkeypatch.setattr(shutil, "disk_usage", lambda _path: shutil._ntuple_diskusage(10_000, 0, 5_000))
+
+    with instance.reserve_resources(store_bytes=1024, filesystem_bytes=3000, margin_bytes=500, filesystem_path=tmp_path):
+        with pytest.raises(ResourceBudgetExceeded, match="local filesystem"):
+            with instance.reserve_resources(store_bytes=1024, filesystem_bytes=1501, margin_bytes=0, filesystem_path=tmp_path):
+                pass
+    with instance.reserve_resources(store_bytes=1024, filesystem_bytes=4500, margin_bytes=500, filesystem_path=tmp_path):
+        pass
 
 
 def test_an_oversize_artifact_is_never_uploaded(store, monkeypatch, tmp_path):

@@ -169,15 +169,31 @@ def _store():
 
 def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callable[[], None] | None = None) -> SourceOutcome:
     """Discover, fetch, stage and publish one source. Never raises."""
-    from ingest.contract import AdapterUnavailable, FetchWindow  # noqa: PLC0415
+    from ingest.contract import AdapterUnavailable, DiscoveryBounds, FetchWindow, ResourceBounds  # noqa: PLC0415
     from ingest.scheduler import plan_fetch  # noqa: PLC0415
-    from ingest.store import QuotaExceeded, RunIdentityConflict, StoreUnavailable  # noqa: PLC0415
+    from ingest.resources import ReceivedBytesExceeded, acquisition_budget, directory_bytes  # noqa: PLC0415
+    from ingest.store import QuotaExceeded, ResourceBudgetExceeded, RunIdentityConflict, StoreUnavailable  # noqa: PLC0415
 
     window = FetchWindow(now=reference)
+    if store is None:
+        return SourceOutcome(config.source_id, "failed", "resource preflight failed: no artifact store is available")
     try:
-        candidates = adapter.discover(window)
+        discovery_method = getattr(adapter, "discovery_bounds", None)
+        if discovery_method is None:
+            raise ResourceBudgetExceeded("discovery resource bounds are unknown")
+        discovery_bounds = discovery_method(window)
+        if not isinstance(discovery_bounds, DiscoveryBounds):
+            raise ResourceBudgetExceeded("discovery resource bounds are unknown or invalid")
+        try:
+            discovery_bounds.validate()
+        except ValueError as error:
+            raise ResourceBudgetExceeded(str(error)) from error
+        with acquisition_budget(discovery_bounds.received_bytes):
+            candidates = adapter.discover(window)
     except AdapterUnavailable as error:
         return SourceOutcome(config.source_id, "cancelled", f"nothing usable upstream: {error}")
+    except (ResourceBudgetExceeded, ReceivedBytesExceeded) as error:
+        return SourceOutcome(config.source_id, "failed", f"upstream_budget_exhausted during discovery: {error}")
     except Exception as error:
         return SourceOutcome(config.source_id, "failed", f"discovery failed: {error!r}")
     if not candidates:
@@ -203,21 +219,45 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
                 "retained frames stay visible and adapter.fetch was not called",
                 0,
             )
-    if heartbeat is not None:
-        heartbeat()
-    with tempfile.TemporaryDirectory(prefix=f"{config.source_id}-") as workdir:
+    phase = "resource preflight"
+    try:
+        bounds_method = getattr(adapter, "resource_bounds", None)
+        if bounds_method is None:
+            raise ResourceBudgetExceeded("complete-operation resource bounds are unknown")
+        bounds = bounds_method(candidate, window)
+        if not isinstance(bounds, ResourceBounds):
+            raise ResourceBudgetExceeded("complete-operation resource bounds are unknown or invalid")
         try:
+            bounds.validate()
+        except ValueError as error:
+            raise ResourceBudgetExceeded(str(error)) from error
+        reservation = store.reserve_resources(
+            store_bytes=bounds.store_bytes,
+            filesystem_bytes=bounds.filesystem_bytes,
+            margin_bytes=bounds.margin_bytes,
+            filesystem_path=Path(tempfile.gettempdir()),
+        )
+        with reservation, acquisition_budget(bounds.received_bytes), tempfile.TemporaryDirectory(prefix=f"{config.source_id}-") as workdir:
+            if heartbeat is not None:
+                heartbeat()
+            phase = "payload retrieval"
             result = adapter.fetch(candidate, window, Path(workdir))
-        except AdapterUnavailable as error:
-            return SourceOutcome(config.source_id, "cancelled", f"candidate unusable: {error}")
-        except Exception as error:
-            return SourceOutcome(config.source_id, "failed", f"fetch failed: {error!r}")
-
-        if store is None:
-            return SourceOutcome(config.source_id, "failed", "fetched but no artifact store is available")
-        if heartbeat is not None:
-            heartbeat()
-        try:
+            phase = "resource reconciliation"
+            observed_filesystem = directory_bytes(Path(workdir))
+            if observed_filesystem > bounds.filesystem_bytes:
+                raise ResourceBudgetExceeded(
+                    f"temporary/extraction output used {observed_filesystem} bytes, "
+                    f"above its {bounds.filesystem_bytes} byte bound"
+                )
+            observed_store = sum(artifact.byte_size for artifact in result.artifacts)
+            if observed_store > bounds.store_bytes:
+                raise ResourceBudgetExceeded(
+                    f"staged artifacts require {observed_store} bytes, above their "
+                    f"{bounds.store_bytes} byte bound"
+                )
+            if heartbeat is not None:
+                heartbeat()
+            phase = "publication"
             store.upsert_source(
                 source_id=config.source_id, producer=config.producer, product=config.product,
                 registry_status=config.registry_status,
@@ -225,16 +265,22 @@ def run_source(adapter, config, store, *, reference: datetime, heartbeat: Callab
                 metadata={"bounds": dict(config.bounds), "variables": list(config.variables)},
             )
             published = store.stage_and_publish(result)
-        except RunIdentityConflict as error:
+    except AdapterUnavailable as error:
+        return SourceOutcome(config.source_id, "cancelled", f"candidate unusable: {error}")
+    except RunIdentityConflict as error:
             # The published artifact stays visible; this is never a silent
             # replacement of evidence a reader may already have cited.
             return SourceOutcome(config.source_id, "failed", str(error))
-        except QuotaExceeded as error:
-            return SourceOutcome(config.source_id, "failed", f"storage cap reached: {error}")
-        except StoreUnavailable as error:
-            return SourceOutcome(config.source_id, "failed", f"store unavailable: {error}")
-        except Exception as error:
-            return SourceOutcome(config.source_id, "failed", f"publication failed: {error!r}")
+    except QuotaExceeded as error:
+        return SourceOutcome(config.source_id, "failed", f"quota_exceeded during {phase}: {error}")
+    except ResourceBudgetExceeded as error:
+        return SourceOutcome(config.source_id, "failed", f"upstream_budget_exhausted during {phase}: {error}")
+    except ReceivedBytesExceeded as error:
+        return SourceOutcome(config.source_id, "failed", f"upstream_budget_exhausted during payload retrieval: {error}")
+    except StoreUnavailable as error:
+        return SourceOutcome(config.source_id, "failed", f"store unavailable: {error}")
+    except Exception as error:
+        return SourceOutcome(config.source_id, "failed", f"{phase} failed: {error!r}")
 
     if not (result.complete and result.qc_passed):
         # The validator already worked out exactly which fields were missing,

@@ -22,6 +22,7 @@ from ingest.http import (
     backoff_delay,
     parse_retry_after,
 )
+from ingest.resources import ReceivedBytesExceeded, acquisition_budget
 
 URL = "https://dd.weather.gc.ca/model_hrdps/sample.grib2"
 
@@ -128,6 +129,26 @@ def test_retry_after_overrides_the_computed_backoff(sleeps):
     assert sleeps == [7.0]
 
 
+def test_retry_response_bodies_count_against_the_operation_bound(sleeps):
+    yielded: list[int] = []
+
+    class RetryBody(httpx.SyncByteStream):
+        def __iter__(self):
+            for index in range(10):
+                yielded.append(index)
+                yield b"x" * 1024
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, stream=RetryBody())
+
+    with build_client(handler, attempts=3) as client, acquisition_budget(2048), pytest.raises(
+        ReceivedBytesExceeded, match="2048"
+    ):
+        client.get(URL)
+    assert yielded == [0, 1, 2]
+    assert sleeps == []
+
+
 def test_retry_after_in_http_date_form_is_ignored_rather_than_misread():
     assert parse_retry_after("Wed, 29 Aug 2026 12:00:00 GMT") is None
     assert parse_retry_after(None) is None
@@ -230,15 +251,22 @@ def test_range_requests_send_the_header_and_reject_a_server_that_ignores_it():
     requested: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        requested.append(request.headers["Range"])
-        return httpx.Response(206, content=b"partial")
+        value = request.headers["Range"]
+        requested.append(value)
+        if value == "bytes=100-199":
+            return httpx.Response(206, headers={"Content-Range": "bytes 100-199/1000"}, content=b"x" * 100)
+        return httpx.Response(206, headers={"Content-Range": "bytes 100-106/1000"}, content=b"partial")
 
     with build_client(handler) as client:
-        assert client.get_range(URL, 100, 199) == b"partial"
-        assert client.get_range(URL, 100) == b"partial"
+        assert client.get_range(URL, 100, 199) == b"x" * 100
+        assert client.get_range(URL, 100, max_bytes=100) == b"partial"
         with pytest.raises(ValueError):
             client.get_range(URL, 200, 100)
     assert requested == ["bytes=100-199", "bytes=100-"]
+
+    with build_client(lambda request: httpx.Response(206, content=b"partial")) as client:
+        with pytest.raises(ValueError, match="finite byte ceiling"):
+            client.get_range(URL, 100)
 
     with build_client(
         lambda request: httpx.Response(200, content=b"whole file")
@@ -247,11 +275,69 @@ def test_range_requests_send_the_header_and_reject_a_server_that_ignores_it():
             client.get_range(URL, 0, 10)
 
 
+def test_oversized_range_is_stopped_while_streaming_before_the_rest_is_read():
+    yielded: list[int] = []
+
+    class ObservedChunks(httpx.SyncByteStream):
+        def __iter__(self):
+            for index in range(100):
+                yielded.append(index)
+                yield b"x" * 1024
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(206, headers={"Content-Range": "bytes 0-4095/100000"}, stream=ObservedChunks())
+
+    with build_client(handler) as client, pytest.raises(MaxBytesExceeded, match="requested"):
+        client.get_range(URL, 0, 4095)
+    assert yielded == [0, 1, 2, 3, 4]
+
+
+def test_range_that_cannot_fit_the_remaining_operation_budget_makes_no_request():
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(206, headers={"Content-Range": "bytes 0-9/100"}, content=b"x" * 10)
+
+    with build_client(handler) as client, acquisition_budget(9), pytest.raises(
+        MaxBytesExceeded, match="only 9 bytes remain"
+    ):
+        client.get_range(URL, 0, 9)
+    assert requests == []
+
+
+@pytest.mark.parametrize("content_range", ["", "bytes 1-10/100", "bytes 0-8/100"])
+def test_range_response_identity_must_match_the_request(content_range: str):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(206, headers={"Content-Range": content_range}, content=b"x" * 10)
+
+    with build_client(handler) as client, pytest.raises(MaxBytesExceeded, match="Content-Range"):
+        client.get_range(URL, 0, 9)
+
+
+def test_operation_received_byte_bound_spans_multiple_streamed_requests(tmp_path: Path):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, stream=Chunked([b"x" * 1024, b"y" * 1024]))
+
+    with build_client(handler) as client, acquisition_budget(3072), pytest.raises(
+        ReceivedBytesExceeded, match="3072"
+    ):
+        client.download(URL, tmp_path / "one", max_bytes=4096, chunk_size=1024)
+        client.download(URL, tmp_path / "two", max_bytes=4096, chunk_size=1024)
+    assert not (tmp_path / "two").exists()
+
+
 def test_concatenated_ranges_stop_at_the_ceiling_and_leave_no_partial_file(
     tmp_path: Path,
 ):
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(206, content=b"y" * 1024)
+        value = request.headers["Range"]
+        start, end = (int(item) for item in value.removeprefix("bytes=").split("-"))
+        return httpx.Response(
+            206,
+            headers={"Content-Range": f"bytes {start}-{end}/10000"},
+            content=b"y" * (end - start + 1),
+        )
 
     destination = tmp_path / "subset.grib2"
     with build_client(handler) as client:

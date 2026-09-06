@@ -499,7 +499,8 @@ class ECCCREPSEnsembleAdapter:
                 reference_time=reference_time,
             )
             try:
-                payload, response_headers = client.get_bytes(
+                bounded_read = getattr(client, "get_bytes_with_headers", client.get_bytes)
+                payload, response_headers = bounded_read(
                     url, max_bytes=MAX_WCS_TIFF_BYTES
                 )
                 if not payload:

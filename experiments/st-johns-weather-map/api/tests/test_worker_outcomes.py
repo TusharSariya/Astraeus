@@ -19,7 +19,7 @@ from typing import Any, Iterator, Sequence
 
 import pytest
 
-from ingest.contract import Artifact, RunCandidate, RunResult
+from ingest.contract import Artifact, DiscoveryBounds, ResourceBounds, RunCandidate, RunResult
 from ingest.manifest import declared_classes
 from ingest.scheduler import SATISFIED_REASON
 from ingest.store import (
@@ -27,6 +27,7 @@ from ingest.store import (
     STORAGE_CAP_LABEL,
     ArtifactStore,
     QuotaExceeded,
+    ResourceBudgetExceeded,
     StoreConfig,
     StoreUnavailable,
 )
@@ -65,11 +66,17 @@ class _Adapter:
             detail={"valid_times": [moment.isoformat() for moment in self._times]},
         )]
 
+    def discovery_bounds(self, window: Any) -> DiscoveryBounds:
+        return DiscoveryBounds(received_bytes=1024)
+
     def fetch(self, candidate: Any, window: Any, workdir: Path) -> RunResult:
         self.fetched += 1
         self.fetch_window = window
         assert self._result is not None, "this adapter must never be asked to fetch"
         return self._result
+
+    def resource_bounds(self, candidate: Any, window: Any) -> ResourceBounds:
+        return ResourceBounds(store_bytes=1024, filesystem_bytes=2048, margin_bytes=256, received_bytes=1024)
 
 
 class _Store:
@@ -78,12 +85,21 @@ class _Store:
         self._publish_error = publish_error
         self.published = 0
         self.staged_bytes = 0
+        self.events: list[str] = []
 
     def present_keys(self, source_id: str, provider_run_id: str) -> set[int]:
         return set(self._present)
 
     def upsert_source(self, **_kwargs: Any) -> None:
         return None
+
+    @contextmanager
+    def reserve_resources(self, **_kwargs: Any) -> Iterator[None]:
+        self.events.append("reserved")
+        try:
+            yield
+        finally:
+            self.events.append("released")
 
     def stage_and_publish(self, result: RunResult) -> list[Any]:
         if self._publish_error is not None:
@@ -161,6 +177,88 @@ def test_a_store_that_cannot_be_asked_fails_the_source_without_fetching() -> Non
     assert outcome.state == "failed"
     assert "could not be asked what is present" in outcome.detail
     assert adapter.fetched == 0, "an unknown cache state is not an empty one"
+
+
+def test_unknown_resource_bounds_refuse_before_payload_retrieval(tmp_path: Path) -> None:
+    adapter = _Adapter(result=_result(tmp_path))
+    adapter.resource_bounds = None
+
+    outcome = run_source(adapter, _Config(), _Store(), reference=T0)
+
+    assert outcome.state == "failed"
+    assert "upstream_budget_exhausted" in outcome.detail
+    assert adapter.fetched == 0
+
+
+def test_unknown_discovery_bounds_refuse_before_any_upstream_request(tmp_path: Path) -> None:
+    adapter = _Adapter(result=_result(tmp_path))
+    adapter.discovery_bounds = None
+    adapter.discover = lambda _window: pytest.fail("discovery must not start without a measured bound")
+
+    outcome = run_source(adapter, _Config(), _Store(), reference=T0)
+
+    assert outcome.state == "failed"
+    assert "upstream_budget_exhausted during discovery" in outcome.detail
+    assert adapter.fetched == 0
+
+
+def test_resource_refusal_precedes_payload_retrieval(tmp_path: Path) -> None:
+    class _RefusingStore(_Store):
+        @contextmanager
+        def reserve_resources(self, **_kwargs: Any) -> Iterator[None]:
+            raise ResourceBudgetExceeded("required 4097 bytes against 4096 unreserved free bytes")
+            yield
+
+    adapter = _Adapter(result=_result(tmp_path))
+    outcome = run_source(adapter, _Config(), _RefusingStore(), reference=T0)
+
+    assert outcome.state == "failed"
+    assert "upstream_budget_exhausted" in outcome.detail
+    assert adapter.fetched == 0
+
+
+def test_underestimated_temporary_output_is_cleaned_and_never_published(tmp_path: Path) -> None:
+    class _Underestimated(_Adapter):
+        def resource_bounds(self, candidate: Any, window: Any) -> ResourceBounds:
+            return ResourceBounds(store_bytes=1024, filesystem_bytes=4, margin_bytes=1, received_bytes=1024)
+
+        def fetch(self, candidate: Any, window: Any, workdir: Path) -> RunResult:
+            self.fetched += 1
+            payload = workdir / "expanded.bin"
+            payload.write_bytes(b"expanded")
+            artifact = Artifact("expanded", "application/octet-stream", payload, declared_classes(["retrieved"]))
+            return RunResult(self.source_id, candidate.provider_run_id, candidate.run_time, T0, True, True, [artifact])
+
+    store = _Store()
+    adapter = _Underestimated(result=None)
+    outcome = run_source(adapter, _Config(), store, reference=T0)
+
+    assert outcome.state == "failed"
+    assert "temporary/extraction output" in outcome.detail
+    assert store.published == 0
+    assert store.events == ["reserved", "released"]
+
+
+def test_cancellation_releases_the_resource_reservation() -> None:
+    class _Cancelled(_Adapter):
+        def fetch(self, candidate: Any, window: Any, workdir: Path) -> RunResult:
+            self.fetched += 1
+            from ingest.contract import AdapterUnavailable
+            raise AdapterUnavailable("cancelled")
+
+    store = _Store()
+    outcome = run_source(_Cancelled(), _Config(), store, reference=T0)
+
+    assert outcome.state == "cancelled"
+    assert store.events == ["reserved", "released"]
+
+
+def test_publication_failure_releases_the_resource_reservation(tmp_path: Path) -> None:
+    store = _Store(publish_error=RuntimeError("publication broke"))
+    outcome = run_source(_Adapter(result=_result(tmp_path)), _Config(), store, reference=T0)
+
+    assert outcome.state == "failed"
+    assert store.events == ["reserved", "released"]
 
 
 # --- the quota ------------------------------------------------------------

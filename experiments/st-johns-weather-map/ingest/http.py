@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 import random
+import re
 import threading
 import time
 from collections import Counter, defaultdict
@@ -21,6 +22,8 @@ from typing import Self
 from urllib.parse import unquote, urlparse
 
 import httpx
+
+from .resources import charge_received, remaining_received
 
 _log = logging.getLogger(__name__)
 
@@ -213,23 +216,48 @@ class PoliteClient:
                         retry_after,
                         self.retry_counts[429],
                     )
-                response.close()
+                try:
+                    self._charge_error_body(response)
+                finally:
+                    response.close()
                 time.sleep(
                     retry_after if retry_after is not None else backoff_delay(attempt)
                 )
                 continue
+            if response.is_error:
+                self._charge_error_body(response)
             response.raise_for_status()
             return response
         raise RetriesExhausted(
             f"{method} {url} failed after {self.attempts} attempts"
         ) from last_error
 
+    @staticmethod
+    def _charge_error_body(response: httpx.Response) -> None:
+        """Count bounded retry/error bodies without buffering them."""
+        if remaining_received() is None:
+            return
+        for chunk in response.iter_bytes(1 << 10):
+            charge_received(len(chunk))
+
     def get(
         self, url: str, *, headers: Mapping[str, str] | None = None
     ) -> httpx.Response:
-        return self._request("GET", url, headers=headers)
+        if remaining_received() is None:
+            return self._request("GET", url, headers=headers)
+        response = self._request("GET", url, headers=headers, stream=True)
+        chunks: list[bytes] = []
+        try:
+            for chunk in response.iter_bytes(1 << 16):
+                charge_received(len(chunk))
+                chunks.append(chunk)
+            response._content = b"".join(chunks)
+            return response
+        except BaseException:
+            response.close()
+            raise
 
-    def get_bytes(
+    def get_bytes_with_headers(
         self,
         url: str,
         *,
@@ -262,6 +290,7 @@ class PoliteClient:
             chunks: list[bytes] = []
             read = 0
             for chunk in response.iter_bytes(chunk_size):
+                charge_received(len(chunk))
                 read += len(chunk)
                 if read > max_bytes:
                     raise MaxBytesExceeded(
@@ -287,6 +316,7 @@ class PoliteClient:
             if declared is not None and declared.isdigit() and int(declared) > max_bytes:
                 raise MaxBytesExceeded(f"{url} declares {declared} bytes, above the {max_bytes} byte ceiling")
             for chunk in response.iter_bytes(chunk_size):
+                charge_received(len(chunk))
                 total += len(chunk)
                 if total > max_bytes:
                     raise MaxBytesExceeded(f"{url} exceeded the {max_bytes} byte ceiling")
@@ -295,17 +325,59 @@ class PoliteClient:
             response.close()
         return b"".join(chunks)
 
-    def get_range(self, url: str, start: int, end: int | None = None) -> bytes:
+    def get_range(self, url: str, start: int, end: int | None = None, *, max_bytes: int | None = None) -> bytes:
         """Fetch one byte range. GRIB2 ``.idx`` subsetting depends on this."""
         if start < 0 or (end is not None and end < start):
             raise ValueError("invalid byte range")
+        expected = None if end is None else end - start + 1
+        operation_remaining = remaining_received()
+        available = [value for value in (max_bytes, operation_remaining) if value is not None]
+        if expected is not None and any(value < expected for value in available):
+            raise MaxBytesExceeded(
+                f"{url} requested {expected} bytes but only {min(available)} bytes remain in the finite ceiling"
+            )
+        ceiling = min(([expected] if expected is not None else []) + available, default=None)
+        if ceiling is None or ceiling <= 0:
+            raise ValueError("an open-ended range requires a positive finite byte ceiling")
         header = f"bytes={start}-{'' if end is None else end}"
-        response = self._request("GET", url, headers={"Range": header})
+        response = self._request("GET", url, headers={"Range": header}, stream=True)
         if response.status_code != 206:
+            response.close()
             raise RetriesExhausted(
                 f"{url} ignored the Range header (status {response.status_code})"
             )
-        return response.content
+        content_range = response.headers.get("Content-Range", "")
+        match = re.fullmatch(r"bytes (\d+)-(\d+)/(?:\d+|\*)", content_range)
+        if match is None:
+            response.close()
+            raise MaxBytesExceeded(f"{url} returned invalid Content-Range {content_range!r}")
+        returned_start, returned_end = (int(value) for value in match.groups())
+        if returned_start != start or returned_end < returned_start or (end is not None and returned_end != end):
+            response.close()
+            raise MaxBytesExceeded(
+                f"{url} returned Content-Range {content_range!r} for requested {header}"
+            )
+        response_bytes = returned_end - returned_start + 1
+        if response_bytes > ceiling:
+            response.close()
+            raise MaxBytesExceeded(f"{url} range response declares {response_bytes} bytes above the {ceiling} byte ceiling")
+        chunks: list[bytes] = []
+        read = 0
+        try:
+            for chunk in response.iter_bytes(1 << 10):
+                charge_received(len(chunk))
+                read += len(chunk)
+                if read > ceiling:
+                    raise MaxBytesExceeded(f"{url} returned more than the requested {ceiling}-byte range")
+                chunks.append(chunk)
+        finally:
+            response.close()
+        payload = b"".join(chunks)
+        if len(payload) != response_bytes:
+            raise MaxBytesExceeded(
+                f"{url} returned {len(payload)} bytes for Content-Range {content_range!r}"
+            )
+        return payload
 
     def list_directory(self, url: str, *, suffixes: tuple[str, ...] = ()) -> list[str]:
         return parse_directory_listing(self.get_text(url), suffixes=suffixes)
@@ -352,6 +424,7 @@ class PoliteClient:
                 )
             with destination.open("wb") as handle:
                 for chunk in response.iter_bytes(chunk_size):
+                    charge_received(len(chunk))
                     written += len(chunk)
                     if written > max_bytes:
                         raise MaxBytesExceeded(
@@ -379,7 +452,7 @@ class PoliteClient:
         try:
             with destination.open("wb") as handle:
                 for start, end in ranges:
-                    payload = self.get_range(url, start, end)
+                    payload = self.get_range(url, start, end, max_bytes=max_bytes - written)
                     written += len(payload)
                     if written > max_bytes:
                         raise MaxBytesExceeded(

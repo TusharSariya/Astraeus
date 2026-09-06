@@ -57,3 +57,34 @@
 - [ ] 4.4 Run `openspec validate free-source-capacity-budgets --strict`, the
   mapped product tests, and `uv run --project ../../tools/specs python
   ../../tools/specs/specctl.py validate`.
+
+## 5. Experimental payload preflight
+
+- [x] 5.1 Add the issue 159 worker/store preflight seam: an adapter must return
+  a measured discovery received-byte bound before discovery and measured
+  complete-operation store, local-filesystem, margin and received-byte bounds
+  before `fetch`; missing or invalid bounds fail with
+  `upstream_budget_exhausted` before payload retrieval. The worker reserves the
+  hot-store and local allocation for the operation and reconciles temporary and
+  staged bytes before publication. Owned files: `ingest/contract.py`,
+  `ingest/resources.py`, `ingest/store.py`, `worker/runtime.py`.
+  Verify: `cd api && uv run pytest -o addopts='' -q tests/test_worker_outcomes.py
+  tests/test_ingest_store.py`.
+- [x] 5.2 Stream byte-range responses before accepting them, enforce the
+  operation-wide received-byte bound across requests and retry/error bodies,
+  refuse ranges that cannot fit before their request, validate `Content-Range`
+  identity and length, and retain per-response ceilings and partial-file
+  cleanup. This also separates the previously
+  shadowed bytes-with-headers method used by WCS retrieval. Owned files:
+  `ingest/http.py`, `ingest/adapters/eccc_geomet_ensemble.py`,
+  `ingest/adapters/eccc_geomet_reductions.py`. Verify: `cd api && uv run pytest
+  -o addopts='' -q tests/test_ingest_http.py tests/test_http_client.py
+  tests/test_adapter_ensemble.py`.
+- [ ] 5.3 Supply source-specific measured `DiscoveryBounds` and `ResourceBounds`
+  from each acquisition ticket before that adapter is scheduled. No current
+  registered adapter may infer these values from generic constants or a
+  percentage.
+- [ ] 5.4 Replace the process-local reservation ledger before any multi-process
+  or multi-host ingestion is enabled. The current worker deliberately executes
+  one source at a time; separate experimental capture scripts remain outside
+  its reservation boundary and must continue to coordinate capacity externally.

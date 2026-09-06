@@ -386,11 +386,13 @@ def test_noaa_gfs_fetch_subset_ranges(tmp_path: Path, monkeypatch: pytest.Monkey
 @pytest.mark.parametrize("cache_state", ["full", "partial"])
 def test_noaa_gfs_worker_uses_declared_leads_before_payload(cache_state, monkeypatch):
     from types import SimpleNamespace
+    from ingest.contract import DiscoveryBounds
     from ingest.validate import to_nanoseconds
     from worker.runtime import run_source
 
     client = _four_lead_client()
     adapter = NOAAS3Adapter(client=client, max_lead_hours=3)
+    monkeypatch.setattr(adapter, "discovery_bounds", lambda _window: DiscoveryBounds(1 << 20), raising=False)
     now = datetime(2026, 8, 29, 13, tzinfo=UTC)
     candidate = adapter.discover(FetchWindow(now=now))[0]
     expected = [datetime.fromisoformat(value) for value in candidate.detail["valid_times"]]
