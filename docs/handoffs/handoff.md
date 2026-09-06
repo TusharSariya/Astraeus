@@ -81,8 +81,8 @@ features were never selected and does not revert merged safety work.
 
 ## Measured baseline
 
-Current main is `855493dbdbb86d5c99357955d06ab3dbd83a8856` after the corrected
-TAF timestamp-demand integration. The earlier HRDPS persistent-ingestion proof
+Current main is `d582113d3eaaecefcb81c415614b0e32892c369e` after the corrected
+TAF, HRDPS, and GFS timestamp-demand integrations. The earlier HRDPS persistent-ingestion proof
 remains in history as measurement and native-field evidence; it is not the
 current delivery architecture.
 The registry contains 123 records: 21 are `implemented-unverified`. Seventeen
@@ -123,13 +123,18 @@ unit, shape or hash mismatches. The source remains experimental and
 non-operational; #187 still owns the additional 195 HRDPS vertical catalogue
 IDs.
 
-[#201](https://github.com/TusharSariya/Astraeus/issues/201) remains the active source slice, but its persistent publication PR is held and must be adapted to the timestamp-driven cache path. It targets the already registered CYYT `awc-taf` source because
-the existing client already presents CYYT TAF evidence, while this adapter still
-fails closed before provider payload retrieval. It must extend only measured AWC
-bounds that the TAF endpoint and body actually support, preserve every eligible
-TAF field and change-group disposition, and prove the demand-query cache through
-the real API and existing Workbench. Other aviation products
-remain with #115; remaining source bounds remain with #159.
+[#201](https://github.com/TusharSariya/Astraeus/issues/201) is complete through
+[PR207](https://github.com/TusharSariya/Astraeus/pull/207): CYYT TAF now uses a
+bounded selected-time cache and the existing Workbench. HRDPS selected-time
+point, profile, and metadata availability followed in
+[PR213](https://github.com/TusharSariya/Astraeus/pull/213). GFS selected-time
+point delivery is in [PR212](https://github.com/TusharSariya/Astraeus/pull/212),
+and [PR215](https://github.com/TusharSariya/Astraeus/pull/215) adds native
+pressure profiles, provider-advertised timeline availability, and audit-hides
+legacy stored rasters. #208 stays open for required GFS fields and native
+selected-time raster delivery; #97 remains the owning all-source completion
+tracker. Other aviation products remain with #115 and remaining source bounds
+with #159.
 
 Every subsequent source follows the current definition of done:
 
@@ -184,8 +189,8 @@ current main before final gates, and make conventional commits/PRs with exact
 
 - Root user checkout contains unrelated work and must not be mutated.
 - #196 HRDPS is merged and closed; its bounded evidence remains outside Git for audit.
-- #201 CYYT TAF preserved implementation is held before merge and is being revised to the timestamp-driven cache path, with independent review by the GeoMet lead.
-- #208 GFS full-run capture was stopped on owner correction after 714 durable request receipts/713 distinct raw bodies; retained evidence remains outside Git. Its full-run branch is preserved and must be revised to selected-time fetch.
+- #201 CYYT TAF is merged and closed through PR207; its provider-response cache is the source-local pattern, not a generic persistence framework.
+- #208 GFS point, native pressure profile, and provider-advertised timeline metadata are merged through PR212/PR215. Legacy stored rasters are audit-only. The next slice is one selected-time native GFS raster from the bounded cache; required field residuals remain #191/#111/#107/#85 and the all-source parent remains #97.
 - `/private/tmp/astraeus-live-query-snapshot-api`, branch
   `execution/live-query-snapshot-api`, preserves two local API commits and is
   paused; do not merge it under the corrective sequence.
