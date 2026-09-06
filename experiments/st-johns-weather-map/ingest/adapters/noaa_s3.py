@@ -414,7 +414,11 @@ class NOAAS3Adapter:
 
                 idx_url = f"{self._base_url}/gfs.{date_str}/{cycle_str}/atmos/gfs.t{cycle_str}z.pgrb2.0p25.f000.idx"
                 try:
-                    idx_bytes = client.get_bytes(idx_url, max_bytes=MAX_IDX_BYTES)
+                    if hasattr(client, "get_bytes_with_receipt"):
+                        idx_bytes, discovery_receipt = client.get_bytes_with_receipt(idx_url, max_bytes=MAX_IDX_BYTES)
+                    else:
+                        idx_bytes = client.get_bytes(idx_url, max_bytes=MAX_IDX_BYTES)
+                        discovery_receipt = None
                     if idx_bytes.strip():
                         candidates.append(
                             RunCandidate(
@@ -425,6 +429,7 @@ class NOAAS3Adapter:
                                     "date_str": date_str,
                                     "cycle": cycle_str,
                                     "run_dt": run_dt,
+                                    "discovery_receipt": discovery_receipt,
                                     # Expected instants use the same bounded lead
                                     # schedule as fetch; availability is checked
                                     # there, never inferred from this declaration.
@@ -650,6 +655,10 @@ class NOAAS3Adapter:
             # declaration covers the surface set and the jet-level winds.
             **manifest.as_manifest_block(),
             "http_range_receipts": transport_receipts,
+            "http_index_receipts": [
+                item for item in (candidate.detail.get("idx_receipts_by_lead") or {}).values() if item is not None
+            ],
+            "http_discovery_receipt": candidate.detail.get("discovery_receipt"),
         }
 
         # The run is validated as one dataset, then written as two artifacts:

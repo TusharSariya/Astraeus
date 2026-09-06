@@ -281,6 +281,7 @@ def test_production_loader_invokes_locked_child_and_refuses_failed_validation(tm
         manifest = {
             "source_id": "noaa-gfs", "provider_run_id": "gfs-2026090612",
             "run_time": run_time.isoformat(), "retrieved_at": (run_time + timedelta(minutes=1)).isoformat(),
+            "valid_time": (run_time + timedelta(hours=3)).isoformat(),
             "complete": False, "qc_passed": True,
             "artifacts": [{"logical_name": "surface", "name": "surface.zip", "provenance": {}}],
         }
@@ -295,3 +296,5 @@ def test_production_loader_invokes_locked_child_and_refuses_failed_validation(tm
     assert len(calls) == 1
     assert calls[0][2].address_space_bytes == 1024**3
     assert calls[0][2].output_bytes == 64 * 1024**2
+    escaped = json.dumps({"idx_text_by_lead": {3: "\x00" * MAX_IDX_BYTES}}).encode()
+    assert len(escaped) <= calls[0][2].stdin_bytes

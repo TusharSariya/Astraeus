@@ -32,10 +32,12 @@ from ingest.isolation import ProcessAllocationLimits, run_bounded_process
 GFS_OBJECT_CACHE_TTL_SECONDS = 600.0
 GFS_CACHE_MAX_ENTRIES = 4
 GFS_CACHE_MAX_BYTES = 256 * 1024 * 1024
+GFS_DEMAND_WORKSPACE_BYTES = 192 * 1024 * 1024
 GFS_DEMAND_LIMITS = ProcessAllocationLimits(
     address_space_bytes=1 * 1024 * 1024 * 1024,
     output_bytes=64 * 1024 * 1024,
-    stdin_bytes=2 * 1024 * 1024,
+    # A 2 MiB sidecar can expand six-fold when control bytes are JSON escaped.
+    stdin_bytes=16 * 1024 * 1024,
     stdout_bytes=64 * 1024,
     stderr_bytes=256 * 1024,
 )
@@ -165,7 +167,7 @@ class GFSQueryCoordinator:
         self._now = now
         self._lock = threading.Lock()
         self._candidate: tuple[float, RunCandidate] | None = None
-        self._indices: OrderedDict[str, tuple[float, str]] = OrderedDict()
+        self._indices: OrderedDict[str, tuple[float, str, Mapping[str, object] | None]] = OrderedDict()
         self._prepared: dict[GFSRequestKey, RunCandidate] = {}
         self._bounded_fetch = bounded_fetch
         self._cache = GFSQueryService(self._load, clock=clock)
@@ -182,7 +184,7 @@ class GFSQueryCoordinator:
             stem = f"gfs.t{cycle}z.pgrb2.0p25.f{lead:03d}"
             grib_url = f"{self._adapter._base_url}/gfs.{date_str}/{cycle}/atmos/{stem}"
             idx_url = f"{grib_url}.idx"
-            idx_text = self._index(idx_url)
+            idx_text, idx_receipt = self._index(idx_url)
             ranges, _present = select_gfs_ranges(idx_text)
             ranges = cap_open_range(ranges)
             key = GFSRequestKey(
@@ -196,7 +198,7 @@ class GFSQueryCoordinator:
                 candidate.provider_run_id,
                 candidate.run_time,
                 list(candidate.urls),
-                {**candidate.detail, "idx_text_by_lead": {lead: idx_text}},
+                {**candidate.detail, "idx_text_by_lead": {lead: idx_text}, "idx_receipts_by_lead": {lead: idx_receipt}},
             )
             try:
                 return self._cache.query(key)
@@ -263,17 +265,22 @@ class GFSQueryCoordinator:
         self._candidate = (current + GFS_OBJECT_CACHE_TTL_SECONDS, candidate)
         return candidate
 
-    def _index(self, url: str) -> str:
+    def _index(self, url: str) -> tuple[str, Mapping[str, object] | None]:
         current = self._clock()
         cached = self._indices.get(url)
         if cached is not None and current < cached[0]:
             self._indices.move_to_end(url)
-            return cached[1]
-        text = self._adapter._get_client().get_bytes(url, max_bytes=MAX_IDX_BYTES).decode("utf-8")
-        self._indices[url] = (current + GFS_OBJECT_CACHE_TTL_SECONDS, text)
+            return cached[1], cached[2]
+        client = self._adapter._get_client()
+        if hasattr(client, "get_bytes_with_receipt"):
+            raw, receipt = client.get_bytes_with_receipt(url, max_bytes=MAX_IDX_BYTES)
+        else:
+            raw, receipt = client.get_bytes(url, max_bytes=MAX_IDX_BYTES), None
+        text = raw.decode("utf-8")
+        self._indices[url] = (current + GFS_OBJECT_CACHE_TTL_SECONDS, text, receipt)
         while len(self._indices) > GFS_CACHE_MAX_ENTRIES:
             self._indices.popitem(last=False)
-        return text
+        return text, receipt
 
     def _load(self, key: GFSRequestKey) -> GFSQueryEntry:
         candidate = self._prepared[key]
@@ -303,9 +310,23 @@ class GFSQueryCoordinator:
                 info = json.loads(bundle.read("result.json"))
                 if info.get("source_id") != "noaa-gfs" or not info.get("complete") or not info.get("qc_passed"):
                     raise ValueError("GFS bounded child returned an incomplete or failed-QC selection")
+                if info.get("provider_run_id") != candidate.provider_run_id:
+                    raise ValueError("GFS bounded child returned a different provider run")
+                if datetime.fromisoformat(info["run_time"]) != candidate.run_time:
+                    raise ValueError("GFS bounded child returned a different producer run time")
+                if datetime.fromisoformat(info["valid_time"]) != self._selected_time(key, candidate):
+                    raise ValueError("GFS bounded child returned a different native valid time")
                 artifacts = info["artifacts"]
                 if not artifacts or len(artifacts) > 2:
                     raise ValueError("GFS bounded child returned an invalid artifact set")
+                logical_names = [artifact["logical_name"] for artifact in artifacts]
+                if len(set(logical_names)) != len(logical_names) or set(logical_names) - {"surface", "upper_air"}:
+                    raise ValueError("GFS bounded child returned invalid logical artifact names")
+                expected_members = {"result.json", *(f"artifacts/{artifact['name']}" for artifact in artifacts)}
+                if set(bundle.namelist()) != expected_members:
+                    raise ValueError("GFS bounded child bundle contains unexpected members")
+                if sum(member.file_size for member in bundle.infolist()) > GFS_DEMAND_LIMITS.output_bytes:
+                    raise ValueError("GFS bounded child bundle expands beyond its output ceiling")
                 payloads = tuple(bundle.read(f"artifacts/{artifact['name']}") for artifact in artifacts)
             digest = hashlib.sha256(b"".join(payloads)).hexdigest()
             provenance = {artifact["logical_name"]: artifact["provenance"] for artifact in artifacts}

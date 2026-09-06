@@ -33,6 +33,12 @@ USER_AGENT = (
     "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)"
 )
 
+
+def _effective_request_headers(response: httpx.Response) -> dict[str, str]:
+    """The non-secret request headers relevant to a public payload receipt."""
+    allowed = {"user-agent", "accept-encoding", "range"}
+    return {key.lower(): value for key, value in response.request.headers.items() if key.lower() in allowed}
+
 RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
 DEFAULT_ATTEMPTS = 5
 DEFAULT_BACKOFF_SECONDS = 0.5
@@ -316,6 +322,38 @@ class PoliteClient:
         finally:
             response.close()
 
+    def get_bytes_with_receipt(
+        self, url: str, *, max_bytes: int, chunk_size: int = 1 << 16
+    ) -> tuple[bytes, dict[str, object]]:
+        """Read a bounded body and retain effective transport identity."""
+        if max_bytes <= 0:
+            raise ValueError("max_bytes must be positive")
+        response = self._request("GET", url, stream=True)
+        try:
+            declared = response.headers.get("Content-Length")
+            if declared is not None and (not declared.isdigit() or int(declared) > max_bytes):
+                raise MaxBytesExceeded(f"{url} carries invalid or oversized Content-Length {declared!r}")
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in response.iter_bytes(chunk_size):
+                charge_received(len(chunk))
+                total += len(chunk)
+                if total > max_bytes:
+                    raise MaxBytesExceeded(f"{url} exceeded the {max_bytes} byte ceiling")
+                chunks.append(chunk)
+            completed = datetime.now(timezone.utc)
+            payload = b"".join(chunks)
+            return payload, {
+                "url": str(response.request.url),
+                "request_headers": _effective_request_headers(response),
+                "response_headers": dict(response.headers),
+                "completed_at": completed.isoformat(),
+                "byte_size": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            }
+        finally:
+            response.close()
+
     def get_text(self, url: str) -> str:
         return self.get(url).text
 
@@ -395,6 +433,7 @@ class PoliteClient:
                 if read > ceiling:
                     raise MaxBytesExceeded(f"{url} returned more than the requested {ceiling}-byte range")
                 chunks.append(chunk)
+            completed = datetime.now(timezone.utc)
         finally:
             response.close()
         payload = b"".join(chunks)
@@ -402,7 +441,7 @@ class PoliteClient:
             raise MaxBytesExceeded(
                 f"{url} returned {len(payload)} bytes for Content-Range {content_range!r}"
             )
-        return payload, request_headers, dict(response.headers), datetime.now(timezone.utc)
+        return payload, _effective_request_headers(response), dict(response.headers), completed
 
     def list_directory(
         self, url: str, *, suffixes: tuple[str, ...] = (), max_bytes: int | None = None

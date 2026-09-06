@@ -330,13 +330,13 @@ def test_noaa_gfs_discovery_caps_index_response(monkeypatch: pytest.MonkeyPatch)
         {"gfs.20260829/12/atmos/gfs.t12z.pgrb2.0p25.f000.idx": (200, SAMPLE_GFS_IDX)}
     )
     calls = []
-    original = client.get_bytes
+    original = client.get_bytes_with_receipt
 
-    def recorded(url, *, max_bytes, chunk_size=1 << 20):
+    def recorded(url, *, max_bytes, chunk_size=1 << 16):
         calls.append((url, max_bytes))
         return original(url, max_bytes=max_bytes, chunk_size=chunk_size)
 
-    monkeypatch.setattr(client, "get_bytes", recorded)
+    monkeypatch.setattr(client, "get_bytes_with_receipt", recorded)
     NOAAS3Adapter(client=client).discover(FetchWindow(now=datetime(2026, 8, 29, 14, tzinfo=UTC)))
 
     assert calls
