@@ -15,7 +15,15 @@ properties receive a per-snapshot disposition. Extra properties are retained
 and flagged as uncontracted rather than silently promoted.
 
 Discovery retrieves the bounded OGC FeatureCollection because no separate
-provider run listing exists. The content digest and latest provider timestamp
-form the experimental snapshot identity. Empty collections use the observation
-instant and remain explicit `observed-empty`; transport, size and schema errors
-are unavailable instead.
+provider run listing exists. The content digest and latest provider timestamp,
+when one exists in a feature, form the experimental snapshot identity. Empty
+collections have no producer run or valid time; their identity uses the content
+digest, while provenance retains the exact query interval and retrieval time.
+They remain explicit `observed-empty`; transport, size and schema errors are
+unavailable instead.
+
+No canonical registry field currently represents these native vector products.
+The manifest-owned one-way verdict therefore records `manifest_unresolved` and
+`complete: false`. The artifacts support acquisition inspection but cannot pass
+the worker publication gate or appear as an API frame until an owner-approved
+canonical GeoJSON validation contract exists.

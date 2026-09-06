@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping as MappingABC
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
 from ingest.contract import EVIDENCE_BOX_BOUNDS, MEDIA_GEOJSON, AdapterUnavailable, Artifact, FetchWindow, RunCandidate, RunResult
-from ingest.http import MaxBytesExceeded, PoliteClient
-from ingest.manifest import declared_classes
+import httpx
+
+from ingest.http import MaxBytesExceeded, PoliteClient, RetriesExhausted
+from ingest.manifest import declared_classes, unresolved_manifest_validation
 
 UTC = timezone.utc
 BASE = "https://api.weather.gc.ca"
@@ -46,6 +49,23 @@ def _feature_times(features: list[dict[str, Any]]) -> list[datetime]:
     return sorted(set(found))
 
 
+def _validated_features(source_id: str, collection: str, document: Any) -> list[dict[str, Any]]:
+    if not isinstance(document, MappingABC) or document.get("type") != "FeatureCollection":
+        raise AdapterUnavailable(f"{source_id}: {collection} is not a GeoJSON FeatureCollection")
+    features = document.get("features")
+    if not isinstance(features, list):
+        raise AdapterUnavailable(f"{source_id}: {collection} features are not a list")
+    for index, feature in enumerate(features):
+        if not isinstance(feature, MappingABC) or feature.get("type") != "Feature":
+            raise AdapterUnavailable(f"{source_id}: {collection} feature {index} is not a GeoJSON Feature")
+        if not isinstance(feature.get("properties"), MappingABC):
+            raise AdapterUnavailable(f"{source_id}: {collection} feature {index} properties are not an object")
+        geometry = feature.get("geometry")
+        if geometry is not None and not isinstance(geometry, MappingABC):
+            raise AdapterUnavailable(f"{source_id}: {collection} feature {index} geometry is not an object or null")
+    return features
+
+
 class ECCCOGCHazardAdapter:
     """Fetch one or more official OGC feature collections without interpreting them."""
 
@@ -78,20 +98,25 @@ class ECCCOGCHazardAdapter:
             try:
                 raw = self._client.get_bytes(url, max_bytes=MAX_COLLECTION_BYTES)
                 document = json.loads(raw)
-            except (MaxBytesExceeded, ValueError, TypeError, OSError) as error:
+            except (MaxBytesExceeded, RetriesExhausted, httpx.HTTPError, ValueError, TypeError, OSError) as error:
                 raise AdapterUnavailable(f"{self.source_id}: invalid or oversized {collection} response: {error}") from error
-            if document.get("type") != "FeatureCollection" or not isinstance(document.get("features"), list):
-                raise AdapterUnavailable(f"{self.source_id}: {collection} is not a GeoJSON FeatureCollection")
+            features = _validated_features(self.source_id, collection, document)
             documents[collection] = document
             digests[collection] = hashlib.sha256(raw).hexdigest()
-            times.extend(_feature_times(document["features"]))
-        observed_at = max(times, default=window.now.astimezone(UTC))
+            times.extend(_feature_times(features))
+        observed_at = max(times) if times else None
         identity = hashlib.sha256("".join(digests[name] for name in self.collections).encode()).hexdigest()[:16]
+        run_label = observed_at.strftime("%Y%m%dT%H%M%SZ") if observed_at else "observed-empty"
         return [RunCandidate(
-            provider_run_id=f"{self.source_id}-{observed_at:%Y%m%dT%H%M%SZ}-{identity}",
+            provider_run_id=f"{self.source_id}-{run_label}-{identity}",
             run_time=observed_at,
             urls=[self._url(name) for name in self.collections],
-            detail={"documents": documents, "digests": digests, "valid_times": [observed_at.isoformat()]},
+            detail={
+                "documents": documents,
+                "digests": digests,
+                "valid_times": [moment.isoformat() for moment in sorted(set(times))],
+                "query_window": {"start": window.start.isoformat(), "end": window.end.isoformat()},
+            },
         )]
 
     def fetch(self, candidate: RunCandidate, window: FetchWindow, workdir: Path) -> RunResult:
@@ -99,13 +124,15 @@ class ECCCOGCHazardAdapter:
         if set(documents) != set(self.collections):
             raise AdapterUnavailable(f"{self.source_id}: candidate is missing a required collection")
         retrieved_at = datetime.now(UTC)
+        validation = unresolved_manifest_validation(
+            self.source_id,
+            "native hazard GeoJSON has no owner-approved canonical RunManifest",
+        )
         workdir.mkdir(parents=True, exist_ok=True)
         artifacts: list[Artifact] = []
         for collection in self.collections:
             document = documents[collection]
-            features = document.get("features")
-            if not isinstance(features, list):
-                raise AdapterUnavailable(f"{self.source_id}: {collection} features changed shape")
+            features = _validated_features(self.source_id, collection, document)
             output = workdir / f"{collection}.geojson"
             output.write_text(json.dumps(document, sort_keys=True, separators=(",", ":")), "utf-8")
             digest = hashlib.sha256(output.read_bytes()).hexdigest()
@@ -122,7 +149,8 @@ class ECCCOGCHazardAdapter:
                 "collection": collection,
                 "source_uri": self._url(collection),
                 "provider_run_id": candidate.provider_run_id,
-                "valid_times": [candidate.run_time.isoformat()] if candidate.run_time else [],
+                "valid_times": list(candidate.detail.get("valid_times") or []),
+                "query_window": dict(candidate.detail["query_window"]),
                 "retrieved_at": retrieved_at.isoformat(),
                 "upstream_sha256": candidate.detail["digests"][collection],
                 "artifact_sha256": digest,
@@ -132,7 +160,10 @@ class ECCCOGCHazardAdapter:
                 "field_dispositions": {"geometry": "observed-empty" if not features else "retrieved", **dispositions},
                 "uncontracted_properties": extra_fields,
                 "property_semantics": "preserved as published; no hazard category or numeric value is inferred",
-                "quality": {"status": "passed", "flags": [f"uncontracted_property:{name}" for name in extra_fields]},
+                "quality": {
+                    **validation.as_quality(),
+                    "notices": [f"uncontracted_property:{name}" for name in extra_fields],
+                },
                 "coverage": {"status": "observed-empty" if not features else "complete", "bounds": dict(EVIDENCE_BOX_BOUNDS)},
                 "operational": False,
                 "adapter_version": self.adapter_version,
@@ -140,9 +171,10 @@ class ECCCOGCHazardAdapter:
             }))
         return RunResult(
             source_id=self.source_id, provider_run_id=candidate.provider_run_id,
-            run_time=candidate.run_time, retrieved_at=retrieved_at, complete=True,
-            qc_passed=True, artifacts=artifacts, native_crs="OGC:CRS84",
-            notes=f"retrieved {len(artifacts)} structured collection snapshot(s)",
+            run_time=candidate.run_time, retrieved_at=retrieved_at, complete=validation.complete,
+            qc_passed=validation.qc_passed, artifacts=artifacts, native_crs="OGC:CRS84",
+            notes=(f"retained {len(artifacts)} structurally checked collection snapshot(s); "
+                   "publication blocked by unresolved canonical manifest"),
         )
 
 

@@ -10,20 +10,23 @@ kept only in `/tmp/eccc137-*` for review and are not committed.
 | `thunderstorm_outlook`, Avalon evidence box, limit 10 | 868 | `16b0306cf576eafb4111cfc7041f6dde7d699ba3acca0ee9d812f37edc94e6ca` | Valid observed-empty collection |
 | hurricane cyclone/track/error-cone/wind-radii, Avalon evidence box | 887/877/902/902 | `0c4522cb0d7bd0ddfd59c909a9d5f269aca2f4b1d4556b45432e3ec03579963f` / `aeff330b9a820ccb1c3108ca9a098fc79a2b59595f59702e7e7e6ef678b8befd` / `f401aaf851e0bf5b42c28b824479596de7ab67b6a465239060aa7d75865891b0` / `73ab2afa2ea13299e2e8395f963a0f9afb86086a6583ed6f81b2c13e84f1e4b5` | Four valid observed-empty collections |
 
-The adapter live smoke at 2026-09-06T03:59:49Z reopened a 892-byte thunderstorm
-artifact (`fa8f5790237a263dd6171a39edd05b0e947e5d4af2c02a15abb0e4d639897ad9`)
-and four hurricane artifacts: cyclone 911 bytes
-(`672e1dac26dc75845b95f27489c01600a3117646f783a297a465909d4999e78e`),
-track 901 bytes
-(`50631627b8e3f9f1753af6ca3d613e1c028ddeb3f6dc9a06af57cfefa98f2bbd`),
-error cone 926 bytes
-(`c47d6b08a29b3c6af88568b57fda70780e5c5169ed0c21cce3f58a1a91f45f14`),
-and wind radii 926 bytes
-(`2a51dbbd7d7447cb883bcafc2c3241e1cadea7a68f77f0b59e207ce7032cc122`).
-All five were complete, QC-passed, `observed-empty`, and had locally recomputed
-SHA-256 digests. Fixture-backed live-store HTTP readback preserved the feature
-properties, named `eccc-thunderstorm-outlooks`, returned `data_mode: live`, and
-kept `operational: false`.
+The corrected local replay at 2026-09-06T04:17:17Z reopened the retained raw
+responses without another network capture. It wrote an 868-byte thunderstorm
+artifact (`5996a7d57febce62b2699e991d41fa12d13afa7e453916c6f677b60ee56e7288`)
+and four hurricane artifacts: cyclone 887 bytes
+(`4bbf7224063a1ac3e876f61e371a1bccbc34c09a0c4e39d2bdc2fbfe806436fe`),
+track 877 bytes
+(`77e9d341022e4197427d1b083366fd089c3908c330cfaf7866d597fcc111fc9b`),
+error cone 902 bytes
+(`9d601059632d3bbf28b44478b46b5171123d673655aab446a869dbfc5fb6c035`),
+and wind radii 902 bytes
+(`bdf24355679a3c0f0f66f343aec76d48e0f640d886a958978a08a18cba26a347`).
+All five were structurally valid and `observed-empty`, and had locally
+recomputed SHA-256 digests. The corrected replay retains `run_time: null`, no
+valid times, the exact requested window, and its actual retrieval timestamp.
+Because no owner-approved canonical hazard manifest exists, the manifest-owned
+verdict is `complete: false` with `manifest_unresolved`; the API has no
+published frame and invents no source time.
 
 The existing CAP adapter live smoke resolved provider run
 `eccc-cap-alerts-20260906T033001Z`, queried its single bounded Avalon box, and
