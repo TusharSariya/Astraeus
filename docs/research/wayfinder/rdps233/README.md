@@ -122,4 +122,6 @@ upstream requests. No RDPS provider bytes were reacquired for this correction.
 Fresh independent targeted re-review passed the exact correction with zero
 remaining Standards or Spec blockers. The review reran only the 21 RDPS and two
 fixed-clock GFS tests plus OpenSpec/specctl validation; it did not reacquire
-provider data or rerun the full suite. No status promotion.
+provider data or rerun the full suite. PR234 was squash-merged as `77c857c`; its
+merged tree matches the final reviewed tree, and #233 closed while the 214-field
+residual #188 remains open. No status promotion.
