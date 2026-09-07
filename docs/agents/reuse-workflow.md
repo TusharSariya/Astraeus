@@ -101,6 +101,24 @@ reject locked `RLIMIT_AS`, so Linux is the proof environment. The test proves a
 fixed fixture with no provider network; it does not make a temporary launcher,
 receipt or captured body a permanent tool or Git artifact.
 
+For SWOB and SWPC plasma, reuse the repository-owned deterministic proof instead
+of writing a launcher. From `experiments/st-johns-weather-map/api` in the
+prepared exact-head Linux environment, run:
+
+```sh
+uv run python scripts/prove_source_cache.py --source all
+```
+
+The command uses tracked fixtures, fixed clocks, each production query service
+and its default bounded worker. Its exact-URL `httpx.MockTransport` cannot open
+a provider connection. It calls each identical query twice and fails unless one
+fixture request supplies a stable typed cache identity; the JSON result reports
+fixture transport requests separately from zero provider-network requests.
+`source_proof/swob_msc.json` labels itself as a hand-authored synthetic document.
+Plasma reuses the existing 7,245-byte representative native fixture documented
+in [`swpc-plasma-demand.md`](../../experiments/st-johns-weather-map/docs/research/wayfinder/swpc-plasma-demand.md);
+the proof does not add or refresh provider captures.
+
 For the one browser proof, the runtime owner launches an exact-head fixed-live
 harness with provider transport blocked. Confirm which endpoint supplies each
 card: `/point` often supplies the selected `valid_time`, while a source-specific

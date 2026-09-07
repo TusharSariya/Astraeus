@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "fixture_note": "Hand-authored synthetic MSC SWOB document for deterministic tests; not a provider capture.",
+  "numberMatched": 1,
+  "numberReturned": 1,
+  "features": [
+    {
+      "type": "Feature",
+      "id": "CAJW-20260907T030000Z",
+      "geometry": {"type": "Point", "coordinates": [-52.72, 47.56]},
+      "properties": {
+        "data_pvdr-value": "MSC",
+        "dataset": "msc-observation-atmospheric-surface_weather-surface",
+        "stn_nam-value": "ST. JOHN'S WEST",
+        "date_tm-value": "2026-09-07T03:00:00Z",
+        "wmo_id": "71801",
+        "air_temp": 12.4,
+        "air_temp-qa": "passed",
+        "dwpt_temp": 8.2,
+        "rel_hum": 76,
+        "mslp": 1013.4,
+        "wnd_spd": 4.5,
+        "wnd_dir": 210
+      }
+    }
+  ],
+  "links": []
+}
