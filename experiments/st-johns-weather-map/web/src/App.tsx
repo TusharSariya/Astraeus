@@ -53,6 +53,7 @@ const badgeCopy: Record<FallbackMode, string> = {
   consensus: 'Experimental consensus',
   hrdps: 'HRDPS primary · consensus unavailable',
   rdps: 'RDPS fallback',
+  gdps: 'GDPS selected model',
   unavailable: 'Forecast unavailable · evidence only',
 }
 

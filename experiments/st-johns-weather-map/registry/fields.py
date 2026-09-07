@@ -1363,6 +1363,16 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
         "Verified live."),
     _sf("eccc-rdps", "precipitable_water", None, "not-published", "As HRDPS."),
 
+    _sf("eccc-gdps", "temperature_2m", "GDPS_15km_AirTemp_2m", "stored",
+        "Selected native Datamart AirTemp_AGL-2m on the LatLon0.15 grid."),
+    _sf("eccc-gdps", "dew_point_2m", "GDPS_15km_DewPoint_2m", "stored",
+        "Selected native Datamart DewPoint_AGL-2m on the LatLon0.15 grid."),
+    _sf("eccc-gdps", "mean_sea_level_pressure", "GDPS_15km_Pressure_MSL", "stored",
+        "Selected native Datamart pressure, normalized from Pa to hPa."),
+    _sf("eccc-gdps", "wind_speed_10m", "GDPS_15km_WindSpeed_10m", "stored",
+        "Selected native scalar wind speed; no component derivation."),
+    _sf("eccc-gdps", "wind_direction_10m", "GDPS_15km_WindDir_10m", "stored",
+        "Selected native true-north direction; no component derivation."),
     _sf("eccc-gdps", "total_cloud_opacity", "GDPS_15km_TotalCloudCover", "stored", "Verified live."),
     _sf("eccc-gdps", "relative_humidity_pressure", "GDPS_15km_RelativeHumidity_<n>mb", "stored",
         "GeoMet advertises 31 levels plus 2 m; production storage is limited to the Datamart "

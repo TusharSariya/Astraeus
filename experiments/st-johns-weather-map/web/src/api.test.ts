@@ -457,7 +457,23 @@ describe('product selection predicate', () => {
   it('offers a source the point endpoint accepts even though no source is ever active', () => {
     expect(pointProductFor(source('eccc-hrdps', 'implementing'))).toBe('HRDPS')
     expect(pointProductFor(source('eccc-rdps', 'credential_required'))).toBe('RDPS')
+    expect(pointProductFor(source('eccc-gdps', 'implemented-unverified'))).toBe('GDPS')
     expect(pointProductFor(source('openmeteo-gfs-wave', 'implementing'))).toBe('GFS Wave')
+  })
+
+  it('keeps native GDPS point values primary under the selected GDPS identity', () => {
+    const snapshot = normalizePoint({
+      data_mode: 'live', valid_time: '2026-09-06T20:37:00Z',
+      selection: { mode: 'fallback', selected_source_id: 'eccc-gdps', selected_product_id: 'gdps', badge: 'GDPS selected model' },
+      fields: [{
+        field: 'wind_direction', value: 89,
+        provenance: { source_id: 'eccc-gdps', provider: 'Environment and Climate Change Canada', product: 'GDPS', normalized_units: 'degree', data_mode: 'live', evidence_class: 'retrieved', display_primary_eligible: true, derivation: null },
+      }],
+    } as ApiPointResponse)
+    expect(snapshot.mode).toBe('gdps')
+    expect(snapshot.windDirectionDeg).toBe(89)
+    expect(snapshot.selectedSourceId).toBe('eccc-gdps')
+    expect(snapshot.fieldSources.wind_direction?.derivation).toBeNull()
   })
 
   it('offers nothing for a source the point endpoint has no product value for', () => {
