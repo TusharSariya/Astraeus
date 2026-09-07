@@ -20,6 +20,23 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Activity aggregation checkpoint, September 7, 2026
+
+Provider tokens #288 merged as `a755915e`. The current isolated batch is
+`execution/desktop-activity-verdict-engine`,
+`/tmp/astraeus-desktop-activity-verdict-engine`. Its aggregation seam implements
+the selected six-state precedence, lazy stop-before-grading, score/coverage,
+file-order limiting ties and evaluated criterion QC/freshness. It refuses an
+incomplete unit-sum active budget; no normalization or profile admission is
+inferred. Constructed fixture tests do not establish any live field path.
+
+41 affected Activity tests, strict API OpenSpec and specctl pass. No API route,
+profile weights, acquisition, cache or view is enabled yet. Continue registered
+profile admission/applicability, demand-backed verdict routes/cache and four-lane
+Activity. The existing budget decision remains held. The eventual route must
+combine criterion QC with its geometry/applicability evidence. Keep task 8–11
+and the five-view milestone open until those integrations are demonstrated.
+
 ## Provider-token checkpoint, September 7, 2026
 
 Map inspection #287 merged as `8bf81747`. The current isolated batch is
