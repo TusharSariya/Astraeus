@@ -20,6 +20,24 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Sky implementation checkpoint, September 7, 2026
+
+Sources #280 merged as `2bdb7bf`. Current isolated batch is
+`execution/desktop-sky`, `/tmp/astraeus-desktop-sky`. Sky Horizon, scalar cloud
+layers, returned astronomy and planetary context, and public camera eligibility
+are implemented. Exact Focus response guards and paused acquisition avoid old
+values or animation-frame point/Series reads. Main-agent review only.
+
+Validation: 483 client tests, build and 77 affected API tests pass; six existing
+astronomy geometry tests skip without DE442. Fixed Chrome proof blocks external
+traffic and labels constructed geometry explicitly; three-theme screenshots and
+receipt are in `/tmp/astraeus-sky-proof/`. No provider, screen-reader or outdoor
+proof is claimed. Owning OpenSpec workbench task 5.2 and API task 5 are complete.
+
+Next: Activity server verdict lanes, then desktop API joins/imagery, remaining
+Series run/native readers, shared inspection/tokens and assembled desktop proof.
+All source backlog batches remain after the complete desktop milestone.
+
 ## Sources and Map-family implementation checkpoint, September 7, 2026
 
 Initial Series #279 merged as `206ce4e`. Current isolated batch:

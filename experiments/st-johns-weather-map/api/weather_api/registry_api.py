@@ -59,3 +59,60 @@ def get_sites() -> PublicSiteRegistry:
     public = {"sites": [site.model_dump(mode="json") for site in sites], "notice": registry.notice}
     version = hashlib.sha256(json.dumps(public, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return PublicSiteRegistry(version=version, sites=sites, notice=registry.notice)
+
+
+class PublicCamera(StrictModel):
+    id: str
+    name: str
+    source_id: str
+    operator: str
+    status: str
+    latitude: float | None
+    longitude: float | None
+    position_surveyed: bool
+    bearing_deg: float | None
+    horizontal_fov_deg: float | None
+    vertical_fov_deg: float | None
+    geometry_validation: str
+    registration_complete: bool
+    missing_registration: list[str]
+    declared_retrieval_eligible: bool
+    refusal_code: str | None
+    image_delivery_implemented: Literal[False] = False
+
+
+class PublicCameraRegistry(StrictModel):
+    operational: Literal[False] = False
+    version: str
+    cameras: list[PublicCamera]
+    notices: list[str]
+
+
+@router.get('/registry/cameras', response_model=PublicCameraRegistry)
+def get_cameras() -> PublicCameraRegistry:
+    from registry import camera_audit
+    cameras = []
+    notices = []
+    for identity, entry in sorted(camera_audit.load_cameras().items()):
+        if isinstance(entry, camera_audit.CameraError):
+            # Audit exceptions may include private endpoint/configuration values.
+            notices.append(f'{identity}: registration could not be validated')
+            continue
+        record = entry.record
+        verdict = camera_audit.audit_camera(entry)
+        refusal = camera_audit.retrieval_allowed(entry)
+        cameras.append(PublicCamera(
+            id=entry.camera_id, name=record['name'], source_id=record['source_id'], operator=record['operator'],
+            status=entry.status, latitude=record['position']['latitude'], longitude=record['position']['longitude'],
+            position_surveyed=record['position']['surveyed'], bearing_deg=record['orientation']['bearing_deg'],
+            horizontal_fov_deg=record['orientation']['hfov_deg'], vertical_fov_deg=record['orientation']['vfov_deg'],
+            geometry_validation=record['geometry_validation']['status'], registration_complete=verdict.status == 'complete',
+            missing_registration=verdict.missing, declared_retrieval_eligible=refusal is None,
+            refusal_code=refusal.code if refusal else None,
+        ))
+    if not cameras:
+        notices.append('No validated camera registration is available')
+    notices.append('Registry metadata only; camera imagery is not delivered by this interface')
+    public = {'cameras': [camera.model_dump(mode='json') for camera in cameras], 'notices': notices}
+    version = hashlib.sha256(json.dumps(public, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    return PublicCameraRegistry(version=version, cameras=cameras, notices=notices)

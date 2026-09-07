@@ -269,7 +269,7 @@ def requested_time(value: datetime | None) -> datetime:
 def require_core_coverage(latitude: float, longitude: float) -> None:
     bounds = AVALON_CORE_BOUNDS
     if not (bounds["south"] <= latitude <= bounds["north"] and bounds["west"] <= longitude <= bounds["east"]):
-        raise HTTPException(status_code=422, detail="coordinate is outside the Avalon core coverage")
+        raise HTTPException(status_code=422, detail={'code': 'outside_supported_area', 'message': 'Coordinate is outside the Avalon core coverage', 'retryable': False, 'restart_required': False, 'details': {'latitude': latitude, 'longitude': longitude, 'bounds': bounds}})
 
 
 app.include_router(registry_router, prefix=PREFIX)
@@ -2404,12 +2404,12 @@ def get_astronomy(
             window_start=start,
             window_end=end,
             valid_time=time,
-            sun_altitude_deg=0.0,
-            moon_altitude_deg=0.0,
-            core_altitude_deg=0.0,
+            sun_altitude_deg=None,
+            moon_altitude_deg=None,
+            core_altitude_deg=None,
             twilight_bands=[],
-            moon=AstronomyMoon(rise=None, set=None, above_horizon=[], phase_deg=0.0, illuminated_fraction=0.0),
-            milky_way_core=AstronomyCoreWindow(windows=[], max_altitude_deg=0.0, caption=astronomy.CORE_CAPTION),
+            moon=AstronomyMoon(rise=None, set=None, above_horizon=[], phase_deg=None, illuminated_fraction=None),
+            milky_way_core=AstronomyCoreWindow(windows=[], max_altitude_deg=None, caption=astronomy.CORE_CAPTION),
             provenance=None,
             notices=[reason, "No astronomical value is computed from an unverified ephemeris; nothing is substituted."],
         )

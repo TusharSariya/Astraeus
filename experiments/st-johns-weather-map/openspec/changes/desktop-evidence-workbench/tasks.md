@@ -29,7 +29,7 @@ Contract acceptance does not check off implementation tasks.
 ## 5. Complete the selected view bodies
 
 - [ ] 5.1 Implement Series Overview and temporary Compare using the approved bounded API interactions; verify native sparse times, compatible/incompatible axes, unsampled versus checked gaps, and Focus/selection continuity with fixed responses.
-- [ ] 5.2 Implement Sky Horizon instrument; verify registered/unsurveyed versus arbitrary-point horizons, scalar cloud gauges, missing directional geometry, Kp/outlook separation and explicit camera absence.
+- [x] 5.2 Implement Sky Horizon instrument; verify registered/unsurveyed versus arbitrary-point horizons, scalar cloud gauges, missing directional geometry, Kp/outlook separation and explicit camera absence.
 - [ ] 5.3 Implement Activity Operational stack using the owning server verdict contract; verify four lanes, one inline expansion, hard-stop ordering, coverage/withholding, provenance and Saved stack absence. Do not implement client scoring.
 - [ ] 5.4 Implement Sources Ledger, Family finder and Coverage lanes; verify filters and inspector survive switching, declarations never imply retrieved coverage, and unmapped/unknown/expired evidence stays inspectable.
 - [ ] 5.5 Apply canonical #41 tokens across all five views; verify stable provider slots, red-on-black night, non-colour state distinctions and reduced motion.
@@ -92,3 +92,31 @@ complete station/generated-display inspection and stable provider palettes;
 Series run/native-reader residuals and the assembled Sources/Series cache view;
 Sky and Activity. Task 5.4 remains open for that assembled source-evidence scope,
 not because the three perspectives need another owner selection.
+
+
+## September 7 Sky Horizon checkpoint
+
+Sky now presents registered horizon samples with their unsurveyed/terrain-check
+basis, independent scalar cloud-layer gauges, returned astronomy intervals and
+altitudes, separate observed Kp and outlook, and native solar-wind measurements.
+No azimuth or horizon-adjusted event is invented. Arbitrary points have no
+borrowed polygon; unavailable ephemeris values are null, never a zero-altitude
+or zero-illumination assertion. Camera eligibility comes from an allowlisted,
+versioned read-only registry response; no endpoint, private terms, image or
+Focus-to-camera association is supplied.
+
+Exact Focus coordinates and milliseconds drive astronomy and point reads.
+Old point/astronomy/space-weather responses are withheld across Focus changes;
+playback does not create repeated point or native Series selections. Pausing
+reads the exact selected instant. These fixes preserve the finite Series cache.
+
+Verification: 483 client tests, production build, 77 affected API tests pass.
+Six existing astronomy geometry tests skip because the checkout has no DE442
+kernel; no new ephemeris calculation or live astronomical proof is claimed.
+`node scripts/prove-desktop-sky.mjs` uses fixed, explicitly constructed geometry
+responses and blocks external traffic. It covers arbitrary/registered horizons,
+native cloud zero, missing directions, camera ineligibility, exact-time requests,
+failed geometry clearing and three themes. Screenshots and receipt remain at
+`/tmp/astraeus-sky-proof/`. Review is a separate main-agent pass.
+Activity, assembled desktop/keyboard proof, source/run residuals, provider tokens
+and the API layer joins remain open. Screen-reader and outdoor checks are separate.

@@ -54,14 +54,14 @@ function appendPage(previous: NativeSeriesResponse, page: NativeSeriesResponse):
   return { ...page, series: rows }
 }
 interface Props {
-  location: LocationPoint; instant: number; fields: ServedFieldValue[]; runs: Record<string, string>; enabled: boolean; focusReady?: boolean
+  location: LocationPoint; instant: number; fields: ServedFieldValue[]; runs: Record<string, string>; enabled: boolean; focusReady?: boolean; selectionMoving?: boolean
   onLatest: (source: string) => void
   onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void
 }
 
 /** Owned by App so switching stage/dock does not discard a finite selection. */
 export function useNativeSeries(props: Props) {
-  const { location, instant, runs, fields, enabled, focusReady = true } = props
+  const { location, instant, runs, fields, enabled, focusReady = true, selectionMoving = false } = props
   const [first, setFirst] = useState('eccc-hrdps|temperature_2m')
   const [second, setSecond] = useState('eccc-hrdps|total_cloud_opacity')
   const [compare, setCompare] = useState(false)
@@ -102,7 +102,7 @@ export function useNativeSeries(props: Props) {
   }, [signature, data])
   const latestRead = useRef(read); latestRead.current = read
   useEffect(() => {
-    if (!focusReady) {
+    if (!focusReady || selectionMoving) {
       active.current?.abort(); generation.current++; lastStarted.current = null
       setData(null); setError(null); setCheck(null); setBusy(false)
       return
@@ -112,7 +112,7 @@ export function useNativeSeries(props: Props) {
       setData(null); setError(null); setCheck(null); setExpired(false); setBusy(false)
       if (enabled) { lastStarted.current = signature; void latestRead.current(JSON.parse(signature)) }
     }
-  }, [signature, enabled, focusReady])
+  }, [signature, enabled, focusReady, selectionMoving])
   useEffect(() => () => { active.current?.abort(); generation.current++; lastStarted.current = null }, [])
   useEffect(() => {
     if (!data) return
@@ -143,12 +143,12 @@ export function useNativeSeries(props: Props) {
     <div className="series-controls"><button aria-pressed={!compare} onClick={() => setCompare(false)}>Overview</button><button aria-pressed={compare} onClick={() => setCompare(true)}>Temporary Compare</button>
       {select('Series A', first, setFirst)}{compare && select('Series B', second, setSecond)}
       <label>Window from Focus<select value={hours} onChange={(event) => setHours(Number(event.target.value))}>{[1, 3, 6, 12].map((n) => <option key={n} value={n}>{n} hours</option>)}</select></label>
-      <button disabled={busy || !focusReady} onClick={() => void read(selection)}>Refresh Series</button>
+      <button disabled={busy || !focusReady || selectionMoving} onClick={() => void read(selection)}>Refresh Series</button>
       <button disabled={busy || !data || expired} onClick={() => void checkChanges()}>Check for changes</button>
     </div>
     <p>Native samples only. Separate value axes preserve each field’s units; spaces between samples are not interpolated. Compare is temporary.</p>
     {selectors.filter((s) => s.run !== 'latest').map((s) => <p key={s.id}>Pinned {s.source_id}: {s.run}. <button onClick={() => props.onLatest(s.source_id)}>Use Latest available for {s.source_id}</button></p>)}
-    <div role="status">{!focusReady && <p>Focus is awaiting registered geometry; no point values are shown.</p>}{busy && 'Reading selected native evidence…'}{error && <p>Read failed; no replacement was applied. {error}</p>}{check && <p>{check}</p>}{expired && <p>Selection expired. Refresh Series to read again.</p>}</div>
+    <div role="status">{selectionMoving && <p>Pause playback to read native Series for this selection.</p>}{!focusReady && <p>Focus is awaiting registered geometry; no point values are shown.</p>}{busy && 'Reading selected native evidence…'}{error && <p>Read failed; no replacement was applied. {error}</p>}{check && <p>{check}</p>}{expired && <p>Selection expired. Refresh Series to read again.</p>}</div>
     {data && <p>Selected {data.snapshot.selected_at} · Fixed expiry {data.snapshot.expires_at}{!data.complete && ' · More native samples available'}</p>}
     {data && !expired && <>{data.series.map((row) => <NativeTrack key={row.selector_id} row={row} start={instant} end={instant + hours * 3600000} onInspect={props.onInspect} />)}
       {data.next_cursor && <button disabled={busy} onClick={() => void read({ cursor: data.next_cursor }, true)}>Load next native samples</button>}

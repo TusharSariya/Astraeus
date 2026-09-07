@@ -204,3 +204,21 @@ def test_live_ephemeris_pin_still_matches_naif():
     response = httpx.head(EPHEMERIS_URL, timeout=30, follow_redirects=True)
     assert response.status_code == 200
     assert int(response.headers["content-length"]) == EPHEMERIS_BYTES
+
+
+def test_unavailable_astronomy_has_null_values_not_numeric_zero(client, missing_kernel):
+    body = client.get(f'{PREFIX}/astronomy').json()
+    assert body['data_mode'] == 'unavailable'
+    assert all(body[key] is None for key in ('sun_altitude_deg', 'moon_altitude_deg', 'core_altitude_deg'))
+    assert body['moon']['phase_deg'] is None
+    assert body['moon']['illuminated_fraction'] is None
+    assert body['milky_way_core']['max_altitude_deg'] is None
+
+
+def test_geographic_refusal_names_exact_focus_without_substitution(client):
+    response = client.get(f'{PREFIX}/astronomy', params={'latitude': 10.123456789, 'longitude': -52.7126})
+    assert response.status_code == 422
+    detail = response.json()['detail']
+    assert detail['code'] == 'outside_supported_area'
+    assert detail['details']['latitude'] == 10.123456789
+    assert detail['retryable'] is False

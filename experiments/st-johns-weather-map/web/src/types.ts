@@ -363,8 +363,8 @@ export interface AstronomyMoon {
   rise: string | null
   set: string | null
   above_horizon: AstronomyInterval[]
-  phase_deg: number
-  illuminated_fraction: number
+  phase_deg: number | null
+  illuminated_fraction: number | null
 }
 
 export interface AstronomyResponse {
@@ -375,12 +375,12 @@ export interface AstronomyResponse {
   window_start: string
   window_end: string
   valid_time: string
-  sun_altitude_deg: number
-  moon_altitude_deg: number
-  core_altitude_deg: number
+  sun_altitude_deg: number | null
+  moon_altitude_deg: number | null
+  core_altitude_deg: number | null
   twilight_bands: AstronomyInterval[]
   moon: AstronomyMoon
-  milky_way_core: { windows: AstronomyInterval[]; max_altitude_deg: number; caption: string }
+  milky_way_core: { windows: AstronomyInterval[]; max_altitude_deg: number | null; caption: string }
   provenance: { source_id: string; kernel_id: string; kernel_sha256: string; derivation: string; derivation_version: string; operational: false } | null
   notices: string[]
 }

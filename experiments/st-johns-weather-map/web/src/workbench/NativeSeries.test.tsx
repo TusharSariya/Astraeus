@@ -9,8 +9,8 @@ const location = { id: 'point', name: 'Point', latitude: 47.51234567, longitude:
 let initial: NativeSeriesResponse
 let calls: Array<{ path: string; body: Record<string, unknown> }>
 let failRefresh: boolean
-function Harness({ instant = Date.parse(at), enabled = true }: { instant?: number; enabled?: boolean }) {
-  const view = useNativeSeries({ location, instant, enabled, fields: [], runs: {}, onLatest: vi.fn(), onInspect: vi.fn() })
+function Harness({ instant = Date.parse(at), enabled = true, moving = false }: { instant?: number; enabled?: boolean; moving?: boolean }) {
+  const view = useNativeSeries({ location, instant, enabled, selectionMoving: moving, fields: [], runs: {}, onLatest: vi.fn(), onInspect: vi.fn() })
   return enabled ? view : <p>Another view</p>
 }
 beforeEach(() => {
@@ -88,4 +88,19 @@ it('finishes the initial read under StrictMode effect replay', async () => {
   render(<StrictMode><Harness /></StrictMode>)
   expect(await screen.findAllByRole('img')).toHaveLength(2)
   expect(screen.queryByText(/Reading selected native evidence/)).not.toBeInTheDocument()
+})
+
+
+it('withholds selection reads during playback and resumes once at the exact paused instant', async () => {
+  const rendered = render(<Harness />)
+  await screen.findAllByRole('img')
+  rendered.rerender(<Harness moving instant={Date.parse(at) + 123} />)
+  expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Refresh Series' })).toBeDisabled()
+  rendered.rerender(<Harness moving instant={Date.parse(at) + 456} />)
+  expect(calls).toHaveLength(1)
+  rendered.rerender(<Harness instant={Date.parse(at) + 456} />)
+  await screen.findAllByRole('img')
+  expect(calls).toHaveLength(2)
+  expect(calls[1].body.start).toBe('2026-09-07T12:00:00.456Z')
 })
