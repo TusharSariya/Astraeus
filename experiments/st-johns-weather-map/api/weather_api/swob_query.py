@@ -238,14 +238,14 @@ class SWOBQueryService:
             raise SwobQueryUnavailable("SWOB normalized cache entry exceeds its ceiling")
         return entry
 
-    def entry_for(self, latitude: float, longitude: float, selected: datetime) -> SWOBCacheEntry:
+    def entry_for(self, latitude: float, longitude: float, selected: datetime, *, refresh: bool = False) -> SWOBCacheEntry:
         key = self._key(latitude, longitude, selected)
         with self._lock:
             cached = self._entries.get(key)
-            if cached is not None and self._clock() < cached.expires_at_monotonic:
+            if not refresh and cached is not None and self._clock() < cached.expires_at_monotonic:
                 self._entries.move_to_end(key)
                 return cached
-            if cached is not None:
+            if cached is not None and self._clock() >= cached.expires_at_monotonic:
                 self._expired[key] = cached.acquisition
                 self._expired.move_to_end(key)
                 del self._entries[key]
@@ -268,7 +268,14 @@ class SWOBQueryService:
             future.set_result(replacement)
             return replacement
         except BaseException as error:
-            expired = self._expired.get(key)
+            with self._lock:
+                # An explicit refresh can fail after the retained entry expires.
+                cached = self._entries.get(key)
+                if cached is not None and self._clock() >= cached.expires_at_monotonic:
+                    self._expired[key] = cached.acquisition
+                    del self._entries[key]
+                    self._prune_locked()
+                expired = self._expired.get(key)
             if isinstance(error, SwobQueryUnavailable) and expired is not None:
                 error.outcome = SWOBDemandUnavailable(reason="refresh_failed", error_type=type(error).__name__, expired_acquisition=expired)
             future.set_exception(error)
@@ -277,8 +284,20 @@ class SWOBQueryService:
             with self._lock:
                 self._inflight.pop(key, None)
 
-    def point_fields(self, latitude: float, longitude: float, selected: datetime) -> list[EvidenceField]:
-        entry = self.entry_for(latitude, longitude, selected)
+    def point_fields(self, latitude: float, longitude: float, selected: datetime, *, refresh: bool = False) -> list[EvidenceField]:
+        entry = self.entry_for(latitude, longitude, selected, refresh=refresh)
+        return self.point_fields_from_entry(entry, latitude, longitude, selected)
+
+    def point_fields_from_entry(self, entry: SWOBCacheEntry, latitude: float, longitude: float,
+                                selected: datetime) -> list[EvidenceField]:
+        """Read one finite acquired snapshot without acquisition or time substitution."""
+        request = entry.acquisition.request
+        if self._key(latitude, longitude, selected) != self._key(request.latitude, request.longitude, request.selected_time):
+            raise SwobQueryUnavailable("SWOB snapshot does not match the exact selected request", reason="unsupported_time")
+        if self._clock() >= entry.expires_at_monotonic:
+            raise SwobQueryUnavailable("SWOB snapshot has expired", outcome=SWOBDemandUnavailable(
+                reason="refresh_failed", error_type="SwobQueryUnavailable", expired_acquisition=entry.acquisition,
+            ))
         station = min(entry.observations, key=lambda item: (_distance_km(latitude, longitude, item), item.station_id))
         distance = _distance_km(latitude, longitude, station)
         if distance / 111.32 > SWOB_MAX_DISTANCE_DEGREES:
@@ -316,6 +335,18 @@ class SWOBQueryService:
                 ),
             ))
         return fields
+
+    def cached_entries_for(self, latitude: float, longitude: float) -> tuple[SWOBCacheEntry, ...]:
+        """Finite native-time planning snapshot for this exact request location.
+
+        The returned times are actual reports already retrieved, never a cadence
+        or an assertion that uncached hours have station coverage.
+        """
+        location = round(latitude, 6), round(longitude, 6)
+        with self._lock:
+            return tuple(sorted((entry for key, entry in self._entries.items()
+                                 if key[1:] == location and self._clock() < entry.expires_at_monotonic),
+                                key=lambda entry: entry.acquisition.request.selected_time))
 
     def cached_entries(self) -> tuple[SWOBCacheEntry, ...]:
         with self._lock:
