@@ -73,7 +73,7 @@ def test_named_run_is_resolved_before_exact_frame_and_cache_key(model):
     coordinator = getattr(module, f'{model.upper()}QueryCoordinator')(adapter=Adapter(), now=lambda: NOW)
     requested = []
     class Cache:
-        def query(self, key): requested.append(key); return key
+        def query(self, key, *, refresh=False): requested.append(key); return key
     coordinator._cache = Cache()
     old = coordinator.query(NOW, run_id=candidate(6).provider_run_id)
     new = coordinator.query(NOW, run_id=candidate().provider_run_id)
