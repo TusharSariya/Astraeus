@@ -1,4 +1,4 @@
-export type FallbackMode = 'consensus' | 'hrdps' | 'rdps' | 'unavailable'
+export type FallbackMode = 'consensus' | 'hrdps' | 'rdps' | 'gdps' | 'unavailable'
 export type AppMode = 'simple' | 'expert'
 
 /** How a single response, or a single field inside one, was produced.
@@ -441,6 +441,29 @@ export interface SolarWindLatest {
   notices: string[]
 }
 
+export interface SolarWindPlasmaLatest {
+  available: boolean
+  source_id: string
+  product: string
+  /** Native SWPC values from one time/source row. Null remains a feed gap. */
+  proton_density_cm3: number | null
+  proton_speed_km_s: number | null
+  proton_temperature_k: number | null
+  measured_at: string | null
+  feed_declared_spacecraft: string | null
+  active: boolean | null
+  overall_quality: number | null
+  freshness: SpaceWeatherFreshness
+  acquisition: SpaceWeatherAcquisition | null
+  notices: string[]
+}
+
+export interface PlasmaDemandUnavailable {
+  reason: string
+  cached_acquisition: SpaceWeatherAcquisition | null
+  values_withheld: true
+}
+
 export interface SpaceWeatherResponse {
   data_mode: FieldDataMode
   operational: false
@@ -448,6 +471,8 @@ export interface SpaceWeatherResponse {
   kp_observed: SpaceWeatherSeries
   kp_forecast: SpaceWeatherSeries
   solar_wind: SolarWindLatest
+  solar_wind_plasma: SolarWindPlasmaLatest
+  plasma_demand_unavailable: PlasmaDemandUnavailable | null
   notices: string[]
 }
 

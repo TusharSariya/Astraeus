@@ -85,7 +85,9 @@ from .models import (
     AstronomyResponse,
 )
 from .models import (
+    PlasmaDemandUnavailable,
     SolarWindLatest,
+    SolarWindPlasmaLatest,
     SpaceWeatherReading,
     SpaceWeatherResponse,
     SpaceWeatherSeries,
@@ -452,7 +454,7 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
         )
 
     selected_product = product.upper() if product else None
-    if selected_product not in {None, "HRDPS", "RDPS", "GFS"}:
+    if selected_product not in {None, "HRDPS", "RDPS", "GDPS", "GFS"}:
         return TimelineResponse(
             data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference),
             boundary=boundary, tiers=tiers,
@@ -481,6 +483,16 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
             demand_notices.append(
                 f"eccc-rdps demand availability could not be resolved: {type(error).__name__}"
             )
+    if selected_product == "GDPS":
+        try:
+            from .gdps_query import gdps_query_coordinator  # noqa: PLC0415
+            for stamp in gdps_query_coordinator().timeline_times(reference):
+                if start <= stamp <= end:
+                    demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-gdps")
+        except Exception as error:  # noqa: BLE001 - provider metadata absence is source-local
+            demand_notices.append(
+                f"eccc-gdps demand availability could not be resolved: {type(error).__name__}"
+            )
     if selected_product == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
@@ -493,11 +505,12 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
                 f"noaa-gfs demand availability could not be resolved: {type(error).__name__}"
             )
 
-    if selected_product == "RDPS":
+    if selected_product in {"RDPS", "GDPS"}:
+        product_name = selected_product
         return TimelineResponse(
             data_mode=DataMode.LIVE if demand_products else DataMode.UNAVAILABLE,
             start=start, end=end, items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
-            notices=[*demand_notices, "RDPS provider-advertised demand availability is metadata only; no GRIB prefetch or retained artifact coverage"],
+            notices=[*demand_notices, f"{product_name} provider-advertised demand availability is metadata only; no GRIB prefetch or retained artifact coverage"],
         )
     store = live_store()
     if store is None:
@@ -950,7 +963,12 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             z_index=Z_INDEX_BY_KIND["alert"], evidence_basis="demand_query", group="alert",
             raster_available=False, legend_available=False,
         )], notices=["CAP layer listing read a fresh source-local cache entry and made no provider request"])
+    from .aqhi_query import demand_layer as aqhi_demand_layer  # noqa: PLC0415
+    from .swob_query import demand_layer as swob_demand_layer  # noqa: PLC0415
+
     ovation_demand_layer = aurora.demand_layer(Layer, z_index=Z_INDEX_BY_KIND["raster"])
+    aqhi_layer = aqhi_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
+    swob_layer = swob_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
     if product is not None and product.upper() == "OVATION":
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=[ovation_demand_layer],
@@ -986,7 +1004,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     store = live_store()
     if store is None:
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["no live artifact store is reachable; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -996,7 +1014,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published artifacts could not be listed for the layer index")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1011,7 +1029,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
         # The aged-out names travel on both branches: a proxied layer is not
         # this deployment's stored evidence, so its presence says nothing about
         # whether the stored evidence aged out.
-        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
@@ -1019,7 +1037,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised while reading coverage; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1029,6 +1047,11 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     layers: list[Layer] = []
     for artifact in artifacts:
         from .gfs_query import hides_legacy_published_gfs_layer  # noqa: PLC0415
+        if artifact.source_id == "eccc-aqhi":
+            notices.append(
+                f"{artifact.source_id}-{artifact.logical_name} is retained for audit but is not a current demand-query observation layer"
+            )
+            continue
         if hides_legacy_published_gfs_layer(artifact.source_id):
             notices.append(
                 f"{artifact.source_id}-{artifact.logical_name} is retained for audit but is not a current demand-query raster; "
@@ -1133,6 +1156,8 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     # OVATION is a selected-time demand grid. Listing its requestable layer
     # never fetches a provider document or implies that a native frame exists.
     layers.append(ovation_demand_layer)
+    layers.append(aqhi_layer)
+    layers.append(swob_layer)
 
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
@@ -1229,6 +1254,40 @@ def _live_point(
             LOGGER.info("METAR demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
             return [], ["awc-metar-speci has no validated observation less than one hour old at or before this selection"]
 
+    def demand_station_observations():
+        observations, notices = demand_metar()
+        unavailable = []
+        try:
+            from .aqhi_query import AqhiQueryUnavailable, aqhi_query_service  # noqa: PLC0415
+
+            aqhi = aqhi_query_service().point_field(latitude, longitude, time)
+            observations.append(aqhi)
+            notices.append(
+                f"eccc-aqhi station {aqhi.provenance.native_report.station_id} observation at "
+                f"{aqhi.provenance.valid_time.isoformat()} is shown with native station and transport provenance"
+            )
+        except Exception as error:
+            LOGGER.info("AQHI demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
+            notices.append("eccc-aqhi has no validated nearby station observation less than one hour old at or before this selection")
+            if isinstance(error, AqhiQueryUnavailable):
+                unavailable.append(error.outcome)
+        try:
+            from .swob_query import SwobQueryUnavailable, swob_query_service  # noqa: PLC0415
+
+            swob = swob_query_service().point_fields(latitude, longitude, time)
+            observations.extend(swob)
+            report = swob[0].provenance.native_report
+            notices.append(
+                f"eccc-swob station {report.station_id} observation at {report.observation_time.isoformat()} "
+                "is shown with native station and transport provenance"
+            )
+        except Exception as error:
+            LOGGER.info("SWOB demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
+            notices.append("eccc-swob has no validated nearby MSC station report at the exact selected time")
+            if isinstance(error, SwobQueryUnavailable):
+                unavailable.append(error.outcome)
+        return observations, notices, unavailable
+
     def demand_consensus() -> tuple[list[EvidenceField], object, list[str], list[str], set[str]]:
         """Feed the unchanged consensus reader with independently queried sources."""
         calls = {
@@ -1319,6 +1378,38 @@ def _live_point(
                                 reason=f"Selected RDPS native timestep {actual_time.isoformat()}"),
             fields=fields + observations,
             notices=[f"RDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
+        )
+    if product and product.upper() == "GDPS":
+        try:
+            from .gdps_query import GDPSQueryUnavailable, gdps_query_coordinator  # noqa: PLC0415
+
+            fields, _consensus, _sources = gdps_query_coordinator().point_fields(latitude, longitude, time)
+        except Exception as error:
+            LOGGER.exception("GDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason=f"GDPS selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:eccc-gdps"],
+                notices=["eccc-gdps could not retrieve and validate the exact selected native timestep"],
+                source_id="eccc-gdps", product="GDPS",
+            ).model_copy(update={"demand_unavailable": error.outcome if isinstance(error, GDPSQueryUnavailable) else None})
+        if not fields:
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason="GDPS has no native value at this coordinate and selected timestamp",
+                flags=["demand_query_empty:eccc-gdps"],
+                notices=["eccc-gdps returned no validated native value for the selected point"],
+                source_id="eccc-gdps", product="GDPS",
+            )
+        actual_time = fields[0].provenance.valid_time
+        observations, observation_notices = demand_metar()
+        return PointResponse(
+            data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+            selection=Selection(mode="fallback", selected_source_id="eccc-gdps",
+                                selected_product_id="gdps", badge="GDPS selected model",
+                                reason=f"Selected GDPS native timestep {actual_time.isoformat()}"),
+            fields=fields + observations,
+            notices=[f"GDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
         )
     if product and product.upper() == "GEFS":
         try:
@@ -1424,8 +1515,8 @@ def _live_point(
             ],
         )
 
-    demand_observations, demand_notices = demand_metar()
     if product is None or product.lower() in CONSENSUS_PRODUCTS:
+        demand_observations, demand_notices, observation_unavailable = demand_station_observations()
         fields, consensus, sources, consensus_notices, eligible_temperature_sources = demand_consensus()
         fields = [*fields, *demand_observations]
         sources = sorted({*sources, *(item.provenance.source_id for item in demand_observations)})
@@ -1435,7 +1526,7 @@ def _live_point(
                 reason="no migrated demand source returned applicable point evidence",
                 flags=["demand_consensus_unavailable"],
                 notices=[*consensus_notices, *demand_notices, "No retained forecast artifact was read or substituted"],
-            )
+            ).model_copy(update={"observation_unavailable": observation_unavailable})
         live_hrdps = "eccc-hrdps" in eligible_temperature_sources
         mode, badge, reason = select_fallback(consensus.available, hrdps_fresh=live_hrdps, rdps_fresh=False)
         from .models import PointConsensus
@@ -1449,6 +1540,7 @@ def _live_point(
         )
         return PointResponse(
             data_mode=DataMode.LIVE,
+            observation_unavailable=observation_unavailable,
             latitude=latitude, longitude=longitude, valid_time=time,
             selection=Selection(
                 mode=mode, selected_source_id="multi-centre" if mode == "consensus" else ("eccc-hrdps" if live_hrdps else None),
@@ -1458,6 +1550,8 @@ def _live_point(
             fields=fields, consensus=summary,
             notices=[*consensus_notices, *demand_notices, "Consensus acquisition used demand sources only; no retained forecast artifact was read"],
         )
+    demand_observations, demand_notices = demand_metar()
+    observation_unavailable = []
     store = live_store()
     if store is None:
         if demand_observations:
@@ -2365,6 +2459,7 @@ def get_astronomy(
 
 SWPC_KP_SOURCE = "noaa-swpc-kp"
 SWPC_RTSW_SOURCE = "noaa-swpc-rtsw"
+SWPC_PLASMA_SOURCE = "noaa-swpc-plasma"
 
 
 def _swpc_threshold(source_id: str) -> int | None:
@@ -2395,6 +2490,23 @@ def _absent_solar_wind(notice: str) -> SolarWindLatest:
     )
 
 
+def _absent_solar_wind_plasma(notice: str) -> SolarWindPlasmaLatest:
+    return SolarWindPlasmaLatest(
+        available=False,
+        source_id=SWPC_PLASMA_SOURCE,
+        product="unavailable",
+        proton_density_cm3=None,
+        proton_speed_km_s=None,
+        proton_temperature_k=None,
+        measured_at=None,
+        feed_declared_spacecraft=None,
+        active=None,
+        overall_quality=None,
+        freshness=Freshness.evaluate(None, _swpc_threshold(SWPC_PLASMA_SOURCE)),
+        notices=[notice],
+    )
+
+
 def _unavailable_space_weather(reference: datetime, reason: str, *, extra_notices: list[str] | None = None) -> SpaceWeatherResponse:
     return SpaceWeatherResponse(
         data_mode=DataMode.UNAVAILABLE,
@@ -2402,6 +2514,8 @@ def _unavailable_space_weather(reference: datetime, reason: str, *, extra_notice
         kp_observed=_absent_series(SWPC_KP_SOURCE, reason),
         kp_forecast=_absent_series(SWPC_KP_SOURCE, reason),
         solar_wind=_absent_solar_wind(reason),
+        solar_wind_plasma=_absent_solar_wind_plasma(reason),
+        plasma_demand_unavailable=None,
         notices=[reason, *(extra_notices or [])],
     )
 
@@ -2599,14 +2713,49 @@ def get_space_weather(at: datetime = Query(..., description="Aware selected evid
     except (SWPCRTSWUnavailable, ValueError) as error:
         solar_wind = _absent_solar_wind(str(error))
         solar_wind_notice = [str(error)]
-    available = kp_observed.available or kp_forecast.available or solar_wind.available
+
+    from .swpc_plasma_query import SWPCPlasmaUnavailable, swpc_plasma_query_service  # noqa: PLC0415
+    try:
+        native_plasma = swpc_plasma_query_service().latest(reference)
+        solar_wind_plasma = SolarWindPlasmaLatest(
+            available=True,
+            source_id=native_plasma.source_id,
+            product=native_plasma.product,
+            proton_density_cm3=native_plasma.proton_density_cm3,
+            proton_speed_km_s=native_plasma.proton_speed_km_s,
+            proton_temperature_k=native_plasma.proton_temperature_k,
+            measured_at=native_plasma.measured_at,
+            feed_declared_spacecraft=native_plasma.feed_declared_spacecraft,
+            active=native_plasma.active,
+            overall_quality=native_plasma.overall_quality,
+            freshness=native_plasma.freshness,
+            acquisition=native_plasma.acquisition,
+            notices=list(native_plasma.notices),
+        )
+        plasma_notices: list[str] = []
+        plasma_unavailable = None
+    except (SWPCPlasmaUnavailable, ValueError) as error:
+        solar_wind_plasma = _absent_solar_wind_plasma(str(error))
+        plasma_notices = [str(error)]
+        plasma_unavailable = PlasmaDemandUnavailable(
+            reason=str(error),
+            cached_acquisition=error.cached if isinstance(error, SWPCPlasmaUnavailable) else None,
+        )
+    available = (
+        kp_observed.available
+        or kp_forecast.available
+        or solar_wind.available
+        or solar_wind_plasma.available
+    )
     return SpaceWeatherResponse(
         data_mode=DataMode.LIVE if available else DataMode.UNAVAILABLE,
         generated_at=reference,
         kp_observed=kp_observed,
         kp_forecast=kp_forecast,
         solar_wind=solar_wind,
-        notices=solar_wind_notice if available else [*solar_wind_notice, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
+        solar_wind_plasma=solar_wind_plasma,
+        plasma_demand_unavailable=plasma_unavailable,
+        notices=[*solar_wind_notice, *plasma_notices] if available else [*solar_wind_notice, *plasma_notices, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
     )
 
 
@@ -2738,6 +2887,13 @@ def get_profile(
         return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude,
                                valid_time=native_time, levels=levels,
                                notices=[f"RDPS pressure fields were fetched for native timestep {native_time.isoformat()} only"])
+
+    if product and product.upper() == "GDPS":
+        return unavailable(
+            "GDPS pressure-level fields remain explicitly deferred under #189; this point-only slice performed no provider request",
+            "unsupported_profile:eccc-gdps",
+            [],
+        )
 
     store = live_store()
     if store is None:

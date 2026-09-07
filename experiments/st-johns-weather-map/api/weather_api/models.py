@@ -421,6 +421,128 @@ class RDPSDemandUnavailable(StrictModel):
     expired_acquisition: RDPSAcquisition | None = None
 
 
+class GDPSDemandRequest(StrictModel):
+    """Canonical selectors for one bounded native GDPS frame."""
+
+    source_id: Literal["eccc-gdps"] = "eccc-gdps"
+    product: Literal["GDPS"] = "GDPS"
+    cycle_url: _BoundedUrl
+    provider_run_id: _BoundedName
+    lead: int = Field(ge=0, le=240)
+    fields: tuple[_BoundedName, ...] = Field(min_length=1, max_length=5)
+    bounds: dict[Literal["north", "south", "east", "west"], float] = Field(min_length=1, max_length=4)
+
+
+class GDPSTransportReceipt(StrictModel):
+    """One completed GDPS native-field transfer, without provider bytes."""
+
+    field: _BoundedName
+    url: _BoundedUrl
+    request_headers: _BoundedHeaders
+    response_headers: _BoundedHeaders
+    bytes: int = Field(gt=0)
+    sha256: _SHA256
+    completed_at: AwareDatetime
+
+
+class GDPSAcquisition(StrictModel):
+    request: GDPSDemandRequest
+    run_time: AwareDatetime
+    valid_time: AwareDatetime
+    retrieval_time: AwareDatetime
+    normalized_sha256: _SHA256
+    transport_receipts: tuple[GDPSTransportReceipt, ...] = Field(max_length=5)
+    cached_at: AwareDatetime
+    expires_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def bound_metadata(self):
+        if self.expires_at <= self.cached_at:
+            raise ValueError("GDPS cache expiry must follow admission")
+        if len(self.model_dump_json().encode()) > RDPS_METADATA_MAX_BYTES:
+            raise ValueError("GDPS acquisition metadata exceeds its byte ceiling")
+        return self
+
+
+class GDPSDemandUnavailable(StrictModel):
+    source_id: Literal["eccc-gdps"] = "eccc-gdps"
+    reason: Literal["refresh_failed", "query_failed"]
+    error_type: _BoundedName
+    expired_acquisition: GDPSAcquisition | None = None
+
+
+AQHI_METADATA_MAX_BYTES = 12 * 1024
+
+
+class AQHIAcquisition(StrictModel):
+    """Bounded transport identity for one normalized AQHI station document."""
+
+    provider_url: _BoundedUrl
+    effective_url: _BoundedUrl
+    request_headers: _BoundedHeaders
+    response_headers: _BoundedHeaders
+    transport_completed_at: AwareDatetime
+    body_bytes: int = Field(gt=0, le=2 * 1024 * 1024)
+    body_sha256: _SHA256
+    cached_at: AwareDatetime
+    expires_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def bound_metadata(self):
+        if self.expires_at <= self.cached_at:
+            raise ValueError("AQHI cache expiry must follow admission")
+        if len(self.model_dump_json().encode()) > AQHI_METADATA_MAX_BYTES:
+            raise ValueError("AQHI acquisition metadata exceeds its byte ceiling")
+        return self
+
+
+class AQHIDemandUnavailable(StrictModel):
+    source_id: Literal["eccc-aqhi"] = "eccc-aqhi"
+    reason: Literal["refresh_failed", "query_failed"]
+    error_type: _BoundedName
+    expired_acquisition: AQHIAcquisition | None = None
+    values_withheld: Literal[True] = True
+
+
+SWOB_METADATA_MAX_BYTES = 16 * 1024
+
+
+class SWOBDemandRequest(StrictModel):
+    source_id: Literal["eccc-swob"] = "eccc-swob"
+    selected_time: AwareDatetime
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    provider_url: _BoundedUrl
+
+
+class SWOBAcquisition(StrictModel):
+    request: SWOBDemandRequest
+    effective_url: _BoundedUrl
+    request_headers: _BoundedHeaders
+    response_headers: _BoundedHeaders
+    transport_completed_at: AwareDatetime
+    body_bytes: int = Field(gt=0, le=256 * 1024)
+    body_sha256: _SHA256
+    cached_at: AwareDatetime
+    expires_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def bound_metadata(self):
+        if self.expires_at <= self.cached_at:
+            raise ValueError("SWOB cache expiry must follow admission")
+        if len(self.model_dump_json().encode()) > SWOB_METADATA_MAX_BYTES:
+            raise ValueError("SWOB acquisition metadata exceeds its byte ceiling")
+        return self
+
+
+class SWOBDemandUnavailable(StrictModel):
+    source_id: Literal["eccc-swob"] = "eccc-swob"
+    reason: Literal["unsupported_time", "refresh_failed", "query_failed"]
+    error_type: _BoundedName
+    expired_acquisition: SWOBAcquisition | None = None
+    values_withheld: Literal[True] = True
+
+
 class Provenance(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
@@ -477,7 +599,9 @@ class Provenance(StrictModel):
     intermediary_method: str | None = None
     adapter_version: str
     native_report: NativeReportIdentity | None = None
-    demand_acquisition: RDPSAcquisition | None = None
+    demand_acquisition: RDPSAcquisition | GDPSAcquisition | None = None
+    aqhi_acquisition: AQHIAcquisition | None = None
+    swob_acquisition: SWOBAcquisition | None = None
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
     #: echoing the request back would overstate where the reading came from.
@@ -687,6 +811,7 @@ CATALOGUE_KEY_BY_FIELD: dict[str, str] = {
     "wind_speed": "wind_speed_10m",
     "wind_direction": "wind_direction_10m",
     "wind_gust": "wind_gust_10m",
+    "aqhi": "air_quality_health_index",
 }
 
 
@@ -1291,7 +1416,8 @@ class PointConsensus(StrictModel):
 
 
 class PointResponse(StrictModel):
-    demand_unavailable: RDPSDemandUnavailable | None = None
+    demand_unavailable: RDPSDemandUnavailable | GDPSDemandUnavailable | None = None
+    observation_unavailable: list[AQHIDemandUnavailable | SWOBDemandUnavailable] = Field(default_factory=list)
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
     latitude: float
@@ -1337,7 +1463,7 @@ class ProfileLevel(StrictModel):
 
 
 class ProfileResponse(StrictModel):
-    demand_unavailable: RDPSDemandUnavailable | None = None
+    demand_unavailable: RDPSDemandUnavailable | GDPSDemandUnavailable | None = None
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
     latitude: float
@@ -1509,6 +1635,32 @@ class SolarWindLatest(StrictModel):
     notices: list[str] = Field(default_factory=list)
 
 
+class SolarWindPlasmaLatest(StrictModel):
+    """One retrieved native SWPC plasma row, or its explicit absence."""
+
+    available: bool
+    source_id: str
+    product: str
+    proton_density_cm3: float | None
+    proton_speed_km_s: float | None
+    proton_temperature_k: float | None
+    measured_at: datetime | None
+    feed_declared_spacecraft: str | None
+    active: bool | None = None
+    overall_quality: float | None = None
+    freshness: Freshness
+    acquisition: KpAcquisition | None = None
+    notices: list[str] = Field(default_factory=list)
+
+
+class PlasmaDemandUnavailable(StrictModel):
+    """Expired plasma receipt disclosed while every native value is withheld."""
+
+    reason: str
+    cached_acquisition: KpAcquisition | None = None
+    values_withheld: Literal[True] = True
+
+
 class SpaceWeatherResponse(StrictModel):
     data_mode: DataMode
     operational: Literal[False] = False
@@ -1516,6 +1668,8 @@ class SpaceWeatherResponse(StrictModel):
     kp_observed: SpaceWeatherSeries
     kp_forecast: SpaceWeatherSeries
     solar_wind: SolarWindLatest
+    solar_wind_plasma: SolarWindPlasmaLatest
+    plasma_demand_unavailable: PlasmaDemandUnavailable | None = None
     notices: list[str] = Field(default_factory=list)
 
 

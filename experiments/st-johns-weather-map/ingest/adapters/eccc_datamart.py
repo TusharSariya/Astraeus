@@ -356,6 +356,17 @@ GDPS_VARS = {
     "mean_sea_level_pressure": ("Pressure_MSL", "MSL"),
 }
 
+# Demand point wind uses the producer's separate scalar speed and true-north
+# direction objects on the regular latitude/longitude grid. The stored U/V
+# objects remain distinct and are not rotated or derived in this demand slice.
+GDPS_DEMAND_VARS = {
+    "temperature_2m": GDPS_VARS["temperature_2m"],
+    "dew_point_2m": GDPS_VARS["dew_point_2m"],
+    "mean_sea_level_pressure": GDPS_VARS["mean_sea_level_pressure"],
+    "wind_speed_10m": ("WindSpeed", "AGL-10m"),
+    "wind_direction_10m": ("WindDir", "AGL-10m"),
+}
+
 # Normalized units per canonical variable, as ``ingest.grib.normalize_units``
 # leaves them. A declared field arriving in anything else is a QC failure.
 CANONICAL_FIELD_UNITS = {
@@ -445,6 +456,49 @@ def parse_run_stamp(filename: str) -> datetime | None:
         return datetime.strptime(f"{match.group('date')}{match.group('hour')}", "%Y%m%d%H").replace(tzinfo=UTC)
     except ValueError:
         return None
+
+
+def declare_native_true_direction(field: xarray.DataArray, source_id: str) -> xarray.DataArray:
+    """Canonicalize ECCC's declared true-north direction unit without deriving it."""
+    if field.attrs.get("units") != "Degree true":
+        raise ValueError(f"{source_id} native direction has undeclared true-north units")
+    field.attrs.update(
+        original_units="Degree true",
+        units="degree",
+        direction_basis="producer-native true north",
+    )
+    return field
+
+
+def selected_demand_filename(
+    source_id: str,
+    run_time: datetime,
+    lead: str,
+    canonical_name: str,
+    eccc_var: str,
+    level: str,
+    grid_token: str,
+) -> str:
+    """Return the one admitted native object name for an RDPS/GDPS demand field."""
+    product = {"eccc-rdps": "RDPS", "eccc-gdps": "GDPS"}.get(source_id)
+    if product is None:
+        raise ValueError(f"{source_id} has no strict selected-demand filename contract")
+    variable_level = "Pressure_MSL" if canonical_name == "mean_sea_level_pressure" else f"{eccc_var}_{level}"
+    return f"{run_time:%Y%m%dT%HZ}_MSC_{product}_{variable_level}_{grid_token}_PT{lead}H.grib2"
+
+
+def retrieval_completed_at(
+    receipts: list[dict[str, object]], fallback: datetime, *, required: bool = False
+) -> datetime:
+    """Use final-byte completion for demand freshness, or the decode time without receipts."""
+    if not receipts:
+        if required:
+            raise ValueError("selected-demand retrieval has no transport completion receipt")
+        return fallback
+    completed = [datetime.fromisoformat(str(receipt["completed_at"])) for receipt in receipts]
+    if any(value.tzinfo is None for value in completed):
+        raise ValueError("transport completion must include an offset")
+    return max(value.astimezone(UTC) for value in completed)
 
 
 
@@ -539,22 +593,24 @@ class ECCCDataMartAdapter:
 
     def demand_operation_bounds(self, field_count: int) -> ResourceBounds:
         """Conservative one-native-lead envelope, checked before discovery."""
-        if self.source_id == "eccc-rdps":
+        if self.source_id in {"eccc-rdps", "eccc-gdps"}:
             import sys
-            if sys.platform != "linux" or not 0 < field_count <= len(RDPS_DEMAND_VARS):
-                raise AdapterUnavailable("RDPS demand requires Linux bounded child and declared fields")
+            declared = RDPS_DEMAND_VARS if self.source_id == "eccc-rdps" else GDPS_DEMAND_VARS
+            product = "RDPS" if self.source_id == "eccc-rdps" else "GDPS"
+            if sys.platform != "linux" or not 0 < field_count <= len(declared):
+                raise AdapterUnavailable(f"{product} demand requires Linux bounded child and declared fields")
             try:
                 memory = int(Path("/sys/fs/cgroup/memory.max").read_text().strip())
             except (OSError, ValueError) as error:
-                raise AdapterUnavailable("RDPS requires bounded aggregate cgroup memory") from error
+                raise AdapterUnavailable(f"{product} requires bounded aggregate cgroup memory") from error
             if memory != HRDPS_MEMORY_LIMIT_BYTES:
-                raise AdapterUnavailable("RDPS requires the measured 4 GiB aggregate cgroup ceiling")
+                raise AdapterUnavailable(f"{product} requires the measured 4 GiB aggregate cgroup ceiling")
             geometry = os.statvfs(tempfile.gettempdir())
             if geometry.f_blocks * geometry.f_frsize > 3 * 1024 * 1024 * 1024:
-                raise AdapterUnavailable("RDPS requires a finite 3 GiB temporary filesystem")
+                raise AdapterUnavailable(f"{product} requires a finite 3 GiB temporary filesystem")
             physical = field_count * HRDPS_FILE_BYTES + 32 * 1024 * 1024
             if __import__("shutil").disk_usage(tempfile.gettempdir()).free < physical:
-                raise AdapterUnavailable("RDPS demand lacks its finite workspace allowance")
+                raise AdapterUnavailable(f"{product} demand lacks its finite workspace allowance")
             return ResourceBounds(16 * 1024 * 1024, physical, 16 * 1024 * 1024,
                                   (HRDPS_DISCOVERY_REQUESTS + 1) * HRDPS_LISTING_BYTES + field_count * HRDPS_FILE_BYTES)
         if self.source_id != "eccc-hrdps" or not 0 < field_count <= len(HRDPS_VARS):
@@ -757,7 +813,8 @@ class ECCCDataMartAdapter:
         lead = int(lead_seconds // 3600)
         lead_token = f"{lead:03d}"
         available = tuple(str(value) for value in candidate.detail.get("available_hours", ()))
-        if lead_token not in available or lead >= (85 if self.source_id == "eccc-rdps" else HRDPS_MAX_LEADS):
+        max_leads = 241 if self.source_id == "eccc-gdps" else (85 if self.source_id == "eccc-rdps" else HRDPS_MAX_LEADS)
+        if lead_token not in available or lead >= max_leads:
             raise AdapterUnavailable(f"{self.source_id}: selected native lead {lead_token} is unavailable")
         unknown = set(fields) - set(self.var_map)
         if unknown:
@@ -797,7 +854,8 @@ class ECCCDataMartAdapter:
         if run_time is None:
             raise AdapterUnavailable(f"{self.source_id}: candidate has no run time derived from its filenames")
 
-        target_hours = [f"{hour:03d}" for hour in range(85 if self.source_id == "eccc-rdps" else 25) if f"{hour:03d}" in available_hours]
+        lead_count = 241 if self.source_id == "eccc-gdps" else (85 if self.source_id == "eccc-rdps" else 25)
+        target_hours = [f"{hour:03d}" for hour in range(lead_count) if f"{hour:03d}" in available_hours]
         if not target_hours:
             raise AdapterUnavailable(f"No target forecast hours available for {candidate.provider_run_id}")
 
@@ -824,11 +882,14 @@ class ECCCDataMartAdapter:
             planned: list[tuple[str, str, str, Path]] = []
             for canonical_name, (eccc_var, level) in self.var_map.items():
                 match_file = None
-                if self.source_id == "eccc-rdps" and self._capture_transport_receipts:
-                    variable_level = "Pressure_MSL" if canonical_name == "mean_sea_level_pressure" else f"{eccc_var}_{level}"
-                    expected = f"{run_time:%Y%m%dT%HZ}_MSC_RDPS_{variable_level}_RLatLon0.09_PT{hour_str}H.grib2"
+                strict_demand = self.source_id in {"eccc-rdps", "eccc-gdps"} and self._capture_transport_receipts
+                if strict_demand:
+                    expected = selected_demand_filename(
+                        self.source_id, run_time, hour_str, canonical_name,
+                        eccc_var, level, self.grid_token,
+                    )
                     match_file = expected if expected in file_list else None
-                for fname in (() if self.source_id == "eccc-rdps" and self._capture_transport_receipts else file_list):
+                for fname in (() if strict_demand else file_list):
                     if f"_{eccc_var}_" in fname and (f"_{level}_" in fname or f"_{level}." in fname or level in fname):
                         match_file = fname
                         break
@@ -927,11 +988,8 @@ class ECCCDataMartAdapter:
                     # FileNotFoundError. The crop already bounded this to the
                     # Avalon window, so what is held is one small field.
                     field = strip_message_scalars(decoded[data_var_names[0]].load()).copy(deep=True)
-                    if self.source_id == "eccc-rdps" and canonical_name.startswith("wind_direction_"):
-                        if field.attrs.get("units") != "Degree true":
-                            raise ValueError("RDPS native direction has undeclared true-north units")
-                        field.attrs.update(original_units="Degree true", units="degree",
-                                           direction_basis="producer-native true north")
+                    if self.source_id in {"eccc-rdps", "eccc-gdps"} and canonical_name.startswith("wind_direction_"):
+                        field = declare_native_true_direction(field, self.source_id)
                     if canonical_name.startswith("relative_humidity_"):
                         # GRIB2 0/1/1 codes no saturation-phase key, so the
                         # convention cannot be read off the message; it was
@@ -969,7 +1027,11 @@ class ECCCDataMartAdapter:
         # Completion is recorded only after the last selected payload was
         # received and decoded; a timestamp captured before the loop would
         # falsely predate the evidence it describes.
-        retrieved_at = datetime.now(UTC)
+        retrieved_at = retrieval_completed_at(
+            transport_receipts,
+            datetime.now(UTC),
+            required=self._capture_transport_receipts,
+        )
         combined = xarray.concat(hourly_datasets, dim="valid_time")
         manifest = RunManifest(
             source_id=self.manifest.source_id,
@@ -1112,15 +1174,14 @@ RDPS_ADAPTER = register(
     )
 )
 
-# GDPS is published at 10 km, not 15 km: ``today/model_gdps/15km/`` is a 404 and
-# ``10km/`` is a 200, verified 2026-08-30.
+# The native atmospheric GDPS forecast is published under the dated 15 km
+# tree with regular ``LatLon0.15`` filenames. The 10 km tree carries only a
+# separate sea-ice analysis NetCDF and is not a forecast fallback.
 GDPS_ADAPTER = register(
     ECCCDataMartAdapter(
         source_id="eccc-gdps",
-        model_subpath="model_gdps/10km",
-        # Directory resolution only; the exact RLatLon grid token in the
-        # filenames was not verified, so it is not asserted here.
-        grid_token="10km",
+        model_subpath="model_gdps/15km",
+        grid_token="LatLon0.15",
         var_map=GDPS_VARS,
         bounds=ATLANTIC_CONTEXT_BOUNDS,
         adapter_version="gdps-v2",

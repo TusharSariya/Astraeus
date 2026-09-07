@@ -19,6 +19,13 @@ Before changing behavior:
 Research under `docs/research/` is non-normative. Only `@TusharSariya` may
 authorize accepted, verified, or superseded specification status.
 
+## Reuse-first source work
+
+Before adding a source client, decoder, cache, receipt or browser proof, read
+[the reuse-first source workflow](docs/agents/reuse-workflow.md). It names the
+existing seams, focused gates and handoff evidence that must be checked before
+new source behavior is created.
+
 ## Agent skills
 
 ### Issue tracker

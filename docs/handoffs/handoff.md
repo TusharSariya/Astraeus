@@ -4,6 +4,89 @@ Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
 history and the owner's earlier design selections.
 
+## Reuse-first source workflow
+
+Use [the durable reuse-first source workflow](../agents/reuse-workflow.md) before
+starting or handing off a source slice. It is the current index for existing
+clients, bounded workers, receipt/cache behavior, focused proof commands and
+PR metadata. This handoff remains the record of completed work and decisions.
+
+## Current execution strategy, September 7, 2026
+
+The owner keeps the full all-source outcome across [#70](https://github.com/TusharSariya/Astraeus/issues/70)
+and [#38](https://github.com/TusharSariya/Astraeus/issues/38). Every source
+listed in those maps is active scope, including sources that currently lack an
+admission, native contract, client, fixture or app path. Readiness and protocol
+family determine sequencing and reuse; they never remove a source from scope.
+The next work targets actual missing source-to-existing-app integrations and,
+where needed, the concrete provider verification or owner proposal that makes
+one possible. A paid, rights-dependent or unavailable path needs an explicit,
+evidence-backed disposition rather than silent deferral or invented access.
+
+Execution groups compatible work behind an existing provider client or adapter,
+then adds only source-specific native mapping. Each batch starts with an early
+eligibility, timestamp, unit and QC contract check; it uses one reusable
+fixed-data end-to-end proof harness rather than a new framework. Once a
+governing proposal is actually accepted, frontend work may advance beside its
+source batch. Genuine owner decisions are batched for review; routine
+engineering proceeds autonomously within accepted scope. Draft proposals
+[#239](https://github.com/TusharSariya/Astraeus/pull/239),
+[#244](https://github.com/TusharSariya/Astraeus/pull/244),
+[#250](https://github.com/TusharSariya/Astraeus/pull/250), and
+[#256](https://github.com/TusharSariya/Astraeus/pull/256) remain unaccepted and
+must not be treated as implementation authority.
+
+The active delivery model is selected-timestamp live queries with finite
+relevant caches, bounded receipts and truthful expiry/unavailability. Do not
+revive a warehouse, permanent raw-provider archive, or two-run retention as the
+current execution strategy. This is an execution-direction correction, not a
+normative storage or source-admission transition. Rights, provenance, native
+science, free-access limits, and `operational: false` remain required. Measure
+milestones by completed source-to-existing-app integrations, rework loops and
+elapsed time. Record model and effort when known; successful-cost measurement
+is unknown without telemetry.
+
+This supersedes historical framework-first/archive execution guidance below;
+that material remains historical evidence, not a current launch instruction.
+
+## SWOB demand slice completed, September 7, 2026
+
+[PR254](https://github.com/TusharSariya/Astraeus/pull/254) merged at
+`978f6f8eed499e55d58fa64f148471f9204d8cfc`, closing [#251](https://github.com/TusharSariya/Astraeus/issues/251).
+It serves six native MSC `swob-realtime` station fields through an exact-time,
+bounded demand query with finite receipt/cache metadata and disabled scheduled
+ingestion. Fixed Linux worker/cache and fixed-live browser proofs used zero
+provider requests. The unserved partner WMO/city scope remains open in
+[#116](https://github.com/TusharSariya/Astraeus/issues/116); no partner record
+was admitted through this slice.
+
+## Plasma demand slice completed, September 7, 2026
+
+[PR245](https://github.com/TusharSariya/Astraeus/pull/245) merged at
+`a07a632fa710a7b93ace5829f69eb5ffeb910585`; its merged tree matches reviewed
+head `da6248b`. The selected-time SWPC plasma query uses bounded fixed-fixture
+proofs: its Linux default worker ran with `--network none`, and its browser
+card ran against a fixed live `/point` harness with zero provider requests.
+Issue [#242](https://github.com/TusharSariya/Astraeus/issues/242) is closed.
+The retained proof files are evidence, not reusable launchers; use the
+reuse-first workflow above for the durable procedure.
+
+## AQHI demand slice completed, September 7, 2026
+
+[PR243](https://github.com/TusharSariya/Astraeus/pull/243) merged at
+`76058369b622220cad82779ca1a1b968111960e4`. Its merged tree exactly matches
+reviewed head `c28c805`. The default unselected point response now serves the
+bounded `eccc-aqhi` station-demand observation without a retained artifact;
+the browser proof used fixed local data and the Linux child-decoder proof used
+fixed MockTransport data. No provider payload was committed or used for those
+checks.
+
+Issue [#241](https://github.com/TusharSariya/Astraeus/issues/241) remains open.
+The accepted product-companion rule still excludes `air_quality` evidence from
+an explicitly selected forecast product. That source-specific decision is
+tracked separately by #244; do not infer selected-product AQHI behavior from
+PR243.
+
 ## PR234 review correction checkpoint
 
 The two independent-review blockers now preserve bounded RDPS request/transport
@@ -83,6 +166,19 @@ a separate, linked effort for the later desktop visual rebuild. Do not merge the
 maps or create another master map. Source work may make routine changes needed
 by the existing UI; new layout, styling, shared-snapshot UX, and desktop design
 stay with #38.
+
+### Current #38 queue disposition
+
+The desktop implementation contract is pending owner decision in draft
+[PR239](https://github.com/TusharSariya/Astraeus/pull/239). Accessibility issue
+[#69](https://github.com/TusharSariya/Astraeus/issues/69) has passing isolated
+prototype keyboard repairs, while reader, assembled-production, raster/Activity
+and physical-device evidence remains open; it is not a certification or a
+current application implementation slice. #65 is owner-only outdoor validation,
+#53 remains deferred, #66 needs a camera-placement decision, and #54 and the API-contract proposal portion of #55 remain open;
+[PR239](https://github.com/TusharSariya/Astraeus/pull/239) covers only the frontend
+proposal portion of #55. Do not create a competing frontend change until the applicable
+owner decision changes this disposition.
 
 The owner's current autonomous product outcome is one working desktop application
 that uses every relevant eligible source. #70 owns source truth through the

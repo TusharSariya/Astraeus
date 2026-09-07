@@ -69,6 +69,13 @@ def make_mock_client(data: Any, status_code: int = 200) -> PoliteClient:
     return client
 
 
+def test_swob_scheduled_ingestion_is_disabled_before_discovery():
+    adapter = ECCCOGCSWOBAdapter()
+    window = FetchWindow(now=datetime(2026, 8, 29, 15, tzinfo=UTC))
+    with pytest.raises(AdapterUnavailable, match="scheduled ingestion is disabled"):
+        adapter.operation_bounds(window)
+
+
 def test_swob_discover():
     client = make_mock_client(SAMPLE_SWOB_GEOJSON)
     adapter = ECCCOGCSWOBAdapter(client=client)

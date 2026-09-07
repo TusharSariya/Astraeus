@@ -26,6 +26,7 @@ from ingest.contract import (
     FetchWindow,
     RunCandidate,
     RunResult,
+    ResourceBounds,
 )
 from ingest.grib import RH_PHASE_LIQUID_WATER, write_zarr
 from ingest.http import PoliteClient
@@ -127,6 +128,11 @@ class ECCCOGCSWOBAdapter:
         self._collection = collection
         self._bounds = dict(bounds)
         self._client = client
+
+    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        raise AdapterUnavailable(
+            "eccc-swob scheduled ingestion is disabled; use selected-time demand queries"
+        )
 
     def _get_client(self) -> PoliteClient:
         return self._client or PoliteClient()

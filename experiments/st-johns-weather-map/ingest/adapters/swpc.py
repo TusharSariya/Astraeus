@@ -810,5 +810,7 @@ class SWPCOvationAdapter:
 
 KP_ADAPTER = register(SWPCKpAdapter())
 RTSW_ADAPTER = register(SWPCSolarWindAdapter())
-PLASMA_ADAPTER = register(SWPCPlasmaAdapter())
+# The bounded selected-time demand cache owns this mutable document. The class
+# remains the single native schema/normalization owner, but it is no longer
+# registered for a second scheduled artifact retrieval.
 OVATION_ADAPTER = register(SWPCOvationAdapter())

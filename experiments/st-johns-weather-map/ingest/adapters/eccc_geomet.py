@@ -2022,6 +2022,11 @@ class ECCCAqhiGeoMetAdapter(_GeoMetVectorAdapter):
     # St. John's on 2026-08-30, so the default single box already covers the
     # stations this experiment answers for.
 
+    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        raise AdapterUnavailable(
+            "eccc-aqhi scheduled ingestion is disabled; use selected-timestamp demand queries"
+        )
+
     def _feature_time(self, properties: Mapping[str, Any]) -> datetime | None:
         for key in ("properties.observation_datetime", "observation_datetime"):
             moment = parse_iso_instant(str(properties.get(key, "")))
