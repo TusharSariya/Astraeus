@@ -131,3 +131,41 @@ Normalize the remaining selected weights or withhold the profile until its
 complete selected budget exists. Dependent budget aggregation is held; other
 desktop work can continue. No default scientific choice is inferred from elapsed
 time or a registry declaration.
+
+
+## Layer identity and imagery availability completion
+
+Layer now carries explicit source/catalogue-field associations with known,
+partial or unknown mapping status and reasons; declared field labels remain
+separate from canonical keys. Mapping originates at the owning query/spec or
+artifact declaration, never a product/title guess. Mixed SWOB declarations
+list every supported field. The known HRDPS and HRDPS-WEonG proxy associations,
+GFS demand grids, CAP, AQHI, OVATION and local grid/satellite records are exposed.
+RDPS-WEonG lacks its own source record; GeoMet GOES composites do not have an
+explicit association in their declaration, so those mappings remain unknown.
+Unknown bundle fields retain their explicit source and unmapped declaration.
+
+A separate imagery record declares status, assessment time, basis, published
+times and reason. Existing Layer.times semantics are unchanged. Provider inventory is not retrieval/coverage proof. GFS availability names
+validated cloud grids actually present in its finite cache, separately from a
+new acquisition or point-coverage claim. A local grid/renderer is not a guarantee the next raster render will succeed. Stored sample times
+alone do not establish upstream imagery availability. Station/CAP features
+explicitly have no raster imagery. OVATION listing remains requestable with
+unknown image times and makes no new request. Run attribution exposes its
+assessment time while retaining the existing single run origin and frame runs.
+
+Sources and Map use validated explicit associations and preserve old/malformed
+metadata as unknown. A source inspector shows associated layers separately from
+point readings; imagery times remain separate from listed samples and actual
+draw receipts. No new source query, cache, persistence or timing rule is added.
+
+Verification: 132 affected API tests pass, two existing opt-in live checks skip;
+full client suite 485 passed, followed by 28 focused workbench cases after the
+final metadata naming fix; build passes. A pre-existing proxy-exclusivity
+assertion failed identically on parent 2409906 and is repaired to assert every
+declared proxy remains live_proxy without excluding existing demand layers.
+The baseline receipt is `/tmp/astraeus-layer-baseline.log` outside Git.
+Fixed Chrome proof `web/scripts/prove-desktop-layer-identity.mjs` passes with
+all external requests blocked; screenshots/receipt remain in
+`/tmp/astraeus-layer-proof/`. No live source or physical-accessibility proof.
+Task 4 is complete; source admission and remaining desktop obligations are not.

@@ -1277,6 +1277,8 @@ def rendered_grid_layers(store: Any, layer_model: Any, *, z_index: int, stalenes
     offered - with a notice where something was expected and failed, silence
     where nothing is published at all.
     """
+    from .layer_identity import imagery, mappings
+    from datetime import UTC
     layers: list[Any] = []
     notices: list[str] = []
     for spec in RENDERED_GRID_SPECS:
@@ -1297,6 +1299,8 @@ def rendered_grid_layers(store: Any, layer_model: Any, *, z_index: int, stalenes
         product = str(provenance.get("product", spec.source_id))
         layers.append(
             layer_model(
+                **mappings([(spec.source_id, spec.field)]),
+                imagery_availability=imagery("known", datetime.now(UTC), "local_native_grid", "A stored native grid and renderer exist; raster rendering may still fail", times),
                 id=spec.layer_id,
                 title=f"{product} {spec.title_field} (rendered grid)"
                 + (f" (generated: {spec.derived_disclosure})" if spec.derived_disclosure else ""),

@@ -120,3 +120,13 @@ failed geometry clearing and three themes. Screenshots and receipt remain at
 `/tmp/astraeus-sky-proof/`. Review is a separate main-agent pass.
 Activity, assembled desktop/keyboard proof, source/run residuals, provider tokens
 and the API layer joins remain open. Screen-reader and outdoor checks are separate.
+
+
+## September 7 layer identity checkpoint
+
+The API now supplies explicit source/field associations and separate imagery
+availability. Sources retains source filters/inspection and presents the joins
+without populating point coverage from a declaration. Map names supplied sources
+and preserves unknown mappings. See the API implementation evidence for exact
+scope, tests and the fixed browser procedure. Task 5.4 remains open only for the
+remaining assembled Sources/Series cache scope; no view selection is reopened.

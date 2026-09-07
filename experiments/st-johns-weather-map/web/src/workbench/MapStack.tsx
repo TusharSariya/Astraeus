@@ -1,3 +1,4 @@
+import { layerMapping, layerImagery } from './layerIdentity'
 import { useState } from 'react'
 import type { LayerItem, LayerSelection } from '../types'
 import { layerFamily, layerGroup, layerLegendUrl } from '../api'
@@ -46,16 +47,20 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect }: {
       const index = stack.length - topIndex - 1
       const layer = layers.find((layer) => layer.id === entry.id)
       const actual = drawn.find((row) => row.id === entry.id)
+      const mapping = layer ? layerMapping(layer) : null
+      const availability = layer ? layerImagery(layer) : null
+      const sourceLabel = mapping?.fields.length ? [...new Set(mapping.fields.map((row) => row.source_id))].join(', ') : 'Source identity not supplied'
       const title = layer?.title ?? entry.id
       const description = layer ? actual?.description ?? 'No frame has been drawn.' : 'Requested layer is unavailable in the published layer response.'
       return <li key={entry.id}>
-        <div><EvidenceGlyph kind={resolveEvidenceClass(layer?.evidence_class)} /><strong>{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product ? `Product ${layer.product}` : 'Product not supplied'} · Source identity not supplied</small></div>
+        <div><EvidenceGlyph kind={resolveEvidenceClass(layer?.evidence_class)} /><strong>{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product ? `Product ${layer.product}` : 'Product not supplied'} · {sourceLabel}</small></div>
         <p>{entry.visible ? description : 'Hidden by reader.'}</p>
+        {availability && <p>Imagery availability: {availability.status} · {availability.reason}</p>}
         <p>Actual frame: {actual?.times.length ? actual.times.join(', ') : 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map((time) => layer?.frames?.find((frame) => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}{layer?.run_stale === true ? ' (stale run)' : layer?.run_stale === null ? ` (${layer.run_stale_reason ?? 'freshness unknown'})` : ''}</p>
         <div className="bench-stack-row-actions"><label><input type="checkbox" checked={entry.visible} onChange={(e) => patch(entry.id, { visible: e.target.checked })} />Show {title}</label>
           <label>Opacity<input aria-label={`Stack opacity ${title}`} type="range" min={0} max={1} step={0.05} value={entry.opacity} onChange={(e) => patch(entry.id, { opacity: Number(e.target.value) })} /></label>
           <button aria-label={`Raise ${title}`} disabled={index === stack.length - 1} onClick={() => move(index, 1)}>↑</button><button aria-label={`Lower ${title}`} disabled={index === 0} onClick={() => move(index, -1)}>↓</button>
-          <button aria-label={`Inspect layer ${title}`} onClick={(e) => onInspect({ key: `layer:${entry.id}`, label: title, text: description, details: { 'Returned layer': layer ?? null, 'Actual frame times': actual?.times ?? null } }, e.currentTarget)}>Inspect</button>
+          <button aria-label={`Inspect layer ${title}`} onClick={(e) => onInspect({ key: `layer:${entry.id}`, label: title, text: description, details: { 'Returned layer': layer ?? null, 'Actual frame times': actual?.times ?? null, 'Source/field mapping': mapping, 'Imagery availability': availability, 'Run freshness assessed at': layer?.freshness_assessed_at ?? null } }, e.currentTarget)}>Inspect</button>
           <button aria-label={`Remove ${title}`} onClick={() => onChange(stack.filter((row) => row.id !== entry.id))}>Remove</button>
         </div>
       </li>

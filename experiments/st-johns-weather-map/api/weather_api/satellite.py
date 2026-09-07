@@ -367,7 +367,10 @@ def satellite_layers(store: Any, layer_model: Any, *, z_index: int, now: datetim
             "A feed gap is never rendered as clear sky."
         ]
     provenance = dict(artifact.provenance or {})
+    from .layer_identity import imagery, mappings
     layer = layer_model(
+        **mappings([(SOURCE_ID, "cloud_mask"), (SOURCE_ID, "cloud_probability")]),
+        imagery_availability=imagery("known", moment, "local_native_grid", "Validated stored past scan inventory; raster rendering may still fail", times),
         id=LAYER_ID,
         title=TITLE,
         kind="raster",

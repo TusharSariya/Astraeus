@@ -1802,8 +1802,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   )
   useEffect(() => {
     setInspected((current) => current?.key.startsWith('source:')
-      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields) : current)
-  }, [catalog, sourceStatuses, snapshot])
+      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields, layers) : current)
+  }, [catalog, sourceStatuses, snapshot, layers])
   const sourcesView = useSourcesView({ catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
     instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
   const nativeSeries = useNativeSeries({ location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,

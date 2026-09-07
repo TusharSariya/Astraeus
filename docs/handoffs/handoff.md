@@ -20,6 +20,26 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Layer identity implementation checkpoint, September 7, 2026
+
+Activity curve/input #283 merged as `2409906`. Current batch is
+`execution/desktop-layer-identity` at `/tmp/astraeus-desktop-layer-identity`.
+Layer source/field associations, separate imagery availability and run-freshness
+assessment metadata are wired into Sources and Map inspection. Explicit unknown
+source mappings remain for RDPS-WEonG and undeclared GeoMet GOES associations.
+No times, native frame rules, acquisition or finite cache behavior changed.
+
+Verification: 132 API tests pass (two opt-in live skips), 485 full client tests
+plus 28 final focused cases, build and fixed Chrome proof. A legacy proxy-only
+assertion reproduces on parent 2409906 and is repaired without relaxing the
+proxy truth boundary. Screenshots/receipt: `/tmp/astraeus-layer-proof/`.
+Main-agent review only; no provider-live or physical checks claimed.
+
+The Activity weight-budget question below remains pending; aggregate scores and
+profile budgets have not been invented. Next independent desktop work is actual
+supported run selection/native Series residuals, shared inspection/tokens and
+assembled verification. Source backlog work still follows the desktop milestone.
+
 ## Activity input implementation checkpoint, September 7, 2026
 
 Contract #282 merged as `f335863`. Isolated Activity work at
