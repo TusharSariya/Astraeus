@@ -1,14 +1,21 @@
 # Autonomous execution handoff: deliver the working desktop evidence app
 
-## API-first delivery restart checkpoint, September 7
+## API-first delivery second restart checkpoint, September 7
 
-The owner requested a pause to restart Codex after increasing its configured
-agent concurrency. All current workers finished; no new workers should launch
-until the owner resumes. Continue from the isolated `execution/api-first-delivery`
-worktree at `/private/tmp/astraeus-api-first-delivery`, not the unrelated dirty
-normal checkout. The [complete restart checkpoint](api-first-restart-20260907.md)
-records integrated work, pending source commits, exact checks, access/contract
-blockers and the next actions. No remote changes were published in this batch.
+The owner requested a wind-down and **20 total agents** after restarting.
+Configuration now sets19 workers plus root, with all workers Astra medium.
+The current runtime still exposes8total; confirm the resumed limit. All workers
+have finished and all submitted source commits are integrated locally through
+`dc13a3b`. No workers should launch until the owner resumes.
+
+Continue from `/private/tmp/astraeus-api-first-delivery` on
+`execution/api-first-delivery`; preserve the unrelated dirty normal checkout.
+The [current restart checkpoint](api-first-restart-20260907.md) records source
+status, live versus fixture proof, remaining verification, contract/access
+questions and the prerequisite table. GFS/AQHI current proof, CAMS AOD point
+integration and generic selectors, safe status, source caches and reviewed unit
+corrections are saved. Full assembled checks and broader source work remain.
+No remote push, PR, merge, Wayfinder update or credential connection occurred.
 
 Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their

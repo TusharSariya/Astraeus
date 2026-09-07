@@ -1,188 +1,193 @@
-# API-first delivery restart checkpoint — September 7, 2026
+# API-first delivery restart checkpoint - September 7, 2026
 
-The owner explicitly requested a pause to restart Codex and reload concurrency
-settings. Do not launch more agents until the owner resumes. All workers have
-finished and source changes are committed locally. No remote push, PR, merge,
-Wayfinder issue update, cloud deployment or credential connection occurred.
+The owner requested a second wind-down and restart, this time configuring **20
+agents total**. All workers have finished. Do not launch or resume workers until
+the owner continues after restarting. Work remains incomplete; this is a durable
+pause, not completion of the source-delivery plan.
 
 ## Resume location and authority
 
-- Integration: `/private/tmp/astraeus-api-first-delivery`, branch
-  `execution/api-first-delivery`, implementation checkpoint `fa18b36`.
-- Based on fresh `origin/main` `c88ff83` (Activity PR #295).
-- The user's normal checkout `/Users/tusharsariya/Projects/Astraeus` is on
-  `execution/activity-profiles` at `9af2aaf` with extensive unrelated WIP.
+- Integration worktree: `/private/tmp/astraeus-api-first-delivery`, branch
+  `execution/api-first-delivery`. Source and client code is under
+  `experiments/st-johns-weather-map/`. Latest implementation before this
+  checkpoint is `dc13a3b`; use the branch HEAD for the checkpoint commit.
+- Base: `origin/main` `c88ff83`, Activity PR #295. Nothing in this source batch
+  has been pushed, opened as a PR, remotely merged or posted to the Wayfinders.
+- Preserve the user's normal checkout `/Users/tusharsariya/Projects/Astraeus`,
+  branch `execution/activity-profiles` at `9af2aaf`, with extensive unrelated WIP.
   Do not switch, reset, merge, commit or clean that checkout.
-- Read this file and the current integration handoff, then inspect git status.
-  Source work is under `experiments/st-johns-weather-map/`.
-- Use `.agents/skills/manage-astraeus-specs/SKILL.md`, the accepted governance,
-  and owning experiment contracts. The current user's API-first plan authorizes
-  the isolated shared delivery experiment and named AQHI companion. Preserve
-  `operational: false`, existing evidence models, and V1 admission boundaries.
-- The original schedule was implementation until 17:15 PDT and final checks
-  17:40–18:00 PDT on September 7. Account for the owner-requested restart;
-  do not claim the broader plan completed at this checkpoint.
+- Read this file, the current handoff, git status, the specification skill and
+  owning experiment contracts. The September 7 user plan authorizes this
+  isolated API-first experiment and selected-model AQHI companions. Preserve
+  `operational: false`, evidence models, native science and V1 admission gates.
+- Original schedule: implementation until 17:15 PDT, final checks 17:40-18:00
+  PDT September 7. This second pause began about 15:30 PDT. Account for the
+  owner-requested restarts; do not claim the broader task is finished.
 
 ## Runtime and worker instructions
 
-The owner wants an ultra orchestrator, Astra medium workers, and doubled the
-backend roster from five to ten. Then the owner explicitly requested no more
-launches while preparing the restart. Six backend identities have actually
-worked; the remaining four have not been launched. One frontend worker finished.
-
-`/Users/tusharsariya/.codex/config.toml` now has a validated `[agents]` section:
+`/Users/tusharsariya/.codex/config.toml` was changed and TOML-validated:
 
 ```toml
-max_concurrent_threads_per_session = 7
+[agents]
+max_concurrent_threads_per_session = 19
 default_subagent_model = "gpt-6-astra"
 default_subagent_reasoning_effort = "medium"
 ```
 
-The documented setting excludes the primary, permitting eight total when
-honored. The pre-restart runtime still explicitly exposed four total slots.
-Check the resumed runtime's actual limit. Do not claim it changed solely from
-the file edit. All spawned workers used explicit `gpt-6-astra` / `medium`.
+The [official configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference)
+counts spawned workers separately from the primary: 19 workers plus root permits
+20 total when honored. The current runtime still exposes **8 total**; verify the
+actual resumed runtime before claiming 20 became active. The owner wants root
+on ultra and **every worker Astra medium**, in isolated worktrees. No new worker
+was launched after this wind-down request. Do not fill slots without concrete,
+independent work; use bounded assignments, review receipts and stop idle workers.
 
-## Integrated work
+## Integrated implementation
 
-The integration branch has reviewed source commits and these shared changes:
+- Pydantic source identity, declarative capabilities, safe configuration states,
+  generated OpenAPI/TypeScript and deterministic shared wire fixtures.
+- Narrow descriptor/point/optional native-Series seam over HRDPS/RDPS/GDPS/GFS,
+  AQHI and named CAMS AOD. Native identity validation before acquisition and
+  after reading prevents member/level substitution. Native gaps remain gaps.
+- GFS actual latest/previous inventory, pinned runs, explicit refresh, coalesced
+  misses and fixed expiry. Native K/Pa/etc. survive normalized point provenance.
+- AQHI correct station/report identity, native QC preservation, bounded Linux
+  decoding, expiry/refresh behavior and strict selected-model companion. A live
+  observation now correctly makes the response live even if its selected
+  forecast failed; the original forecast selection and unavailable fields stay.
+- Safe recent read states have a finite 128-entry/300-second monitor. Typed
+  HTTP denial survives actual AQHI wrapping. Named HRDPS/RDPS/GDPS/GFS reads use
+  the observed seam. Status reads do no acquisition; readiness is not coverage.
+  Full provider-specific configuration/startup assessment remains incomplete.
+- CAMS AOD uses the existing named Open-Meteo adapter with a 60-second bounded
+  Linux acquisition process, 2 in-flight requests, finite 32-entry/256KiB cache,
+  fixed expiry and wrapped sample distance. `/point?product=CAMS AOD` exposes
+  reprocessed, non-primary, available-not-stored evidence at the exact returned
+  intermediary hour, with no invented producer run or native Series. Single-hour
+  all-null data retains the adapter's existing QC refusal and unavailable result.
+- Generic frontend point selectors consume `point_product`; conflicting tokens
+  are refused and legacy absent metadata keeps the old mapping. Sources displays
+  independent status; validated AQHI/SWOB failure receipts survive normalization.
+- GEFS explicit refresh and complete-family coalescing retain old unexpired
+  discovery after failed refresh. Native Series/inventory expansion remains open.
+- SWOB explicit refresh plus cache-only native snapshot read hooks. It has not
+  yet been added to the shared capability/Series interface.
+- OSTIA correctly acquires all intersecting native chunks, maximum 16 per field,
+  preserving masked cells and refusing missing chunks.
+- GOES ACTPF has a bounded source-local granule/crop/cache path. Actual Linux
+  validation rejects fractional phase codes and preserves native categories/DQF.
+  No public point/image route was added for this new path.
+- Lightning exact-frame source-local acquisition/cache/decoder is integrated;
+  public point mapping remains held on the separate vocabulary decision below.
+- Holyrood paired CASHR DPQPE rendered GIF query/cache is integrated with the
+  existing adapter identity. This is image evidence, not numerical radar samples;
+  a public image route has not been added.
+- ECMWF deterministic IFS/AIFS Single four-field coordinator and bounded decoder
+  are integrated as isolated code. Fixed monotonic expiry and native-unit
+  provenance are corrected. IFS cloud fraction differs from AIFS percent.
+  Existing refusal/public-dispatch gate is unchanged; ensembles remain separate.
+- WeatherNext has a retained manifest validator/query/cache only. It does not
+  yet have authenticated GCS acquisition, raw statistics Zarr decoding or client
+  field mapping. Do not describe it as complete with only credentials missing.
+- NOAA AIWP has a compact public listing receipt only (moved from test fixtures
+  into research evidence). No 4.53GB model payload was fetched or decoded.
+- Model-specific Aurora/Earth-2 requirements are recorded in
+  `docs/research/wayfinder/inference-candidate-handoff.md` under the experiment.
 
-- `source_contract.py` freezes product/field/variant/level/run/location/time
-  identities, capabilities and safe configuration state types in Pydantic.
-- `source_delivery.py` provides descriptors, point reads and optional native
-  Series planning over existing HRDPS/RDPS/GDPS/GFS and AQHI services. Acquisition,
-  native timing, authentication and caches remain source-local.
-- Existing catalogue/status responses carry declarative capabilities and
-  configuration separately from successful retrieval and coverage.
-- `desktop_series.py` uses the narrow interface, preserves full sample identity,
-  validates explicitly requested dimensions before acquisition, and preserves
-  the existing native gaps and finite snapshot limits.
-- `scripts/generate_source_contract.py` generates affected OpenAPI and a shared
-  deterministic fixture. Pinned openapi-typescript generates the client types.
-  Canonical selection level and raw native level remain separate.
-- Generic frontend selectors consume capabilities; Sources shows independent
-  configuration status; per-reading identity is retained and validated.
-- AQHI source refresh/concurrent-miss/expiry handling and station identity were
-  repaired. Selected forecast responses now attach only the named native AQHI
-  observation through the shared point seam and retain typed independent failure.
-- GFS supports bounded actual latest/previous run discovery, named run reads,
-  explicit refresh and four concurrent selection misses.
-- Lightning has a bounded exact-frame source-local query/decoder/cache. Public
-  point mapping remains held on the sampling-method contract decision below.
-- Holyrood has a bounded paired CASHR DPQPE rendered-GIF query/cache. Its identity
-  now reuses the existing native image adapter. It is not numeric radar evidence
-  or a registered public image route.
-- WeatherNext has a bounded retained-acquisition-manifest query/cache using the
-  existing validator. It has no default GCS/auth transport or consumer mapping;
-  do not call it a completed integration awaiting credentials alone.
-
-Recent integration commits: `380218c` foundation; `826fa6e`/`fea45e5` lightning;
-`abb051c`/`f7f65d9` Holyrood; `ffd46a5`/`acbf6f0` frontend;
-`63a26b0` WeatherNext; `fa18b36` selected-model AQHI/native identity corrections.
-Earlier AQHI and GFS commits are already in this branch; do not replay them.
-
-## Completed worker commits awaiting root review/integration
-
-| Worker / worktree | Pending commits | Delivered scope |
-|---|---|---|
-| source_gfs, `/private/tmp/astraeus-api-first-ecmwf` | `cb6c42a` | Isolated exact deterministic IFS/AIFS Single four-field coordinator and bounded decoder/cache; 32 tests, offline actual Linux decoder plus point sampler proof. No route/registry changes. |
-| source_lightning, `/private/tmp/astraeus-api-first-lightning` | `a7b14b5` | OSTIA native chunk crossing acquisition fix; 14 fixture tests; missing chunks fail publication; no interpolation. |
-| source_weathernext, `/private/tmp/astraeus-api-first-weathernext` | `f507704` | Official-source inference candidate handoff; docs only, no invented client or native validator. |
-| source_noaa_ai, `/private/tmp/astraeus-api-first-noaa-ai` | `5f1807f` | Bounded anonymous AIWP FCN-v2-small availability receipt and precise missing NetCDF/scientific contract. No model payload/query/registration. Review receipt location against outside-Git live-capture policy. |
-
-Other completed worker worktrees: `/private/tmp/astraeus-api-first-aqhi`,
-`/private/tmp/astraeus-api-first-gfs`, `/private/tmp/astraeus-api-first-holyrood`,
-`/private/tmp/astraeus-api-first-frontend`. Their submitted implementation commits
-are already integrated. Worker previews/proof processes were stopped or exited;
-do not stop unrelated user Docker services.
+Recent root commits: `1a99e63` AQHI response mode/actual identity; `8f1e74a` GFS
+native units; `7008ffe` exact GOES categories; `fe6298b` CAMS total deadline and
+sample distance; `e9be60c` nested receipt validation; `6ad34db` safe status and
+named CAMS API; `f117fb8` generic point selector; `9ddad6c` CAMS storage/live
+receipt; `dc13a3b` ECMWF native units. Earlier commits are already integrated.
+**No worker implementation commits remain pending integration.**
 
 ## Verification and evidence limits
 
-At this pause, the combined root checkpoint passed:
+Before this pause, root shared/CAMS/status/AQHI/Series tests passed **73 tests,
+1 host platform skip**. Generation and specctl passed. Final assembled checkpoint checks passed **142 offline Linux tests** across
+CAMS, status, source contract, AQHI, Series and ECMWF; **103 frontend tests**;
+generated TypeScript drift; and production typecheck/build. The known bundle
+size warning remains. Do not conflate these focused checkpoint tests with the
+still-pending full assembled regression.
 
-- 43 tests in offline Linux: `test_observation_companions.py`,
-  `test_source_delivery.py`, `test_desktop_series.py`, `test_holyrood_query.py`.
-  This includes the actual kernel-bounded Holyrood leaf decoder. Read-only pytest
-  cache warnings are expected from the mounted source tree.
-- `uv run --project api python scripts/generate_source_contract.py --check`.
-- `npm run check:source-types` and `npm run build` (existing chunk-size warning).
-- `uv run --project tools/specs python tools/specs/specctl.py validate`: 0/0.
-- `git diff --check`.
+Other completed worker checks: CAMS 66 offline Linux tests; ECMWF native-unit
+regression 2 tests (red before fix); GOES 38 Linux tests; GEFS 37 tests; SWOB 20
+Linux tests; OSTIA 14 tests. Frontend baseline after restart passed 520 tests,
+including 8 real Chrome GLSL checks; final generic selector work passed 103
+focused tests. Later shared changes still need the complete assembled run and
+fresh CAMS UI/API consumption proof.
 
-Earlier foundation/source tests passed (88 API tests plus one platform skip;
-AQHI 25 Linux tests; lightning 20 Linux tests; GFS focused tests). The frontend
-worker ran 509 tests before final correction, focused tests after correction,
-build, existing desktop browser regression and the exact shared fixture proof.
-Do not present these as a full final assembled-branch regression.
+Live and offline receipts (raw data outside Git):
 
-Outside-Git receipts include:
+| Source | Exact evidence | Location |
+|---|---|---|
+| GFS | Current 18Z run /21Z frame, 22 public requests, 27,125,905 bytes, actual Linux decoder. Pinned Series HTTP proof replays captured bytes offline; repeats add zero requests. | `/private/tmp/astraeus-api-first-gfs-live-proof/` |
+| AQHI | Station ABEFS/report AQ_OBS-ABEFS-20260907210000, 21Z value1.5 index. Successful proof: 1 GET/2,626B, actual Linux decoder, selected-model fixture composition and injected expiry failure. Two GETs total including harness retry. | `/private/tmp/astraeus-aqhi-live-proof/` |
+| CAMS AOD | Exact 22Z intermediary value0.07, two anonymous downloads896B total,1.820s, zero repeat downloads, real default Linux process. Native run remains null;12Z metadata is context only. No live nulls encountered. | `/private/tmp/astraeus-api-first-cams-aod-live-proof/` |
+| GOES ACTPF | Two public requests,2,172B listing +3,796,986B granule. Captured granule replayed through actual Linux crop186x465,44,600 readable cells and retained DQF. | `/private/tmp/astraeus-goes-phase-proof/` |
+| ECMWF | Retained September5 IFS/AIFS payloads through actual Linux decoder/point sampler,12 fixture reads/source, zero provider requests and zero repeat payloads. No current live proof in this batch. | `/private/tmp/astraeus-api-first-ecmwf-proof/` |
+| Lightning | Two anonymous GeoMet requests, exact advertised20:50Z frame, native bare empty object. Public evidence mapping held. | `/private/tmp/astraeus-lightning-api-first-proof/` |
+| Frontend | Assembled selected-model/AQHI success and safe failure using actual fixed-fixture API responses and inspected screenshots. Latest CAMS selector only has unit/typecheck proof so far. | `/private/tmp/astraeus-assembled-frontend-proof/` |
 
-- `/private/tmp/astraeus-api-first-gfs-proof/proof.json`: retained actual GFS
-  GRIB ranges through Linux decoder, zero provider traffic, zero repeat payloads.
-- `/private/tmp/astraeus-lightning-api-first-proof/receipt.json`: two anonymous
-  GeoMet requests, exact advertised 20:50Z frame, native bare empty object.
-- `/private/tmp/astraeus-api-first-ecmwf-proof/proof.json`: pending worker's IFS
-  and AIFS offline Linux decoder/point proof; 12 fixture requests per source,
-  zero provider requests and zero additional cache-hit requests.
-- `/private/tmp/astraeus-source-delivery-browser/` and
-  `/private/tmp/astraeus-series-regression-browser/`: frontend fixture proofs.
-- `/private/tmp/noaa-aiwp-bounded-receipt.json`: public listing only. Listed
-  FOUR_v200_GFS 2026-09-07 12Z NetCDF is about 4.53 GB; no payload fetched.
+CAMS proof saved all acquisition/assertion results before its final console
+serialization failed on datetime; receipt/hash validation succeeded offline.
+It was not reacquired. Compact metadata receipts in research docs are permitted;
+raw live provider payloads remain outside Git.
 
-The small anonymous AQHI capture verified transport and normalization (three
-stations, St John's value 1.5, 21Z); do not conflate that with Linux fixture proof.
-Existing retained native captures are under
-`/private/tmp/astraeus-native-root-final-replay/`.
+## Configuration and owner-action inventory
 
-## Resume work, blockers and open questions
+No credentials were read or connected in this batch. Required exact
+`aws-secrets-manager` skill was absent from local skill roots and AWS MCP
+lookup. Owner was asked for its location or an authorized replacement. Never
+call Secrets Manager get-secret-value/batch-get-secret-value or the agent daemon;
+use the mandated asm-exec runtime resolution when that workflow is available.
 
-1. Review pending worker commits separately and cherry-pick serially. Do not
-   represent their source-local candidate code as public API integrations.
-2. Finish combined contract/API/client verification, including actual source
-   consumption. Review Series sample identity against requested variant/level
-   after retrieval (pre-acquisition capability validation already exists).
-3. Review selected-model-unavailable plus available AQHI composition semantics
-   and ensure the response mode/selection remains truthful. Current tests cover
-   selected-model success, independent AQHI failures and invalid companions.
-4. Configuration status currently returns anonymous-software ready for the five
-   registered shared readers and unknown for others. The full source-specific
-   missing configuration/access denied/product unavailable/compute/acquisition
-   reporting and startup validation are not implemented yet.
-5. Lightning: owner question pending for `wms_getfeatureinfo_pixel`, returned
-   coordinates preserved, unknown coordinates on bare `{}` no-density result.
-   Existing accepted point sampling contract only names rectilinear/curvilinear
-   methods; proposal `71ede9a` is not accepted. Do not silently choose a method.
-6. ECMWF: public demand exception #275 remains held. Existing scheduled IFS
-   adapter refusal stays unchanged. The pending worker verified AIFS native tcc
-   is percent while IFS is fraction; correct proposal wording before accepting
-   a public mapping. No ENS/control assumptions or promotion.
-7. Secret workflow: required `aws-secrets-manager` skill was not found in local
-   skill roots or AWS MCP discovery. The owner has been asked for its path or an
-   approved replacement. Do not read/connect credentials pending resolution.
-   Never fetch Secrets Manager values directly; required workflow is asm-exec
-   runtime resolution. Credential-free work remains independent.
-8. WeatherNext current documentation reportedly changed its historical terms
-   threshold to one hour; worker conservatively retained the earlier 48-hour
-   gate. Independently verify exact current licensing before changing it.
-   GCS statistics bucket is the preferred path; no API key or raw requester-pays
-   member path. Software still lacks default authenticated acquisition and
-   consumer field mapping. Maintain accurate terms versus access restrictions.
-9. Aurora/NVIDIA: review `f507704` for model-specific initialization, channel,
-   compute and deployment blockers. No free current hosted forecast is established.
-   NOAA AIWP's public FCN-v2 file exists but has no settled Astraeus native
-   field/grid/QC/bounded-subset contract. Do not invent one as credentials work.
-10. Expand backend roster only after owner resumes. Suggested ready bounded
-    assignments: named Open-Meteo delivery, existing ensemble delivery,
-    observation companions, satellite/native evidence. Existing SST and NOAA AI
-    work must not be duplicated. Confirm accepted contracts before writing code.
-11. Update Source Wayfinder #70, App Wayfinder #38 and the existing handoff with
-    exact completion states and one credential/prerequisite inventory. No issue
-    or PR writes have been made in this session. Preserve deferred phone/camera/
-    physical-testing boundaries. Finish passing integrations and durable handoff
-    before claiming the overall plan complete.
+| Source / chosen endpoint | Account and non-secret configuration | Software/configuration/live state | Precise remaining action |
+|---|---|---|---|
+| ECCC GeoMet/Datamart | Anonymous; no credentials | GFS/AQHI shared pattern and ECCC existing readers work; lightning/Holyrood source-local code | Resolve lightning point-method vocabulary; finish Holyrood public image delivery |
+| ECMWF public Open Data | Anonymous; no archive account or key | Isolated deterministic software implemented and offline Linux-tested; public dispatch held | Owner resolution of demand exception #275 with distinct IFS/AIFS cloud units; then API/UI proof |
+| Open-Meteo named CAMS AOD | Anonymous free noncommercial endpoint; no key connected | Source live-tested; API/shared fixture implemented; generic selector integrated | Verify assembled frontend consumption and applicable serving terms before any public production deployment |
+| WeatherNext3 GCS statistics `weathernext3_statistics_spatial/weathernext_3_0_0_statistics/zarr/` | Approved Google identity, dataset approval and OAuth/ADC. No WeatherNext API key. Requester Pays disabled for chosen statistics bucket | Retained-manifest code only; default SDK/auth, raw decoding and consumer mapping unfinished; no authenticated proof | Supply secure workflow; establish approved identity entitlement and serving permission, implement/verify bounded native acquisition |
+| Aurora1.5 customer-deployed Foundry | Documented legacy submission names `FOUNDRY_ENDPOINT`, `FOUNDRY_TOKEN`, `BLOB_URL_WITH_SAS`; deployment, atmospheric initialization and native channel contract also required | Requirements handoff only; no deployed/current forecast client or live proof | Select supported deployment/API version, establish compute/cost/input-output contract; then selected credentials through secure workflow |
+| NVIDIA hosted FourCastNet historical demonstration | Optional bearer catalog credential; `NVIDIA_API_KEY` would be app-specific | Fixed historical-case demonstration does not meet current forecast delivery | Do not substitute for current forecast; select concrete current published output or versioned inference path |
+| NVIDIA self-hosted FourCastNet NIM | `NGC_API_KEY`, suitable NVIDIA hardware and initialization data; other Earth-2 products differ | Version/channel/input/compute contract unresolved; no deployed client/live integration | Select concrete versioned product and initialized compute without assuming deployment is free |
+| NOAA AIWP public S3 | Anonymous; no credential | Listing proves current FCN-v2-small object availability only | Establish bounded subset/NetCDF field/grid/unit/QC contract before acquisition/serving |
 
-Useful commands: `rg` is at
-`/opt/homebrew/Caskroom/codex/0.153.4/codex-path/rg`. `uv`, `npm`, `docker`, `gh`
-are available. Reusable locked Linux proof image:
-`astraeus-lightning-proof:c88ff83`; mount the experiment at `/work:ro`, set
-`PYTHONPATH=/work/api:/work`, workdir `/work`, `--network none --memory 1g`.
+Current Google disclaimer page (updated September3) describes historical valid
+times at least one hour old under CC BY4.0; newer/future-valid outputs have
+experimental realtime terms. The existing validator conservatively keeps its
+older48-hour gate. Root verified the current official page; changing the code
+still requires reconciling that existing contract. Authentication and permission
+to serve data are separate. Raw requester-pays members remain excluded.
+
+## Resume priorities
+
+1. Verify runtime exposes20total; restore only useful bounded tasks in Astra
+   medium isolated worktrees. Do not repeat completed source implementations.
+2. Run the full assembled backend Linux and frontend suites plus generated drift,
+   build, strict OpenSpec and specctl. Review named deterministic point routes
+   after switching them through the seam. No required full regression was claimed.
+3. Prove CAMS selection and provenance with actual integrated backend fixtures in
+   browser, reusing the existing source proof helpers. Reuse live captures.
+4. Revisit source-status coverage: named point reads are monitored, but older
+   direct consensus/observation call sites and platform/configuration prerequisites
+   are not fully assessed. Do not label schema states as completed integrations.
+5. Pending owner decisions remain lightning `wms_getfeatureinfo_pixel` (actual
+   returned coordinates, unknown coordinates for bare{} no-density) and ECMWF
+   demand exception #275. User concurrency replies did not approve these.
+6. Continue ready higher-value source integration (ECMWF if approved, remaining
+   RAQDPS/SST/ensembles/observations/satellite paths), then inference candidates
+   whose actual contracts are settled. Missing compute is not credentials-only.
+7. Update Source Wayfinder #70, App Wayfinder #38 and existing handoff with exact
+   implementation/verification states; prepare reviewed passing PRs and merge
+   serially under existing owner authorization. No remote writes occurred yet.
+8. Preserve deferred phone/camera/physical-testing boundaries and remaining
+   scientific/access contracts. The broader catalogue is not complete.
+
+Useful tools: `rg` at
+`/opt/homebrew/Caskroom/codex/0.153.4/codex-path/rg`; uv/npm/docker/gh available.
+Locked offline Linux image `astraeus-lightning-proof:c88ff83`, experiment mounted
+`/work:ro`, `PYTHONPATH=/work/api:/work`, workdir `/work`. Use appropriate memory
+bounds; do not stop unrelated user Docker services. Current permission profile
+is unrestricted with approval never; do not pass sandbox_permissions.
