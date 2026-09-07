@@ -1,10 +1,12 @@
 // Fixed-response browser proof. No live weather or reference-map provider calls.
 import { chromium } from 'playwright'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import assert from 'node:assert/strict'
 const base = process.env.BENCH_URL ?? 'http://127.0.0.1:5198'
 const output = process.env.BENCH_PROOF_DIR ?? '/tmp/astraeus-series-proof'
 await mkdir(output, { recursive: true })
+const sharedFixture = process.env.SOURCE_DELIVERY_FIXTURE === '1' ? JSON.parse(await readFile(new URL('../../contracts/fixtures/source-delivery.json', import.meta.url), 'utf8')) : null
+const sharedRequests = []
 const at = '2026-09-07T12:00:00.000Z'
 const layerId = 'eccc-hrdps-surface-total-cloud'
 const layer = { id: layerId, title: 'HRDPS total cloud · fixed fixture', kind: 'points', field: 'total_cloud', field_key: 'cloud_area_fraction_total', family: 'cloud_cover', product: 'HRDPS', units: '%', semantics: 'Fixed constructed test values; no live weather retrieval.', times: [at], staleness_tolerance_seconds: 3600, evidence_class: 'retrieved', evidence_basis: 'published_artifact', data_mode: 'fixture', raster_available: false }
@@ -28,11 +30,12 @@ await page.route('**/*', async (route) => {
     ], notices: ['FIXED CONSTRUCTED BROWSER PROOF · not live evidence'] }
   } else if (path === '/layers') body = { data_mode: 'fixture', layers: url.searchParams.get('product') === 'CAP' ? [] : [layer], notices: [] }
   else if (path.endsWith('/features')) body = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [-52.6, 47.5] }, properties: { value: 65 } }] }
-  else if (path === '/catalog') body = { data_mode: 'fixture', sources: [] }
-  else if (path === '/sources/status') body = { data_mode: 'fixture', statuses: [], notices: [] }
+  else if (path === '/catalog') body = sharedFixture?.catalog ?? { data_mode: 'fixture', sources: [] }
+  else if (path === '/sources/status') body = sharedFixture?.status ?? { data_mode: 'fixture', statuses: [], notices: [] }
   else if (path === '/methods') body = { data_mode: 'fixture', methods: [], notices: [] }
   else if (path === '/timeline') body = { data_mode: 'fixture', start: '2026-09-07T09:00:00Z', end: '2026-09-08T12:00:00Z', items: [] }
   else if (path === '/point/series') {
+    if (sharedFixture) { sharedRequests.push(route.request().postDataJSON()); return route.fulfill({ contentType: 'application/json', body: JSON.stringify(sharedFixture.series) }) }
     if (failSeries) return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: { code: 'snapshot_unreadable', message: 'Constructed refresh failure' } }) })
     const selection = route.request().postDataJSON()
     seriesReads++
@@ -45,6 +48,45 @@ await page.route('**/*', async (route) => {
   else if (path === '/registry/sites') body = { operational: false, version: 'a'.repeat(64), sites: [{ id: 'signal-hill', name: 'Signal Hill', latitude: 47.5704, longitude: -52.6816, elevation_m: 140, datum: 'CGVD2013', registered_on: '2026-09-03', registered_by: 'Fixture owner', geometry_note: 'Constructed registry fixture; not surveyed.', horizon: { site_id: 'signal-hill', bearing_resolution_deg: 90, elevation_deg: [0, 1, 2, 3], terrain_check_status: 'not_run', terrain_check_note: 'Not surveyed' } }], notice: null }
   return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
 })
+if (sharedFixture) {
+  try {
+    const selection = sharedFixture.series.selection
+    await page.goto(`${base}/?view=series&lat=${selection.latitude}&lon=${selection.longitude}&t=${at}`)
+    await page.getByRole('img', { name: /temperature_2m native samples/ }).waitFor()
+    assert.deepEqual(sharedRequests.at(-1), { ...selection, start: new Date(selection.start).toISOString(), end: new Date(selection.end).toISOString() })
+    const selector = page.getByRole('combobox', { name: 'Series A', exact: true })
+    assert.ok(await selector.locator('option').count() > 2)
+    await selector.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: `${output}/source-delivery-selectors.png` })
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    await selector.focus()
+    await page.keyboard.press('Tab')
+    assert.equal(await page.locator('.native-track').count(), 2)
+    await page.getByText(/Native values, gaps and run identity/).first().click()
+    const opener = page.getByRole('button', { name: /^Inspect temperature_2m at/ }).first()
+    await opener.click()
+    await page.getByRole('heading', { name: 'Evidence · temperature_2m', exact: true }).waitFor()
+    await page.keyboard.press('Escape')
+    assert.equal(await opener.evaluate((el) => el === document.activeElement), true)
+    await page.screenshot({ path: `${output}/source-delivery-series.png` })
+    await page.getByRole('button', { name: 'Sources', exact: true }).click()
+    for (const status of sharedFixture.status.statuses) {
+      const row = page.getByRole('row').filter({ has: page.getByRole('button', { name: `Inspect source ${status.source_id}`, exact: true }) })
+      assert.ok((await row.innerText()).includes(`Configuration: ${status.configuration.state}`))
+      assert.ok((await row.innerText()).includes(status.configuration.reason))
+    }
+    await page.screenshot({ path: `${output}/source-delivery-sources.png` })
+    await page.getByRole('button', { name: 'Series', exact: true }).click()
+    await page.clock.runFor(300001)
+    await page.getByText('Selection expired. Refresh Series to read again.', { exact: true }).waitFor()
+    assert.equal(await page.locator('.native-track').count(), 0)
+    assert.equal(await page.getByRole('button', { name: 'Check for changes', exact: true }).isDisabled(), true)
+    assert.deepEqual(errors, [])
+    await writeFile(`${output}/source-delivery-checks.json`, JSON.stringify({ fixture: 'contracts/fixtures/source-delivery.json', exactBackendResponses: ['catalog', 'status', 'series'], nativeRequests: sharedRequests, checks: ['declarative choices without point samples', 'exact native request identity', 'configuration dispositions', 'inspector focus return', 'finite expiry'], errors }, null, 2))
+    console.log('Source delivery shared backend fixture proof passed')
+  } finally { await browser.close() }
+  process.exit(0)
+}
 try {
   await page.goto(`${base}/?lat=47.5123456789&lon=-52.6987654321&t=${at}`)
   await page.getByText('Development fixture', { exact: true }).waitFor()

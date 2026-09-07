@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { normalizePoint } from '../api'
 import type { CatalogSource } from '../types'
+import { readNativeSeriesResponse, type SharedSeriesSelection } from './NativeSeries'
+import fixture from '../../../contracts/fixtures/source-delivery.json'
 import { sourceEvidence, useSourcesView } from './SourcesView'
 const at = '2026-09-07T12:00:00Z'
 const catalog: CatalogSource[] = [{ id: 'declared-only', producer: 'Producer', product: 'Model', state: 'enabled', status_reason: 'Declared eligibility only', role: 'model', may_enter_consensus: false, cadence: 'hourly', forecast_horizon: '48 hours', geographic_coverage: 'Global declaration', licence: 'Declared terms', attribution: 'Producer', fields: [{ key: 'temperature_2m', family: 'temperature', storage: 'available-not-stored', upstream: 'TMP', note: 'No retrieval claim' }] }]
@@ -47,12 +49,12 @@ it('retains source identity while distinguishing missing catalogue and acquisiti
 })
 
 it('keeps finite native selection scope, loaded-page limits and expiry separate from point coverage', async () => {
-  const native = {
+  const native: SharedSeriesSelection = {
     selection: { latitude: 47.56, longitude: -52.71, start: at, end: '2026-09-07T15:00:00Z', selectors: [{ id: 'a', source_id: 'native-only', field: 'temperature_2m', run: 'latest' }], page_size: 12 },
     snapshot: { id: 'finite', selected_at: at, expires_at: '2026-09-07T12:05:00Z', change_token: 'opaque', identities: [] },
-    complete: false, expired: false, families: { a: ['temperature'] }, series: [{ selector_id: 'a', source_id: 'native-only', field: 'temperature_2m', requested_run: 'latest', availability: 'available' as const, reason: 'Constructed sparse readings', samples: [
-      { field: 'temperature', key: 'temperature_2m', value: 1234, provenance: { source_id: 'native-only', normalized_units: 'degC', evidence_class: 'retrieved', valid_time: at, quality: { status: 'good', flags: [] } } },
-      { field: 'temperature', key: 'temperature_2m', value: null, provenance: { source_id: 'native-only', normalized_units: 'degC', evidence_class: 'retrieved', valid_time: '2026-09-07T13:37:00Z', quality: { status: 'unknown', flags: ['checked_absent'] } } },
+    complete: false, expired: false, families: { a: ['temperature'] }, series: [{ selector_id: 'a', source_id: 'native-only', field: 'temperature_2m', requested_run: 'latest', availability: 'available' as const, reason: 'Constructed sparse readings', run_inventory_reason: 'Fixture has no run inventory', samples: [
+      { ...readNativeSeriesResponse(fixture.series).series[0].samples[0], field: 'temperature', key: 'temperature_2m', value: 1234, provenance: { ...readNativeSeriesResponse(fixture.series).series[0].samples[0].provenance, source_id: 'native-only', normalized_units: 'degC', evidence_class: 'retrieved', valid_time: at, quality: { status: 'passed', flags: [] } } },
+      { ...readNativeSeriesResponse(fixture.series).series[0].samples[0], field: 'temperature', key: 'temperature_2m', value: null, provenance: { ...readNativeSeriesResponse(fixture.series).series[0].samples[0].provenance, source_id: 'native-only', normalized_units: 'degC', evidence_class: 'retrieved', valid_time: '2026-09-07T13:37:00Z', quality: { status: 'unknown', flags: ['checked_absent'] } } },
     ] }],
   }
   function NativeHarness({ expired = false }) { return useSourcesView({ catalog, statuses: [], fields: [], layers: [], drawn: [], instant: Date.parse(at), nativeSelection: { ...native, expired }, catalogError: null, statusError: null, onInspect: inspect }) }

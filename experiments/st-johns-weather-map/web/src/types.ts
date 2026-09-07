@@ -1,3 +1,8 @@
+import type { components as SourceApi } from './generated/source-api'
+export type SourceCapability = SourceApi['schemas']['SourceCapability']
+export type SourceConfiguration = SourceApi['schemas']['SourceConfiguration']
+export type SourceVariant = SourceApi['schemas']['SourceVariant']
+
 export type FallbackMode = 'consensus' | 'hrdps' | 'rdps' | 'gdps' | 'unavailable'
 export type AppMode = 'simple' | 'expert'
 
@@ -657,6 +662,7 @@ export interface LayersResult {
 /** A `/catalog` source record. Only the fields the UI actually renders are typed;
  *  nothing here is defaulted, so a missing field stays visibly missing. */
 export interface CatalogSource {
+  capabilities?: SourceCapability[]
   id: string
   producer: string
   product: string
@@ -708,6 +714,7 @@ export interface ResolvedFrame {
 /** One `/sources/status` row. Only the fields the UI renders are typed, so a
  *  field the API stops sending stays visibly missing instead of defaulting. */
 export interface SourceStatusItem {
+  configuration?: SourceConfiguration
   source_id: string
   state: string
   data_mode: FieldDataMode

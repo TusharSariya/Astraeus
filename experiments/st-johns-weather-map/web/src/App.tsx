@@ -1831,7 +1831,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
   const [activityResponse, setActivityResponse] = useState<ActivityResponse | null>(null)
   const [activitySeries, setActivitySeries] = useState<{ field: string; source: string; revision: number } | null>(null)
-  const nativeSeries = useNativeSeries({ jumpTo: activitySeries, location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
+  const nativeSeries = useNativeSeries({ catalog, jumpTo: activitySeries, location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
     onEvidence: setSeriesEvidence, enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
     focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
     onRun: (source, run) => setRunChoices((current) => ({ ...current, [source]: run })),
