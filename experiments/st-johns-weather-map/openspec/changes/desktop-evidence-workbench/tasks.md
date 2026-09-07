@@ -1,3 +1,6 @@
+Accepted for implementation: see [owner authorization](acceptance.md).
+Contract acceptance does not check off implementation tasks.
+
 ## 1. Shared Focus and shell
 
 - [ ] 1.1 Add `web/src/workbench/focusUrl.ts` to parse and serialize site or point, fixed/live instant, active view, dock, and ordered stack; verify invalid, round-trip, omitted-live-time, and fixed-clock cases with `npm test -- --run src/workbench/focusUrl.test.ts`.

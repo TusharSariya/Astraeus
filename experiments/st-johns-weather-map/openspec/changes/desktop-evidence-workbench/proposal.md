@@ -1,6 +1,11 @@
+## Acceptance
+
+Accepted for implementation under the [owner authorization](acceptance.md).
+This is the selected frontend contract; all implementation tasks remain open.
+
 ## Why
 
-The existing Workbench proves retrieved weather layers and timestamp-driven reads, but it does not assemble the owner-selected desktop Bench with one shared Focus, five views, a coherent Map stack, or one reusable provenance inspector. The selected prototypes and accessibility repairs now define a bounded frontend contract that can be implemented against fixed existing API fixtures while the remaining sources continue independently.
+The existing Workbench proves retrieved weather layers and timestamp-driven reads, but it does not assemble the owner-selected desktop Bench with one shared Focus, five views, a coherent Map stack, or one reusable provenance inspector. The selected prototypes and accessibility repairs now define a bounded frontend contract that can be implemented against fixed existing API fixtures before the remaining source batches.
 
 ## What Changes
 

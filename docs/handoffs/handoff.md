@@ -4,6 +4,22 @@ Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
 history and the owner's earlier design selections.
 
+## Desktop-first owner authorization, September 7, 2026
+
+The owner now directs completion of the five-view desktop (#38) before the
+remaining source batches (#70), entirely in the main agent and isolated
+worktrees. The [single acceptance record](../../experiments/st-johns-weather-map/openspec/changes/desktop-evidence-workbench/acceptance.md)
+records authorization to formalize #239 and #256. Earlier statements below that
+these selected contracts await an owner decision are historical and superseded.
+Camera placement, new science, phone, band math and physical checks remain separate.
+
+Active batch: reconcile and validate #239 and #256; then implement Bench/Focus,
+Map/provenance, API/Series, Sources, Sky, and Activity in that order. Demonstrate
+Bench/Map/inspector and then the assembled desktop. Continue every eligible source
+batch afterward, recording field residuals and evidence-backed access dispositions.
+No view or source is completed by contract acceptance. Keep timestamp-driven
+queries and finite caches; no persistent snapshot infrastructure is required.
+
 ## Reuse-first source workflow
 
 Use [the durable reuse-first source workflow](../agents/reuse-workflow.md) before

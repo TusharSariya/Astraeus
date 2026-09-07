@@ -2,7 +2,7 @@
 
 This index consolidates the existing owner selections under Wayfinder #38 and
 issue #55. It does not ask the owner to choose those layouts again, promote
-prototype data into live evidence, or accept an API/scientific contract.
+prototype data into live evidence, or introduce new scientific behavior. Acceptance is recorded in [acceptance.md](acceptance.md).
 
 | Area | Existing decision | Review asset |
 | --- | --- | --- |
@@ -27,9 +27,8 @@ prototype data into live evidence, or accept an API/scientific contract.
 2. Implement shared Focus/URL state, Bench, Map stack, selected tokens and the
    common provenance inspector against fixed API responses and a fixed clock.
 3. Preserve existing working panels while implementing each selected view body.
-   The Series read/refresh/run interactions are authorized by the September 7
-   owner response recorded in PR #256; additional API capabilities retain their
-   own acceptance boundary. Do not manufacture missing endpoints in the client.
+   The selected Series, change-check, registry and imagery API capabilities
+   are accepted through PR #256 under the same owner authorization. Do not manufacture missing endpoints in the client.
 4. Wire Activity to server-returned verdicts under its owning #48/#49 contracts.
    This frontend change authorizes no new grading curves, safety decisions or
    score calculations. Camera eligibility remains truthful absence until the
