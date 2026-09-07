@@ -1688,15 +1688,15 @@ class AstronomyMoon(StrictModel):
     rise: datetime | None
     set: datetime | None
     above_horizon: list[AstronomyInterval]
-    phase_deg: float
-    illuminated_fraction: float
+    phase_deg: float | None
+    illuminated_fraction: float | None
 
 
 class AstronomyCoreWindow(StrictModel):
     """The geometric Milky Way core window: geometry only, never blended."""
 
     windows: list[AstronomyInterval]
-    max_altitude_deg: float
+    max_altitude_deg: float | None
     caption: str
 
 
@@ -1717,9 +1717,9 @@ class AstronomyResponse(StrictModel):
     window_start: datetime
     window_end: datetime
     valid_time: datetime
-    sun_altitude_deg: float
-    moon_altitude_deg: float
-    core_altitude_deg: float
+    sun_altitude_deg: float | None
+    moon_altitude_deg: float | None
+    core_altitude_deg: float | None
     twilight_bands: list[AstronomyInterval]
     moon: AstronomyMoon
     milky_way_core: AstronomyCoreWindow

@@ -165,3 +165,22 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 .source-coverage-marks { width: 100%; max-width: 60rem; height: auto; max-height: 6rem; }
 .source-coverage-marks text { fill: currentColor; font-size: 12px; }
 .sources-view summary { padding-block: .75rem; }
+
+.sky-instrument { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 1rem; }
+.sky-panel { border: 1px solid var(--bench-line); padding: .9rem; margin-bottom: 1rem; overflow-x: auto; }
+.sky-panel h3 { margin-top: 0; }
+.sky-panel table { width: 100%; border-collapse: collapse; text-align: left; }
+.sky-panel th, .sky-panel td { padding: .5rem; border-bottom: 1px solid var(--bench-line); vertical-align: top; }
+.sky-horizon { width: 100%; max-height: 24rem; }
+.sky-horizon :is(circle,path) { fill: none; stroke: var(--bench-line); }
+.sky-horizon text { fill: currentColor; font-size: 12px; }
+.sky-horizon .sky-horizon-label { fill: var(--bench-panel); }
+.sky-horizon .sky-registered-horizon { fill: none; stroke: currentColor; stroke-width: 2; stroke-dasharray: 5 4; }
+.sky-clouds { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .5rem; }
+.sky-cloud-gauge { min-width: 0; overflow-wrap: anywhere; }
+.sky-cloud-gauge > svg { width: 100%; max-height: 7rem; }
+.sky-gauge-track { fill: none; stroke: var(--bench-line); stroke-width: 8; }
+.sky-gauge-value { fill: none; stroke: currentColor; stroke-width: 8; }
+.sky-panel summary { padding-block: .75rem; }
+.bench-companion .sky-instrument { grid-template-columns: 1fr; }
+@media (max-width: 1000px) { .sky-instrument { grid-template-columns: 1fr; } }

@@ -12,7 +12,7 @@ proposal.md. Tasks below are implementation obligations, not owner gates.
   or warehouse retention; #173 is not a prerequisite.
 - [ ] 4. Specify source/field joins, imagery availability, and actual served
   raster time without changing existing layer `times` semantics.
-- [ ] 5. Specify read-only site, horizon and camera records and their privacy,
+- [x] 5. Specify read-only site, horizon and camera records and their privacy,
   version and arbitrary-point refusal behavior.
 - [x] 6. Add mapped fixed-clock API and client contract tests; include paging, relevant/unrelated change, expiry, unreadable,
   zero, explicit absence, and no-stale-fallback cases.

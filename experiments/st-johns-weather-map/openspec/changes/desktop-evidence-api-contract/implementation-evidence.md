@@ -88,3 +88,16 @@ guard; production build passed. Both changed OpenSpec packages passed strict
 validation and repository specctl reported zero errors/warnings. The browser
 procedure passed after final view changes. The prior merged revision reproduced
 both repaired catalogue assertions (two failures), establishing fixture drift.
+
+
+## Read-only camera and geometry completion
+
+The Sky batch adds `/registry/cameras` beside the existing site/horizon read.
+An explicit public-field allowlist separates registry eligibility from image
+implementation and actual retrieval. Version hashes cover only public content;
+private terms/endpoints and audit exception text never enter the response.
+Existing camera audit/refusal logic remains the authority. Outside-core point
+and astronomy reads now return the typed `outside_supported_area` refusal with
+exact requested coordinates. Unsupported geometry returns nulls. Registry,
+camera, site, space-weather and astronomy checks: 77 passed, six kernel-dependent
+astronomy tests skipped. This completes task 5, not imagery joins or camera delivery.

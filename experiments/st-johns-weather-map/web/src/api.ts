@@ -720,7 +720,11 @@ export async function loadPoint(location: LocationPoint, validTime?: string, pro
     if (typeof options.threshold === 'number') params.set('threshold', String(options.threshold))
     if (options.comparison) params.set('comparison', options.comparison)
     const response = await fetch(`${prefix}/point?${params}`, { signal, headers: { Accept: 'application/json' } })
-    if (!response.ok) throw new Error(`weather API returned ${response.status}`)
+    if (!response.ok) {
+      const refusal = await response.json().catch(() => null)
+      if (refusal?.detail?.code === 'outside_supported_area') throw new Error(`Outside supported area: ${refusal.detail.message}`)
+      throw new Error(`weather API returned ${response.status}`)
+    }
     const body: unknown = await response.json()
     if (!isPointResponse(body)) throw new Error('weather API returned an incompatible point schema')
     const snapshot = normalizePoint(body, options)
@@ -782,9 +786,10 @@ export async function loadProfile(location: LocationPoint, validTime?: string, p
  *  a response that is not `live` keeps its notices as the reason, and a
  *  transport failure yields null — an empty band is a claim ("no darkness"),
  *  so it is never synthesized from a failure. */
-export async function loadAstronomy(signal?: AbortSignal): Promise<AstronomyResult> {
+export async function loadAstronomy(signal?: AbortSignal, focus?: { latitude: number; longitude: number; instant: number }): Promise<AstronomyResult> {
   try {
-    const response = await fetch(`${prefix}/astronomy`, { signal, headers: { Accept: 'application/json' } })
+    const query = focus ? `?${new URLSearchParams({ latitude: String(focus.latitude), longitude: String(focus.longitude), valid_time: new Date(focus.instant).toISOString() })}` : ''
+    const response = await fetch(`${prefix}/astronomy${query}`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) return { astronomy: null, error: `astronomy returned ${response.status}` }
     const body: unknown = await response.json()
     if (!body || typeof body !== 'object' || !Array.isArray((body as { twilight_bands?: unknown }).twilight_bands)) {
@@ -795,6 +800,8 @@ export async function loadAstronomy(signal?: AbortSignal): Promise<AstronomyResu
       const reason = astronomy.notices?.[0] ?? `astronomy declared data_mode "${String(astronomy.data_mode)}"`
       return { astronomy: null, error: reason }
     }
+    if (focus && (!astronomy.provenance || !astronomy.moon || !Array.isArray(astronomy.moon.above_horizon) || !astronomy.milky_way_core || !Array.isArray(astronomy.milky_way_core.windows))) return { astronomy: null, error: 'Astronomy geometry or provenance is unreadable' }
+    if (focus && (astronomy.latitude !== focus.latitude || astronomy.longitude !== focus.longitude || Date.parse(astronomy.valid_time) !== focus.instant)) return { astronomy: null, error: 'Astronomy response does not match Focus' }
     return { astronomy, error: null }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error

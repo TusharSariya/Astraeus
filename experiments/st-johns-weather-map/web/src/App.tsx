@@ -1,3 +1,5 @@
+import { SkyView } from './workbench/SkyView'
+import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
 import { sourceEvidence, useSourcesView } from './workbench/SourcesView'
 import { useNativeSeries } from './workbench/NativeSeries'
 import { loadRegisteredSites, nearestRegisteredSite, type RegisteredSites } from './workbench/registeredSites'
@@ -374,6 +376,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [site, setSite] = useState<string | null>(initialFocus.site)
   const [runChoices, setRunChoices] = useState(initialFocus.runs)
   const [registeredSites, setRegisteredSites] = useState<RegisteredSites | null>(null)
+  const [cameraRegistry, setCameraRegistry] = useState<CameraRegistry | null>(null)
+  const [cameraNotice, setCameraNotice] = useState<string | null>('Reading registered camera eligibility…')
   const [registryError, setRegistryError] = useState('Loading registered site metadata…')
   const [drawn, setDrawn] = useState<DrawEvidence[]>([])
   const [inspected, setInspected] = useState<InspectedEvidence | null>(null)
@@ -385,7 +389,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [mode, setMode] = useState<AppMode>('simple')
   const [location, setLocation] = useState<LocationPoint>(initialFocus.location)
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
-  const [snapshot, setSnapshot] = useState<EvidenceSnapshot>(unavailableSnapshot)
+  const [responseSnapshot, setSnapshot] = useState<EvidenceSnapshot>(unavailableSnapshot)
+  const [snapshotRequestKey, setSnapshotRequestKey] = useState<string | null>(null)
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
   const [taf, setTaf] = useState<TafResponse | null>(null)
   const [tafError, setTafError] = useState<string | null>(null)
@@ -453,6 +458,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [astronomy, setAstronomy] = useState<AstronomyResponse | null>(null)
   const [astronomyNotice, setAstronomyNotice] = useState<string | null>(null)
   const [spaceWeather, setSpaceWeather] = useState<SpaceWeatherResponse | null>(null)
+  const [spaceWeatherFor, setSpaceWeatherFor] = useState<string | null>(null)
   const [spaceWeatherNotice, setSpaceWeatherNotice] = useState<string | null>(null)
   const [story, setStory] = useState<StoryStep[]>([])
   const [provider, setProvider] = useState('')
@@ -461,6 +467,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   // as the endpoint accepts it. Reset whenever the point response stops
   // carrying it below, rather than left pointed at a member that vanished.
   const [selectedMember, setSelectedMember] = useState<string | null>(null)
+  const snapshotKey = JSON.stringify([location.latitude, location.longitude, selectedMs, selectedProduct, selectedMember, site])
+  const snapshot = legacyOpen || snapshotRequestKey === snapshotKey ? responseSnapshot : unavailableSnapshot
   const [sourceStatuses, setSourceStatuses] = useState<SourceStatusItem[] | null>(null)
   const [sourceStatusError, setSourceStatusError] = useState<string | null>(null)
   // All three bands on = the full as-reported list. Local view state only; it
@@ -484,7 +492,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
 
   const validTimeIso = useMemo(() => {
     if (legacyOpen && selectedMs === reference.getTime()) return undefined
-    return validTime.toISOString().replace(/\.\d{3}Z$/, 'Z')
+    return legacyOpen ? validTime.toISOString().replace(/\.\d{3}Z$/, 'Z') : validTime.toISOString()
   }, [selectedMs, reference, validTime, legacyOpen])
   // TAF groups are minute-coded native intervals. Keep their read keyed to
   // the displayed evidence minute so animation frames cannot create one HTTP
@@ -495,10 +503,9 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     instant.setUTCSeconds(0, 0)
     return instant.toISOString().replace(/\.000Z$/, 'Z')
   }, [snapshot.validAt])
-  // Kp is selected against the same completed point-evidence minute. Playback
-  // frames therefore cannot hammer `/space-weather`; a completed deliberate
-  // selection refreshes the planetary series once.
-  const spaceWeatherEvidenceAt = tafEvidenceAt
+  // The desktop reads the exact Focus instant after playback stops. Legacy
+  // panels retain their completed point-evidence minute selection.
+  const spaceWeatherEvidenceAt = legacyOpen ? tafEvidenceAt : new Date(selectedMs).toISOString()
 
   // The axis a scrub snaps onto when display interpolation is off: the union
   // of the active visible layers' published frame instants in the window.
@@ -705,7 +712,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     // Computed darkness/moon geometry. Fail-closed like everything else: a
     // failure keeps the reason and no band is drawn, because an empty band
     // would read as "no darkness tonight".
-    loadAstronomy(controller.signal).then((result) => {
+    if (legacyOpen) loadAstronomy(controller.signal).then((result) => {
       setAstronomy(result.astronomy)
       setAstronomyNotice(result.error)
     }).catch(() => undefined)
@@ -744,6 +751,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     setCapAllBoxesSucceeded(false)
     setCapEmptyIsAnAnswer(false)
     setCapLoading(true)
+    if (!legacyOpen && playing) { setCapLoading(false); setCapError('Pause playback to read alerts at the selected instant'); return () => controller.abort() }
     loadCapAlerts(validTime.toISOString(), controller.signal).then((result) => {
       if (!controller.signal.aborted) {
         setCapWarnings(result.warnings)
@@ -756,17 +764,18 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       }
     }).catch(() => undefined)
     return () => controller.abort()
-  }, [validTimeIso])
+  }, [validTimeIso, legacyOpen, playing])
 
   useEffect(() => {
     const controller = new AbortController()
     setSpaceWeather(null)
     setSpaceWeatherNotice('loading selected-time space weather')
-    if (!spaceWeatherEvidenceAt) return () => controller.abort()
+    if (!spaceWeatherEvidenceAt || (!legacyOpen && playing)) return () => controller.abort()
     const timer = window.setTimeout(() => {
       loadSpaceWeather(new Date(spaceWeatherEvidenceAt), controller.signal).then((result) => {
         if (!controller.signal.aborted) {
           setSpaceWeather(result.spaceWeather)
+          setSpaceWeatherFor(spaceWeatherEvidenceAt)
           setSpaceWeatherNotice(result.error)
         }
       }).catch((error) => {
@@ -777,7 +786,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       })
     }, 250)
     return () => { window.clearTimeout(timer); controller.abort() }
-  }, [spaceWeatherEvidenceAt])
+  }, [spaceWeatherEvidenceAt, legacyOpen, playing])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -800,10 +809,12 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     setSourceError('')
     setSnapshot(unavailableSnapshot)
 
+    if (!legacyOpen && playing) { setSourceError('Pause playback to read point evidence at the selected instant'); return () => controller.abort() }
     if (!legacyOpen && site && !registeredSites?.sites.some((entry) => entry.id === site && entry.latitude === location.latitude && entry.longitude === location.longitude)) { setDataSource('unavailable'); setSourceError(`Registered site ${site} awaits registry metadata; no default-point reading is substituted`); return () => controller.abort() }
     loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources, member: selectedMember }).then((result) => {
       if (!controller.signal.aborted) {
         setSnapshot(result.snapshot)
+        setSnapshotRequestKey(snapshotKey)
         setDataSource(result.source)
         setSourceError(result.error ?? '')
       }
@@ -820,7 +831,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     }
 
     return () => controller.abort()
-  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources, selectedMember, site, legacyOpen, registeredSites])
+  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources, selectedMember, site, legacyOpen, registeredSites, playing])
 
   // The story is assembled from the hours the timeline says are published, one
   // real /point response per card. Hours that return nothing are simply absent;
@@ -862,11 +873,35 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     loadRegisteredSites(controller.signal).then((result) => { if (!controller.signal.aborted) { setRegisteredSites(result); setRegistryError(result.notice ?? '') } }).catch((error) => { if (!controller.signal.aborted) { setRegisteredSites(null); setRegistryError(error instanceof Error ? error.message : 'Registry unavailable') } })
     return () => controller.abort()
   }, [legacyOpen])
+  useEffect(() => {
+    if (legacyOpen) return
+    const controller = new AbortController()
+    loadRegisteredCameras(controller.signal).then((result) => { if (!controller.signal.aborted) { setCameraRegistry(result); setCameraNotice(null) } }).catch((error) => { if (!controller.signal.aborted) { setCameraRegistry(null); setCameraNotice(String(error)) } })
+    return () => controller.abort()
+  }, [legacyOpen])
   const registeredFocus = registeredSites?.sites.find((entry) => entry.id === site)
   useEffect(() => {
     if (registeredFocus) setLocation({ id: registeredFocus.id, name: registeredFocus.name, latitude: registeredFocus.latitude, longitude: registeredFocus.longitude, kind: 'map' })
   }, [registeredFocus])
   const nearestSite = nearestRegisteredSite(location, registeredSites?.sites ?? [])
+  useEffect(() => {
+    if (legacyOpen) return
+    setAstronomy(null)
+    if (playing) { setAstronomyNotice('Pause playback to read geometry at the selected instant'); return }
+    if (site && (!registeredFocus || registeredFocus.latitude !== location.latitude || registeredFocus.longitude !== location.longitude)) {
+      setAstronomyNotice('Selected site geometry is not available yet')
+      return
+    }
+    const controller = new AbortController()
+    setAstronomyNotice('Reading geometry for Focus…')
+    const timer = setTimeout(() => {
+      loadAstronomy(controller.signal, { latitude: location.latitude, longitude: location.longitude, instant: selectedMs }).then((result) => {
+        if (!controller.signal.aborted) { setAstronomy(result.astronomy); setAstronomyNotice(result.error) }
+      }).catch(() => undefined)
+    }, 180)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [legacyOpen, location.latitude, location.longitude, selectedMs, site, registeredFocus, playing])
+
 
   const humidityGap = useMemo(() => snapshot.temperatureC !== null && snapshot.dewPointC !== null
     ? `${(snapshot.temperatureC - snapshot.dewPointC).toFixed(1)}° dew-point depression`
@@ -1507,7 +1542,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
                       <Metric
                         label="Moon"
                         value={`${astronomy.moon.rise === null ? 'no rise' : `rises ${nlTime(astronomy.moon.rise)}`} · ${astronomy.moon.set === null ? 'no set' : `sets ${nlTime(astronomy.moon.set)}`}`}
-                        detail={`${Math.round(astronomy.moon.illuminated_fraction * 100)}% illuminated, ${astronomy.moon.phase_deg < 180 ? 'waxing' : 'waning'}`}
+                        detail={astronomy.moon.illuminated_fraction === null || astronomy.moon.phase_deg === null ? 'Moon illumination or phase unavailable' : `${Math.round(astronomy.moon.illuminated_fraction * 100)}% illuminated, ${astronomy.moon.phase_deg < 180 ? 'waxing' : 'waning'}`}
                       />
                       <Metric
                         label="Milky Way core"
@@ -1772,7 +1807,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const sourcesView = useSourcesView({ catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
     instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
   const nativeSeries = useNativeSeries({ location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
-    enabled: !legacyOpen && (view === 'Series' || dock === 'Series'),
+    enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
     focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
     onLatest: (source) => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next }),
   })
@@ -1792,7 +1827,9 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     views={{
       Map: <><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
       Series: nativeSeries,
-      Sky: <>{migrationNotice}<p>{site ? 'Registered horizon metadata not loaded.' : 'No registered horizon at this point.'}</p><FieldFamilyGroups snapshot={snapshot} /></>,
+      Sky: <SkyView site={registeredFocus && registeredFocus.latitude === location.latitude && registeredFocus.longitude === location.longitude ? registeredFocus : null} registryVersion={registeredSites?.version ?? null} fields={snapshot.servedFields}
+        astronomy={astronomy && astronomy.latitude === location.latitude && astronomy.longitude === location.longitude && Date.parse(astronomy.valid_time) === selectedMs ? astronomy : null} astronomyNotice={astronomyNotice}
+        spaceWeather={spaceWeatherFor === new Date(selectedMs).toISOString() ? spaceWeather : null} spaceWeatherNotice={spaceWeatherNotice} cameras={cameraRegistry} cameraNotice={cameraNotice} onInspect={inspect} />,
       Activity: <>{migrationNotice}<p>Server profile verdicts are not wired into these lanes yet. No score is calculated by this client.</p></>,
       Sources: sourcesView,
     }} />

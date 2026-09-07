@@ -46,3 +46,17 @@ it('does not query a default Series point while a named site awaits registered g
   await waitFor(() => expect(screen.getByText(/Registered site signal-hill awaits registry metadata/)).toBeInTheDocument())
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/point/series'))).toBe(false)
 })
+
+it('reads a same-second Focus change exactly and clears old point evidence on failure', async () => {
+  render(<App />)
+  fireEvent.click(screen.getByText('Point evidence ledger'))
+  await screen.findByRole('button', { name: 'Inspect temperature from noaa-gfs' })
+  const original = vi.mocked(fetch).getMockImplementation()!
+  vi.mocked(fetch).mockImplementation(async (...args) => String(args[0]).includes('/point?') ? new Response('{}', { status: 503 }) : original(...args))
+  fireEvent.click(screen.getByText(/Fixed instant/))
+  fireEvent.change(screen.getByLabelText('Instant (ISO, with timezone)'), { target: { value: '2026-09-07T12:00:00.123Z' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Use instant' }))
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Inspect temperature from noaa-gfs' })).not.toBeInTheDocument())
+  const urls = vi.mocked(fetch).mock.calls.map(([input]) => new URL(String(input), 'http://localhost')).filter((url) => url.pathname.endsWith('/point'))
+  expect(urls.at(-1)?.searchParams.get('valid_time')).toBe('2026-09-07T12:00:00.123Z')
+})
