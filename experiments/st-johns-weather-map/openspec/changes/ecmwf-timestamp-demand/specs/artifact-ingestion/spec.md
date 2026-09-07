@@ -14,4 +14,3 @@ An adapter whose endpoint contract, grid geometry or field assembly is unresolve
 #### Scenario: Verified ECMWF timestamp-demand access
 - **WHEN** an owner-accepted ECMWF demand product resolves exact native identity under the ecmwf-timestamp-demand contract
 - **THEN** bounded demand retrieval may serve its verified native values through finite cache without activating the legacy scheduled artifact publisher
-
