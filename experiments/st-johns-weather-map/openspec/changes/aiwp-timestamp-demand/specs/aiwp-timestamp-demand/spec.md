@@ -46,10 +46,10 @@ Every object range SHALL require 206, exact Content-Range/length and consistent 
 - **THEN** mixed bytes are never decoded or cached as one object
 
 ### Requirement: AIWP demand uses finite cache freshness and truthful failures
-The proposed cache SHALL key resolution by identity, selected timestamp and coordinate and bind data to resolved URL/ETag, native run/time/field selectors and native coordinate. It SHALL coalesce identical misses. Freshness SHALL be less than 600 seconds from completed validation; at exactly 600 seconds revalidation is required. A fresh repeated query SHALL cause zero discovery, range or decode operations. Revalidation SHALL perform bounded discovery and verify selected object identity; successful unchanged validation may start a new 600-second freshness period. Failed revalidation SHALL not serve expired values. Chunk reuse SHALL be object-identity scoped and constrained by admitted finite byte capacity; permanent retention or full-run prefetch is forbidden.
+The proposed cache SHALL key resolution by identity, selected timestamp and coordinate and bind data to resolved URL/ETag, native run/time/field selectors and native coordinate. It SHALL coalesce identical misses. Freshness SHALL be less than 600 seconds from the final-byte receipt time of the successful acquisition or revalidation that establishes the cached result; at exactly 600 seconds revalidation is required. A fresh repeated query SHALL cause zero discovery, range or decode operations. Revalidation SHALL perform bounded discovery and verify selected object identity; successful unchanged revalidation may renew freshness only from its successful final-byte receipt time. Decode and validation completion SHALL be recorded separately and SHALL NOT move that receipt time or extend freshness. Where acquisition requires multiple successful bodies, the last required body's final-byte receipt SHALL anchor the assembled result; failed or unrelated later receipts SHALL NOT renew it. Failed revalidation SHALL not serve expired values. Chunk reuse SHALL be object-identity scoped and constrained by admitted finite byte capacity; permanent retention or full-run prefetch is forbidden.
 
 #### Scenario: Fixed-clock repeated request is fresh
-- **WHEN** an identical query occurs 599 seconds after completed validation
+- **WHEN** an identical query occurs 599 seconds after the successful final-byte receipt
 - **THEN** the same native result is returned with no provider or decode work
 
 #### Scenario: Exact expiry or failed revalidation
@@ -59,3 +59,8 @@ The proposed cache SHALL key resolution by identity, selected timestamp and coor
 #### Scenario: Concurrent identical misses
 - **WHEN** two requests miss the same canonical query together
 - **THEN** one bounded acquisition runs and both responses preserve its provenance
+
+#### Scenario: Decode elapsed does not renew freshness
+- **WHEN** the final required body completes at fixed time T and decoding/validation completes at T+120 seconds
+- **THEN** the result is already 120 seconds old at completion and expires at T+600 seconds
+- **AND** a request at T+600 seconds requires revalidation despite only 480 seconds having elapsed since decode completion
