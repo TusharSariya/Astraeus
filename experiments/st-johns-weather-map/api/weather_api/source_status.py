@@ -35,12 +35,11 @@ def latest_configuration(source_id: str) -> SourceConfiguration | None:
         return entry[1]
 
 
-def observed_read(method):
-    """Record only fixed safe reasons; propagate source-local failures unchanged."""
-    @wraps(method)
-    def call(self, *args, **kwargs):
+def observe_call(source_id, callback):
+    """Observe an existing source call without sharing its acquisition policy."""
+    def call():
         try:
-            value = method(self, *args, **kwargs)
+            value = callback()
         except Exception as error:
             from .native_runs import RunUnavailable
             state, reason = "acquisition_failed", "The most recent bounded source read failed; current coverage is not established"
@@ -56,8 +55,16 @@ def observed_read(method):
                 cause = cause.__cause__
                 if cause is None:
                     break
-            _record(self.source_id, state, reason)
+            _record(source_id, state, reason)
             raise
-        _record(self.source_id, "ready", "The most recent bounded source read completed; actual field and time coverage are reported separately")
+        _record(source_id, "ready", "The most recent bounded source read completed; actual field and time coverage are reported separately")
         return value
+    return call()
+
+
+def observed_read(method):
+    """Record only fixed safe reasons; propagate source-local failures unchanged."""
+    @wraps(method)
+    def call(self, *args, **kwargs):
+        return observe_call(self.source_id, lambda: method(self, *args, **kwargs))
     return call

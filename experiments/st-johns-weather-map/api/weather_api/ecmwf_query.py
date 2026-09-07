@@ -1,8 +1,4 @@
-"""Unregistered bounded ECMWF deterministic demand experiment for #270.
-
-No registry, scheduler or public route imports this module. Runtime exposure
-requires the verified-demand exception in the ECMWF source contract.
-"""
+"""Bounded experimental deterministic demand; scheduled admission is unchanged."""
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -376,4 +372,25 @@ class ECMWFQueryCoordinator:
         class Samples:
             skipped, unmodelled = sampler.skipped, sampler.unmodelled
             def sample_point(self, *args, **kwargs): return samples
-        return live_point_fields(Samples(), latitude, longitude, entry.valid_time)
+        from .source_contract import SourceAcquisition
+        fields, consensus, sources = live_point_fields(Samples(), latitude, longitude, entry.valid_time)
+        receipt = SourceAcquisition(source_id=self.source_id, product_id=PRODUCTS[self.source_id][0],
+            provider_run_id=entry.provenance["provider_run_id"], run_time=entry.run_time,
+            valid_time=entry.valid_time, retrieval_time=entry.fetched_at, expires_at=entry.expires_at,
+            normalized_sha256=entry.content_digest, transport_receipts=entry.provenance["transport_receipts"])
+        for field in fields:
+            field.storage = "available-not-stored"
+            field.provenance.source_display_primary = False
+            field.provenance.source_acquisition = receipt
+        return fields, consensus, sources
+
+
+_coordinators: dict[str, ECMWFQueryCoordinator] = {}
+_coordinators_lock = threading.Lock()
+
+
+def ecmwf_query_coordinator(source_id: str) -> ECMWFQueryCoordinator:
+    with _coordinators_lock:
+        if source_id not in _coordinators:
+            _coordinators[source_id] = ECMWFQueryCoordinator(source_id)
+        return _coordinators[source_id]

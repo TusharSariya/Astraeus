@@ -5,7 +5,7 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from pydantic import BaseModel, ConfigDict
 
 from weather_api.holyrood_presentation import image_metadata, retained_image
@@ -72,6 +72,7 @@ def holyrood_service() -> HolyroodQueryService:
 
 @router.get(PREFIX, response_model=HolyroodImagesResponse)
 def get_holyrood_images(
+    request: Request,
     response: Response,
     valid_time: Annotated[datetime, Query(description="Exact paired native filename UTC time; no nearest/latest substitution")],
     refresh: bool = False,
@@ -85,7 +86,7 @@ def get_holyrood_images(
         raise HTTPException(503, "CASHR selected paired image evidence unavailable", headers={"Cache-Control": "no-store"}) from None
     metadata = image_metadata(evidence)
     for image in metadata["images"]:
-        image["image_url"] = f'{PREFIX}/{metadata["pair_revision"]}/{image["phase"]}.gif'
+        image["image_url"] = request.url_for("get_holyrood_image", revision=metadata["pair_revision"], phase=image["phase"]).path
     response.headers["Cache-Control"] = "no-store"
     return HolyroodImagesResponse.model_validate(metadata)
 

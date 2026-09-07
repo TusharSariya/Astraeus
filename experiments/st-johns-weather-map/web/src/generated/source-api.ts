@@ -85,6 +85,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Holyrood Images */
+        get: operations["get_holyrood_images_api_experiments_weather_v0_sources_eccc_holyrood_cashr_dpqpe_images_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images/{revision}/{phase}.gif": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Holyrood Image */
+        get: operations["get_holyrood_image_api_experiments_weather_v0_sources_eccc_holyrood_cashr_dpqpe_images__revision___phase__gif_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/experiments/weather/v0/sources/status": {
         parameters: {
             query?: never;
@@ -572,6 +606,148 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HolyroodImageMetadata */
+        HolyroodImageMetadata: {
+            /**
+             * Frames
+             * @constant
+             */
+            frames: 1;
+            /** Height */
+            height: number;
+            /** Image Url */
+            image_url: string;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "Rain" | "Snow";
+            receipt: components["schemas"]["HolyroodReceipt"];
+            /** Source Filename */
+            source_filename: string;
+            /** Width */
+            width: number;
+        };
+        /** HolyroodImagesResponse */
+        HolyroodImagesResponse: {
+            /**
+             * Cache Status
+             * @enum {string}
+             */
+            cache_status: "hit" | "miss" | "refresh";
+            /** Images */
+            images: [
+                components["schemas"]["HolyroodImageMetadata"],
+                components["schemas"]["HolyroodImageMetadata"]
+            ];
+            listing_receipt: components["schemas"]["HolyroodReceipt"];
+            /**
+             * Operational
+             * @constant
+             */
+            operational: false;
+            /** Pair Revision */
+            pair_revision: string;
+            presentation: components["schemas"]["HolyroodPresentation"];
+            /**
+             * Primary
+             * @default false
+             * @constant
+             */
+            primary: false;
+            /**
+             * Producer
+             * @constant
+             */
+            producer: "Environment and Climate Change Canada";
+            /** Product */
+            product: string;
+            /**
+             * Retained Until
+             * Format: date-time
+             */
+            retained_until: string;
+            /**
+             * Scientific Freshness
+             * @default unknown
+             * @constant
+             */
+            scientific_freshness: "unknown";
+            /**
+             * Semantics
+             * @constant
+             */
+            semantics: "rendered-image-only";
+            /**
+             * Source Id
+             * @constant
+             */
+            source_id: "eccc-holyrood-cashr-dpqpe";
+            /**
+             * Source Quality
+             * @constant
+             */
+            source_quality: "unknown";
+            /**
+             * Station Id
+             * @constant
+             */
+            station_id: "CASHR";
+            /**
+             * Valid Time
+             * Format: date-time
+             */
+            valid_time: string;
+        };
+        /** HolyroodPresentation */
+        HolyroodPresentation: {
+            /**
+             * Encoding
+             * @constant
+             */
+            encoding: "image/gif";
+            /**
+             * Georeferencing
+             * @constant
+             */
+            georeferencing: "not-established";
+            /**
+             * Legend
+             * @constant
+             */
+            legend: "preserved-in-producer-image";
+            /** Native Crs */
+            native_crs: null;
+            /**
+             * Numeric Pixel Values
+             * @constant
+             */
+            numeric_pixel_values: "unavailable";
+            /**
+             * Transformation
+             * @constant
+             */
+            transformation: "unmodified-producer-image";
+        };
+        /** HolyroodReceipt */
+        HolyroodReceipt: {
+            /** Body Bytes */
+            body_bytes: number;
+            /**
+             * Completed At
+             * Format: date-time
+             */
+            completed_at: string;
+            /** Headers */
+            headers: [
+                string,
+                string
+            ][];
+            /** Sha256 */
+            sha256: string;
+            /** Url */
+            url: string;
+        };
         /**
          * NativeReportIdentity
          * @description Bounded identity for one provider report behind a demand value.
@@ -793,6 +969,7 @@ export interface components {
             sampled_latitude?: number | null;
             /** Sampled Longitude */
             sampled_longitude?: number | null;
+            source_acquisition?: components["schemas"]["SourceAcquisition"] | null;
             /** Source Display Primary */
             source_display_primary?: boolean | null;
             /** Source Id */
@@ -1168,6 +1345,39 @@ export interface components {
             selected_at: string;
         };
         /**
+         * SourceAcquisition
+         * @description Bounded native demand receipt, independent of storage or source admission.
+         */
+        SourceAcquisition: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Normalized Sha256 */
+            normalized_sha256: string;
+            /** Product Id */
+            product_id: string;
+            /** Provider Run Id */
+            provider_run_id?: string | null;
+            /**
+             * Retrieval Time
+             * Format: date-time
+             */
+            retrieval_time: string;
+            /** Run Time */
+            run_time: string | null;
+            /** Source Id */
+            source_id: string;
+            /** Transport Receipts */
+            transport_receipts: components["schemas"]["SourceTransferReceipt"][];
+            /**
+             * Valid Time
+             * Format: date-time
+             */
+            valid_time: string;
+        };
+        /**
          * SourceCapability
          * @description Implemented read path. Its declaration does not assert available data.
          */
@@ -1309,6 +1519,8 @@ export interface components {
             live_smoke_status: "not_run" | "passing" | "failing" | "credential_required" | "planned" | "blocked" | "not_applicable";
             /** May Enter Consensus */
             may_enter_consensus: boolean;
+            /** Native Image Endpoint */
+            native_image_endpoint?: string | null;
             /** Producer */
             producer: string;
             /** Product */
@@ -1364,6 +1576,32 @@ export interface components {
             operational: false;
             /** Statuses */
             statuses: components["schemas"]["SourceStatus"][];
+        };
+        /** SourceTransferReceipt */
+        SourceTransferReceipt: {
+            /** Byte Size */
+            byte_size: number;
+            /**
+             * Completed At
+             * Format: date-time
+             */
+            completed_at: string;
+            /** Effective Url */
+            effective_url: string;
+            /** Http Status */
+            http_status: number;
+            /** Request Headers */
+            request_headers: {
+                [key: string]: string;
+            };
+            /** Response Headers */
+            response_headers: {
+                [key: string]: string;
+            };
+            /** Sha256 */
+            sha256: string;
+            /** Url */
+            url: string;
         };
         /** SourceVariant */
         SourceVariant: {
@@ -1521,6 +1759,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChangeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_holyrood_images_api_experiments_weather_v0_sources_eccc_holyrood_cashr_dpqpe_images_get: {
+        parameters: {
+            query: {
+                /** @description Exact paired native filename UTC time; no nearest/latest substitution */
+                valid_time: string;
+                refresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolyroodImagesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_holyrood_image_api_experiments_weather_v0_sources_eccc_holyrood_cashr_dpqpe_images__revision___phase__gif_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revision: string;
+                phase: "Rain" | "Snow";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/gif": string;
                 };
             };
             /** @description Validation Error */

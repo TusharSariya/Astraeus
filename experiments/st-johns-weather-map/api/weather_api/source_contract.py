@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 
 class ContractModel(BaseModel):
@@ -80,3 +80,33 @@ class SourceReadingIdentity(ContractModel):
     sampled_latitude: float | None = None
     sampled_longitude: float | None = None
     artifact_revision: str | None = None
+
+
+class SourceTransferReceipt(ContractModel):
+    url: str = Field(max_length=2048)
+    effective_url: str = Field(max_length=2048)
+    http_status: int = Field(ge=100, le=599)
+    request_headers: dict[str, str] = Field(max_length=16)
+    response_headers: dict[str, str] = Field(max_length=16)
+    byte_size: int = Field(ge=0)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    completed_at: AwareDatetime
+
+
+class SourceAcquisition(ContractModel):
+    """Bounded native demand receipt, independent of storage or source admission."""
+    source_id: str = Field(max_length=128)
+    product_id: str = Field(max_length=128)
+    provider_run_id: str | None = Field(default=None, max_length=128)
+    run_time: AwareDatetime | None
+    valid_time: AwareDatetime
+    retrieval_time: AwareDatetime
+    expires_at: AwareDatetime
+    normalized_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    transport_receipts: tuple[SourceTransferReceipt, ...] = Field(max_length=12)
+
+    @model_validator(mode="after")
+    def bounded_receipt(self):
+        if self.expires_at <= self.retrieval_time or len(self.model_dump_json().encode()) > 65536:
+            raise ValueError("invalid or oversized native acquisition receipt")
+        return self

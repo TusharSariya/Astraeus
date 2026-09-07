@@ -2445,6 +2445,24 @@ def registry() -> dict[str, Any]:
         ),
     ])
 
+    s.append(_source(
+        "eccc-holyrood-cashr-dpqpe", "radar", "catalogued",
+        "Experimental exact-time original Rain/Snow GIF delivery is implemented; numerical radar fields, georeferencing and scientific freshness remain unavailable.",
+        "Environment and Climate Change Canada", "Holyrood CASHR native DPQPE rendered imagery",
+        ["https://eccc-msc.github.io/open-data/msc-data/obs_radar/readme_radar_en/"],
+        ["https://dd.weather.gc.ca/today/radar/DPQPE/GIF/CASHR/"],
+        ("raw_protocol", "Bounded native paired GIF acquisition and exact-revision byte delivery"),
+        ["Rain GIF", "Snow GIF"], ["rendered image; no numerical level"],
+        "Original producer image extent; georeferencing is not established", "unknown", "native filename time only",
+        (False, "Anonymous HTTPS", None),
+        {**ECCC_POLICY, "caching": "One paired revision retained for 60 seconds without extending its expiry",
+         "archival": "No persistent archive or native radar volume is supplied"},
+        "CASHR DPQPE original GIF and filename identity", "unknown scientific freshness",
+        "Original rendered observation images with producer legend; no numerical interpretation",
+        (False, None, "Rendered image evidence is not a consensus input"), "passing", "planned",
+        delivery_kind="published_cell", display_primary=False,
+    ))
+
     # The ensemble family declaration is attached here rather than threaded
     # through every constructor call, so the six blocks stay readable side by
     # side in one table above and no record can acquire one by inheriting a

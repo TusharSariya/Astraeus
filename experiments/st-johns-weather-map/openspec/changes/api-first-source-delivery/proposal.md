@@ -24,6 +24,17 @@ isolated-only delivery restriction for this bounded point path. It does not
 register background ingestion, assign a producer run, promote display-primary
 admission or admit other composition fields.
 
+The source-delivery plan also authorizes deterministic IFS/AIFS Single point
+delivery and original Holyrood paired-image delivery within this experiment.
+This supersedes older delivery-only restrictions on those exact paths, without
+approving the separate ensemble control-map proposal, changing the scheduled
+ECMWF adapter refusal, georeferencing radar images or inferring radar freshness.
+ECMWF preserves its verified four native quantities, actual run/step and native
+unit differences. Its point values explicitly remain non-primary demand reads.
+Holyrood serves exact-time metadata and exact retained-revision GIF bytes, with
+unknown scientific freshness and quality. SWOB and GEFS gain point capabilities
+over their existing native contracts; neither gains synthetic Series coverage.
+
 The source-specific lightning WMS point vocabulary has a separately recorded
 contract conflict and is held for the explicit owner answer. This authorization
 does not invent sampling rules, settle WeatherNext redistribution terms, deploy

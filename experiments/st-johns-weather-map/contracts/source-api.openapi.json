@@ -1101,6 +1101,258 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HolyroodImageMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "frames": {
+            "const": 1,
+            "title": "Frames",
+            "type": "integer"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "phase": {
+            "enum": [
+              "Rain",
+              "Snow"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/HolyroodReceipt"
+          },
+          "source_filename": {
+            "title": "Source Filename",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "phase",
+          "source_filename",
+          "width",
+          "height",
+          "frames",
+          "receipt",
+          "image_url"
+        ],
+        "title": "HolyroodImageMetadata",
+        "type": "object"
+      },
+      "HolyroodImagesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "cache_status": {
+            "enum": [
+              "hit",
+              "miss",
+              "refresh"
+            ],
+            "title": "Cache Status",
+            "type": "string"
+          },
+          "images": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "$ref": "#/components/schemas/HolyroodImageMetadata"
+              },
+              {
+                "$ref": "#/components/schemas/HolyroodImageMetadata"
+              }
+            ],
+            "title": "Images",
+            "type": "array"
+          },
+          "listing_receipt": {
+            "$ref": "#/components/schemas/HolyroodReceipt"
+          },
+          "operational": {
+            "const": false,
+            "title": "Operational",
+            "type": "boolean"
+          },
+          "pair_revision": {
+            "title": "Pair Revision",
+            "type": "string"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/HolyroodPresentation"
+          },
+          "primary": {
+            "const": false,
+            "default": false,
+            "title": "Primary",
+            "type": "boolean"
+          },
+          "producer": {
+            "const": "Environment and Climate Change Canada",
+            "title": "Producer",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "retained_until": {
+            "format": "date-time",
+            "title": "Retained Until",
+            "type": "string"
+          },
+          "scientific_freshness": {
+            "const": "unknown",
+            "default": "unknown",
+            "title": "Scientific Freshness",
+            "type": "string"
+          },
+          "semantics": {
+            "const": "rendered-image-only",
+            "title": "Semantics",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "eccc-holyrood-cashr-dpqpe",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_quality": {
+            "const": "unknown",
+            "title": "Source Quality",
+            "type": "string"
+          },
+          "station_id": {
+            "const": "CASHR",
+            "title": "Station Id",
+            "type": "string"
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "producer",
+          "station_id",
+          "product",
+          "pair_revision",
+          "valid_time",
+          "retained_until",
+          "cache_status",
+          "semantics",
+          "source_quality",
+          "operational",
+          "presentation",
+          "listing_receipt",
+          "images"
+        ],
+        "title": "HolyroodImagesResponse",
+        "type": "object"
+      },
+      "HolyroodPresentation": {
+        "additionalProperties": false,
+        "properties": {
+          "encoding": {
+            "const": "image/gif",
+            "title": "Encoding",
+            "type": "string"
+          },
+          "georeferencing": {
+            "const": "not-established",
+            "title": "Georeferencing",
+            "type": "string"
+          },
+          "legend": {
+            "const": "preserved-in-producer-image",
+            "title": "Legend",
+            "type": "string"
+          },
+          "native_crs": {
+            "title": "Native Crs",
+            "type": "null"
+          },
+          "numeric_pixel_values": {
+            "const": "unavailable",
+            "title": "Numeric Pixel Values",
+            "type": "string"
+          },
+          "transformation": {
+            "const": "unmodified-producer-image",
+            "title": "Transformation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "encoding",
+          "transformation",
+          "legend",
+          "native_crs",
+          "georeferencing",
+          "numeric_pixel_values"
+        ],
+        "title": "HolyroodPresentation",
+        "type": "object"
+      },
+      "HolyroodReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "body_bytes": {
+            "title": "Body Bytes",
+            "type": "integer"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "title": "Completed At",
+            "type": "string"
+          },
+          "headers": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Headers",
+            "type": "array"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "body_bytes",
+          "sha256",
+          "completed_at",
+          "headers"
+        ],
+        "title": "HolyroodReceipt",
+        "type": "object"
+      },
       "NativeReportIdentity": {
         "additionalProperties": false,
         "description": "Bounded identity for one provider report behind a demand value.",
@@ -1794,6 +2046,16 @@
               }
             ],
             "title": "Sampled Longitude"
+          },
+          "source_acquisition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceAcquisition"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "source_display_primary": {
             "anyOf": [
@@ -2816,6 +3078,86 @@
         "title": "Snapshot",
         "type": "object"
       },
+      "SourceAcquisition": {
+        "additionalProperties": false,
+        "description": "Bounded native demand receipt, independent of storage or source admission.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "normalized_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Normalized Sha256",
+            "type": "string"
+          },
+          "product_id": {
+            "maxLength": 128,
+            "title": "Product Id",
+            "type": "string"
+          },
+          "provider_run_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Run Id"
+          },
+          "retrieval_time": {
+            "format": "date-time",
+            "title": "Retrieval Time",
+            "type": "string"
+          },
+          "run_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Time"
+          },
+          "source_id": {
+            "maxLength": 128,
+            "title": "Source Id",
+            "type": "string"
+          },
+          "transport_receipts": {
+            "items": {
+              "$ref": "#/components/schemas/SourceTransferReceipt"
+            },
+            "maxItems": 12,
+            "title": "Transport Receipts",
+            "type": "array"
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "product_id",
+          "run_time",
+          "valid_time",
+          "retrieval_time",
+          "expires_at",
+          "normalized_sha256",
+          "transport_receipts"
+        ],
+        "title": "SourceAcquisition",
+        "type": "object"
+      },
       "SourceCapability": {
         "additionalProperties": false,
         "description": "Implemented read path. Its declaration does not assert available data.",
@@ -3148,6 +3490,17 @@
             "title": "May Enter Consensus",
             "type": "boolean"
           },
+          "native_image_endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Image Endpoint"
+          },
           "producer": {
             "title": "Producer",
             "type": "string"
@@ -3312,6 +3665,70 @@
           "statuses"
         ],
         "title": "SourceStatusResponse",
+        "type": "object"
+      },
+      "SourceTransferReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "byte_size": {
+            "minimum": 0.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "title": "Completed At",
+            "type": "string"
+          },
+          "effective_url": {
+            "maxLength": 2048,
+            "title": "Effective Url",
+            "type": "string"
+          },
+          "http_status": {
+            "maximum": 599.0,
+            "minimum": 100.0,
+            "title": "Http Status",
+            "type": "integer"
+          },
+          "request_headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "title": "Request Headers",
+            "type": "object"
+          },
+          "response_headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "title": "Response Headers",
+            "type": "object"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2048,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "effective_url",
+          "http_status",
+          "request_headers",
+          "response_headers",
+          "byte_size",
+          "sha256",
+          "completed_at"
+        ],
+        "title": "SourceTransferReceipt",
         "type": "object"
       },
       "SourceVariant": {
@@ -3744,6 +4161,118 @@
           }
         },
         "summary": "Check Series Changes"
+      }
+    },
+    "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images": {
+      "get": {
+        "operationId": "get_holyrood_images_api_experiments_weather_v0_sources_eccc_holyrood_cashr_dpqpe_images_get",
+        "parameters": [
+          {
+            "description": "Exact paired native filename UTC time; no nearest/latest substitution",
+            "in": "query",
+            "name": "valid_time",
+            "required": true,
+            "schema": {
+              "description": "Exact paired native filename UTC time; no nearest/latest substitution",
+              "format": "date-time",
+              "title": "Valid Time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Refresh",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolyroodImagesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Holyrood Images",
+        "tags": [
+          "experimental-native-images"
+        ]
+      }
+    },
+    "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images/{revision}/{phase}.gif": {
+      "get": {
+        "operationId": "get_holyrood_image_api_experiments_weather_v0_sources_eccc_holyrood_cashr_dpqpe_images__revision___phase__gif_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Revision",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "phase",
+            "required": true,
+            "schema": {
+              "enum": [
+                "Rain",
+                "Snow"
+              ],
+              "title": "Phase",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/gif": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Holyrood Image",
+        "tags": [
+          "experimental-native-images"
+        ]
       }
     },
     "/api/experiments/weather/v0/sources/status": {

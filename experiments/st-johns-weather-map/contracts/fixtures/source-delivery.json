@@ -516,6 +516,7 @@
         "licence": "MSC Open Data licence",
         "live_smoke_status": "planned",
         "may_enter_consensus": true,
+        "native_image_endpoint": null,
         "producer": "Environment and Climate Change Canada",
         "product": "HRDPS raw",
         "redistribution": "Redistribution permitted subject to the MSC Open Data licence, attribution and no-warranty terms.",
@@ -961,6 +962,7 @@
         "licence": "MSC Open Data licence",
         "live_smoke_status": "planned",
         "may_enter_consensus": true,
+        "native_image_endpoint": null,
         "producer": "Environment and Climate Change Canada",
         "product": "RDPS",
         "redistribution": "Redistribution permitted subject to the MSC Open Data licence, attribution and no-warranty terms.",
@@ -1341,6 +1343,7 @@
         "licence": "MSC Open Data licence",
         "live_smoke_status": "planned",
         "may_enter_consensus": true,
+        "native_image_endpoint": null,
         "producer": "Environment and Climate Change Canada",
         "product": "GDPS",
         "redistribution": "Redistribution permitted subject to the MSC Open Data licence, attribution and no-warranty terms.",
@@ -1349,6 +1352,239 @@
         "schema_version": "Official product definition as documented by ECCC; pin discovered GRIB2/NetCDF templates before activation",
         "state": "implemented-unverified",
         "status_reason": "Official product is catalogued; ingestion and fixture/live tests are not implemented yet. The atmospheric forecast uses the dated 15 km LatLon0.15 tree; the separate 10 km tree carries sea-ice analysis NetCDF and is not a forecast fallback."
+      },
+      {
+        "access_endpoint": "https://api.weather.gc.ca/collections/swob-realtime/items",
+        "archival": "Immutable downloaded artifact plus seven days of run/status metadata; no claim of a permanent provider archive.",
+        "attribution": "Credit Environment and Climate Change Canada; preserve producer, product, run/valid time and supplied notices.",
+        "authentication": "Anonymous HTTPS",
+        "caching": "Cache only within the 25 GiB experiment cap; retain the latest and previous complete model run or at least three observation hours.",
+        "cadence": "exact native report instant; station-dependent",
+        "capabilities": [
+          {
+            "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "SWOB",
+            "product_id": "swob-observations",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-swob",
+            "time_semantics": "Exact native station report time; no synthetic cadence or archive inventory",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "field": "dew_point_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "SWOB",
+            "product_id": "swob-observations",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-swob",
+            "time_semantics": "Exact native station report time; no synthetic cadence or archive inventory",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "field": "relative_humidity_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "SWOB",
+            "product_id": "swob-observations",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-swob",
+            "time_semantics": "Exact native station report time; no synthetic cadence or archive inventory",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "field": "mean_sea_level_pressure",
+            "levels": [
+              "mean sea level"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "SWOB",
+            "product_id": "swob-observations",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-swob",
+            "time_semantics": "Exact native station report time; no synthetic cadence or archive inventory",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "field": "wind_speed_10m",
+            "levels": [
+              "10 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "SWOB",
+            "product_id": "swob-observations",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-swob",
+            "time_semantics": "Exact native station report time; no synthetic cadence or archive inventory",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "field": "wind_direction_10m",
+            "levels": [
+              "10 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "SWOB",
+            "product_id": "swob-observations",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-swob",
+            "time_semantics": "Exact native station report time; no synthetic cadence or archive inventory",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "surface_observation",
+        "delivery_kind": "published_cell",
+        "display_primary": true,
+        "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/readme_en/",
+        "exact_variables": [
+          "air_temp",
+          "dwpt_temp",
+          "rel_hum",
+          "mslp",
+          "wnd_spd",
+          "wnd_dir",
+          "field_quality_tokens"
+        ],
+        "fields": [
+          {
+            "family": "temperature",
+            "key": "temperature_2m",
+            "note": "Exact-time MSC SWOB station observation from the bounded GeoMet demand query.",
+            "storage": "available-not-stored",
+            "upstream": "air_temp"
+          },
+          {
+            "family": "humidity",
+            "key": "dew_point_2m",
+            "note": "Exact-time MSC SWOB station observation; absent or failed-QC values remain null.",
+            "storage": "available-not-stored",
+            "upstream": "dwpt_temp"
+          },
+          {
+            "family": "humidity",
+            "key": "relative_humidity_2m",
+            "note": "Native relative-humidity value only; no humidity derivation or cross-fill.",
+            "storage": "available-not-stored",
+            "upstream": "rel_hum"
+          },
+          {
+            "family": "pressure",
+            "key": "mean_sea_level_pressure",
+            "note": "Native mean-sea-level pressure from the selected station report.",
+            "storage": "available-not-stored",
+            "upstream": "mslp"
+          },
+          {
+            "family": "wind",
+            "key": "wind_speed_10m",
+            "note": "Native station wind speed, retained separately from wind direction.",
+            "storage": "available-not-stored",
+            "upstream": "wnd_spd"
+          },
+          {
+            "family": "wind",
+            "key": "wind_direction_10m",
+            "note": "Native station wind direction; no u/v reconstruction or direction conversion.",
+            "storage": "available-not-stored",
+            "upstream": "wnd_dir"
+          }
+        ],
+        "fixture_status": "passing",
+        "forecast_horizon": "observations only",
+        "freshness_threshold_seconds": 43200,
+        "geographic_coverage": "Nearest published MSC station within the accepted 0.75 latitude-corrected-degree ceiling",
+        "id": "eccc-swob",
+        "integration": "typed_adapter: bounded httpx GeoJSON demand query with isolated decoder",
+        "intermediary": null,
+        "levels": [
+          "station surface"
+        ],
+        "licence": "MSC Open Data licence",
+        "live_smoke_status": "planned",
+        "may_enter_consensus": false,
+        "native_image_endpoint": null,
+        "producer": "Environment and Climate Change Canada",
+        "product": "MSC SWOB real-time surface observations via GeoMet OGC API Features",
+        "redistribution": "Redistribution permitted subject to the MSC Open Data licence, attribution and no-warranty terms.",
+        "role": "Official MSC station observation evidence; not a forecast consensus input",
+        "schedulable": true,
+        "schema_version": "GeoMet OGC API Features `swob-realtime` response schema",
+        "state": "implemented-unverified",
+        "status_reason": "Canonical GeoMet OGC API Features `swob-realtime` is queried at the exact selected report instant; only MSC surface-weather datasets are admitted by native response identity."
       },
       {
         "access_endpoint": "https://api.weather.gc.ca/collections/aqhi-observations-realtime/items",
@@ -1416,6 +1652,7 @@
         "licence": "MSC Open Data licence",
         "live_smoke_status": "planned",
         "may_enter_consensus": false,
+        "native_image_endpoint": null,
         "producer": "Environment and Climate Change Canada",
         "product": "Air Quality Health Index observations and forecasts",
         "redistribution": "Redistribution permitted subject to the MSC Open Data licence, attribution and no-warranty terms.",
@@ -1424,6 +1661,450 @@
         "schema_version": "live OGC collection schema",
         "state": "implemented-unverified",
         "status_reason": "Official real-time observations and forecasts are exposed by GeoMet; adapter remains."
+      },
+      {
+        "access_endpoint": "https://data.ecmwf.int/forecasts/",
+        "archival": "Immutable local artifacts for latest/previous complete run; ECMWF open portal is not a permanent archive.",
+        "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+        "authentication": "Anonymous open-data HTTPS/S3",
+        "caching": "Open-data portal retains a rolling set; cache only bounded POC subsets.",
+        "cadence": "00/06/12/18 UTC",
+        "capabilities": [
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "IFS",
+            "product_id": "ifs",
+            "run_selection": "latest",
+            "source_id": "ecmwf-ifs",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "dew_point_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "IFS",
+            "product_id": "ifs",
+            "run_selection": "latest",
+            "source_id": "ecmwf-ifs",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "relative_humidity_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "IFS",
+            "product_id": "ifs",
+            "run_selection": "latest",
+            "source_id": "ecmwf-ifs",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "mean_sea_level_pressure",
+            "levels": [
+              "mean sea level"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "IFS",
+            "product_id": "ifs",
+            "run_selection": "latest",
+            "source_id": "ecmwf-ifs",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "total_cloud_geometric",
+            "levels": [
+              "entire atmosphere (column)"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "IFS",
+            "product_id": "ifs",
+            "run_selection": "latest",
+            "source_id": "ecmwf-ifs",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "deterministic_forecast",
+        "delivery_kind": "published_cell",
+        "display_primary": true,
+        "documentation_url": "https://www.ecmwf.int/en/forecasts/datasets/open-data",
+        "exact_variables": [
+          "2m_temperature",
+          "2m_dewpoint",
+          "10m_wind",
+          "mean_sea_level_pressure",
+          "total_precipitation",
+          "total_column_water_vapour",
+          "relative_humidity",
+          "specific_humidity",
+          "geopotential",
+          "temperature",
+          "wind",
+          "vertical_velocity",
+          "cloud",
+          "wave_fields_when_published",
+          "probability_products_when_published"
+        ],
+        "fields": [
+          {
+            "family": "cloud_cover",
+            "key": "total_cloud_geometric",
+            "note": "Instantaneous, product definition template 4.1. Geometric, as GFS.",
+            "storage": "stored",
+            "upstream": "tcc"
+          },
+          {
+            "family": "temperature",
+            "key": "temperature_2m",
+            "note": "Verified in the .index.",
+            "storage": "stored",
+            "upstream": "2t"
+          },
+          {
+            "family": "humidity",
+            "key": "dew_point_2m",
+            "note": "Verified in the .index.",
+            "storage": "stored",
+            "upstream": "2d"
+          },
+          {
+            "family": "wind",
+            "key": "wind_u_10m",
+            "note": "Verified in the .index.",
+            "storage": "stored",
+            "upstream": "10u"
+          },
+          {
+            "family": "wind",
+            "key": "wind_v_10m",
+            "note": "Verified in the .index.",
+            "storage": "stored",
+            "upstream": "10v"
+          },
+          {
+            "family": "pressure",
+            "key": "mean_sea_level_pressure",
+            "note": "Verified in the .index.",
+            "storage": "stored",
+            "upstream": "msl"
+          },
+          {
+            "family": "precipitation",
+            "key": "precipitation_accumulation",
+            "note": "Verified in the .index.",
+            "storage": "stored",
+            "upstream": "tp"
+          },
+          {
+            "family": "cloud_cover",
+            "key": "cloud_low",
+            "note": "One of the 48 published parameters outside the fetched set; there is no server-side subsetting, so a record costs its whole file.",
+            "storage": "available-not-stored",
+            "upstream": "lcc"
+          },
+          {
+            "family": "cloud_cover",
+            "key": "cloud_middle",
+            "note": "As lcc.",
+            "storage": "available-not-stored",
+            "upstream": "mcc"
+          },
+          {
+            "family": "cloud_cover",
+            "key": "cloud_high",
+            "note": "As lcc.",
+            "storage": "available-not-stored",
+            "upstream": "hcc"
+          },
+          {
+            "family": "pressure",
+            "key": "geopotential_height_pressure",
+            "note": "Published on the pl levels and not fetched.",
+            "storage": "available-not-stored",
+            "upstream": "gh"
+          }
+        ],
+        "fixture_status": "passing",
+        "forecast_horizon": "up to 15 days; POC uses +24 h",
+        "freshness_threshold_seconds": 43200,
+        "geographic_coverage": "Global",
+        "id": "ecmwf-ifs",
+        "integration": "official_sdk: ecmwf-opendata model=ifs plus earthkit/ecCodes",
+        "intermediary": null,
+        "levels": [
+          "surface",
+          "2 m",
+          "10 m",
+          "isobaric including 1000-300 hPa and published upper levels",
+          "column",
+          "deterministic"
+        ],
+        "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+        "live_smoke_status": "planned",
+        "may_enter_consensus": true,
+        "native_image_endpoint": null,
+        "producer": "European Centre for Medium-Range Weather Forecasts",
+        "product": "IFS Open Data",
+        "redistribution": "Permitted for the open-data subset under CC BY 4.0 with attribution and ECMWF terms.",
+        "role": "Independent-centre comparison",
+        "schedulable": true,
+        "schema_version": "IFS Cycle 50r1 / current AIFS open-data schema as advertised",
+        "state": "implemented-unverified",
+        "status_reason": "Current official open-data product is documented; client retrieval and fixture/live tests remain."
+      },
+      {
+        "access_endpoint": "https://data.ecmwf.int/forecasts/",
+        "archival": "Immutable local artifacts for latest/previous complete run; ECMWF open portal is not a permanent archive.",
+        "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+        "authentication": "Anonymous open-data HTTPS/S3",
+        "caching": "Open-data portal retains a rolling set; cache only bounded POC subsets.",
+        "cadence": "00/06/12/18 UTC",
+        "capabilities": [
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "AIFS Single",
+            "product_id": "aifs-single",
+            "run_selection": "latest",
+            "source_id": "ecmwf-aifs-single",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "dew_point_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "AIFS Single",
+            "product_id": "aifs-single",
+            "run_selection": "latest",
+            "source_id": "ecmwf-aifs-single",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "relative_humidity_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "AIFS Single",
+            "product_id": "aifs-single",
+            "run_selection": "latest",
+            "source_id": "ecmwf-aifs-single",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "mean_sea_level_pressure",
+            "levels": [
+              "mean sea level"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "AIFS Single",
+            "product_id": "aifs-single",
+            "run_selection": "latest",
+            "source_id": "ecmwf-aifs-single",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "total_cloud_geometric",
+            "levels": [
+              "entire atmosphere (column)"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "AIFS Single",
+            "product_id": "aifs-single",
+            "run_selection": "latest",
+            "source_id": "ecmwf-aifs-single",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "deterministic_forecast",
+        "delivery_kind": "published_cell",
+        "display_primary": true,
+        "documentation_url": "https://www.ecmwf.int/en/forecasts/datasets/open-data",
+        "exact_variables": [
+          "2m_temperature",
+          "2m_dewpoint",
+          "10m_wind",
+          "mean_sea_level_pressure",
+          "total_precipitation",
+          "total_column_water_vapour",
+          "relative_humidity",
+          "specific_humidity",
+          "geopotential",
+          "temperature",
+          "wind",
+          "vertical_velocity",
+          "cloud",
+          "wave_fields_when_published",
+          "probability_products_when_published"
+        ],
+        "fields": [
+          {
+            "family": "cloud_cover",
+            "key": "total_cloud_geometric",
+            "note": "Published and not fetched.",
+            "storage": "available-not-stored",
+            "upstream": "tcc"
+          }
+        ],
+        "fixture_status": "planned",
+        "forecast_horizon": "up to 15 days; POC uses +24 h",
+        "freshness_threshold_seconds": 43200,
+        "geographic_coverage": "Global",
+        "id": "ecmwf-aifs-single",
+        "integration": "official_sdk: ecmwf-opendata model=aifs-single plus earthkit/ecCodes",
+        "intermediary": null,
+        "levels": [
+          "surface",
+          "2 m",
+          "10 m",
+          "isobaric including 1000-300 hPa and published upper levels",
+          "column",
+          "deterministic"
+        ],
+        "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+        "live_smoke_status": "planned",
+        "may_enter_consensus": true,
+        "native_image_endpoint": null,
+        "producer": "European Centre for Medium-Range Weather Forecasts",
+        "product": "AIFS Single Open Data",
+        "redistribution": "Permitted for the open-data subset under CC BY 4.0 with attribution and ECMWF terms.",
+        "role": "Independent-centre comparison",
+        "schedulable": false,
+        "schema_version": "IFS Cycle 50r1 / current AIFS open-data schema as advertised",
+        "state": "catalogued",
+        "status_reason": "Current official open-data product is documented; client retrieval and fixture/live tests remain. Catalogued until a registered adapter claims the id; admission by the 2026-09-02 resolutions is a ceiling, not a fetch."
       },
       {
         "access_endpoint": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/",
@@ -1842,6 +2523,7 @@
         "licence": "United States government public data; product-specific terms still apply",
         "live_smoke_status": "planned",
         "may_enter_consensus": true,
+        "native_image_endpoint": null,
         "producer": "NOAA/NCEP",
         "product": "Global Forecast System",
         "redistribution": "May be redistributed, but NOAA attribution, disclaimers and any embedded third-party restrictions must remain.",
@@ -1850,6 +2532,2109 @@
         "schema_version": "current NCEP GFS GRIB2 production schema",
         "state": "implemented-unverified",
         "status_reason": "Official NOAA cloud/NOMADS data are public; Herbie path and GRIB inventory fixtures remain."
+      },
+      {
+        "access_endpoint": "https://noaa-gefs-pds.s3.amazonaws.com/",
+        "archival": "Retain immutable source artifacts locally only for the experiment retention window.",
+        "attribution": "Credit NOAA and the named NOAA product office; preserve native metadata and quality flags.",
+        "authentication": "Anonymous S3",
+        "caching": "Cache bounded Avalon/Grand Banks subsets within the experiment cap.",
+        "cadence": "00/06/12/18 UTC",
+        "capabilities": [
+          {
+            "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEFS",
+            "product_id": "pgrb2ap5",
+            "run_selection": "latest",
+            "source_id": "noaa-gefs",
+            "time_semantics": "Selected native lead only; total_cloud_mean_6h retains its provider-labelled averaging interval and is not instantaneous cloud",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gec00",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep01",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep02",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep03",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep04",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep05",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep06",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep07",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep08",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep09",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep10",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep11",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep12",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep13",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep14",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep15",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep16",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep17",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep18",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep19",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep20",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep21",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep22",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep23",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep24",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep25",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep26",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep27",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep28",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep29",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep30",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_spread",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "field": "dew_point_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEFS",
+            "product_id": "pgrb2ap5",
+            "run_selection": "latest",
+            "source_id": "noaa-gefs",
+            "time_semantics": "Selected native lead only; total_cloud_mean_6h retains its provider-labelled averaging interval and is not instantaneous cloud",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gec00",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep01",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep02",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep03",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep04",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep05",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep06",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep07",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep08",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep09",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep10",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep11",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep12",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep13",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep14",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep15",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep16",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep17",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep18",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep19",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep20",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep21",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep22",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep23",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep24",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep25",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep26",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep27",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep28",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep29",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep30",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_spread",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "field": "relative_humidity_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEFS",
+            "product_id": "pgrb2ap5",
+            "run_selection": "latest",
+            "source_id": "noaa-gefs",
+            "time_semantics": "Selected native lead only; total_cloud_mean_6h retains its provider-labelled averaging interval and is not instantaneous cloud",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gec00",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep01",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep02",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep03",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep04",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep05",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep06",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep07",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep08",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep09",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep10",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep11",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep12",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep13",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep14",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep15",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep16",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep17",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep18",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep19",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep20",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep21",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep22",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep23",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep24",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep25",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep26",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep27",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep28",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep29",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep30",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_spread",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "field": "wind_u_10m",
+            "levels": [
+              "10 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEFS",
+            "product_id": "pgrb2ap5",
+            "run_selection": "latest",
+            "source_id": "noaa-gefs",
+            "time_semantics": "Selected native lead only; total_cloud_mean_6h retains its provider-labelled averaging interval and is not instantaneous cloud",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gec00",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep01",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep02",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep03",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep04",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep05",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep06",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep07",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep08",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep09",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep10",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep11",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep12",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep13",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep14",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep15",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep16",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep17",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep18",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep19",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep20",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep21",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep22",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep23",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep24",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep25",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep26",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep27",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep28",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep29",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep30",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_spread",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "field": "wind_v_10m",
+            "levels": [
+              "10 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEFS",
+            "product_id": "pgrb2ap5",
+            "run_selection": "latest",
+            "source_id": "noaa-gefs",
+            "time_semantics": "Selected native lead only; total_cloud_mean_6h retains its provider-labelled averaging interval and is not instantaneous cloud",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gec00",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep01",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep02",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep03",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep04",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep05",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep06",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep07",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep08",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep09",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep10",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep11",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep12",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep13",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep14",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep15",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep16",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep17",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep18",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep19",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep20",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep21",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep22",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep23",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep24",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep25",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep26",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep27",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep28",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep29",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep30",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_spread",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "field": "mean_sea_level_pressure",
+            "levels": [
+              "mean sea level"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEFS",
+            "product_id": "pgrb2ap5",
+            "run_selection": "latest",
+            "source_id": "noaa-gefs",
+            "time_semantics": "Selected native lead only; total_cloud_mean_6h retains its provider-labelled averaging interval and is not instantaneous cloud",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gec00",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep01",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep02",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep03",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep04",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep05",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep06",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep07",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep08",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep09",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep10",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep11",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep12",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep13",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep14",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep15",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep16",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep17",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep18",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep19",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep20",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep21",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep22",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep23",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep24",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep25",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep26",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep27",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep28",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep29",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep30",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_spread",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "field": "total_cloud_mean_6h",
+            "levels": [
+              "entire atmosphere (column)"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEFS",
+            "product_id": "pgrb2ap5",
+            "run_selection": "latest",
+            "source_id": "noaa-gefs",
+            "time_semantics": "Selected native lead only; total_cloud_mean_6h retains its provider-labelled averaging interval and is not instantaneous cloud",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gec00",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep01",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep02",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep03",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep04",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep05",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep06",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep07",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep08",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep09",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep10",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep11",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep12",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep13",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep14",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep15",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep16",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep17",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep18",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep19",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep20",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep21",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep22",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep23",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep24",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep25",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep26",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep27",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep28",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep29",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "member",
+                "member": "gep30",
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              },
+              {
+                "comparison": null,
+                "kind": "derived_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_spread",
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "ensemble",
+        "delivery_kind": "published_cell",
+        "display_primary": true,
+        "documentation_url": "https://registry.opendata.aws/noaa-gefs/",
+        "exact_variables": [
+          "temperature",
+          "humidity",
+          "wind",
+          "pressure",
+          "precipitation",
+          "cloud",
+          "threshold_occurrence"
+        ],
+        "fields": [
+          {
+            "family": "temperature",
+            "key": "temperature_2m",
+            "note": "One of the seven family fields the ensemble-families change stores for GEFS under its family_fields_only scope.",
+            "storage": "stored",
+            "upstream": "TMP:2 m above ground"
+          },
+          {
+            "family": "humidity",
+            "key": "dew_point_2m",
+            "note": "Family field.",
+            "storage": "stored",
+            "upstream": "DPT:2 m above ground"
+          },
+          {
+            "family": "humidity",
+            "key": "relative_humidity_2m",
+            "note": "Measured 2026-09-01 against the model's own specific humidity: divides by a mixed-phase saturation ramping linearly from ice at 253.16 K to water at 273.16 K, so it reads about 24 percent higher than a liquid-basis value at -25 degC.",
+            "storage": "stored",
+            "upstream": "RH:2 m above ground"
+          },
+          {
+            "family": "wind",
+            "key": "wind_u_10m",
+            "note": "Family field.",
+            "storage": "stored",
+            "upstream": "UGRD:10 m above ground"
+          },
+          {
+            "family": "wind",
+            "key": "wind_v_10m",
+            "note": "Family field.",
+            "storage": "stored",
+            "upstream": "VGRD:10 m above ground"
+          },
+          {
+            "family": "pressure",
+            "key": "mean_sea_level_pressure",
+            "note": "Family field; published in Pa and normalized to hPa on ingest.",
+            "storage": "stored",
+            "upstream": "PRMSL:mean sea level"
+          },
+          {
+            "family": "cloud_cover",
+            "key": "total_cloud_mean_6h",
+            "note": "Confirmed at the GRIB2 level, not only from the .idx label: 0-3 hour ave at f003, 0-6 at f006, 18-24 at f024, 378-384 at f384. Never instantaneous, at any lead, in any product set.",
+            "storage": "stored",
+            "upstream": "TCDC:entire atmosphere (n-n+6 hour ave fcst)"
+          },
+          {
+            "family": "cloud_cover",
+            "key": "total_cloud_geometric",
+            "note": "The only instantaneous cloud records anywhere in GEFS are TCDC:475 mb (a single isobaric level, not a column), TCDC:convective cloud layer, HGT:cloud ceiling, CWAT:entire atmosphere and the convective cloud bottom/top pressures. None is a column cover, so GEFS gives no member-level instantaneous cloud column to draw beside HRDPS or GFS.",
+            "storage": "available-not-stored",
+            "upstream": "TCDC:475 mb"
+          },
+          {
+            "family": "cloud_cover",
+            "key": "cloud_low",
+            "note": "The layered cloud is averaged too, so it is not the instantaneous provider stratum cloud_low means. Catalogued rather than stored under a key that would misstate it.",
+            "storage": "available-not-stored",
+            "upstream": "TCDC:low cloud layer (18-24 hour ave fcst)"
+          },
+          {
+            "family": "cloud_cover",
+            "key": "cloud_middle",
+            "note": "As cloud_low.",
+            "storage": "available-not-stored",
+            "upstream": "TCDC:middle cloud layer (18-24 hour ave fcst)"
+          },
+          {
+            "family": "cloud_cover",
+            "key": "cloud_high",
+            "note": "As cloud_low.",
+            "storage": "available-not-stored",
+            "upstream": "TCDC:high cloud layer (18-24 hour ave fcst)"
+          },
+          {
+            "family": "cloud_geometry",
+            "key": "cloud_ceiling",
+            "note": "Instantaneous and member-level, in pgrb2s at 0.25 deg; 1 029 967 B per record, about 32 MB per lead across 31 members.",
+            "storage": "available-not-stored",
+            "upstream": "HGT:cloud ceiling"
+          },
+          {
+            "family": "humidity",
+            "key": "relative_humidity_pressure",
+            "note": "10 pressure levels plus 2 m in pgrb2a and a further 21 levels plus 4 hybrid levels in pgrb2b, none fetched: GEFS cannot subset server side, so only the seven catalogue-family fields are stored (temperature_2m, dew_point_2m, relative_humidity_2m, wind_u_10m, wind_v_10m, mean_sea_level_pressure, total_cloud_mean_6h) and the pressure-level profile is outside that scope, not withheld for a storage quota.",
+            "storage": "available-not-stored",
+            "upstream": "RH:<n> mb"
+          }
+        ],
+        "fixture_status": "passing",
+        "forecast_horizon": "global medium range; POC uses +24 h",
+        "freshness_threshold_seconds": 43200,
+        "geographic_coverage": "Global",
+        "id": "noaa-gefs",
+        "integration": "community_client: Herbie with s3fs fallback; ecCodes/cfgrib decoding",
+        "intermediary": null,
+        "levels": [
+          "surface",
+          "2 m",
+          "10 m",
+          "isobaric",
+          "column",
+          "all members and control"
+        ],
+        "licence": "United States government public data; product-specific terms still apply",
+        "live_smoke_status": "planned",
+        "may_enter_consensus": false,
+        "native_image_endpoint": null,
+        "producer": "NOAA/NCEP",
+        "product": "Global Ensemble Forecast System",
+        "redistribution": "May be redistributed, but NOAA attribution, disclaimers and any embedded third-party restrictions must remain.",
+        "role": "NOAA ensemble distribution",
+        "schedulable": false,
+        "schema_version": "current NCEP GEFS GRIB2 production schema",
+        "state": "implemented-unverified",
+        "status_reason": "Official NOAA open store is available; member inventory and completeness fixtures remain."
       },
       {
         "access_endpoint": "https://air-quality-api.open-meteo.com/v1/air-quality",
@@ -1913,6 +4698,7 @@
         "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
         "live_smoke_status": "planned",
         "may_enter_consensus": false,
+        "native_image_endpoint": null,
         "producer": "ECMWF Copernicus Atmosphere Monitoring Service (CAMS)",
         "product": "CAMS global atmospheric composition forecast delivered by Open-Meteo",
         "redistribution": "Redistribution under CC BY 4.0 with the Open-Meteo link and the producer's own attribution preserved; the free tier is non-commercial use only.",
@@ -1921,6 +4707,46 @@
         "schema_version": "Open-Meteo air-quality JSON as served; the CAMS cycle version is not exposed",
         "state": "catalogued",
         "status_reason": "The only aerosol optical depth reachable over the box without a credential: GeoMet publishes no AOD at all and every direct CAMS path is credential-gated (the ADS execute call and the NASA MAIAC and VIIRS granule GETs all return HTTP 401 anonymously), so this delivery closes a gap nothing else closes (docs/research/wayfinder/open-meteo-endpoints.md section 2.4). Total AOD at 550 nm only, with no speciation, so sea-salt AOD, the term that matters most in a maritime box, is not served. Two runs a day (00Z and 12Z) published at T+10 h 16 m, hourly steps, about 4 days of usable forward reach. The record declares the 0.1 versus 0.4 degree upsampling trap rather than leaving it to be discovered: CAMS global publishes a 0.4 degree grid and Open-Meteo returns cell centres stepping in 0.1 degree, so a stored value looks like a 0.1 degree field and is not one; the native 0.4 degree grid is what this record claims. Reprocessed, so never the display primary and never a derivation input. Anything reachable only through best_match is refused: it names no producer. Catalogued until a registered adapter claims the id; admission by the 2026-09-02 resolutions is a ceiling, not a fetch."
+      },
+      {
+        "access_endpoint": "https://dd.weather.gc.ca/today/radar/DPQPE/GIF/CASHR/",
+        "archival": "No persistent archive or native radar volume is supplied",
+        "attribution": "Credit Environment and Climate Change Canada; preserve producer, product, run/valid time and supplied notices.",
+        "authentication": "Anonymous HTTPS",
+        "caching": "One paired revision retained for 60 seconds without extending its expiry",
+        "cadence": "unknown",
+        "capabilities": [],
+        "category": "radar",
+        "delivery_kind": "published_cell",
+        "display_primary": false,
+        "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/obs_radar/readme_radar_en/",
+        "exact_variables": [
+          "Rain GIF",
+          "Snow GIF"
+        ],
+        "fields": [],
+        "fixture_status": "passing",
+        "forecast_horizon": "native filename time only",
+        "freshness_threshold_seconds": null,
+        "geographic_coverage": "Original producer image extent; georeferencing is not established",
+        "id": "eccc-holyrood-cashr-dpqpe",
+        "integration": "raw_protocol: Bounded native paired GIF acquisition and exact-revision byte delivery",
+        "intermediary": null,
+        "levels": [
+          "rendered image; no numerical level"
+        ],
+        "licence": "MSC Open Data licence",
+        "live_smoke_status": "planned",
+        "may_enter_consensus": false,
+        "native_image_endpoint": "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images",
+        "producer": "Environment and Climate Change Canada",
+        "product": "Holyrood CASHR native DPQPE rendered imagery",
+        "redistribution": "Redistribution permitted subject to the MSC Open Data licence, attribution and no-warranty terms.",
+        "role": "Original rendered observation images with producer legend; no numerical interpretation",
+        "schedulable": false,
+        "schema_version": "CASHR DPQPE original GIF and filename identity",
+        "state": "catalogued",
+        "status_reason": "Experimental exact-time original Rain/Snow GIF delivery is implemented; numerical radar fields, georeferencing and scientific freshness remain unavailable."
       }
     ]
   },
@@ -2009,6 +4835,7 @@
           "sample_method": null,
           "sampled_latitude": null,
           "sampled_longitude": null,
+          "source_acquisition": null,
           "source_display_primary": null,
           "source_id": "eccc-hrdps",
           "swob_acquisition": null,
@@ -2016,7 +4843,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 13.2
+        "value": 13.4
       },
       {
         "absence_state": null,
@@ -2114,6 +4941,7 @@
           "sample_method": "nearest_published_cell",
           "sampled_latitude": 47.5658,
           "sampled_longitude": -52.7252,
+          "source_acquisition": null,
           "source_display_primary": false,
           "source_id": "eccc-aqhi",
           "swob_acquisition": null,
@@ -2226,6 +5054,7 @@
           "sample_method": null,
           "sampled_latitude": null,
           "sampled_longitude": null,
+          "source_acquisition": null,
           "source_display_primary": null,
           "source_id": "eccc-hrdps",
           "swob_acquisition": null,
@@ -2233,7 +5062,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 13.2
+        "value": 13.4
       }
     ],
     "latitude": 47.56,
@@ -2330,6 +5159,7 @@
           "sample_method": "rectilinear",
           "sampled_latitude": 47.55,
           "sampled_longitude": -52.7,
+          "source_acquisition": null,
           "source_display_primary": false,
           "source_id": "openmeteo-cams-aod",
           "swob_acquisition": null,
@@ -2494,6 +5324,7 @@
               "sample_method": null,
               "sampled_latitude": null,
               "sampled_longitude": null,
+              "source_acquisition": null,
               "source_display_primary": null,
               "source_id": "eccc-hrdps",
               "swob_acquisition": null,
@@ -2501,7 +5332,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 13.2
+            "value": 13.4
           },
           {
             "absence_state": null,
@@ -2582,6 +5413,7 @@
               "sample_method": null,
               "sampled_latitude": null,
               "sampled_longitude": null,
+              "source_acquisition": null,
               "source_display_primary": null,
               "source_id": "eccc-hrdps",
               "swob_acquisition": null,
@@ -2589,7 +5421,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 13.2
+            "value": 13.4
           }
         ],
         "selectable_runs": [],
@@ -2674,6 +5506,7 @@
               "sample_method": null,
               "sampled_latitude": null,
               "sampled_longitude": null,
+              "source_acquisition": null,
               "source_display_primary": null,
               "source_id": "eccc-hrdps",
               "swob_acquisition": null,
@@ -2681,7 +5514,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 96.0
+            "value": 96.8
           },
           {
             "absence_state": null,
@@ -2744,6 +5577,7 @@
               "sample_method": null,
               "sampled_latitude": null,
               "sampled_longitude": null,
+              "source_acquisition": null,
               "source_display_primary": null,
               "source_id": "eccc-hrdps",
               "swob_acquisition": null,
@@ -2751,7 +5585,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 96.0
+            "value": 96.8
           }
         ],
         "selectable_runs": [],
@@ -2932,6 +5766,25 @@
           "state": "ready"
         },
         "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Canonical GeoMet OGC API Features `swob-realtime` is queried at the exact selected report instant; only MSC surface-weather datasets are admitted by native response identity.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 43200
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "eccc-swob",
+        "state": "implemented-unverified"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
         "detail": "no live retrieval recorded; Official real-time observations and forecasts are exposed by GeoMet; adapter remains.",
         "freshness": {
           "age_seconds": null,
@@ -2942,6 +5795,44 @@
         "operational": false,
         "source_id": "eccc-aqhi",
         "state": "implemented-unverified"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Current official open-data product is documented; client retrieval and fixture/live tests remain.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 43200
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "ecmwf-ifs",
+        "state": "implemented-unverified"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Current official open-data product is documented; client retrieval and fixture/live tests remain. Catalogued until a registered adapter claims the id; admission by the 2026-09-02 resolutions is a ceiling, not a fetch.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 43200
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "ecmwf-aifs-single",
+        "state": "catalogued"
       },
       {
         "configuration": {
@@ -2970,6 +5861,25 @@
           "state": "ready"
         },
         "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Official NOAA open store is available; member inventory and completeness fixtures remain.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 43200
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "noaa-gefs",
+        "state": "implemented-unverified"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
         "detail": "no live retrieval recorded; The only aerosol optical depth reachable over the box without a credential: GeoMet publishes no AOD at all and every direct CAMS path is credential-gated (the ADS execute call and the NASA MAIAC and VIIRS granule GETs all return HTTP 401 anonymously), so this delivery closes a gap nothing else closes (docs/research/wayfinder/open-meteo-endpoints.md section 2.4). Total AOD at 550 nm only, with no speciation, so sea-salt AOD, the term that matters most in a maritime box, is not served. Two runs a day (00Z and 12Z) published at T+10 h 16 m, hourly steps, about 4 days of usable forward reach. The record declares the 0.1 versus 0.4 degree upsampling trap rather than leaving it to be discovered: CAMS global publishes a 0.4 degree grid and Open-Meteo returns cell centres stepping in 0.1 degree, so a stored value looks like a 0.1 degree field and is not one; the native 0.4 degree grid is what this record claims. Reprocessed, so never the display primary and never a derivation input. Anything reachable only through best_match is refused: it names no producer. Catalogued until a registered adapter claims the id; admission by the 2026-09-02 resolutions is a ceiling, not a fetch.",
         "freshness": {
           "age_seconds": null,
@@ -2979,6 +5889,25 @@
         "last_retrieval": null,
         "operational": false,
         "source_id": "openmeteo-cams-aod",
+        "state": "catalogued"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "This source delivery path has not been assessed",
+          "required_environment": [],
+          "state": "unknown"
+        },
+        "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Experimental exact-time original Rain/Snow GIF delivery is implemented; numerical radar fields, georeferencing and scientific freshness remain unavailable.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": null
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "eccc-holyrood-cashr-dpqpe",
         "state": "catalogued"
       }
     ]

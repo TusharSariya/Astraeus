@@ -14,6 +14,7 @@ from ingest.contract import RunCandidate
 from .models import EvidenceField
 from .source_contract import SourceCapability, SourceConfiguration, SourceReadingIdentity, SourceVariant
 from .source_status import latest_configuration, observed_read
+from .swob_delivery import SWOBPointReader
 
 
 @dataclass(frozen=True)
@@ -168,6 +169,60 @@ class CAMSAODSource:
         return None
 
 
+class SWOBSource(SWOBPointReader):
+    def descriptors(self):
+        from registry import fields as catalogue
+        keys = ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "mean_sea_level_pressure",
+                "wind_speed_10m", "wind_direction_10m")
+        return tuple(SourceCapability(source_id=self.source_id, product_id=self.product_id, field=key,
+            variants=[SourceVariant(kind="observation")], levels=[str(catalogue.field(key).level)],
+            point=True, point_product="SWOB", native_series=False, run_selection="not_applicable",
+            time_semantics="Exact native station report time; no synthetic cadence or archive inventory",
+            coverage_description="Existing bounded MSC station selection; native gaps and QC remain") for key in keys)
+
+
+class ECMWFSource(ForecastSource):
+    def descriptors(self):
+        return tuple(capability.model_copy(update={"point_product": "IFS" if self.source_id == "ecmwf-ifs" else "AIFS Single",
+            "native_series": False, "run_selection": "latest",
+            "time_semantics": "Exact published deterministic native frame; no interpolation or ensemble substitution"})
+            for capability in super().descriptors())
+
+    def plan_series(self, start, end, *, run="latest"):
+        return None
+
+
+class GEFSSource:
+    source_id, product_id = "noaa-gefs", "pgrb2ap5"
+
+    def __init__(self, factory):
+        self.factory = factory
+
+    def descriptors(self):
+        from .gefs_delivery import point_capabilities
+        return point_capabilities()
+
+    @observed_read
+    def read_point(self, latitude, longitude, selected, *, run="latest", refresh=False, variant=None, member_filter=None):
+        from .native_runs import RunUnavailable
+        if run != "latest" or (variant is not None and variant.kind not in ("member", "derived_statistic")):
+            raise RunUnavailable("GEFS supports a selected lead and explicit member or locally derived statistic")
+        options = {"refresh": True} if refresh else {}
+        if member_filter is not None:
+            options["member"] = member_filter
+        if variant is not None:
+            if variant.kind == "member":
+                options["member"] = variant.member
+            else:
+                options.update(statistic=variant.statistic, quantile=variant.quantile,
+                               threshold=variant.threshold, comparison=variant.comparison)
+        fields, _consensus, _sources = self.factory().point_fields(latitude, longitude, selected, **options)
+        return tuple(field.model_copy(deep=True) for field in fields)
+
+    def plan_series(self, start, end, *, run="latest"):
+        return None
+
+
 def source_readers() -> dict[str, SourceReader]:
     # Lazy imports preserve existing monkeypatch seams and do not create clients
     # when the catalogue is read. Fields here name implemented delivery paths,
@@ -178,6 +233,9 @@ def source_readers() -> dict[str, SourceReader]:
     from .gfs_query import gfs_query_coordinator
     from .aqhi_query import aqhi_query_service
     from .openmeteo_cams_aod_query import openmeteo_cams_aod_query_service
+    from .swob_query import swob_query_service
+    from .gefs_query import gefs_query_coordinator
+    from .ecmwf_query import ecmwf_query_coordinator
     common = ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure")
     readers = [
         ForecastSource("eccc-hrdps", "hrdps", hrdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
@@ -186,6 +244,11 @@ def source_readers() -> dict[str, SourceReader]:
         ForecastSource("noaa-gfs", "gfs", gfs_query_coordinator, (*common, "visibility", "total_cloud_geometric", "cloud_low", "cloud_middle", "cloud_high"), named_runs=True),
         AQHISource(aqhi_query_service),
         CAMSAODSource(openmeteo_cams_aod_query_service),
+        SWOBSource(swob_query_service),
+        GEFSSource(gefs_query_coordinator),
+        *(ECMWFSource(source_id, product_id, lambda source_id=source_id: ecmwf_query_coordinator(source_id),
+            ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "mean_sea_level_pressure", "total_cloud_geometric"), named_runs=False)
+            for source_id, product_id in (("ecmwf-ifs", "ifs"), ("ecmwf-aifs-single", "aifs-single"))),
     ]
     return {reader.source_id: reader for reader in readers}
 

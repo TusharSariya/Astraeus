@@ -25,7 +25,8 @@ from weather_api.store import registry_source_records, registry_source_statuses
 def contract():
     schema = app.openapi()
     paths = {path: value for path, value in schema["paths"].items()
-             if path in {f"{PREFIX}/catalog", f"{PREFIX}/sources/status", f"{PREFIX}/point", f"{PREFIX}/point/series", f"{PREFIX}/point/series/changes"}}
+             if path in {f"{PREFIX}/catalog", f"{PREFIX}/sources/status", f"{PREFIX}/point", f"{PREFIX}/point/series", f"{PREFIX}/point/series/changes"}
+             or path.startswith(f"{PREFIX}/sources/eccc-holyrood-cashr-dpqpe/images")}
     components = schema["components"]["schemas"]
     # The route keeps custom cursor/selection error codes by validating its
     # dictionary body itself. Its request schema still comes from those exact
@@ -56,7 +57,8 @@ def contract():
 
 def fixtures():
     now = datetime(2026, 9, 7, 12, tzinfo=UTC)
-    source_ids = {"eccc-hrdps", "eccc-rdps", "eccc-gdps", "noaa-gfs", "eccc-aqhi", "openmeteo-cams-aod"}
+    source_ids = {"eccc-hrdps", "eccc-rdps", "eccc-gdps", "noaa-gfs", "eccc-aqhi", "openmeteo-cams-aod",
+                  "eccc-swob", "noaa-gefs", "ecmwf-ifs", "ecmwf-aifs-single", "eccc-holyrood-cashr-dpqpe"}
     records = [record for record in registry_source_records() if record.id in source_ids]
     catalogue = CatalogResponse(data_mode=DataMode.FIXTURE, generated_at=now, sources=records)
     statuses = SourceStatusResponse(data_mode=DataMode.FIXTURE,

@@ -259,6 +259,7 @@ def test_point_sampler_preserves_verified_native_units(source, cloud_units, clou
     payload_path = write_zarr(normalized, tmp_path / "surface.zarr.zip")
     manifest = RunManifest(source, tuple(RequiredField(name, units) for name, units in FIELDS.values()))
     provenance = {"source_id": source, "product": PRODUCTS[source][1], "run_time": RUN.isoformat(),
+        "provider_run_id": f"{source}-{RUN:%Y%m%d%H}", "transport_receipts": [],
         "quality": {"status": "passed", "flags": []}, "coverage": {"status": "complete", "fraction": 1.0},
         **manifest.as_manifest_block()}
     cached = ECMWFQueryEntry(source, RUN, RUN, RUN, RUN + timedelta(seconds=TTL_SECONDS),

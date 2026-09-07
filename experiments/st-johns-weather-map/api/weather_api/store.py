@@ -3423,6 +3423,8 @@ def registry_source_records() -> list[Any]:
             SourceRecord(
                 id=source_id,
                 capabilities=source_capabilities(source_id),
+                native_image_endpoint=("/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images"
+                                       if source_id == "eccc-holyrood-cashr-dpqpe" else None),
                 category=str(record["category"]),
                 producer=str(record["producer"]),
                 product=str(record["product"]),

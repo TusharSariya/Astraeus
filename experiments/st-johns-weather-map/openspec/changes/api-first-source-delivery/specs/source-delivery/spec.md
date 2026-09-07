@@ -18,6 +18,12 @@ existing prohibition on display-primary admission.
 - **THEN** its software capability remains visible while retrieval and coverage
   remain unknown or unavailable
 
+#### Scenario: An original Holyrood image pair is discoverable
+- **WHEN** the catalogue declares the native paired-image endpoint
+- **THEN** its producer-delivery identity does not imply display-primary eligibility;
+  the images remain non-primary, rendered-only evidence with unknown scientific
+  freshness and no established numerical pixel values or georeferencing
+
 #### Scenario: CAMS AOD has no value at the selected hour
 - **WHEN** the intermediary returns a null, lacks the exact hour or fails
 - **THEN** the point response preserves the null or explicit unavailable result
