@@ -116,11 +116,11 @@ class HolyroodQueryService:
         return (self._cached is not None and self._clock() < self._cached.retained_until
                 and self._monotonic() < self._deadline)
 
-    def read_images(self, *, refresh: bool = False) -> HolyroodImageEvidence:
+    def read_images(self, *, refresh: bool = False, valid_time: datetime | None = None) -> HolyroodImageEvidence:
         with self._lock:
             if not self._valid_cache():
                 self._cached = None
-            if self._cached is not None and not refresh:
+            if self._cached is not None and not refresh and (valid_time is None or self._cached.valid_time == valid_time):
                 return replace(self._cached, cache_status="hit")
             future = self._inflight
             leader = future is None
@@ -129,9 +129,12 @@ class HolyroodQueryService:
                 self._inflight = future
         assert future is not None
         if not leader:
-            return replace(future.result(), cache_status="hit")
+            evidence = future.result()
+            if valid_time is not None and evidence.valid_time != valid_time:
+                raise HolyroodUnavailable("CASHR selected image time is not retained")
+            return replace(evidence, cache_status="hit")
         try:
-            evidence, deadline = self._acquire(refresh=refresh)
+            evidence, deadline = self._acquire(refresh=refresh, valid_time=valid_time)
         except Exception as cause:
             error = cause if isinstance(cause, HolyroodUnavailable) else HolyroodUnavailable("CASHR image evidence unavailable")
             with self._lock:
@@ -157,7 +160,7 @@ class HolyroodQueryService:
             assert self._cached is not None
             return replace(self._cached, cache_status="hit")
 
-    def _acquire(self, *, refresh: bool) -> tuple[HolyroodImageEvidence, float]:
+    def _acquire(self, *, refresh: bool, valid_time: datetime | None = None) -> tuple[HolyroodImageEvidence, float]:
         deadline = self._monotonic() + RETENTION_SECONDS
         listing, receipt = self._fetch(BASE_URL + "/", MAX_LISTING_BYTES)
         paired: dict[datetime, dict[str, str]] = {}
@@ -172,7 +175,9 @@ class HolyroodQueryService:
         complete = [stamp for stamp, phases in paired.items() if set(phases) == {"Rain", "Snow"}]
         if not complete:
             raise HolyroodUnavailable("CASHR has no native paired image evidence")
-        valid_time = max(complete)
+        if valid_time is not None and valid_time not in complete:
+            raise HolyroodUnavailable("CASHR selected time has no native paired image evidence")
+        valid_time = valid_time if valid_time is not None else max(complete)
         images = []
         for phase in ("Rain", "Snow"):
             body, image_receipt = self._fetch(BASE_URL + "/" + paired[valid_time][phase], MAX_IMAGE_BYTES)

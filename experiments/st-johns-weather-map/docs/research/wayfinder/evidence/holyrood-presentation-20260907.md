@@ -75,3 +75,43 @@ for both byte lookups. Other tests cover immutable pairing, wall/monotonic
 expiry, explicit refresh/replacement, failed refresh, malformed identity and
 cache-only absence. Provider requests: zero. These prove structural validation
 and exact byte preservation, not pixel decoding or public route activation.
+
+## Authorized experimental router follow-up
+
+Root subsequently confirmed the owner's current explicit API-first delivery
+plan supersedes the earlier experiment's no-route delivery restriction for
+this original-image-only path. Numerical, georeferencing, freshness, primary
+and operational boundaries remain unchanged. The older proposal above is
+retained as history; it is no longer a delivery blocker for this scope.
+
+`weather_api.holyrood_api.router` implements the two proposed routes with
+source-local closed Pydantic response models. Metadata requires an explicit,
+timezone-aware `valid_time` and `refresh` defaults to false. The query service
+now optionally selects the exact paired native filename time; it does not
+substitute the newest or nearest pair. If concurrent requests for different
+times join a flight, the unmatched caller is refused rather than receiving
+another time. Different selected-time failure preserves an existing unexpired
+pair, and the service still retains at most one pair.
+
+Root mounting instructions (root owns shared app and generated schema):
+
+```python
+from weather_api.holyrood_api import router as holyrood_router
+app.include_router(holyrood_router)
+```
+
+The lazy bounded service dependency is `holyrood_service`; fixture integrations
+can override that dependency without altering production acquisition. No HTTP
+request or source initialization occurs at router import. No registry or
+frontend file is changed by this worker. Metadata and byte responses declare
+`Cache-Control: no-store`, including unavailable responses. Byte lookup is
+cache-only with 404 for an absent exact revision; acquisition failures return
+a safe 503. Invalid phase, revision, missing time or timezone is 422.
+
+Follow-up verification uses the same locked offline Linux command above with
+`api/tests/test_holyrood_api.py` added: **31 tests passed**, including HTTP
+metadata, source-local OpenAPI model closure, exact original GIF/ETag reads,
+explicit older-time selection despite a newer advertised pair, missing time,
+expiry, refresh replacement and safe failed refresh. All provider request
+counts remain zero; fixture counts are asserted. Specctl remains 0 errors,
+0 warnings. Shared app mounting and regenerated shared OpenAPI remain root work.
