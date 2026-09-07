@@ -37,10 +37,42 @@ class OSTIAUnavailable(RuntimeError):
     pass
 
 
-def acquire(selected: datetime, client) -> dict:
+class _CompletionClient:
+    """Capture upstream completion before native decode and QC can advance time."""
+    def __init__(self, client, clock, utcnow):
+        self.client, self.clock, self.utcnow = client, clock, utcnow
+        self.completed_at = None
+        self.completed_monotonic = None
+
+    def _completed(self, result):
+        self.completed_monotonic = self.clock()
+        self.completed_at = self.utcnow()
+        return result
+
+    def get_bytes(self, *args, **kwargs):
+        return self._completed(self.client.get_bytes(*args, **kwargs))
+
+    def download(self, *args, **kwargs):
+        receipt = self.client.download_with_receipt(*args, **kwargs)
+        completed = receipt['completed_at']
+        if not isinstance(completed, datetime) or completed.tzinfo is None:
+            raise AdapterUnavailable('OSTIA download has no aware completion receipt')
+        # The polite transport stamps final-byte completion before response
+        # close/bookkeeping. Subtract that elapsed time from the observed
+        # monotonic clock so closing cannot renew the cache deadline.
+        observed = self.clock()
+        elapsed = max(0.0, (self.utcnow() - completed).total_seconds())
+        self.completed_monotonic = observed - elapsed
+        self.completed_at = completed
+        return int(receipt['byte_size'])
+
+
+def acquire(selected: datetime, client, clock=time.monotonic,
+            utcnow=lambda: datetime.now(UTC), *, workspace=None) -> dict:
     """Run only inside the bounded leaf (or with an offline injected client)."""
     window = FetchWindow(selected, back_hours=0, forward_hours=0)
-    adapter = OSTIAAdapter(client)
+    completion = _CompletionClient(client, clock, utcnow)
+    adapter = OSTIAAdapter(completion)
     candidate = adapter.discover(window)[0]
     # Refuse changed native layouts before downloading field chunks. The
     # compressed-response ceiling alone does not bound decompression memory.
@@ -53,7 +85,9 @@ def acquire(selected: datetime, client) -> dict:
             raise AdapterUnavailable('OSTIA decoded native chunk exceeds ceiling')
     if candidate.run_time != selected:
         raise AdapterUnavailable('OSTIA requires the exact published daily analysis timestamp')
-    with tempfile.TemporaryDirectory(prefix='astraeus-ostia-') as directory:
+    # Production leaf always supplies its parent-owned workspace. SIGKILL
+    # cleanup therefore does not depend on this child running its finally.
+    with tempfile.TemporaryDirectory(prefix='astraeus-ostia-', dir=workspace) as directory:
         result = adapter.fetch(candidate, window, Path(directory))
         if not result.complete or not result.qc_passed:
             raise AdapterUnavailable('OSTIA required-field completeness/QC refused')
@@ -66,7 +100,11 @@ def acquire(selected: datetime, client) -> dict:
                 # JSON carries native missingness as null, never NaN.
                 data = {name: [[float(v) if math.isfinite(float(v)) else None for v in row] for row in rows] for name, rows in data.items()}
                 data.update(latitude=ds.latitude.values.tolist(), longitude=ds.longitude.values.tolist())
-        data.update(valid_time=candidate.run_time.isoformat(), provenance=artifact.provenance)
+        if completion.completed_at is None or completion.completed_monotonic is None:
+            raise AdapterUnavailable('OSTIA has no completed upstream retrieval')
+        provenance = dict(artifact.provenance, retrieval_time=completion.completed_at.isoformat())
+        data.update(valid_time=candidate.run_time.isoformat(), provenance=provenance,
+                    completed_monotonic=completion.completed_monotonic)
     return data
 
 
@@ -102,7 +140,7 @@ class OSTIAQueryService:
         try:
             started = self.clock()
             if self.client is not None:
-                raw = json.dumps(acquire(selected, self.client), allow_nan=False).encode()
+                raw = json.dumps(acquire(selected, self.client, self.clock, self.utcnow), allow_nan=False).encode()
             else:
                 result = run_bounded_process(
                     command=[sys.executable, str(Path(__file__).with_name('ostia_query_worker.py')), '{output}'],
@@ -115,9 +153,16 @@ class OSTIAQueryService:
                 raise OSTIAUnavailable('OSTIA query exceeds byte/time ceiling')
             data = json.loads(raw)
             self._validate(data, selected)
-            # Fixed expiry includes decode time; hits never extend it.
+            # Validation cannot renew the upstream completion-based deadline.
+            completed = data['completed_monotonic']
+            if (isinstance(completed, bool) or not math.isfinite(completed)
+                    or not started <= completed <= self.clock()):
+                raise OSTIAUnavailable('OSTIA upstream completion clock is invalid')
+            expires = completed + TTL_SECONDS
+            if self.clock() >= expires:
+                raise OSTIAUnavailable('OSTIA result expired during validation')
             with self.lock:
-                self.entry = (selected, started + TTL_SECONDS, raw)
+                self.entry = (selected, expires, raw)
             future.set_result(raw)
             return json.loads(raw)
         except Exception as error:

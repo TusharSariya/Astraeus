@@ -6,6 +6,7 @@ import pytest
 
 from test_adapter_sst_analysis import _ostia_metadata, _compressed, _client
 from weather_api.ostia_query import OSTIAQueryService, OSTIAUnavailable
+from ingest.http import PoliteClient as NativePoliteClient
 
 DAY = datetime(2026, 9, 4, tzinfo=UTC)
 
@@ -30,7 +31,15 @@ def service():
         requests.append(key)
         return httpx.Response(200, content=payloads[key])
     clock = [0.0]
-    return OSTIAQueryService(client=_client(handler), clock=lambda: clock[0], utcnow=lambda: DAY), requests, clock
+    client = _client(handler)
+    real_download = client.download_with_receipt
+    def fixture_download(*args, **kwargs):
+        from datetime import timedelta
+        receipt = real_download(*args, **kwargs)
+        receipt['completed_at'] = DAY + timedelta(seconds=clock[0])
+        return receipt
+    client.download_with_receipt = fixture_download
+    return OSTIAQueryService(client=client, clock=lambda: clock[0], utcnow=lambda: DAY), requests, clock
 
 
 def test_actual_native_adapter_point_masks_identity_and_shared_cache():
@@ -83,7 +92,7 @@ def test_actual_linux_bounded_worker_replays_native_fixture():
     import sys
     from ingest.isolation import run_bounded_process
     from weather_api.ostia_query import LIMITS
-    code = "import runpy; from test_ostia_query import service; import ingest.http; ingest.http.PoliteClient=lambda **kwargs: service()[0].client; runpy.run_module('weather_api.ostia_query_worker', run_name='__main__')"
+    code = "from test_ostia_query import worker_client; import runpy; from test_ostia_query import service; import ingest.http; ingest.http.PoliteClient=lambda **kwargs: worker_client(); runpy.run_module('weather_api.ostia_query_worker', run_name='__main__')"
     result = run_bounded_process(command=[sys.executable, '-c', code, '{output}'], stdin=DAY.isoformat().encode(), destination=None, limits=LIMITS, timeout_seconds=30, require_output=False)
     data = json.loads(result.stdout)
     assert data['valid_time'] == DAY.isoformat()
@@ -124,3 +133,69 @@ def test_oversized_native_chunks_refused_before_field_payload(monkeypatch):
     with pytest.raises(OSTIAUnavailable):
         query.query(DAY)
     assert requests == ['/.zmetadata', '/time/0']
+
+
+def test_validation_does_not_retimestamp_retrieval_or_renew_expiry(monkeypatch):
+    from datetime import timedelta
+    import ingest.captures.sst_analysis as native
+    query, _, clock = service()
+    query.utcnow = lambda: DAY + timedelta(seconds=clock[0])
+    original = native.validate_run
+    def slow_validation(*args, **kwargs):
+        clock[0] = 40
+        return original(*args, **kwargs)
+    monkeypatch.setattr(native, 'validate_run', slow_validation)
+    data = query.query(DAY)
+    assert data['provenance']['retrieval_time'] == DAY.isoformat()
+    assert data['completed_monotonic'] == 0
+    assert query.entry[1] == 300
+    field = query.point_fields(50.45, -57.95, DAY)[0]
+    assert field.provenance.retrieval_time == DAY
+    assert field.provenance.freshness.age_seconds == 40
+
+
+def test_forced_worker_termination_cleans_native_download_scratch(monkeypatch, tmp_path):
+    import sys
+    from pathlib import Path
+    import ingest.isolation as isolation
+    from weather_api.ostia_query import LIMITS
+    # Capture the real parent-owned workspace; no child cleanup is trusted.
+    directories = []
+    original = isolation.tempfile.mkdtemp
+    def record(*args, **kwargs):
+        path = original(*args, **kwargs)
+        directories.append(Path(path))
+        return path
+    monkeypatch.setattr(isolation.tempfile, 'mkdtemp', record)
+    receipt = tmp_path / 'scratch-location.txt'
+    code = f"""
+import runpy, time
+from pathlib import Path
+from test_ostia_query import service
+import ingest.http
+from ingest.captures.sst_analysis import OSTIAAdapter
+ingest.http.PoliteClient = lambda **kwargs: service()[0].client
+def stalled(self, candidate, window, workdir):
+    target = workdir / 'retained.chunk'
+    target.write_bytes(b'native chunk bytes')
+    Path({str(receipt)!r}).write_text(str(target))
+    time.sleep(60)
+OSTIAAdapter.fetch = stalled
+runpy.run_module('weather_api.ostia_query_worker', run_name='__main__')
+"""
+    with pytest.raises(isolation.BoundedProcessError):
+        isolation.run_bounded_process(command=[sys.executable, '-c', code, '{output}'],
+            stdin=DAY.isoformat().encode(), destination=None, limits=LIMITS,
+            timeout_seconds=5, require_output=False)
+    scratch = Path(receipt.read_text())
+    assert len(directories) == 1
+    assert scratch.is_relative_to(directories[0])
+    assert not scratch.exists()
+    assert not directories[0].exists()
+
+
+def worker_client():
+    # Worker clocks are real; its fixture transport must supply real completion.
+    client = service()[0].client
+    client.download_with_receipt = NativePoliteClient.download_with_receipt.__get__(client)
+    return client

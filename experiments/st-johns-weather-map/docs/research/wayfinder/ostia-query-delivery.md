@@ -36,8 +36,11 @@ coalescing, fixed cache expiry and evidence semantics).
 
 One in-flight acquisition, identical misses coalesced, one crop cache shared
 across points. Cache retains at most 8 MiB encoded JSON, fixed 300-second TTL
-from acquisition start; failed refresh retains only an unexpired old entry.
-Default acquisition owns a 90-second Linux process, 2 GiB address space,
+from final upstream download completion; failed refresh retains only an unexpired old entry.
+Native download UTC comes from the polite transport completion receipt;
+validation and response-close time cannot renew the monotonic expiry.
+Default acquisition keeps every scratch chunk under the parent-owned workspace,
+which is removed even after forced child termination. It owns a 90-second Linux process, 2 GiB address space,
 1 GiB per-file limit, bounded stdin/stdout/stderr. Existing polite adapter
 ceilings remain 2 MiB metadata, 16 MiB compressed chunk, 16 intersecting chunks
 per field. Before native field retrieval, query preflight rejects declared
@@ -68,3 +71,9 @@ point preflight, oversized native chunk preflight, and actual Linux child.
 Residual: no current live-access proof, public API/client integration or
 source-specific timeline discovery. NOAA OISST retains its existing capture
 adapter and is not added to the query service.
+
+Cross-review regression receipt: 25 offline Linux tests passed, including
+forced five-second child termination after writing a native chunk and a
+40-second simulated QC delay. The killed child’s parent-owned workspace and
+chunk were absent after return; retrieval time and 300-second expiry did not
+advance during QC. No provider requests were issued.
