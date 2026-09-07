@@ -47,3 +47,49 @@ A follow-up draft should add dimensionally exact base keys, then carry product p
 Recommended storage is one atomic artifact per product phase and valid time. RAQDPS is a forecast with required reference time; each RDAQA phase is a distinct PT0H analysis without an invented run. All selected fields are mandatory within their phase. `validate_run` computes completeness/QC, upstream WCS supplies no producer QC flags, and the artifact therefore retains an `unknown` scientific-quality notice even after structural QC passes.
 
 A field-per-phase key alternative makes API filtering simpler but creates 14 near-duplicate catalogue quantities and weakens cross-phase comparisons. A single generic `air_quality_value` payload would reduce catalogue entries but erase unit/level comparability and is unsuitable. Omitting NO, column PM10, or smoke statistics would reduce scope but contradict the verified selected roster. Owner acceptance of the recommended keys and required attributes would unblock an experimental normal-route publication proof; it would not authorize scheduler registration, operational use, or derived air-quality science.
+
+## API-first restart result, September 7, 2026
+
+Classification: isolated experiment; no production admission or normative
+promotion. Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-005, GOV-SPEC-006.
+
+The highest-value settled change at this restart is acquisition identity
+validation. `fetch_unresolved_product` now accepts only the five selected
+RAQDPS/RDAQA chemistry groups, requires an aware valid time, requires an aware
+RAQDPS reference time no later than validity, and rejects any RDAQA forecast
+reference time before provider access. This prevents unrelated ECCC analysis
+contracts from inheriting the RDAQA model/grid and preserves native analysis
+identity. RDAQA fixture WMS leaves now omit reference-time metadata, matching
+the retained native receipt. The complete 28-field roster, raw quantities,
+units, phase, statistic windows, and validator-owned refusal are unchanged.
+
+Verification ran in the existing Linux image
+`astraeus-lightning-proof:c88ff83` with `--network none --memory 1g`, the
+experiment mounted read-only at `/work`, and `PYTHONPATH=/work/api:/work`:
+
+```text
+python -m pytest api/tests/test_adapter_eccc_analysis_contracts.py api/tests/test_adapter_eccc_geomet_wcs.py -q -p no:cacheprovider
+python -m pytest api/tests/test_adapter_eccc_analysis_contracts.py -q -o addopts= -p no:cacheprovider
+uv run --project tools/specs python tools/specs/specctl.py validate
+```
+
+The combined fixture regression passed with its opt-in live test skipped;
+the final chemistry-only run passed 33 tests. The real TIFF-to-Zarr leaf
+processed all five coherent products, preserving no-run RDAQA and explicit-run
+RAQDPS identities. New pre-acquisition failures cover all three RDAQA phases,
+missing/naive/future RAQDPS reference times, naive validity and a nonchemistry
+product. The normal point-route raw-field exclusion test also passed.
+Specification validation returned zero errors and warnings. No live provider
+requests or new raw captures were made.
+
+Shared integration instruction: do not register a point descriptor, point
+product, native Series reader, chemistry companion, or partial-field cache
+for these unresolved groups. The exact remaining owner decision is the
+canonical-contract table above, including required phase/attribution/window
+attributes and a coherent full-product manifest. Three already named RAQDPS
+particulate fields do not authorize thinning the mandatory 12-field hourly
+group. Once that decision is settled, a query coordinator can use the existing
+bounded sequential GeoMet WCS leaf, but source-local cache/refresh, public
+point serialization and assembled API proof still require implementation.
+Anonymous GeoMet access does not need credentials. No query module or public
+route is claimed complete by this identity hardening.

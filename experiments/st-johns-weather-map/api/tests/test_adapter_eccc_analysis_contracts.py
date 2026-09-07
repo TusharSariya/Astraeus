@@ -2,12 +2,28 @@
 
 from datetime import datetime, timedelta, timezone
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from ingest.adapters.eccc_analysis_contracts import DEFERRED_PATHS, PRODUCT_CONTRACTS, fetch_unresolved_product, product_contract
 from ingest.adapters.eccc_geomet_wcs import GRID_CONTRACTS, WCSResponseError, grid_contract_for
+
+
+from test_adapter_eccc_geomet_wcs import FixtureHTTP, RUN, VALID
+
+
+class ChemistryFixtureHTTP(FixtureHTTP):
+    """RDAQA fixture mirrors its absent native reference-time dimension."""
+
+    def download(self, url, destination, **kwargs):
+        size = super().download(url, destination, **kwargs)
+        if "service=wms" in url.lower() and "RDAQA" in url:
+            payload = re.sub(rb"<Dimension name='reference_time'.*?</Dimension>", b"", destination.read_bytes())
+            destination.write_bytes(payload)
+            return len(payload)
+        return size
 
 
 EXPECTED = {
@@ -135,11 +151,13 @@ def test_live_receipt_covers_every_selected_field_and_actual_http_time():
 def test_full_product_fetch_uses_validator_owned_nonpublishable_verdict(tmp_path):
     from ingest.adapters.eccc_geomet_wcs import GeoMetWCSClient
     from test_adapter_eccc_geomet_wcs import FixtureHTTP, RUN, VALID
-    client = GeoMetWCSClient(client=FixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet", clock=lambda: VALID)
-    result = fetch_unresolved_product(client, "rdaqa_smoke", valid_time=VALID, reference_time=RUN, workdir=tmp_path)
+    client = GeoMetWCSClient(client=ChemistryFixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet", clock=lambda: VALID)
+    result = fetch_unresolved_product(client, "rdaqa_smoke", valid_time=VALID, reference_time=None, workdir=tmp_path)
     assert result.complete is False and result.qc_passed is True
     assert "canonical contracts are absent" in result.notes
     assert result.retrieved_at == VALID
+    assert result.run_time is None
+    assert all(artifact.provenance["run_time"] is None for artifact in result.artifacts)
     assert len(result.artifacts) == 2
     assert all(artifact.provenance["operational"] is False for artifact in result.artifacts)
     assert all(artifact.provenance["product_phase"] == "firework_contribution_analysis" for artifact in result.artifacts)
@@ -155,15 +173,17 @@ def test_every_coherent_product_group_fetches_all_fields_before_refusal(tmp_path
     from test_adapter_eccc_geomet_wcs import FixtureHTTP, RUN, VALID
 
     client = GeoMetWCSClient(
-        client=FixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet", clock=lambda: VALID
+        client=ChemistryFixtureHTTP(tmp_path), base_url="https://fixture.invalid/geomet", clock=lambda: VALID
     )
     result = fetch_unresolved_product(
-        client, name, valid_time=VALID, reference_time=RUN, workdir=tmp_path / name
+        client, name, valid_time=VALID, reference_time=RUN if name.startswith("raqdps") else None, workdir=tmp_path / name
     )
     assert len(result.artifacts) == field_count
     assert result.complete is False
     assert result.retrieved_at == VALID
     assert len({artifact.provenance["valid_time"] for artifact in result.artifacts}) == 1
+    assert result.run_time == (RUN if name.startswith("raqdps") else None)
+    assert all(artifact.provenance["operational"] is False for artifact in result.artifacts)
 
 
 def test_product_group_with_different_selected_times_is_refused(tmp_path, monkeypatch):
@@ -185,7 +205,24 @@ def test_product_group_with_different_selected_times_is_refused(tmp_path, monkey
 
     monkeypatch.setattr(eccc_geomet_wcs, "fetch_artifact", fake_fetch)
     result = fetch_unresolved_product(
-        object(), "raqdps_statistics", valid_time=None, reference_time=None, workdir=tmp_path
+        object(), "raqdps_statistics", valid_time=VALID, reference_time=RUN, workdir=tmp_path
     )
     assert result.complete is False
     assert "disagree on product time identity" in result.notes
+
+
+@pytest.mark.parametrize(("name", "valid", "reference", "message"), [
+    ("hrdpa", VALID, None, "only RAQDPS/RDAQA"),
+    ("rdaqa_final", VALID, RUN, "analysis"),
+    ("rdaqa_preliminary", VALID, RUN, "analysis"),
+    ("rdaqa_smoke", VALID, RUN, "analysis"),
+    ("raqdps_hourly", VALID, None, "reference time"),
+    ("raqdps_statistics", VALID, RUN.replace(tzinfo=None), "reference time"),
+    ("raqdps_hourly", VALID, VALID + timedelta(hours=1), "cannot follow"),
+    ("rdaqa_final", VALID.replace(tzinfo=None), None, "valid time"),
+])
+def test_invalid_chemistry_identity_fails_before_provider_access(tmp_path, name, valid, reference, message):
+    client = ChemistryFixtureHTTP(tmp_path)
+    with pytest.raises(ValueError, match=message):
+        fetch_unresolved_product(client, name, valid_time=valid, reference_time=reference, workdir=tmp_path)
+    assert client.urls == []
