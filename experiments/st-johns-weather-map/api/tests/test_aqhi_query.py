@@ -4,6 +4,8 @@ import importlib
 import json
 from threading import Lock
 import time
+import sys
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -68,6 +70,44 @@ def test_worker_requires_native_point_identity_time_and_numeric_index():
     broken["geometry"]["type"] = "Polygon"
     with pytest.raises(ValueError, match="point geometry"):
         normalize(document(broken))
+
+
+@pytest.mark.skipif(sys.platform == "darwin", reason="macOS rejects the decoder's required locked RLIMIT_AS")
+def test_default_bounded_decoder_serves_fixed_http_payload_without_injection():
+    service = AQHIQueryService(
+        client=mock_client(lambda _: httpx.Response(200, json=document(
+            feature("ABEFS", 2.7, "2026-09-07T00:00:00Z", -52.7252, 47.5658)),
+            headers={"Cache-Control": "max-age=60"},
+        )),
+        clock=Clock(), utcnow=lambda: SELECTED,
+    )
+    field = service.point_field(47.56, -52.72, SELECTED)
+    assert field.value == 2.7
+    assert field.provenance.native_report.station_id == "ABEFS"
+    assert field.provenance.aqhi_acquisition.body_bytes > 0
+
+
+def test_default_decoder_uses_required_output_argument_and_serves_fixed_http_payload(monkeypatch):
+    import weather_api.aqhi_query as module
+
+    seen = {}
+
+    def bounded(**kwargs):
+        seen.update(kwargs)
+        rows = normalize(json.loads(kwargs["stdin"]))
+        return SimpleNamespace(stdout=json.dumps(rows, separators=(",", ":")))
+
+    monkeypatch.setattr(module, "run_bounded_process", bounded)
+    service = AQHIQueryService(
+        client=mock_client(lambda _: httpx.Response(200, json=document(
+            feature("ABEFS", 2.7, "2026-09-07T00:00:00Z", -52.7252, 47.5658)),
+            headers={"Cache-Control": "max-age=60"},
+        )), clock=Clock(), utcnow=lambda: SELECTED,
+    )
+    field = service.point_field(47.56, -52.72, SELECTED)
+    assert field.value == 2.7 and field.provenance.native_report.station_id == "ABEFS"
+    assert seen["command"].count("{output}") == 1
+    assert seen["destination"] is None and seen["require_output"] is False
 
 
 def test_one_canonical_cache_fetch_serves_native_nearest_station_with_typed_receipt():

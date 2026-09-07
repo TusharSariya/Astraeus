@@ -106,7 +106,7 @@ def _ttl(headers: Mapping[str, str], completed: datetime) -> int:
 
 def _decode(body: bytes) -> tuple[AQHIStationObservation, ...]:
     result = run_bounded_process(
-        command=[sys.executable, "-m", "weather_api.aqhi_query_worker"], stdin=body,
+        command=[sys.executable, "-m", "weather_api.aqhi_query_worker", "{output}"], stdin=body,
         destination=None, limits=AQHI_DECODE_LIMITS, require_output=False,
     )
     parsed = json.loads(result.stdout)
