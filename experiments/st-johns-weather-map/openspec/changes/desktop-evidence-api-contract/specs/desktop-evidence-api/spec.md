@@ -8,8 +8,8 @@ checked absences. It SHALL NOT synthesize a shared cadence, interpolate,
 substitute sources, or serve archived retained values as current evidence.
 
 The read SHALL have finite selector, window, sample, byte, duration and cache
-bounds. Pagination, if exposed, SHALL bind a canonical immutable selection and
-shall reject an altered continuation. Expiry SHALL require a new initial read;
+bounds. Pagination SHALL bind a canonical immutable selection and SHALL reject an
+altered continuation. Expiry SHALL require a new initial read;
 no read or continuation silently renews it. Exact wire shape and numeric bounds
 are proposed rather than accepted by this change.
 
