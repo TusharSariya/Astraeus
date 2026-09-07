@@ -1,6 +1,6 @@
 import { observationReceipt } from './observationReceipt'
 import type { ObservationUnavailable } from './types'
-import { isSourceCapability, isSourceConfiguration } from './sourceContract'
+import { isPointProductToken, isSourceCapability, isSourceConfiguration } from './sourceContract'
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
 import { declaredEvidenceClass, resolveEvidenceClass } from './evidenceClass'
 import { resolveDeliveryKind } from './deliveryKind'
@@ -880,16 +880,9 @@ export async function loadTimeline(product?: string, signal?: AbortSignal): Prom
   }
 }
 
-/** Products the `/point` endpoint will actually accept, keyed by the catalogue
- *  source id that names them.
- *
- *  The catalogue reports `state`, which is a registry CEILING: no source is ever
- *  `active`, by design. Gating the product control on `state === 'active'` made
- *  it permanently dead while `/point?product=` is fully implemented. The
- *  catalogue's own `product` text ("HRDPS raw") is not the accepted token
- *  either — the endpoint answers 422 to it. Source id is the one thing the
- *  catalogue reports that maps onto the endpoint's declared vocabulary, so a
- *  source is offered when, and only when, its id appears here. */
+/** Legacy `/point` product tokens keyed by source identity. Explicit capability
+ *  declarations take precedence. Registry state remains an admission ceiling;
+ *  it does not establish acquisition or geographic/time coverage. */
 export const POINT_PRODUCT_BY_SOURCE_ID: Record<string, string> = {
   'eccc-hrdps': 'HRDPS',
   'eccc-rdps': 'RDPS',
@@ -903,8 +896,10 @@ export const POINT_PRODUCT_BY_SOURCE_ID: Record<string, string> = {
 
 /** The product token `/point` accepts for a catalogue source, or null when the
  *  endpoint has no parameter value for it and the control must not be offered. */
-export function pointProductFor(source: { id: string }): string | null {
-  return POINT_PRODUCT_BY_SOURCE_ID[source.id] ?? null
+export function pointProductFor(source: Pick<CatalogSource, 'id' | 'capabilities'>): string | null {
+  const declared = new Set((source.capabilities ?? []).filter((capability) => isSourceCapability(capability, source.id) && capability.point && isPointProductToken(capability.point_product)).map((capability) => capability.point_product!))
+  if (declared.size > 1) return null // Conflicting declared products cannot select a source implicitly.
+  return declared.values().next().value ?? POINT_PRODUCT_BY_SOURCE_ID[source.id] ?? null
 }
 
 /** The layer groups, in the order every grouped list shows them, with their
