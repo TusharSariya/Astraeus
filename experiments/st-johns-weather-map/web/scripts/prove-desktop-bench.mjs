@@ -39,7 +39,7 @@ try {
   await page.goto(`${base}/?lat=47.5123456789&lon=-52.6987654321&t=${at}`)
   await page.getByText('Development fixture', { exact: true }).waitFor()
   await page.getByText('Point evidence ledger', { exact: true }).click()
-  const inspect = page.getByRole('button', { name: 'Inspect temperature from noaa-gfs', exact: true })
+  const inspect = page.getByRole('button', { name: /^Inspect temperature from noaa\-gfs/, exact: true })
   await inspect.click()
   await page.getByRole('heading', { name: 'Evidence · temperature' }).waitFor()
   assert.equal(await page.getByRole('heading', { name: 'Evidence · temperature' }).evaluate((el) => el === document.activeElement), true)

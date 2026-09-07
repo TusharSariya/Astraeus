@@ -147,3 +147,16 @@ it('retains a removed pin without substituting latest readings and permits expli
   await userEvent.click(screen.getAllByRole('button', { name: 'Use Latest available for eccc-hrdps' })[0])
   expect(screen.getByRole('combobox', { name: 'Browsing run for eccc-hrdps' })).toHaveValue('latest')
 })
+
+it('distinguishes inspection names for the same field and native time on two runs', async () => {
+  render(<Harness />)
+  await screen.findAllByRole('img')
+  await userEvent.click(screen.getByRole('button', {name:'Temporary Compare'}))
+  await userEvent.click(screen.getByRole('button', {name:'Compare latest and previous runs of Series A'}))
+  await screen.findByRole('img', {name:/Same-field run overlay/})
+  for (const summary of screen.getAllByText(/Native values, gaps and run identity/)) await userEvent.click(summary)
+  const actions = screen.getAllByRole('button', {name:/Inspect temperature_2m at/})
+  expect(actions).toHaveLength(2)
+  expect(actions[0].getAttribute('aria-label')).toContain('from eccc-hrdps')
+  expect(actions[0].getAttribute('aria-label')).not.toBe(actions[1].getAttribute('aria-label'))
+})

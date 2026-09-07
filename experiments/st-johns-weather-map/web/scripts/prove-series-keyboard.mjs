@@ -62,7 +62,7 @@ try {
   await tabTo(series.locator('.native-track summary').first())
   await page.keyboard.press('Enter')
   await page.keyboard.press('Tab')
-  const reading = series.getByRole('button',{name:'Inspect temperature_2m at 2026-09-07T12:00:00.000Z',exact:true})
+  const reading = series.getByRole('button',{name: /^Inspect temperature_2m at 2026\-09\-07T12:00:00\.000Z/,exact:true})
   assert.equal(await reading.evaluate(el=>el===document.activeElement),true)
   await page.keyboard.press('Enter')
   const inspector = page.getByRole('complementary',{name:'Evidence inspector',exact:true})

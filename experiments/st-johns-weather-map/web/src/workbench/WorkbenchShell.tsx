@@ -27,7 +27,7 @@ export function WorkbenchShell({ view, dock, onView, onDock, focus, status, time
     setFullScreen(null)
     requestAnimationFrame(() => {
       if (returnTo.current?.isConnected) returnTo.current.focus()
-      stage.current?.focus()
+      else stage.current?.focus()
     })
   }
   const shown = fullScreen ?? view
@@ -53,10 +53,10 @@ export function WorkbenchShell({ view, dock, onView, onDock, focus, status, time
         </div>
         {views[shown]}
       </main>
-      {!fullScreen && (inspector || (dock && dock !== view && <aside className="bench-companion" aria-label={`${dock} companion`}>
+      {inspector || (!fullScreen && dock && dock !== view && <aside className="bench-companion" aria-label={`${dock} companion`}>
         <div className="bench-view-heading"><h2>{dock}</h2><button onClick={() => onDock(null)}>Close {dock} dock</button><button onClick={(event) => { returnTo.current = event.currentTarget; setFullScreen(dock) }}>Expand {dock}</button></div>
         {views[dock]}
-      </aside>))}
+      </aside>)}
     </div>
     <div className="bench-timeline">{timeline}</div>
   </div>

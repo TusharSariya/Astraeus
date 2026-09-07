@@ -1,3 +1,4 @@
+import { EVIDENCE_CLASS_LABELS } from '../evidenceClass'
 import { SourceTag } from './SourceTag'
 import type { AstronomyResponse, ServedFieldValue, SpaceWeatherResponse, SpaceWeatherSeries } from '../types'
 import { EvidenceGlyph, EvidenceLedger, evidenceKey, type InspectedEvidence } from './EvidenceInspector'
@@ -11,8 +12,32 @@ interface Props {
   onInspect: (value: InspectedEvidence, opener: HTMLButtonElement) => void
 }
 const shown = (value: unknown, units = '') => typeof value === 'number' && Number.isFinite(value) ? `${value} ${units}`.trim() : 'Unavailable'
+/** Resolve inspection from the same current, Focus-checked inputs as the Sky body. */
+export function skyEvidence(key: string, props: Props): InspectedEvidence {
+  const astronomy = props.astronomy?.provenance ? props.astronomy : null
+  const label = key.slice(4)
+  const result = (title: string, text: string, details: Record<string, unknown>) => ({ key, label: title, text, details })
+  if (label === 'horizon') return result('registered horizon', props.site?.name ?? 'No registered horizon', { 'Registry version': props.registryVersion, 'Registered site': props.site, 'Geometry scope': 'Registered horizon only; no directional cloud or celestial position is inferred' })
+  if (label === 'windows') return result('geometric windows', astronomy ? 'Returned geometry intervals' : 'Geometry unavailable', { astronomy, 'Absence reason': astronomy ? null : props.astronomyNotice ?? 'No response' })
+  const geometry = [
+    ['Sun altitude', astronomy?.sun_altitude_deg, '°'], ['Moon altitude', astronomy?.moon_altitude_deg, '°'],
+    ['Galactic core altitude', astronomy?.core_altitude_deg, '°'], ['Moon phase angle', astronomy?.moon.phase_deg, '°'],
+    ['Moon illuminated fraction', astronomy?.moon.illuminated_fraction, 'fraction'],
+  ] as const
+  const item = geometry.find(([name]) => name === label)
+  if (item) return result(label, shown(item[1], item[2]), { 'Returned astronomy provenance': astronomy?.provenance ?? null, 'Native valid time': astronomy?.valid_time ?? null, Value: item[1] ?? null, Units: item[2], 'Response notices': astronomy?.notices ?? props.astronomyNotice })
+  if (label === 'Kp observed' || label === 'Kp outlook') return result(label, 'Planetary context only', { 'Complete returned series': (label === 'Kp observed' ? props.spaceWeather?.kp_observed : props.spaceWeather?.kp_forecast) ?? null })
+  if (label === 'solar-wind') return result('solar wind evidence', props.spaceWeather ? 'Native planetary context; no local score' : 'Space weather unavailable', { 'Complete returned evidence': props.spaceWeather, 'Absence reason': props.spaceWeather ? null : props.spaceWeatherNotice })
+  if (label.startsWith('camera:')) {
+    const camera = props.cameras?.cameras.find(item => item.id === label.slice(7))
+    return result(`camera ${camera?.name ?? label.slice(7)}`, camera?.status ?? 'Camera registry record unavailable', { 'Registry version': props.cameras?.version ?? null, 'Public camera record': camera ?? null })
+  }
+  return result(label, 'Sky evidence unavailable', { Availability: 'No current Sky evidence matches this selection' })
+}
+
 export function SkyView(props: Props) {
-  const { site, fields, spaceWeather, onInspect } = props
+  const { site, fields, spaceWeather } = props
+  const onInspect: Props['onInspect'] = (value, opener) => props.onInspect(value.key.startsWith('sky:') ? skyEvidence(value.key, props) : value, opener)
   const astronomy = props.astronomy?.provenance ? props.astronomy : null
   const allowed = (row: ServedFieldValue) => row.hasValue && row.attribution.evidenceClass !== 'unrecognised' && !row.attribution.derivationRefused && !row.attribution.provenanceUnmodelled && !row.attribution.uncatalogued
   const inspect = (key: string, label: string, value: string, details: Record<string, unknown>) => <button onClick={(event) => onInspect({ key: `sky:${key}`, label, text: value, details }, event.currentTarget)}>Inspect {label}</button>
@@ -21,7 +46,7 @@ export function SkyView(props: Props) {
     return rows.length ? rows.map((row) => ({ row, label })) : [{ row: null, label }]
   })
   return <div className="sky-instrument">
-    <div><section className="sky-panel"><h3>Horizon · looking up</h3>
+    <div><section className="sky-panel"><h3 tabIndex={-1} data-inspector-return>Horizon · looking up</h3>
       <Horizon site={site} />
       <p>{site ? site.geometry_note ?? 'Registration basis not supplied' : 'No registered horizon at this point. A nearby site is not borrowed.'}</p>
       {site && <p>Terrain check: {site.horizon.terrain_check_status} · {site.horizon.terrain_check_note}</p>}
@@ -34,7 +59,7 @@ export function SkyView(props: Props) {
       return <div className="sky-cloud-gauge" key={row ? evidenceKey(row) : `missing:${index}`}><h4>{label}</h4><svg viewBox="0 0 100 100" role="img" aria-label={`${label}: ${shown(value, row?.units ?? '')}; scalar gauge, not direction`}>
         <circle className="sky-gauge-track" cx="50" cy="50" r="35" />
         {percent !== null ? <circle className="sky-gauge-value" cx="50" cy="50" r="35" pathLength="100" strokeDasharray={`${percent} ${100 - percent}`} transform="rotate(-90 50 50)" /> : <path d="M35 50H65" stroke="currentColor" fill="none" />}
-      </svg><p>{shown(value, row?.units ?? '')}</p><p><EvidenceGlyph kind={row?.attribution.evidenceClass ?? 'unrecognised'} /><SourceTag id={row?.attribution.sourceId} /></p>
+      </svg><p>{shown(value, row?.units ?? '')}</p><p><EvidenceGlyph kind={row?.attribution.evidenceClass ?? 'unrecognised'} />{EVIDENCE_CLASS_LABELS[row?.attribution.evidenceClass ?? 'unrecognised']} · <SourceTag id={row?.attribution.sourceId} /></p>
         {value !== null && percent === null && <p>No gauge scale for the returned unit</p>}
         {row ? <button onClick={(event) => onInspect({ key: evidenceKey(row), label: row.field, text: allowed(row) ? row.text : 'Unavailable', attribution: row.attribution }, event.currentTarget)}>Inspect {row.field} from {row.attribution.sourceId}</button> : <p>No layer fraction returned</p>}
       </div>
@@ -47,7 +72,7 @@ export function SkyView(props: Props) {
     </section></div>
     <div><section className="sky-panel"><h3>Geometry at Focus</h3>{astronomy?.notices.map((notice) => <p key={notice}>{notice}</p>)}<p>Azimuths are not supplied, so no Sun, Moon or core marker is placed against the site horizon.</p>
       <table><caption>Returned geometric altitudes and lunar geometry</caption><thead><tr><th scope="col">Class / quantity</th><th scope="col">Value</th><th scope="col">Provenance</th></tr></thead><tbody>
-        {([['Sun altitude', astronomy?.sun_altitude_deg, '°'], ['Moon altitude', astronomy?.moon_altitude_deg, '°'], ['Galactic core altitude', astronomy?.core_altitude_deg, '°'], ['Moon phase angle', astronomy?.moon.phase_deg, '°'], ['Moon illuminated fraction', astronomy?.moon.illuminated_fraction, 'fraction']] as const).map(([label, value, units]) => <tr key={label}><th scope="row"><EvidenceGlyph kind={astronomy?.provenance ? 'derived_here' : 'unrecognised'} />{label}</th><td>{shown(value, units)}</td><td>{inspect(label, label, shown(value, units), { 'Returned astronomy provenance': astronomy?.provenance ?? null, 'Native valid time': astronomy?.valid_time ?? null, 'Value': value ?? null, Units: units, 'Response notices': astronomy?.notices ?? props.astronomyNotice })}</td></tr>)}
+        {([['Sun altitude', astronomy?.sun_altitude_deg, '°'], ['Moon altitude', astronomy?.moon_altitude_deg, '°'], ['Galactic core altitude', astronomy?.core_altitude_deg, '°'], ['Moon phase angle', astronomy?.moon.phase_deg, '°'], ['Moon illuminated fraction', astronomy?.moon.illuminated_fraction, 'fraction']] as const).map(([label, value, units]) => <tr key={label}><th scope="row"><EvidenceGlyph kind={astronomy?.provenance ? 'derived_here' : 'unrecognised'} />{label}<small>{EVIDENCE_CLASS_LABELS[astronomy?.provenance ? 'derived_here' : 'unrecognised']} · <SourceTag id={astronomy?.provenance?.source_id} /></small></th><td>{shown(value, units)}</td><td>{inspect(label, label, shown(value, units), { 'Returned astronomy provenance': astronomy?.provenance ?? null, 'Native valid time': astronomy?.valid_time ?? null, 'Value': value ?? null, Units: units, 'Response notices': astronomy?.notices ?? props.astronomyNotice })}</td></tr>)}
       </tbody></table>
     </section>
     <section className="sky-panel"><h3>Atmosphere and missing direction</h3><p>Cloud direction is not supplied. Returned seeing or transparency classes retain their source definitions; scalar readings do not fill directional positions.</p>

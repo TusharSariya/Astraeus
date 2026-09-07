@@ -43,3 +43,16 @@ it('distinguishes geographic refusal from transport failure without a prior-poin
     expect(result.snapshot.servedFields).toHaveLength(0)
   } finally { fetcher.mockRestore() }
 })
+
+it('refreshes inspected Sky registry and absence from current Sky inputs', async () => {
+  const { skyEvidence } = await import('./SkyView')
+  const props = { site: registered, registryVersion: 'registered-v1', fields: [], astronomy: null, astronomyNotice: 'Kernel unavailable', spaceWeather: null, spaceWeatherNotice: 'Not returned', cameras: null, cameraNotice: 'Not returned', onInspect: vi.fn() }
+  const horizon = skyEvidence('sky:horizon', props)
+  expect(horizon.details?.['Registered site']).toBe(registered)
+  expect(skyEvidence(horizon.key, { ...props, site: null }).details?.['Registered site']).toBeNull()
+  const sun = skyEvidence('sky:Sun altitude', props)
+  expect(sun.text).toBe('Unavailable')
+  expect(sun.details?.Value).toBeNull()
+  expect(sun.details?.['Response notices']).toBe('Kernel unavailable')
+  expect(skyEvidence('sky:Kp observed', props).details?.['Complete returned series']).toBeNull()
+})

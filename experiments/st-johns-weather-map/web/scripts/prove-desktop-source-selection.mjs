@@ -57,7 +57,7 @@ try {
   await page.getByRole('button', { name: 'Close inspector', exact: true }).click()
   await page.getByRole('button', { name: 'Coverage lanes', exact: true }).click()
   await page.locator('.native-track summary').first().click()
-  await page.getByRole('button', { name: 'Inspect temperature_2m at 2026-09-07T12:00:00.000Z', exact: true }).click()
+  await page.getByRole('button', { name: /^Inspect temperature_2m at 2026\-09\-07T12:00:00\.000Z/, exact: true }).click()
   await page.getByText('Finite native selection', { exact: true }).waitFor()
   for (const name of ['light', 'dark', 'Red night']) {
     await page.getByRole('button', { name, exact: true }).click()

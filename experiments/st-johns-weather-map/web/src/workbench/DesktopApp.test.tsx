@@ -31,7 +31,7 @@ it('keeps an explicitly fixed instant equal to Now fixed, then makes Now links s
 it('keeps keyboard inspection coherent across a response and theme change', async () => {
   render(<App />)
   fireEvent.click(screen.getByText('Point evidence ledger'))
-  const opener = await screen.findByRole('button', { name: 'Inspect temperature from noaa-gfs' })
+  const opener = await screen.findByRole('button', { name: /^Inspect temperature from noaa\-gfs/ })
   await userEvent.click(opener)
   expect(screen.getByRole('heading', { name: 'Evidence · temperature' })).toHaveFocus()
   await userEvent.click(screen.getByRole('button', { name: 'Red night' }))
@@ -50,13 +50,13 @@ it('does not query a default Series point while a named site awaits registered g
 it('reads a same-second Focus change exactly and clears old point evidence on failure', async () => {
   render(<App />)
   fireEvent.click(screen.getByText('Point evidence ledger'))
-  await screen.findByRole('button', { name: 'Inspect temperature from noaa-gfs' })
+  await screen.findByRole('button', { name: /^Inspect temperature from noaa\-gfs/ })
   const original = vi.mocked(fetch).getMockImplementation()!
   vi.mocked(fetch).mockImplementation(async (...args) => String(args[0]).includes('/point?') ? new Response('{}', { status: 503 }) : original(...args))
   fireEvent.click(screen.getByText(/Fixed instant/))
   fireEvent.change(screen.getByLabelText('Instant (ISO, with timezone)'), { target: { value: '2026-09-07T12:00:00.123Z' } })
   fireEvent.click(screen.getByRole('button', { name: 'Use instant' }))
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'Inspect temperature from noaa-gfs' })).not.toBeInTheDocument())
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^Inspect temperature from noaa\-gfs/ })).not.toBeInTheDocument())
   const urls = vi.mocked(fetch).mock.calls.map(([input]) => new URL(String(input), 'http://localhost')).filter((url) => url.pathname.endsWith('/point'))
   expect(urls.at(-1)?.searchParams.get('valid_time')).toBe('2026-09-07T12:00:00.123Z')
 })
@@ -79,7 +79,7 @@ it('shares loaded native pages with Sources and clears its open inspector on fix
   fireEvent.click(screen.getByRole('button', { name: 'Sources' }))
   await vi.waitFor(() => expect(screen.getByRole('region', { name: 'Finite native Series evidence' })).toBeInTheDocument())
   fireEvent.click(screen.getAllByText(/Native values, gaps and run identity/)[0])
-  fireEvent.click(screen.getByRole('button', { name: 'Inspect temperature_2m at 2026-09-07T12:00:00.000Z' }))
+  fireEvent.click(screen.getByRole('button', { name: /^Inspect temperature_2m at 2026\-09\-07T12:00:00\.000Z/ }))
   expect(screen.getByRole('complementary', { name: 'Evidence inspector' })).toHaveTextContent('1234')
   expect(screen.getByRole('complementary', { name: 'Evidence inspector' })).toHaveTextContent('Finite native selection')
   await act(async () => { vi.advanceTimersByTime(300000) })
