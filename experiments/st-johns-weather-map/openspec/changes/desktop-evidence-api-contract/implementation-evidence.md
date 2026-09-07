@@ -101,3 +101,33 @@ and astronomy reads now return the typed `outside_supported_area` refusal with
 exact requested coordinates. Unsupported geometry returns nulls. Registry,
 camera, site, space-weather and astronomy checks: 77 passed, six kernel-dependent
 astronomy tests skipped. This completes task 5, not imagery joins or camera delivery.
+
+
+## Activity curve and input implementation checkpoint
+
+The registered `activity_verdict` v1 entry now declares one profile input and
+0–100 refused-outside-range output. `registry/grading.py` implements the adopted
+step, directional linear, exponential and band curves, named threshold anchors,
+low_cap, non-overridable shape parameters and override/anchor refusals.
+`profiles/evidence.py` selects exact native source inputs with disclosed skips
+and no averaging, then emits typed hard-stop/criterion evidence with original
+values, defaults/overrides, loss, declared/evaluated/retained weight and reasons.
+Failed QC, refused/unmodelled provenance, incompatible units, absent or ambiguous
+native readings cannot become evaluated grades or clear hard stops.
+
+Mapped tests: `test_activity_grading.py` contains hand-calculated boundaries,
+comfort bands, corrected aurora direction, cloud low_cap and invalid overrides;
+`test_activity_evidence.py` covers exact timestamps/source isolation, source
+precedence, failed/suspect/unknown quality, stale retrieval, unit mismatch,
+refusal flags and method switches. Together with affected registry/profile/model
+checks: 160 tests pass. Seventeen affected client tests and build pass; strict
+OpenSpec and specctl pass. Review is a separate main-agent pass.
+
+Tasks 8–11 remain open: no aggregate score, profile-version change, verdict route
+or Activity view completion is claimed by these components. A specific owner
+question is pending: #64 requires active weights to total 1 while excluding
+unverified paths; the running PM2.5 0.15 weight has no admitted RAQDPS path (#172).
+Normalize the remaining selected weights or withhold the profile until its
+complete selected budget exists. Dependent budget aggregation is held; other
+desktop work can continue. No default scientific choice is inferred from elapsed
+time or a registry declaration.

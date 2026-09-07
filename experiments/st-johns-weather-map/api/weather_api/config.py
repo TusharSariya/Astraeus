@@ -91,3 +91,12 @@ OBSERVATION_RETENTION = WINDOW_BACK
 #: The quality flag that says a value is absent because the store held the
 #: frame and purged it. Never set without a recorded last valid time.
 AGED_OUT_FLAG = "aged_out"
+
+
+# Verdict source precedence from #49. Entries are existing native forecast
+# query paths, not source admission declarations. Source-specific geometry and
+# planetary evidence are mapped separately, never used as forecast substitutes.
+VERDICT_SOURCE_PRECEDENCE = {
+    "core": ("eccc-hrdps", "eccc-rdps", "eccc-gdps", "noaa-gfs"),
+    "planning": ("eccc-gdps", "noaa-gfs"),
+}

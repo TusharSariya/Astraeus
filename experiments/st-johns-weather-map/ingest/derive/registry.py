@@ -68,11 +68,11 @@ DERIVED_HERE_ENV = "WEATHER_DERIVED_HERE"
 #: this way are the same source, so they are not a blend.
 SAME_SOURCE = "same-source"
 
-InputKind = Literal["field", "provider_reduction", "member_statistic"]
+InputKind = Literal["field", "provider_reduction", "member_statistic", "profile"]
 RangeRule = Literal["clamp", "wrap", "null", "inherit_input_range"]
 
 _RANGE_RULES: frozenset[str] = frozenset({"clamp", "wrap", "null", "inherit_input_range"})
-_INPUT_KINDS: frozenset[str] = frozenset({"field", "provider_reduction", "member_statistic"})
+_INPUT_KINDS: frozenset[str] = frozenset({"field", "provider_reduction", "member_statistic", "profile"})
 
 #: Catalogue keys that are an average over a window rather than an instant.
 #: A statistic entry may not mix one of these with another key of the same
@@ -1030,6 +1030,21 @@ ENTRIES: tuple[DerivationMethod, ...] = (
         ),
     ),
 )
+
+# One profile input is the selected decision-layer boundary; actual driving
+# field provenance remains mandatory on every verdict criterion.
+ACTIVITY_VERDICT = "activity_verdict"
+ENTRIES += (DerivationMethod(
+    name=ACTIVITY_VERDICT, version="1",
+    citation="activity-profile and desktop-evidence-api-contract/activity-verdict; ADR 0002; Wayfinder #49/#64",
+    inputs=(Input(field="activity_profile", family="activity_profile", source="profile-registry", kind="profile"),),
+    outputs=(Output(field="verdict_score", units="1", minimum=0, maximum=100, range_rule="null"),),
+    approval=Approval(approver="@TusharSariya", decided_on="2026-09-07",
+        record="openspec/changes/desktop-evidence-workbench/acceptance.md",
+        note="Formalizes selected #48/#49/#64 mechanics; no new scoring or source admission"),
+    summary="Request-time profile verdict; full driving evidence is disclosed per criterion. No profile ranking.",
+    conventions=("Score is round(100 * (1 - lost weight / evaluated weight)); limiting ties use profile order.",),
+),)
 
 #: The loaded registry. Importing this module with an invalid entry set raises
 #: :class:`RegistryError`, so the deployment refuses to start with it.
