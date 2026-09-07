@@ -55,15 +55,16 @@ class ECMWFQueryUnavailable(ValueError):
 
 class ECMWFHTTP:
     """Source-local bounded receipt transport reused by Open Data range helpers."""
-    def __init__(self, client=None, *, now=lambda: datetime.now(UTC)):
+    def __init__(self, client=None, *, now=lambda: datetime.now(UTC), clock=time.monotonic):
         self.client = client or httpx.Client(timeout=30, follow_redirects=False,
             headers={"User-Agent": "astraeus-weather-experiment/0.1", "Accept-Encoding": "identity"})
-        self.now = now
+        self.now, self.clock = now, clock
         self.receipts = []
-        self.deadline = time.monotonic() + MAX_ACQUISITION_SECONDS
+        self.completed_monotonic = None
+        self.deadline = self.clock() + MAX_ACQUISITION_SECONDS
 
     def read(self, url, *, limit, byte_range=None):
-        if time.monotonic() >= self.deadline:
+        if self.clock() >= self.deadline:
             raise ECMWFQueryUnavailable("ECMWF acquisition deadline exceeded")
         headers = {"Accept-Encoding": "identity"}
         if byte_range is not None:
@@ -86,12 +87,13 @@ class ECMWFHTTP:
                     raise ECMWFQueryUnavailable("ECMWF range identity mismatch")
             body = bytearray()
             for chunk in response.iter_bytes(65536):
-                if time.monotonic() >= self.deadline:
+                if self.clock() >= self.deadline:
                     raise ECMWFQueryUnavailable("ECMWF acquisition deadline exceeded")
                 body.extend(chunk)
                 if len(body) > limit:
                     raise ECMWFQueryUnavailable("ECMWF received body exceeds bound")
             completed = self.now()
+            self.completed_monotonic = self.clock()
             if declared is not None and len(body) != int(declared):
                 raise ECMWFQueryUnavailable("ECMWF truncated declared body")
             if byte_range is not None and len(body) != byte_range[1] - byte_range[0] + 1:
@@ -249,7 +251,7 @@ class ECMWFQueryCoordinator:
                     break
             if not candidates:
                 raise ECMWFQueryUnavailable("ECMWF has no verified run in bounded discovery")
-            self._inventory = (self.clock() + TTL_SECONDS, tuple(candidates))
+            self._inventory = (transport.completed_monotonic + TTL_SECONDS, tuple(candidates))
             return self._inventory[1]
 
     def query(self, selected_time, *, run_id=None, refresh=False):
@@ -271,7 +273,7 @@ class ECMWFQueryCoordinator:
         if not owner:
             return future.result()
         try:
-            transport = ECMWFHTTP(self.client, now=self.now)
+            transport = ECMWFHTTP(self.client, now=self.now, clock=self.clock)
             try:
                 candidates = self._discover(transport, refresh=refresh)
                 candidate = next((run for run in candidates if run.provider_run_id == run_id), None) if run_id else candidates[0]
@@ -311,7 +313,10 @@ class ECMWFQueryCoordinator:
                     completion + timedelta(seconds=TTL_SECONDS), hashlib.sha256(payload).hexdigest(), provenance, payload)
                 if entry.backing_bytes > MAX_OUTPUT_BYTES:
                     raise ECMWFQueryUnavailable("ECMWF normalized cache entry exceeds bound")
-                remaining = TTL_SECONDS - max(0.0, (self.now() - completion).total_seconds())
+                # Wall time can jump during decoding. The original final-byte
+                # monotonic deadline must cap admission independently of UTC.
+                remaining = min(TTL_SECONDS - max(0.0, (self.now() - completion).total_seconds()),
+                    transport.completed_monotonic + TTL_SECONDS - self.clock())
                 if remaining <= 0:
                     raise ECMWFQueryUnavailable("ECMWF response expired during normalization")
                 with self._lock:

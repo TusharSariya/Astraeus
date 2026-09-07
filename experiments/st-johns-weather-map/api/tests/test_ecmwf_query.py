@@ -166,6 +166,33 @@ def test_decoder_elapsed_time_cannot_extend_advertised_expiry():
     assert service._entries[(RUN, None)][0] == 600.0
 
 
+def test_clock_rollback_cannot_extend_final_byte_expiry():
+    fixture = Fixture(); elapsed = [0.0]; reference = [RUN]
+    def delayed(request):
+        elapsed[0] = 120.0
+        reference[0] = RUN - timedelta(hours=1)
+        return decoded(request)
+    service = ECMWFQueryCoordinator(fixture.source, now=lambda: reference[0], clock=lambda: elapsed[0],
+        client=fixture.client, decoder=delayed)
+    service.query(RUN)
+    assert service._entries[(RUN, None)][0] == 600.0
+    fixture.fail = True
+    elapsed[0] = 600.0
+    with pytest.raises(ECMWFQueryUnavailable):
+        service.query(RUN)
+
+
+def test_failed_refresh_keeps_unexpired_prior_evidence_without_renewing():
+    fixture = Fixture(); elapsed = [0.0]; service = coordinator(fixture, elapsed)
+    first = service.query(RUN)
+    fixture.fail = True; elapsed[0] = 100.0
+    with pytest.raises(ECMWFQueryUnavailable):
+        service.query(RUN, refresh=True)
+    calls = len(fixture.calls)
+    assert service.query(RUN) is first and len(fixture.calls) == calls
+    assert service._entries[(RUN, None)][0] == 600.0
+
+
 def test_oversized_decoder_result_is_not_cached():
     from weather_api.ecmwf_query import MAX_OUTPUT_BYTES
     fixture = Fixture()
