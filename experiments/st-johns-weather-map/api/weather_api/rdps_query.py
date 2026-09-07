@@ -124,17 +124,18 @@ class RDPSQueryService:
             expired = self._expired.get(key)
             return expired[1] if expired else None
 
-    def query(self, key: RDPSRequestKey) -> RDPSQueryEntry:
+    def query(self, key: RDPSRequestKey, *, refresh: bool = False) -> RDPSQueryEntry:
         with self._lock:
             now = self._clock()
             self._prune_locked(now)
             cached = self._entries.get(key)
-            if cached and now < cached[0]:
+            if not refresh and cached and now < cached[0]:
                 self._entries.move_to_end(key)
                 return cached[1]
-            self._entries.pop(key, None)
+            if cached and now >= cached[0]:
+                self._entries.pop(key, None)
             failure = self._failures.get(key)
-            if failure and now < failure[0]:
+            if not refresh and failure and now < failure[0]:
                 raise RDPSQueryUnavailable(failure[1])
             self._failures.pop(key, None)
             future = self._inflight.get(key)
@@ -172,6 +173,7 @@ class RDPSQueryService:
             return entry
         except BaseException as error:
             with self._lock:
+                self._prune_locked(self._clock())
                 expired = self._expired.get(key)
                 if expired and self._clock() >= expired[0]:
                     self._expired.pop(key, None)
@@ -207,8 +209,39 @@ class RDPSQueryCoordinator:
         self._prepared: dict[RDPSRequestKey, RunCandidate] = {}
         self._lock = threading.Lock()
         self._cache = RDPSQueryService(self._load, clock=clock, now=now)
+        self._refresh_lock = threading.Lock()
+        self._refreshes: dict[tuple, Future] = {}
 
-    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = RDPS_POINT_FIELDS, run_id: str | None = None) -> RDPSQueryEntry:
+    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = RDPS_POINT_FIELDS,
+              run_id: str | None = None, refresh: bool = False) -> RDPSQueryEntry:
+        if not refresh:
+            return self._query(selected_time, fields=fields, run_id=run_id)
+        # Coalesce the complete refresh before the coordinator's existing
+        # acquisition lock, including discovery and the native payload read.
+        request = (selected_time, tuple(fields), run_id)
+        with self._refresh_lock:
+            future = self._refreshes.get(request)
+            owner = future is None
+            if owner:
+                if len(self._refreshes) >= RDPS_CACHE_MAX_ENTRIES:
+                    raise ValueError("RDPS concurrent refresh bound reached")
+                future = Future()
+                self._refreshes[request] = future
+        if not owner:
+            return future.result()
+        try:
+            entry = self._query(selected_time, fields=fields, run_id=run_id, refresh=True)
+            future.set_result(entry)
+            return entry
+        except BaseException as error:
+            future.set_exception(error)
+            raise
+        finally:
+            with self._refresh_lock:
+                self._refreshes.pop(request, None)
+
+    def _query(self, selected_time: datetime, *, fields: tuple[str, ...] = RDPS_POINT_FIELDS,
+               run_id: str | None = None, refresh: bool = False) -> RDPSQueryEntry:
         if selected_time.tzinfo is None:
             raise ValueError("RDPS selected time must include an offset")
         fields = tuple(sorted(set(fields)))
@@ -223,7 +256,7 @@ class RDPSQueryCoordinator:
         self._adapter.demand_operation_bounds(len(fields))
         with self._lock:
             try:
-                candidate = self._run_inventory.resolve(run_id) if run_id is not None else self._discover(selected_time)
+                candidate = self._run_inventory.resolve(run_id, refresh=refresh) if run_id is not None else self._discover(selected_time, refresh=refresh)
             except RunUnavailable:
                 raise
             except Exception as error:
@@ -253,7 +286,7 @@ class RDPSQueryCoordinator:
                                   lead, tuple(fields), tuple(sorted(self._adapter.bounds.items())))
             self._prepared[key] = candidate
             try:
-                return self._cache.query(key)
+                return self._cache.query(key, refresh=refresh)
             finally:
                 self._prepared.pop(key, None)
 
@@ -286,9 +319,9 @@ class RDPSQueryCoordinator:
         candidate = self._run_inventory.resolve(run_id)
         return tuple(candidate.run_time + timedelta(hours=int(lead)) for lead in candidate.detail.get("available_hours", ()) if 0 <= int(lead) < 85)
 
-    def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *, run_id: str | None = None):
+    def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *, run_id: str | None = None, refresh: bool = False):
         from .store import live_point_fields
-        entry = self.query(selected_time, fields=RDPS_POINT_FIELDS, **({"run_id": run_id} if run_id is not None else {}))
+        entry = self.query(selected_time, fields=RDPS_POINT_FIELDS, **({"run_id": run_id} if run_id is not None else {}), **({"refresh": True} if refresh else {}))
         samples, sampler = self._samples(entry, latitude, longitude)
         class Samples:
             skipped, unmodelled = sampler.skipped, sampler.unmodelled
@@ -337,9 +370,9 @@ class RDPSQueryCoordinator:
                 dataset.close(); zipped.close()
         return samples, sampler
 
-    def _discover(self, selected_time: datetime) -> RunCandidate:
+    def _discover(self, selected_time: datetime, *, refresh: bool = False) -> RunCandidate:
         now = self._clock()
-        if self._candidate and now < self._candidate[0]:
+        if not refresh and self._candidate and now < self._candidate[0]:
             candidate = self._candidate[1]
             if candidate.run_time and candidate.run_time <= selected_time:
                 lead = (selected_time - candidate.run_time).total_seconds() / 3600
@@ -352,7 +385,7 @@ class RDPSQueryCoordinator:
         if not eligible:
             raise ValueError("RDPS provider exposes no run with the selected native time")
         candidate = max(eligible, key=lambda c: c.run_time)
-        self._candidate = (now + RDPS_CACHE_TTL_SECONDS, candidate)
+        self._candidate = (self._clock() + RDPS_CACHE_TTL_SECONDS, candidate)
         return candidate
 
     def _load(self, key: RDPSRequestKey) -> RDPSQueryEntry:

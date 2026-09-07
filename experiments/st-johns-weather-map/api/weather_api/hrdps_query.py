@@ -88,16 +88,17 @@ class HRDPSQueryService:
         self._inflight: dict[HRDPSRequestKey, Future[HRDPSQueryEntry]] = {}
         self._failures: dict[HRDPSRequestKey, tuple[float, BaseException]] = {}
 
-    def query(self, key: HRDPSRequestKey) -> HRDPSQueryEntry:
+    def query(self, key: HRDPSRequestKey, *, refresh: bool = False) -> HRDPSQueryEntry:
         with self._lock:
             now = self._clock()
             cached = self._entries.get(key)
-            if cached and now < cached[0]:
+            if not refresh and cached and now < cached[0]:
                 self._entries.move_to_end(key)
                 return cached[1]
-            self._entries.pop(key, None)
+            if cached and now >= cached[0]:
+                self._entries.pop(key, None)
             failure = self._failures.get(key)
-            if failure and now < failure[0]:
+            if not refresh and failure and now < failure[0]:
                 raise failure[1]
             self._failures.pop(key, None)
             future = self._inflight.get(key)
@@ -141,8 +142,39 @@ class HRDPSQueryCoordinator:
         self._prepared: dict[HRDPSRequestKey, RunCandidate] = {}
         self._lock = threading.Lock()
         self._cache = HRDPSQueryService(self._load, clock=clock)
+        self._refresh_lock = threading.Lock()
+        self._refreshes: dict[tuple, Future] = {}
 
-    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = HRDPS_POINT_FIELDS, run_id: str | None = None) -> HRDPSQueryEntry:
+    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = HRDPS_POINT_FIELDS,
+              run_id: str | None = None, refresh: bool = False) -> HRDPSQueryEntry:
+        if not refresh:
+            return self._query(selected_time, fields=fields, run_id=run_id)
+        # Coalesce the complete refresh before the coordinator's existing
+        # acquisition lock, including discovery and the native payload read.
+        request = (selected_time, tuple(fields), run_id)
+        with self._refresh_lock:
+            future = self._refreshes.get(request)
+            owner = future is None
+            if owner:
+                if len(self._refreshes) >= HRDPS_CACHE_MAX_ENTRIES:
+                    raise ValueError("HRDPS concurrent refresh bound reached")
+                future = Future()
+                self._refreshes[request] = future
+        if not owner:
+            return future.result()
+        try:
+            entry = self._query(selected_time, fields=fields, run_id=run_id, refresh=True)
+            future.set_result(entry)
+            return entry
+        except BaseException as error:
+            future.set_exception(error)
+            raise
+        finally:
+            with self._refresh_lock:
+                self._refreshes.pop(request, None)
+
+    def _query(self, selected_time: datetime, *, fields: tuple[str, ...] = HRDPS_POINT_FIELDS,
+               run_id: str | None = None, refresh: bool = False) -> HRDPSQueryEntry:
         if selected_time.tzinfo is None:
             raise ValueError("HRDPS selected time must include an offset")
         requested_time = selected_time.astimezone(UTC)
@@ -153,7 +185,7 @@ class HRDPSQueryCoordinator:
         # provider payload too, so an unsupported runtime never opens one.
         self._adapter.demand_operation_bounds(len(fields))
         with self._lock:
-            candidate = self._run_inventory.resolve(run_id) if run_id is not None else self._discover(selected_time)
+            candidate = self._run_inventory.resolve(run_id, refresh=refresh) if run_id is not None else self._discover(selected_time, refresh=refresh)
             assert candidate.run_time is not None
             seconds = (selected_time - candidate.run_time).total_seconds()
             if seconds < 0 or seconds % 3600:
@@ -166,7 +198,7 @@ class HRDPSQueryCoordinator:
                                   lead, tuple(fields), tuple(sorted(AVALON_CORE_BOUNDS.items())))
             self._prepared[key] = candidate
             try:
-                return self._cache.query(key)
+                return self._cache.query(key, refresh=refresh)
             finally:
                 self._prepared.pop(key, None)
 
@@ -199,9 +231,9 @@ class HRDPSQueryCoordinator:
         candidate = self._run_inventory.resolve(run_id)
         return tuple(candidate.run_time + timedelta(hours=int(lead)) for lead in candidate.detail.get("available_hours", ()) if 0 <= int(lead) < 25)
 
-    def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *, run_id: str | None = None):
+    def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *, run_id: str | None = None, refresh: bool = False):
         from .store import LiveStore, live_point_fields
-        entry = self.query(selected_time, fields=HRDPS_POINT_FIELDS, **({"run_id": run_id} if run_id is not None else {}))
+        entry = self.query(selected_time, fields=HRDPS_POINT_FIELDS, **({"run_id": run_id} if run_id is not None else {}), **({"refresh": True} if refresh else {}))
         samples, sampler = self._samples(entry, latitude, longitude)
         class Samples:
             skipped, unmodelled = sampler.skipped, sampler.unmodelled
@@ -248,9 +280,9 @@ class HRDPSQueryCoordinator:
                 dataset.close(); zipped.close()
         return samples, sampler
 
-    def _discover(self, selected_time: datetime) -> RunCandidate:
+    def _discover(self, selected_time: datetime, *, refresh: bool = False) -> RunCandidate:
         now = self._clock()
-        if self._candidate and now < self._candidate[0]:
+        if not refresh and self._candidate and now < self._candidate[0]:
             candidate = self._candidate[1]
             if candidate.run_time and candidate.run_time <= selected_time:
                 lead = (selected_time - candidate.run_time).total_seconds() / 3600
@@ -263,7 +295,7 @@ class HRDPSQueryCoordinator:
         if not eligible:
             raise ValueError("HRDPS provider exposes no run with the selected native time")
         candidate = max(eligible, key=lambda c: c.run_time)
-        self._candidate = (now + HRDPS_CACHE_TTL_SECONDS, candidate)
+        self._candidate = (self._clock() + HRDPS_CACHE_TTL_SECONDS, candidate)
         return candidate
 
     def _load(self, key: HRDPSRequestKey) -> HRDPSQueryEntry:
