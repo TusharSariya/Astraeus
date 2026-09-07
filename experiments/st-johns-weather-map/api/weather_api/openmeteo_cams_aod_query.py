@@ -242,7 +242,8 @@ class OpenMeteoCamsAodQueryService:
                      + math.cos(math.radians(latitude)) * math.cos(math.radians(entry.sampled_latitude))
                      * math.sin(math.radians(delta_lon) / 2) ** 2)
         distance = 2 * 6371.0088 * math.asin(math.sqrt(min(1.0, max(0.0, haversine))))
-        return [EvidenceField(field=FIELD_KEY, key=FIELD_KEY, value=value, provenance=Provenance(
+        return [EvidenceField(field=FIELD_KEY, key=FIELD_KEY, value=value,
+                              storage="available-not-stored", provenance=Provenance(
             data_mode=DataMode.LIVE, evidence_class="reprocessed", source_id=SOURCE_ID,
             artifact_revision=f"demand:{entry.response_sha256}",
             provider="ECMWF Copernicus Atmosphere Monitoring Service (CAMS)",

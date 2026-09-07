@@ -54,6 +54,7 @@ def test_named_point_identity_cache_and_fixed_expiry():
     fields = query.point_fields(47.5615, -52.7126, NOW)
     field = fields[0]
     assert field.value == 0.15 and field.key == "aerosol_optical_depth_550nm"
+    assert field.storage == "available-not-stored"
     assert field.provenance.source_id == "openmeteo-cams-aod"
     assert field.provenance.run_time is None
     assert field.provenance.original_units == "" and field.provenance.normalized_units == "1"

@@ -93,3 +93,58 @@ readback, and actual child timeout/cancellation with no cache or inflight
 residue. These fixtures make zero external provider reads. Default process
 execution depends on the existing Linux isolation capability; unsupported
 platforms fail closed.
+
+## One current-hour live proof
+
+On 2026-09-07 at 22:23:44Z, one default Linux acquisition selected St John's
+22:00Z. It completed in **1.820 seconds**, under the 60-second total budget.
+The existing default child and `PoliteClient` made exactly two anonymous
+requests with no retries: 302 bytes for the point response and 594 bytes for
+CAMS metadata, 896 bytes total. A proof-only `sitecustomize` observer copied
+the original download receipt and already-received body; it did not replace
+transport, request another payload, or change adapter validation.
+
+The point response returned literal hour label `2026-09-07T22:00`, AOD **0.07**,
+original unit `""` normalized to dimensionless `1`, and cell
+**47.600006, -52.699997** (4.385 km from the request). There were **zero nulls**
+in this one-value live response; null/gap behavior remains fixture evidence.
+22:00Z is an exact intermediary hourly label, not a claim of a native CAMS
+three-hour producer sample. Evidence stayed `reprocessed`, non-primary and
+`operational: false`. Producer run time remained null; metadata's 12:00Z
+initialization was retained only as context.
+
+Acquisition retrieval time was 22:23:46.262173Z and fixed expiry
+22:28:46.262173Z. A point read and repeat query on the same service returned the
+same cache entry and unchanged expiry with **zero additional provider
+requests/payloads**. Expiry passage, failure and refresh remain the separately
+recorded offline fixture proofs.
+
+Outside-Git bundle: `/private/tmp/astraeus-api-first-cams-aod-live-proof/` contains
+`proof.json`, both raw JSON bodies and original transport receipts, the download
+log, and the observer/proof scripts. Retained body SHA-256 values:
+
+- Point: `824d806aa024b231ca858230d8f3342c571146a13b35b5b5fc74f4422d13061f`.
+- Metadata: `6d7a769b98853e4f11fa6d6c3a94ee33444102acb26039fc80aa366e584448db`.
+
+Command used for the single live attempt:
+
+```sh
+docker run --rm --memory 1g \
+  -v /private/tmp/astraeus-api-first-openmeteo/experiments/st-johns-weather-map:/work:ro \
+  -v /private/tmp/astraeus-api-first-cams-aod-live-proof:/proof \
+  -e PYTHONPATH=/proof:/work/api:/work -w /work \
+  astraeus-lightning-proof:c88ff83 python /proof/proof.py
+```
+
+All acquisition and comparison assertions passed and persisted before the final
+console summary failed to serialize a datetime. A local read-only verifier then
+confirmed the saved successful receipt, download counts, body sizes and hashes;
+the live command was not rerun. The proof script's summary formatting was fixed
+outside Git.
+
+The live field exposed a separate truthful-storage defect: the generic evidence
+model default labeled this memory-cached reading `stored`. The source now sets
+`available-not-stored` explicitly, verified by the existing point test and the
+66-test offline Linux suite. The retained live field faithfully preserves its
+original pre-correction label; no corrected live output is claimed. Shared
+routing and public API delivery remain separate root integration work.
