@@ -17,7 +17,7 @@ sys.path[:0] = [str(ROOT / "api"), str(ROOT)]
 from weather_api.app import app, PREFIX
 from weather_api.desktop_series import Continuation, ReadingIdentity, SeriesResponse, SeriesRow, SeriesSelection, Snapshot
 from weather_api.fixtures import point_fields
-from weather_api.models import CatalogResponse, DataMode, SourceStatusResponse
+from weather_api.models import AQHIDemandUnavailable, CatalogResponse, DataMode, PointResponse, Selection, SourceStatusResponse
 from weather_api.source_delivery import reading_identity
 from weather_api.store import registry_source_records, registry_source_statuses
 
@@ -25,7 +25,7 @@ from weather_api.store import registry_source_records, registry_source_statuses
 def contract():
     schema = app.openapi()
     paths = {path: value for path, value in schema["paths"].items()
-             if path in {f"{PREFIX}/catalog", f"{PREFIX}/sources/status", f"{PREFIX}/point/series", f"{PREFIX}/point/series/changes"}}
+             if path in {f"{PREFIX}/catalog", f"{PREFIX}/sources/status", f"{PREFIX}/point", f"{PREFIX}/point/series", f"{PREFIX}/point/series/changes"}}
     components = schema["components"]["schemas"]
     # The route keeps custom cursor/selection error codes by validating its
     # dictionary body itself. Its request schema still comes from those exact
@@ -96,7 +96,43 @@ def fixtures():
         selected_at=now, expires_at=now + timedelta(minutes=5), change_token="fixture-only-token", identities=identities),
         series=rows, next_cursor=None, complete=True,
         notices=["Deterministic fixture. No provider request or live evidence."])
-    return {"catalog": catalogue.model_dump(mode="json"), "status": statuses.model_dump(mode="json"), "series": series.model_dump(mode="json")}
+    point, failed_point = observation_fixtures(now, rows[0].samples[0])
+    return {"catalog": catalogue.model_dump(mode="json"), "status": statuses.model_dump(mode="json"),
+            "series": series.model_dump(mode="json"), "point_aqhi": point.model_dump(mode="json"),
+            "point_aqhi_unavailable": failed_point.model_dump(mode="json")}
+
+
+def observation_fixtures(now, forecast):
+    """Exercise the actual companion composer with a fixed, offline transport.
+
+    The serialized evidence is explicitly relabelled fixture after production
+    composition; the source's admission predicate still receives its real type.
+    """
+    from unittest.mock import patch
+    from types import SimpleNamespace
+    import httpx
+    from weather_api.aqhi_query import AQHIQueryService, AQHIStationObservation, AqhiQueryUnavailable
+    from weather_api.observation_companions import with_aqhi_observation
+    station = AQHIStationObservation("fixture-ABEFS", "Fixture St John's", now,
+        47.5658, -52.7252, 2.7, "0", "fixture-native-report")
+    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=b"{}"))) as client:
+        service = AQHIQueryService(client=client, clock=lambda: 0.0, utcnow=lambda: now, decode=lambda _: (station,))
+        response = PointResponse(data_mode=DataMode.FIXTURE, latitude=47.56, longitude=-52.72,
+            valid_time=now + timedelta(minutes=30), fields=[forecast.model_copy(deep=True)],
+            selection=Selection(mode="fallback", selected_source_id="eccc-hrdps", selected_product_id="hrdps",
+                badge="HRDPS selected fixture", reason="Deterministic selected-model contract fixture"),
+            notices=["Deterministic fixture: no provider traffic or live evidence"])
+        with patch("weather_api.aqhi_query.aqhi_query_service", return_value=service):
+            success = with_aqhi_observation(response)
+    success.data_mode = DataMode.FIXTURE
+    for field in success.fields:
+        field.provenance.data_mode = DataMode.FIXTURE
+    def failed(*args, **kwargs):
+        raise AqhiQueryUnavailable("Fixed unavailable observation", outcome=AQHIDemandUnavailable(
+            reason="query_failed", error_type="FixtureAcquisitionUnavailable"))
+    with patch("weather_api.aqhi_query.aqhi_query_service", return_value=SimpleNamespace(point_field=failed)):
+        unavailable = with_aqhi_observation(response)
+    return success, unavailable
 
 
 def main():

@@ -25,6 +25,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/experiments/weather/v0/point": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Point
+         * @description One point's evidence, optionally one ensemble family's members or a
+         *     statistic over them.
+         *
+         *     ``statistic`` and ``comparison`` are checked against the registered sets
+         *     here rather than passed through: an unregistered statistic name is a
+         *     request this API cannot answer, and answering it with the nearest entry -
+         *     or with a silent null - would hide which construction produced the number.
+         */
+        get: operations["get_point_api_experiments_weather_v0_point_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/experiments/weather/v0/point/series": {
         parameters: {
             query?: never;
@@ -120,6 +146,29 @@ export interface components {
              * Format: date-time
              */
             transport_completed_at: string;
+        };
+        /** AQHIDemandUnavailable */
+        AQHIDemandUnavailable: {
+            /** Error Type */
+            error_type: string;
+            expired_acquisition?: components["schemas"]["AQHIAcquisition"] | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "refresh_failed" | "query_failed";
+            /**
+             * Source Id
+             * @default eccc-aqhi
+             * @constant
+             */
+            source_id: "eccc-aqhi";
+            /**
+             * Values Withheld
+             * @default true
+             * @constant
+             */
+            values_withheld: true;
         };
         /**
          * BlockedReason
@@ -375,6 +424,30 @@ export interface components {
             /** Value */
             value: number | string | boolean | number[] | string[] | null;
         };
+        /**
+         * FieldComparability
+         * @description Whether two served members of one family may be drawn as one thing.
+         *
+         *     One entry per unordered pair of served members within a family, from
+         *     ``catalogue.comparability``. ``a`` and ``b`` are catalogue keys; where two
+         *     sources serve the same key the pair names that key twice, which is the
+         *     case the catalogue answers ``true`` for. ``reason`` and ``detail`` are null
+         *     exactly when ``comparable`` is true.
+         */
+        FieldComparability: {
+            /** A */
+            a: string;
+            /** B */
+            b: string;
+            /** Comparable */
+            comparable: boolean;
+            /** Detail */
+            detail?: string | null;
+            /** Family */
+            family: string;
+            /** Reason */
+            reason?: string | null;
+        };
         /** Freshness */
         Freshness: {
             /** Age Seconds */
@@ -443,6 +516,23 @@ export interface components {
             product: "GDPS";
             /** Provider Run Id */
             provider_run_id: string;
+            /**
+             * Source Id
+             * @default eccc-gdps
+             * @constant
+             */
+            source_id: "eccc-gdps";
+        };
+        /** GDPSDemandUnavailable */
+        GDPSDemandUnavailable: {
+            /** Error Type */
+            error_type: string;
+            expired_acquisition?: components["schemas"]["GDPSAcquisition"] | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "refresh_failed" | "query_failed";
             /**
              * Source Id
              * @default eccc-gdps
@@ -520,6 +610,86 @@ export interface components {
             report_type?: string | null;
             /** Station Id */
             station_id: string;
+        };
+        /**
+         * PointConsensus
+         * @description Existing centre calculation, separate from every provider reading.
+         */
+        PointConsensus: {
+            /** Available */
+            available: boolean;
+            /** Centre Range */
+            centre_range: [
+                number,
+                number
+            ] | null;
+            /** Contributors */
+            contributors: string[];
+            /** Ensemble Witnesses */
+            ensemble_witnesses: string[];
+            /**
+             * Evidence Class
+             * @default derived_here
+             * @constant
+             */
+            evidence_class: "derived_here";
+            /** Inputs */
+            inputs: components["schemas"]["EvidenceField"][];
+            /**
+             * Method
+             * @default equal_weight_mean_of_deterministic_centres
+             * @constant
+             */
+            method: "equal_weight_mean_of_deterministic_centres";
+            /** Reason */
+            reason: string;
+            /**
+             * Units
+             * @default degC
+             * @constant
+             */
+            units: "degC";
+            /** Value */
+            value: number | null;
+        };
+        /** PointResponse */
+        PointResponse: {
+            /**
+             * Comparability
+             * @description Which served members of a family may be drawn as one thing.
+             *
+             *     Computed from the fields actually served rather than stored beside
+             *     them, so it can never describe a set of members the response does not
+             *     carry.
+             */
+            readonly comparability: components["schemas"]["FieldComparability"][];
+            consensus?: components["schemas"]["PointConsensus"] | null;
+            /** @default fixture */
+            data_mode: components["schemas"]["DataMode"];
+            /** Demand Unavailable */
+            demand_unavailable?: components["schemas"]["RDPSDemandUnavailable"] | components["schemas"]["GDPSDemandUnavailable"] | null;
+            /** Fields */
+            fields: components["schemas"]["EvidenceField"][];
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Notices */
+            notices?: string[];
+            /** Observation Unavailable */
+            observation_unavailable?: (components["schemas"]["AQHIDemandUnavailable"] | components["schemas"]["SWOBDemandUnavailable"])[];
+            /**
+             * Operational
+             * @default false
+             * @constant
+             */
+            operational: false;
+            selection: components["schemas"]["Selection"];
+            /**
+             * Valid Time
+             * Format: date-time
+             */
+            valid_time: string;
         };
         /** Provenance */
         Provenance: {
@@ -718,6 +888,23 @@ export interface components {
              */
             source_id: "eccc-rdps";
         };
+        /** RDPSDemandUnavailable */
+        RDPSDemandUnavailable: {
+            /** Error Type */
+            error_type: string;
+            expired_acquisition?: components["schemas"]["RDPSAcquisition"] | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "refresh_failed" | "query_failed";
+            /**
+             * Source Id
+             * @default eccc-rdps
+             * @constant
+             */
+            source_id: "eccc-rdps";
+        };
         /**
          * RDPSTransportReceipt
          * @description One completed native field transfer; never the upstream body.
@@ -824,6 +1011,29 @@ export interface components {
              */
             source_id: "eccc-swob";
         };
+        /** SWOBDemandUnavailable */
+        SWOBDemandUnavailable: {
+            /** Error Type */
+            error_type: string;
+            expired_acquisition?: components["schemas"]["SWOBAcquisition"] | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "unsupported_time" | "refresh_failed" | "query_failed";
+            /**
+             * Source Id
+             * @default eccc-swob
+             * @constant
+             */
+            source_id: "eccc-swob";
+            /**
+             * Values Withheld
+             * @default true
+             * @constant
+             */
+            values_withheld: true;
+        };
         /** SelectableRun */
         SelectableRun: {
             /** Id */
@@ -833,6 +1043,22 @@ export interface components {
              * Format: date-time
              */
             run_time: string;
+        };
+        /** Selection */
+        Selection: {
+            /** Badge */
+            badge: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "consensus" | "fallback" | "evidence_only";
+            /** Reason */
+            reason: string;
+            /** Selected Product Id */
+            selected_product_id: string | null;
+            /** Selected Source Id */
+            selected_source_id: string | null;
         };
         /** Selector */
         Selector: {
@@ -1189,6 +1415,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogResponse"];
+                };
+            };
+        };
+    };
+    get_point_api_experiments_weather_v0_point_get: {
+        parameters: {
+            query?: {
+                latitude?: number;
+                longitude?: number;
+                valid_time?: string | null;
+                product?: string | null;
+                hrdps_fresh?: boolean;
+                rdps_fresh?: boolean;
+                consensus_evidence?: boolean;
+                /** @description A provider's own member identifier, or 'all' for every member the family publishes */
+                member?: string | null;
+                /** @description One of ensemble_mean, ensemble_spread, ensemble_quantile, ensemble_threshold_probability, ensemble_member_count; the derivation registry entry that produces it */
+                statistic?: string | null;
+                /** @description For ensemble_quantile: the quantile in 0..1, Hyndman and Fan type 7 */
+                quantile?: number | null;
+                /** @description For ensemble_threshold_probability: the threshold, in the field's normalized units */
+                threshold?: number | null;
+                /** @description For ensemble_threshold_probability: ge, gt, le or lt */
+                comparison?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PointResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

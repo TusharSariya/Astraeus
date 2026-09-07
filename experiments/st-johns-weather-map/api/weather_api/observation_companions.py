@@ -1,7 +1,7 @@
 """Compose the one named AQHI observation without widening source categories."""
 from datetime import timedelta
 
-from .models import AQHIDemandUnavailable, PointResponse
+from .models import AQHIDemandUnavailable, DataMode, PointResponse
 
 
 def with_aqhi_observation(response: PointResponse) -> PointResponse:
@@ -28,6 +28,7 @@ def with_aqhi_observation(response: PointResponse) -> PointResponse:
         })
     report = field.provenance.native_report
     return response.model_copy(update={
+        "data_mode": DataMode.LIVE,
         "fields": [*response.fields, field],
         "notices": [*response.notices,
             f"eccc-aqhi station {report.station_id} observation at {report.observation_time.isoformat()} is shown with its own native station and transport provenance"],

@@ -162,7 +162,7 @@ class NativeForecastReader:
         from .store import configured_mode, LIVE_MODE
         if configured_mode() != LIVE_MODE:
             return [_row(s, 'unavailable', 'Native Series requires live source queries; no fixture fallback') for s in selection.selectors]
-        from .source_delivery import source_readers
+        from .source_delivery import reading_identity, source_readers
         from .native_runs import RunUnavailable
         readers = source_readers()
         rows, plans, queried = [], {}, {}
@@ -221,6 +221,12 @@ class NativeForecastReader:
                                 and field.provenance.source_id == selector.source_id
                                 and field.provenance.valid_time == frame.valid_time
                                 and (frame.run_time is None or field.provenance.run_time == frame.run_time)]
+                    if capability is not None:
+                        matching = [field for field in matching
+                                    if (identity := reading_identity(field, reader.product_id)).variant in capability.variants
+                                    and identity.level in capability.levels
+                                    and (selector.variant is None or identity.variant == selector.variant)
+                                    and (selector.level is None or identity.level == selector.level)]
                     samples.extend(matching)
                     incomplete |= not bool(matching)
                 rows.append(result('unknown' if incomplete else 'available',

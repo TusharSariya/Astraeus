@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from weather_api.desktop_series import NativeForecastReader, SeriesResponse, SeriesSelection
 from weather_api.fixtures import point_fields
-from weather_api.models import CatalogResponse, SourceStatusResponse
+from weather_api.models import CatalogResponse, PointResponse, SourceStatusResponse
 from weather_api.source_contract import SourceVariant
 from weather_api.source_delivery import AQHISource, ForecastSource, reading_identity, source_readers
 
@@ -23,7 +23,8 @@ def test_shared_fixture_validates_actual_response_models():
     contract = json.loads((path.parents[1] / "source-api.openapi.json").read_text())
     # Wire responses include Pydantic computed output properties, which are
     # deliberately not accepted back as model constructor inputs.
-    for key, model in [("catalog", CatalogResponse), ("status", SourceStatusResponse), ("series", SeriesResponse)]:
+    for key, model in [("catalog", CatalogResponse), ("status", SourceStatusResponse), ("series", SeriesResponse),
+                       ("point_aqhi", PointResponse), ("point_aqhi_unavailable", PointResponse)]:
         Draft202012Validator({"$ref": f"#/components/schemas/{model.__name__}",
                               "components": contract["components"]}).validate(fixture[key])
     stamps = [sample["provenance"]["valid_time"] for sample in fixture["series"]["series"][0]["samples"]]
@@ -87,3 +88,24 @@ def test_variant_parameters_do_not_alias():
     first = reading_identity(field, "hrdps")
     field.provenance.valid_time += timedelta(hours=1)
     assert reading_identity(field, "hrdps") != first
+
+
+def test_native_read_cannot_substitute_a_member_for_a_deterministic_selector(monkeypatch):
+    import weather_api.source_delivery as delivery
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    field = point_fields(NOW)[0][0]
+    field.provenance.source_id = "noaa-gfs"
+    field.provenance.valid_time = NOW
+    field.provenance.run_time = NOW - timedelta(hours=6)
+    field.provenance.member = "provider-member-0"
+    reader = ForecastSource("noaa-gfs", "gfs", lambda: None, ("temperature_2m",), named_runs=True)
+    reader.plan_series = lambda *args, **kwargs: delivery.NativePlan((delivery.NativeFrame(NOW),))
+    reader.read_point = lambda *args, **kwargs: (field,)
+    monkeypatch.setattr(delivery, "source_readers", lambda: {reader.source_id: reader})
+    request = SeriesSelection(latitude=47.5, longitude=-52.7, start=NOW, end=NOW + timedelta(hours=1),
+        selectors=[{"id": "a", "source_id": reader.source_id, "field": "temperature_2m",
+                    "product_id": "gfs", "variant": {"kind": "deterministic"}, "level": "2m"}])
+    # Use the catalogue's canonical spelling, independent from native GRIB labels.
+    request.selectors[0].level = reader.descriptors()[0].levels[0]
+    row = NativeForecastReader()(request, lambda: False)[0]
+    assert row.availability == "unknown" and not row.samples

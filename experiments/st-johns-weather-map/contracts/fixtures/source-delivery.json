@@ -1820,6 +1820,343 @@
       }
     ]
   },
+  "point_aqhi": {
+    "comparability": [],
+    "consensus": null,
+    "data_mode": "fixture",
+    "demand_unavailable": null,
+    "fields": [
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+        "family": "temperature",
+        "field": "temperature",
+        "key": "temperature_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "fixture-adapter-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": null,
+          "attribution": "Contributing providers; see contributors",
+          "contributing_evidence": [
+            "eccc-hrdps",
+            "noaa-gfs"
+          ],
+          "contributors": [
+            {
+              "attribution": "Environment and Climate Change Canada",
+              "licence": "Open Government Licence - Canada",
+              "product": "HRDPS",
+              "provider": "ECCC",
+              "source_id": "eccc-hrdps"
+            },
+            {
+              "attribution": "NOAA/NCEP",
+              "licence": "US public domain",
+              "product": "GFS",
+              "provider": "NOAA",
+              "source_id": "noaa-gfs"
+            }
+          ],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": null,
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": true,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "ECCC",
+          "freshness": {
+            "age_seconds": null,
+            "status": "unknown",
+            "threshold_seconds": 21600
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "Mixed contributor licences; see contributors",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "2.5 km",
+          "normalized_units": "degC",
+          "operational": false,
+          "original_units": "degC",
+          "product": "HRDPS",
+          "provider": "ECCC",
+          "quality": {
+            "flags": [],
+            "status": "passed"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T06:00:00Z",
+          "sample_distance_km": null,
+          "sample_method": null,
+          "sampled_latitude": null,
+          "sampled_longitude": null,
+          "source_display_primary": null,
+          "source_id": "eccc-hrdps",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "stored",
+        "value": 13.0
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Particulate mass and aerosol optical depth are not the same quantity and no conversion between them is a measurement. Mass carries no wavelength dependence and no hygroscopic growth; a mass-to-extinction conversion is a citable method and must be declared derived-here. A surface concentration and a column burden are also not comparable. The health index is a categorical scale, not a concentration.",
+        "family": "air_quality",
+        "field": "aqhi",
+        "key": "air_quality_health_index",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "eccc-geomet-aqhi-demand-v1",
+          "aqhi_acquisition": {
+            "body_bytes": 2,
+            "body_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "cached_at": "2026-09-07T12:00:00Z",
+            "effective_url": "https://geo.weather.gc.ca/geomet/?service=WMS&version=1.3.0&request=GetFeatureInfo&layers=AQHI-OBS&query_layers=AQHI-OBS&info_format=application%2Fjson&feature_count=50&crs=EPSG%3A4326&bbox=46.5%2C-55.0%2C48.5%2C-51.0&width=20&height=20&i=10&j=10",
+            "expires_at": "2026-09-07T12:01:00Z",
+            "provider_url": "https://geo.weather.gc.ca/geomet/?service=WMS&version=1.3.0&request=GetFeatureInfo&layers=AQHI-OBS&query_layers=AQHI-OBS&info_format=application%2Fjson&feature_count=50&crs=EPSG%3A4326&bbox=46.5%2C-55.0%2C48.5%2C-51.0&width=20&height=20&i=10&j=10",
+            "request_headers": {
+              "accept": "application/json",
+              "accept-encoding": "identity",
+              "user-agent": "python-httpx/0.28.1"
+            },
+            "response_headers": {},
+            "transport_completed_at": "2026-09-07T12:00:00Z"
+          },
+          "artifact_revision": "demand:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "attribution": "Credit Environment and Climate Change Canada; AQHI observation via MSC GeoMet",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "Environment and Climate Change Canada",
+          "freshness": {
+            "age_seconds": 1800,
+            "status": "fresh",
+            "threshold_seconds": 3600
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "MSC Open Data licence",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": {
+            "flight_category": null,
+            "native_metadata": {
+              "provider_feature_id": "fixture-native-report",
+              "provider_quality": "0"
+            },
+            "observation_time": "2026-09-07T12:00:00Z",
+            "provider_elevation_m": null,
+            "provider_latitude": 47.5658,
+            "provider_longitude": -52.7252,
+            "provider_report_id": null,
+            "provider_station_name": "Fixture St John's",
+            "quality_code": null,
+            "raw_report_sha256": null,
+            "receipt_time": null,
+            "report_time": null,
+            "report_type": null,
+            "station_id": "fixture-ABEFS"
+          },
+          "native_resolution": "station point",
+          "normalized_units": "index",
+          "operational": false,
+          "original_units": "index",
+          "product": "Air Quality Health Index observations via GeoMet WMS",
+          "provider": "Environment and Climate Change Canada",
+          "quality": {
+            "flags": [
+              "native_aqhi",
+              "provider_quality:0"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": "AQHI is a station observation and has no model run",
+          "run_time": null,
+          "sample_distance_km": 0.7546156539216856,
+          "sample_method": "nearest_published_cell",
+          "sampled_latitude": 47.5658,
+          "sampled_longitude": -52.7252,
+          "source_display_primary": false,
+          "source_id": "eccc-aqhi",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "station"
+        },
+        "storage": "available-not-stored",
+        "value": 2.7
+      }
+    ],
+    "latitude": 47.56,
+    "longitude": -52.72,
+    "notices": [
+      "Deterministic fixture: no provider traffic or live evidence",
+      "eccc-aqhi station fixture-ABEFS observation at 2026-09-07T12:00:00+00:00 is shown with its own native station and transport provenance"
+    ],
+    "observation_unavailable": [],
+    "operational": false,
+    "selection": {
+      "badge": "HRDPS selected fixture",
+      "mode": "fallback",
+      "reason": "Deterministic selected-model contract fixture",
+      "selected_product_id": "hrdps",
+      "selected_source_id": "eccc-hrdps"
+    },
+    "valid_time": "2026-09-07T12:30:00Z"
+  },
+  "point_aqhi_unavailable": {
+    "comparability": [],
+    "consensus": null,
+    "data_mode": "fixture",
+    "demand_unavailable": null,
+    "fields": [
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+        "family": "temperature",
+        "field": "temperature",
+        "key": "temperature_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "fixture-adapter-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": null,
+          "attribution": "Contributing providers; see contributors",
+          "contributing_evidence": [
+            "eccc-hrdps",
+            "noaa-gfs"
+          ],
+          "contributors": [
+            {
+              "attribution": "Environment and Climate Change Canada",
+              "licence": "Open Government Licence - Canada",
+              "product": "HRDPS",
+              "provider": "ECCC",
+              "source_id": "eccc-hrdps"
+            },
+            {
+              "attribution": "NOAA/NCEP",
+              "licence": "US public domain",
+              "product": "GFS",
+              "provider": "NOAA",
+              "source_id": "noaa-gfs"
+            }
+          ],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": null,
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": true,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "ECCC",
+          "freshness": {
+            "age_seconds": null,
+            "status": "unknown",
+            "threshold_seconds": 21600
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "Mixed contributor licences; see contributors",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "2.5 km",
+          "normalized_units": "degC",
+          "operational": false,
+          "original_units": "degC",
+          "product": "HRDPS",
+          "provider": "ECCC",
+          "quality": {
+            "flags": [],
+            "status": "passed"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T06:00:00Z",
+          "sample_distance_km": null,
+          "sample_method": null,
+          "sampled_latitude": null,
+          "sampled_longitude": null,
+          "source_display_primary": null,
+          "source_id": "eccc-hrdps",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "stored",
+        "value": 13.0
+      }
+    ],
+    "latitude": 47.56,
+    "longitude": -52.72,
+    "notices": [
+      "Deterministic fixture: no provider traffic or live evidence",
+      "eccc-aqhi has no validated nearby station observation less than one hour old at or before this selection"
+    ],
+    "observation_unavailable": [
+      {
+        "error_type": "FixtureAcquisitionUnavailable",
+        "expired_acquisition": null,
+        "reason": "query_failed",
+        "source_id": "eccc-aqhi",
+        "values_withheld": true
+      }
+    ],
+    "operational": false,
+    "selection": {
+      "badge": "HRDPS selected fixture",
+      "mode": "fallback",
+      "reason": "Deterministic selected-model contract fixture",
+      "selected_product_id": "hrdps",
+      "selected_source_id": "eccc-hrdps"
+    },
+    "valid_time": "2026-09-07T12:30:00Z"
+  },
   "series": {
     "complete": true,
     "next_cursor": null,

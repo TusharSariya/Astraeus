@@ -75,6 +75,19 @@ def test_failed_aqhi_preserves_selected_model_and_safe_typed_outcome(monkeypatch
     assert "private-provider-exception" not in result.model_dump_json()
 
 
+def test_available_aqhi_is_live_when_selected_forecast_is_unavailable(aqhi):
+    from weather_api.observation_companions import with_aqhi_observation
+    app = importlib.import_module("weather_api.app")
+    unavailable = app._unavailable_point(47.56, -52.72, NOW, reason="Fixed GFS failure",
+        flags=["demand_query_unavailable:noaa-gfs"], notices=[], source_id="noaa-gfs", product="GFS")
+    result = with_aqhi_observation(unavailable)
+    assert result.data_mode == DataMode.LIVE
+    assert result.selection == unavailable.selection
+    assert result.fields[:-1] == unavailable.fields
+    assert all(field.value is None for field in result.fields[:-1])
+    assert result.fields[-1].provenance.source_id == "eccc-aqhi" and result.fields[-1].value == 2.7
+
+
 @pytest.mark.parametrize("change", ["other_source", "forecast_run", "future", "old", "pm25"])
 def test_composition_rejects_noncompanion_identity(monkeypatch, aqhi, change):
     from weather_api.observation_companions import with_aqhi_observation

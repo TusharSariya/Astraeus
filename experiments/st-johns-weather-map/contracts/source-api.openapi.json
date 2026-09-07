@@ -84,6 +84,53 @@
         "title": "AQHIAcquisition",
         "type": "object"
       },
+      "AQHIDemandUnavailable": {
+        "additionalProperties": false,
+        "properties": {
+          "error_type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Error Type",
+            "type": "string"
+          },
+          "expired_acquisition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AQHIAcquisition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "enum": [
+              "refresh_failed",
+              "query_failed"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "eccc-aqhi",
+            "default": "eccc-aqhi",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "values_withheld": {
+            "const": true,
+            "default": true,
+            "title": "Values Withheld",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reason",
+          "error_type"
+        ],
+        "title": "AQHIDemandUnavailable",
+        "type": "object"
+      },
       "BlockedReason": {
         "additionalProperties": false,
         "description": "Why a known field is refused under current terms.\n\n``terms`` names or quotes the clause doing the refusing, so a reader can\ncheck it rather than take the refusal on trust. ``request`` records an\noutstanding permission or credential request where one has been made, so a\nblock that is being worked on reads differently from one that is not.",
@@ -704,6 +751,58 @@
         "title": "EvidenceField",
         "type": "object"
       },
+      "FieldComparability": {
+        "additionalProperties": false,
+        "description": "Whether two served members of one family may be drawn as one thing.\n\nOne entry per unordered pair of served members within a family, from\n``catalogue.comparability``. ``a`` and ``b`` are catalogue keys; where two\nsources serve the same key the pair names that key twice, which is the\ncase the catalogue answers ``true`` for. ``reason`` and ``detail`` are null\nexactly when ``comparable`` is true.",
+        "properties": {
+          "a": {
+            "title": "A",
+            "type": "string"
+          },
+          "b": {
+            "title": "B",
+            "type": "string"
+          },
+          "comparable": {
+            "title": "Comparable",
+            "type": "boolean"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "family",
+          "a",
+          "b",
+          "comparable"
+        ],
+        "title": "FieldComparability",
+        "type": "object"
+      },
       "Freshness": {
         "additionalProperties": false,
         "properties": {
@@ -876,6 +975,47 @@
           "bounds"
         ],
         "title": "GDPSDemandRequest",
+        "type": "object"
+      },
+      "GDPSDemandUnavailable": {
+        "additionalProperties": false,
+        "properties": {
+          "error_type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Error Type",
+            "type": "string"
+          },
+          "expired_acquisition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GDPSAcquisition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "enum": [
+              "refresh_failed",
+              "query_failed"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "eccc-gdps",
+            "default": "eccc-gdps",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "error_type"
+        ],
+        "title": "GDPSDemandUnavailable",
         "type": "object"
       },
       "GDPSTransportReceipt": {
@@ -1111,6 +1251,204 @@
           "observation_time"
         ],
         "title": "NativeReportIdentity",
+        "type": "object"
+      },
+      "PointConsensus": {
+        "additionalProperties": false,
+        "description": "Existing centre calculation, separate from every provider reading.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "centre_range": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Centre Range"
+          },
+          "contributors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contributors",
+            "type": "array"
+          },
+          "ensemble_witnesses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ensemble Witnesses",
+            "type": "array"
+          },
+          "evidence_class": {
+            "const": "derived_here",
+            "default": "derived_here",
+            "title": "Evidence Class",
+            "type": "string"
+          },
+          "inputs": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceField"
+            },
+            "title": "Inputs",
+            "type": "array"
+          },
+          "method": {
+            "const": "equal_weight_mean_of_deterministic_centres",
+            "default": "equal_weight_mean_of_deterministic_centres",
+            "title": "Method",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "units": {
+            "const": "degC",
+            "default": "degC",
+            "title": "Units",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "available",
+          "value",
+          "centre_range",
+          "contributors",
+          "inputs",
+          "ensemble_witnesses",
+          "reason"
+        ],
+        "title": "PointConsensus",
+        "type": "object"
+      },
+      "PointResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "comparability": {
+            "description": "Which served members of a family may be drawn as one thing.\n\nComputed from the fields actually served rather than stored beside\nthem, so it can never describe a set of members the response does not\ncarry.",
+            "items": {
+              "$ref": "#/components/schemas/FieldComparability"
+            },
+            "readOnly": true,
+            "title": "Comparability",
+            "type": "array"
+          },
+          "consensus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PointConsensus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_mode": {
+            "$ref": "#/components/schemas/DataMode",
+            "default": "fixture"
+          },
+          "demand_unavailable": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RDPSDemandUnavailable"
+              },
+              {
+                "$ref": "#/components/schemas/GDPSDemandUnavailable"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demand Unavailable"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "observation_unavailable": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AQHIDemandUnavailable"
+                },
+                {
+                  "$ref": "#/components/schemas/SWOBDemandUnavailable"
+                }
+              ]
+            },
+            "title": "Observation Unavailable",
+            "type": "array"
+          },
+          "operational": {
+            "const": false,
+            "default": false,
+            "title": "Operational",
+            "type": "boolean"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "valid_time",
+          "selection",
+          "fields",
+          "comparability"
+        ],
+        "title": "PointResponse",
         "type": "object"
       },
       "Provenance": {
@@ -1676,6 +2014,47 @@
         "title": "RDPSDemandRequest",
         "type": "object"
       },
+      "RDPSDemandUnavailable": {
+        "additionalProperties": false,
+        "properties": {
+          "error_type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Error Type",
+            "type": "string"
+          },
+          "expired_acquisition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RDPSAcquisition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "enum": [
+              "refresh_failed",
+              "query_failed"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "eccc-rdps",
+            "default": "eccc-rdps",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "error_type"
+        ],
+        "title": "RDPSDemandUnavailable",
+        "type": "object"
+      },
       "RDPSTransportReceipt": {
         "additionalProperties": false,
         "description": "One completed native field transfer; never the upstream body.",
@@ -1999,6 +2378,54 @@
         "title": "SWOBDemandRequest",
         "type": "object"
       },
+      "SWOBDemandUnavailable": {
+        "additionalProperties": false,
+        "properties": {
+          "error_type": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Error Type",
+            "type": "string"
+          },
+          "expired_acquisition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SWOBAcquisition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "enum": [
+              "unsupported_time",
+              "refresh_failed",
+              "query_failed"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "eccc-swob",
+            "default": "eccc-swob",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "values_withheld": {
+            "const": true,
+            "default": true,
+            "title": "Values Withheld",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reason",
+          "error_type"
+        ],
+        "title": "SWOBDemandUnavailable",
+        "type": "object"
+      },
       "SelectableRun": {
         "additionalProperties": false,
         "properties": {
@@ -2017,6 +2444,59 @@
           "run_time"
         ],
         "title": "SelectableRun",
+        "type": "object"
+      },
+      "Selection": {
+        "additionalProperties": false,
+        "properties": {
+          "badge": {
+            "title": "Badge",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "consensus",
+              "fallback",
+              "evidence_only"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "selected_product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Product Id"
+          },
+          "selected_source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Source Id"
+          }
+        },
+        "required": [
+          "mode",
+          "selected_source_id",
+          "selected_product_id",
+          "badge",
+          "reason"
+        ],
+        "title": "Selection",
         "type": "object"
       },
       "Selector": {
@@ -2960,6 +3440,216 @@
           }
         },
         "summary": "Get Catalog"
+      }
+    },
+    "/api/experiments/weather/v0/point": {
+      "get": {
+        "description": "One point's evidence, optionally one ensemble family's members or a\nstatistic over them.\n\n``statistic`` and ``comparison`` are checked against the registered sets\nhere rather than passed through: an unregistered statistic name is a\nrequest this API cannot answer, and answering it with the nearest entry -\nor with a silent null - would hide which construction produced the number.",
+        "operationId": "get_point_api_experiments_weather_v0_point_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "latitude",
+            "required": false,
+            "schema": {
+              "default": 47.5615,
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Latitude",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "longitude",
+            "required": false,
+            "schema": {
+              "default": -52.7126,
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Longitude",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "valid_time",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Valid Time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hrdps_fresh",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Hrdps Fresh",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "rdps_fresh",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Rdps Fresh",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "consensus_evidence",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Consensus Evidence",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "A provider's own member identifier, or 'all' for every member the family publishes",
+            "in": "query",
+            "name": "member",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A provider's own member identifier, or 'all' for every member the family publishes",
+              "title": "Member"
+            }
+          },
+          {
+            "description": "One of ensemble_mean, ensemble_spread, ensemble_quantile, ensemble_threshold_probability, ensemble_member_count; the derivation registry entry that produces it",
+            "in": "query",
+            "name": "statistic",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of ensemble_mean, ensemble_spread, ensemble_quantile, ensemble_threshold_probability, ensemble_member_count; the derivation registry entry that produces it",
+              "title": "Statistic"
+            }
+          },
+          {
+            "description": "For ensemble_quantile: the quantile in 0..1, Hyndman and Fan type 7",
+            "in": "query",
+            "name": "quantile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "For ensemble_quantile: the quantile in 0..1, Hyndman and Fan type 7",
+              "title": "Quantile"
+            }
+          },
+          {
+            "description": "For ensemble_threshold_probability: the threshold, in the field's normalized units",
+            "in": "query",
+            "name": "threshold",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "For ensemble_threshold_probability: the threshold, in the field's normalized units",
+              "title": "Threshold"
+            }
+          },
+          {
+            "description": "For ensemble_threshold_probability: ge, gt, le or lt",
+            "in": "query",
+            "name": "comparison",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "For ensemble_threshold_probability: ge, gt, le or lt",
+              "title": "Comparison"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Point"
       }
     },
     "/api/experiments/weather/v0/point/series": {
