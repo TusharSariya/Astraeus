@@ -33,10 +33,13 @@ was needed. The older `astraeus-holyrood-contract` draft remains unaccepted.
 paired image revision. It retains at most two 512 KiB payloads plus bounded
 receipts, with a 128 KiB listing receive ceiling and 1,024-character safe header
 values. Each response uses bounded streaming and refuses redirects and encoded
-bodies. Only successful complete pairs enter the cache. Failed refresh or expiry
-withholds previous bytes. Concurrent misses share the completed revision.
+bodies. Only successful complete pairs enter the cache. Expiry withholds previous bytes. Failed explicit refresh raises to all waiting
+callers and preserves a still-valid previous pair for later ordinary reads.
+Concurrent misses and refreshes share both successful and failed outcomes.
 
-The 60-second retention interval starts at listing HTTP completion. It is an
+The UTC retention timestamp is listing HTTP completion plus 60 seconds. A
+separate monotonic deadline fixed before acquisition caps the total lifetime
+at 60 seconds, including a wall-clock rollback. It is an
 experimental local memory policy, not source cadence, image freshness, or a
 claim that an old image is current. Requests finishing outside that interval
 fail. Native valid time remains the filename UTC time; future timestamps are
@@ -76,11 +79,13 @@ docker run --rm --network none --memory 1g \
 ```
 
 Image: `sha256:afbed8d5524a1c28a0bce3874118b6ab7d5e3f9d3ae9a54a8860494da55db3f6`.
-Result: 14 passed. The default worker test uses 3 exact-URL fixture transport
+Result after the cache review correction: 17 passed. The default worker test uses 3 exact-URL fixture transport
 requests (listing and two GIFs), zero provider requests, and zero additional
 requests on the cache hit. Additional cases cover concurrent misses, refresh,
 expiry, failed replacement, slow acquisition, redirects, malformed/oversize
-images, future times and native/contingency separation.
+images, future times and native/contingency separation. Deterministic eight-caller
+failure tests prove that both misses and explicit refreshes make one request
+and share one failure; a rollback test proves monotonic expiry.
 
 Activation residual: an owner-approved image method/retention contract or a
 verified and approved numerical native CASHR product is still required.

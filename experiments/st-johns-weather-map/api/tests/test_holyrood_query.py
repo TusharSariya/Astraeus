@@ -92,10 +92,63 @@ def test_slow_acquisition_cannot_extend_listing_retention():
     assert len(requests) == 3 and query._cached is None
 
 
-def test_explicit_refresh_failure_withholds_previous_image():
+def test_explicit_refresh_failure_preserves_still_valid_image():
     query, requests, _, responses = service()
     query.read_images()
     responses[BASE_URL + "/"] = httpx.Response(503)
     with pytest.raises(HolyroodUnavailable):
         query.read_images(refresh=True)
+    assert query.read_images().cache_status == "hit" and len(requests) == 4
+
+
+def test_monotonic_deadline_withholds_image_after_wall_clock_rollback():
+    query, requests, clock, responses = service()
+    ticks = [100.0]
+    query._monotonic = lambda: ticks[0]
+    first = query.read_images()
+    clock[0] -= timedelta(seconds=120)
+    ticks[0] += 60
+    responses[BASE_URL + "/"] = httpx.Response(503)
+    with pytest.raises(HolyroodUnavailable):
+        query.read_images()
+    assert first.retained_until == NOW + timedelta(seconds=60)
     assert query._cached is None and len(requests) == 4
+
+
+@pytest.mark.parametrize("refresh", [False, True])
+def test_concurrent_failure_is_shared_without_serial_retries(monkeypatch, refresh):
+    from concurrent.futures import Future
+    import weather_api.holyrood_query as module
+    arrived = threading.Event()
+    class ObservedFuture(Future):
+        waiters = 0
+        guard = threading.Lock()
+        def result(self, timeout=None):
+            with self.guard:
+                self.waiters += 1
+                if self.waiters == 7:
+                    arrived.set()
+            return super().result(timeout)
+    query, requests, _, responses = service()
+    if refresh:
+        query.read_images()
+    initial = len(requests)
+    original = query._fetch
+    def blocked_fetch(url, cap):
+        assert arrived.wait(5), "all followers must join the same flight"
+        return original(url, cap)
+    query._fetch = blocked_fetch
+    responses[BASE_URL + "/"] = httpx.Response(503)
+    monkeypatch.setattr(module, "Future", ObservedFuture)
+    def read(_):
+        try:
+            query.read_images(refresh=refresh)
+        except HolyroodUnavailable as error:
+            return error
+        raise AssertionError("failed refresh must not report success")
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        errors = list(pool.map(read, range(8)))
+    assert len(requests) == initial + 1
+    assert all(error is errors[0] for error in errors)
+    if refresh:
+        assert query.read_images().cache_status == "hit"
