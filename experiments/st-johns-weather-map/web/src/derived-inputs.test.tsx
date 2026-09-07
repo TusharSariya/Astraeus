@@ -112,7 +112,7 @@ describe('a derived value carries its inputs and method', () => {
 
   it('shows the inputs and method on demand, and not before', async () => {
     vi.stubGlobal('fetch', routedFetch(point([temperature, derivedHumidity])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const humidity = await waitFor(() => screen.getByText('Humidity').closest('.metric') as HTMLElement)
     await waitFor(() => expect(within(humidity).getByText('80%')).toBeInTheDocument())
 
@@ -146,7 +146,7 @@ describe('a derived value carries its inputs and method', () => {
         evidence_class: 'derived_here',
       },
     }])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const humidity = await waitFor(() => screen.getByText('Humidity').closest('.metric') as HTMLElement)
     await userEvent.click(within(humidity).getByText('Humidity: inputs and method'))
     expect(within(humidity).getByText('The response listed no inputs for this derived value.')).toBeVisible()
@@ -158,7 +158,7 @@ describe('a derived value carries its inputs and method', () => {
       field: 'relative_humidity', value: 79.5,
       provenance: { source_id: 'eccc-hrdps', product: 'HRDPS', provider: 'ECCC', normalized_units: 'percent', data_mode: 'live', evidence_class: 'retrieved' },
     }])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const humidity = await waitFor(() => screen.getByText('Humidity').closest('.metric') as HTMLElement)
     await waitFor(() => expect(within(humidity).getByText('80%')).toBeInTheDocument())
     expect(within(humidity).queryByText('Humidity: inputs and method')).not.toBeInTheDocument()

@@ -269,6 +269,7 @@ function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | 
   const evidenceClass = resolveEvidenceClass(provenance.evidence_class)
   const deliveryKind = resolveDeliveryKind(provenance.delivery_kind)
   return {
+    responseProvenance: provenance,
     sourceId: typeof provenance.source_id === 'string' ? provenance.source_id : null,
     product: typeof provenance.product === 'string' ? provenance.product : null,
     runTime: text(provenance.run_time),

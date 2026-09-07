@@ -157,7 +157,7 @@ describe('weather workbench fail-closed behavior', () => {
   it('shows point provenance notices in Brief and Workbench', async () => {
     const notice = 'Synthetic contract fixture only; no provider evidence.'
     vi.stubGlobal('fetch', routedFetch({ point: { ...apiPoint(), notices: [notice] } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText(notice)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
     expect(screen.getByText(notice)).toBeInTheDocument()
@@ -169,7 +169,7 @@ describe('weather workbench fail-closed behavior', () => {
       notices: ['east Avalon box failed; no aggregate all-clear is available'],
       features: [{ type: 'Feature', properties: { headline: 'Wind warning' } }],
     } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('Wind warning')).toBeInTheDocument()
     expect(await screen.findByText(/east Avalon box failed; no aggregate all-clear is available/)).toBeInTheDocument()
   })
@@ -179,7 +179,7 @@ describe('weather workbench fail-closed behavior', () => {
       data_mode: 'live', alerts_in_force: 0, all_boxes_succeeded: true, empty_is_an_answer: true,
       content_digest: 'b'.repeat(64), features: [],
     } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('No alert is in force in the successfully queried Avalon domain')).toBeInTheDocument()
     expect(screen.getByText(/Every declared Avalon alert query returned successfully/)).toBeInTheDocument()
   })
@@ -194,7 +194,7 @@ describe('weather workbench fail-closed behavior', () => {
       if (capCall === 1) return response({ data_mode: 'live', alerts_in_force: 1, all_boxes_succeeded: true, empty_is_an_answer: false, features: [{ type: 'Feature', properties: { headline: 'Old warning' } }] })
       return await new Promise<Response>((resolve) => { resolveSecond = resolve })
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('Old warning')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Jump ten minutes back' }))
     expect(await screen.findByText('Hazard feed loading')).toBeInTheDocument()
@@ -208,7 +208,7 @@ describe('weather workbench fail-closed behavior', () => {
       point: { ...apiPoint(), warnings: ['Model point warning unrelated to CAP'] },
       cap: { data_mode: 'unavailable', alerts_in_force: null, all_boxes_succeeded: false, empty_is_an_answer: false, notices: ['CAP provider unavailable'], features: [] },
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('Hazard feed unavailable')).toBeInTheDocument()
     expect(screen.queryByText('Model point warning unrelated to CAP')).not.toBeInTheDocument()
     expect(screen.getByText(/CAP provider unavailable/)).toBeInTheDocument()
@@ -225,7 +225,7 @@ describe('weather workbench fail-closed behavior', () => {
         ] }],
       },
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
     await userEvent.click(await screen.findByText('Humidity & cloud profile'))
     expect(await screen.findByRole('cell', { name: '9.8°C' })).toBeInTheDocument()
@@ -257,7 +257,7 @@ describe('weather workbench fail-closed behavior', () => {
       return response({})
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
     await waitFor(() => expect(profileCalls).toBe(1))
     const latitude = screen.getByRole('textbox', { name: 'Latitude' })
@@ -272,7 +272,7 @@ describe('weather workbench fail-closed behavior', () => {
   })
 
   it('shows unavailable unknown evidence on API outage instead of fixtures', async () => {
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(screen.getByText('Checking API')).toBeInTheDocument()
     expect(screen.getByText('Forecast unavailable · evidence only')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Unavailable')).toBeInTheDocument())
@@ -309,7 +309,7 @@ describe('weather workbench fail-closed behavior', () => {
       return response({})
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('16')
     await userEvent.click(screen.getByRole('button', { name: 'Choose map point' }))
     await waitFor(() => expect(screen.getByText('Checking API')).toBeInTheDocument())
@@ -325,7 +325,7 @@ describe('weather workbench fail-closed behavior', () => {
         { field: 'fog_state', value: 'not_indicated', provenance: { provider: 'CYYT', product: 'METAR', data_mode: 'live' } },
       ]),
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('36 / 45')).toBeInTheDocument()
     expect(screen.getByText('Fog not indicated by available evidence')).toBeInTheDocument()
     // No direction field came back, so none is claimed — and the old literal
@@ -342,7 +342,7 @@ describe('weather workbench fail-closed behavior', () => {
         { field: 'precipitable_water', value: 12.5, provenance: { provider: 'NOAA / NCEP', product: 'GFS', normalized_units: 'kg m-2', data_mode: 'live' } },
       ]),
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     // 40 and 30 m/s convert to 144 and 108 km/h; the caption interprets, the
     // value never becomes a "seeing" category.
     expect(await screen.findByText('144 km/h · 108 km/h')).toBeInTheDocument()
@@ -355,7 +355,7 @@ describe('weather workbench fail-closed behavior', () => {
   it('requests GPS only after action and reports denial with retained location', async () => {
     const getCurrentPosition = vi.fn((_success, failure) => failure({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }))
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } })
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(getCurrentPosition).not.toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: 'Use my location' }))
     expect(await screen.findByText(/permission was denied.*CYYT.*remains selected/i)).toBeInTheDocument()
@@ -364,13 +364,13 @@ describe('weather workbench fail-closed behavior', () => {
   it('reports unavailable GPS separately', async () => {
     const getCurrentPosition = vi.fn((_success, failure) => failure({ code: 2, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }))
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } })
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(screen.getByRole('button', { name: 'Use my location' }))
     expect(await screen.findByText(/position could not be determined/i)).toBeInTheDocument()
   })
 
   it('supports keyboard coordinate entry and validates bounds', async () => {
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.clear(screen.getByLabelText('Latitude'))
     await userEvent.type(screen.getByLabelText('Latitude'), '47.55')
     await userEvent.clear(screen.getByLabelText('Longitude'))
@@ -384,7 +384,7 @@ describe('weather workbench fail-closed behavior', () => {
   })
 
   it('labels expert controls and comparison honestly, and never accepts a run/member/level it would discard', async () => {
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
     expect(screen.getByText(/Every option below comes from a response\. A selector with no returned options stays disabled and says why\./i)).toBeInTheDocument()
     expect(screen.getByText('No run time in returned provenance')).toBeInTheDocument()
@@ -413,7 +413,7 @@ describe('weather workbench fail-closed behavior', () => {
       point: apiPoint([{ field: 'temperature', value: 11, provenance: { provider: 'ECCC', product: 'HRDPS', run_time: '2026-08-30 06Z', member: 'control', vertical_level: '2 m above ground', data_mode: 'live' } }]),
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('11')
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
     // The provenance values are on screen to read...
@@ -437,7 +437,7 @@ describe('weather workbench fail-closed behavior', () => {
     const fetchMock = routedFetch({ point: apiPoint([], undefined, 'unavailable') })
     fetchMock.mockImplementation(async (url: string) => url.includes('/aviation/taf') ? response(taf) : other(url))
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
     expect((await screen.findAllByText(/2026-09-06T12:00:00\.000Z.*2026-09-07T12:00:00\.000Z UTC/)).length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('Live TAF · other evidence unavailable')).toBeInTheDocument()
@@ -449,7 +449,7 @@ describe('weather workbench fail-closed behavior', () => {
     vi.stubGlobal('fetch', routedFetch({
       point: apiPoint([{ field: 'temperature', value: 9, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'fixture' } }], undefined, 'fixture'),
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('9')).toBeInTheDocument()
     expect(screen.getByText('Development fixture')).toBeInTheDocument()
     expect(screen.getByText('DEVELOPMENT FIXTURE · NOT LIVE EVIDENCE')).toBeInTheDocument()
@@ -460,7 +460,7 @@ describe('weather workbench fail-closed behavior', () => {
     vi.stubGlobal('fetch', routedFetch({
       point: apiPoint([{ field: 'temperature', value: 9, provenance: { provider: 'ECCC', product: 'HRDPS' } }], undefined, null),
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(screen.getByText('Unavailable', { selector: '.source-state strong' })).toBeInTheDocument())
     expect(screen.queryByText('Live API')).not.toBeInTheDocument()
     expect(screen.getByText('NO LIVE EVIDENCE RETRIEVED')).toBeInTheDocument()
@@ -474,7 +474,7 @@ describe('weather workbench fail-closed behavior', () => {
         { field: 'wind_speed', value: null, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } },
       ]),
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(screen.getAllByText('Unknown').length).toBeGreaterThan(0))
     expect(screen.getByText('Unavailable', { selector: '.marine-rule strong' })).toBeInTheDocument()
     // No digit should appear anywhere in the rendered evidence values (the
@@ -490,7 +490,7 @@ describe('weather workbench fail-closed behavior', () => {
       point: apiPoint([{ field: 'temperature', value: 12, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]),
       timeline: emptyTimeline,
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('12')
     await openStory()
     expect(screen.getByText(/24-hour narrative unavailable from this point response\. No forecast story has been inferred\./i)).toBeInTheDocument()
@@ -500,7 +500,7 @@ describe('weather workbench fail-closed behavior', () => {
     vi.stubGlobal('fetch', routedFetch({
       point: apiPoint([{ field: 'temperature', value: 5, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]),
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('5')
     const marineRule = document.querySelector('.marine-rule')
     expect(marineRule?.textContent ?? '').toMatch(/Unavailable/)
@@ -539,7 +539,7 @@ describe('story card keyboard activation', () => {
 
   it('activates a story card from the keyboard alone, with the readings in its accessible name', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: storyPoint(7), timeline: publishedTimeline() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
 
     // A real <button>, so it is reachable by Tab and fires on Enter without the
@@ -558,7 +558,7 @@ describe('story card keyboard activation', () => {
 
   it('activates a story card with Space as well, having been tabbed to', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: storyPoint(7), timeline: publishedTimeline() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
     const card = await screen.findByRole('button', { name: /^Scrub to \+3h\./ })
     // Tab there rather than calling focus(): the point is that the card sits in
@@ -574,7 +574,7 @@ describe('story card keyboard activation', () => {
 describe('station markers and live-source coverage', () => {
   it('distinguishes status-reported live stations from current response evidence', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByRole('option', { name: /CYYT.*live source/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /SmartAtlantic.*no live retrieval/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Cape Spear.*no eligible source/i })).toBeInTheDocument()
@@ -590,7 +590,7 @@ describe('station markers and live-source coverage', () => {
       if (url.includes('/timeline')) return response(emptyTimeline)
       return response({})
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText(/Live-source coverage unknown: source status returned 503/i)).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /live source/i })).not.toBeInTheDocument()
     expect(screen.getAllByRole('option', { name: /coverage unknown/i }).length).toBe(2)
@@ -621,7 +621,7 @@ describe('product selection is reachable, not permanently disabled', () => {
   it('offers a model the point endpoint accepts even though no catalogue source is ever active', async () => {
     const fetchMock = routedFetch({ catalog: catalogWithModels })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
 
     const hrdps = await screen.findByRole('button', { name: /HRDPS/ })
     expect(hrdps).not.toBeDisabled()
@@ -636,7 +636,7 @@ describe('product selection is reachable, not permanently disabled', () => {
 
   it('renders no control for a catalogue source the endpoint has no product value for', async () => {
     vi.stubGlobal('fetch', routedFetch({ catalog: catalogWithModels }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByRole('button', { name: /HRDPS/ })
     // A radar button could never be enabled by any response, so it is not an
     // affordance at all rather than a permanently disabled one.
@@ -651,7 +651,7 @@ describe('product selection is reachable, not permanently disabled', () => {
       fields: [],
     }
     vi.stubGlobal('fetch', routedFetch({ catalog: catalogWithModels, point: noArtifact }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
 
     await userEvent.click(await screen.findByRole('button', { name: /HRDPS/ }))
     expect(await screen.findByText(/HRDPS has no published artifact covering this coordinate and time/i)).toBeInTheDocument()
@@ -673,7 +673,7 @@ describe('timeline mode is applied like every other fetch', () => {
       timeline: undeclaredTimeline(),
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
 
     // The same timeline reason now also surfaces in the dock's coverage panel
@@ -727,7 +727,7 @@ const gfsStrataPoint = () => {
 describe('provider cloud strata render as whole percentages', () => {
   it('rounds each stratum and tags the metric with its source', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: gfsStrataPoint() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const strata = () => screen.getByText('Cloud L / M / H').closest('.metric') as HTMLElement
     await screen.findByText('0% · 34% · 45%')
     expect(within(strata()).getByText('0% · 34% · 45%')).toBeInTheDocument()
@@ -739,7 +739,7 @@ describe('provider cloud strata render as whole percentages', () => {
 describe('point readings are attributed to the source that produced them', () => {
   it('shows the selected source\u2019s temperature on the blended response, tagged, with the API\u2019s own badge in the header', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     // The hero is the HRDPS sample the selection names, not the METAR listed first.
     expect(await screen.findByText('18.1')).toBeInTheDocument()
     expect(screen.queryByText('17')).not.toBeInTheDocument()
@@ -749,14 +749,14 @@ describe('point readings are attributed to the source that produced them', () =>
 
   it('converts visibility from the declared metres, and never prints the raw number under km', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('24.1 km')).toBeInTheDocument()
     expect(screen.queryByText(/24140/)).not.toBeInTheDocument()
   })
 
   it('gives total cloud its own metric and never fills the low stratum with it', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('18.1')
     const total = screen.getByText('Total cloud').closest('.metric') as HTMLElement
     expect(within(total).getByText('75%')).toBeInTheDocument()
@@ -767,7 +767,7 @@ describe('point readings are attributed to the source that produced them', () =>
 
   it('shows wind speed and the from-direction, disclosing the MetPy derivation', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const wind = (await screen.findByText('Wind / gust')).closest('.metric') as HTMLElement
     expect(within(wind).getByText('36 / Unknown')).toBeInTheDocument()
     expect(within(wind).getByText(/from 240°/)).toBeInTheDocument()
@@ -777,7 +777,7 @@ describe('point readings are attributed to the source that produced them', () =>
 
   it('shows the derived-humidity chip and a pressure metric converted from the declared unit', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const humidity = (await screen.findByText('Humidity')).closest('.metric') as HTMLElement
     expect(within(humidity).getByText(/derived · MetPy/)).toBeInTheDocument()
     // The selected source (HRDPS) published Pa; it is shown as hPa, one decimal.
@@ -788,7 +788,7 @@ describe('point readings are attributed to the source that produced them', () =>
 
   it('lists each derivation in the provenance table', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: blendedPointClassed() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('18.1')
     await userEvent.click(screen.getByRole('button', { name: 'Workbench' }))
     const table = screen.getByRole('table', { name: 'Provenance returned for the selected point' })
@@ -798,7 +798,7 @@ describe('point readings are attributed to the source that produced them', () =>
 
   it('moves the scrubber when a layer row asks to jump to its nearest frame', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(screen.getByText(/^Now \(0h\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Jump to nearest frame' }))
     expect(screen.getByText(/\+3h \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
@@ -806,7 +806,7 @@ describe('point readings are attributed to the source that produced them', () =>
 
   it('shows the true minute offset after a jump, and never rounds a nearby frame to Now', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const badge = () => (document.querySelector('.story-scrubber-badge strong') as HTMLElement).textContent
     expect(badge()).toMatch(/^Now \(0h\) · .+ NT$/)
     // A radar frame ten minutes ago is not "Now": the badge used to round the
@@ -851,7 +851,7 @@ describe('model row states its own coverage', () => {
 
   it('says how far this deployment\u2019s ingested hours reach, and that an unwired model has nothing ingested', async () => {
     vi.stubGlobal('fetch', routedFetch({ catalog: catalogWithReps, sources: statusWithModels, timeline: timelineWithModels }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     // The newest published hour is +18 h from the top of the current hour, so
     // rounded from the session's real reference instant it reads +17 or +18.
     const hrdps = await screen.findByRole('button', { name: /HRDPS.*covers to \+1[78] h/ })
@@ -891,7 +891,7 @@ describe('model row states its own coverage', () => {
       return baseFetch(url)
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
 
     const gfs = await screen.findByRole('button', { name: /GFS.*nothing ingested/ })
     await userEvent.click(gfs)
@@ -928,7 +928,7 @@ describe('model row states its own coverage', () => {
       return baseFetch(url)
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
 
     await userEvent.click(await screen.findByRole('button', { name: /GFS.*nothing ingested/ }))
     await waitFor(() => expect(gfsPointCalls).toBe(1))
@@ -957,7 +957,7 @@ const cloudLayerPoint = () => apiPoint([
 describe('cloud layers and fog are shown as reported', () => {
   it('renders each reported layer in provider order with its base in metres, and leaves the strata Unknown', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: cloudLayerPoint() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const layers = (await screen.findByText('Cloud layers')).closest('.metric') as HTMLElement
     expect(within(layers).getByText(/BKN · 4267 m/)).toBeInTheDocument()
     expect(within(layers).getByText(/OVC · base Unknown/)).toBeInTheDocument()
@@ -970,7 +970,7 @@ describe('cloud layers and fog are shown as reported', () => {
 
   it('shows Unknown for the layers when no layer field was returned', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: apiPoint([{ field: 'temperature', value: 8, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]) }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('8')
     const layers = screen.getByText('Cloud layers').closest('.metric') as HTMLElement
     expect(within(layers).getByText('Unknown')).toBeInTheDocument()
@@ -980,7 +980,7 @@ describe('cloud layers and fog are shown as reported', () => {
 
   it('gives fog its own metric, credited to the source that derived it', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: cloudLayerPoint() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const fog = (await screen.findByText('Fog', { selector: '.metric > span' })).closest('.metric') as HTMLElement
     expect(within(fog).getByText('Fog evidence present')).toBeInTheDocument()
     expect(within(fog).getByText('awc-metar-speci')).toBeInTheDocument()
@@ -989,7 +989,7 @@ describe('cloud layers and fog are shown as reported', () => {
 
   it('credits no source for an unknown fog state', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: apiPoint([{ field: 'temperature', value: 8, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]) }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('8')
     const fog = screen.getByText('Fog', { selector: '.metric > span' }).closest('.metric') as HTMLElement
     expect(within(fog).getByText('Fog evidence unknown')).toBeInTheDocument()
@@ -1017,7 +1017,7 @@ describe('timeline coverage rows are grouped like the drawer', () => {
     const hrdps = { id: 'geomet-live-hrdps-tt', title: 'HRDPS air temperature (live proxy)', kind: 'raster', field: 'air_temperature', product: 'HRDPS', units: 'degC', semantics: 'live-proxied imagery', times: [], evidence_basis: 'live_proxy', raster_available: true, group: 'forecast_proxy' }
     const radar = { id: 'eccc-radar-radar', title: 'eccc-radar radar', kind: 'point', field: 'radar', product: 'radar', units: 'mixed', semantics: 'No echo means no detected precipitating echo, not clear sky.', times: [], group: 'observation' }
     vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: [hrdps, radar, ...satelliteLayers()], notices: [] } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
 
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
@@ -1036,7 +1036,7 @@ describe('timeline coverage rows are grouped like the drawer', () => {
 
   it('says a satellite row has no frame at a forward hour rather than reusing a past one', async () => {
     vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: satelliteLayers(), notices: [] } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
     await userEvent.click(screen.getByRole('button', { name: '+3h' }))
@@ -1065,7 +1065,7 @@ describe('timeline coverage rows are grouped like the drawer', () => {
       group: 'satellite',
     }
     vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: [...satelliteLayers(), cloudMask], notices: [] } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
     const satellite = within(ribbon).getByRole('group', { name: 'Satellite (observed, past only) · 5 layers' })
@@ -1085,7 +1085,7 @@ describe('rendered-grid coverage rows', () => {
       { ...base, id: 'noaa-gfs-surface-cloud-high', title: 'Global Forecast System (GFS 0.25 deg) high cloud cover (rendered grid)', field: 'cloud_high' },
     ]
     vi.stubGlobal('fetch', routedFetch({ layers: { data_mode: 'live', layers: strata, notices: [] } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
 
     const ribbon = await screen.findByLabelText('Published frames per layer across the window')
@@ -1119,7 +1119,7 @@ describe('model row is grouped by producer', () => {
 
   it('labels each producer once, keeps BLEND first and ungrouped, and keeps catalogue order inside a group', async () => {
     vi.stubGlobal('fetch', routedFetch({ catalog: catalogTwoProducers }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByRole('button', { name: /GFS/ })
     const strip = screen.getByLabelText('Select forecast model')
     const buttons = within(strip).getAllByRole('button').map((button) => button.textContent)
@@ -1145,7 +1145,7 @@ describe('station picker is grouped by live-source coverage', () => {
 
   it('puts live stations under one optgroup and places to query under another', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByRole('option', { name: /CYYT.*live source/i })
     const groups = within(picker()).getAllByRole('group').map((group) => (group as HTMLOptGroupElement).label)
     expect(groups).toEqual(['Status-reported live source', 'No eligible response-backed source (place to query)'])
@@ -1172,7 +1172,7 @@ describe('station picker is grouped by live-source coverage', () => {
       if (url.includes('/timeline')) return response(emptyTimeline)
       return response({})
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText(/Live-source coverage unknown: source status returned 503/i)
     const groups = within(picker()).getAllByRole('group').map((group) => (group as HTMLOptGroupElement).label)
     expect(groups).toEqual(['Live-source coverage unknown', 'No eligible response-backed source (place to query)'])
@@ -1199,7 +1199,7 @@ describe('cloud band filter is a view filter over the as-reported layers', () =>
 
   it('offers three pressed band buttons naming their bounds, all on, showing the full list', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: fewBknPoint() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const metric = (await screen.findByText('Cloud layers')).closest('.metric') as HTMLElement
     const group = within(metric).getByRole('group', { name: 'Cloud layer bands' })
     const buttons = within(group).getAllByRole('button')
@@ -1212,7 +1212,7 @@ describe('cloud band filter is a view filter over the as-reported layers', () =>
 
   it('turning Low off leaves only BKN and says 1 of 2 reported layers shown, and back on restores the list', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: fewBknPoint() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText(/FEW · 610 m/)
     await userEvent.click(bandButton(/^Low ·/))
     expect(bandButton(/^Low ·/)).toHaveAttribute('aria-pressed', 'false')
@@ -1233,7 +1233,7 @@ describe('cloud band filter is a view filter over the as-reported layers', () =>
 
   it('turning Middle off hides BKN instead, and every band off shows no layer without calling it Unknown', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: fewBknPoint() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText(/FEW · 610 m/)
     await userEvent.click(bandButton(/^Middle ·/))
     expect(within(cloudMetric()).getByText('FEW · 610 m')).toBeInTheDocument()
@@ -1251,7 +1251,7 @@ describe('cloud band filter is a view filter over the as-reported layers', () =>
       { field: 'cloud_layer_3_base', value: null, provenance: { source_id: 'awc-metar-speci', product: 'CYYT METAR/SPECI', provider: 'Aviation Weather Center / NAV CANADA', normalized_units: 'm', original_units: 'ft', data_mode: 'live' } },
     ]
     vi.stubGlobal('fetch', routedFetch({ point: fewBknPoint(ovcNoBase) }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText(/FEW · 610 m/)
     expect(within(cloudMetric()).getByText(/OVC · base Unknown — not filterable/)).toBeInTheDocument()
     await userEvent.click(bandButton(/^Low ·/))
@@ -1263,7 +1263,7 @@ describe('cloud band filter is a view filter over the as-reported layers', () =>
 
   it('offers no band buttons when no layer was returned', async () => {
     vi.stubGlobal('fetch', routedFetch({ point: apiPoint([{ field: 'temperature', value: 8, provenance: { provider: 'ECCC', product: 'HRDPS', data_mode: 'live' } }]) }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await screen.findByText('8')
     expect(screen.queryByRole('group', { name: 'Cloud layer bands' })).not.toBeInTheDocument()
     expect(within(cloudMetric()).getByText('Unknown')).toBeInTheDocument()
@@ -1287,7 +1287,7 @@ describe('observations stay visible under a selected model', () => {
     hrdpsWithMetar.fields = classed(hrdpsWithMetar.fields)
     const fetchMock = routedFetch({ catalog: catalogWithModels, point: hrdpsWithMetar })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: /HRDPS/ }))
     await waitFor(() => expect(fetchMock.mock.calls.map(([url]) => String(url)).some((url) => url.includes('product=HRDPS'))).toBe(true))
 
@@ -1314,7 +1314,7 @@ describe('observations stay visible under a selected model', () => {
 describe('computed astronomy bands and Tonight cards', () => {
   it('renders darkness and moon bands with text alternatives naming the intervals', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
     const darkness = await screen.findByRole('img', { name: /Darkness: .*night/ })
     expect(darkness).toBeInTheDocument()
@@ -1330,7 +1330,7 @@ describe('computed astronomy bands and Tonight cards', () => {
     vi.stubGlobal('fetch', routedFetch({
       astronomy: { data_mode: 'unavailable', twilight_bands: [], notices: ['Pinned ephemeris missing: /data/ephemeris/de442.bsp'], provenance: null },
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
     expect(await screen.findByText(/Darkness and moon bands unavailable: Pinned ephemeris missing/)).toBeInTheDocument()
     expect(screen.getByText(/No band is drawn from a failure/)).toBeInTheDocument()
@@ -1341,7 +1341,7 @@ describe('computed astronomy bands and Tonight cards', () => {
 describe('space weather cards: Kp and Bz, fail-closed', () => {
   it('renders the latest observed Kp, the windowed forecast max with its provider status, and Bz with its instant', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('Kp observed')).toBeInTheDocument()
     expect(screen.getByText('4.33')).toBeInTheDocument()
     // The forecast max is the largest value inside the scrubber's window,
@@ -1387,7 +1387,7 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
         notices: ['no fixture space weather exists; fixture mode answers unavailable rather than inventing planetary indices'],
       },
     }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText(/Space weather unavailable: no fixture space weather exists/)).toBeInTheDocument()
     expect(screen.queryByText('Kp observed')).not.toBeInTheDocument()
     expect(screen.queryByText(/0\.0 nT/)).not.toBeInTheDocument()
@@ -1404,7 +1404,7 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
       },
     }
     vi.stubGlobal('fetch', routedFetch({ spaceWeather: staleWind }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findByText('-4.1 nT')).toBeInTheDocument()
     expect(screen.getByText(/stale, 2\.0 h old/)).toBeInTheDocument()
   })
@@ -1422,7 +1422,7 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
         feed_declared_spacecraft: null, active: null, overall_quality: null, acquisition: null,
       },
     } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     expect(await screen.findAllByText(/feed-declared spacecraft unknown/)).toHaveLength(2)
     const plasmaCard = screen.getByText('Solar wind plasma').closest('article')
     expect(plasmaCard).not.toBeNull()
@@ -1468,7 +1468,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
 
   it('offers interpolation off by default, worded as display-only', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const toggle = await screen.findByRole('button', { name: /Interpolate forecast · display only/ })
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
     // The disclosure travels with the control itself.
@@ -1522,7 +1522,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
 
   it('offers the interpolation bench only once interpolation is on, and reports each method honestly', async () => {
     vi.stubGlobal('fetch', routedFetch({ methods: benchMethods }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const toggle = await screen.findByRole('button', { name: /Interpolate forecast · display only/ })
     // The bench answers a question that does not arise while every frame is
     // drawn exactly: it appears with the setting it qualifies.
@@ -1567,7 +1567,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     }
     const unscored = { ...benchMethods.methods[1], id: 'goes-transfer', title: 'Motion borrowed from the satellite', published: false, scores: [] }
     vi.stubGlobal('fetch', routedFetch({ methods: { ...benchMethods, methods: [benchMethods.methods[0], unscored, better] } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
     const names = [...screen.getByRole('group', { name: 'Interpolation method' }).querySelectorAll('.method-option-name')]
@@ -1582,7 +1582,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
   it('lists generated constructions under their own heading, selects one only on a second confirming click, and refuses one the kill switch disabled', async () => {
     const withGenerated = { ...benchMethods, methods: [...benchMethods.methods, generativeMethod] }
     vi.stubGlobal('fetch', routedFetch({ methods: withGenerated }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
     expect(screen.getByRole('heading', { name: 'Generated (off by default)' })).toBeInTheDocument()
@@ -1602,7 +1602,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
   it('shows a generated construction the deployment switched off, with the reason, and does not let it be chosen', async () => {
     const disabled = { ...benchMethods, methods: [...benchMethods.methods, { ...generativeMethod, enabled: false, generation_disabled: true }] }
     vi.stubGlobal('fetch', routedFetch({ methods: disabled }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
     expect(screen.getByText('disabled by WEATHER_GENERATED_DISPLAY')).toBeInTheDocument()
@@ -1612,7 +1612,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
   it('does not restore a remembered generated construction: every session starts on retrieved values only', async () => {
     const withGenerated = { ...benchMethods, methods: [...benchMethods.methods, generativeMethod] }
     vi.stubGlobal('fetch', routedFetch({ methods: withGenerated }))
-    const first = render(<App />)
+    const first = render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
     await userEvent.click(screen.getByRole('button', { name: 'select' }))
@@ -1624,7 +1624,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     // Same viewer, next session, same registry: the generated construction
     // is still offered, but the choice is not remembered on the reader's
     // behalf - carve-out (d) says off by default, reached only by the confirm.
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(async () =>
       expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Baseline advection'),
     )
@@ -1632,7 +1632,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
 
   it('remembers the chosen method and drops one the server stops publishing', async () => {
     vi.stubGlobal('fetch', routedFetch({ methods: benchMethods }))
-    const first = render(<App />)
+    const first = render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast · display only/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
     await userEvent.click(screen.getByRole('radio', { name: /trust the clearer picture/ }))
@@ -1651,7 +1651,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     // halves of it vacuous - the preference never persisted, so the fallback
     // it claims to check was never exercised.
     vi.stubGlobal('fetch', routedFetch({ methods: { ...benchMethods, methods: [benchMethods.methods[0]] } }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(async () =>
       expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Baseline advection'),
     )
@@ -1670,7 +1670,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
       ],
     }
     vi.stubGlobal('fetch', routedFetch({ methods: withDisabled }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
     expect(screen.getByRole('radio', { name: /Baseline advection/ })).toBeInTheDocument()
@@ -1690,7 +1690,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
       ],
     }
     vi.stubGlobal('fetch', routedFetch({ methods: bothOn }))
-    const first = render(<App />)
+    const first = render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: /Interpolate forecast . display only/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^Interpolation:/ }))
     await userEvent.click(screen.getByRole('radio', { name: /Motion borrowed from the satellite/ }))
@@ -1707,7 +1707,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
       ],
     }
     vi.stubGlobal('fetch', routedFetch({ methods: nowOff }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     // Interpolation is already on, remembered alongside the method.
     await waitFor(async () =>
       expect(await screen.findByRole('button', { name: /^Interpolation:/ })).toHaveTextContent('Baseline advection'),
@@ -1716,7 +1716,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
 
   it('snaps keyboard scrubbing to the exact published frame instants of the active layers', async () => {
     vi.stubGlobal('fetch', routedFetch({ layers: snappableLayers() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
     // Toggle the layer on through its coverage-ribbon row.
     await userEvent.click(await screen.findByRole('button', { name: 'eccc-radar radar' }))
@@ -1737,7 +1737,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
 
   it('scrubs freely in five-minute steps when nothing active publishes frames', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const slider = await screen.findByLabelText('Valid timeline scrubber')
     fireEvent.keyDown(slider, { key: 'ArrowRight' })
     expect(screen.getByText(/\+5 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
@@ -1761,7 +1761,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
   it('plays the timeline forward at the speed on the ladder, and pauses where it stopped', async () => {
     const frame = driveFrames()
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const play = await screen.findByRole('button', { name: 'Play' })
     expect(screen.getByText('1 min/s')).toBeInTheDocument()
     await userEvent.click(play)
@@ -1781,7 +1781,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     const frame = driveFrames()
     const fetchMock = routedFetch({})
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/aviation/taf'))).toBe(true))
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)) })
     const before = fetchMock.mock.calls.filter(([url]) => String(url).includes('/aviation/taf')).length
@@ -1797,7 +1797,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     const frame = driveFrames()
     const fetchMock = routedFetch({})
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/space-weather?at='))).toBe(true))
     const before = fetchMock.mock.calls.filter(([url]) => String(url).includes('/space-weather?at=')).length
     await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
@@ -1828,7 +1828,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
       return response({})
     })
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(calls).toBe(1))
     expect(screen.getByText(/Space weather unavailable: loading selected-time space weather/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '-1h' }))
@@ -1843,7 +1843,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
   it('doubles and halves the speed within the ladder, clamping at both ends', async () => {
     const frame = driveFrames()
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const faster = await screen.findByRole('button', { name: 'Faster' })
     const slower = screen.getByRole('button', { name: 'Slower' })
     expect(slower).toBeDisabled()
@@ -1866,7 +1866,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
   it('runs backwards under reverse without losing the chosen speed', async () => {
     const frame = driveFrames()
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const reverse = await screen.findByRole('button', { name: 'Reverse' })
     await userEvent.click(screen.getByRole('button', { name: 'Faster' }))
     await userEvent.click(reverse)
@@ -1882,7 +1882,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
   it('stops playing the moment a hand touches the timeline', async () => {
     const frame = driveFrames()
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
     await frame(1000)
     await frame(2000)
@@ -1896,7 +1896,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
 
   it('marks every published frame of the active layers and jumps to the one clicked', async () => {
     vi.stubGlobal('fetch', routedFetch({ layers: snappableLayers() }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
     await userEvent.click(await screen.findByRole('button', { name: 'eccc-radar radar' }))
 
@@ -1920,7 +1920,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
       notices: [],
     }
     vi.stubGlobal('fetch', routedFetch({ layers: axisless }))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await openStory()
     await userEvent.click(await screen.findByRole('button', { name: 'eccc-alerts alerts' }))
 
@@ -1930,7 +1930,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
 
   it('opens the story panel from the dock and returns focus to the toggle on Escape', async () => {
     vi.stubGlobal('fetch', routedFetch({}))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const toggle = await screen.findByRole('button', { name: /Weather story/ })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(toggle)

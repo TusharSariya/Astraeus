@@ -219,7 +219,7 @@ describe('ensemble rows: unit-level labelling', () => {
 describe('the panel and the text alternative, rendered', () => {
   it('renders a member row, a statistic row, a refused row and a provider-reduction row, each with all four names', async () => {
     vi.stubGlobal('fetch', routedFetch(point([memberField07, statisticField, refusedField, providerReductionField])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const panel = await screen.findByLabelText('Ensemble members and statistics')
     const memberRow = within(panel).getByText(/member 07/).closest('li') as HTMLElement
     expect(memberRow).toHaveTextContent('eccc-reps')
@@ -247,7 +247,7 @@ describe('the panel and the text alternative, rendered', () => {
 
   it('groups the averaged-cloud row apart from an instantaneous cloud row', async () => {
     vi.stubGlobal('fetch', routedFetch(point([averagedCloudField, instantaneousCloudMember])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const panel = await screen.findByLabelText('Ensemble members and statistics')
     const averagedGroup = panel.querySelector('[data-ensemble-group="averaged"].ensemble-averaged-group') as HTMLElement
     expect(averagedGroup).toBeTruthy()
@@ -262,7 +262,7 @@ describe('the panel and the text alternative, rendered', () => {
   it('sends the selected member as a request parameter', async () => {
     const fetchMock = routedFetch(point([memberField07, controlField]))
     vi.stubGlobal('fetch', fetchMock)
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const { fireEvent } = await import('@testing-library/react')
     // The member selector lives in the expert (Workbench) layout.
     fireEvent.click(screen.getByRole('button', { name: 'Workbench' }))
@@ -282,7 +282,7 @@ describe('the panel and the text alternative, rendered', () => {
       field: 'temperature', value: 4,
       provenance: { source_id: 'eccc-hrdps', product: 'HRDPS', provider: 'ECCC', normalized_units: 'degC', data_mode: 'live', evidence_class: 'retrieved', display_primary_eligible: true },
     }])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const { fireEvent } = await import('@testing-library/react')
     fireEvent.click(screen.getByRole('button', { name: 'Workbench' }))
     await waitFor(() => expect(screen.getAllByLabelText('Member').length).toBeGreaterThan(0))

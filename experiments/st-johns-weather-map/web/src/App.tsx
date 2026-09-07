@@ -1,3 +1,9 @@
+import { loadRegisteredSites, nearestRegisteredSite, type RegisteredSites } from './workbench/registeredSites'
+import { WorkbenchShell } from './workbench/WorkbenchShell'
+import { FocusBar } from './workbench/FocusBar'
+import { parseFocusUrl, serializeFocusUrl, type View } from './workbench/focusUrl'
+import { EvidenceInspector, EvidenceLedger, evidenceKey, type InspectedEvidence } from './workbench/EvidenceInspector'
+import { MapStack, NOWCAST_STACK, type DrawEvidence } from './workbench/MapStack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
@@ -358,10 +364,24 @@ function evidenceRows(snapshot: EvidenceSnapshot, humidityGap: string): MapEvide
   ]
 }
 
-export default function App() {
+export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'desktop' | 'legacy' } = {}) {
+  const [legacyOpen, setLegacyOpen] = useState(initialLayout === 'legacy')
+  const [initialFocus] = useState(() => parseFocusUrl(initialLayout === 'legacy' ? '' : window.location.search, stations[0]))
+  const [view, setView] = useState<View>(initialFocus.view)
+  const [dock, setDock] = useState<View | null>(initialFocus.dock)
+  const [site, setSite] = useState<string | null>(initialFocus.site)
+  const [runChoices, setRunChoices] = useState(initialFocus.runs)
+  const [registeredSites, setRegisteredSites] = useState<RegisteredSites | null>(null)
+  const [registryError, setRegistryError] = useState('Loading registered site metadata…')
+  const [drawn, setDrawn] = useState<DrawEvidence[]>([])
+  const [inspected, setInspected] = useState<InspectedEvidence | null>(null)
+  const opener = useRef<HTMLButtonElement | null>(null)
+  const inspect = useCallback((evidence: InspectedEvidence, element: HTMLButtonElement) => { opener.current = element; setInspected(evidence) }, [])
+  const closeInspector = () => { setInspected(null); opener.current?.focus(); if (!opener.current?.isConnected || document.activeElement !== opener.current) document.getElementById('bench-stage')?.focus() }
+
   const { theme, setTheme } = useTheme()
   const [mode, setMode] = useState<AppMode>('simple')
-  const [location, setLocation] = useState<LocationPoint>(stations[0])
+  const [location, setLocation] = useState<LocationPoint>(initialFocus.location)
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
   const [snapshot, setSnapshot] = useState<EvidenceSnapshot>(unavailableSnapshot)
   const [profile, setProfile] = useState<ProfileResponse | null>(null)
@@ -374,7 +394,9 @@ export default function App() {
   // seconds of the moment the page loaded, so a whole-minute offset could
   // never land exactly on a published frame timestamp; snapping and frame
   // jumps set the exact epoch instant instead.
-  const [selectedMs, setSelectedMs] = useState<number>(reference.getTime())
+  const [liveNow, setLiveNow] = useState(initialFocus.instant === null)
+  const [selectedMs, setSelectedMsState] = useState<number>(initialFocus.instant ?? reference.getTime())
+  const setSelectedMs = useCallback((next: React.SetStateAction<number>) => { setLiveNow(false); setSelectedMsState(next) }, [])
   // Owner-approved display setting: composite forecast imagery between its
   // two neighbouring frames. Off by default; a per-viewer convenience only,
   // so the stored value is read best-effort and never trusted as evidence.
@@ -423,7 +445,7 @@ export default function App() {
   const [capAllBoxesSucceeded, setCapAllBoxesSucceeded] = useState(false)
   const [capEmptyIsAnAnswer, setCapEmptyIsAnAnswer] = useState(false)
   const [capLoading, setCapLoading] = useState(true)
-  const [selections, setSelections] = useState<LayerSelection[]>([])
+  const [selections, setSelections] = useState<LayerSelection[]>(initialFocus.stack ?? (initialLayout === 'legacy' ? [] : NOWCAST_STACK))
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null)
   const [timelineNotice, setTimelineNotice] = useState<string | null>(null)
   const [astronomy, setAstronomy] = useState<AstronomyResponse | null>(null)
@@ -459,9 +481,9 @@ export default function App() {
   const windowEndMs = useMemo(() => reference.getTime() + FORWARD_MINUTES * 60_000, [reference, FORWARD_MINUTES])
 
   const validTimeIso = useMemo(() => {
-    if (selectedMs === reference.getTime()) return undefined
+    if (legacyOpen && selectedMs === reference.getTime()) return undefined
     return validTime.toISOString().replace(/\.\d{3}Z$/, 'Z')
-  }, [selectedMs, reference, validTime])
+  }, [selectedMs, reference, validTime, legacyOpen])
   // TAF groups are minute-coded native intervals. Keep their read keyed to
   // the displayed evidence minute so animation frames cannot create one HTTP
   // request per paint while a deliberate minute selection still refreshes it.
@@ -776,6 +798,7 @@ export default function App() {
     setSourceError('')
     setSnapshot(unavailableSnapshot)
 
+    if (!legacyOpen && site && !registeredSites?.sites.some((entry) => entry.id === site && entry.latitude === location.latitude && entry.longitude === location.longitude)) { setDataSource('unavailable'); setSourceError(`Registered site ${site} awaits registry metadata; no default-point reading is substituted`); return () => controller.abort() }
     loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources, member: selectedMember }).then((result) => {
       if (!controller.signal.aborted) {
         setSnapshot(result.snapshot)
@@ -795,7 +818,7 @@ export default function App() {
     }
 
     return () => controller.abort()
-  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources, selectedMember])
+  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources, selectedMember, site, legacyOpen, registeredSites])
 
   // The story is assembled from the hours the timeline says are published, one
   // real /point response per card. Hours that return nothing are simply absent;
@@ -803,12 +826,45 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController()
     setStory([])
-    if (!timeline) return () => controller.abort()
+    if (!timeline || (!legacyOpen && !storyOpen)) return () => controller.abort()
     loadStory(location, timeline, selectedProduct ?? undefined, controller.signal, { nonPrimarySources })
       .then((steps) => setStory(steps))
       .catch(() => undefined)
     return () => controller.abort()
-  }, [location, timeline, selectedProduct, nonPrimarySources])
+  }, [location, timeline, selectedProduct, nonPrimarySources, legacyOpen, storyOpen])
+
+
+  useEffect(() => {
+    if (legacyOpen || playing) return
+    const search = serializeFocusUrl({ location, site, instant: liveNow ? null : selectedMs, view, dock, stack: selections, runs: runChoices }, window.location.search)
+    if (search !== window.location.search) window.history.replaceState(null, '', `${window.location.pathname}${search}${window.location.hash}`)
+  }, [location, site, selectedMs, reference, view, dock, selections, runChoices, legacyOpen, playing, liveNow])
+  useEffect(() => {
+    const restore = () => {
+      const next = parseFocusUrl(window.location.search, stations[0])
+      setLocation(next.location); setSite(next.site); setSelectedMsState(next.instant ?? reference.getTime()); setLiveNow(next.instant === null); setView(next.view); setDock(next.dock); setSelections(next.stack ?? NOWCAST_STACK); setRunChoices(next.runs); setInspected(null)
+    }
+    window.addEventListener('popstate', restore)
+    return () => window.removeEventListener('popstate', restore)
+  }, [reference])
+  useEffect(() => {
+    setInspected((current) => {
+      if (!current || current.key.startsWith('layer:')) return current
+      const row = snapshot.servedFields.find((row) => evidenceKey(row) === current.key)
+      return row ? { ...current, text: row.text, attribution: row.attribution } : { ...current, text: 'Evidence is no longer returned for the current Focus.', attribution: undefined, details: { Availability: 'Unavailable for current Focus' } }
+    })
+  }, [snapshot])
+  useEffect(() => {
+    if (legacyOpen) return
+    const controller = new AbortController()
+    loadRegisteredSites(controller.signal).then((result) => { if (!controller.signal.aborted) { setRegisteredSites(result); setRegistryError(result.notice ?? '') } }).catch((error) => { if (!controller.signal.aborted) { setRegisteredSites(null); setRegistryError(error instanceof Error ? error.message : 'Registry unavailable') } })
+    return () => controller.abort()
+  }, [legacyOpen])
+  const registeredFocus = registeredSites?.sites.find((entry) => entry.id === site)
+  useEffect(() => {
+    if (registeredFocus) setLocation({ id: registeredFocus.id, name: registeredFocus.name, latitude: registeredFocus.latitude, longitude: registeredFocus.longitude, kind: 'map' })
+  }, [registeredFocus])
+  const nearestSite = nearestRegisteredSite(location, registeredSites?.sites ?? [])
 
   const humidityGap = useMemo(() => snapshot.temperatureC !== null && snapshot.dewPointC !== null
     ? `${(snapshot.temperatureC - snapshot.dewPointC).toFixed(1)}° dew-point depression`
@@ -1080,7 +1136,93 @@ export default function App() {
     </div>
   )
 
-  return (
+  const benchMap = (
+    <>
+              <MapPanel
+                label="Avalon / upstream Atlantic"
+                field={mapField}
+                selected={location}
+                onSelect={(point) => { setSite(null); setLocation(point) }}
+                validTime={validTime}
+                reference={reference}
+                interpolate={interpolate}
+                interpolationMethod={method}
+                methodStatus={methodStatus}
+                fixtureMode={dataSource === 'fixture'}
+                layers={layers}
+                layersError={layersError}
+                layersLoading={layersLoading}
+                selections={selections}
+                onToggleLayer={toggleLayer}
+                onSetOpacity={setLayerOpacity}
+                onJumpToTime={jumpToTime}
+                layerNotices={layerNotices}
+                evidence={mapEvidence}
+                sourceStatuses={sourceStatuses}
+                responseSourceIds={responseSourceIds}
+                theme={theme}
+                onDrawEvidence={setDrawn}
+                compactDisclosure
+              />
+              {storyOpen && (
+                <StoryFlyout
+                  astronomy={astronomy}
+                  astronomyNotice={astronomyNotice}
+                  windowStartMs={windowStartMs}
+                  windowEndMs={windowEndMs}
+                  layers={layers}
+                  selections={selections}
+                  onToggleLayer={toggleLayer}
+                  validTime={validTime}
+                  reference={reference}
+                  timelineNotice={timelineNotice}
+                  story={story}
+                  offsetMinutes={offsetMinutes}
+                  onSelectOffsetHours={(offsetHours) => selectMinutes(offsetHours * 60)}
+                  onClose={closeStory}
+                />
+              )}
+    </>
+  )
+  const benchTimeline = (
+            <TimelineDock
+              offsetMinutes={offsetMinutes}
+              scrubOffset={scrubOffset}
+              validClock={stJohnsTime(validTime.toISOString())}
+              backMinutes={BACK_MINUTES}
+              forwardMinutes={FORWARD_MINUTES}
+              snapping={snapping}
+              ariaValueText={scrubValueText}
+              onScrubMinutes={selectMinutes}
+              onScrubKeyDown={onScrubKeyDown}
+              onQuickJump={(offsetHours) => selectMinutes(offsetHours * 60)}
+              windowStartMs={windowStartMs}
+              windowEndMs={windowEndMs}
+              markers={markers}
+              onJumpToInstant={(ms) => jumpToTime(new Date(ms))}
+              timeline={timeline}
+              timelineError={timelineNotice}
+              selectedMs={selectedMs}
+              playing={playing}
+              speed={speed}
+              direction={direction}
+              onTogglePlay={() => setPlaying((on) => !on)}
+              onFaster={() => setSpeed(fasterSpeed)}
+              onSlower={() => setSpeed(slowerSpeed)}
+              onToggleDirection={() => setDirection((towards) => (towards === 1 ? -1 : 1))}
+              interpolate={interpolate}
+              onToggleInterpolate={toggleInterpolate}
+              methods={methods}
+              method={method}
+              onSelectMethod={selectMethod}
+              methodNotices={methodNotices}
+              methodError={methodError}
+              storyOpen={storyOpen}
+              onToggleStory={() => setStoryOpen((open) => !open)}
+              storyToggleRef={storyToggleRef}
+            />
+  )
+  const legacy = (
     <div className={`workbench ${mode === 'simple' ? 'app-shell' : ''} ${dataSource === 'fixture' ? 'fixture-mode' : ''}`}>
       {dataSource !== 'live' && <div className={`fixture-watermark ${dataSource}`} role="status">{hasLiveTaf ? 'LIVE TAF · OTHER EVIDENCE UNAVAILABLE' : bannerCopy[dataSource]}</div>}
       {masthead}
@@ -1621,4 +1763,25 @@ export default function App() {
       {mode === 'expert' && <footer><span>POC // St. John’s · Avalon · Grand Banks</span><p>Experimental evidence display. Not a calibrated probability, warning service, or navigation product.</p></footer>}
     </div>
   )
+  if (legacyOpen) return <><button className="return-bench" onClick={() => setLegacyOpen(false)}>Return to desktop Bench</button>{legacy}</>
+  const ledger = <EvidenceLedger rows={snapshot.servedFields} onInspect={inspect} />
+  const migrationNotice = <p className="bench-migration">The selected view is being assembled. Current response-backed panels remain available in Existing evidence panels.</p>
+  return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock}
+    focus={<FocusBar location={location} site={site} registry={registeredSites} registryError={registryError} nearest={nearestSite} onSite={setSite} instant={selectedMs} liveNow={liveNow}
+      onPoint={(point) => { setSite(null); setLocation(point) }} onInstant={(value) => { pausePlayback(); setSelectedMs(value) }} onNow={() => { pausePlayback(); setSelectedMsState(reference.getTime()); setLiveNow(true) }}>
+      <div className="bench-themes" role="group" aria-label="Colour theme">{(['light', 'dark', 'night'] as const).map((name) => <button key={name} aria-pressed={theme === name} onClick={() => setTheme(name)}>{name === 'night' ? 'Red night' : name}</button>)}</div>
+      <button onClick={() => setLegacyOpen(true)}>Existing evidence panels</button>
+    </FocusBar>}
+    status={<><strong>{dataPathCopy[dataSource]}</strong> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices
+      {sourceError && <span> · {sourceError}</span>}{initialFocus.notices.map((notice) => <span key={notice}> · {notice}</span>)}</>}
+    timeline={benchTimeline}
+    inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} /> : undefined}
+    views={{
+      Map: <><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
+      Series: <>{migrationNotice}<h3>Selected-instant evidence</h3><p>Bounded native-time Series is not implemented yet.</p>{ledger}</>,
+      Sky: <>{migrationNotice}<p>{site ? 'Registered horizon metadata not loaded.' : 'No registered horizon at this point.'}</p><FieldFamilyGroups snapshot={snapshot} /></>,
+      Activity: <>{migrationNotice}<p>Server profile verdicts are not wired into these lanes yet. No score is calculated by this client.</p></>,
+      Sources: <>{migrationNotice}{modelStrip}<SourceFieldCatalogue sources={catalog} />{ledger}</>,
+    }} />
+
 }

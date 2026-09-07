@@ -72,7 +72,7 @@ describe('the delivery kind is a second axis, and it is labelled', () => {
 
   it('renders the label beside the class badge on a value', async () => {
     vi.stubGlobal('fetch', routedFetch(point([temperature])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(screen.getAllByText("producer's own cell").length).toBeGreaterThan(0))
     expect(screen.getAllByText("producer's own cell")[0]).toHaveAttribute('data-delivery-kind', 'published_cell')
   })
@@ -80,7 +80,7 @@ describe('the delivery kind is a second axis, and it is labelled', () => {
   it('shows no delivery label for a value whose provenance declared no kind', async () => {
     const undeclared = { ...temperature, provenance: { ...temperature.provenance, delivery_kind: undefined } }
     vi.stubGlobal('fetch', routedFetch(point([undeclared])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(screen.getAllByText('retrieved').length).toBeGreaterThan(0))
     expect(screen.queryByText("producer's own cell")).not.toBeInTheDocument()
     expect(document.querySelector('[data-delivery-kind]')).toBeNull()
@@ -94,7 +94,7 @@ describe('the delivery kind is a second axis, and it is labelled', () => {
       delivery_kind: 'published_cell', intermediary: null, display_primary: true,
     }]
     vi.stubGlobal('fetch', routedFetch(point([temperature]), sources))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const button = await screen.findByRole('button', { name: /HRDPS/ })
     expect(within(button).getByText("producer's own cell")).toHaveAttribute('data-delivery-kind', 'published_cell')
   })
@@ -182,7 +182,7 @@ describe('a value that may not be the primary is only ever an alternative', () =
         },
       },
     ])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const alternatives = await screen.findByLabelText('Alternative readings')
     expect(within(alternatives).getByText('44 percent')).toBeInTheDocument()
     expect(within(alternatives).getByText('intermediary derived')).toHaveAttribute('data-evidence-class', 'intermediary_derived')
@@ -205,7 +205,7 @@ describe('a value that may not be the primary is only ever an alternative', () =
         },
       },
     ])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const alternatives = await screen.findByLabelText('Alternative readings')
     expect(within(alternatives).getByText(/documents no method for this field, so the transformation is undocumented rather than absent/)).toBeInTheDocument()
   })
@@ -260,7 +260,7 @@ describe('a refused derivation and an unmodelled artifact read as unavailable', 
         },
       },
     ], [refusedNotice])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const humidity = await waitFor(() => screen.getByText('Humidity').closest('.metric') as HTMLElement)
     await waitFor(() => expect(within(humidity).getByText('Unavailable')).toBeInTheDocument())
     expect(within(humidity).getByText(/the relative_humidity_from_dew_point entry is disabled/)).toBeInTheDocument()
@@ -275,7 +275,7 @@ describe('a refused derivation and an unmodelled artifact read as unavailable', 
         evidence_class: 'retrieved', quality: { status: 'unknown', flags: ['provenance_unmodelled'] },
       },
     }], [notice])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(screen.getAllByText(/provenance could not be modelled/).length).toBeGreaterThan(0))
   })
 
@@ -290,7 +290,7 @@ describe('a refused derivation and an unmodelled artifact read as unavailable', 
         },
       },
     ], [])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const humidity = await waitFor(() => screen.getByText('Humidity').closest('.metric') as HTMLElement)
     expect(within(humidity).getByText('the derivation was refused and the response gave no reason')).toBeInTheDocument()
   })

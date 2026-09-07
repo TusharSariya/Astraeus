@@ -405,6 +405,17 @@ describe('MapPanel imagery', () => {
     ...props,
   })
 
+  it('draws the Bench raster stack in reader order even when provider z-index disagrees', async () => {
+    vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
+    const other = { ...proxiedLayer, id: 'other-proxy', z_index: -100 }
+    const stack = [{ id: proxiedLayer.id, visible: true, opacity: 0.6 }, { id: other.id, visible: true, opacity: 0.8 }]
+    const props = { compactDisclosure: true, layers: [proxiedLayer, other], selections: stack }
+    const { rerender } = render(proxiedPanel(props))
+    await waitFor(() => expect((globalThis as Record<string, unknown>).__mapLayersNow).toEqual([`raster-${proxiedLayer.id}-0`, `raster-${other.id}-0`]))
+    rerender(proxiedPanel({ ...props, selections: [...stack].reverse() }))
+    await waitFor(() => expect((globalThis as Record<string, unknown>).__mapLayersNow).toEqual([`raster-${other.id}-0`, `raster-${proxiedLayer.id}-0`]))
+  })
+
   it('draws the retrieved image beneath the basemap labels and names what it retrieved', async () => {
     vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
     render(proxiedPanel())

@@ -51,6 +51,7 @@ from ingest.contract import MEDIA_COG, MEDIA_GEOJSON, MEDIA_PARQUET, MEDIA_ZARR
 
 from .jobs import job_store
 from .ephemeris import EPHEMERIS_ID, EPHEMERIS_SHA256
+from .registry_api import router as registry_router
 from .models import (
     CatalogResponse,
     CrossSectionRequest,
@@ -268,6 +269,9 @@ def require_core_coverage(latitude: float, longitude: float) -> None:
     bounds = AVALON_CORE_BOUNDS
     if not (bounds["south"] <= latitude <= bounds["north"] and bounds["west"] <= longitude <= bounds["east"]):
         raise HTTPException(status_code=422, detail="coordinate is outside the Avalon core coverage")
+
+
+app.include_router(registry_router, prefix=PREFIX)
 
 
 @app.get(f"{PREFIX}/catalog", response_model=CatalogResponse)

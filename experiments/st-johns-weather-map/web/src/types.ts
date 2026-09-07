@@ -152,6 +152,8 @@ export interface DerivationMethod {
  *  a METAR observation and the second an HRDPS sample, and which one is shown
  *  has to be said. */
 export interface FieldAttribution {
+  /** Original response provenance retained for complete inspection; never interpreted as a new reading. */
+  responseProvenance?: Record<string, unknown>
   sourceId: string | null
   product: string | null
   /** Native producer run and exact demand content revision, when declared. */
