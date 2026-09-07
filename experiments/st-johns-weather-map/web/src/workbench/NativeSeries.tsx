@@ -2,16 +2,21 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { attributionOf, type ApiEvidenceField } from '../api'
 import type { LocationPoint, ServedFieldValue } from '../types'
 import { EvidenceGlyph, type InspectedEvidence } from './EvidenceInspector'
+import { resolveFamily } from '../fieldFamily'
 import { EVIDENCE_CLASS_LABELS } from '../evidenceClass'
 
 interface Selector { id: string; source_id: string; field: string; run: string }
 interface Selection { latitude: number; longitude: number; start: string; end: string; selectors: Selector[]; page_size: number }
 interface RunChoice { id: string; run_time: string }
-interface Row { selectable_runs?: RunChoice[]; run_inventory_reason?: string; selector_id: string; source_id: string; field: string; requested_run: string; availability: 'available' | 'checked_empty' | 'unknown' | 'unavailable'; reason: string | null; samples: ApiEvidenceField[] }
+export interface NativeSeriesRow { selectable_runs?: RunChoice[]; run_inventory_reason?: string; selector_id: string; source_id: string; field: string; requested_run: string; availability: 'available' | 'checked_empty' | 'unknown' | 'unavailable'; reason: string | null; samples: ApiEvidenceField[] }
 export interface NativeSeriesResponse {
   selection: Selection
   snapshot: { id: string; selected_at: string; expires_at: string; change_token: string; identities: unknown[] }
-  series: Row[]; next_cursor: string | null; complete: boolean; notices: string[]
+  series: NativeSeriesRow[]; next_cursor: string | null; complete: boolean; notices: string[]
+}
+export type SharedSeriesSelection = Pick<NativeSeriesResponse, 'selection' | 'snapshot' | 'series' | 'complete'> & { expired: boolean; families?: Record<string, string[]> }
+export function selectedEvidence(evidence: InspectedEvidence, snapshot: NativeSeriesResponse['snapshot']): InspectedEvidence {
+  return { ...evidence, key: `native:${snapshot.id}:${evidence.key}`, details: { ...evidence.details, 'Finite native selection': { id: snapshot.id, selected_at: snapshot.selected_at, expires_at: snapshot.expires_at } } }
 }
 function selectionKey(value: Selection): string {
   return JSON.stringify({ latitude: value.latitude, longitude: value.longitude, start: new Date(value.start).toISOString(), end: new Date(value.end).toISOString(),
@@ -61,6 +66,7 @@ interface Props {
   location: LocationPoint; instant: number; fields: ServedFieldValue[]; runs: Record<string, string>; enabled: boolean; focusReady?: boolean; selectionMoving?: boolean
   onLatest: (source: string) => void
   onRun?: (source: string, run: string) => void
+  onEvidence?: (selection: SharedSeriesSelection | null) => void
   onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void
 }
 
@@ -72,7 +78,7 @@ export function useNativeSeries(props: Props) {
   const [compare, setCompare] = useState(false)
   const [runPair, setRunPair] = useState<{ source: string; field: string; runs: RunChoice[] } | null>(null)
   const [hours, setHours] = useState(3)
-  const [inventoryRows, setInventoryRows] = useState<Row[]>([])
+  const [inventoryRows, setInventoryRows] = useState<NativeSeriesRow[]>([])
   const [data, setData] = useState<NativeSeriesResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [check, setCheck] = useState<string | null>(null)
@@ -127,6 +133,9 @@ export function useNativeSeries(props: Props) {
     const timer = setTimeout(() => { setExpired(true); setCheck(null) }, Math.max(0, Date.parse(data.snapshot.expires_at) - Date.now()))
     return () => clearTimeout(timer)
   }, [data])
+  useEffect(() => {
+    props.onEvidence?.(data ? { selection: data.selection, snapshot: data.snapshot, families: Object.fromEntries(data.series.map((row) => [row.selector_id, [...new Set(row.samples.map((sample) => resolveFamily(sample.family)))]])), series: expired ? data.series.map((row) => ({ ...row, samples: [] })) : data.series, complete: data.complete, expired } : null)
+  }, [data, expired, props.onEvidence])
   async function checkChanges() {
     if (!data || expired) return
     active.current?.abort()
@@ -172,13 +181,13 @@ export function useNativeSeries(props: Props) {
     {!runPair && selectors.filter((s) => s.run !== 'latest').map((s) => <p key={s.id}>Pinned {s.source_id}: {s.run}. <button onClick={() => props.onLatest(s.source_id)}>Use Latest available for {s.source_id}</button></p>)}
     <div role="status">{selectionMoving && <p>Pause playback to read native Series for this selection.</p>}{!focusReady && <p>Focus is awaiting registered geometry; no point values are shown.</p>}{busy && 'Reading selected native evidence…'}{error && <p>Read failed; no replacement was applied. {error}</p>}{check && <p>{check}</p>}{expired && <p>Selection expired. Refresh Series to read again.</p>}</div>
     {data && <p>Selected {data.snapshot.selected_at} · Fixed expiry {data.snapshot.expires_at}{!data.complete && ' · More native samples available'}</p>}
-    {data && !expired && <>{runPair && compare && <RunOverlay rows={data.series} start={instant} end={instant + hours * 3600000} />}{data.series.map((row) => <NativeTrack hidePlot={Boolean(runPair && compare)} key={row.selector_id} row={row} start={instant} end={instant + hours * 3600000} onInspect={props.onInspect} />)}
+    {data && !expired && <>{runPair && compare && <RunOverlay rows={data.series} start={instant} end={instant + hours * 3600000} />}{data.series.map((row) => <NativeTrack hidePlot={Boolean(runPair && compare)} key={row.selector_id} row={row} start={instant} end={instant + hours * 3600000} onInspect={(evidence, opener) => props.onInspect(selectedEvidence(evidence, data.snapshot), opener)} />)}
       {data.next_cursor && <button disabled={busy} onClick={() => void read({ cursor: data.next_cursor }, true)}>Load next native samples</button>}
       {data.notices.map((notice) => <p key={notice}>{notice}</p>)}
     </>}
   </section>
 }
-function NativeTrack({ row, start, end, onInspect, hidePlot = false }: { hidePlot?: boolean; row: Row; start: number; end: number; onInspect: Props['onInspect'] }) {
+export function NativeTrack({ row, start, end, onInspect, hidePlot = false }: { hidePlot?: boolean; row: NativeSeriesRow; start: number; end: number; onInspect: Props['onInspect'] }) {
   const readings = row.samples.map((sample) => ({ sample, a: attributionOf(sample) }))
   const numeric = readings.filter(({ sample, a }) => typeof sample.value === 'number' && Number.isFinite(sample.value)
     && a && a.evidenceClass !== 'unrecognised' && !a.derivationRefused && !a.provenanceUnmodelled && !a.uncatalogued)
@@ -202,7 +211,7 @@ function NativeTrack({ row, start, end, onInspect, hidePlot = false }: { hidePlo
   </section>
 }
 
-function RunOverlay({ rows, start, end }: { rows: Row[]; start: number; end: number }) {
+function RunOverlay({ rows, start, end }: { rows: NativeSeriesRow[]; start: number; end: number }) {
   if (rows.length !== 2 || rows[0].source_id !== rows[1].source_id || rows[0].field !== rows[1].field) return null
   const points = rows.flatMap((row, series) => row.samples.flatMap((sample) => {
     const a = attributionOf(sample)

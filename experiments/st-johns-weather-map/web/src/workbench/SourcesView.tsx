@@ -1,22 +1,25 @@
+import { NativeTrack, selectedEvidence, type SharedSeriesSelection } from './NativeSeries'
 import { layerMapping, layerImagery } from './layerIdentity'
 import { useState } from 'react'
 import type { CatalogSource, LayerItem, ServedFieldValue, SourceStatusItem } from '../types'
-import { familyTitle, fieldDefinition } from '../fieldFamily'
+import { familyTitle, fieldDefinition, UNGROUPED_FAMILY } from '../fieldFamily'
 import { EvidenceGlyph, EvidenceLedger, type InspectedEvidence } from './EvidenceInspector'
 import type { DrawEvidence } from './MapStack'
 
 interface Props {
   catalog: CatalogSource[]; statuses: SourceStatusItem[] | null; fields: ServedFieldValue[]; layers: LayerItem[]; drawn: DrawEvidence[]
+  nativeSelection?: SharedSeriesSelection | null
   instant: number; catalogError: string | null; statusError: string | null
   onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void
 }
-export function sourceEvidence(id: string, catalog: CatalogSource[], statuses: SourceStatusItem[] | null, fields: ServedFieldValue[], layers: LayerItem[] = []): InspectedEvidence {
+export function sourceEvidence(id: string, catalog: CatalogSource[], statuses: SourceStatusItem[] | null, fields: ServedFieldValue[], layers: LayerItem[] = [], nativeSelection: SharedSeriesSelection | null = null): InspectedEvidence {
   return { key: `source:${id}`, label: id, text: 'Registry declaration, acquisition status and returned point evidence have separate scopes.', details: {
     'Source identity': id,
     'Registry declaration': catalog.find((source) => source.id === id) ?? 'Not present in the returned catalogue',
     'Acquisition status': statuses?.find((status) => status.source_id === id) ?? 'Not supplied; successful point retrieval is not inferred',
     'Returned evidence at Focus': fields.filter((field) => field.attribution.sourceId === id).map((field) => ({ field: field.field, text: field.text, has_value: field.hasValue, provenance: field.attribution.responseProvenance })),
     'Explicitly associated layers': layers.filter((layer) => layerMapping(layer).fields.some((row) => row.source_id === id)).map((layer) => ({ id: layer.id, mapping: layerMapping(layer), imagery: layerImagery(layer), listed_times: layer.times ?? [], freshness_assessed_at: layer.freshness_assessed_at ?? null })),
+    'Finite native Series selection': nativeSelection ? { id: nativeSelection.snapshot.id, selected_at: nativeSelection.snapshot.selected_at, expires_at: nativeSelection.snapshot.expires_at, expired: nativeSelection.expired, complete: nativeSelection.complete, coordinates: { latitude: nativeSelection.selection.latitude, longitude: nativeSelection.selection.longitude }, window: { start: nativeSelection.selection.start, end: nativeSelection.selection.end }, rows: nativeSelection.series.filter((row) => row.source_id === id).map((row) => ({ ...row, samples: nativeSelection.expired ? [] : row.samples })) } : 'No native Series selection at this Focus',
     'Coverage limitation': 'Declared geography, a retrieval timestamp or a layer listing does not establish availability at this coordinate and time.',
   } }
 }
@@ -26,16 +29,17 @@ export function useSourcesView(props: Props) {
   const [query, setQuery] = useState('')
   const [family, setFamily] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
-  const { catalog, statuses, fields, layers, drawn, instant, onInspect } = props
-  const allIds = [...new Set([...catalog.map((source) => source.id), ...fields.flatMap((field) => field.attribution.sourceId ? [field.attribution.sourceId] : []), ...(statuses ?? []).map((status) => status.source_id), ...layers.flatMap((layer) => layerMapping(layer).fields.map((row) => row.source_id))])]
-  const families = [...new Set([...catalog.flatMap((source) => source.fields?.map((field) => field.family) ?? []), ...fields.map((field) => field.attribution.family)].filter((value): value is string => typeof value === 'string' && value.length > 0))].sort()
+  const { catalog, statuses, fields, layers, drawn, instant, onInspect, nativeSelection = null } = props
+  const nativeFamilies = (row: NonNullable<typeof nativeSelection>['series'][number]) => nativeSelection?.families?.[row.selector_id]?.length ? nativeSelection.families[row.selector_id] : [UNGROUPED_FAMILY]
+  const allIds = [...new Set([...(nativeSelection?.series.map((row) => row.source_id) ?? []), ...catalog.map((source) => source.id), ...fields.flatMap((field) => field.attribution.sourceId ? [field.attribution.sourceId] : []), ...(statuses ?? []).map((status) => status.source_id), ...layers.flatMap((layer) => layerMapping(layer).fields.map((row) => row.source_id))])]
+  const families = [...new Set([...(nativeSelection?.series.flatMap(nativeFamilies) ?? []), ...catalog.flatMap((source) => source.fields?.map((field) => field.family) ?? []), ...fields.map((field) => field.attribution.family)].filter((value): value is string => typeof value === 'string' && value.length > 0))].sort()
   const visible = allIds.filter((id) => {
     const source = catalog.find((entry) => entry.id === id)
     const values = fields.filter((field) => field.attribution.sourceId === id)
-    return [id, source?.producer, source?.product, ...source?.fields?.map((field) => field.key) ?? []].join(' ').toLowerCase().includes(query.trim().toLowerCase())
-      && (!family || source?.fields?.some((field) => field.family === family) || values.some((field) => field.attribution.family === family))
+    return [id, source?.producer, source?.product, ...(nativeSelection?.series.filter((row) => row.source_id === id).map((row) => row.field) ?? []), ...source?.fields?.map((field) => field.key) ?? []].join(' ').toLowerCase().includes(query.trim().toLowerCase())
+      && (!family || source?.fields?.some((field) => field.family === family) || values.some((field) => field.attribution.family === family) || nativeSelection?.series.some((row) => row.source_id === id && nativeFamilies(row).includes(family)))
   })
-  function inspect(id: string, opener: HTMLButtonElement) { setSelected(id); onInspect(sourceEvidence(id, catalog, statuses, fields, layers), opener) }
+  function inspect(id: string, opener: HTMLButtonElement) { setSelected(id); onInspect(sourceEvidence(id, catalog, statuses, fields, layers, nativeSelection), opener) }
   const inspectButton = (id: string) => <button aria-pressed={selected === id} onClick={(event) => inspect(id, event.currentTarget)}>Inspect source {id}</button>
   const readings = (id: string) => fields.filter((field) => field.attribution.sourceId === id && (!family || field.attribution.family === family))
   return <section className="sources-view" aria-label="Source evidence catalogue">
@@ -69,6 +73,12 @@ export function useSourcesView(props: Props) {
       </section>)}
     </div>}
     {selected && perspective !== 'Coverage lanes' && <details className="source-selected-values"><summary>Returned values from {selected}</summary><EvidenceLedger rows={readings(selected)} onInspect={onInspect} /></details>}
+    {nativeSelection && <section aria-label="Finite native Series evidence"><h3>Finite native Series selection</h3>
+      <p>Selection {nativeSelection.snapshot.id} · Selected {nativeSelection.snapshot.selected_at} · Fixed expiry {nativeSelection.snapshot.expires_at}. {nativeSelection.complete ? 'All pages loaded.' : 'Partial selection: only loaded pages appear here. Continue in Series to read more.'}</p>
+      <p>Point {nativeSelection.selection.latitude}, {nativeSelection.selection.longitude} · {nativeSelection.selection.start} to {nativeSelection.selection.end}. These are selected native readings, separate from point evidence at the exact Focus and from a source coverage declaration.</p>
+      {nativeSelection.expired ? <p role="status">Native selection expired. Values are withheld; open Series and explicitly refresh to acquire another selection.</p> : nativeSelection.series.filter((row) => visible.includes(row.source_id) && (!family || nativeFamilies(row).includes(family))).map((row) => <NativeTrack key={row.selector_id} row={row} start={Date.parse(nativeSelection.selection.start)} end={Date.parse(nativeSelection.selection.end)} onInspect={(evidence, opener) => onInspect(selectedEvidence(evidence, nativeSelection.snapshot), opener)} />)}
+      {nativeSelection.expired && <ul>{nativeSelection.series.filter((row) => visible.includes(row.source_id) && (!family || nativeFamilies(row).includes(family))).map((row) => <li key={row.selector_id}>{row.source_id} · {row.field} · Requested run {row.requested_run} · expired, no values shown</li>)}</ul>}
+    </section>}
     <details className="sources-unmapped"><summary>Layer frame identities · {layers.length} layers</summary><p>Explicit source-to-field associations are declarations. Listed samples, advertised imagery and actual draw receipts stay separate; no join is inferred from a title or product.</p>
       {layers.filter((layer) => `${layer.id} ${layer.title}`.toLowerCase().includes(query.toLowerCase())).map((layer) => {
         const actual = drawn.find((entry) => entry.id === layer.id)

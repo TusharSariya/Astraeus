@@ -20,6 +20,26 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Sources selection implementation checkpoint, September 7, 2026
+
+Named runs #285 merged as `2711d785`. Current isolated batch is
+`execution/desktop-source-selection`, `/tmp/astraeus-desktop-source-selection`.
+Sources consumes the already-loaded native Series selection at the exact Focus,
+with source/family filters, separate point/selection/layer scopes, loaded-page
+limits and shared provenance. Expiry removes native values and open value
+inspector provenance, retaining selection identity/time bounds. Sources never
+fetches or renews this selection. Task 5.4 is complete for returned evidence.
+
+Validation: 491 full client tests, 33 final focused tests, build, strict desktop
+OpenSpec, specctl and fixed Chrome proof pass. Three-theme and 200% text-zoom
+screenshots/receipt are in `/tmp/astraeus-source-selection-proof/` outside Git.
+Main-agent review only; no backend, new provider-live or physical testing claim.
+
+Activity's recorded budget question remains unanswered; dependent aggregation
+is held. Continue shared Map station/generated inspection, stable provider tokens
+and assembled desktop verification. No five-view completion or #70 source
+integration promotion is implied by this checkpoint.
+
 ## Named-run implementation checkpoint, September 7, 2026
 
 Layer identity #284 merged as `01835da1`. Current isolated batch is

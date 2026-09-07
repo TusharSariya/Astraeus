@@ -31,7 +31,7 @@ Contract acceptance does not check off implementation tasks.
 - [x] 5.1 Implement Series Overview and temporary Compare using the approved bounded API interactions; verify native sparse times, compatible/incompatible axes, unsampled versus checked gaps, and Focus/selection continuity with fixed responses.
 - [x] 5.2 Implement Sky Horizon instrument; verify registered/unsurveyed versus arbitrary-point horizons, scalar cloud gauges, missing directional geometry, Kp/outlook separation and explicit camera absence.
 - [ ] 5.3 Implement Activity Operational stack using the owning server verdict contract; verify four lanes, one inline expansion, hard-stop ordering, coverage/withholding, provenance and Saved stack absence. Do not implement client scoring.
-- [ ] 5.4 Implement Sources Ledger, Family finder and Coverage lanes; verify filters and inspector survive switching, declarations never imply retrieved coverage, and unmapped/unknown/expired evidence stays inspectable.
+- [x] 5.4 Implement Sources Ledger, Family finder and Coverage lanes; verify filters and inspector survive switching, declarations never imply retrieved coverage, and unmapped/unknown/expired evidence stays inspectable.
 - [ ] 5.5 Apply canonical #41 tokens across all five views; verify stable provider slots, red-on-black night, non-colour state distinctions and reduced motion.
 - [ ] 5.6 Demonstrate all five selected view bodies with fixed-clock browser fixtures, shared Focus and provenance, failure/absence states and keyboard entry/return. Record unavailable backend capabilities separately; do not close full-view obligations on shell-only evidence.
 
@@ -144,3 +144,28 @@ preserves the requested stack with a shared inspector refusal instead of drawing
 Latest. See the API implementation evidence and `prove-desktop-runs.mjs` for
 verification. Full desktop task 5.6 remains open for Activity, shared inspection,
 provider tokens and assembled proof; no source integration issue is closed.
+
+
+## September 7 Sources finite-selection checkpoint
+
+Task 5.4 is complete for currently returned evidence. Sources now shares only
+loaded native Series pages at the exact Focus, separately from point readings,
+registry declarations and layer/image metadata. Source/family filters apply to
+native rows, including explicitly unknown families. Partial pagination is named;
+opening Sources does not fetch pages or renew a cache. Expiry withholds native
+values in both Sources and an already-open native value inspector while retaining
+selection identity/time bounds and filters. Changing Focus cannot expose the old
+selection. The same native chart/table and provenance control are reused.
+
+Verification: 491 full client tests, 33 final focused workbench tests, build,
+strict desktop OpenSpec and specctl pass. Fixed Chrome proof
+`web/scripts/prove-desktop-source-selection.mjs` verifies native source/value
+inspection, view-switch reuse without acquisition, three themes, 200% text zoom,
+expiry clearing with an open inspector, preserved filters and no automatic
+renewal when returning to Series. Screenshots/receipt:
+`/tmp/astraeus-source-selection-proof/` outside Git. Separate main-agent review
+retained expired selection identity while removing values/provenance; no
+independent-agent or physical accessibility review is claimed.
+No API, source adapter, registry status, acquisition or scientific rule changes.
+Task 5.6 remains open for Activity, shared Map inspection/tokens and assembled
+verification. Source completion still belongs to #70 after the desktop milestone.
