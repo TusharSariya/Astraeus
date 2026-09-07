@@ -179,16 +179,28 @@ the revised choice and state that limitation. Optimize the total cost of a
 reviewed successful result, including reviewer work, retries and rework, rather
 than the lowest input-token rate.
 
-This routing matrix is a scaffold pending official model/pricing documentation
-and measured repository outcomes. `TBD` is deliberate; no model is claimed
-faster, cheaper or more capable without evidence.
+Official API model ids, roles and list prices below were checked on 2026-09-07.
+Prices are US dollars per one million API tokens; they are not verified charges
+for a Codex agent job. The public model pages do not provide a four-model
+benchmark by reasoning effort or a cost-per-reviewed-success curve.
+
+| Model | Official API role | Input / output list price | Effort evidence |
+| --- | --- | --- | --- |
+| [`gpt-6-astra`](https://developers.openai.com/api/docs/models/gpt-6-astra) | Hardest end-to-end work | $10 / $50 | Public API: low through max. The current dispatcher also exposes ultra, whose cost/effect is unmeasured. |
+| [`gpt-5.6-sol`](https://developers.openai.com/api/docs/models/gpt-5.6-sol) | Complex professional work | $4 / $20 | Public API: none through max. Current dispatcher: low through ultra; none is unavailable here. |
+| [`gpt-5.6-terra`](https://developers.openai.com/api/docs/models/gpt-5.6-terra) | Balanced intelligence and cost | $2 / $12 | Public API: none through max. Current dispatcher: low through ultra; none is unavailable here. |
+| [`gpt-5.6-luna`](https://developers.openai.com/api/docs/models/gpt-5.6-luna) | Cost-sensitive, high-volume work | $0.20 / $1.20 | Public API: none through max. Current dispatcher: low through max; none is unavailable here. |
+
+The following task mapping is a medium-low-confidence hypothesis until the
+ledger records comparable reviewed jobs. Escalation applies to a fresh job;
+changing an existing agent is unavailable unless the runtime says otherwise.
 
 | Task family | Initial model / effort | Escalation trigger | Evidence / confidence |
 | --- | --- | --- | --- |
-| Bounded lookup or docs correction | TBD | The task exposes a contract conflict or code change. | Official capability/cost evidence pending; repository outcomes pending. |
-| Source implementation | TBD | Focused tests show a cross-module design or scientific-contract defect. | Compare completed exact-head jobs, including review and rework. |
-| Standards and specification review | TBD | The diff or owning requirements cannot be bounded in one pass. | Compare missed-blocker and successor-review outcomes, not prose volume. |
-| Runtime or browser diagnosis | TBD | One inspected failure remains unexplained after the same-handle diagnostic. | Compare successful terminal diagnoses and retry count. |
+| Bounded lookup or docs correction | Luna low pilot | Contract ambiguity or code changes appear: use Terra medium. | Model role/price high confidence; task mapping medium-low. |
+| Routine accepted source implementation | Terra medium | A substantive first review or focused test finds a cross-module defect: use Sol high for the next bounded job. | Model role/price high; repository cost-per-success unknown. |
+| Standards and specification review | Sol medium, independent from the author | Cross-contract or scientific conflict cannot be resolved in one bounded pass: use Astra high. | Independence is repository policy; model mapping medium-low. |
+| Deterministic runtime or browser diagnosis | Terra medium | One same-handle diagnostic leaves the failure unexplained: use Astra high for the next diagnostic job. | Retry-count comparison pending. |
 
 For each completed job record task family, assigned model, effort, escalation,
 evidence confidence, verified input/output tokens and cost when the runtime
@@ -209,7 +221,8 @@ when the repository has no timing or token telemetry.
 | [AQHI #243](https://github.com/TusharSariya/Astraeus/pull/243) | unknown / unknown / unknown | The injected decoder passed before the real command exposed a missing output argument and full-package import exceeding the child limit. | Move the fixed default-child command test before API/UI proof. | One worker-launch correction; corrected leaf worker merged after exact-head review. | Confirm the next low-limit worker passes its default child before shared integration. |
 | [Plasma #245](https://github.com/TusharSariya/Astraeus/pull/245) / [workflow #248](https://github.com/TusharSariya/Astraeus/pull/248) | unknown / unknown / unknown | Browser proof retried around `networkidle`, a missing `/point` prerequisite and label casing; checkpoint results arrived late. | Record exact handles and served head, use `DOMContentLoaded`, and separate source rendering from Linux worker/cache proof. | Proof and docs corrections; both PRs merged. #245 PR open-to-merge interval was about 40 minutes, not total implementation time. | Count proof retries and handoff corrections on the next card integration. |
 | [handoff #249](https://github.com/TusharSariya/Astraeus/pull/249) | unknown / unknown / unknown | The first handoff scope statement required a successor correction. | Review the latest linked artifact and exact head before returning a verdict. | One docs successor; merged after an approximately 19-minute PR open-to-merge interval. Pre-PR work is unknown. | Verify current issue/PR state in the first review pass. |
-| [Lightning #247](https://github.com/TusharSariya/Astraeus/issues/247) / [SWOB #251](https://github.com/TusharSariya/Astraeus/issues/251) | unknown / unknown / unknown | Sampling authority and later SWOB request geometry, enumeration, report identity, inherited QC meaning and DQC gaps surfaced after implementation began. | Complete one consolidated native-request and contract review before proof; separate reusable mechanics from unapproved field semantics. | In progress; completion quality and elapsed implementation time are unknown. | Do not start Linux/browser proof until that review returns zero blockers or an owner decision. |
+| [Lightning #247](https://github.com/TusharSariya/Astraeus/issues/247) | unknown / unknown / unknown | Sampling authority surfaced after implementation began. | Complete one consolidated native-request and contract review before proof. | In progress; completion quality and elapsed implementation time are unknown. | Do not start Linux/browser proof until that review returns zero blockers or an owner decision. |
+| [SWOB #251](https://github.com/TusharSariya/Astraeus/issues/251) / [PR #254](https://github.com/TusharSariya/Astraeus/pull/254) | unknown / unknown / unknown | The first author produced no code checkpoint; after ownership transfer, early review exposed request geometry, enumeration, report identity, inherited QC meaning and DQC gaps. | Transfer one clean worktree, then batch native-request and contract findings before proof; separate reusable mechanics from unapproved field semantics. | Exact-time MSC-only six-field demand, finite receipt/cache and scheduled-ingestion refusal merged at `978f6f8`; external Linux/browser receipts were preserved, #251 closed and partner residual #116 remains open. Token cost and total elapsed time are unknown. | Apply the complete first checkpoint before code on the next station source. |
 | Orchestration | unknown / unknown / unknown | Repeated status-only prompts and interruptions followed missing artifact checkpoints and added task switching; no token telemetry exists. | Dispatch fewer scoped tasks, require observable checkpoints, and interrupt only with current read-only evidence. | Unmeasured. | Check whether the next job reaches its first targeted test and review without reassignment. |
 
 ## PR and handoff
@@ -232,3 +245,10 @@ merge SHA and remaining issue decision, then remove only the owned temporary
 runtime and worktree. Add a short current note to `docs/handoffs/handoff.md`
 when a completed slice leaves reusable workflow knowledge; keep historical
 entries as history rather than copying them into this index.
+
+Queue merges serially. A mergeable status does not prove the branch satisfies
+an up-to-date-base rule; the actual merge result is authoritative. When only
+documentation advanced the base, perform the required rebase, compare the
+implementation patch or owned implementation paths with the reviewed patch or
+paths, and reuse its proofs only when those are exactly equal. Rerun only checks
+affected by a real conflict or content change.
