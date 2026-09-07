@@ -249,3 +249,17 @@ not real profile scores or verified field paths. Strict API OpenSpec and specctl
 pass. Separate main-agent review caught binary tie ordering and excluded computed
 serialization properties when copying typed evidence. No API/client/registry
 behavior is enabled by this helper alone.
+
+
+## Recorded budget decision reconciled, September 7, 2026
+
+Re-reading #64's owner-confirmed resolution found its explicit contract
+consequence: “active-weight normalization”. Together with exclusion of
+unverified paths and a unit-sum active budget, this settles preservation of the
+selected relative weights among admitted paths. The earlier pending question
+was unnecessary and is withdrawn; no new owner answer is required. The existing
+single acceptance authorization covers formalizing this already-selected app
+behavior. The contract now states intended/effective weights and field-exclusion
+disclosures, with normalization at versioned admission rather than in response
+to missing readings. This is contract reconciliation, not a working Activity
+route or promotion of any source/field admission.

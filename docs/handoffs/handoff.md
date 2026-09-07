@@ -20,6 +20,26 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Activity budget handoff cleared, September 7, 2026
+
+Aggregation #289 merged as `ebbccaa7`. Re-reading the owner-confirmed #64
+resolution found its explicit “active-weight normalization” contract requirement.
+The previously asked budget question is withdrawn: the selected relative
+weights normalize over admitted positive field paths, with intended/effective
+weights and exclusions disclosed. This formalization uses the existing single
+owner acceptance, not another decision gate. Missing current readings on an
+admitted path still reduce coverage; they never trigger request-time removal
+from the budget. Admission/replacement changes require profile versions.
+
+Current isolated contract reconciliation:
+`execution/desktop-activity-budget-contract`,
+`/tmp/astraeus-desktop-activity-profile-integration`. Merge this clarification
+before profile/API implementation. Continue all four Activity profiles through
+native source inputs, geometry/applicability, bounded verdict routes/cache and
+the selected four-lane view. Earlier statements below that the budget question
+remains pending are historical and superseded by this correction. Contract
+reconciliation does not close the desktop or source integration obligations.
+
 ## Activity aggregation checkpoint, September 7, 2026
 
 Provider tokens #288 merged as `a755915e`. The current isolated batch is
