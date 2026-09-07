@@ -11,6 +11,55 @@ starting or handing off a source slice. It is the current index for existing
 clients, bounded workers, receipt/cache behavior, focused proof commands and
 PR metadata. This handoff remains the record of completed work and decisions.
 
+## Current execution strategy, September 7, 2026
+
+The owner keeps the full all-source outcome across [#70](https://github.com/TusharSariya/Astraeus/issues/70)
+and [#38](https://github.com/TusharSariya/Astraeus/issues/38). Every source
+listed in those maps is active scope, including sources that currently lack an
+admission, native contract, client, fixture or app path. Readiness and protocol
+family determine sequencing and reuse; they never remove a source from scope.
+The next work targets actual missing source-to-existing-app integrations and,
+where needed, the concrete provider verification or owner proposal that makes
+one possible. A paid, rights-dependent or unavailable path needs an explicit,
+evidence-backed disposition rather than silent deferral or invented access.
+
+Execution groups compatible work behind an existing provider client or adapter,
+then adds only source-specific native mapping. Each batch starts with an early
+eligibility, timestamp, unit and QC contract check; it uses one reusable
+fixed-data end-to-end proof harness rather than a new framework. Once a
+governing proposal is actually accepted, frontend work may advance beside its
+source batch. Genuine owner decisions are batched for review; routine
+engineering proceeds autonomously within accepted scope. Draft proposals
+[#239](https://github.com/TusharSariya/Astraeus/pull/239),
+[#244](https://github.com/TusharSariya/Astraeus/pull/244),
+[#250](https://github.com/TusharSariya/Astraeus/pull/250), and
+[#256](https://github.com/TusharSariya/Astraeus/pull/256) remain unaccepted and
+must not be treated as implementation authority.
+
+The active delivery model is selected-timestamp live queries with finite
+relevant caches, bounded receipts and truthful expiry/unavailability. Do not
+revive a warehouse, permanent raw-provider archive, or two-run retention as the
+current execution strategy. This is an execution-direction correction, not a
+normative storage or source-admission transition. Rights, provenance, native
+science, free-access limits, and `operational: false` remain required. Measure
+milestones by completed source-to-existing-app integrations, rework loops and
+elapsed time. Record model and effort when known; successful-cost measurement
+is unknown without telemetry.
+
+This supersedes historical framework-first/archive execution guidance below;
+that material remains historical evidence, not a current launch instruction.
+
+## SWOB demand slice completed, September 7, 2026
+
+[PR254](https://github.com/TusharSariya/Astraeus/pull/254) merged at
+`978f6f8eed499e55d58fa64f148471f9204d8cfc`, closing [#251](https://github.com/TusharSariya/Astraeus/issues/251).
+It serves six native MSC `swob-realtime` station fields through an exact-time,
+bounded demand query with finite receipt/cache metadata and disabled scheduled
+ingestion. Fixed Linux worker/cache and fixed-live browser proofs used zero
+provider requests. The unserved partner WMO/city scope remains open in
+[#116](https://github.com/TusharSariya/Astraeus/issues/116); no partner record
+was admitted through this slice.
+
 ## Plasma demand slice completed, September 7, 2026
 
 [PR245](https://github.com/TusharSariya/Astraeus/pull/245) merged at
