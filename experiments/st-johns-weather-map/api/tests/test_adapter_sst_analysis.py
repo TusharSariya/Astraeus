@@ -45,9 +45,12 @@ def _ostia_metadata() -> dict:
     }}
 
 
-def test_ostia_fetch_preserves_uncertainty_mask_and_masks_land(tmp_path: Path):
+@pytest.mark.parametrize(("chunk_size", "missing_chunk"), [(4, False), (2, False), (2, True)])
+def test_ostia_fetch_preserves_uncertainty_mask_and_masks_land(tmp_path: Path, chunk_size, missing_chunk):
     metadata = _ostia_metadata(); specs = metadata["metadata"]
-    sst_raw = numpy.full((4, 4), 1000); sst_raw[2, 2] = -32768
+    for name in ("analysed_sst", "analysis_error", "mask"):
+        specs[f"{name}/.zarray"]["chunks"] = [1, chunk_size, chunk_size]
+    sst_raw = 1000 + numpy.arange(16).reshape(4, 4); sst_raw[2, 2] = -32768
     error_raw = numpy.full((4, 4), 25); error_raw[2, 2] = -32768
     seconds = int((datetime(2026, 9, 4, tzinfo=UTC) - datetime(1981, 1, 1, tzinfo=UTC)).total_seconds())
     payloads = {
@@ -55,19 +58,37 @@ def test_ostia_fetch_preserves_uncertainty_mask_and_masks_land(tmp_path: Path):
         "/time/0": _compressed(numpy.array([seconds]), specs["time/.zarray"]),
         "/latitude/0": _compressed(numpy.array([44.95, 45.05, 50.45, 50.55]), specs["latitude/.zarray"]),
         "/longitude/0": _compressed(numpy.array([-58.05, -57.95, -46.05, -45.95]), specs["longitude/.zarray"]),
-        "/analysed_sst/0.0.0": _compressed(sst_raw, specs["analysed_sst/.zarray"]),
-        "/analysis_error/0.0.0": _compressed(error_raw, specs["analysis_error/.zarray"]),
-        "/mask/0.0.0": _compressed(numpy.array([[1, 1, 1, 1], [1, 2, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]], dtype="int8"), specs["mask/.zarray"]),
     }
+    mask_raw = numpy.ones((4, 4), dtype="int8"); mask_raw[1, 1] = 2
+    for name, values in (("analysed_sst", sst_raw), ("analysis_error", error_raw), ("mask", mask_raw)):
+        for y in range(4 // chunk_size):
+            for x in range(4 // chunk_size):
+                payloads[f"/{name}/0.{y}.{x}"] = _compressed(values[y*chunk_size:(y+1)*chunk_size, x*chunk_size:(x+1)*chunk_size], specs[f"{name}/.zarray"])
+    if missing_chunk:
+        del payloads["/analysed_sst/0.1.1"]
+    requested = []
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=payloads[request.url.path[request.url.path.find("/.zmetadata"):] if "/.zmetadata" in request.url.path else "/" + "/".join(request.url.path.split("/")[-2:])])
+        key = request.url.path.removeprefix("/ostia")
+        requested.append(key)
+        return httpx.Response(200, content=payloads[key]) if key in payloads else httpx.Response(404)
     adapter = OSTIAAdapter(_client(handler), "https://example.test/ostia")
     window = FetchWindow(datetime(2026, 9, 5, tzinfo=UTC), back_hours=48, forward_hours=0)
-    result = adapter.fetch(adapter.discover(window)[0], window, tmp_path)
+    candidate = adapter.discover(window)[0]
+    if missing_chunk:
+        with pytest.raises(httpx.HTTPStatusError):
+            adapter.fetch(candidate, window, tmp_path)
+        assert not list(tmp_path.glob("*.zarr.zip"))
+        return
+    result = adapter.fetch(candidate, window, tmp_path)
+    assert len(requested) == len(set(requested)) == 4 + 3 * (4 // chunk_size) ** 2
+    assert set(requested) == set(payloads)
+
     assert result.complete and result.qc_passed
     with zarr.storage.ZipStore(result.artifacts[0].payload_path, mode="r") as store:
         ds = xarray.open_zarr(store, consolidated=False).load()
     assert ds.sizes == {"valid_time": 1, "latitude": 2, "longitude": 2}
+    assert ds.sea_surface_temperature.values[0, 0, 1] == pytest.approx(10.06, abs=0.0001)
+    assert ds.sea_surface_temperature.values[0, 1, 0] == pytest.approx(10.09, abs=0.0001)
     assert numpy.isnan(ds.sea_surface_temperature.values[0, 0, 0])
     assert ds.sea_surface_temperature_uncertainty.values[0, 1, 0] == pytest.approx(0.25)
     assert numpy.isnan(ds.sea_surface_temperature.values[0, 1, 1]), "a water-cell fill value must not scale into a plausible temperature"
@@ -157,3 +178,26 @@ def test_oisst_changed_native_identity_is_refused(tmp_path: Path, sst_units, ide
     candidate = type("Candidate", (), {"urls": ["https://example.test/native.nc"], "detail": {"filename": "oisst-avhrr-v02r01.20260904_preliminary.nc"}, "run_time": datetime(2026, 9, 4, 12, tzinfo=UTC), "provider_run_id": "oisst-test"})()
     with pytest.raises(AdapterUnavailable, match=message):
         adapter.fetch(candidate, FetchWindow(datetime(2026, 9, 5, tzinfo=UTC), back_hours=48), tmp_path / "fetch")
+
+
+def test_ostia_chunk_count_ceiling_stops_before_field_download(tmp_path: Path, monkeypatch):
+    import ingest.captures.sst_analysis as source
+    metadata = _ostia_metadata()
+    specs = metadata['metadata']
+    for name in ('analysed_sst', 'analysis_error', 'mask'):
+        specs[f'{name}/.zarray']['chunks'] = [1, 2, 2]
+    monkeypatch.setattr(source, 'MAX_OSTIA_CHUNKS_PER_FIELD', 3)
+    requested = []
+    def handler(request):
+        requested.append(request.url.path)
+        name = request.url.path.split('/')[-2]
+        assert name in ('latitude', 'longitude'), 'chunk budget must be checked before field download'
+        values = [44.95, 45.05, 50.45, 50.55] if name == 'latitude' else [-58.05, -57.95, -46.05, -45.95]
+        return httpx.Response(200, content=_compressed(numpy.array(values), specs[f'{name}/.zarray']))
+    from ingest.contract import RunCandidate
+    moment = datetime(2026, 9, 4, tzinfo=UTC)
+    candidate = RunCandidate('ostia-20260904', moment, [], {'metadata': metadata, 'time_index': 0})
+    with pytest.raises(AdapterUnavailable, match='chunk-count ceiling'):
+        OSTIAAdapter(_client(handler), 'https://example.test').fetch(candidate, FetchWindow(datetime(2026, 9, 5, tzinfo=UTC), back_hours=48), tmp_path)
+    assert len(requested) == 2
+    assert not list(tmp_path.glob('*.zarr.zip'))
