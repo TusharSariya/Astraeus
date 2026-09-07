@@ -1,3 +1,4 @@
+import type { ObservationUnavailable } from './types'
 import { isSourceCapability, isSourceConfiguration } from './sourceContract'
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
 import { declaredEvidenceClass, resolveEvidenceClass } from './evidenceClass'
@@ -40,6 +41,7 @@ export interface ApiEvidenceField {
 }
 
 export interface ApiPointResponse {
+  observation_unavailable?: unknown
   data_mode?: unknown
   valid_time: string
   selection: {
@@ -534,6 +536,17 @@ function validConsensusSummary(value: ApiPointResponse['consensus'], fields: Api
         && JSON.stringify(field.provenance) === JSON.stringify(input.provenance)))
 }
 
+function observationFailures(value: unknown): ObservationUnavailable[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || !['eccc-aqhi', 'eccc-swob'].includes(item.source_id)
+      || !['query_failed', 'refresh_failed', ...(item.source_id === 'eccc-swob' ? ['unsupported_time'] : [])].includes(item.reason)
+      || item.values_withheld !== true || typeof item.error_type !== 'string' || !/^[A-Za-z][A-Za-z0-9_.]{0,127}$/.test(item.error_type)) return []
+    // Only the typed failure fields survive; arbitrary provider exception keys do not.
+    return [{ source_id: item.source_id, reason: item.reason, error_type: item.error_type, values_withheld: true,
+      expired_acquisition: item.expired_acquisition ?? null } as ObservationUnavailable]
+  })
+}
 export function normalizePoint(point: ApiPointResponse, options: NormalizeOptions = {}): EvidenceSnapshot {
   const nonPrimarySources = options.nonPrimarySources ?? EMPTY_SOURCES
   // The response names the product it answered with. The old code inferred the
@@ -658,6 +671,7 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
     })
     .filter((entry): entry is ServedFieldValue => entry !== null)
   return {
+    observationUnavailable: observationFailures(point.observation_unavailable),
     fieldAlternatives,
     servedFields,
     notices,

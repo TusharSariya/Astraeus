@@ -114,3 +114,21 @@ it('shows each declared default selection once while preserving its complete wir
   expect(new Set(labels).size).toBe(labels.length)
   expect(within(control).getAllByRole('option')).toHaveLength(capabilityOptions(sources).length)
 })
+
+it('keeps typed observation failure separate from the selected model and its configuration', async () => {
+  const { normalizePoint } = await import('../api')
+  const point = { valid_time: at, data_mode: 'fixture', selection: { mode: 'fallback' as const, badge: 'HRDPS selected', selected_source_id: 'eccc-hrdps', selected_product_id: 'hrdps' }, fields: fixture.series.series[0].samples,
+    observation_unavailable: [{ source_id: 'eccc-aqhi', reason: 'refresh_failed', error_type: 'HTTPStatusError', values_withheld: true, expired_acquisition: null, raw_exception: 'private-provider-exception' }] }
+  const snapshot = normalizePoint(point)
+  expect(snapshot.selectedSourceId).toBe('eccc-hrdps')
+  expect(snapshot.observationUnavailable).toEqual([{ source_id: 'eccc-aqhi', reason: 'refresh_failed', error_type: 'HTTPStatusError', values_withheld: true, expired_acquisition: null }])
+  function Sources() { return useSourcesView({ catalog: [], statuses: [], fields: snapshot.servedFields, observationUnavailable: snapshot.observationUnavailable, layers: [], drawn: [], instant: Date.parse(at), catalogError: null, statusError: null, onInspect: inspected }) }
+  render(<Sources />)
+  const row = screen.getByRole('button', { name: 'Inspect source eccc-aqhi' }).closest('tr')!
+  expect(row).toHaveTextContent('Observation refresh_failed · HTTPStatusError. Values withheld; selected model unchanged.')
+  expect(row).toHaveTextContent('Configuration: unknown')
+  await userEvent.click(screen.getByRole('button', { name: 'Inspect source eccc-aqhi' }))
+  expect(inspected.mock.lastCall?.[0].details['Observation failure at Focus']).toEqual([{ source_id: 'eccc-aqhi', reason: 'refresh_failed', error_type: 'HTTPStatusError', values_withheld: true }])
+  expect(JSON.stringify(inspected.mock.lastCall?.[0])).not.toContain('private-provider-exception')
+  expect(normalizePoint({ ...point, observation_unavailable: [{ ...point.observation_unavailable[0], error_type: 'exception https://private.example/' }] }).observationUnavailable).toEqual([])
+})

@@ -1,4 +1,5 @@
 import type { components as SourceApi } from './generated/source-api'
+export type ObservationUnavailable = SourceApi['schemas']['AQHIDemandUnavailable'] | SourceApi['schemas']['SWOBDemandUnavailable']
 export type SourceCapability = SourceApi['schemas']['SourceCapability']
 export type SourceConfiguration = SourceApi['schemas']['SourceConfiguration']
 export type SourceVariant = SourceApi['schemas']['SourceVariant']
@@ -321,6 +322,7 @@ export interface EvidenceSnapshot {
   /** The response's own `notices`, verbatim. They carry the reason a
    *  derivation was refused or an artifact's provenance was not modelled. */
   notices: string[]
+  observationUnavailable?: ObservationUnavailable[]
   /** One entry per unordered pair of served members within a family, exactly as
    *  `/point` computed it. Empty against an API that does not serve it yet,
    *  which the interface reads as "no pair is stated", never as "comparable". */

@@ -1820,14 +1820,14 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const currentSeriesEvidence = seriesEvidence && !playing && seriesEvidence.selection.latitude === location.latitude && seriesEvidence.selection.longitude === location.longitude && Date.parse(seriesEvidence.selection.start) === selectedMs ? seriesEvidence : null
   useEffect(() => {
     setInspected((current) => current?.key.startsWith('source:')
-      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields, layers, currentSeriesEvidence)
+      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields, layers, currentSeriesEvidence, snapshot.observationUnavailable)
       : current?.key.startsWith('layer:') ? mapLayerEvidence(current.key.slice(6), layers.find((layer) => layer.id === current.key.slice(6)), drawn.find((row) => row.id === current.key.slice(6)))
       : current?.key.startsWith('map-feature:') && !drawn.some((row) => row.features?.some((_, index) => featureEvidenceKey(row, index) === current.key)) && current.details?.['Feature unavailable'] !== true
         ? { ...current, text: 'This native feature is no longer in the current Map draw. Its old values are withheld; inspect the current frame explicitly.', attribution: undefined, details: { 'Feature unavailable': true } }
       : current?.key.startsWith('native:') && (!currentSeriesEvidence || currentSeriesEvidence.expired || !current.key.startsWith(`native:${currentSeriesEvidence.snapshot.id}:`)) && current.details?.['Selection unavailable'] !== true
         ? { ...current, text: 'Native selection expired or changed. Values are withheld; open Series and explicitly refresh to acquire another selection.', attribution: undefined, details: { 'Selection unavailable': true, 'Finite native selection': current.details?.['Finite native selection'] ?? null } } : current)
   }, [catalog, sourceStatuses, snapshot, layers, drawn, currentSeriesEvidence])
-  const sourcesView = useSourcesView({ nativeSelection: currentSeriesEvidence, catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
+  const sourcesView = useSourcesView({ observationUnavailable: snapshot.observationUnavailable, nativeSelection: currentSeriesEvidence, catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
     instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
   const [activityResponse, setActivityResponse] = useState<ActivityResponse | null>(null)
   const [activitySeries, setActivitySeries] = useState<{ field: string; source: string; revision: number } | null>(null)

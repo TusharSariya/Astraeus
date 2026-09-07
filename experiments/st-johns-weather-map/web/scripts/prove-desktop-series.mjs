@@ -6,6 +6,8 @@ const base = process.env.BENCH_URL ?? 'http://127.0.0.1:5198'
 const output = process.env.BENCH_PROOF_DIR ?? '/tmp/astraeus-series-proof'
 await mkdir(output, { recursive: true })
 const sharedFixture = process.env.SOURCE_DELIVERY_FIXTURE === '1' ? JSON.parse(await readFile(new URL('../../contracts/fixtures/source-delivery.json', import.meta.url), 'utf8')) : null
+const companionFixture = process.env.SOURCE_COMPANION_FIXTURE ? JSON.parse(await readFile(process.env.SOURCE_COMPANION_FIXTURE, 'utf8')) : null
+let companionMode = null
 const sharedRequests = []
 const at = '2026-09-07T12:00:00.000Z'
 const layerId = 'eccc-hrdps-surface-total-cloud'
@@ -23,6 +25,7 @@ await page.route('**/*', async (route) => {
   const path = url.pathname.split('/v0')[1]
   let body = { data_mode: 'unavailable', notices: ['Fixed proof: capability not supplied'] }
   if (path === '/point') {
+    if (companionMode) return route.fulfill({ contentType: 'application/json', body: JSON.stringify(companionFixture[companionMode]) })
     if (failPoint) return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Fixed failure' }) })
     body = { latitude: Number(url.searchParams.get('latitude')), longitude: Number(url.searchParams.get('longitude')), valid_time: url.searchParams.get('valid_time'), data_mode: 'fixture', selection: { mode: 'evidence_only', badge: 'Fixed browser fixture', reason: 'Constructed values, no provider retrieval' }, fields: [
       { field: 'temperature', value: 0, key: 'air_temperature_2m', family: 'temperature', provenance: { source_id: 'noaa-gfs', provider: 'NOAA', product: 'GFS', normalized_units: 'degC', evidence_class: 'retrieved', data_mode: 'fixture', valid_time: at, quality: { status: 'unknown', flags: [] }, artifact_revision: 'fixed-proof', sample: { latitude: 47.5, longitude: -52.6 } } },
@@ -50,6 +53,36 @@ await page.route('**/*', async (route) => {
 })
 if (sharedFixture) {
   try {
+    if (companionFixture) {
+      for (const mode of ['success', 'failure']) {
+        companionMode = mode
+        const point = companionFixture[mode]
+        await page.goto(`${base}/?view=sources&lat=${point.latitude}&lon=${point.longitude}&t=${point.valid_time}`)
+        const row = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Inspect source eccc-aqhi', exact: true }) })
+        await row.waitFor()
+        if (mode === 'success') {
+          await page.getByRole('button', { name: 'Map', exact: true }).click()
+          await page.getByText('Point evidence ledger', { exact: true }).click()
+          const inspect = page.getByRole('button', { name: /^Inspect aqhi from eccc-aqhi/ })
+          await inspect.click()
+          const inspector = page.getByRole('complementary', { name: 'Evidence inspector' })
+          await inspector.getByRole('heading', { name: 'Evidence · aqhi', exact: true }).waitFor()
+          assert.ok((await inspector.innerText()).includes('ABEFS'))
+          assert.ok((await inspector.innerText()).includes('2.7'))
+          assert.ok((await inspector.innerText()).includes('eccc-aqhi'))
+          assert.equal(await inspector.locator('dt', { hasText: /^Product$/ }).locator('..').innerText().then((text) => text.includes('HRDPS')), false)
+          await page.screenshot({ path: `${output}/assembled-aqhi-native-identity.png` })
+        } else {
+          await row.getByText('Observation refresh_failed · HTTPStatusError. Values withheld; selected model unchanged.', { exact: true }).waitFor()
+          await row.getByRole('button', { name: 'Inspect source eccc-aqhi', exact: true }).click()
+          const inspector = page.getByRole('complementary', { name: 'Evidence inspector' })
+          assert.ok((await inspector.innerText()).includes('refresh_failed'))
+          assert.equal((await page.locator('body').innerText()).includes('private-provider-exception'), false)
+          await page.screenshot({ path: `${output}/assembled-aqhi-failure.png` })
+        }
+      }
+      companionMode = null
+    }
     const selection = sharedFixture.series.selection
     await page.goto(`${base}/?view=series&lat=${selection.latitude}&lon=${selection.longitude}&t=${at}`)
     await page.getByRole('img', { name: /temperature_2m native samples/ }).waitFor()
@@ -82,7 +115,7 @@ if (sharedFixture) {
     assert.equal(await page.locator('.native-track').count(), 0)
     assert.equal(await page.getByRole('button', { name: 'Check for changes', exact: true }).isDisabled(), true)
     assert.deepEqual(errors, [])
-    await writeFile(`${output}/source-delivery-checks.json`, JSON.stringify({ fixture: 'contracts/fixtures/source-delivery.json', exactBackendResponses: ['catalog', 'status', 'series'], nativeRequests: sharedRequests, checks: ['declarative choices without point samples', 'exact native request identity', 'configuration dispositions', 'inspector focus return', 'finite expiry'], errors }, null, 2))
+    await writeFile(`${output}/source-delivery-checks.json`, JSON.stringify({ fixture: 'contracts/fixtures/source-delivery.json', exactBackendResponses: ['catalog', 'status', 'series', ...(companionFixture ? ['selected-model AQHI success', 'selected-model AQHI failure'] : [])], companionProof: companionFixture?.proof ?? null, nativeRequests: sharedRequests, checks: ['declarative choices without point samples', 'exact native request identity', 'configuration dispositions', 'inspector focus return', 'finite expiry'], errors }, null, 2))
     console.log('Source delivery shared backend fixture proof passed')
   } finally { await browser.close() }
   process.exit(0)
