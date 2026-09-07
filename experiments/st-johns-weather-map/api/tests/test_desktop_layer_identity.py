@@ -67,5 +67,5 @@ def test_gfs_index_uses_existing_cached_inventory_without_new_point_reads(monkey
     body = TestClient(api.app).get('/api/experiments/weather/v0/layers?product=GFS').json()
     value = body['layers'][0]
     assert value['field_mappings'] == [{'source_id': 'noaa-gfs', 'field_key': 'total_cloud_geometric', 'declared_field': 'total_cloud_geometric'}]
-    assert value['imagery_availability']['basis'] == 'cached_native_inventory'
+    assert value['imagery_availability']['basis'] == 'cached_native_grid'
     assert value['times'] == value['imagery_availability']['times']

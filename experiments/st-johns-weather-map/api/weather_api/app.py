@@ -1005,7 +1005,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
         )
         return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
             **mappings([("noaa-gfs", field)]),
-            imagery_availability=imagery("known", now(), "cached_native_inventory", "Cached advertised GFS native hours; no grid download or raster success is implied", availability[field]),
+            imagery_availability=imagery("known", now(), "cached_native_grid", "Native cloud grids currently in the finite source cache; listing performs no new acquisition and rendering may fail", availability[field]),
             id=layer_id, title=f"{title} (selected-time native grid)",
             kind="raster", field=field, product="GFS", units="percent",
             evidence_class="retrieved", family="cloud_cover", field_key=field,

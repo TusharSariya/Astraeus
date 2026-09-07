@@ -146,9 +146,9 @@ explicit association in their declaration, so those mappings remain unknown.
 Unknown bundle fields retain their explicit source and unmapped declaration.
 
 A separate imagery record declares status, assessment time, basis, published
-times and reason. Existing Layer.times semantics are unchanged. Provider or
-cached native inventory is not retrieval/coverage proof; a local grid/renderer
-is not a guarantee the next raster render will succeed. Stored sample times
+times and reason. Existing Layer.times semantics are unchanged. Provider inventory is not retrieval/coverage proof. GFS availability names
+validated cloud grids actually present in its finite cache, separately from a
+new acquisition or point-coverage claim. A local grid/renderer is not a guarantee the next raster render will succeed. Stored sample times
 alone do not establish upstream imagery availability. Station/CAP features
 explicitly have no raster imagery. OVATION listing remains requestable with
 unknown image times and makes no new request. Run attribution exposes its
