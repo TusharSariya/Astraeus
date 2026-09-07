@@ -16,7 +16,7 @@ it('keeps declared geography and acquisition separate from point coverage across
   const rendered = render(<Harness />)
   await userEvent.type(screen.getByRole('searchbox'), 'declared-only')
   expect(screen.getByRole('table')).toHaveTextContent('Global declaration')
-  expect(screen.getByRole('table')).toHaveTextContent('No readings returned at Focus; coverage unestablished')
+  expect(screen.getByRole('table', { name: 'Source Ledger at the shared Focus' })).toHaveTextContent('No readings returned at Focus; coverage unestablished')
   await userEvent.click(screen.getByRole('button', { name: 'Inspect source declared-only' }))
   expect(inspect.mock.lastCall?.[0].details['Returned evidence at Focus']).toEqual([])
   await userEvent.click(screen.getByRole('button', { name: 'Family finder' }))
@@ -43,4 +43,37 @@ it('retains source identity while distinguishing missing catalogue and acquisiti
   expect(evidence.key).toBe('source:removed')
   expect(evidence.details?.['Registry declaration']).toBe('Not present in the returned catalogue')
   expect(evidence.details?.['Returned evidence at Focus']).toEqual([])
+})
+
+it('keeps finite native selection scope, loaded-page limits and expiry separate from point coverage', async () => {
+  const native = {
+    selection: { latitude: 47.56, longitude: -52.71, start: at, end: '2026-09-07T15:00:00Z', selectors: [{ id: 'a', source_id: 'native-only', field: 'temperature_2m', run: 'latest' }], page_size: 12 },
+    snapshot: { id: 'finite', selected_at: at, expires_at: '2026-09-07T12:05:00Z', change_token: 'opaque', identities: [] },
+    complete: false, expired: false, families: { a: ['temperature'] }, series: [{ selector_id: 'a', source_id: 'native-only', field: 'temperature_2m', requested_run: 'latest', availability: 'available' as const, reason: 'Constructed sparse readings', samples: [
+      { field: 'temperature', key: 'temperature_2m', value: 1234, provenance: { source_id: 'native-only', normalized_units: 'degC', evidence_class: 'retrieved', valid_time: at, quality: { status: 'good', flags: [] } } },
+      { field: 'temperature', key: 'temperature_2m', value: null, provenance: { source_id: 'native-only', normalized_units: 'degC', evidence_class: 'retrieved', valid_time: '2026-09-07T13:37:00Z', quality: { status: 'unknown', flags: ['checked_absent'] } } },
+    ] }],
+  }
+  function NativeHarness({ expired = false }) { return useSourcesView({ catalog, statuses: [], fields: [], layers: [], drawn: [], instant: Date.parse(at), nativeSelection: { ...native, expired }, catalogError: null, statusError: null, onInspect: inspect }) }
+  const rendered = render(<NativeHarness />)
+  await userEvent.type(screen.getByRole('searchbox'), 'native-only')
+  await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Field family' }), 'temperature')
+  expect(screen.getByRole('table', { name: 'Source Ledger at the shared Focus' })).toHaveTextContent('No readings returned at Focus; coverage unestablished')
+  expect(screen.getByText(/Partial selection: only loaded pages/)).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Inspect source native-only' }))
+  expect(inspect.mock.lastCall?.[0].details['Returned evidence at Focus']).toEqual([])
+  expect(inspect.mock.lastCall?.[0].details['Finite native Series selection'].rows[0].samples).toHaveLength(2)
+  await userEvent.click(screen.getByRole('button', { name: 'Coverage lanes' }))
+  expect(screen.getByText(/No point samples were returned/)).toBeInTheDocument()
+  await userEvent.click(screen.getByText(/Native values, gaps and run identity/))
+  await userEvent.click(screen.getByRole('button', { name: 'Inspect temperature_2m at 2026-09-07T12:00:00Z' }))
+  expect(inspect.mock.lastCall?.[0].key).toMatch(/^native:finite:/)
+  rendered.rerender(<NativeHarness expired />)
+  expect(screen.getByText(/Native selection expired/)).toBeInTheDocument()
+  expect(screen.queryByText(/1234/)).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Inspect temperature_2m/ })).not.toBeInTheDocument()
+  expect(screen.getByRole('searchbox')).toHaveValue('native-only')
+  expect(screen.getByRole('combobox', { name: 'Field family' })).toHaveValue('temperature')
+  await userEvent.click(screen.getByRole('button', { name: 'Inspect source native-only' }))
+  expect(inspect.mock.lastCall?.[0].details['Finite native Series selection'].rows[0].samples).toEqual([])
 })

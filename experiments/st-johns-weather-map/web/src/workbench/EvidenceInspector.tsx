@@ -53,6 +53,7 @@ export function EvidenceInspector({ evidence, onClose }: { evidence: InspectedEv
       Member: a.member, Ensemble: a.ensemble, Phase: a.phase,
       'Sample geometry': ['sampled_latitude', 'sampled_longitude', 'sample_distance_km', 'sample_method'].some((key) => a.responseProvenance?.[key] != null) ? { latitude: a.responseProvenance?.sampled_latitude ?? null, longitude: a.responseProvenance?.sampled_longitude ?? null, distance_km: a.responseProvenance?.sample_distance_km ?? null, method: a.responseProvenance?.sample_method ?? null } : null, 'Freshness assessment': a.responseProvenance?.freshness, Terms: a.responseProvenance?.licence,
       'Complete returned provenance': a.responseProvenance,
+      ...evidence.details,
     } : evidence.details ?? { Provenance: null }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{show(value)}</dd></div>)}</dl>
   </aside>
 }

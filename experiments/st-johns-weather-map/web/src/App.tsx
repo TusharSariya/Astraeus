@@ -2,7 +2,7 @@ import { mapRunRefusals } from './workbench/layerIdentity'
 import { SkyView } from './workbench/SkyView'
 import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
 import { sourceEvidence, useSourcesView } from './workbench/SourcesView'
-import { useNativeSeries } from './workbench/NativeSeries'
+import { useNativeSeries, type SharedSeriesSelection } from './workbench/NativeSeries'
 import { loadRegisteredSites, nearestRegisteredSite, type RegisteredSites } from './workbench/registeredSites'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
 import { FocusBar } from './workbench/FocusBar'
@@ -375,6 +375,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [view, setView] = useState<View>(initialFocus.view)
   const [dock, setDock] = useState<View | null>(initialFocus.dock)
   const [site, setSite] = useState<string | null>(initialFocus.site)
+  const [seriesEvidence, setSeriesEvidence] = useState<SharedSeriesSelection | null>(null)
   const [runChoices, setRunChoices] = useState(initialFocus.runs)
   const [registeredSites, setRegisteredSites] = useState<RegisteredSites | null>(null)
   const [cameraRegistry, setCameraRegistry] = useState<CameraRegistry | null>(null)
@@ -1803,14 +1804,17 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       {mode === 'expert' && <footer><span>POC // St. John’s · Avalon · Grand Banks</span><p>Experimental evidence display. Not a calibrated probability, warning service, or navigation product.</p></footer>}
     </div>
   )
+  const currentSeriesEvidence = seriesEvidence && !playing && seriesEvidence.selection.latitude === location.latitude && seriesEvidence.selection.longitude === location.longitude && Date.parse(seriesEvidence.selection.start) === selectedMs ? seriesEvidence : null
   useEffect(() => {
     setInspected((current) => current?.key.startsWith('source:')
-      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields, layers) : current)
-  }, [catalog, sourceStatuses, snapshot, layers])
-  const sourcesView = useSourcesView({ catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
+      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields, layers, currentSeriesEvidence)
+      : current?.key.startsWith('native:') && (!currentSeriesEvidence || currentSeriesEvidence.expired || !current.key.startsWith(`native:${currentSeriesEvidence.snapshot.id}:`)) && current.details?.['Selection unavailable'] !== true
+        ? { ...current, text: 'Native selection expired or changed. Values are withheld; open Series and explicitly refresh to acquire another selection.', attribution: undefined, details: { 'Selection unavailable': true, 'Finite native selection': current.details?.['Finite native selection'] ?? null } } : current)
+  }, [catalog, sourceStatuses, snapshot, layers, currentSeriesEvidence])
+  const sourcesView = useSourcesView({ nativeSelection: currentSeriesEvidence, catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
     instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
   const nativeSeries = useNativeSeries({ location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
-    enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
+    onEvidence: setSeriesEvidence, enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
     focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
     onRun: (source, run) => setRunChoices((current) => ({ ...current, [source]: run })),
     onLatest: (source) => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next }),

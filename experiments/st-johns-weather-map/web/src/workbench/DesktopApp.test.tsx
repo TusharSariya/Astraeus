@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import App from '../App'
@@ -59,4 +59,33 @@ it('reads a same-second Focus change exactly and clears old point evidence on fa
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Inspect temperature from noaa-gfs' })).not.toBeInTheDocument())
   const urls = vi.mocked(fetch).mock.calls.map(([input]) => new URL(String(input), 'http://localhost')).filter((url) => url.pathname.endsWith('/point'))
   expect(urls.at(-1)?.searchParams.get('valid_time')).toBe('2026-09-07T12:00:00.123Z')
+})
+
+
+it('shares loaded native pages with Sources and clears its open inspector on fixed expiry without fetching again', async () => {
+  vi.useRealTimers()
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] }); vi.setSystemTime(at)
+  const original = vi.mocked(fetch).getMockImplementation()!
+  let nativeReads = 0
+  vi.mocked(fetch).mockImplementation(async (...args) => {
+    if (!String(args[0]).endsWith('/point/series')) return original(...args)
+    nativeReads++
+    const selection = JSON.parse(String(args[1]?.body))
+    return new Response(JSON.stringify({ selection, snapshot: { id: 'shared-fixed', selected_at: at, expires_at: '2026-09-07T12:05:00Z', change_token: 'opaque', identities: [] }, complete: true, next_cursor: null, notices: [], series: selection.selectors.map((s: { id: string; source_id: string; field: string; run: string }) => ({ selector_id: s.id, source_id: s.source_id, field: s.field, requested_run: s.run, availability: 'available', reason: 'Fixed native fixture', samples: [{ field: s.field, key: s.field, family: 'temperature', value: 1234, provenance: { source_id: s.source_id, evidence_class: 'retrieved', data_mode: 'fixture', valid_time: at, normalized_units: 'degC', quality: { status: 'good', flags: [] } } }] })) }))
+  })
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: 'Series' }))
+  await vi.waitFor(() => expect(screen.getAllByRole('img', { name: /native samples/ })).toHaveLength(2))
+  fireEvent.click(screen.getByRole('button', { name: 'Sources' }))
+  await vi.waitFor(() => expect(screen.getByRole('region', { name: 'Finite native Series evidence' })).toBeInTheDocument())
+  fireEvent.click(screen.getAllByText(/Native values, gaps and run identity/)[0])
+  fireEvent.click(screen.getByRole('button', { name: 'Inspect temperature_2m at 2026-09-07T12:00:00.000Z' }))
+  expect(screen.getByRole('complementary', { name: 'Evidence inspector' })).toHaveTextContent('1234')
+  expect(screen.getByRole('complementary', { name: 'Evidence inspector' })).toHaveTextContent('Finite native selection')
+  await act(async () => { vi.advanceTimersByTime(300000) })
+  expect(screen.getByRole('complementary', { name: 'Evidence inspector' })).not.toHaveTextContent('1234')
+  expect(screen.getByRole('complementary', { name: 'Evidence inspector' })).toHaveTextContent('Native selection expired or changed')
+  expect(screen.getByRole('complementary', { name: 'Evidence inspector' })).toHaveTextContent('shared-fixed')
+  expect(screen.getByText(/Native selection expired. Values are withheld/)).toBeInTheDocument()
+  expect(nativeReads).toBe(1)
 })
