@@ -8,20 +8,45 @@ export function nativeImageEndpoint(sourceId: string, endpoint: unknown): endpoi
   return /^[a-z0-9-]+$/.test(sourceId) && endpoint === `${prefix}${sourceId}/images`
 }
 function record(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value) }
+function closed(value: Record<string, unknown>, keys: string[]): boolean {
+  return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key))
+}
+function boundedText(value: unknown, maximum: number): value is string { return typeof value === 'string' && value.length > 0 && value.length <= maximum }
+function timestamp(value: unknown): value is string { return boundedText(value, 64) && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value)) }
+function positiveInteger(value: unknown, maximum: number): boolean { return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 && value <= maximum }
+// These limits match the bounded Holyrood acquisition and decoder, including
+// its five retained public response headers (each truncated to 1024 characters).
+function imageReceipt(value: unknown, maximumBytes: number): boolean {
+  if (!record(value) || !closed(value, ['url', 'body_bytes', 'sha256', 'completed_at', 'headers'])
+    || !boundedText(value.url, 2048) || !/^https?:\/\//.test(value.url)
+    || !positiveInteger(value.body_bytes, maximumBytes) || typeof value.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(value.sha256)
+    || !timestamp(value.completed_at) || !Array.isArray(value.headers) || value.headers.length > 5) return false
+  const names = new Set<string>()
+  return value.headers.every((header: unknown) => {
+    if (!Array.isArray(header) || header.length !== 2 || typeof header[0] !== 'string'
+      || !['content-type', 'content-length', 'etag', 'last-modified', 'date'].includes(header[0])
+      || names.has(header[0]) || typeof header[1] !== 'string' || header[1].length > 1024) return false
+    names.add(header[0]); return true
+  })
+}
 export function isNativeImagePair(value: unknown, selection: NativeImageSelection): value is NativeImagePair {
-  if (!record(value) || value.source_id !== selection.sourceId || typeof value.valid_time !== 'string' || Date.parse(value.valid_time) !== selection.instant
-    || typeof value.retained_until !== 'string' || !Number.isFinite(Date.parse(value.retained_until))
+  if (!nativeImageEndpoint(selection.sourceId, selection.endpoint) || !record(value)
+    || !closed(value, ['source_id', 'producer', 'station_id', 'product', 'pair_revision', 'valid_time', 'retained_until', 'cache_status', 'semantics', 'source_quality', 'scientific_freshness', 'primary', 'operational', 'presentation', 'listing_receipt', 'images'])
+    || value.source_id !== 'eccc-holyrood-cashr-dpqpe' || value.source_id !== selection.sourceId || !timestamp(value.valid_time) || Date.parse(value.valid_time) !== selection.instant
+    || !timestamp(value.retained_until) || typeof value.cache_status !== 'string' || !['hit', 'miss', 'refresh'].includes(value.cache_status)
     || typeof value.pair_revision !== 'string' || !/^[a-f0-9]{64}$/.test(value.pair_revision)
     || value.semantics !== 'rendered-image-only' || value.primary !== false || value.operational !== false
     || value.source_quality !== 'unknown' || value.scientific_freshness !== 'unknown'
-    || typeof value.station_id !== 'string' || typeof value.product !== 'string'
-    || !record(value.presentation) || value.presentation.transformation !== 'unmodified-producer-image'
-    || value.presentation.georeferencing !== 'not-established' || value.presentation.numeric_pixel_values !== 'unavailable'
-    || !Array.isArray(value.images) || value.images.length !== 2) return false
+    || value.station_id !== 'CASHR' || value.producer !== 'Environment and Climate Change Canada' || !boundedText(value.product, 1024)
+    || !record(value.presentation) || !closed(value.presentation, ['encoding', 'transformation', 'legend', 'native_crs', 'georeferencing', 'numeric_pixel_values'])
+    || value.presentation.encoding !== 'image/gif' || value.presentation.legend !== 'preserved-in-producer-image' || value.presentation.native_crs !== null
+    || value.presentation.transformation !== 'unmodified-producer-image' || value.presentation.georeferencing !== 'not-established' || value.presentation.numeric_pixel_values !== 'unavailable'
+    || !imageReceipt(value.listing_receipt, 128 * 1024) || !Array.isArray(value.images) || value.images.length !== 2) return false
   return ['Rain', 'Snow'].every((phase) => value.images instanceof Array && value.images.filter((image: unknown) => record(image)
+    && closed(image, ['phase', 'source_filename', 'width', 'height', 'frames', 'receipt', 'image_url'])
     && image.phase === phase && image.image_url === `${selection.endpoint}/${value.pair_revision}/${phase}.gif`
-    && Number.isInteger(image.width) && Number(image.width) > 0 && Number.isInteger(image.height) && Number(image.height) > 0
-    && image.frames === 1 && typeof image.source_filename === 'string').length === 1)
+    && positiveInteger(image.width, 4096) && positiveInteger(image.height, 4096)
+    && image.frames === 1 && boundedText(image.source_filename, 255) && imageReceipt(image.receipt, 512 * 1024)).length === 1)
 }
 
 /** Mounted with source/time identity: focus changes abandon the old read without prefetching. */

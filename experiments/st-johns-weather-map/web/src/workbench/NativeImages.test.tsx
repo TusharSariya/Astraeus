@@ -75,3 +75,27 @@ it('withholds a response for another native time and makes no image requests', a
   expect(screen.getByRole('status')).toHaveTextContent('identity or presentation contract did not match')
   expect(screen.queryAllByRole('img')).toHaveLength(0)
 })
+it('enforces native producer, station and every declared presentation literal before claiming preserved legends', () => {
+  for (const malformed of [
+    { ...pair, station_id: 'OTHER' }, { ...pair, producer: 'Other producer' }, { ...pair, cache_status: ['hit'] },
+    ...['encoding', 'legend', 'native_crs', 'transformation', 'georeferencing', 'numeric_pixel_values'].flatMap((key) => [
+      { ...pair, presentation: { ...pair.presentation, [key]: undefined } },
+      { ...pair, presentation: { ...pair.presentation, [key]: 'substituted' } },
+    ]),
+    { ...pair, presentation: { ...pair.presentation, undeclared: true } }, { ...pair, undeclared: true },
+  ]) expect(isNativeImagePair(malformed, selection)).toBe(false)
+  expect(isNativeImagePair({ ...pair, product: 'Another backend product description' }, selection)).toBe(true)
+})
+it('requires complete bounded listing and image receipt primitives', () => {
+  const malformed = [undefined, null, {}, { ...receipt, url: 42 }, { ...receipt, url: 'x'.repeat(2049) },
+    { ...receipt, body_bytes: -1 }, { ...receipt, body_bytes: 1.5 }, { ...receipt, body_bytes: 1024 * 1024 },
+    { ...receipt, sha256: 'not-a-hash' }, { ...receipt, completed_at: 'not-a-time' }, { ...receipt, completed_at: '2026-09-07T12:00:00' },
+    { ...receipt, headers: undefined }, { ...receipt, headers: ['content-type'] }, { ...receipt, headers: [['content-type', 1]] },
+    { ...receipt, headers: [['content-type', 'x'.repeat(1025)]] }, { ...receipt, headers: [['undeclared-header', 'value']] },
+    { ...receipt, headers: [['etag', 'a'], ['etag', 'b']] }, { ...receipt, undeclared: true }]
+  for (const bad of malformed) {
+    expect(isNativeImagePair({ ...pair, listing_receipt: bad }, selection)).toBe(false)
+    expect(isNativeImagePair({ ...pair, images: [{ ...pair.images[0], receipt: bad }, pair.images[1]] }, selection)).toBe(false)
+  }
+  expect(isNativeImagePair({ ...pair, images: [{ ...pair.images[0], width: 4097 }, pair.images[1]] }, selection)).toBe(false)
+})
