@@ -6,6 +6,5 @@
 - [x] Preserve bounded acquisition provenance, coalesce identical requests, and
   withhold expired values after refresh failure.
 - [x] Compose the default point response and a source-local cache-only layer.
-- [ ] Disable legacy scheduled SWOB registration after final Linux/browser proof.
-- [ ] Verify fixed data/clock source and API behavior, exact-head Linux default
-  worker proof, fixed-live browser rendering, registry contracts, and specctl.
+- [x] Disable legacy scheduled SWOB ingestion after final Linux/browser proof.
+- [x] Verify final registry contracts and specctl after the scheduled-ingestion cutover.

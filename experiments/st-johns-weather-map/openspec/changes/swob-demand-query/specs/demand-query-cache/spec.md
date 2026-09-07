@@ -45,5 +45,5 @@ The default unselected `/point` response SHALL compose validated `eccc-swob`
 station fields as `available-not-stored` evidence without a retained SWOB
 artifact or consensus contribution. Layer listing SHALL advertise the SWOB
 point layer from fresh source-local cache metadata only and SHALL make no
-provider request. Scheduled SWOB ingestion SHALL be disabled after the demand
+provider request. Scheduled SWOB ingestion SHALL reject before discovery after the demand
 cache-to-API, default Linux child and fixed-live browser checks complete.
