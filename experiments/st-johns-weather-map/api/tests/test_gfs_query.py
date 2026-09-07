@@ -201,7 +201,7 @@ def test_cached_native_payload_uses_existing_point_evidence_builder(tmp_path, mo
     monkeypatch.setattr("weather_api.store.datetime", FixtureClock)
     path = tmp_path / "surface.zarr.zip"
     dataset = xarray.Dataset(
-        {"temperature_2m": (("valid_time", "latitude", "longitude"), [[[14.25]]], {"units": "degC"})},
+        {"temperature_2m": (("valid_time", "latitude", "longitude"), [[[14.25]]], {"units": "degC", "original_units": "K"})},
         coords={"valid_time": [valid_time.replace(tzinfo=None)], "latitude": [47.56], "longitude": [-52.71]},
     )
     write_zarr(dataset, path)
@@ -223,6 +223,8 @@ def test_cached_native_payload_uses_existing_point_evidence_builder(tmp_path, mo
 
     temperature = next(item for item in fields if item.field == "temperature")
     assert temperature.value == 14.25
+    assert temperature.provenance.original_units == "K"
+    assert temperature.provenance.normalized_units == "degC"
     assert temperature.provenance.source_id == "noaa-gfs"
     assert temperature.provenance.valid_time == valid_time
     assert temperature.provenance.run_time == run_time
@@ -238,7 +240,7 @@ def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, 
     path = tmp_path / "surface.zarr.zip"
     variables = {}
     for pressure, temperature, humidity in ((850, 8.0, 81.0), (700, -3.0, 76.0), (500, -18.5, 72.0)):
-        variables[f"temperature_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[temperature]]], {"units": "degC"})
+        variables[f"temperature_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[temperature]]], {"units": "degC", "original_units": "K"})
         variables[f"relative_humidity_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[humidity]]], {"units": "percent", "rh_phase_convention": RH_PHASE_MIXED_LINEAR_253K_273K})
         variables[f"wind_u_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[3.0]]], {"units": "m s-1"})
         variables[f"wind_v_{pressure}hPa"] = (("valid_time", "latitude", "longitude"), [[[4.0]]], {"units": "m s-1"})
@@ -269,6 +271,8 @@ def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, 
     assert 1000 not in [level.pressure_hpa for level in levels]
     fields = {field.field: field for field in levels[2].fields}
     assert fields["temperature"].value == -18.5
+    assert fields["temperature"].provenance.original_units == "K"
+    assert fields["temperature"].provenance.normalized_units == "degC"
     assert fields["relative_humidity"].value == 72.0
     assert fields["relative_humidity"].phase == "mixed"
     assert fields["wind_speed"].value == 5.0
@@ -311,7 +315,7 @@ def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_
     path = tmp_path / "surface.zarr.zip"
     write_zarr(
         xarray.Dataset(
-            {"temperature_2m": (("valid_time", "latitude", "longitude"), [[[14.25]]], {"units": "degC"})},
+            {"temperature_2m": (("valid_time", "latitude", "longitude"), [[[14.25]]], {"units": "degC", "original_units": "K"})},
             coords={"valid_time": [valid_time.replace(tzinfo=None)], "latitude": [47.56], "longitude": [-52.71]},
         ),
         path,

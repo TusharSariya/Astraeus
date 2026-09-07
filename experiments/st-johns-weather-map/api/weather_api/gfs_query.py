@@ -307,6 +307,12 @@ class GFSQueryCoordinator:
                 dataset = xarray.open_zarr(zipped, consolidated=False)
                 try:
                     provenance = dict(entry.provenance[logical_name])
+                    # Normalization retains producer units on each variable;
+                    # the shared sampler consumes the artifact-level map.
+                    provenance["original_units"] = {
+                        str(name): str(variable.attrs.get("original_units", variable.attrs.get("units", "")))
+                        for name, variable in dataset.data_vars.items()
+                    }
                     provenance.setdefault("run_time", entry.run_time.isoformat())
                     artifact = SimpleNamespace(
                         source_id="noaa-gfs",
@@ -361,6 +367,12 @@ class GFSQueryCoordinator:
                 dataset = xarray.open_zarr(zipped, consolidated=False)
                 try:
                     provenance = dict(entry.provenance[logical_name])
+                    # Normalization retains producer units on each variable;
+                    # the shared sampler consumes the artifact-level map.
+                    provenance["original_units"] = {
+                        str(name): str(variable.attrs.get("original_units", variable.attrs.get("units", "")))
+                        for name, variable in dataset.data_vars.items()
+                    }
                     provenance.setdefault("run_time", entry.run_time.isoformat())
                     artifact = SimpleNamespace(
                         source_id="noaa-gfs",

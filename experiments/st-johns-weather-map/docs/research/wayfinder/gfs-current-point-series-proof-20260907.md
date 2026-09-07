@@ -1,6 +1,6 @@
 # Current GFS point and pinned Series proof, September 7
 
-Evidence only; no source admission or runtime change. Source code was fixed at
+Initial acquisition evidence; no source admission. Source code was fixed at
 `14aac25a258e02e6db098ebeb8a21ebe66aa85d5`. The prepared Linux image was
 `sha256:aacbd8b2f012e571c45c5a3b88d9935aaa72e6506bbad14bcd970766cb7697ff`,
 with that head's API, ingest and registry directories mounted read-only.
@@ -53,9 +53,30 @@ entry and content identity. No consensus, METAR or AQHI seam was invoked.
 The raw selected `2t` GRIB record declares units K and nearest-cell value
 290.269970703125 K. This agrees with the normalized API temperature within
 float32 rounding. However, API `provenance.original_units` says `degC` instead
-of K. Run, valid time and level are correct. Original-unit propagation through
-the shared sampler remains an evidenced follow-up; this proof does not claim
-that provenance detail is correct. No shared code was edited.
+of K. Run, valid time and level are correct. The defect was traced to `store.py`'s artifact-level original-unit lookup:
+normalization kept K in the variable attributes, but the GFS artifact did not
+copy that declaration into the lookup map. The GFS point/profile source bridge
+now supplies original units from each exact opened dataset variable before
+sampling. No shared store or scientific conversion changed.
+
+The corrected `replay-fixed/` proof passes point, pinned Series and identical
+cache repeats with zero provider requests and unchanged normalized digest.
+Both point and pressure-profile unit regressions pass. Corrected point units:
+
+| Readings | Native units | Normalized units |
+| --- | --- | --- |
+| Temperature, dewpoint | K | degC |
+| MSL pressure | Pa | hPa |
+| Screen RH, total/low/middle/high geometric cloud | % | percent |
+| Visibility | m | m |
+| Precipitable water | kg m**-2 | kg m-2 |
+| Six derived wind readings: speed/direction at 10 m, 200 and 300 hPa | Derived from native components in m s**-1 | m s-1 / degree |
+
+`native-fields.json` independently records ecCodes identities/units for all
+acquired matching-index messages, including cloud averages incidentally inside
+merged byte ranges that are not served as instantaneous cloud. Pressure
+messages additionally preserve temperature K, RH %, wind m s**-1 and vertical
+velocity Pa s**-1. No new provider acquisition was needed.
 
 ## Receipts and verification
 
@@ -69,6 +90,6 @@ substituted for the original live receipts. All owned containers exited.
 This was one live native-frame acquisition plus one offline replay, not a
 12-frame Series sweep. `specctl validate` passed with zero errors/warnings.
 
-Spec-Impact: none; records fixed-head execution evidence and an existing unit
-provenance residual without changing source or API behavior.
+Verification: two focused point/profile unit regressions pass; corrected default-child
+replay and pinned Series HTTP 200 preserve original K and normalized degC.
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006.
