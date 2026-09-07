@@ -39,3 +39,43 @@ SHALL NOT by itself report `changed`. A failed comparison SHALL report
 - **WHEN** the current relevant comparison cannot be obtained
 - **THEN** the check reports `unknown` and does not describe the displayed
   evidence as confirmed current
+
+### Requirement: Series uses selected cursor pagination and fixed expiry
+The desktop Series initial read SHALL use the proposed explicit selection
+request. It SHALL return an opaque cursor when another bounded page remains.
+A continuation SHALL contain that cursor only and SHALL bind the original
+selection, relevant finite cache identity and fixed nonrenewing expiry. The API
+SHALL reject a changed continuation. At expiry it SHALL return a
+restart-required proposed `snapshot_expired` error; it SHALL NOT renew the
+selection or treat a stale page as current.
+
+#### Scenario: A client alters a cursor request
+- **WHEN** a continuation supplies a cursor and a different selector or coordinate
+- **THEN** the API rejects it as `invalid_cursor` and does not merge selections
+
+### Requirement: Series run choices retain actual source scope and limits
+Where a source/run-family delivery path supports run inventory and reads, the
+desktop API SHALL expose Latest available, named Previous, and temporary
+same-source two-run Compare according to the owner-selected run policy. Latest
+available MAY segment across actual runs only with every segment disclosed.
+Previous SHALL name and pin one actual retained run before frame matching.
+Removed runs SHALL remain visibly selected with an explicit Latest available
+alternative. Run identity SHALL live beside Focus in the URL and apply only to
+its source/run family; Activity SHALL retain its own server-side evaluation.
+
+Ordinary new-read inventory SHALL expose only latest and previous. An existing
+unexpired finite selection MAY retain a displaced revision until its fixed
+advertised expiry within the existing quota. It SHALL NOT renew by paging or
+change checking, make displaced revisions newly selectable, add warehouse
+retention, or silently evict a live pin.
+
+#### Scenario: A latest run lacks a requested valid time
+- **WHEN** Latest available has no frame for one valid time and a prior actual
+  run covers it
+- **THEN** the response may use that prior run only for that segment and names
+  the actual run identity; it does not relabel the segment as the latest run
+
+#### Scenario: A pinned run is removed
+- **WHEN** a pinned run is no longer readable
+- **THEN** it remains identified as unavailable, preserves Focus and time, and
+  offers Latest available without substituting values

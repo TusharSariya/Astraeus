@@ -16,6 +16,17 @@ warehouse retention, scheduled source acquisition, or source promotion. A
 source remains a bounded selected-time query with its own native time,
 provenance, receipt, finite cache, expiry and unavailable semantics.
 
+## Decision traceability
+
+The proposal carries the API inputs from the owner-selected [Sources
+resolution](https://github.com/TusharSariya/Astraeus/issues/52#issuecomment-5548442947),
+[station and point resolution](https://github.com/TusharSariya/Astraeus/issues/58#issuecomment-5548645284),
+[API discussion handoff](https://github.com/TusharSariya/Astraeus/issues/54#issuecomment-5548786349),
+[arbitrary-point resolution](https://github.com/TusharSariya/Astraeus/issues/67#issuecomment-5548841040),
+and [forecast-run resolution](https://github.com/TusharSariya/Astraeus/issues/68#issuecomment-5548937642).
+Those comments select behavior; this change supplies a reviewable proposed
+contract and does not change their normative status.
+
 ## Authority and scope
 
 This is a **proposed requirement change** for the isolated St. John's
