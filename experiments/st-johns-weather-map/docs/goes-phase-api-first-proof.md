@@ -79,3 +79,51 @@ Remaining: shared delivery descriptor/point mapping, public API readback,
 immutable publication integration and owner acceptance. The new local return
 format is NetCDF; existing published ABI adapters continue producing Zarr.
 This candidate is not a completed public API integration.
+
+## Native point continuation, September 7
+
+The source-local service now offers `read_point_native(latitude, longitude,
+selected_time, refresh=False)` and the cache-only
+`native_point_from_entry(entry, latitude, longitude, selected_time)` helper.
+These return `NativePhasePoint`, not a shared `EvidenceField`. The existing
+point-evidence-sampling contract supplies the one-cell curvilinear metric,
+0.75-degree corrected-distance ceiling and one-hour temporal tolerance. The
+existing sampler's coordinate and time-selection utilities are reused. The
+requested identity and actual cell identity remain separate. A distant cell
+returns null phase with its measured distance; unreadable DQF or masked phase
+also yields null without searching for a different good cell. Native DQF stays
+visible; local scientific QC is unknown and operational remains false.
+
+The bounded ACTPF decoder now retains the exact file geostationary projection
+attributes and scan end in the crop, alongside the existing scan start. Old
+crops without these attributes cannot satisfy this native point interface and
+are refused. Every readable Phase code 0 through 5 remains an integer. Phase
+is not interpolated, translated to a cloud percentage, or used as a fog/score
+inference. Native flag meanings remain available in the NetCDF artifact.
+
+Mapped experiment verification: the native point category regression covers
+one-cell/unmodified values, exact sampled coordinates, missing-value
+provenance, temporal/distance refusal, producer DQF readability, unknown QC and
+native scan/projection retention. Invalid location/time identity is refused
+before acquisition. The retained capture was replayed through the actual Linux
+leaf and native point helper with zero provider requests; receipt is
+`/private/tmp/astraeus-goes-phase-proof/native-point-proof.json`. It reads
+Phase 1 / DQF 0 at 50.487552642822266,-57.983253479003906, distance 0 km,
+scan 2026-09-07T21:40:20.9Z through 21:49:51.7Z. This is offline replay evidence,
+not a current live point request or public API proof.
+
+Shared wiring is deliberately still outstanding. The shared sampler currently
+converts flag-coded categories to meaning strings, and its public evidence
+provenance does not carry this complete native point context. A proposed
+source descriptor is source `noaa-goes-east`, native product `ABI-L2-ACTPF`,
+field `cloud_top_phase`, native observation (no forecast run or Series), wired
+to `read_point_native`. The integration owner must preserve `phase_code`,
+`dqf_code`, exact scan interval, projection and actual cell context when
+representing this in the shared schema. Do not register this as implemented
+shared point delivery until that consumer path is present and verified.
+
+Continuation validation: 48 offline Linux tests passed across
+`test_goes_phase_query.py` and `test_adapter_goes_abi_l2.py` (104 upstream
+NumPy/netCDF deprecation warnings); `specctl validate` reported 0 errors and
+0 warnings; `git diff --check` passed. No credentials, new live acquisition,
+remote writes or source admission changes were made.

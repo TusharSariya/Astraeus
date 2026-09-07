@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import sys
 import tempfile
@@ -57,6 +58,95 @@ class PhaseEvidence:
     source_id: str = "noaa-goes-east"
     product_id: str = PRODUCT_ID
     operational: bool = False
+
+
+
+@dataclass(frozen=True)
+class NativePhasePoint:
+    """One native pixel and its receipt; no shared categorical conversion.
+
+    Quality is producer readability only. It never establishes source admission
+    or local scientific QC, which remains unknown.
+    """
+    phase_code: int | None
+    dqf_code: int | None
+    sampled_latitude: float
+    sampled_longitude: float
+    sample_distance_km: float
+    scan_start: datetime
+    scan_end: datetime
+    native_projection_json: str
+    evidence: PhaseEvidence
+    requested_latitude: float
+    requested_longitude: float
+    selected_time: datetime
+    flags: tuple[str, ...] = ()
+    sample_method: str = "curvilinear_nearest_cell"
+    quality_state: str = "unknown"
+    units: str = "code"
+    operational: bool = False
+
+
+def native_point_from_entry(entry: PhaseEvidence, latitude: float, longitude: float,
+                            selected_time: datetime) -> NativePhasePoint:
+    """Read an already retained crop without acquiring or renewing anything.
+
+    Reuses the experiment's one-cell spatial metric and one-hour time ceiling.
+    Native flag meanings stay in the artifact; codes do not become labels.
+    """
+    import xarray
+    from .store import (KM_PER_DEGREE, MAX_GRID_DISTANCE_DEGREES,
+                        _nearest_curvilinear_cell, _nearest_time_index)
+
+    if not math.isfinite(latitude) or not math.isfinite(longitude) or not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
+        raise ValueError("ACTPF requires finite geographic coordinates")
+    if selected_time.tzinfo is None:
+        raise ValueError("ACTPF selected time must be timezone-aware")
+    if (entry.product_id != PRODUCT_ID or entry.source_id != "noaa-goes-east"
+            or len(entry.artifact) > MAX_ARTIFACT_BYTES
+            or hashlib.sha256(entry.artifact).hexdigest() != entry.artifact_sha256):
+        raise GOESPhaseUnavailable("ACTPF retained artifact identity mismatch")
+    with tempfile.TemporaryDirectory(prefix="goes-phase-point-") as directory:
+        path = Path(directory) / "phase.nc"
+        path.write_bytes(entry.artifact)
+        with xarray.open_dataset(path) as dataset:
+            metadata = json.loads(entry.metadata_json)
+            if dataset.attrs.get("product_id") != PRODUCT_ID or dataset.attrs.get("source_dataset_name") != metadata.get("source_dataset_name"):
+                raise GOESPhaseUnavailable("ACTPF crop identity mismatch")
+            try:
+                projection_json = dataset.attrs["native_projection_json"]
+                projection = json.loads(projection_json)
+                if projection != metadata["native_projection"]:
+                    raise ValueError("projection mismatch")
+                start = datetime.fromisoformat(dataset.attrs["scan_start"].replace("Z", "+00:00"))
+                end = datetime.fromisoformat(dataset.attrs["scan_end"].replace("Z", "+00:00"))
+                if start.tzinfo is None or end.tzinfo is None or end < start:
+                    raise ValueError("invalid scan interval")
+                instant = _nearest_time_index(dataset, "valid_time", selected_time)
+            except (KeyError, ValueError, LookupError) as cause:
+                raise GOESPhaseUnavailable("ACTPF scan or native projection unavailable for request") from cause
+            nearest = _nearest_curvilinear_cell(dataset, "latitude", "longitude", latitude, longitude)
+            if nearest is None:
+                raise GOESPhaseUnavailable("ACTPF has no native coordinate cell")
+            indexers, cell_lat, cell_lon, distance = nearest
+            cell = dataset.isel(indexers).sel(valid_time=instant)
+            phase = float(cell.cloud_top_phase.values)
+            quality = float(cell.quality_flag.values)
+            dqf = int(quality) if math.isfinite(quality) and quality.is_integer() else None
+            flags = []
+            if distance > MAX_GRID_DISTANCE_DEGREES:
+                flags.append("sample_distance_exceeded")
+            if dqf != 0:
+                flags.append("native_quality_unreadable")
+            if not math.isfinite(phase):
+                flags.append("native_phase_missing")
+            elif phase not in (0, 1, 2, 3, 4, 5):
+                raise GOESPhaseUnavailable("ACTPF phase is outside the exact native categorical domain")
+            return NativePhasePoint(
+                None if flags else int(phase), dqf, cell_lat, cell_lon,
+                round(distance * KM_PER_DEGREE, 3), start, end, projection_json,
+                entry, latitude, longitude, selected_time, tuple(flags),
+            )
 
 
 def decode_phase(body: bytes, key: str) -> tuple[bytes, str]:
@@ -141,6 +231,14 @@ class GOESPhaseQueryService:
             future.set_result(evidence)
             self._inflight = None
         return evidence
+
+    def read_point_native(self, latitude: float, longitude: float, selected_time: datetime,
+                          *, refresh: bool = False) -> NativePhasePoint:
+        if not math.isfinite(latitude) or not math.isfinite(longitude) or not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
+            raise ValueError("ACTPF requires finite geographic coordinates")
+        if selected_time.tzinfo is None:
+            raise ValueError("ACTPF selected time must be timezone-aware")
+        return native_point_from_entry(self.read_native(refresh=refresh), latitude, longitude, selected_time)
 
     def _acquire(self, refresh: bool) -> tuple[PhaseEvidence, float]:
         started = self._clock()

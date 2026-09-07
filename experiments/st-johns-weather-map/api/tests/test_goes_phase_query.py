@@ -208,3 +208,52 @@ def test_actual_bounded_decoder_preserves_every_native_phase_category(tmp_path):
     with xarray.open_dataset(result) as decoded:
         phase = decoded.cloud_top_phase.values
         assert set(numpy.unique(phase[numpy.isfinite(phase)])) == {0, 1, 2, 3, 4, 5}
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="actual bounded Linux crop")
+@pytest.mark.parametrize("category", range(6))
+def test_native_point_retains_exact_category_dqf_interval_projection_and_cell(tmp_path, category):
+    native = _granule(tmp_path / "phase.nc", "ABI-L2-ACTPF")
+    with xarray.open_dataset(native) as opened:
+        changed = opened.load()
+    changed["Phase"].values[:] = category
+    changed.to_netcdf(native, mode="w")
+    artifact, metadata = query.decode_phase(native.read_bytes(), KEY)
+    import hashlib
+    entry = query.PhaseEvidence(artifact, metadata, query.PhaseReceipt("https://example.com", 1, "digest", NOW), (), NOW + timedelta(minutes=5), hashlib.sha256(artifact).hexdigest())
+    path = tmp_path / "crop.nc"
+    path.write_bytes(artifact)
+    with xarray.open_dataset(path) as dataset:
+        good = numpy.argwhere(dataset.quality_flag.values[0] == 0)[0]
+        lat = float(dataset.latitude.values[tuple(good)])
+        lon = float(dataset.longitude.values[tuple(good)])
+    result = query.native_point_from_entry(entry, lat, lon, datetime(2026, 9, 5, 20, 10, 20, 700000, tzinfo=UTC))
+    assert result.phase_code == category and result.dqf_code == 0
+    assert result.sample_distance_km == 0
+    assert result.sampled_latitude == lat and result.sampled_longitude == lon
+    assert result.scan_start.isoformat() == "2026-09-05T20:10:20.700000+00:00"
+    assert result.scan_end.isoformat() == "2026-09-05T20:19:51.500000+00:00"
+    assert json.loads(result.native_projection_json)["sweep_angle_axis"] == "x"
+    assert result.quality_state == "unknown" and not result.operational
+    assert result.sample_method == "curvilinear_nearest_cell"
+    assert result.evidence is entry
+    with xarray.open_dataset(path) as dataset:
+        bad = numpy.argwhere(dataset.quality_flag.values[0] == 1)[0]
+        lat = float(dataset.latitude.values[tuple(bad)])
+        lon = float(dataset.longitude.values[tuple(bad)])
+    unreadable = query.native_point_from_entry(entry, lat, lon, result.scan_start)
+    assert unreadable.phase_code is None and unreadable.dqf_code == 1
+    assert "native_quality_unreadable" in unreadable.flags
+    far = query.native_point_from_entry(entry, 0, 0, result.scan_start)
+    assert far.phase_code is None and "sample_distance_exceeded" in far.flags
+    assert far.sample_distance_km > 100
+    with pytest.raises(query.GOESPhaseUnavailable, match="scan"):
+        query.native_point_from_entry(entry, lat, lon, result.scan_start + timedelta(hours=2))
+
+
+@pytest.mark.parametrize("lat,lon,selected", [(float("nan"), 0, NOW), (0, 181, NOW), (91, 0, NOW), (0, 0, NOW.replace(tzinfo=None))])
+def test_invalid_point_identity_refused_before_acquisition(lat, lon, selected):
+    reader, _, calls, _ = service()
+    with pytest.raises(ValueError):
+        reader.read_point_native(lat, lon, selected)
+    assert calls == []
