@@ -4,6 +4,24 @@ Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
 history and the owner's earlier design selections.
 
+## Reuse-first source workflow
+
+Use [the durable reuse-first source workflow](../agents/reuse-workflow.md) before
+starting or handing off a source slice. It is the current index for existing
+clients, bounded workers, receipt/cache behavior, focused proof commands and
+PR metadata. This handoff remains the record of completed work and decisions.
+
+## Plasma demand slice completed, September 7, 2026
+
+[PR245](https://github.com/TusharSariya/Astraeus/pull/245) merged at
+`a07a632fa710a7b93ace5829f69eb5ffeb910585`; its merged tree matches reviewed
+head `da6248b`. The selected-time SWPC plasma query uses bounded fixed-fixture
+proofs: its Linux default worker ran with `--network none`, and its browser
+card ran against a fixed live `/point` harness with zero provider requests.
+Issue [#242](https://github.com/TusharSariya/Astraeus/issues/242) is closed.
+The retained proof files are evidence, not reusable launchers; use the
+reuse-first workflow above for the durable procedure.
+
 ## AQHI demand slice completed, September 7, 2026
 
 [PR243](https://github.com/TusharSariya/Astraeus/pull/243) merged at
