@@ -1,7 +1,13 @@
 # Tasks
 
-This proposal is not implementation authority until the owner accepts a
-normative transition under GOV-SPEC-002.
+The September 7 owner response approves the Series/refresh/run interactions and
+delegates routine engineering choices as recorded in proposal.md. Remaining
+capabilities retain their own acceptance boundaries under GOV-SPEC-002. This
+task list does not claim the whole proposal is accepted or implemented.
+
+- [x] 0. Record owner approval of the native Series, explicit refresh, finite
+  expiry and supported run-comparison interactions, with routine implementation
+  details delegated and camera visibility held separately.
 
 - [ ] 1. Confirm the proposed Series, cursor/change-check and finite
   selection-cache wire shapes, including limits, expiry and error semantics.

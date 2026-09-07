@@ -29,10 +29,24 @@ contract and does not change their normative status.
 
 ## Authority and scope
 
-This is a **proposed requirement change** for the isolated St. John's
-experiment. It records the owner decisions in #54 and #55, but does not claim
-that the owner accepted a normative contract, that an API is implemented, or
-that any profile is operational. The merged PR #195 is design input only: its
+### Owner decision, September 7, 2026
+
+In the active implementation conversation, the owner answered "2yes" to the
+concrete data-interaction decision: preserve native Series timestamps and gaps;
+keep a displayed/paged selection stable with explicit refresh and finite expiry;
+and support readable latest/previous runs and temporary two-run comparison
+without manufacturing missing values or calculated differences. The question
+also delegated routine cursor encoding, request limits and cache sizing to the
+implementer using existing tooling and measured bounds. This is explicit
+authorization for those behaviors and implementation choices, not blanket
+acceptance of every remaining proposed API capability or a verified-status claim.
+Camera visibility remains held separately. Do not ask the owner to approve the
+same Series, refresh, run-selection or routine engineering choices again.
+
+This is a **requirement change with scoped owner approval** for the isolated
+St. John's experiment. It records the owner decisions in #54 and #55 and the
+approval above, but does not claim whole-package acceptance, API implementation
+or an operational profile. The merged PR #195 is design input only: its
 persistent fragment/snapshot mechanism has not become accepted authority here.
 
 The proposed API surface is limited to:
@@ -43,10 +57,12 @@ The proposed API surface is limited to:
 - imagery availability distinct from stored sample times; and
 - machine-readable, truthful absence rather than omitted or zero-like claims.
 
-Exact route spelling, body shape, cursor encoding, limit values, finite-cache
-lifetime, error status mapping, snapshot backing, camera privacy filtering and
-version representation remain proposed choices. They need owner acceptance and
-mapped implementation verification before code may depend on them.
+Exact route spelling, body shape, cursor encoding, measured limit values,
+finite-cache lifetime, error status mapping and bounded cache implementation
+are routine implementation choices within the approved interactions above.
+They still require mapped verification, but not another owner approval round.
+Camera privacy filtering remains an owner decision; any additional behavior
+outside those approved interactions retains its existing proposal status.
 
 The proposal excludes verdict/scoring mechanics, band math, phone work,
 camera-image delivery, registry writes or admission, new science, source

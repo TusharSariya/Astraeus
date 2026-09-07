@@ -10,8 +10,9 @@ substitute sources, or serve archived retained values as current evidence.
 The read SHALL have finite selector, window, sample, byte, duration and cache
 bounds. Pagination SHALL bind a canonical immutable selection and SHALL reject an
 altered continuation. Expiry SHALL require a new initial read;
-no read or continuation silently renews it. Exact wire shape and numeric bounds
-are proposed rather than accepted by this change.
+no read or continuation silently renews it. Exact wire shape and measured numeric
+bounds are delegated implementation choices under the September 7 owner
+decision recorded in proposal.md; they require mapped verification.
 
 #### Scenario: Sparse native sources share a window
 - **WHEN** two selected sources publish at different native timestamps

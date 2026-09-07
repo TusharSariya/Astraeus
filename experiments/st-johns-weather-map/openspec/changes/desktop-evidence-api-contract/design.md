@@ -84,11 +84,17 @@ selection may retain a displaced revision until its fixed expiry, within the
 existing quota. No continuation renews that exception or makes a displaced run
 newly selectable.
 
-## Unresolved owner decisions
+## Decision boundary after September 7 owner response
 
-This proposal deliberately leaves the following for owner acceptance or a later
-schema decision: exact HTTP mapping and cursor encoding; measured page/cache
-limits and finite cache lifetime; whether any cross-read consistency needs #173
-fencing; registered-camera privacy filtering; exact imagery interval encoding;
-and any verdict Series relationship. No claim in this document resolves those
-questions.
+The owner approved native Series samples/gaps, stable selections with explicit
+refresh and finite expiry, and supported latest/previous/two-run comparison.
+Routine HTTP mapping, cursor encoding, measured page/cache limits, finite cache
+lifetime and bounded backing are delegated implementation decisions. Reuse
+existing code and verify those choices against the approved behavior; do not
+create another owner gate for them. This does not authorize a general shared
+snapshot framework or make #173 a mandatory dependency.
+
+Registered-camera privacy, additional imagery-availability behavior and any
+verdict Series relationship retain their separate decision/contract boundaries.
+The scoped approval is recorded in proposal.md; it does not accept unrelated
+proposed capabilities or claim implementation/verification.
