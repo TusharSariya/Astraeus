@@ -263,3 +263,85 @@ behavior. The contract now states intended/effective weights and field-exclusion
 disclosures, with normalization at versioned admission rather than in response
 to missing readings. This is contract reconciliation, not a working Activity
 route or promotion of any source/field admission.
+
+
+## September 7 Activity delivery (#38, #48, #49, #64)
+
+Conforming implementation of the accepted Activity verdict contract and single
+owner acceptance; no normative status promotion. `activity.py`,
+`profiles/acquisition.py` and `profiles/evaluator.py` connect existing demand
+coordinators, audited v2 profiles and the four-lane desktop. The existing
+aggregation, curve and window engines remain authoritative.
+
+GET `/verdicts` accepts exact latitude/longitude/offset-aware valid_time, optional
+matching registered site_id, repeated `override=name:value`, explicit refresh
+and the registered reader-disable switch. `/verdicts/series` adds exclusive end,
+a positive window at most 24 hours within the existing back-24h/forward-14d bounds.
+Each page reads at most three actual native instants (12 weather point reads),
+returns explicit next_start, queried times and native gaps. No interpolation,
+provider averaging, run substitution or synthetic issued cells occurs. Core
+cells are hourly; planning cadence comes from the actual driving native sources.
+GFS switches after its existing 120-hour hourly range; GDPS after hour 84, per
+[ECCC's native product schedule](https://eccc-msc.github.io/open-data/msc-data/nwp_gdps/readme_gdps-datamart_en/).
+Missing files never determine cadence. Kp uses exact observed/forecast native
+rows separately; weather times cannot manufacture Kp values.
+
+Finite cache: 300-second fixed expiry, 16 entries, 8 MiB backing and 512 KiB
+response maximum. Two nonqueueing workers and a 45-second acquisition deadline;
+timed-out workers keep their capacity slot until completion. Concurrent identical
+misses coalesce. Cache keys include Focus, full profile content/version, overrides,
+tier, window, mode and method/refusal state; bodies identify actual source/run/time/
+revision inputs. Failed explicit replacement removes the previous score. Existing
+finite source caches still own provider revalidation. No archive, scheduler,
+database or fixture fallback is added. Runtime JSON Schema/YAML dependencies are
+now explicit in the production dependency group.
+
+V2 budgets follow #290: Running's admitted .70 normalizes thermal/dew/wind/
+visibility; Astronomy's selected budget sums to 1; Aurora normalizes Kp/Moon .50;
+Landscape normalizes wind/Sun altitude .40. A missing current reading never changes
+these budgets. Moon applicability is explicit and unavailable altitude is unresolved.
+Versioned YAML records all named active/replacement/context/variant residuals from
+#64. Shortwave, PM2.5, gust, Hp30 and sector-cloud weights are excluded pending
+admission. Fog replacement for Aurora has no invented grading curve. Lightning,
+rain-rate and spatial CAP hard stops remain unknown without admitted point inputs.
+Whole-region alert counts cannot establish a point clear. Sector fields return
+no_site at arbitrary points and unimplemented at registered sites. Missing Sun
+azimuth keeps Landscape geometry unresolved. DE442 uses existing registered minute
+samples and exact geometry, with kernel/method provenance and unknown kernel age;
+the absent local kernel is not replaced with calculated approximations.
+
+All profile stacks preserve selected top-first membership and opacity. The PM2.5
+layer is declared but unserved (#172), never replaced by AQHI. Client uses returned
+states/scores/windows only, with semantic criterion tables and native provenance;
+no client science. Browser-local overrides are omitted from ordinary Focus links
+and included only by explicit sharing.
+
+Mapped verification: `api/tests/test_activity_delivery.py` covers native exact
+values, failed QC, applicability, fixed budgets, bounds, expiry, concurrent misses,
+failed replacement, deadline capacity, response ceiling, refusal, malformed profile
+isolation, native gaps and planning cadence. Existing curve/aggregation/evidence
+suites retain boundary/direction/tie/six-state coverage. `ActivityView.test.tsx`
+covers four lanes, expansion, inspection, stacks, Series, StrictMode, expiry/failure,
+override recovery and planning presentation. Full API: 2,251 passed, 53 skipped;
+full client: 510 passed; build and no-dev production import (31 routes, four valid
+profiles) pass. Full-suite baseline repairs update obsolete artifact/index fixtures
+and pin clocks in old GFS/METAR route tests; provider implementations are unchanged
+apart from exposing existing native cadence metadata.
+
+Actual Chrome fixed-clock proof: generate the evaluator fixture outside Git with
+`uv run --project api python web/scripts/activity-proof-fixture.py /tmp/activity-browser-fixture.json`,
+then run `node scripts/prove-desktop-activity.mjs` from web against the production
+preview on port 5251. It proves all five views, three themes, native holes,
+fullscreen/dock inspection, failed refresh/expiry withholding, stack/Series actions,
+200% text zoom and semantic control names. The existing four-view access proof also
+passes. Receipts/screenshots: `/tmp/astraeus-desktop-activity-proof/` and
+`/tmp/activity-desktop-regression/`; tests/logs remain outside Git. Both strict
+OpenSpec packages and specctl validate pass. Separate main-agent review corrected
+site-specific strip invalidation, malformed audit handling and preservation of
+exact values when cadence metadata is unavailable.
+
+These are deterministic integration and UI proofs, not a new live-source admission,
+actual screen-reader output or outdoor verification. #69/#65 and the named provider/
+geometry residuals remain open; #70 retains the subsequent full source queue.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006.

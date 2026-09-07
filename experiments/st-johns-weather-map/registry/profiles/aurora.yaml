@@ -1,5 +1,5 @@
 id: aurora
-version: 1
+version: 2
 title: Aurora
 families:
 - space_weather
@@ -7,89 +7,50 @@ families:
 - cloud_cover
 - visibility
 thresholds:
-  kp_high:
+  aurora_kp_start:
     field: kp_index
-    default: 5.0
+    default: 5
     units: '1'
-    comparison: ge
-  hp30_high:
-    field: hp30_index
-    default: 5.0
-    units: '1'
-    comparison: ge
-  solar_wind_fast:
-    field: solar_wind_speed
-    default: 500.0
-    units: km s-1
-    comparison: ge
-  solar_wind_dense:
-    field: solar_wind_density
-    default: 10.0
-    units: cm-3
-    comparison: ge
-  bz_south:
-    field: bz_gsm
-    default: -5.0
-    units: nT
     comparison: le
-  moon_bright:
+  aurora_kp_full:
+    field: kp_index
+    default: 1
+    units: '1'
+    comparison: le
+  aurora_moon_start:
     field: moon_illuminated_fraction
-    default: 0.5
+    default: 0.2
     units: '1'
     comparison: ge
-  cloud_north_thresh:
-    field: cloud_high
-    default: 50.0
-    units: percent
-    comparison: ge
-  fog_present:
-    field: fog_closure
-    default: 0.5
+  aurora_moon_full:
+    field: moon_illuminated_fraction
+    default: 1
     units: '1'
     comparison: ge
 weights:
-  kp: 0.2
-  hp30: 0.1
-  solar_wind_speed: 0.15
-  solar_wind_density: 0.1
-  bz: 0.2
-  moon: 0.1
-  cloud: 0.1
-  fog: 0.05
+  kp: 0.7
+  moon: 0.3
 hard_stops: []
 graded_criteria:
-- name: kp_activity
+- name: kp
   field: kp_index
-  threshold: kp_high
   weight: kp
-- name: hp30_activity
-  field: hp30_index
-  threshold: hp30_high
-  weight: hp30
-- name: solar_wind_speed_load
-  field: solar_wind_speed
-  threshold: solar_wind_fast
-  weight: solar_wind_speed
-- name: solar_wind_density_load
-  field: solar_wind_density
-  threshold: solar_wind_dense
-  weight: solar_wind_density
-- name: bz_southward
-  field: bz_gsm
-  threshold: bz_south
-  weight: bz
-- name: moon_brightness
+  grade:
+    curve: linear
+    parameters:
+      start: aurora_kp_start
+      full: aurora_kp_full
+    comparison: le
+- name: moon
   field: moon_illuminated_fraction
-  threshold: moon_bright
   weight: moon
-- name: cloud_north
-  field: cloud_high
-  threshold: cloud_north_thresh
-  weight: cloud
-- name: fog_risk
-  field: fog_closure
-  threshold: fog_present
-  weight: fog
+  grade:
+    curve: linear
+    parameters:
+      start: aurora_moon_start
+      full: aurora_moon_full
+    comparison: ge
+  applicability: moon_above_horizon
 window:
   rule: dark_hours
   geometry_entry: de442_sun_moon_geometry
@@ -113,3 +74,57 @@ blocked_fields:
   terms: NRCan forbids redistribution without written permission
   request: Written permission requested from NRCan for the STJ magnetometer, 2026-09-02
 wanted_not_catalogued: []
+intended_weights:
+  kp: 0.35
+  moon: 0.15
+  hp30: 0.15
+  north_cloud: 0.35
+admitted_paths:
+  kp_index:
+  - noaa-swpc-kp
+  moon_illuminated_fraction:
+  - nasa-jpl-de442
+admission_residuals:
+- field: hp30_index
+  reason: No verified Hp30 selected-time path
+  role: linear le 5 to 1
+- field: cloud_high
+  reason: No served north-sector query; arbitrary points are no_site
+  role: north-sector linear ge 10 to 90 percent
+- field: solar_wind_speed_bz_gsm
+  reason: Planetary context remains in Sky; no local probability or latitude recalibration
+  role: Context only, zero graded weight
+- field: aacgm_latitude
+  reason: No computed AACGM path or recalibration contract
+  role: Future calibration evidence; no assumed one-level shift
+- field: ovation_north_sector_probability
+  reason: OVATION raster does not supply an admitted north-sector sample
+  role: 'Replacement: linear le 50 to 5 percent, intended weight .40'
+- field: moon_sky_brightening
+  reason: No admitted derivation replacing illumination proxy
+  role: Replacement weight .15
+- field: north_cloud
+  reason: No admitted sector query
+  role: Replacement weight .25
+- field: fog_closure
+  reason: No admitted fog producer
+  role: Replacement weight .15; fog grading curve awaits its producer/method contract
+- field: distance_from_magnetic_midnight
+  reason: No admitted magnetic-geometry path
+  role: 'Replacement band: comfort within 2 hours, full loss at 5 hours; weight .05'
+- field: newell_coupling_hemispheric_power_dst_symh_ae_forecasts_alerts
+  reason: Supporting evidence only where returned; no local likelihood construction
+  role: Context only, alongside Kp/Hp30/Bz/solar-wind speed and density
+- field: north_total_cloud_opacity
+  reason: Northern sector contract unavailable
+  role: Future 90 percent overcast hard stop; no activation
+coverage_floor: 0.6
+saved_stack:
+- id: noaa-gfs-demand-cloud-high
+  opacity: 0.85
+- id: eccc-hrdps-surface-total-cloud
+  opacity: 0.85
+- id: geomet-live-hrdps-weong-fog-liquid
+  opacity: 0.85
+- id: geomet-live-goes-east-snowfog-nightmicro
+  opacity: 0.85

@@ -259,6 +259,19 @@ class GDPSQueryCoordinator:
             finally:
                 self._prepared.pop(key, None)
 
+    def native_resolution_seconds(self, selected_time: datetime, end: datetime) -> int:
+        """Declared GDPS lead cadence, never inferred from missing listing entries.
+
+        ECCC readme_gdps-datamart_en: hourly through +84, three-hourly to +240.
+        https://eccc-msc.github.io/open-data/msc-data/nwp_gdps/readme_gdps-datamart_en/
+        """
+        self._adapter.demand_operation_bounds(1)
+        with self._lock:
+            candidate = self._discover(selected_time.astimezone(UTC).replace(minute=0, second=0, microsecond=0))
+        if candidate.run_time is None:
+            raise ValueError('GDPS run time unavailable')
+        return 10800 if end - candidate.run_time > timedelta(hours=85) else 3600
+
     def timeline_times(self, selected_time: datetime) -> tuple[datetime, ...]:
         """Return the bounded native times advertised by the latest eligible run.
 

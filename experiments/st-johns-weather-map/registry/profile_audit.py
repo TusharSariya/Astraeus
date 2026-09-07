@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from dataclasses import dataclass, field as dataclass_field
@@ -290,6 +291,7 @@ def audit_profile(profile: Profile, *, catalogue: Any = None) -> list[str]:
     # Thresholds: the field must exist, the default must be there, and the
     # units must be the catalogue's units for that field.
     thresholds = data.get("thresholds", {}) or {}
+    shape_anchors = {anchor for row in data.get("graded_criteria", []) for param, anchor in row.get("grade", {}).get("parameters", {}).items() if param in ("k", "low_cap")}
     for name, spec in thresholds.items():
         if not isinstance(spec, Mapping):
             errors.append(f"{pid}: {name}: threshold is not a mapping")
@@ -300,6 +302,11 @@ def audit_profile(profile: Profile, *, catalogue: Any = None) -> list[str]:
                 f"{pid}: {name}: threshold declares no default; a reader override has nothing "
                 "to be recorded against and the profile is not served"
             )
+        default = spec.get('default')
+        if isinstance(default, bool) or not isinstance(default, (int, float)) or not math.isfinite(default):
+            errors.append(f'{pid}: {name}: threshold default must be finite')
+        if name in shape_anchors and spec.get("units") == "1":
+            continue
         if not known_field(key):
             errors.append(
                 f"{pid}: {name}: threshold names field {key!r}, which the field catalogue does "
@@ -350,6 +357,14 @@ def audit_profile(profile: Profile, *, catalogue: Any = None) -> list[str]:
                 "this profile does not declare"
             )
 
+    for entry in hard_stops:
+        if not isinstance(entry, Mapping):
+            continue
+        if entry.get('threshold') in thresholds and thresholds[entry['threshold']].get('field') != entry.get('field'):
+            errors.append(f"{pid}: {entry.get('name')}: hard-stop anchor field does not match")
+    if len({entry.get('name') for entry in hard_stops if isinstance(entry, Mapping)}) != sum(isinstance(entry, Mapping) for entry in hard_stops):
+        errors.append(f'{pid}: duplicate hard-stop identity')
+
     for entry in graded:
         if not isinstance(entry, Mapping):
             errors.append(f"{pid}: graded criterion {entry!r} is not a mapping")
@@ -361,7 +376,7 @@ def audit_profile(profile: Profile, *, catalogue: Any = None) -> list[str]:
                 f"{pid}: {name}: graded criterion names field {key!r}, which the field "
                 "catalogue does not carry"
             )
-        if entry.get("threshold") not in thresholds:
+        if "grade" not in entry and entry.get("threshold") not in thresholds:
             errors.append(
                 f"{pid}: {name}: graded criterion names threshold {entry.get('threshold')!r}, "
                 "which this profile does not declare"
@@ -371,6 +386,38 @@ def audit_profile(profile: Profile, *, catalogue: Any = None) -> list[str]:
                 f"{pid}: {name}: graded criterion names weight {entry.get('weight')!r}, which "
                 "this profile does not declare"
             )
+
+    if data.get('version', 1) >= 2:
+        from registry.grading import parameters
+        from registry.activity_layers import DECLARED_ACTIVITY_LAYERS
+        if not math.isclose(sum(weights.values()), 1., abs_tol=1e-12):
+            errors.append(f'{pid}: active weights must sum to one')
+        intended = data.get('intended_weights', {})
+        active_total = sum(intended.get(name, 0) for name in weights)
+        if not math.isclose(sum(intended.values()), 1., abs_tol=1e-12):
+            errors.append(f'{pid}: intended weights must sum to one')
+        for name, weight in weights.items():
+            if active_total <= 0 or not math.isclose(weight, intended.get(name, 0) / active_total, abs_tol=1e-12):
+                errors.append(f'{pid}: {name}: active weight must preserve intended proportions')
+        if len(graded) != len(weights) or len({row['name'] for row in graded}) != len(graded) or {row['weight'] for row in graded} != set(weights):
+            errors.append(f'{pid}: each active weight requires one distinct criterion')
+        for row in graded:
+            try:
+                grade = row['grade']
+                parameters(grade, thresholds)
+                for param, anchor in grade['parameters'].items():
+                    if param not in ('k', 'low_cap') and thresholds[anchor]['field'] != row['field']:
+                        raise ValueError('anchor field does not match criterion')
+                if not data.get('admitted_paths', {}).get(row['field']):
+                    raise ValueError('active criterion has no admitted path')
+            except (KeyError, ValueError) as error:
+                errors.append(f"{pid}: {row['name']}: {error}")
+        ids = [row['id'] for row in data.get('saved_stack', [])]
+        if len(ids) != len(set(ids)):
+            errors.append(f'{pid}: duplicate saved layer')
+        for layer in ids:
+            if layer not in DECLARED_ACTIVITY_LAYERS:
+                errors.append(f'{pid}: unknown saved layer {layer}')
 
     # One field may not both stop the evaluation and contribute to the score
     # that the stop would have prevented.
@@ -487,7 +534,7 @@ def _audit_site_needs(pid: str, site_needs: Any, known_field) -> list[str]:
             )
         bearing = sector.get("bearing_deg")
         width = sector.get("width_deg")
-        if not isinstance(bearing, (int, float)) or not 0 <= float(bearing) < 360:
+        if sector.get("bearing_field") != "sun_azimuth" and (not isinstance(bearing, (int, float)) or not 0 <= float(bearing) < 360):
             errors.append(f"{pid}: {name}: sector bearing {bearing!r} is not in [0, 360)")
         if not isinstance(width, (int, float)) or not 0 < float(width) <= 180:
             errors.append(f"{pid}: {name}: sector width {width!r} is not in (0, 180]")
@@ -509,6 +556,7 @@ def profile_warnings(profile: Profile, *, catalogue: Any = None) -> list[str]:
         for entry in list(data.get("hard_stops", []) or []) + list(data.get("graded_criteria", []) or [])
         if isinstance(entry, Mapping)
     }
+    referenced.update(anchor for row in data.get("graded_criteria", []) for anchor in row.get("grade", {}).get("parameters", {}).values())
     for name in sorted(data.get("thresholds", {}) or {}):
         if name not in referenced:
             warnings.append(f"{pid}: {name}: threshold is declared and no criterion refers to it")

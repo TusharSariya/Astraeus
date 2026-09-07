@@ -32,6 +32,8 @@ class CriterionEvidence(StrictModel):
     threshold_defaults: dict[str, float]
     thresholds_in_force: dict[str, float]
     comparison: str | None
+    curve: str | None = None
+    curve_parameters: dict[str, str] = Field(default_factory=dict)
     outcome: Literal['fired', 'clear', 'unknown', 'evaluated']
     reason: str | None = None
     loss: float | None = Field(default=None, ge=0, le=1)
@@ -106,7 +108,7 @@ def criterion(profile: Mapping, spec: Mapping, selected: SelectedInput, *, hard_
     return CriterionEvidence(name=spec['name'], field=spec['field'], kind='hard_stop' if hard_stop else 'grade',
         input=selected, threshold_defaults={name: thresholds[name]['default'] for name in names},
         thresholds_in_force={name: (overrides or {}).get(name, thresholds[name]['default']) for name in names},
-        comparison=comparison, outcome='unknown' if reason else ('fired' if fraction else 'clear') if hard_stop else 'evaluated',
+        comparison=comparison, curve=grade['curve'], curve_parameters=dict(grade['parameters']), outcome='unknown' if reason else ('fired' if fraction else 'clear') if hard_stop else 'evaluated',
         reason=reason, loss=None if hard_stop else fraction, weight_declared=weight,
         evaluated_weight=None if hard_stop else (weight if reason is None else 0),
         weight_held=None if hard_stop or reason else weight * (1 - fraction))

@@ -62,7 +62,7 @@ export function parseFocusUrl(search: string, fallback: LocationPoint): BenchSta
 
 export function serializeFocusUrl(state: Omit<BenchState, 'notices'>, search = ''): string {
   const params = new URLSearchParams(search)
-  for (const key of [...params.keys()]) if (['site', 'lat', 'lon', 'view', 'dock', 't', 'stack', 'theme'].includes(key) || key.startsWith('run.')) params.delete(key)
+  for (const key of [...params.keys()]) if (['site', 'lat', 'lon', 'view', 'dock', 't', 'stack', 'theme', 'override'].includes(key) || key.startsWith('run.')) params.delete(key)
   if (state.site) params.set('site', state.site)
   else { params.set('lat', String(state.location.latitude)); params.set('lon', String(state.location.longitude)) }
   if (state.instant !== null) params.set('t', new Date(state.instant).toISOString())

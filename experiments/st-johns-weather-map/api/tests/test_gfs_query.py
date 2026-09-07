@@ -285,6 +285,8 @@ def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, 
     from weather_api.app import get_profile
 
     monkeypatch.setattr(gfs_query, "gfs_query_coordinator", lambda: coordinator)
+    import sys
+    monkeypatch.setattr(sys.modules["weather_api.app"], "now", lambda: valid_time)
     response = get_profile(47.5615, -52.7126, valid_time, "GFS")
     assert response.data_mode.value == "live"
     assert [level.pressure_hpa for level in response.levels] == [850, 700, 500, 300]
@@ -662,6 +664,7 @@ def test_gfs_raster_route_reports_demand_native_provenance(monkeypatch):
     from weather_api import gfs_query
     from weather_api.grids import RenderedGridImage
     app_module=sys.modules['weather_api.app']; valid=datetime(2026,9,6,18,tzinfo=UTC); run=valid-timedelta(hours=6); fetched=valid+timedelta(minutes=2)
+    monkeypatch.setattr(app_module, 'now', lambda: valid)
     entry=SimpleNamespace(fetched_at=fetched, content_digest='c'*64)
     image=RenderedGridImage(b'png','image/png',valid,run,'EPSG:4326','percent','noaa-gfs','Global Forecast System','public domain','NOAA/NCEP')
     called = []
@@ -690,6 +693,7 @@ def test_each_gfs_cloud_stratum_routes_to_its_exact_layer_identity(monkeypatch):
     from weather_api.grids import RenderedGridImage
     app_module = sys.modules['weather_api.app']
     valid = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    monkeypatch.setattr(app_module, 'now', lambda: valid)
     entry = SimpleNamespace(fetched_at=valid, content_digest='d' * 64)
     image = RenderedGridImage(b'png', 'image/png', valid, valid - timedelta(hours=6), 'EPSG:4326', 'percent', 'noaa-gfs', 'Global Forecast System', 'public domain', 'NOAA/NCEP')
     called = []

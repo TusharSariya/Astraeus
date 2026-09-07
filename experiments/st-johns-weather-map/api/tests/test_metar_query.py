@@ -232,6 +232,7 @@ def test_metar_gust_variable_has_a_canonical_point_field():
 
 def test_default_point_uses_demand_metar_when_legacy_store_is_unreachable(monkeypatch):
     at=datetime(2026,9,6,12,30,tzinfo=UTC)
+    monkeypatch.setattr(app_module,"now",lambda:at)
     field=point_fields(at)[0][0]
     field=field.model_copy(update={"provenance":field.provenance.model_copy(update={
         "data_mode":DataMode.LIVE, "source_id":"awc-metar-speci", "product":"CYYT METAR/SPECI",
@@ -255,6 +256,7 @@ def test_default_point_uses_demand_metar_when_legacy_store_is_unreachable(monkey
 
 def test_default_point_keeps_demand_metar_when_legacy_store_raises(monkeypatch):
     at=datetime(2026,9,6,12,30,tzinfo=UTC)
+    monkeypatch.setattr(app_module,"now",lambda:at)
     field=point_fields(at)[0][0]
     field=field.model_copy(update={"provenance":field.provenance.model_copy(update={
         "data_mode":DataMode.LIVE, "source_id":"awc-metar-speci", "product":"CYYT METAR/SPECI",

@@ -64,6 +64,7 @@ function appendPage(previous: NativeSeriesResponse, page: NativeSeriesResponse):
   return { ...page, series: rows }
 }
 interface Props {
+  jumpTo?: { field: string; source: string; revision: number } | null
   location: LocationPoint; instant: number; fields: ServedFieldValue[]; runs: Record<string, string>; enabled: boolean; focusReady?: boolean; selectionMoving?: boolean
   onLatest: (source: string) => void
   onRun?: (source: string, run: string) => void
@@ -88,6 +89,7 @@ export function useNativeSeries(props: Props) {
   const active = useRef<AbortController | null>(null)
   const generation = useRef(0)
   const lastStarted = useRef<string | null>(null)
+  useEffect(() => { if (props.jumpTo) { setFirst(`${props.jumpTo.source}|${props.jumpTo.field}`); setRunPair(null); setCompare(false) } }, [props.jumpTo])
   const selectors = [first, second].map((key, i): Selector => {
     const [source_id, field] = key.split('|')
     return runPair ? { id: String(i), source_id: runPair.source, field: runPair.field, run: runPair.runs[i].id } : { id: String(i), source_id, field, run: runs[source_id] ?? 'latest' }

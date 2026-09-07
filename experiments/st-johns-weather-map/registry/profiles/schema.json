@@ -39,7 +39,9 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": {"$ref": "#/$defs/name"},
+      "items": {
+        "$ref": "#/$defs/name"
+      },
       "description": "Field catalogue family names. A profile asks for families, not members: the decision layer chooses the member and carries its comparability note."
     },
     "thresholds": {
@@ -47,7 +49,9 @@
       "minProperties": 1,
       "additionalProperties": false,
       "patternProperties": {
-        "^[a-z][a-z0-9_]*$": {"$ref": "#/$defs/threshold"}
+        "^[a-z][a-z0-9_]*$": {
+          "$ref": "#/$defs/threshold"
+        }
       },
       "description": "Named thresholds a hard stop or a graded criterion refers to. Every threshold declares a default; a reader override is recorded in score provenance and never edited into this file."
     },
@@ -67,28 +71,116 @@
     "hard_stops": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"$ref": "#/$defs/hardStop"},
+      "items": {
+        "$ref": "#/$defs/hardStop"
+      },
       "description": "Evaluated first and answering on their own. A hard stop whose field is absent is reported unknown, never as a pass."
     },
     "graded_criteria": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"$ref": "#/$defs/gradedCriterion"},
+      "items": {
+        "$ref": "#/$defs/gradedCriterion"
+      },
       "description": "Evaluated only when no hard stop is in force. No field may appear both here and in hard_stops."
     },
-    "window": {"$ref": "#/$defs/window"},
-    "site_needs": {"$ref": "#/$defs/siteNeeds"},
+    "window": {
+      "$ref": "#/$defs/window"
+    },
+    "site_needs": {
+      "$ref": "#/$defs/siteNeeds"
+    },
     "blocked_fields": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"$ref": "#/$defs/blockedField"},
+      "items": {
+        "$ref": "#/$defs/blockedField"
+      },
       "description": "Fields the profile would read that no admitted source can supply, listed by key with the reason. Listed explicitly so the absence is disclosed rather than omitted; a key the catalogue carries does not belong here."
     },
     "wanted_not_catalogued": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"$ref": "#/$defs/wantedField"},
+      "items": {
+        "$ref": "#/$defs/wantedField"
+      },
       "description": "Quantities the profile's owner named that the field catalogue does not yet carry. Disclosed rather than dropped, so the gap is visible to a reader and to the next catalogue revision."
+    },
+    "coverage_floor": {
+      "const": 0.6
+    },
+    "intended_weights": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*$": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "description": "Criterion weights in [0, 1]. Hard stops carry no weight by construction."
+    },
+    "admission_residuals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "reason",
+          "role"
+        ],
+        "properties": {
+          "field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "saved_stack": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "opacity"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "admitted_paths": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     }
   },
   "$defs": {
@@ -100,9 +192,16 @@
     "threshold": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["field", "default", "units", "comparison"],
+      "required": [
+        "field",
+        "default",
+        "units",
+        "comparison"
+      ],
       "properties": {
-        "field": {"$ref": "#/$defs/name"},
+        "field": {
+          "$ref": "#/$defs/name"
+        },
         "default": {
           "type": "number",
           "description": "Required. A threshold with no default fails validation, because a score with no stated default has nothing to record an override against."
@@ -113,7 +212,12 @@
           "description": "Must equal the catalogue units of the field. Declared here so a unit disagreement is a build failure rather than a silent factor of 3.6."
         },
         "comparison": {
-          "enum": ["ge", "gt", "le", "lt"],
+          "enum": [
+            "ge",
+            "gt",
+            "le",
+            "lt"
+          ],
           "description": "Which side of the threshold triggers. Named rather than implied by sign."
         }
       }
@@ -121,31 +225,103 @@
     "hardStop": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "field", "threshold"],
+      "required": [
+        "name",
+        "field",
+        "threshold"
+      ],
       "properties": {
-        "name": {"$ref": "#/$defs/name"},
-        "field": {"$ref": "#/$defs/name"},
-        "threshold": {"$ref": "#/$defs/name"}
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "field": {
+          "$ref": "#/$defs/name"
+        },
+        "threshold": {
+          "$ref": "#/$defs/name"
+        }
       }
     },
     "gradedCriterion": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "field", "threshold", "weight"],
+      "required": [
+        "name",
+        "field",
+        "weight"
+      ],
       "properties": {
-        "name": {"$ref": "#/$defs/name"},
-        "field": {"$ref": "#/$defs/name"},
-        "threshold": {"$ref": "#/$defs/name"},
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "field": {
+          "$ref": "#/$defs/name"
+        },
+        "threshold": {
+          "$ref": "#/$defs/name"
+        },
         "weight": {
           "$ref": "#/$defs/name",
           "description": "Names a key of weights, not a number: the numbers live in one place so a reader can read the whole weighting at once."
+        },
+        "grade": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "curve",
+            "parameters"
+          ],
+          "properties": {
+            "curve": {
+              "enum": [
+                "step",
+                "linear",
+                "exponential",
+                "band"
+              ]
+            },
+            "comparison": {
+              "enum": [
+                "ge",
+                "gt",
+                "le",
+                "lt"
+              ]
+            },
+            "parameters": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/name"
+              }
+            }
+          }
+        },
+        "applicability": {
+          "const": "moon_above_horizon"
         }
-      }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "threshold"
+          ]
+        },
+        {
+          "required": [
+            "grade"
+          ]
+        }
+      ]
     },
     "window": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rule", "geometry_entry", "geometry_fields", "params"],
+      "required": [
+        "rule",
+        "geometry_entry",
+        "geometry_fields",
+        "params"
+      ],
       "description": "The window is an astronomical quantity, computed by the registered DE442 entry. A wall-clock or local-time rule would be a second, unregistered solar model, so the params of every rule are closed and no clock key is among them.",
       "properties": {
         "rule": {
@@ -176,51 +352,112 @@
           },
           "description": "Outputs of the DE442 entry. When one is absent the window is unresolved with the field named, never guessed."
         },
-        "params": {"type": "object"}
+        "params": {
+          "type": "object"
+        }
       },
       "allOf": [
         {
-          "if": {"properties": {"rule": {"const": "any_window_within_24h"}}, "required": ["rule"]},
+          "if": {
+            "properties": {
+              "rule": {
+                "const": "any_window_within_24h"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
           "then": {
             "properties": {
               "params": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["length_hours", "daylight_only"],
+                "required": [
+                  "length_hours",
+                  "daylight_only"
+                ],
                 "properties": {
-                  "length_hours": {"type": "number", "exclusiveMinimum": 0, "maximum": 24},
-                  "daylight_only": {"type": "boolean"}
+                  "length_hours": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 24
+                  },
+                  "daylight_only": {
+                    "type": "boolean"
+                  }
                 }
               }
             }
           }
         },
         {
-          "if": {"properties": {"rule": {"const": "astronomical_night"}}, "required": ["rule"]},
-          "then": {
+          "if": {
             "properties": {
-              "params": {"type": "object", "additionalProperties": false, "properties": {}}
-            }
-          }
-        },
-        {
-          "if": {"properties": {"rule": {"const": "dark_hours"}}, "required": ["rule"]},
-          "then": {
-            "properties": {
-              "params": {"type": "object", "additionalProperties": false, "properties": {}}
-            }
-          }
-        },
-        {
-          "if": {"properties": {"rule": {"const": "sunrise_sunset_margin"}}, "required": ["rule"]},
+              "rule": {
+                "const": "astronomical_night"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
           "then": {
             "properties": {
               "params": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["margin_minutes"],
+                "properties": {}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rule": {
+                "const": "dark_hours"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rule": {
+                "const": "sunrise_sunset_margin"
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "margin_minutes"
+                ],
                 "properties": {
-                  "margin_minutes": {"type": "number", "minimum": 0, "maximum": 240}
+                  "margin_minutes": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 240
+                  }
                 }
               }
             }
@@ -231,14 +468,21 @@
     "siteNeeds": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["horizon_required", "sectors"],
+      "required": [
+        "horizon_required",
+        "sectors"
+      ],
       "description": "What the profile needs from a site. Preferred and never limiting: a request naming no site is answered at the point, with the horizon absent rather than the evaluation refused.",
       "properties": {
-        "horizon_required": {"type": "boolean"},
+        "horizon_required": {
+          "type": "boolean"
+        },
         "sectors": {
           "type": "array",
           "uniqueItems": true,
-          "items": {"$ref": "#/$defs/sector"},
+          "items": {
+            "$ref": "#/$defs/sector"
+          },
           "description": "Parameter sets of the registered sector-sampling entry. A sector is a derivation, not a query option, so its bearing and width are declared here and land in the provenance."
         }
       }
@@ -246,33 +490,87 @@
     "sector": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "field", "bearing_deg", "width_deg", "max_range_km"],
+      "required": [
+        "name",
+        "field",
+        "width_deg",
+        "max_range_km"
+      ],
       "properties": {
-        "name": {"$ref": "#/$defs/name"},
-        "field": {"$ref": "#/$defs/name"},
-        "bearing_deg": {"type": "number", "minimum": 0, "exclusiveMaximum": 360},
-        "width_deg": {"type": "number", "exclusiveMinimum": 0, "maximum": 180},
-        "max_range_km": {"type": "number", "exclusiveMinimum": 0, "maximum": 500}
-      }
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "field": {
+          "$ref": "#/$defs/name"
+        },
+        "bearing_deg": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 360
+        },
+        "width_deg": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 180
+        },
+        "max_range_km": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 500
+        },
+        "bearing_field": {
+          "const": "sun_azimuth"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "bearing_deg"
+          ]
+        },
+        {
+          "required": [
+            "bearing_field"
+          ]
+        }
+      ]
     },
     "blockedField": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["field", "reason", "source_id", "terms", "request"],
+      "required": [
+        "field",
+        "reason",
+        "source_id",
+        "terms",
+        "request"
+      ],
       "properties": {
-        "field": {"$ref": "#/$defs/name"},
+        "field": {
+          "$ref": "#/$defs/name"
+        },
         "reason": {
-          "enum": ["licence", "credential", "partnership"],
+          "enum": [
+            "licence",
+            "credential",
+            "partnership"
+          ],
           "description": "The three refusals. Blocked is a state with a reason, never a null dressed up as one."
         },
-        "source_id": {"type": "string", "minLength": 1},
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
         "terms": {
           "type": "string",
           "minLength": 1,
           "description": "The terms or notice that forbids it, named or quoted. This is the useful part of the refusal."
         },
         "request": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "An outstanding permission or credential request, or null where none has been made."
         }
       }
@@ -280,11 +578,39 @@
     "wantedField": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["field", "note"],
+      "required": [
+        "field",
+        "note"
+      ],
       "properties": {
-        "field": {"$ref": "#/$defs/name"},
-        "note": {"type": "string", "minLength": 1}
+        "field": {
+          "$ref": "#/$defs/name"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "version": {
+            "minimum": 2
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "coverage_floor",
+          "intended_weights",
+          "admission_residuals",
+          "saved_stack",
+          "admitted_paths"
+        ]
+      }
+    }
+  ]
 }

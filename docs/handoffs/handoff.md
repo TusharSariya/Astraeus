@@ -6,20 +6,27 @@ history and the owner's earlier design selections.
 
 ## Current collaborative App Wayfinder work, September 7
 
-The owner switched to working through individual #38 issues together, beginning
-with #69, then requested larger autonomous implementation/review/merge batches.
-Map skip/readability #291, Sources filter return #292 and Series return #293 are
-merged. The assembled desktop accessibility batch is on
-`audit/app69-desktop-access` at `/tmp/astraeus-app69-desktop-access`.
+The owner requested larger autonomous implementation/review/merge batches.
+Map/Sources/Series keyboard fixes #291–293 and assembled access #294 are merged.
+[PR #295](https://github.com/TusharSariya/Astraeus/pull/295) implements Activity end to end on
+`execution/desktop-activity-delivery` at `/tmp/astraeus-desktop-activity-delivery`.
 
-Its 504-test client suite, production build and four-view keyboard/browser audit
-pass, including fullscreen/dock inspection, Sky failure/recovery, source/run/track
-names and semantic controls. See the existing desktop OpenSpec task checkpoint
-for compact evidence and manual reader procedure. Actual screen-reader testing,
-Activity's unwired body, physical outdoor checks and the full five-view milestone
-remain separate outstanding obligations. Keep #69 open. No source feed is admitted
-by these UI tests. Finish review and passing merge of this batch before another.
-Earlier Activity sequencing below remains historical; no budget decision is pending.
+All four v2 profiles, bounded verdict/strip routes, finite cache, native demand
+acquisition, four lanes, inspection, overrides, profile stacks and Series jumps
+are implemented. Full API: 2,251 passed, 53 skipped; client: 510 passed; production
+build/import, strict OpenSpec and specctl pass. Actual Chrome fixed-fixture proof
+now covers the assembled five-view desktop, three themes, zoom, fullscreen/dock
+return and failed/expired evidence. See the existing desktop task checkpoint and
+API implementation evidence for exact bounds, scripts and compact receipts.
+The PR and owning #38 issue carry its merge receipt. After its passing merge,
+continue the next source batch in #70.
+
+Live hard-stop/sector/azimuth inputs and named profile replacement fields remain
+explicit residuals. DE442 requires its configured kernel; selected PM2.5 imagery
+remains unserved pending #172. No source admission is established by UI fixtures.
+Actual screen-reader #69 and outdoor #65 checks remain open. Phone, camera
+placement and deferred science retain their boundaries. No budget decision is
+pending. Older checkpoints below are historical, not current execution gates.
 
 ## Desktop-first owner authorization, September 7, 2026
 

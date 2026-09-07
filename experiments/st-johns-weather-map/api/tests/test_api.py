@@ -297,7 +297,8 @@ def test_avalon_fixture_coverage_boundaries_are_inclusive(latitude, longitude):
 def test_coordinates_outside_avalon_fixture_never_return_evidence(latitude, longitude):
     response = client.get(f"{PREFIX}/point", params={"latitude": latitude, "longitude": longitude})
     assert response.status_code == 422
-    assert "outside" in response.json()["detail"]
+    assert response.json()["detail"]["code"] == "outside_supported_area"
+    assert "outside" in response.json()["detail"]["message"]
 
 
 @pytest.mark.parametrize(
@@ -721,14 +722,15 @@ def test_a_frame_landing_off_the_hour_still_populates_its_hour(monkeypatch, data
     assert len([item for item in payload["items"] if item["available_products"]]) == 2
 
 
-def test_layers_are_unavailable_rather_than_the_fixture_list_when_nothing_is_published(monkeypatch, data_mode):
+def test_empty_store_keeps_demand_declarations_without_inventing_published_frames(monkeypatch, data_mode):
     use_live_store(monkeypatch, data_mode, EmptyStore())
     # Live-proxied imagery is a separate offer with its own tests; with it out
     # of the way, an empty store must produce nothing rather than the fixtures.
     monkeypatch.setattr(api_module, "_proxied_forecast_layers", lambda: ([], []))
     payload = client.get(f"{PREFIX}/layers").json()
-    assert payload["data_mode"] == "unavailable"
-    assert payload["layers"] == []
+    assert payload["data_mode"] == "live"
+    assert {layer['id'] for layer in payload['layers']} == {'noaa-swpc-aurora-oval', 'eccc-aqhi-demand-observations', 'eccc-swob-demand-observations'}
+    assert all(layer['times'] == [] for layer in payload['layers'])
     assert payload["notices"]
 
 

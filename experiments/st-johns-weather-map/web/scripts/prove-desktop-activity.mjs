@@ -1,9 +1,9 @@
 // Fixed-response browser proof. No live weather or reference-map provider calls.
 import { chromium } from 'playwright'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import assert from 'node:assert/strict'
-const base = process.env.BENCH_URL ?? 'http://127.0.0.1:5250'
-const output = process.env.BENCH_PROOF_DIR ?? '/tmp/astraeus-desktop-access-proof'
+const base = process.env.BENCH_URL ?? 'http://127.0.0.1:5251'
+const output = process.env.BENCH_PROOF_DIR ?? '/tmp/astraeus-desktop-activity-proof'
 await mkdir(output, { recursive: true })
 const at = '2026-09-07T12:00:00.000Z'
 const layerId = 'eccc-hrdps-surface-total-cloud'
@@ -11,6 +11,8 @@ const layer = { id: layerId, title: 'HRDPS total cloud · fixed fixture', kind: 
 const browser = await chromium.launch({ channel: 'chrome', headless: true })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 await page.clock.install({ time: new Date(at) })
+const fixture = JSON.parse(await readFile(process.env.ACTIVITY_FIXTURE ?? '/tmp/activity-browser-fixture.json', 'utf8'));
+let failActivity = false;
 const errors = []; const requests = []; let failPoint = false; let failAstronomy = false; let failSeries = false; let seriesSnapshot = null; let seriesReads = 0
 page.on('pageerror', (error) => errors.push(String(error)))
 await page.route('**/*', async (route) => {
@@ -20,8 +22,16 @@ await page.route('**/*', async (route) => {
   requests.push(url.pathname + url.search)
   const path = url.pathname.split('/v0')[1]
   let body = { data_mode: 'unavailable', notices: ['Fixed proof: capability not supplied'] }
-  if (path === '/verdicts') return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:{code:'activity_unavailable',message:'Activity absent in this four-view regression fixture'}})})
-  if (path === '/point') {
+  if (path === '/verdicts' || path === '/verdicts/series') {
+    if (failActivity) return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:{code:'activity_unavailable',message:'Constructed Activity refresh failure'}})})
+    const stamp=url.searchParams.get('valid_time')
+    const value=JSON.parse(JSON.stringify(fixture).replaceAll('2026-09-07T12:00:00Z',stamp))
+    value.focus={latitude:Number(url.searchParams.get('latitude')),longitude:Number(url.searchParams.get('longitude')),valid_time:stamp,site_id:url.searchParams.get('site_id')}
+    value.notices=['CONSTRUCTED EVALUATOR BROWSER PROOF: actual v2 profiles and evaluator, synthetic native inputs; no live acquisition']
+    if(path.endsWith('/series')) body={...value,cells:[value,{...value,focus:{...value.focus,valid_time:new Date(Date.parse(stamp)+7200000).toISOString()}}],end:url.searchParams.get('end'),resolution_seconds:3600,queried_times:[stamp,new Date(Date.parse(stamp)+7200000).toISOString()],complete:true,next_start:null}
+    else body=value
+  }
+  else if (path === '/point') {
     if (failPoint) return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Fixed failure' }) })
     body = { latitude: Number(url.searchParams.get('latitude')), longitude: Number(url.searchParams.get('longitude')), valid_time: url.searchParams.get('valid_time'), data_mode: 'fixture', selection: { mode: 'evidence_only', badge: 'Fixed browser fixture', reason: 'Constructed values, no provider retrieval' }, fields: [
       { field: 'temperature', value: 0, key: 'air_temperature_2m', family: 'temperature', provenance: { source_id: 'noaa-gfs', provider: 'NOAA', product: 'GFS', normalized_units: 'degC', evidence_class: 'retrieved', data_mode: 'fixture', valid_time: at, quality: { status: 'unknown', flags: [] }, artifact_revision: 'fixed-proof', sample: { latitude: 47.5, longitude: -52.6 } } },
@@ -52,132 +62,90 @@ await page.route('**/*', async (route) => {
   else if (path === '/registry/sites') body = { operational: false, version: 'a'.repeat(64), sites: [{ id: 'signal-hill', name: 'Signal Hill', latitude: 47.5704, longitude: -52.6816, elevation_m: 140, datum: 'CGVD2013', registered_on: '2026-09-03', registered_by: 'Fixture owner', geometry_note: 'Constructed registry fixture; not surveyed.', horizon: { site_id: 'signal-hill', bearing_resolution_deg: 90, elevation_deg: [0, 1, 2, 3], terrain_check_status: 'not_run', terrain_check_note: 'Not surveyed' } }], notice: null }
   return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) })
 })
-async function focused(locator) {
-  await page.waitForFunction(el => el === document.activeElement, await locator.elementHandle())
-}
-async function openWithKeyboard(locator) {
-  await locator.focus()
-  await page.keyboard.press('Enter')
-  await focused(page.getByRole('complementary',{name:'Evidence inspector',exact:true}).getByRole('heading'))
-}
-async function keyboardSweep() {
-  const expected = await page.evaluate(() => {
-    for(const detail of document.querySelectorAll('details')) { detail.dataset.auditOpen=String(detail.open); detail.open=true }
-    const controls=[...document.querySelectorAll('button,input,select,textarea,a[href],summary,[tabindex]')].filter(el=>el.tabIndex>=0 && !el.disabled && el.getClientRects().length && getComputedStyle(el).visibility!=='hidden')
-    controls.forEach((el,i)=>el.dataset.auditControl=String(i))
-    return controls.map(el=>({id:el.dataset.auditControl,name:el.getAttribute('aria-label')||el.textContent?.trim().slice(0,100)||el.tagName}))
-  })
-  const visited = new Set()
-  for(let i=0;i<expected.length*2+20;i++) {
-    await page.keyboard.press('Tab')
-    const id=await page.evaluate(()=>document.activeElement?.getAttribute('data-audit-control'))
-    if(id!==null) visited.add(id)
-    if(visited.size===expected.length) break
-  }
-  const missing=expected.filter(item=>!visited.has(item.id))
-  await page.evaluate(()=>{
-    for(const detail of document.querySelectorAll('details[data-audit-open]')) {detail.open=detail.dataset.auditOpen==='true';delete detail.dataset.auditOpen}
-    for(const el of document.querySelectorAll('[data-audit-control]')) delete el.dataset.auditControl
-  })
-  assert.deepEqual(missing,[])
-  return expected.length
-}
-const inspector = page.getByRole('complementary',{name:'Evidence inspector',exact:true})
-const checks = []
-const axResults = []
+
+const checks=[]
 try {
-  await page.goto(`${base}/?lat=47.5123456789&lon=-52.6987654321&t=${at}`)
-  await page.waitForLoadState('networkidle')
-  await page.evaluate(() => document.fonts.ready)
-  assert.equal(await page.evaluate(() => [...document.fonts].some(font=>font.family.includes('Atkinson Hyperlegible Next') && font.status==='loaded')),true)
-  for (const view of ['Map','Series','Sources','Sky']) {
-    await page.getByRole('button',{name:view,exact:true}).click()
-    await page.getByRole('button',{name:`Expand ${view}`,exact:true}).click()
-    let opener
-    if(view==='Map') {
-      await page.getByText('Point evidence ledger',{exact:true}).click()
-      opener = page.getByRole('button',{name:/^Inspect temperature from noaa-gfs/})
-    } else if(view==='Series') {
-      await page.locator('.native-track summary').first().click()
-      opener = page.getByRole('button',{name:/^Inspect temperature_2m at/}).first()
-    } else if(view==='Sources') opener=page.getByRole('button',{name:'Inspect source declared-only',exact:true})
-    else opener=page.getByRole('button',{name:'Inspect Sun altitude',exact:true})
-    await openWithKeyboard(opener)
-    await page.keyboard.press('Escape')
-    await focused(opener)
-    assert.equal(await page.getByRole('button',{name:'Return to Bench',exact:true}).count(),1)
-    await page.keyboard.press('Escape')
-    await focused(page.getByRole('button',{name:`Expand ${view}`,exact:true}))
-    checks.push(`${view}: fullscreen inspector entry, scoped Escape and expansion return`)
-    const keyboardControls=await keyboardSweep()
-    const cdp=await page.context().newCDPSession(page)
-    const tree=await cdp.send('Accessibility.getFullAXTree')
-    const unnamed=tree.nodes.filter(node=>!node.ignored && ['button','combobox','textbox','searchbox','slider','link','checkbox'].includes(node.role?.value) && !node.name?.value).map(node=>({role:node.role.value,backendDOMNodeId:node.backendDOMNodeId}))
-    assert.deepEqual(unnamed,[])
-    axResults.push({view,keyboardControls,unnamedControls:unnamed})
-    await cdp.detach()
-  }
-  // The companion is replaced by the inspector and remounts when it closes.
-  await page.getByRole('button',{name:'Map',exact:true}).click()
-  for (const view of ['Sources','Sky','Series']) {
-    await page.getByRole('button',{name:`Dock ${view}`,exact:true}).click()
-    const companion=page.getByRole('complementary',{name:`${view} companion`,exact:true})
-    let opener
-    if(view==='Sources') opener=companion.getByRole('button',{name:'Inspect source declared-only',exact:true})
-    else if(view==='Sky') opener=companion.getByRole('button',{name:'Inspect Sun altitude',exact:true})
-    else { await companion.locator('.native-track summary').first().click(); opener=companion.getByRole('button',{name:/^Inspect temperature_2m at/}).first() }
-    await openWithKeyboard(opener)
-    await page.keyboard.press('Tab')
-    await focused(inspector.getByRole('button',{name:'Close inspector'}))
-    await page.keyboard.press('Enter')
-    await focused(opener)
-    checks.push(`${view}: remounted dock returns to logical opener`)
-    await companion.getByRole('button',{name:`Close ${view} dock`,exact:true}).click()
-  }
-  // Compare action names include source, run and track, even for duplicate field/time choices.
-  await page.getByRole('button',{name:'Series',exact:true}).click()
-  await page.getByRole('button',{name:'Temporary Compare',exact:true}).click()
-  await page.getByRole('combobox',{name:'Series B',exact:true}).selectOption('eccc-hrdps|temperature_2m')
-  await page.waitForLoadState('networkidle')
-  for(const summary of await page.locator('.native-track summary').all()) if(!await summary.evaluate(el=>el.parentElement.open)) await summary.click()
-  const names=await page.getByRole('button',{name:/^Inspect temperature_2m at/}).evaluateAll(items=>items.map(el=>el.getAttribute('aria-label')))
-  assert.equal(names.length,6)
-  assert.equal(new Set(names).size,names.length)
-  checks.push('Series identical field/time choices have distinct source/run/track names')
-  await page.getByRole('button',{name:'Sky',exact:true}).click()
-  await openWithKeyboard(page.getByRole('button',{name:'Inspect Sun altitude',exact:true}))
-  assert.match(await inspector.textContent(),/nasa-jpl-de442/)
+  await page.goto(`${base}/?view=activity&lat=47.5615&lon=-52.7126&t=${at}`)
+  await page.getByText(/Computed .*Cache miss/).waitFor()
+  assert.equal(await page.locator('.activity-lane').count(),4)
+  assert.equal(await page.locator('.activity-summary button[aria-expanded=true]').count(),0)
+  assert.equal(await page.locator('.activity-lane[data-state=unchecked]').count(),2)
+  assert.equal(await page.locator('.activity-lane[data-state=scored]').count(),2)
+  checks.push('Actual v2 evaluator fixture: Running/Landscape unchecked; Astronomy/Aurora scored')
+  await page.getByRole('button',{name:'Read native strip',exact:true}).click()
+  await page.getByRole('button',{name:`Running at ${at}: unchecked`,exact:true}).waitFor()
+  const gap=page.getByRole('button',{name:'Running at 2026-09-07T14:00:00.000Z: unchecked',exact:true})
+  assert.equal(await gap.evaluate(el=>el.style.gridColumn),'3')
+  checks.push('Aligned strips preserve the unissued middle hour')
   for(const theme of ['light','dark','Red night']) {
     await page.getByRole('button',{name:theme,exact:true}).click()
-    await page.screenshot({path:`${output}/sky-inspector-${theme.replaceAll(' ','-')}.png`})
+    await page.screenshot({path:`${output}/activity-${theme.replace(' ','-')}.png`})
   }
-  // Geometry replacement must update this same selection, not discard it as a point-field miss.
-  failAstronomy=true
-  await page.locator('.bench-instant summary').click()
-  await page.getByRole('textbox',{name:'Instant (ISO, with timezone)'}).fill('2026-09-07T12:00:12.345Z')
-  await page.getByRole('button',{name:'Use instant',exact:true}).click()
-  await page.locator('.bench-instant summary').click()
-  await inspector.getByText(/astronomy returned 503/).waitFor()
-  assert.doesNotMatch(await inspector.textContent(),/nasa-jpl-de442/)
-  failAstronomy=false
-  await page.locator('.bench-instant summary').click()
-  await page.getByRole('textbox',{name:'Instant (ISO, with timezone)'}).fill('2026-09-07T12:00:24.567Z')
-  await page.getByRole('button',{name:'Use instant',exact:true}).click()
-  await page.locator('.bench-instant summary').click()
-  await inspector.getByText('2026-09-07T12:00:24.567Z',{exact:true}).waitFor()
-  assert.match(await inspector.textContent(),/nasa-jpl-de442/)
-  checks.push('Sky open inspection clears failed geometry and follows recovered exact Focus')
-  await inspector.getByRole('button',{name:'Close inspector'}).click()
+  await page.getByRole('button',{name:'Expand Activity',exact:true}).click()
+  await page.setViewportSize({width:1440,height:1400})
+  await page.getByRole('button',{name:'light',exact:true}).click()
+  await page.screenshot({path:`${output}/activity-fullscreen-overview.png`})
+  await page.setViewportSize({width:1440,height:900})
+  await page.keyboard.press('Escape')
+  await page.getByRole('button',{name:'Running',exact:true}).click()
+  const opener=page.getByRole('button',{name:'Inspect running thermal',exact:true})
+  await page.getByRole('button',{name:'Expand Activity',exact:true}).click()
+  await opener.focus();await page.keyboard.press('Enter')
+  const inspector=page.getByRole('complementary',{name:'Evidence inspector',exact:true})
+  await inspector.getByRole('heading').waitFor()
+  assert.equal(await inspector.getByRole('heading').evaluate(el=>el===document.activeElement),true)
+  await page.screenshot({path:`output/inspector.png`.replace('output',output)})
+  await page.keyboard.press('Escape')
+  assert.equal(await opener.evaluate(el=>el===document.activeElement),true)
+  await page.keyboard.press('Escape')
+  checks.push('Activity fullscreen keyboard inspection and both Escape focus returns')
+  await page.getByRole('button',{name:'Map',exact:true}).click()
+  await page.getByRole('button',{name:'Dock Activity',exact:true}).click()
+  await page.getByRole('button',{name:'Inspect running thermal',exact:true}).click()
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(el=>el===document.activeElement,await page.getByRole('button',{name:'Inspect running thermal',exact:true}).elementHandle())
+  checks.push('Activity dock remount restores criterion opener')
+  await page.getByRole('button',{name:'Close Activity dock',exact:true}).click()
+  await page.getByRole('button',{name:'Activity',exact:true}).click()
+  await page.getByRole('button',{name:'Open running thermal in Series',exact:true}).click()
+  await page.getByRole('heading',{name:'Series',exact:true}).waitFor()
+  assert.match(await page.locator('.native-series select').first().inputValue(),/temperature_2m/)
+  await page.getByRole('button',{name:'Activity',exact:true}).click()
+  await page.getByRole('button',{name:'Load Running Map stack',exact:true}).click()
+  await page.getByRole('heading',{name:'Map',exact:true}).waitFor()
+  assert.equal(await page.locator('.bench-stack ol > li').count(),8)
+  assert.equal(await page.locator('.bench-stack ol > li').first().getByText('eccc-lightning-lightning',{exact:true}).count(),1)
+  checks.push('Activity criterion jumps to Series; selected top-first stack replaces Map with unavailable entries retained')
+  await page.getByRole('button',{name:'Activity',exact:true}).click()
+  await page.getByRole('button',{name:'Inspect running thermal',exact:true}).click()
+  failActivity=true
+  await page.getByRole('button',{name:'Refresh Activity',exact:true}).click()
+  await page.getByText(/Constructed Activity refresh failure/).first().waitFor()
+  assert.equal(await page.locator('.activity-lane[data-state=scored]').count(),0)
+  await inspector.getByText(/old values are withheld/).waitFor()
+  await page.keyboard.press('Escape')
+  failActivity=false
+  await page.getByRole('button',{name:'Refresh Activity',exact:true}).click()
+  await page.getByText(/Computed .*Cache miss/).waitFor()
+  checks.push('Failed replacement clears scores and current inspector; explicit retry recovers')
   await page.emulateMedia({reducedMotion:'reduce'})
-  await page.evaluate(()=>{document.documentElement.style.fontSize='200%'})
+  await page.evaluate(()=>document.documentElement.style.fontSize='200%')
   for(const view of ['Map','Series','Sources','Sky','Activity']) {
     await page.getByRole('button',{name:view,exact:true}).click()
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
-    await page.screenshot({path:`${output}/${view}-zoom200.png`})
   }
-  assert.match(await page.locator('#bench-stage').textContent(),/Activity absent in this four-view regression fixture/)
-  checks.push('All five shells at 200% text zoom and reduced motion; Activity absence explicitly retained')
+  await page.screenshot({path:`${output}/activity-zoom-200.png`})
+  await page.evaluate(()=>document.documentElement.style.fontSize='')
+  const cdp=await page.context().newCDPSession(page)
+  const ax=await cdp.send('Accessibility.getFullAXTree')
+  const unnamed=ax.nodes.filter(node=>!node.ignored&&['button','combobox','textbox','searchbox','slider','link','checkbox'].includes(node.role?.value)&&!node.name?.value?.trim())
+  assert.deepEqual(unnamed,[])
+  checks.push('Five assembled views at 200% text zoom; Activity accessibility tree has no unnamed controls (not a screen-reader session)')
+  await page.clock.runFor(301000)
+  await page.getByText('Activity expired. Refresh explicitly to read current evidence.',{exact:true}).waitFor()
+  assert.equal(await page.locator('.activity-lane[data-state=scored]').count(),0)
+  checks.push('Fixed expiry withholds scores without automatic retrieval')
   assert.deepEqual(errors,[])
-  await writeFile(`${output}/receipt.json`,JSON.stringify({checks,axResults,errors,externalRequests:'blocked',screenReader:'not tested',activity:'body not implemented',requests},null,2))
-  console.log(JSON.stringify({checks,axResults,errors},null,2))
-} catch(error) {await page.screenshot({path:`${output}/failure.png`});throw error} finally {await browser.close()}
+  await writeFile(`${output}/receipt.json`,JSON.stringify({checks,requests,errors,live_provider_evidence:false},null,2))
+  console.log(JSON.stringify({output,checks,errors},null,2))
+} finally { await browser.close() }

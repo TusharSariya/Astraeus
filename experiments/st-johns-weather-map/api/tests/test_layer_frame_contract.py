@@ -35,16 +35,8 @@ import xarray
 from fastapi.testclient import TestClient
 
 import weather_api.app  # noqa: F401
-from weather_api import aurora, satellite
+from weather_api import satellite
 from weather_api.app import PREFIX, app
-from tests.test_aurora_layer import (
-    CELL_BOUNDS as AURORA_BOUNDS,
-    FORECAST_INSTANT,
-    LATS as AURORA_LATS,
-    LONS as AURORA_LONS,
-    PROBS as AURORA_PROBS,
-    ovation_artifact,
-)
 from tests.test_rendered_grids import use_store
 from tests.test_satellite_layer import (
     CELL_BOUNDS as MASK_BOUNDS,
@@ -88,17 +80,6 @@ def single_scan_mask(offset: numpy.timedelta64 = numpy.timedelta64(0, "m")) -> x
     )
 
 
-def single_frame_aurora(offset: numpy.timedelta64 = numpy.timedelta64(0, "m")) -> xarray.Dataset:
-    return xarray.Dataset(
-        {"aurora_probability": (("valid_time", "latitude", "longitude"), AURORA_PROBS[None, ...].copy(), {"units": "percent"})},
-        coords={
-            "valid_time": [_stamp(FORECAST_INSTANT) + offset],
-            "latitude": AURORA_LATS,
-            "longitude": AURORA_LONS,
-        },
-    )
-
-
 class StubStore(MaskStore):
     """``MaskStore`` with the artifact the layer under test expects."""
 
@@ -111,7 +92,8 @@ class StubStore(MaskStore):
 #: subjects it to the whole contract below.
 ARTIFACT_LAYERS = [
     pytest.param(satellite.LAYER_ID, single_scan_mask, goes_artifact, MASK_BOUNDS, id="goes19-cloud-mask"),
-    pytest.param(aurora.LAYER_ID, single_frame_aurora, ovation_artifact, AURORA_BOUNDS, id="swpc-aurora-oval"),
+    # OVATION is now a timestamp-demand raster, not a stored-artifact layer.
+    # test_aurora_layer covers its native Forecast Time and stale-frame refusal.
 ]
 
 

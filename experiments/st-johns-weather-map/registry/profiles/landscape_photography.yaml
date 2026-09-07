@@ -1,5 +1,5 @@
 id: landscape_photography
-version: 1
+version: 2
 title: Landscape photography
 families:
 - cloud_cover
@@ -15,82 +15,63 @@ thresholds:
     default: 2.5
     units: mm h-1
     comparison: ge
-  cloud_sector_high:
-    field: total_cloud_opacity
-    default: 60.0
-    units: percent
-    comparison: ge
-  cloud_top_high:
-    field: cloud_top_height
-    default: 3000.0
-    units: m
-    comparison: ge
-  fog_present:
-    field: fog_closure
-    default: 0.5
-    units: '1'
-    comparison: ge
-  vis_low:
-    field: visibility
-    default: 5000.0
-    units: m
-    comparison: le
-  wind_high:
+  landscape_photography_wind_start:
     field: wind_speed_10m
-    default: 12.0
+    default: 5.7
     units: m s-1
     comparison: ge
-  sun_altitude_thresh:
+  landscape_photography_wind_full:
+    field: wind_speed_10m
+    default: 14.4
+    units: m s-1
+    comparison: ge
+  landscape_photography_sun_low_full:
     field: sun_altitude
-    default: -6.0
+    default: -12
     units: degree
     comparison: ge
-  wave_height_high:
-    field: significant_wave_height
-    default: 2.0
-    units: m
+  landscape_photography_sun_low_start:
+    field: sun_altitude
+    default: -6
+    units: degree
+    comparison: ge
+  landscape_photography_sun_high_start:
+    field: sun_altitude
+    default: 6
+    units: degree
+    comparison: ge
+  landscape_photography_sun_high_full:
+    field: sun_altitude
+    default: 12
+    units: degree
     comparison: ge
 weights:
-  cloud: 0.2
-  cloud_top: 0.1
-  fog: 0.1
-  visibility: 0.15
-  wind: 0.1
-  sun: 0.15
-  marine: 0.2
+  wind: 0.5
+  sun: 0.5
 hard_stops:
 - name: heavy_rain
   field: precipitation_rate
   threshold: precip_block
 graded_criteria:
-- name: cloud_sector_load
-  field: total_cloud_opacity
-  threshold: cloud_sector_high
-  weight: cloud
-- name: cloud_top_load
-  field: cloud_top_height
-  threshold: cloud_top_high
-  weight: cloud_top
-- name: fog_risk
-  field: fog_closure
-  threshold: fog_present
-  weight: fog
-- name: visibility_poor
-  field: visibility
-  threshold: vis_low
-  weight: visibility
-- name: wind_load
+- name: wind
   field: wind_speed_10m
-  threshold: wind_high
   weight: wind
-- name: sun_altitude_load
+  grade:
+    curve: linear
+    parameters:
+      start: landscape_photography_wind_start
+      full: landscape_photography_wind_full
+    comparison: ge
+- name: sun
   field: sun_altitude
-  threshold: sun_altitude_thresh
   weight: sun
-- name: sea_state_load
-  field: significant_wave_height
-  threshold: wave_height_high
-  weight: marine
+  grade:
+    curve: band
+    parameters:
+      low_full: landscape_photography_sun_low_full
+      low_start: landscape_photography_sun_low_start
+      high_start: landscape_photography_sun_high_start
+      high_full: landscape_photography_sun_high_full
 window:
   rule: sunrise_sunset_margin
   geometry_entry: de442_sun_moon_geometry
@@ -104,8 +85,62 @@ site_needs:
   sectors:
   - name: sun_azimuth_cloud
     field: total_cloud_opacity
-    bearing_deg: 90.0
     width_deg: 40.0
     max_range_km: 100.0
+    bearing_field: sun_azimuth
 blocked_fields: []
 wanted_not_catalogued: []
+intended_weights:
+  wind: 0.2
+  sun: 0.2
+  sun_sector_cloud: 0.6
+admitted_paths:
+  wind_speed_10m:
+  - eccc-hrdps
+  - eccc-rdps
+  - eccc-gdps
+  - noaa-gfs
+  sun_altitude:
+  - nasa-jpl-de442
+admission_residuals:
+- field: total_cloud_opacity
+  reason: No served sector query or returned sun_azimuth; arbitrary points are no_site
+  role: Sun-sector band outer 0/100, comfort 20/70 percent, low_cap 0.5
+- field: precipitation_rate
+  reason: No admitted rate path
+  role: Retain unknown 2.5 mm h-1 hard stop
+- field: significant_wave_height
+  reason: Coastal variant and danger rules remain separate
+  role: Context only
+- field: cloud_top_height
+  reason: Replacement budget not admitted together
+  role: 'Replacement: linear le 6100 to 2000 m, weight .10'
+- field: fog_closure
+  reason: No admitted fog producer
+  role: 'Replacement: linear ge .25 to .75, weight .10'
+- field: visibility
+  reason: Replacement budget waits for Sun-sector/height/fog paths
+  role: 'Replacement: linear le 20000 to 1000 m, weight .20; Sun-sector cloud .35,
+    wind .10, Sun altitude .15'
+- field: coastal_seascape
+  reason: Named variant not implemented
+  role: Sea-state band comfort .5 to 2.5 m, full anchors 0 and 6 m; photographic subject
+    only
+- field: wave_surge_danger_lightning_hold
+  reason: Site-specific wave/surge and spatial/temporal lightning contracts unverified
+  role: Future hard stops; no activation
+- field: layer_cloud_tide_swell_rainbow_crepuscular_ray_galactic_centre
+  reason: Context/opportunities only where returned; no additional base-profile loss
+  role: Named variants remain separate
+coverage_floor: 0.6
+saved_stack:
+- id: eccc-hrdps-surface-total-cloud
+  opacity: 0.85
+- id: geomet-live-hrdps-weong-fog-liquid
+  opacity: 0.85
+- id: geomet-live-hrdps-pr
+  opacity: 0.85
+- id: geomet-live-hrdps-wspd
+  opacity: 0.85
+- id: geomet-live-goes-east-naturalcolor
+  opacity: 0.85
