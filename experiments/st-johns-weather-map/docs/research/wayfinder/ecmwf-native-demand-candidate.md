@@ -94,3 +94,19 @@ replay path unchanged. No proof process remains running.
 `uv run --project tools/specs python tools/specs/specctl.py validate` from the
 repository root passes with zero errors and warnings. Public API wiring and
 resolution of the serving exception/AIFS native-cloud wording remain root-owned.
+
+### Native unit provenance correction (2026-09-07)
+
+The point sampler now copies each decoded variable's `original_units` into the
+artifact provenance consumed by `live_point_fields`, without mutating the cached
+entry. Previously the response fell back to normalized units. This changes
+metadata only: native temperature/dew point remain `K` with output `degC`,
+pressure remains `Pa` with output `hPa`, and IFS cloud `(0 - 1)` remains distinct
+from AIFS cloud `%`, both with output `percent`.
+
+The focused regression uses synthetic values and a one-cell Zarr payload with
+unit tokens verified by the retained native receipts above. Both product cases
+failed before the correction and pass afterward:
+`uv run --project experiments/st-johns-weather-map/api pytest -q experiments/st-johns-weather-map/api/tests/test_ecmwf_query.py -k point_sampler_preserves_verified_native_units`
+(2 passed). No new provider requests or decoder replay were performed for this
+metadata correction. The pending serving exception is unchanged.

@@ -361,9 +361,14 @@ class ECMWFQueryCoordinator:
             path = Path(directory) / "surface.zip"; path.write_bytes(entry.payload)
             store = zarr.storage.ZipStore(str(path), mode="r")
             dataset = xarray.open_zarr(store, consolidated=False)
+            provenance = dict(entry.provenance)
+            provenance["original_units"] = {
+                str(name): str(variable.attrs.get("original_units", variable.attrs.get("units", "")))
+                for name, variable in dataset.data_vars.items()
+            }
             sampler = LiveStore.__new__(LiveStore); sampler.skipped = []; sampler.unmodelled = []
             artifact = SimpleNamespace(source_id=self.source_id, logical_name="surface", revision_id=f"demand:{entry.content_digest}",
-                provenance=entry.provenance, run_time=entry.run_time, retrieved_at=entry.fetched_at, native_crs="EPSG:4326")
+                provenance=provenance, run_time=entry.run_time, retrieved_at=entry.fetched_at, native_crs="EPSG:4326")
             try:
                 samples = sampler._sample_dataset(dataset, artifact, latitude, longitude, entry.valid_time)
             finally:

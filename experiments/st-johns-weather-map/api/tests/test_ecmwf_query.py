@@ -232,3 +232,50 @@ def test_unsupported_product_and_geography_fail_before_transport():
     with pytest.raises(ECMWFQueryUnavailable, match="outside"):
         coordinator(fixture).point_fields(0, 0, RUN)
     assert not fixture.calls
+
+
+@pytest.mark.parametrize("source,cloud_units,cloud_native", [
+    ("ecmwf-ifs", "(0 - 1)", 0.5),
+    ("ecmwf-aifs-single", "%", 50.0),
+])
+def test_point_sampler_preserves_verified_native_units(source, cloud_units, cloud_native, tmp_path, monkeypatch):
+    """Native unit tokens match retained September 5 IFS/AIFS GRIB metadata.
+
+    Values/grid are synthetic; this exercises existing normalization and the
+    real point sampler without reading provider data or admitting the source.
+    """
+    import xarray
+    from ingest.grib import normalize_units, write_zarr
+    from ingest.manifest import RequiredField, RunManifest
+    from weather_api.ecmwf_query import ECMWFQueryEntry
+
+    dataset = xarray.Dataset({
+        name: (("valid_time", "latitude", "longitude"), [[[value]]], {"units": units})
+        for name, value, units in (("t2m", 280.15, "K"), ("d2m", 278.15, "K"),
+                                  ("msl", 101325.0, "Pa"), ("tcc", cloud_native, cloud_units))
+    }, coords={"valid_time": [RUN.replace(tzinfo=None)], "latitude": [47.5], "longitude": [-52.75]})
+    normalized = normalize_units(dataset).rename({"t2m": "temperature_2m", "d2m": "dew_point_2m",
+        "msl": "mean_sea_level_pressure", "tcc": "total_cloud_geometric"})
+    payload_path = write_zarr(normalized, tmp_path / "surface.zarr.zip")
+    manifest = RunManifest(source, tuple(RequiredField(name, units) for name, units in FIELDS.values()))
+    provenance = {"source_id": source, "product": PRODUCTS[source][1], "run_time": RUN.isoformat(),
+        "quality": {"status": "passed", "flags": []}, "coverage": {"status": "complete", "fraction": 1.0},
+        **manifest.as_manifest_block()}
+    cached = ECMWFQueryEntry(source, RUN, RUN, RUN, RUN + timedelta(seconds=TTL_SECONDS),
+        "a" * 64, provenance, payload_path.read_bytes())
+    fixture = Fixture(source); service = coordinator(fixture)
+    monkeypatch.setattr(service, "query", lambda *args, **kwargs: cached)
+    fields, _, sources = service.point_fields(47.5, -52.75, RUN)
+    by_key = {field.key: field for field in fields}
+    for key, original, normalized_unit, expected in (
+        ("temperature_2m", "K", "degC", 7.0), ("dew_point_2m", "K", "degC", 5.0),
+        ("mean_sea_level_pressure", "Pa", "hPa", 1013.25),
+        ("total_cloud_geometric", cloud_units, "percent", 50.0),
+    ):
+        field = by_key[key]
+        assert field.value == pytest.approx(expected)
+        assert field.provenance.original_units == original
+        assert field.provenance.normalized_units == normalized_unit
+        assert field.provenance.source_id == source
+    assert sources == [source] and not fixture.calls
+    assert "original_units" not in cached.provenance  # sampling must not mutate the cached entry
