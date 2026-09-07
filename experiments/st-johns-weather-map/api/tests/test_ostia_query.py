@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from pathlib import Path
 import json
 import httpx
 import numpy as np
@@ -92,7 +93,7 @@ def test_actual_linux_bounded_worker_replays_native_fixture():
     import sys
     from ingest.isolation import run_bounded_process
     from weather_api.ostia_query import LIMITS
-    code = "from test_ostia_query import worker_client; import runpy; from test_ostia_query import service; import ingest.http; ingest.http.PoliteClient=lambda **kwargs: worker_client(); runpy.run_module('weather_api.ostia_query_worker', run_name='__main__')"
+    code = f"import sys; sys.path.insert(0, {str(Path(__file__).resolve().parent)!r}); from test_ostia_query import worker_client; import runpy; from test_ostia_query import service; import ingest.http; ingest.http.PoliteClient=lambda **kwargs: worker_client(); runpy.run_module('weather_api.ostia_query_worker', run_name='__main__')"
     result = run_bounded_process(command=[sys.executable, '-c', code, '{output}'], stdin=DAY.isoformat().encode(), destination=None, limits=LIMITS, timeout_seconds=30, require_output=False)
     data = json.loads(result.stdout)
     assert data['valid_time'] == DAY.isoformat()
@@ -169,6 +170,8 @@ def test_forced_worker_termination_cleans_native_download_scratch(monkeypatch, t
     monkeypatch.setattr(isolation.tempfile, 'mkdtemp', record)
     receipt = tmp_path / 'scratch-location.txt'
     code = f"""
+import sys
+sys.path.insert(0, {str(Path(__file__).resolve().parent)!r})
 import runpy, time
 from pathlib import Path
 from test_ostia_query import service
