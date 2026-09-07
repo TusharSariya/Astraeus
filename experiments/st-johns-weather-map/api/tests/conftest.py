@@ -41,6 +41,18 @@ def fixture_only_deployment(monkeypatch: pytest.MonkeyPatch) -> None:
             return None
 
     monkeypatch.setattr(aqhi_query, "aqhi_query_service", lambda: NoAqhiFixture())
+    import weather_api.swob_query as swob_query
+
+    class NoSwobFixture:
+        @staticmethod
+        def point_fields(*_args, **_kwargs):
+            raise RuntimeError("explicit fixture: no SWOB demand observation")
+
+        @staticmethod
+        def cached_entries():
+            return ()
+
+    monkeypatch.setattr(swob_query, "swob_query_service", lambda: NoSwobFixture())
     yield
     reset_live_store()
 
