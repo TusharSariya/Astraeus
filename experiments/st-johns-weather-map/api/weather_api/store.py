@@ -2318,6 +2318,7 @@ def _build_live_provenance(
         evidence_class=sample.evidence_class,
         source_id=sample.source_id,
         artifact_revision=sample.revision_id,
+        demand_acquisition=provenance.get("demand_acquisition"),
         provider=config.producer if config else sample.source_id,
         product=config.product if config else sample.logical_name,
         forecast_centre=provenance.get("forecast_centre", config.producer if config else "unknown"),

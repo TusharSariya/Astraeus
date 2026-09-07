@@ -7,7 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 EXPERIMENT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(EXPERIMENT_ROOT) not in sys.path:  # registry/ ships beside api/ in both images
@@ -364,6 +364,63 @@ class NativeReportIdentity(StrictModel):
         return value
 
 
+RDPS_METADATA_MAX_BYTES = 64 * 1024
+_BoundedName = Annotated[str, Field(min_length=1, max_length=128)]
+_BoundedUrl = Annotated[str, Field(min_length=1, max_length=2048)]
+_BoundedHeaders = Annotated[dict[_BoundedName, Annotated[str, Field(max_length=2048)]], Field(max_length=16)]
+_SHA256 = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+
+
+class RDPSDemandRequest(StrictModel):
+    """Canonical provider selectors, independent of the client's minute."""
+
+    source_id: Literal["eccc-rdps"] = "eccc-rdps"
+    product: Literal["RDPS"] = "RDPS"
+    cycle_url: _BoundedUrl
+    provider_run_id: _BoundedName
+    lead: int = Field(ge=0, le=84)
+    fields: tuple[_BoundedName, ...] = Field(min_length=1, max_length=64)
+    bounds: dict[Literal["north", "south", "east", "west"], float] = Field(min_length=1, max_length=4)
+
+
+class RDPSTransportReceipt(StrictModel):
+    """One completed native field transfer; never the upstream body."""
+
+    field: _BoundedName
+    url: _BoundedUrl
+    request_headers: _BoundedHeaders
+    response_headers: _BoundedHeaders
+    bytes: int = Field(gt=0)
+    sha256: _SHA256
+    completed_at: AwareDatetime
+
+
+class RDPSAcquisition(StrictModel):
+    request: RDPSDemandRequest
+    run_time: AwareDatetime
+    valid_time: AwareDatetime
+    retrieval_time: AwareDatetime
+    normalized_sha256: _SHA256
+    transport_receipts: tuple[RDPSTransportReceipt, ...] = Field(max_length=64)
+    cached_at: AwareDatetime
+    expires_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def bound_metadata(self):
+        if self.expires_at <= self.cached_at:
+            raise ValueError("RDPS cache expiry must follow admission")
+        if len(self.model_dump_json().encode()) > RDPS_METADATA_MAX_BYTES:
+            raise ValueError("RDPS acquisition metadata exceeds its byte ceiling")
+        return self
+
+
+class RDPSDemandUnavailable(StrictModel):
+    source_id: Literal["eccc-rdps"] = "eccc-rdps"
+    reason: Literal["refresh_failed", "query_failed"]
+    error_type: _BoundedName
+    expired_acquisition: RDPSAcquisition | None = None
+
+
 class Provenance(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
@@ -420,6 +477,7 @@ class Provenance(StrictModel):
     intermediary_method: str | None = None
     adapter_version: str
     native_report: NativeReportIdentity | None = None
+    demand_acquisition: RDPSAcquisition | None = None
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
     #: echoing the request back would overstate where the reading came from.
@@ -1233,6 +1291,7 @@ class PointConsensus(StrictModel):
 
 
 class PointResponse(StrictModel):
+    demand_unavailable: RDPSDemandUnavailable | None = None
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
     latitude: float
@@ -1278,6 +1337,7 @@ class ProfileLevel(StrictModel):
 
 
 class ProfileResponse(StrictModel):
+    demand_unavailable: RDPSDemandUnavailable | None = None
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
     latitude: float

@@ -310,10 +310,11 @@ def test_kp_and_bz_never_appear_in_point_fields():
         assert item.field == "aurora_probability"
 
 
-def test_default_demand_point_does_not_fallback_to_stored_aurora(monkeypatch, data_mode):
+def test_default_demand_point_does_not_fallback_to_stored_aurora(monkeypatch, data_mode, no_default_demand_evidence):
     reference = now()
     store = StubStore([ovation_pair(reference)])
     use_store(monkeypatch, data_mode, store)
+    monkeypatch.setattr(api_module, "live_store", lambda: pytest.fail("default demand opened ArtifactStore"))
     payload = client.get(f"{PREFIX}/point", params={"valid_time": reference.isoformat()}).json()
     by_field = {item["field"]: item for item in payload["fields"]}
     assert "aurora_probability" not in by_field

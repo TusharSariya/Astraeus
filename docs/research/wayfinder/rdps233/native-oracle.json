@@ -1,0 +1,577 @@
+[
+  {
+    "field": "dew_point_2m",
+    "native_units": "K",
+    "normalized_units": "degC",
+    "native_value": 288.36500549316406,
+    "normalized_value": 15.214996337890625,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 406219,
+    "sha256": "746093d94b336848c9e2a9c67471dd02ca77ae29a7e72118313a3795c5c745f2"
+  },
+  {
+    "field": "mean_sea_level_pressure",
+    "native_units": "Pa",
+    "normalized_units": "hPa",
+    "native_value": 100360.09375,
+    "normalized_value": 1003.6009521484375,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 342108,
+    "sha256": "3fca06d2dc6da6196b1bace45c1bffe919ab3a716a8a09a36ba02ecbc9147836"
+  },
+  {
+    "field": "temperature_2m",
+    "native_units": "K",
+    "normalized_units": "degC",
+    "native_value": 288.703759765625,
+    "normalized_value": 15.55377197265625,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 651430,
+    "sha256": "0c944c187b2eb727b0b9aa40fa7e6f5ca47aed7240c700649a1da408b6673791"
+  },
+  {
+    "field": "total_cloud_opacity",
+    "native_units": "unknown",
+    "normalized_units": "percent",
+    "native_value": 98.0,
+    "normalized_value": 98.0,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 697477,
+    "sha256": "44f9527ac7fb8d88af1821bdece854fd0a9749c2f65a782a6c5ce61ef78cda6a"
+  },
+  {
+    "field": "wind_direction_10m",
+    "native_units": "Degree true",
+    "normalized_units": "degree",
+    "native_value": 85.30000000000001,
+    "normalized_value": 85.30000305175781,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 1006282,
+    "sha256": "74ad17cd9469097a8e8a9ae2a60007b87d4a2187ab48bcccfd8c41ad5d49109a"
+  },
+  {
+    "field": "wind_speed_10m",
+    "native_units": "m s**-1",
+    "normalized_units": "m s-1",
+    "native_value": 8.66,
+    "normalized_value": 8.65999984741211,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 889736,
+    "sha256": "f20b55b93aae29d60c089118204a99cc9ca840ab8dd3048cb9e3a0a2e73549b7"
+  },
+  {
+    "field": "geopotential_height_1000hPa",
+    "native_units": "gpm",
+    "normalized_units": "gpm",
+    "native_value": 30.537689208984375,
+    "normalized_value": 30.537689208984375,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 414374,
+    "sha256": "07d5e43b34355ba004609a9a775873b58e50cba4a9fa8a6c7cc1dacc3f419508"
+  },
+  {
+    "field": "geopotential_height_850hPa",
+    "native_units": "gpm",
+    "normalized_units": "gpm",
+    "native_value": 1401.2535400390625,
+    "normalized_value": 1401.2535400390625,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 373697,
+    "sha256": "07636d56ed9f9e1a97e2f7604bf6a725c2967c0fe5aec8c47ca46eeb1ff95cb1"
+  },
+  {
+    "field": "omega_500hPa",
+    "native_units": "Pa s**-1",
+    "normalized_units": "Pa s-1",
+    "native_value": -0.23,
+    "normalized_value": -0.23000000417232513,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 580139,
+    "sha256": "37ae03bf5cfbba2ff6e1c7266b0711e65feb733bee7f2e04b46a60e98b1fb853"
+  },
+  {
+    "field": "omega_700hPa",
+    "native_units": "Pa s**-1",
+    "normalized_units": "Pa s-1",
+    "native_value": 0.03,
+    "normalized_value": 0.029999999329447746,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 645761,
+    "sha256": "fd8495276bf70754ad05c6dc493236d4102921dd3ba2031b856ccad8fe7245c4"
+  },
+  {
+    "field": "omega_850hPa",
+    "native_units": "Pa s**-1",
+    "normalized_units": "Pa s-1",
+    "native_value": 0.14,
+    "normalized_value": 0.14000000059604645,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 747532,
+    "sha256": "bc3d6e258a762eedf89780c73d6dcc9f4ee575dc21a06b253b9f8f84d563228c"
+  },
+  {
+    "field": "relative_humidity_1000hPa",
+    "native_units": "%",
+    "normalized_units": "percent",
+    "native_value": 97.50642242431641,
+    "normalized_value": 97.50642395019531,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 1076821,
+    "sha256": "70ee56ee7acc75131898fe1f34be2ee2956e4eac42c8ab938b2a175c179edf09"
+  },
+  {
+    "field": "relative_humidity_500hPa",
+    "native_units": "%",
+    "normalized_units": "percent",
+    "native_value": 7.325,
+    "normalized_value": 7.324999809265137,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 887192,
+    "sha256": "e6cf2dc9f0a9704cd75992fed2ae344a637c535355137c903434b55cc9a5de8b"
+  },
+  {
+    "field": "relative_humidity_700hPa",
+    "native_units": "%",
+    "normalized_units": "percent",
+    "native_value": 29.25,
+    "normalized_value": 29.25,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 944802,
+    "sha256": "9e7d471f461773daa1a58463f6fbbce277c3f679d84aa1944f53590d1e42a0ef"
+  },
+  {
+    "field": "relative_humidity_850hPa",
+    "native_units": "%",
+    "normalized_units": "percent",
+    "native_value": 98.47500000000001,
+    "normalized_value": 98.4749984741211,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 1104018,
+    "sha256": "5b2a209c653649a2837e6e260187a434e29095e945b1aaf2dc7bf6fdb43521a6"
+  },
+  {
+    "field": "temperature_1000hPa",
+    "native_units": "K",
+    "normalized_units": "degC",
+    "native_value": 288.79025878906253,
+    "normalized_value": 15.6402587890625,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 541212,
+    "sha256": "9e20d826e6299b43ccffa1c33255a8c548b10842c6767b49424c164c4ead6237"
+  },
+  {
+    "field": "temperature_500hPa",
+    "native_units": "K",
+    "normalized_units": "degC",
+    "native_value": 259.64,
+    "normalized_value": -13.509979248046875,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 485859,
+    "sha256": "341ca1e9093ed39f1fcbc74f37e4421b0e962cf02ec35db3ec28f09511e0b721"
+  },
+  {
+    "field": "temperature_700hPa",
+    "native_units": "K",
+    "normalized_units": "degC",
+    "native_value": 277.6048583984375,
+    "normalized_value": 4.454864501953125,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 519780,
+    "sha256": "10e4ba44056e269eefae60f8b979842cbe97057228aa12e06f2cb64d7fbfeaa2"
+  },
+  {
+    "field": "temperature_850hPa",
+    "native_units": "K",
+    "normalized_units": "degC",
+    "native_value": 285.45908203125003,
+    "normalized_value": 12.30908203125,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 667086,
+    "sha256": "10e9fb07f1c9930e228c51b8509b88281c74cef4de3e40a691bac3635979b304"
+  },
+  {
+    "field": "wind_direction_500hPa",
+    "native_units": "Degree true",
+    "normalized_units": "degree",
+    "native_value": 168.9,
+    "normalized_value": 168.89999389648438,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 600568,
+    "sha256": "617b6a7302039f8509081d8190f2694fc2dd524e1df3a26c59495ef2095cfab2"
+  },
+  {
+    "field": "wind_direction_700hPa",
+    "native_units": "Degree true",
+    "normalized_units": "degree",
+    "native_value": 157.10000000000002,
+    "normalized_value": 157.10000610351562,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 714046,
+    "sha256": "e815d11b0562e43ce7ff1c37dcbac5be915f5c85aa7ac3d0f0b4f0253254d353"
+  },
+  {
+    "field": "wind_direction_850hPa",
+    "native_units": "Degree true",
+    "normalized_units": "degree",
+    "native_value": 114.0,
+    "normalized_value": 114.0,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 890870,
+    "sha256": "cd6e154bb68ec0a6fb15358c8bdfe8ce016561e302c78848cfd024d6616b984e"
+  },
+  {
+    "field": "wind_speed_500hPa",
+    "native_units": "m s**-1",
+    "normalized_units": "m s-1",
+    "native_value": 8.593485591933131,
+    "normalized_value": 8.593485832214355,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 611709,
+    "sha256": "c3b5ef6f63b000042b6e2172c45ddf31711f876cfdc9d446249b6c4e9ac38caa"
+  },
+  {
+    "field": "wind_speed_700hPa",
+    "native_units": "m s**-1",
+    "normalized_units": "m s-1",
+    "native_value": 6.51,
+    "normalized_value": 6.510000228881836,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 699600,
+    "sha256": "749546bd05dbac0e60f88c5c806f0cc61077a59d166f762e12bb5b2f50a40fa3"
+  },
+  {
+    "field": "wind_speed_850hPa",
+    "native_units": "m s**-1",
+    "normalized_units": "m s-1",
+    "native_value": 6.49,
+    "normalized_value": 6.489999771118164,
+    "cell": [
+      507,
+      880
+    ],
+    "lat": 47.556348,
+    "lon": -52.65260000000001,
+    "native_shape": [
+      1045,
+      1140
+    ],
+    "cropped_shape": [
+      35,
+      36
+    ],
+    "bytes": 850249,
+    "sha256": "9efd6c2391450c03347c2da7d6232f651af671f7ddc907d124624c149255e590"
+  }
+]

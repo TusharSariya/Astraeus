@@ -163,13 +163,11 @@ def test_the_hrdps_stored_total_cloud_layer_is_hidden_after_demand_cutover(monke
     assert "eccc-hrdps-surface-total-cloud" not in by_id
 
 
-def test_the_rdps_twin_is_offered_under_the_same_rules(monkeypatch, data_mode):
+def test_the_rdps_stored_twin_is_hidden_after_demand_cutover(monkeypatch, data_mode):
     use_store(monkeypatch, data_mode, CloudStore(cloud_dataset(), hrdps_artifact("eccc-rdps")))
     payload = client.get(f"{PREFIX}/layers").json()
     by_id = {layer["id"]: layer for layer in payload["layers"]}
-    layer = by_id["eccc-rdps-surface-total-cloud"]
-    assert layer["group"] == "rendered_grid"
-    assert layer["product"] == "ECCC-RDPS"
+    assert "eccc-rdps-surface-total-cloud" not in by_id
     assert "eccc-hrdps-surface-total-cloud" not in by_id
 
 

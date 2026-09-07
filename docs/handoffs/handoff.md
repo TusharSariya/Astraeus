@@ -4,6 +4,25 @@ Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
 history and the owner's earlier design selections.
 
+## PR234 review correction checkpoint
+
+The two independent-review blockers now preserve bounded RDPS request/transport
+identity in point/profile provenance and disclose expired metadata on refresh
+failure while withholding all expired values. Metadata is capped at four
+64-KiB records and one further source TTL; no retained native values or exception
+tracebacks back a failure. Directory refresh failures preserve the same identity.
+Retained native proof was replayed offline with zero upstream access and all
+25 receipt/value/unit/time/cell checks unchanged. See
+[the review correction evidence](../research/wayfinder/rdps233/README.md#pr234-independent-review-corrections).
+21 focused RDPS tests and the two corrected deterministic GFS fixture-clock
+tests pass; OpenSpec 75/75 and specctl 0/0 pass. The preceding full API run's
+2,090 passes/44 skips/two baseline fixture-clock failures remain recorded
+honestly; no full rerun or RDPS reacquisition followed the owner correction.
+Fresh independent targeted re-review of remediation head `e12a0f9` found no
+remaining Standards or Spec blocker. The focused deterministic tests and exact
+GitHub checks passed, so PR234 is approved for its authorized squash merge. No
+normative or operational status is promoted.
+
 ## Destination and map ownership
 
 ## Current owner correction: timestamp-driven delivery
@@ -232,3 +251,35 @@ Research and handoff prose are non-normative. Only the owner changes accepted,
 verified, or superseded specification status.
 
 Spec-Impact: none; this records authorized execution order and completion proof.
+
+
+## RDPS selected-time implementation awaiting independent review
+
+Issue #233 / PR #234 implements the bounded native RDPS slice under #70:
+six producer-native surface fields, nineteen current pressure-profile fields,
+and advertised hourly timeline metadata through f084. The selected-time path
+uses only a finite canonical-request cache (600-second TTL, four entries,
+32 MiB), with no background full run, two-run retention or ArtifactStore
+fallback. Native WindSpeed/WindDir prevent grid-relative components from being
+mislabelled as earth-relative direction. The experiment stays operational:false.
+
+Independent ecCodes comparison matched all 25 fields and nearest native cells;
+point/profile/timeline repeats added zero RDPS requests. Actual aggregate peak
+was 757,927,936 bytes under the 4 GiB cgroup ceiling. Existing Brief/Workbench
+replay and profile table passed. Full API: 2,088 passed/50 skipped; focused
+cutover 46 passed; registry 237 and four profiles; web 452/build; strict OpenSpec 75;
+specctl 0 errors/0 warnings. See `docs/research/wayfinder/rdps233/README.md`.
+
+The 214 additional vertical IDs remain with #188; additional mapped low levels,
+surface pressure and native/generated rasters remain outside this slice under
+#188/#70/#97. Generic retained-layer tests now use the independently registered
+six-hourly IFS source; an explicit RDPS stored-layer test asserts it is hidden.
+Older no-fallback tests use explicit unavailable demand fixtures so public
+provider variability cannot change their expected empty-demand result.
+
+PR #234 passed fresh independent targeted re-review after its two correction
+findings, with zero remaining Standards or Spec blockers. The review covered
+the exact typed provenance and expired-metadata paths; the wider native/UI proof
+remains the previously accepted evidence above. No normative status was
+promoted. Raw receipts, API responses and browser proof remain outside Git in
+`/private/tmp/rdps233-live`; this is audit evidence, never an application archive.
