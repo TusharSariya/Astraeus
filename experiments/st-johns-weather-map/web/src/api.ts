@@ -1498,6 +1498,7 @@ export interface RasterProvenance {
   imageBasis: string | null
   validTime: string | null
   referenceTime: string | null
+  observationTime: string | null
   upstreamUrl: string | null
   attribution: string | null
   byteSize: number | null
@@ -1576,6 +1577,7 @@ export async function loadLayerRaster(layer: LayerItem, request: RasterRequest, 
           imageBasis,
           validTime: response.headers.get('X-Weather-Valid-Time'),
           referenceTime: response.headers.get('X-Weather-Reference-Time'),
+          observationTime: response.headers.get('X-Weather-Observation-Time'),
           upstreamUrl: response.headers.get('X-Weather-Upstream-Url'),
           attribution: response.headers.get('X-Weather-Attribution'),
           byteSize: Number.isFinite(byteSize) && byteSize > 0 ? byteSize : null,

@@ -371,6 +371,7 @@ def demand_layer(layer_model: Any, *, z_index: int) -> Any:
     return layer_model(
         id=LAYER_ID, title=TITLE, kind="raster", field=VARIABLE,
         product="OVATION aurora probability nowcast", units=UNITS,
+        evidence_class="retrieved", family="space_weather", field_key=VARIABLE,
         semantics=("Bounded selected-time query of the current NOAA SWPC OVATION model grid; "
                    "the payload's Forecast Time must be within one native 10-minute interval of the selection. " + semantics()),
         times=[], cadence_seconds=NOMINAL_CADENCE_SECONDS,

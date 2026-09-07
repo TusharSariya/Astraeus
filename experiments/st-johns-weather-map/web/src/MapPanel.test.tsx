@@ -1135,7 +1135,7 @@ describe('MapPanel layer drawer', () => {
     const fetchMock = vi.fn().mockResolvedValue(rasterResponse({
       'X-Weather-Evidence-Basis': 'demand_query', 'X-Weather-Image-Basis': 'rendered_grid',
       'X-Weather-Source-Id': 'noaa-swpc-ovation', 'X-Weather-Valid-Time': '2026-08-30T04:00:00Z',
-      'X-Weather-Reference-Time': '2026-08-30T03:20:00Z',
+      'X-Weather-Reference-Time': 'none', 'X-Weather-Observation-Time': '2026-08-30T03:20:00Z',
     }, ['X-Weather-Wms-Layer']))
     vi.stubGlobal('fetch', fetchMock)
     const ovation: LayerItem = {
@@ -1150,6 +1150,8 @@ describe('MapPanel layer drawer', () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain('valid_time=2026-08-30T04%3A00%3A00.000Z')
     expect((await screen.findAllByText(/bounded selected-time noaa-swpc-ovation cache entry/i)).length).toBeGreaterThan(0)
     expect(screen.queryByText(/stored noaa-swpc-ovation artifact/i)).not.toBeInTheDocument()
+    expect((await screen.findAllByText(/observation time 2026-08-30T03:20:00Z/i)).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/model run 2026-08-30T03:20:00Z/i)).not.toBeInTheDocument()
   })
 
   it('never composites adjacent frames for a selected-time demand layer', async () => {

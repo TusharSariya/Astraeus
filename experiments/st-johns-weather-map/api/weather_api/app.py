@@ -1809,6 +1809,10 @@ def _aurora_raster(*, moment, bounds, width, height, crs) -> Response:
         raise HTTPException(status_code=422, detail=str(error)) from error
     headers = image.headers()
     headers["X-Weather-Evidence-Basis"] = "demand_query"
+    # OVATION declares Observation Time and Forecast Time, not a producer run.
+    # Do not relabel the observation as a model run through the generic header.
+    headers["X-Weather-Reference-Time"] = "none"
+    headers["X-Weather-Observation-Time"] = entry.observation_time.isoformat()
     headers["X-Weather-Retrieval-Time"] = entry.acquisition.transport_completed_at.isoformat()
     headers["X-Weather-Upstream-Completion-Time"] = entry.acquisition.transport_completed_at.isoformat()
     headers["X-Weather-Content-Digest"] = entry.acquisition.body_sha256

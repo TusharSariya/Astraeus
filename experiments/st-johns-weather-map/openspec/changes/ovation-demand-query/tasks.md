@@ -10,5 +10,5 @@
   receipt provenance and no storage fallback.
 - [x] Add deterministic worker, cache, expiry, route, rendering, zero/missing,
   and no-fetch layer-list regressions.
-- [ ] Run focused gates, root specification validation, independent review, and
+- [x] Run focused gates, root specification validation, independent review, and
   browser/UI readback before merge.

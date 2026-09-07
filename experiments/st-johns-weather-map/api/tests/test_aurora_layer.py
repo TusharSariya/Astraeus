@@ -94,7 +94,8 @@ def test_demand_raster_receipt_and_model_headers_are_truthful(monkeypatch, data_
     headers = raster().headers
     assert headers["X-Weather-Evidence-Basis"] == "demand_query"
     assert headers["X-Weather-Valid-Time"] == FORECAST.isoformat()
-    assert headers["X-Weather-Reference-Time"] == OBSERVATION.isoformat()
+    assert headers["X-Weather-Reference-Time"] == "none"
+    assert headers["X-Weather-Observation-Time"] == OBSERVATION.isoformat()
     assert headers["X-Weather-Retrieval-Time"] == FORECAST.isoformat()
     assert headers["X-Weather-Content-Digest"] == "a" * 64
     receipt = json.loads(headers["X-Weather-Acquisition"])
@@ -116,6 +117,9 @@ def test_layer_listing_is_requestable_but_makes_no_provider_request(monkeypatch,
     entry = {layer["id"]: layer for layer in layers}[aurora.LAYER_ID]
     assert service.calls == []
     assert entry["evidence_basis"] == "demand_query"
+    assert entry["evidence_class"] == "retrieved"
+    assert entry["family"] == "space_weather"
+    assert entry["field_key"] == "aurora_probability"
     assert entry["times"] == []
     assert entry["staleness_tolerance_seconds"] == 600
     assert "selected-time query" in entry["semantics"]
