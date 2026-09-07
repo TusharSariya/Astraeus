@@ -126,8 +126,9 @@ The desktop implementation contract is pending owner decision in draft
 prototype keyboard repairs, while reader, assembled-production, raster/Activity
 and physical-device evidence remains open; it is not a certification or a
 current application implementation slice. #65 is owner-only outdoor validation,
-#53 remains deferred, #66 needs a camera-placement decision, and #54/#55 are
-covered by PR239. Do not create a competing frontend change until the applicable
+#53 remains deferred, #66 needs a camera-placement decision, and #54 and the API-contract proposal portion of #55 remain open;
+[PR239](https://github.com/TusharSariya/Astraeus/pull/239) covers only the frontend
+proposal portion of #55. Do not create a competing frontend change until the applicable
 owner decision changes this disposition.
 
 The owner's current autonomous product outcome is one working desktop application
