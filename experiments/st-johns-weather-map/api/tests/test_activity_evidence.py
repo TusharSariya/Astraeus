@@ -82,7 +82,9 @@ def test_registered_entry_is_single_profile_input_switchable_and_refuses_out_of_
     assert entry.reader_switchable and entry.version == '1'
     monkeypatch.setenv('WEATHER_DERIVED_HERE', '1')
     assert REGISTRY.resolve(ACTIVITY_VERDICT, reader_disabled=[ACTIVITY_VERDICT]).code == 'reader_disabled'
-    assert entry.output.range_rule == 'null' and (entry.output.minimum, entry.output.maximum) == (0, 100)
+    assert REGISTRY.bound(ACTIVITY_VERDICT, 'verdict_score', 100) == (100, ())
+    assert REGISTRY.bound(ACTIVITY_VERDICT, 'verdict_score', 101) == (None, ('range_refused',))
+    assert REGISTRY.bound(ACTIVITY_VERDICT, 'verdict_score', -1) == (None, ('range_refused',))
 
 
 @pytest.mark.parametrize('flag', ['derivation_refused', 'provenance_unmodelled', 'contract_incomplete', 'statistic_refused'])
