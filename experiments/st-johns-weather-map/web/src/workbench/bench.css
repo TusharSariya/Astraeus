@@ -205,3 +205,6 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 
 .bench-returned-fields dt { font-family: 'Atkinson Hyperlegible Next Variable', system-ui, sans-serif; }
 .bench-companion .bench-returned-fields > div { padding: .2rem 0; border: 0; }
+
+.bench-fullscreen .bench-body:has(> .bench-inspector) { grid-template-columns: minmax(0, 1fr) minmax(280px, 32%); }
+@media (max-width: 900px) { .bench-fullscreen .bench-body:has(> .bench-inspector) { grid-template-columns: minmax(0, 1fr); } }

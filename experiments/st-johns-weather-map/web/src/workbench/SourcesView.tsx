@@ -51,7 +51,7 @@ export function useSourcesView(props: Props) {
     </div>
     <p>Declared capability, successful acquisition and evidence at Focus are separate facts. Native samples and listed frames do not imply continuous or geographic coverage.</p>
     {props.catalogError && <p>Catalogue unreadable: {props.catalogError}</p>}{props.statusError && <p>Acquisition status unreadable: {props.statusError}</p>}
-    <p>{visible.length} sources match. {selected && <>Inspected source: {selected}{!visible.includes(selected) && ' (outside the current filters)'}</>}</p>
+    <p role="status" aria-atomic="true">{visible.length} sources match. {selected && <>Inspected source: {selected}{!visible.includes(selected) && ' (outside the current filters)'}</>}</p>
     {perspective === 'Ledger' && <div className="sources-table"><table><caption>Source Ledger at the shared Focus</caption><thead><tr><th scope="col">Source</th><th scope="col">Declared capability</th><th scope="col">Acquisition report</th><th scope="col">Returned point evidence</th><th scope="col">Provenance</th></tr></thead><tbody>
       {visible.map((id) => {
         const source = catalog.find((entry) => entry.id === id), status = statuses?.find((entry) => entry.source_id === id), values = readings(id)

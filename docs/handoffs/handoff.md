@@ -4,6 +4,23 @@ Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
 history and the owner's earlier design selections.
 
+## Current collaborative App Wayfinder work, September 7
+
+The owner switched to working through individual #38 issues together, beginning
+with #69, then requested larger autonomous implementation/review/merge batches.
+Map skip/readability #291, Sources filter return #292 and Series return #293 are
+merged. The assembled desktop accessibility batch is on
+`audit/app69-desktop-access` at `/tmp/astraeus-app69-desktop-access`.
+
+Its 504-test client suite, production build and four-view keyboard/browser audit
+pass, including fullscreen/dock inspection, Sky failure/recovery, source/run/track
+names and semantic controls. See the existing desktop OpenSpec task checkpoint
+for compact evidence and manual reader procedure. Actual screen-reader testing,
+Activity's unwired body, physical outdoor checks and the full five-view milestone
+remain separate outstanding obligations. Keep #69 open. No source feed is admitted
+by these UI tests. Finish review and passing merge of this batch before another.
+Earlier Activity sequencing below remains historical; no budget decision is pending.
+
 ## Desktop-first owner authorization, September 7, 2026
 
 The owner now directs completion of the five-view desktop (#38) before the

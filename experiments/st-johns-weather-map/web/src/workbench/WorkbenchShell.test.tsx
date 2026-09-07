@@ -31,3 +31,13 @@ describe('Bench composition', () => {
     expect(screen.getByRole('button', { name: 'Expand Map' })).toBeInTheDocument()
   })
 })
+
+it('keeps provenance available in fullscreen and returns expansion focus to its opener', async () => {
+  const user = userEvent.setup()
+  render(<WorkbenchShell view="Map" dock={null} onView={() => {}} onDock={() => {}} focus="Focus" status="Status" timeline="Time" views={{Map:'Map',Sources:'Sources',Series:'Series',Sky:'Sky',Activity:'Activity'}} inspector={<aside aria-label="Evidence inspector"><h2>Inspected reading</h2><button>Close inspector</button></aside>} />)
+  await user.click(screen.getByRole('button', {name:'Expand Map'}))
+  expect(screen.getByRole('complementary', {name:'Evidence inspector'})).toBeInTheDocument()
+  await user.click(screen.getByRole('button', {name:'Return to Bench'}))
+  await new Promise(resolve => requestAnimationFrame(resolve))
+  expect(screen.getByRole('button', {name:'Expand Map'})).toHaveFocus()
+})

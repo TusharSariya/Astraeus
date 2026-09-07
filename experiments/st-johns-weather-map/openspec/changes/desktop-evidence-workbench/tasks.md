@@ -16,14 +16,14 @@ Contract acceptance does not check off implementation tasks.
 ## 3. Shared provenance and accessibility
 
 - [ ] 3.1 Add `web/src/workbench/EvidenceGlyph.tsx`, `EvidenceRow.tsx`, and `EvidenceInspector.tsx` with response-owned sentences and explicit missing-property states; verify retrieved, generated, null, blocked, aged-out, refused, and unknown-class fixtures with `npm test -- --run src/workbench/EvidenceInspector.test.tsx`.
-- [ ] 3.2 Preserve opener and logical focus through inspector open, Close, scoped Escape, rerender, and opener removal; verify keyboard behavior with `npm test -- --run src/workbench/evidenceFocus.test.tsx`.
+- [x] 3.2 Preserve opener and logical focus through inspector open, Close, scoped Escape, rerender, and opener removal; verify keyboard behavior with `npm test -- --run src/workbench/inspectorReturn.test.tsx src/workbench/WorkbenchShell.test.tsx`.
 - [ ] 3.3 Add Map and timeline semantic alternatives plus concise status announcements; verify accessible names, table content, and live-region updates with `npm test -- --run src/workbench/WorkbenchShell.test.tsx src/workbench/MapStack.test.tsx`.
 
 ## 4. Styling and deterministic acceptance
 
 - [ ] 4.1 Apply the selected desktop tokens and Bench layout in `web/src/styles.css`, including visible focus, non-colour state cues, 200% text zoom, dark and red-night themes, and reduced-motion handling; verify Chromium screenshots and keyboard order against fixed fixtures at 1440x900 and 200% zoom.
 - [x] 4.2 Run the focused client suite and production build with `npm test -- --run src/workbench src/MapPanel.test.tsx src/api.test.ts && npm run build` from `experiments/st-johns-weather-map/web`.
-- [ ] 4.3 Run the fixture-backed Chromium procedure with a fixed clock and confirm zero live-provider requests, all controls keyboard-reachable, inspector focus entry/return, and identical visual/text absence reasons; record browser coordinates and results in the issue without claiming a screen-reader pass.
+- [x] 4.3 Run the fixture-backed Chromium procedure with a fixed clock and confirm zero live-provider requests, all controls keyboard-reachable, inspector focus entry/return, and identical visual/text absence reasons; record browser coordinates and results in the issue without claiming a screen-reader pass.
 - [x] 4.4 Run `npx -y @fission-ai/openspec@latest validate desktop-evidence-workbench --strict` from `experiments/st-johns-weather-map` and `uv run --project tools/specs python tools/specs/specctl.py validate` from the repository root before implementation handoff.
 
 ## 5. Complete the selected view bodies
@@ -333,3 +333,61 @@ remains untested; #69 remains open.
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; desktop workbench requirements
 “Evidence interactions preserve keyboard context” and “Series implements the
 selected Overview and temporary Compare”.
+
+
+## Issue #69: assembled desktop keyboard and inspection batch
+
+Owner direction: merge passing routine repairs autonomously and work in larger
+batches. #291/#292/#293 are merged. This batch completes the selected return-focus
+mechanics and current fixture-backed browser procedure (tasks 3.2/4.3), not the
+unfinished Activity body or all accessibility work.
+
+Repairs: fullscreen keeps the inspector reachable; scoped Escape closes only
+inspection, and fullscreen exit returns to the expansion opener. Closing an
+inspector that temporarily replaced a dock restores its unique logical reading
+control and disclosure; ambiguous/missing controls use the view's local fallback.
+Mounted-view focus returns remain immediate; only remounted docks wait for the
+render. Sky inspection now resolves from the same current Sky inputs as the view,
+including failed/recovered astronomy, registry and planetary evidence. The point
+refresh handler only owns point-field inspection. Native/point inspection names
+include their time and source; native comparisons also name run and track. Sky
+prints evidence class/source alongside geometry and scalar readings. Sources
+result counts announce politely. The noninteractive deck overlay leaves the Tab
+order while the keyboard MapLibre canvas and semantic sample table remain.
+
+Verification: full client suite 504 passed, including eight GPU shader cases;
+production build passed. `web/scripts/prove-desktop-access.mjs` checks all four
+implemented views in fullscreen, three restored docks, distinct same-field/time
+comparison controls, Sky failure/recovery, three themes, loaded Hyperlegible,
+200% text zoom and reduced motion. With fixture disclosures opened as test setup,
+actual Tab traversal reaches 100 Map, 55 Series, 61 Sources and 54 Sky controls;
+Chromium accessibility trees report no unnamed tested interactive controls.
+These counts are fixture-specific, not a claim about every provider catalogue.
+
+Existing Map inspection, Sources keyboard, Series keyboard and assembled Sky
+browser regressions also pass against the final production build. Fixed clocks
+and explicitly constructed fixtures; provider traffic is blocked. Captures and
+receipts remain at `/tmp/astraeus-desktop-access-proof/` and
+`/tmp/astraeus-access-*-regression/` outside Git. Review was a separate main-agent
+pass. Initial regression failures identified delayed focus return and a startup
+request crossing the filter-proof baseline; mounted returns remain synchronous
+and the fixed clock settles startup before acquisition-count assertions.
+
+Strict changed OpenSpec and repository specctl pass. No API, science, provider,
+cache or registry admission changes. Unknown, absent, expired and failed evidence
+retain their meanings. Activity remains explicitly unwired; tasks 5.3/5.5/5.6 and
+#69 remain open for their outstanding scope.
+
+Actual screen-reader procedure (not performed): use VoiceOver with Safari or
+NVDA with Firefox; record browser/reader versions and verbatim relevant output.
+At a fixed fixture Focus, read the evidence table and source/class/value/absence;
+open inspection, verify its heading is announced, move to Close and return to the
+reading. Repeat after filter removal, native expiry and a dock remount. Verify
+source/run/track names distinguish Compare actions, Sources result counts announce
+without moving focus, and failed Sky geometry is announced as absence. Record
+what was heard separately from the Chromium tree and keyboard receipts. Physical
+outdoor/red-night testing remains #65, and Activity gets its own audit when wired.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; accepted desktop requirements
+for shared provenance, keyboard context, semantic alternatives, native Series,
+Sky, Sources and the Bench shell.

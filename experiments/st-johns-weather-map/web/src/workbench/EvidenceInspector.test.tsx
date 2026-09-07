@@ -10,7 +10,7 @@ describe('response-owned evidence', () => {
     const inspect = vi.fn(); const rows = point(0).servedFields
     render(<EvidenceLedger rows={rows} onInspect={inspect} />)
     expect(screen.getByRole('table')).toHaveTextContent('0')
-    await userEvent.click(screen.getByRole('button', { name: 'Inspect temperature from noaa-gfs' }))
+    await userEvent.click(screen.getByRole('button', { name: /^Inspect temperature from noaa\-gfs/ }))
     expect(inspect.mock.calls[0][0].attribution.sourceId).toBe('noaa-gfs')
   })
   it('focuses the inspector once and preserves focus on same-key response updates', () => {

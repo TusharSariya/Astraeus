@@ -30,7 +30,7 @@ export function EvidenceLedger({ rows, onInspect }: { rows: ServedFieldValue[]; 
         <td><EvidenceGlyph kind={a.evidenceClass} /><span>{EVIDENCE_CLASS_LABELS[a.evidenceClass]}</span></td>
         <th scope="row">{row.field}<small><SourceTag id={a.sourceId} /></small><small>{a.validTime ?? 'Native time not supplied'}</small></th>
         <td>{row.hasValue && !refused ? text : '—'}<small>{!row.hasValue || refused ? a.notice ?? (a.qualityFlags.join(', ') || 'Value not supplied') : row.units}</small></td>
-        <td><button onClick={(event) => onInspect({ key: evidenceKey(row), label: row.field, text, attribution: a }, event.currentTarget)} aria-label={`Inspect ${row.field} from ${a.sourceId ?? 'unknown source'}`}>Inspect</button></td>
+        <td><button onClick={(event) => onInspect({ key: evidenceKey(row), label: row.field, text, attribution: a }, event.currentTarget)} aria-label={`Inspect ${row.field} from ${a.sourceId ?? 'unknown source'} at ${a.validTime ?? 'unknown native time'}${a.runTime ? `, run ${a.runTime}` : ''}`}>Inspect</button></td>
       </tr>
     })}</tbody>
   </table>

@@ -15,6 +15,7 @@ function Harness({ enabled = true }: { enabled?: boolean }) {
 it('keeps declared geography and acquisition separate from point coverage across perspectives', async () => {
   const rendered = render(<Harness />)
   await userEvent.type(screen.getByRole('searchbox'), 'declared-only')
+  expect(screen.getByRole('status')).toHaveTextContent('1 sources match')
   expect(screen.getByRole('table')).toHaveTextContent('Global declaration')
   expect(screen.getByRole('table', { name: 'Source Ledger at the shared Focus' })).toHaveTextContent('No readings returned at Focus; coverage unestablished')
   await userEvent.click(screen.getByRole('button', { name: 'Inspect source declared-only' }))
@@ -66,7 +67,7 @@ it('keeps finite native selection scope, loaded-page limits and expiry separate 
   await userEvent.click(screen.getByRole('button', { name: 'Coverage lanes' }))
   expect(screen.getByText(/No point samples were returned/)).toBeInTheDocument()
   await userEvent.click(screen.getByText(/Native values, gaps and run identity/))
-  await userEvent.click(screen.getByRole('button', { name: 'Inspect temperature_2m at 2026-09-07T12:00:00Z' }))
+  await userEvent.click(screen.getByRole('button', { name: /^Inspect temperature_2m at 2026\-09\-07T12:00:00Z/ }))
   expect(inspect.mock.lastCall?.[0].key).toMatch(/^native:finite:/)
   rendered.rerender(<NativeHarness expired />)
   expect(screen.getByText(/Native selection expired/)).toBeInTheDocument()

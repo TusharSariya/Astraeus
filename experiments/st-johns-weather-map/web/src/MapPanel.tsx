@@ -664,6 +664,13 @@ export function MapPanel({
       })
       overlayRef.current = overlay
       map.addControl(overlay as unknown as maplibregl.IControl)
+      // The overlay has no keyboard interaction; its reports have the Map sample table.
+      // Keep MapLibre's named, keyboard-operable canvas available.
+      const overlayCanvas = overlay.getCanvas?.()
+      if (overlayCanvas && overlayCanvas !== map.getCanvas()) {
+        overlayCanvas.tabIndex = -1
+        overlayCanvas.setAttribute('aria-hidden', 'true')
+      }
     })
 
     map.on('click', (event) => {

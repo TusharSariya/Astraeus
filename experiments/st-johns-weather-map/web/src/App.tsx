@@ -1,6 +1,7 @@
+import { captureInspectorReturn, restoreInspectorReturn, type InspectorReturn } from './workbench/inspectorReturn'
 import { MapSamplesLink, MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
 import { mapRunRefusals } from './workbench/layerIdentity'
-import { SkyView } from './workbench/SkyView'
+import { SkyView, skyEvidence } from './workbench/SkyView'
 import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
 import { sourceEvidence, useSourcesView } from './workbench/SourcesView'
 import { useNativeSeries, type SharedSeriesSelection } from './workbench/NativeSeries'
@@ -384,21 +385,16 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [registryError, setRegistryError] = useState('Loading registered site metadata…')
   const [mapDrawReceipts, setDrawn] = useState<DrawEvidence[]>([])
   const [inspected, setInspected] = useState<InspectedEvidence | null>(null)
-  const opener = useRef<HTMLButtonElement | null>(null)
-  const inspectorFallback = useRef<HTMLInputElement | HTMLSelectElement | null>(null)
+  const inspectorReturn = useRef<InspectorReturn | null>(null)
   const inspect = useCallback((evidence: InspectedEvidence, element: HTMLButtonElement) => {
-    opener.current = element
-    inspectorFallback.current = element.closest('.sources-view')?.querySelector<HTMLInputElement>('input[type="search"]')
-      ?? element.closest('.native-series')?.querySelector<HTMLSelectElement>('[data-inspector-return]') ?? null
+    inspectorReturn.current = captureInspectorReturn(element)
     setInspected(evidence)
   }, [])
   const closeInspector = () => {
+    const target = inspectorReturn.current
     setInspected(null)
-    opener.current?.focus()
-    if (opener.current?.isConnected && document.activeElement === opener.current) return
-    inspectorFallback.current?.focus()
-    if (inspectorFallback.current?.isConnected && document.activeElement === inspectorFallback.current) return
-    document.getElementById('bench-stage')?.focus()
+    if (!target?.scope || target.scope.isConnected) restoreInspectorReturn(target)
+    else requestAnimationFrame(() => restoreInspectorReturn(target))
   }
 
   const { theme, setTheme } = useTheme()
@@ -878,7 +874,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   }, [reference])
   useEffect(() => {
     setInspected((current) => {
-      if (!current || current.key.startsWith('layer:') || current.key.startsWith('source:')) return current
+      if (!current?.key.startsWith('value:')) return current
       const row = snapshot.servedFields.find((row) => evidenceKey(row) === current.key)
       return row ? { ...current, text: row.text, attribution: row.attribution } : { ...current, text: 'Evidence is no longer returned for the current Focus.', attribution: undefined, details: { Availability: 'Unavailable for current Focus' } }
     })
@@ -1838,6 +1834,14 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     onRun: (source, run) => setRunChoices((current) => ({ ...current, [source]: run })),
     onLatest: (source) => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next }),
   })
+  const skyProps = useMemo(() => ({
+    site: registeredFocus && registeredFocus.latitude === location.latitude && registeredFocus.longitude === location.longitude ? registeredFocus : null,
+    registryVersion: registeredSites?.version ?? null, fields: snapshot.servedFields,
+    astronomy: astronomy && astronomy.latitude === location.latitude && astronomy.longitude === location.longitude && Date.parse(astronomy.valid_time) === selectedMs ? astronomy : null,
+    astronomyNotice, spaceWeather: spaceWeatherFor === new Date(selectedMs).toISOString() ? spaceWeather : null,
+    spaceWeatherNotice, cameras: cameraRegistry, cameraNotice, onInspect: inspect,
+  }), [registeredFocus, location.latitude, location.longitude, registeredSites?.version, snapshot.servedFields, astronomy, selectedMs, astronomyNotice, spaceWeatherFor, spaceWeather, spaceWeatherNotice, cameraRegistry, cameraNotice, inspect])
+  useEffect(() => { setInspected(current => current?.key.startsWith('sky:') ? skyEvidence(current.key, skyProps) : current) }, [skyProps])
   if (legacyOpen) return <><button className="return-bench" onClick={() => setLegacyOpen(false)}>Return to desktop Bench</button>{legacy}</>
   const ledger = <EvidenceLedger rows={snapshot.servedFields.filter((field) => !runChoices[field.attribution.sourceId ?? ''] || runChoices[field.attribution.sourceId ?? ''] === 'latest')} onInspect={inspect} />
   const migrationNotice = <p className="bench-migration">The selected view is being assembled. Current response-backed panels remain available in Existing evidence panels.</p>
@@ -1855,9 +1859,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     views={{
       Map: <><MapSamplesLink /><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
       Series: nativeSeries,
-      Sky: <SkyView site={registeredFocus && registeredFocus.latitude === location.latitude && registeredFocus.longitude === location.longitude ? registeredFocus : null} registryVersion={registeredSites?.version ?? null} fields={snapshot.servedFields}
-        astronomy={astronomy && astronomy.latitude === location.latitude && astronomy.longitude === location.longitude && Date.parse(astronomy.valid_time) === selectedMs ? astronomy : null} astronomyNotice={astronomyNotice}
-        spaceWeather={spaceWeatherFor === new Date(selectedMs).toISOString() ? spaceWeather : null} spaceWeatherNotice={spaceWeatherNotice} cameras={cameraRegistry} cameraNotice={cameraNotice} onInspect={inspect} />,
+      Sky: <SkyView {...skyProps} />,
       Activity: <>{migrationNotice}<p>Server profile verdicts are not wired into these lanes yet. No score is calculated by this client.</p></>,
       Sources: sourcesView,
     }} />
