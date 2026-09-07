@@ -23,6 +23,7 @@ from ingest.cameras.derive import (
     request_numeric_visibility,
 )
 from ingest.derive.registry import (
+    ACTIVITY_VERDICT,
     CAMERA_ENABLED_WITHOUT_VALIDATION,
     CAMERA_FOG_VISIBILITY_CLASS,
     CAMERA_HORIZON_FOG_BANK,
@@ -136,6 +137,7 @@ def test_the_first_entries_are_registered() -> None:
         SECTOR_SAMPLING,
         DE442_GEOMETRY,
         *CAMERA_METHODS,
+        ACTIVITY_VERDICT,
     ]
 
 

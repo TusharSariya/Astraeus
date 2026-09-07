@@ -20,6 +20,20 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Activity input implementation checkpoint, September 7, 2026
+
+Contract #282 merged as `f335863`. Isolated Activity work at
+`/tmp/astraeus-desktop-activity` implements registered grading curves and typed
+native input/criterion evaluation. Verification: 160 affected API tests, 17 client
+tests, build, strict desktop API OpenSpec and specctl pass. Main-agent review
+only. Aggregate scoring, profile edits, routes and four-lane UI remain open.
+
+One specific scoring decision is pending with the owner: after excluding an
+unverified active path (running PM2.5, weight 0.15, #172), normalize the remaining
+selected weights to 1 or withhold the profile until its complete selected budget
+is available. The agent recommends disclosed normalization but has not applied
+it. Hold only dependent aggregation; continue the other desktop obligations.
+
 ## Activity contract handoff, September 7, 2026
 
 Sky #281 merged as `bf85b53`. The main agent is completing the previously
