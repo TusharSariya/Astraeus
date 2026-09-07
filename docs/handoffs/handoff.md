@@ -118,6 +118,18 @@ maps or create another master map. Source work may make routine changes needed
 by the existing UI; new layout, styling, shared-snapshot UX, and desktop design
 stay with #38.
 
+### Current #38 queue disposition
+
+The desktop implementation contract is pending owner decision in draft
+[PR239](https://github.com/TusharSariya/Astraeus/pull/239). Accessibility issue
+[#69](https://github.com/TusharSariya/Astraeus/issues/69) has passing isolated
+prototype keyboard repairs, while reader, assembled-production, raster/Activity
+and physical-device evidence remains open; it is not a certification or a
+current application implementation slice. #65 is owner-only outdoor validation,
+#53 remains deferred, #66 needs a camera-placement decision, and #54/#55 are
+covered by PR239. Do not create a competing frontend change until the applicable
+owner decision changes this disposition.
+
 The owner's current autonomous product outcome is one working desktop application
 that uses every relevant eligible source. #70 owns source truth through the
 existing client; #38 owns the subsequent desktop interaction and visual rebuild
