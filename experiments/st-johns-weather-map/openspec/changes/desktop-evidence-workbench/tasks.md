@@ -229,3 +229,28 @@ This completes the shared source-style component, not all of task 5.5: Activity
 body/strips and final cross-view token audit remain with the assembled milestone.
 No new science, provider acquisition, API or source admission changes. Physical
 screen-reader/outdoor verification remains separate.
+
+
+## Issue #69: direct keyboard access to Map samples
+
+The owner selected the first collaborative repair: a visible “Skip to Map
+samples” link at the start of the Map body. It opens the existing disclosure,
+focuses its heading and leaves the shared Focus URL unchanged. The next Tab
+reaches the first native reading's Inspect action when readings exist. Empty
+samples keep their existing explicit absence explanation. This does not inspect
+or acquire evidence automatically.
+
+Verification: 9 affected component tests and production build pass. The fixed
+Chromium procedure `web/scripts/prove-map-samples-keyboard.mjs` uses keyboard-only
+navigation from page entry, including the global skip link, and verifies two
+Tabs to the new link, heading focus, unchanged URL, the next reading action,
+Enter/Space inspection and Close/Escape return. Captures and receipt remain
+outside Git at `/tmp/astraeus-app69-fixed-proof/`. Repository specctl passes.
+Separate main-agent review checked that the link is available in stage/dock,
+uses the existing focus outline and a 44px target, and does not alter evidence.
+This closes only this navigation repair; #69 and the broader accessibility
+obligations remain open. No actual screen-reader or outdoor pass is claimed.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; desktop workbench requirements
+“Evidence interactions preserve keyboard context” and “Canvas evidence has a
+semantic alternative”.

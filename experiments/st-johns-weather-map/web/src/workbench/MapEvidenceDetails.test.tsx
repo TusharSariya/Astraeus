@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
-import { MapEvidenceDetails, openMapFeature, mapLayerEvidence, featureEvidenceKey } from './MapEvidenceDetails'
+import { MapSamplesLink, MapEvidenceDetails, openMapFeature, mapLayerEvidence, featureEvidenceKey } from './MapEvidenceDetails'
 import type { DrawEvidence } from './MapStack'
 import type { LayerItem } from '../types'
 const at = '2026-09-07T12:00:00Z'
@@ -40,4 +40,22 @@ it('distinguishes identical reports inspected under different exact Focus select
   const first = { ...draw, selection: { latitude: 47.5, longitude: -52.7, instant: Date.parse(at) } }
   expect(featureEvidenceKey(first, 0)).not.toBe(featureEvidenceKey({ ...first, selection: { ...first.selection, latitude: 47.6 } }, 0))
   expect(featureEvidenceKey(first, 0)).not.toBe(featureEvidenceKey({ ...first, selection: { ...first.selection, instant: first.selection.instant + 1 } }, 0))
+})
+
+
+it('jumps past Map controls into samples without changing Focus or inspecting a value', async () => {
+  const user = userEvent.setup(), inspect = vi.fn(), select = vi.fn()
+  Element.prototype.scrollIntoView = vi.fn()
+  render(<><MapSamplesLink /><button>Map control to bypass</button><MapEvidenceDetails layers={[layer]} drawn={[draw]} location={{ id: 'point', name: 'Point', kind: 'map', latitude: 47.51, longitude: -52.69 }} instant={Date.parse(at)} statuses={[]} responseSourceIds={new Set()} onSelect={select} onInspect={inspect} /></>)
+  const href = window.location.href
+  await user.tab()
+  expect(screen.getByRole('link', { name: 'Skip to Map samples' })).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(document.querySelector('details')?.open).toBe(true)
+  expect(screen.getByRole('heading', { name: 'Map samples and display provenance' })).toHaveFocus()
+  expect(window.location.href).toBe(href)
+  expect(select).not.toHaveBeenCalled()
+  expect(inspect).not.toHaveBeenCalled()
+  await user.tab()
+  expect(screen.getByRole('button', { name: 'Inspect FIXTURE from Station reports' })).toHaveFocus()
 })

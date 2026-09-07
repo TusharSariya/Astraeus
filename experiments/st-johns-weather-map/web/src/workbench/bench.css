@@ -193,3 +193,5 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 .bench-map-evidence th, .bench-map-evidence td { padding: .5rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .bench-map-evidence pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; }
 .bench-map-evidence summary { min-height: 44px; }
+
+.bench-map-samples-link { display: inline-flex; align-items: center; min-height: 44px; }
