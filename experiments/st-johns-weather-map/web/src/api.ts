@@ -1743,6 +1743,14 @@ function sameRunOrUnknown(layer: LayerItem, previousTime: string, nextTime: stri
 }
 
 export function resolveLayerFrame(layer: LayerItem, at: Date, opts: { interpolate: boolean; reference: Date }): FrameResolution {
+  // A current demand layer deliberately advertises no fetched frame: the
+  // selected instant is sent to its bounded native-query endpoint, which then
+  // accepts or refuses it. Giving it an invented advertised frame would claim
+  // provider coverage before that query; refusing it here would make the
+  // requestable layer unusable.
+  if ((layer.times?.length ?? 0) === 0 && layer.evidence_basis === 'demand_query' && layer.raster_available === true) {
+    return { kind: 'exact', frame: { time: at.toISOString(), offsetSeconds: 0 } }
+  }
   if ((layer.times?.length ?? 0) === 0) return { kind: 'none', reason: 'this layer published no frames', nearest: null }
   const observed = isObservedGroup(layer)
   // A forecast layer under the display-interpolation setting composites its

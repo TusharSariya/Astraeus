@@ -810,6 +810,11 @@ describe('frame fallback resolution (resolveLayerFrame)', () => {
     expect(resolveLayerFrame(bare, reference, opts)).toMatchObject({ kind: 'none', reason: 'this layer published no frames' })
   })
 
+  it('sends an unadvertised current demand layer to its selected-time endpoint', () => {
+    const demand = { ...forecast, times: [], evidence_basis: 'demand_query', raster_available: true }
+    expect(resolveLayerFrame(demand, reference, opts)).toEqual({ kind: 'exact', frame: { time: reference.toISOString(), offsetSeconds: 0 } })
+  })
+
   it('exposes 0, 1 or 2 drawable frames per resolution kind', () => {
     expect(drawableFrames(resolveLayerFrame(forecast, new Date('2026-08-30T04:00:00Z'), opts))).toHaveLength(1)
     expect(drawableFrames(resolveLayerFrame(forecast, new Date('2026-08-30T04:15:00Z'), { interpolate: true, reference }))).toHaveLength(2)

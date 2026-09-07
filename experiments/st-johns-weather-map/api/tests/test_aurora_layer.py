@@ -1,261 +1,184 @@
-"""The aurora-oval layer: a disclosed model nowcast, rendered fail-closed.
-
-The store is stubbed with a synthetic OVATION grid of the shape the SWPC
-adapter publishes. Under test is the rendering contract: cells below the
-disclosed 2 percent threshold are fully transparent, the green-to-red ramp is
-exactly the declared colormap, the offered frame is the file's own forecast
-instant, staleness and absence remove the layer with a notice, and every
-response says what it is.
-"""
-
+"""OVATION demand-raster rendering preserves the native current grid."""
 from __future__ import annotations
 
-import sys as _sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+import json
+import sys
 
 import numpy
-import xarray
 from fastapi.testclient import TestClient
 
+from weather_api import aurora, ovation_query
 import weather_api.app  # noqa: F401
-from ingest.store import CurrentArtifact
-from weather_api import aurora
 from weather_api.app import PREFIX, app
-from weather_api.fixtures import now
-from tests.test_rendered_grids import decode_png, use_store
 
-UTC = timezone.utc
-api_module = _sys.modules["weather_api.app"]
+api_module = sys.modules["weather_api.app"]
+from weather_api.models import KpAcquisition
+from weather_api.ovation_query import OvationEntry, OvationFrameUnavailable, OvationUnavailable
+from tests.test_rendered_grids import GridStore, decode_png, grid_dataset, use_store
+
 client = TestClient(app)
-
-#: Cell centres, ascending, 1 degree, as the adapter stores them.
-LATS = numpy.array([46.0, 47.0, 48.0, 49.0])
-LONS = numpy.array([-54.0, -53.0, -52.0, -51.0])
+LATS = [46.0, 47.0, 48.0, 49.0]
+LONS = [-54.0, -53.0, -52.0, -51.0]
 CELL_BOUNDS = {"south": 45.5, "west": -54.5, "north": 49.5, "east": -50.5}
-
-#: Distinct probabilities: below-threshold cells, the exact threshold, the
-#: exact maximum, and a NaN (a cell the crop never filled).
+FORECAST = datetime(2026, 9, 7, 1, 40, tzinfo=UTC)
+OBSERVATION = FORECAST - timedelta(minutes=40)
 PROBS = numpy.array([
-    [0.0, 1.0, 1.9, 2.0],
-    [5.0, 10.0, 20.0, 30.0],
-    [50.0, 60.0, 70.0, numpy.nan],
-    [90.0, 95.0, 99.0, 100.0],
-], dtype="float64")
-
-#: The forecast instant sits just ahead of the wall clock, as a real OVATION
-#: nowcast does (~30-40 min past its observation instant). Fixed at import so
-#: every reference within a test run agrees.
-FORECAST_INSTANT = datetime.now(UTC).replace(second=0, microsecond=0) + timedelta(minutes=30)
+    [0.0, 1.0, 1.9, 2.0], [5.0, 10.0, 20.0, 30.0],
+    [50.0, 60.0, 70.0, numpy.nan], [90.0, 95.0, 99.0, 100.0],
+])
 
 
-def aurora_dataset(valid_time: datetime | None = None, variables: tuple[str, ...] = ("aurora_probability",)) -> xarray.Dataset:
-    stamp = valid_time or FORECAST_INSTANT
-    stamps = [numpy.datetime64(stamp.replace(tzinfo=None), "ns")]
-    data = {
-        name: (("valid_time", "latitude", "longitude"), PROBS[None, ...].copy(), {"units": "percent"})
-        for name in variables
-    }
-    return xarray.Dataset(data, coords={"valid_time": stamps, "latitude": LATS, "longitude": LONS})
-
-
-def ovation_artifact() -> CurrentArtifact:
-    stamp = now()
-    return CurrentArtifact(
-        source_id="noaa-swpc-ovation",
-        logical_name="aurora_grid",
-        revision_id="revision-swpc-ovation",
-        object_key="artifacts/noaa-swpc-ovation/aurora_grid",
-        media_type="application/zarr+zip",
-        byte_size=1024,
-        provenance={"product": "OVATION aurora probability nowcast"},
-        published_at=stamp,
-        run_time=stamp - timedelta(minutes=40),
-        retrieved_at=stamp,
-        provider_run_id="swpc-ovation-202608310149",
-        native_crs="EPSG:4326",
+def demand_entry() -> OvationEntry:
+    cells = tuple((lat, lon, float(PROBS[row, col])) for row, lat in enumerate(LATS)
+                  for col, lon in enumerate(LONS) if numpy.isfinite(PROBS[row, col]))
+    acquisition = KpAcquisition(
+        provider_url=ovation_query.OVATION_URL, effective_url=ovation_query.OVATION_URL,
+        request_headers={"accept": "application/json"}, response_headers={"cache-control": "max-age=60"},
+        transport_completed_at=FORECAST, body_bytes=777, body_sha256="a" * 64,
+        expires_at=FORECAST + timedelta(minutes=1),
     )
+    return OvationEntry(OBSERVATION, FORECAST, cells, acquisition, float("inf"))
 
 
-class AuroraStore:
-    """A reachable live store publishing exactly one OVATION grid artifact."""
+class DemandService:
+    def __init__(self, entry: OvationEntry | None = None, error: Exception | None = None) -> None:
+        self.entry, self.error, self.calls = entry, error, []
 
-    skipped: list = []
+    def entry_for(self, selected: datetime) -> OvationEntry:
+        self.calls.append(selected)
+        if self.error:
+            raise self.error
+        assert self.entry is not None
+        if not self.entry.supports(selected):
+            raise OvationFrameUnavailable("selected time is outside the native OVATION Forecast Time tolerance")
+        return self.entry
 
-    def __init__(self, dataset, artifact=None):
-        self._dataset = dataset
-        self._artifact = artifact if artifact is not None else ovation_artifact()
 
+def use_demand(monkeypatch, data_mode, service: DemandService) -> None:
+    # The layer index remains local. The provider call is made only by raster.
+    use_store(monkeypatch, data_mode, GridStore(grid_dataset()))
+    monkeypatch.setattr(ovation_query, "ovation_query_service", lambda: service)
+
+
+def raster(params: dict | None = None):
+    query = {"valid_time": FORECAST.isoformat(), "width": 8, "height": 8, **CELL_BOUNDS}
+    query.update(params or {})
+    return client.get(f"{PREFIX}/layers/{aurora.LAYER_ID}/raster", params=query)
+
+
+def test_demand_raster_preserves_zero_missing_and_nearest_native_cells(monkeypatch, data_mode):
+    service = DemandService(demand_entry())
+    use_demand(monkeypatch, data_mode, service)
+    response = raster()
+    assert response.status_code == 200
+    pixels = decode_png(response.content)
+
+    def cell(row, col):
+        return pixels[(3 - row) * 2, col * 2]
+
+    for col in range(3):
+        assert tuple(cell(0, col)) == (0, 0, 0, 0)
+    assert tuple(cell(0, 3)) == (*aurora.GREEN_RGB, aurora.ALPHA_MIN)
+    assert tuple(cell(3, 3)) == (*aurora.RED_RGB, aurora.ALPHA_MAX)
+    assert tuple(cell(2, 3)) == (0, 0, 0, 0)
+    for row in range(0, 8, 2):
+        for col in range(0, 8, 2):
+            block = pixels[row:row + 2, col:col + 2].reshape(4, 4)
+            assert (block == block[0]).all()
+
+
+def test_demand_raster_receipt_and_model_headers_are_truthful(monkeypatch, data_mode):
+    service = DemandService(demand_entry())
+    use_demand(monkeypatch, data_mode, service)
+    headers = raster().headers
+    assert headers["X-Weather-Evidence-Basis"] == "demand_query"
+    assert headers["X-Weather-Valid-Time"] == FORECAST.isoformat()
+    assert headers["X-Weather-Reference-Time"] == OBSERVATION.isoformat()
+    assert headers["X-Weather-Retrieval-Time"] == FORECAST.isoformat()
+    assert headers["X-Weather-Content-Digest"] == "a" * 64
+    receipt = json.loads(headers["X-Weather-Acquisition"])
+    assert receipt == {
+        "provider_url": ovation_query.OVATION_URL, "effective_url": ovation_query.OVATION_URL,
+        "request_headers": {"accept": "application/json"}, "response_headers": {"cache-control": "max-age=60"},
+        "transport_completed_at": FORECAST.isoformat(), "body_bytes": 777, "body_sha256": "a" * 64,
+        "expires_at": (FORECAST + timedelta(minutes=1)).isoformat(),
+    }
+    assert headers["X-Weather-Operational"] == "false"
+    assert "Forecast Time" in headers["X-Weather-Time-Semantics"]
+    assert "OVATION" in headers["X-Weather-Render-Semantics"]
+
+
+def test_layer_listing_is_requestable_but_makes_no_provider_request(monkeypatch, data_mode):
+    service = DemandService(demand_entry())
+    use_demand(monkeypatch, data_mode, service)
+    layers = client.get(f"{PREFIX}/layers").json()["layers"]
+    entry = {layer["id"]: layer for layer in layers}[aurora.LAYER_ID]
+    assert service.calls == []
+    assert entry["evidence_basis"] == "demand_query"
+    assert entry["times"] == []
+    assert entry["staleness_tolerance_seconds"] == 600
+    assert "selected-time query" in entry["semantics"]
+
+
+def test_selection_beyond_existing_native_interval_is_422(monkeypatch, data_mode):
+    service = DemandService(demand_entry())
+    use_demand(monkeypatch, data_mode, service)
+    response = raster({"valid_time": (FORECAST + timedelta(seconds=601)).isoformat()})
+    assert response.status_code == 422
+    assert "Forecast Time tolerance" in response.json()["detail"]
+
+
+def test_expired_replacement_failure_withholds_values_but_discloses_receipt(monkeypatch, data_mode):
+    cached = demand_entry().acquisition
+    service = DemandService(error=OvationUnavailable("SWPC OVATION transport failed: ConnectError", cached=cached))
+    use_demand(monkeypatch, data_mode, service)
+    response = raster()
+    assert response.status_code == 502
+    assert response.json()["detail"] == {
+        "reason": "SWPC OVATION transport failed: ConnectError", "cached_identity": "a" * 64,
+        "cached_expires_at": cached.expires_at.isoformat(), "values_withheld": True,
+    }
+    assert response.headers["X-Weather-Values-Withheld"] == "true"
+    assert response.headers["X-Weather-Cached-Content-Digest"] == "a" * 64
+    assert response.headers["X-Weather-Cached-Expiry"] == cached.expires_at.isoformat()
+
+
+def test_legend_keeps_model_threshold_and_guidance_disclosure():
+    response = client.get(f"{PREFIX}/layers/{aurora.LAYER_ID}/legend")
+    assert response.status_code == 200
+    caption = response.headers["X-Weather-Legend-Semantics"]
+    assert "OVATION" in caption and "30-40" in caption and "2 percent" in caption and "Kp 4-5" in caption
+
+
+class NoArtifactsStore:
     def current(self):
-        return [self._artifact] if self._artifact is not None else []
-
-    def open(self, artifact):
-        if self._dataset is None:
-            raise RuntimeError("unreadable artifact")
-        return self._dataset
-
-    def published_layer_times(self):
-        return {}
-
-    def published_products(self):
-        return {}
-
-    def sample_point(self, *args, **kwargs):
         return []
 
     def source_activity(self):
         return {}
 
 
-def _raster(params=None):
-    query = {
-        "valid_time": FORECAST_INSTANT.isoformat(),
-        "width": 8, "height": 8,
-        **CELL_BOUNDS,
-    }
-    query.update(params or {})
-    return client.get(f"{PREFIX}/layers/{aurora.LAYER_ID}/raster", params=query)
+class FailingStore:
+    def current(self):
+        raise RuntimeError("legacy store failed")
 
 
-# ------------------------------------------------------------- rendering
+def test_demand_layer_listing_survives_absent_failing_or_empty_legacy_store(monkeypatch, data_mode):
+    data_mode("live")
+    monkeypatch.setattr(api_module, "_proxied_forecast_layers", lambda: ([], []))
+    for store in (None, FailingStore(), NoArtifactsStore()):
+        monkeypatch.setattr(api_module, "live_store", lambda store=store: store)
+        response = client.get(f"{PREFIX}/layers")
+        assert response.status_code == 200
+        assert response.json()["data_mode"] == "live"
+        assert aurora.LAYER_ID in {row["id"] for row in response.json()["layers"]}
 
 
-def test_below_threshold_is_transparent_and_the_ramp_is_the_declared_one(monkeypatch, data_mode):
-    use_store(monkeypatch, data_mode, AuroraStore(aurora_dataset()))
-    response = _raster()
+def test_ovation_product_filter_is_requestable_without_the_legacy_store(monkeypatch, data_mode):
+    data_mode("live")
+    monkeypatch.setattr(api_module, "live_store", lambda: None)
+    response = client.get(f"{PREFIX}/layers", params={"product": "OVATION"})
     assert response.status_code == 200
-    assert response.headers["content-type"] == "image/png"
-    pixels = decode_png(response.content)
-
-    # 8x8 pixels over 4x4 cells: each cell is a 2x2 block; row 0 is north.
-    def cell(row, col):
-        return pixels[(3 - row) * 2, col * 2]
-
-    for col in range(3):  # 0.0, 1.0 and 1.9 percent: below the threshold
-        assert tuple(cell(0, col)) == (0, 0, 0, 0), f"cell {col} below the 2 percent threshold must be transparent"
-    threshold = cell(0, 3)  # exactly 2 percent: the green end at minimum alpha
-    assert tuple(threshold) == (*aurora.GREEN_RGB, aurora.ALPHA_MIN)
-    maximum = cell(3, 3)  # 100 percent: the red end at maximum alpha
-    assert tuple(maximum) == (*aurora.RED_RGB, aurora.ALPHA_MAX)
-    assert aurora.ALPHA_MAX < 255, "the oval never fully hides the basemap"
-    missing = cell(2, 3)  # NaN: no stored value, never painted
-    assert tuple(missing) == (0, 0, 0, 0)
-
-
-def test_blocks_are_uniform_nearest_neighbour(monkeypatch, data_mode):
-    use_store(monkeypatch, data_mode, AuroraStore(aurora_dataset()))
-    pixels = decode_png(_raster().content)
-    for row in range(0, 8, 2):
-        for col in range(0, 8, 2):
-            block = pixels[row:row + 2, col:col + 2].reshape(4, 4)
-            assert (block == block[0]).all(), "each 2x2 block is one stored cell, no blending"
-
-
-# ------------------------------------------------------------- provenance
-
-
-def test_headers_declare_rendered_grid_provenance(monkeypatch, data_mode):
-    use_store(monkeypatch, data_mode, AuroraStore(aurora_dataset()))
-    headers = _raster().headers
-    assert headers["X-Weather-Image-Basis"] == "rendered_grid"
-    assert headers["X-Weather-Evidence-Basis"] == "published_artifact"
-    assert headers["X-Weather-Source-Id"] == "noaa-swpc-ovation"
-    assert headers["X-Weather-Retrieval-Status"] == "retrieved"
-    assert headers["X-Weather-Valid-Time"] == FORECAST_INSTANT.isoformat()
-    assert "Forecast Time" in headers["X-Weather-Time-Semantics"]
-    assert headers["X-Weather-Operational"] == "false"
-    assert "2 percent" in headers["X-Weather-Colormap"]
-    assert "green" in headers["X-Weather-Colormap"]
-
-
-# --------------------------------------------------------------- failures
-
-
-def test_frame_beyond_tolerance_is_422(monkeypatch, data_mode):
-    use_store(monkeypatch, data_mode, AuroraStore(aurora_dataset()))
-    late = FORECAST_INSTANT + timedelta(minutes=45)
-    response = _raster({"valid_time": late.isoformat()})
-    assert response.status_code == 422
-    assert "nearest" in response.json()["detail"]
-
-
-def test_missing_artifact_is_404(monkeypatch, data_mode):
-    store = AuroraStore(aurora_dataset())
-    store._artifact = None
-    use_store(monkeypatch, data_mode, store)
-    assert _raster().status_code == 404
-
-
-def test_unreadable_artifact_is_502_nothing_substituted(monkeypatch, data_mode):
-    use_store(monkeypatch, data_mode, AuroraStore(None))
-    response = _raster()
-    assert response.status_code == 502
-    assert "no aurora grid was read" in response.json()["detail"]
-
-
-# ------------------------------------------------------------- the index
-
-
-def test_layer_listed_in_the_rendered_grid_group_once(monkeypatch, data_mode):
-    use_store(monkeypatch, data_mode, AuroraStore(aurora_dataset()))
-    layers = client.get(f"{PREFIX}/layers").json()["layers"]
-    by_id = {layer["id"]: layer for layer in layers}
-    assert aurora.LAYER_ID in by_id
-    entry = by_id[aurora.LAYER_ID]
-    assert entry["group"] == "rendered_grid"
-    assert entry["evidence_basis"] == "published_artifact"
-    assert entry["raster_available"] and entry["legend_available"]
-    assert entry["upstream_wms_layer"] is None
-    assert [datetime.fromisoformat(t) for t in entry["times"]] == [FORECAST_INSTANT]
-    # One native interval of the OVATION grid.
-    assert entry["staleness_tolerance_seconds"] == 600
-    assert aurora.STALENESS_TOLERANCE_SECONDS == 600  # the unknown-cadence fallback agrees
-    assert "OVATION model probabilities" in entry["semantics"]
-    assert "Kp 4-5" in entry["semantics"]
-    # The generic artifact-derived listing does not duplicate it.
-    assert "noaa-swpc-ovation-aurora_grid" not in by_id
-
-
-def test_stale_grid_removes_the_layer_with_a_notice(monkeypatch, data_mode):
-    stale = aurora_dataset(valid_time=datetime.now(UTC) - timedelta(hours=3))
-    use_store(monkeypatch, data_mode, AuroraStore(stale))
-    body = client.get(f"{PREFIX}/layers").json()
-    assert aurora.LAYER_ID not in {layer["id"] for layer in body["layers"]}
-    assert any("staleness tolerance" in notice and "never rendered as absence of aurora" in notice for notice in body["notices"])
-
-
-def test_absent_artifact_removes_the_layer_with_a_notice(monkeypatch, data_mode):
-    """Another artifact is published, so the index is live; the aurora feed is
-    simply missing, and the index says so rather than staying silent."""
-    from tests.test_rendered_grids import GridStore, grid_dataset
-
-    use_store(monkeypatch, data_mode, GridStore(grid_dataset()))
-    body = client.get(f"{PREFIX}/layers").json()
-    assert aurora.LAYER_ID not in {layer["id"] for layer in body["layers"]}
-    assert any(aurora.LAYER_ID in notice and "never rendered as absence of aurora" in notice for notice in body["notices"])
-
-
-def test_missing_variable_is_a_notice_not_a_guess(monkeypatch, data_mode):
-    use_store(monkeypatch, data_mode, AuroraStore(aurora_dataset(variables=("something_else",))))
-    body = client.get(f"{PREFIX}/layers").json()
-    assert aurora.LAYER_ID not in {layer["id"] for layer in body["layers"]}
-    assert any("aurora_probability" in notice for notice in body["notices"])
-
-
-# --------------------------------------------------------------- legend
-
-
-def test_legend_disclosure_names_the_model_the_horizon_the_threshold_and_the_guidance(monkeypatch, data_mode):
-    use_store(monkeypatch, data_mode, AuroraStore(aurora_dataset()))
-    response = client.get(f"{PREFIX}/layers/{aurora.LAYER_ID}/legend")
-    assert response.status_code == 200
-    assert response.headers["X-Weather-Legend-Basis"] == "renderer_colormap"
-    assert response.headers["X-Weather-Image-Basis"] == "rendered_grid"
-    caption = response.headers["X-Weather-Legend-Semantics"]
-    assert "OVATION" in caption
-    assert "30-40" in caption
-    assert "2 percent" in caption
-    assert "Kp 4-5" in caption
-    assert "53-54" in caption
-    pixels = decode_png(response.content)
-    # The below-threshold segment is drawn over a visible checker (two greys).
-    assert len(numpy.unique(pixels[:, :32, 0])) >= 2
+    assert [row["id"] for row in response.json()["layers"]] == [aurora.LAYER_ID]
+    assert response.json()["layers"][0]["times"] == []
