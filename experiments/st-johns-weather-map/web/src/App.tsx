@@ -1,4 +1,4 @@
-import { MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
+import { MapSamplesLink, MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
 import { mapRunRefusals } from './workbench/layerIdentity'
 import { SkyView } from './workbench/SkyView'
 import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
@@ -1840,7 +1840,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     timeline={benchTimeline}
     inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} /> : undefined}
     views={{
-      Map: <><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
+      Map: <><MapSamplesLink /><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
       Series: nativeSeries,
       Sky: <SkyView site={registeredFocus && registeredFocus.latitude === location.latitude && registeredFocus.longitude === location.longitude ? registeredFocus : null} registryVersion={registeredSites?.version ?? null} fields={snapshot.servedFields}
         astronomy={astronomy && astronomy.latitude === location.latitude && astronomy.longitude === location.longitude && Date.parse(astronomy.valid_time) === selectedMs ? astronomy : null} astronomyNotice={astronomyNotice}

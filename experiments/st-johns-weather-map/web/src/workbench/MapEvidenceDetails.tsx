@@ -1,3 +1,4 @@
+import { ReturnedValue, readableGeometry } from './ReturnedValue'
 import { SourceTag } from './SourceTag'
 import type { GeoJsonFeature, LayerItem, LocationPoint, SourceStatusItem } from '../types'
 import { stationCoverage, stations } from '../fixtures'
@@ -33,6 +34,19 @@ function featureName(feature: GeoJsonFeature, index: number) {
   return typeof name === 'string' || typeof name === 'number' ? String(name) : `Feature ${index + 1}`
 }
 
+/** Jump within the current Map without changing its shared Focus URL. */
+export function MapSamplesLink() {
+  return <a className="bench-map-samples-link" href="#bench-map-samples" onClick={(event) => {
+    const heading = document.getElementById('bench-map-samples')
+    const disclosure = heading?.closest('details')
+    if (!heading || !disclosure) return
+    event.preventDefault()
+    disclosure.open = true
+    heading.focus()
+    heading.scrollIntoView({ block: 'nearest' })
+  }}>Skip to Map samples</a>
+}
+
 /** Semantic counterpart of the actually displayed features, without a new acquisition. */
 export function MapEvidenceDetails({ layers, drawn, location, instant, statuses, responseSourceIds, onSelect, onInspect }: {
   layers: LayerItem[]; drawn: DrawEvidence[]; location: LocationPoint; instant: number; statuses: SourceStatusItem[] | null; responseSourceIds: ReadonlySet<string>
@@ -40,15 +54,16 @@ export function MapEvidenceDetails({ layers, drawn, location, instant, statuses,
 }) {
   const features = drawn.filter((row) => row.drawn).flatMap((row) => row.features?.map((feature, index) => ({ row, feature, index })) ?? [])
   return <details className="bench-map-evidence"><summary>Map samples and display provenance · {features.length} returned features</summary>
+    <h3 id="bench-map-samples" tabIndex={-1}>Map samples and display provenance</h3>
     <p>Focus {location.latitude}, {location.longitude} at {new Date(instant).toISOString()}. Raster images do not supply a numeric value at an arbitrary pixel. Feature properties below are exactly those returned for their own frame.</p>
     <table><caption>Displayed native features and station reports</caption><thead><tr><th scope="col">Feature / layer / source</th><th scope="col">Native frame / geometry</th><th scope="col">Returned properties</th><th scope="col">Provenance</th></tr></thead><tbody>
       {features.map(({ row, feature, index }) => {
         const layer = layers.find((entry) => entry.id === row.id), name = featureName(feature, index)
         const sources = layer ? [...new Set(layerMapping(layer).fields.map((field) => field.source_id))] : []
         return <tr key={featureControlId(row.id, index)}><th scope="row"><EvidenceGlyph kind={row.evidenceClass ?? 'unrecognised'} />{name}<small>{layer?.title ?? row.id} · {sources.length ? sources.map((id) => <SourceTag key={id} id={id} />) : 'Source identity not supplied'} · {row.evidenceClass ?? 'unrecognised'}</small></th>
-          <td>{row.times.join(', ') || 'Frame time not supplied'}<pre>{JSON.stringify(feature.geometry, null, 2)}</pre></td>
-          <td><pre>{JSON.stringify(feature.properties, null, 2)}</pre></td>
-          <td><button id={featureControlId(row.id, index)} onClick={(event) => onInspect({ key: featureEvidenceKey(row, index), label: `${name} · ${layer?.title ?? row.id}`, text: 'Returned native feature, not a sample of the raster at this pixel.', details: { 'Map layer': row.id, 'Native frame times': row.times, 'Source/field mapping': layer ? layerMapping(layer) : null, 'Returned feature geometry': feature.geometry, 'Returned feature properties': feature.properties, 'Map draw description': row.description } }, event.currentTarget)}>Inspect {name} from {layer?.title ?? row.id}</button></td></tr>
+          <td>{row.times.join(', ') || 'Frame time not supplied'}<ReturnedValue value={readableGeometry(feature.geometry)} /></td>
+          <td><ReturnedValue value={feature.properties} /></td>
+          <td><button id={featureControlId(row.id, index)} onClick={(event) => onInspect({ key: featureEvidenceKey(row, index), label: `${name} · ${layer?.title ?? row.id}`, text: 'Returned native feature, not a sample of the raster at this pixel.', details: { 'Returned feature properties': feature.properties, 'Native frame times': row.times, 'Returned feature geometry': feature.geometry, 'Map layer': row.id, 'Source/field mapping': layer ? layerMapping(layer) : null, 'Map draw description': row.description } }, event.currentTarget)}>Inspect {name} from {layer?.title ?? row.id}</button></td></tr>
       })}
     </tbody></table>
     {!features.length && <p>No native feature values are currently drawn. An image, a reference marker or an empty feature response does not establish a point measurement.</p>}
