@@ -1,3 +1,4 @@
+import { sourceEvidence, useSourcesView } from './workbench/SourcesView'
 import { useNativeSeries } from './workbench/NativeSeries'
 import { loadRegisteredSites, nearestRegisteredSite, type RegisteredSites } from './workbench/registeredSites'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
@@ -850,7 +851,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   }, [reference])
   useEffect(() => {
     setInspected((current) => {
-      if (!current || current.key.startsWith('layer:')) return current
+      if (!current || current.key.startsWith('layer:') || current.key.startsWith('source:')) return current
       const row = snapshot.servedFields.find((row) => evidenceKey(row) === current.key)
       return row ? { ...current, text: row.text, attribution: row.attribution } : { ...current, text: 'Evidence is no longer returned for the current Focus.', attribution: undefined, details: { Availability: 'Unavailable for current Focus' } }
     })
@@ -1764,6 +1765,12 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       {mode === 'expert' && <footer><span>POC // St. John’s · Avalon · Grand Banks</span><p>Experimental evidence display. Not a calibrated probability, warning service, or navigation product.</p></footer>}
     </div>
   )
+  useEffect(() => {
+    setInspected((current) => current?.key.startsWith('source:')
+      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields) : current)
+  }, [catalog, sourceStatuses, snapshot])
+  const sourcesView = useSourcesView({ catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
+    instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
   const nativeSeries = useNativeSeries({ location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
     enabled: !legacyOpen && (view === 'Series' || dock === 'Series'),
     focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
@@ -1787,7 +1794,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       Series: nativeSeries,
       Sky: <>{migrationNotice}<p>{site ? 'Registered horizon metadata not loaded.' : 'No registered horizon at this point.'}</p><FieldFamilyGroups snapshot={snapshot} /></>,
       Activity: <>{migrationNotice}<p>Server profile verdicts are not wired into these lanes yet. No score is calculated by this client.</p></>,
-      Sources: <>{migrationNotice}{modelStrip}<SourceFieldCatalogue sources={catalog} />{ledger}</>,
+      Sources: sourcesView,
     }} />
 
 }

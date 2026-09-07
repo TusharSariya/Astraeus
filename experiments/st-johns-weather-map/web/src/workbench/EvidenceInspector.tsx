@@ -12,7 +12,10 @@ export function EvidenceGlyph({ kind }: { kind: ResolvedEvidenceClass }) {
   </svg>
 }
 export function evidenceKey(row: ServedFieldValue): string {
-  return [row.field, row.attribution.sourceId, row.attribution.fieldKey, row.attribution.member, row.attribution.phase].join(':')
+  const a = row.attribution
+  const native = a.responseProvenance?.native_report
+  const report = native && typeof native === 'object' && !Array.isArray(native) ? native as Record<string, unknown> : {}
+  return `value:${JSON.stringify([row.field, a.sourceId, a.fieldKey, a.member, a.phase, a.validTime, a.runTime, report.station_id, report.provider_report_id])}`
 }
 export function EvidenceLedger({ rows, onInspect }: { rows: ServedFieldValue[]; onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void }) {
   return <table className="bench-ledger"><caption>Evidence at Focus · native values and returned identity</caption>
@@ -23,7 +26,7 @@ export function EvidenceLedger({ rows, onInspect }: { rows: ServedFieldValue[]; 
       const text = refused ? 'Unavailable' : row.text
       return <tr key={`${evidenceKey(row)}:${index}`}>
         <td><EvidenceGlyph kind={a.evidenceClass} /><span>{EVIDENCE_CLASS_LABELS[a.evidenceClass]}</span></td>
-        <th scope="row">{row.field}<small>{a.sourceId ?? 'Source not supplied'}</small></th>
+        <th scope="row">{row.field}<small>{a.sourceId ?? 'Source not supplied'}</small><small>{a.validTime ?? 'Native time not supplied'}</small></th>
         <td>{row.hasValue && !refused ? text : '—'}<small>{!row.hasValue || refused ? a.notice ?? (a.qualityFlags.join(', ') || 'Value not supplied') : row.units}</small></td>
         <td><button onClick={(event) => onInspect({ key: evidenceKey(row), label: row.field, text, attribution: a }, event.currentTarget)} aria-label={`Inspect ${row.field} from ${a.sourceId ?? 'unknown source'}`}>Inspect</button></td>
       </tr>
@@ -48,7 +51,7 @@ export function EvidenceInspector({ evidence, onClose }: { evidence: InspectedEv
       'Last valid time': a.lastValidTime, Method: a.derivationMethod, Inputs: a.derivationInputs,
       'Method sentence': a.derivation, 'Method version': a.derivationVersion,
       Member: a.member, Ensemble: a.ensemble, Phase: a.phase,
-      'Sample geometry': a.responseProvenance?.sample, 'Freshness assessment': a.responseProvenance?.freshness, Terms: a.responseProvenance?.licence,
+      'Sample geometry': ['sampled_latitude', 'sampled_longitude', 'sample_distance_km', 'sample_method'].some((key) => a.responseProvenance?.[key] != null) ? { latitude: a.responseProvenance?.sampled_latitude ?? null, longitude: a.responseProvenance?.sampled_longitude ?? null, distance_km: a.responseProvenance?.sample_distance_km ?? null, method: a.responseProvenance?.sample_method ?? null } : null, 'Freshness assessment': a.responseProvenance?.freshness, Terms: a.responseProvenance?.licence,
       'Complete returned provenance': a.responseProvenance,
     } : evidence.details ?? { Provenance: null }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{show(value)}</dd></div>)}</dl>
   </aside>
