@@ -194,7 +194,7 @@ class GFSQueryCoordinator:
         self._timeline: OrderedDict[str, tuple[float, tuple[datetime, ...], Mapping[str, object]]] = OrderedDict()
         self._timeline_inflight: dict[str, Future[tuple[tuple[datetime, ...], Mapping[str, object]]]] = {}
         self._query_lock = threading.Lock()
-        self._query_inflight: dict[tuple[datetime, str | None], Future[GFSQueryEntry]] = {}
+        self._query_inflight: dict[tuple[datetime, str | None, bool], Future[GFSQueryEntry]] = {}
         self._run_inventory = NativeRunInventory(self._adapter.discover, now=now, clock=clock, ttl=GFS_OBJECT_CACHE_TTL_SECONDS)
         self._prepared: dict[GFSRequestKey, RunCandidate] = {}
         self._bounded_fetch = bounded_fetch
@@ -203,11 +203,13 @@ class GFSQueryCoordinator:
     def query(self, selected_time: datetime, *, run_id: str | None = None, refresh: bool = False) -> GFSQueryEntry:
         if selected_time.tzinfo is None:
             raise ValueError("GFS selected time must be timezone-aware")
-        selection = (selected_time.astimezone(UTC).replace(minute=0, second=0, microsecond=0), run_id)
+        selection = (selected_time.astimezone(UTC).replace(minute=0, second=0, microsecond=0), run_id, refresh)
         with self._query_lock:
             future = self._query_inflight.get(selection)
             owner = future is None
             if owner:
+                if len(self._query_inflight) >= GFS_CACHE_MAX_ENTRIES:
+                    raise RunUnavailable("GFS selected-query concurrency limit reached")
                 future = Future()
                 self._query_inflight[selection] = future
         assert future is not None

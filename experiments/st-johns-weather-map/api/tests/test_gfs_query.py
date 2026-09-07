@@ -934,3 +934,51 @@ def test_run_inventory_coalesces_refresh_and_preserves_unexpired_generation(fail
     assert len(calls) == 1
     assert coordinator.run_inventory() == baseline
     assert coordinator._run_inventory._cached[0] == (600.0 if fail else 630.0)
+
+
+def test_selected_query_rejects_work_beyond_its_finite_inflight_bound():
+    from weather_api.native_runs import RunUnavailable
+    adapter = RunSelectionAdapter()
+    coordinator, _ = run_coordinator(adapter, [0.0])
+    entered = [Event() for _ in range(4)]
+    release = Event()
+    def held_query(selected_time, *, run_id, refresh):
+        entered[selected_time.hour - 12].set()
+        assert release.wait(timeout=2)
+        return entry()
+    coordinator._query = held_query
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(coordinator.query, adapter.run + timedelta(hours=i)) for i in range(4)]
+        assert all(event.wait(timeout=2) for event in entered)
+        assert len(coordinator._query_inflight) == 4
+        with pytest.raises(RunUnavailable, match="concurrency limit"):
+            coordinator.query(adapter.run + timedelta(hours=4))
+        release.set()
+        assert all(future.result() for future in futures)
+    assert not coordinator._query_inflight
+    assert adapter.discoveries == 0 and not adapter.calls
+
+
+def test_explicit_refresh_does_not_join_an_ordinary_inflight_read():
+    adapter = RunSelectionAdapter()
+    coordinator, _ = run_coordinator(adapter, [0.0])
+    entered, release = Event(), Event()
+    calls = []
+    baseline = entry()
+    refreshed = replace(baseline, content_digest="b" * 64)
+    def held_query(selected_time, *, run_id, refresh):
+        calls.append(refresh)
+        if not refresh:
+            entered.set()
+            assert release.wait(timeout=2)
+            return baseline
+        return refreshed
+    coordinator._query = held_query
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        ordinary = pool.submit(coordinator.query, adapter.run)
+        assert entered.wait(timeout=2)
+        refresh = pool.submit(coordinator.query, adapter.run, refresh=True)
+        assert refresh.result(timeout=1) is refreshed
+        release.set()
+        assert ordinary.result() is baseline
+    assert calls == [False, True]

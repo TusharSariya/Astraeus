@@ -70,3 +70,17 @@ current API source, and the production default child process with its existing
 
 No proof process remains running. API/Series integration belongs to the shared
 interface owner; this source slice does not change the registry or public routes.
+
+## Review correction
+
+The source coordinator admits at most four distinct concurrent selections,
+reusing `GFS_CACHE_MAX_ENTRIES`, and rejects saturation before discovery or
+payload acquisition. Identical requests still join their admitted operation.
+The in-flight identity includes explicit-refresh mode so a refresh cannot join
+an ordinary cache-hit read and accidentally skip revalidation.
+
+The targeted command `uv run --project api pytest -q api/tests/test_gfs_query.py
+-k 'inflight or concurrent_native_frame_refresh'` passed four tests covering
+saturation, refresh separation, and concurrent refresh success/failure. The
+previous decoder receipt remains evidence for the unchanged production worker
+and payload path; it records the source hash before this admission correction.
