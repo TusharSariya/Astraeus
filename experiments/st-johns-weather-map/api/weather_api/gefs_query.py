@@ -139,11 +139,11 @@ class GEFSQueryEntry:
 class GEFSQueryService:
     def __init__(self,loader:Callable[[GEFSRequestKey],GEFSQueryEntry],*,workspace:Path=Path("/work"),preflight=enforce_platform_bounds,clock=time.monotonic):
         self.loader,self.workspace,self.preflight,self.clock=loader,workspace,preflight,clock; self.lock=threading.Lock(); self.entries=OrderedDict(); self.inflight={}; self.failures={}
-    def query(self,key, *, availability_receipt=None):
+    def query(self,key, *, availability_receipt=None, refresh: bool = False):
         key.validate()
         with self.lock:
             now=self.clock(); cached=self.entries.get(key); failure=self.failures.get(key); future=self.inflight.get(key); owner=future is None
-            if cached and now<cached[0]: return cached[1]
+            if cached and now<cached[0] and not refresh: return cached[1]
             if failure and now<failure[0]: raise failure[1]
             if owner: future=Future(); self.inflight[key]=future
         if not owner:return future.result()
@@ -343,8 +343,10 @@ class GEFSQueryCoordinator:
         self._discovery_lock = threading.RLock()
         self._discovery = None
         self._discovery_failure = None
+        self._query_lock = threading.Lock()
+        self._query_inflight = None
 
-    def request_key(self, selected_time: datetime) -> GEFSRequestKey:
+    def request_key(self, selected_time: datetime, *, refresh: bool = False) -> GEFSRequestKey:
         if selected_time.tzinfo is None:
             raise ValueError("GEFS selected time must be aware")
         selected = selected_time.astimezone(UTC)
@@ -355,7 +357,7 @@ class GEFSQueryCoordinator:
         identity = (run, lead)
         with self._discovery_lock:
             current = self._clock()
-            if self._discovery and self._discovery[0] == identity and current < self._discovery[1]:
+            if self._discovery and self._discovery[0] == identity and current < self._discovery[1] and not refresh:
                 return self._discovery[2]
             if self._discovery_failure and self._discovery_failure[0] == identity and current < self._discovery_failure[1]:
                 raise ValueError("GEFS control-index discovery is in failure backoff")
@@ -391,18 +393,53 @@ class GEFSQueryCoordinator:
             self._discovery_failure = (identity, self._clock()+60)
             raise ValueError("GEFS has no available eligible control index within bounded discovery")
 
-    def query(self, selected_time: datetime) -> GEFSQueryEntry:
-        with self._discovery_lock:
-            key=self.request_key(selected_time)
-            receipt=self._discovery[3] if self._discovery is not None else None
-            return self.service.query(key,availability_receipt=receipt)
+    def query(self, selected_time: datetime, *, refresh: bool = False) -> GEFSQueryEntry:
+        if selected_time.tzinfo is None:
+            raise ValueError("GEFS selected time must be aware")
+        selection = (selected_time.astimezone(UTC), refresh)
+        # Keep one complete acquisition in flight. Same-selection callers share
+        # its result; other selections wait without retaining another bundle.
+        while True:
+            with self._query_lock:
+                pending = self._query_inflight
+                if pending is None:
+                    future = Future()
+                    self._query_inflight = (selection, future)
+                    break
+            if pending[0] == selection:
+                return pending[1].result()
+            try:
+                pending[1].result()
+            except Exception:
+                pass  # A different selection's failure is not this one's result.
+        try:
+            with self._discovery_lock:
+                previous_discovery = self._discovery
+                try:
+                    key = self.request_key(selected_time, refresh=refresh)
+                    receipt = self._discovery[3] if self._discovery is not None else None
+                    result = self.service.query(key, availability_receipt=receipt, refresh=refresh)
+                except BaseException:
+                    # A new index digest must not hide an unexpired family if
+                    # refreshing its payload fails. Keep the original deadline.
+                    if refresh and previous_discovery and self._clock() < previous_discovery[1]:
+                        self._discovery = previous_discovery
+                    raise
+            future.set_result(result)
+            return result
+        except BaseException as error:
+            future.set_exception(error)
+            raise
+        finally:
+            with self._query_lock:
+                self._query_inflight = None
 
     def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *,
                      member: str | None = None, statistic: str | None = None,
                      quantile: float | None = None, threshold: float | None = None,
-                     comparison: str | None = None):
+                     comparison: str | None = None, refresh: bool = False):
         from .store import LiveStore, _ensemble_point_fields
-        entry = self.query(selected_time)
+        entry = self.query(selected_time, refresh=refresh)
         with tempfile.TemporaryDirectory(prefix="gefs-demand-read-") as directory:
             path=Path(directory)/"noaa_gefs_members.zarr.zip"; path.write_bytes(entry.payload)
             import xarray, zarr

@@ -232,3 +232,122 @@ def test_discovery_is_refused_before_any_io_when_platform_bound_is_unavailable()
  service=GEFSQueryService(lambda _:pytest.fail("load"),preflight=refuse)
  coordinator=GEFSQueryCoordinator(service,discover_index=lambda _:pytest.fail("discovery"))
  with pytest.raises(RuntimeError,match="platform unavailable"):coordinator.query(RUN)
+
+
+def test_refresh_reacquires_discovery_and_family_without_renewing_hits():
+ clock=[0.0]; discoveries=[]; loads=[]
+ service=GEFSQueryService(lambda k:loads.append(k) or entry(k),clock=lambda:clock[0],preflight=lambda _:demand_operation_bounds())
+ coordinator=GEFSQueryCoordinator(service,now=lambda:RUN,clock=lambda:clock[0],discover_index=lambda url:discoveries.append(url) or discovery_body(url))
+ selected=RUN+timedelta(hours=6)
+ first=coordinator.query(selected)
+ clock[0]=100
+ assert coordinator.query(selected) is first
+ assert service.entries[first.key][0]==600 and coordinator._discovery[1]==600
+ refreshed=coordinator.query(selected,refresh=True)
+ assert refreshed is not first and len(discoveries)==len(loads)==2
+ assert service.entries[first.key][0]==700 and coordinator._discovery[1]==700
+ clock[0]=699
+ assert coordinator.query(selected) is refreshed
+ clock[0]=700
+ assert coordinator.query(selected) is not refreshed
+ assert len(discoveries)==len(loads)==3
+
+
+def test_failed_family_refresh_preserves_unexpired_entry_and_original_deadline():
+ clock=[0.0]; loads=[]
+ def loader(k):
+  loads.append(k)
+  if len(loads)>1: raise OSError("refresh failed")
+  return entry(k)
+ service=GEFSQueryService(loader,clock=lambda:clock[0],preflight=lambda _:demand_operation_bounds())
+ coordinator=GEFSQueryCoordinator(service,now=lambda:RUN,clock=lambda:clock[0],discover_index=discovery_body)
+ selected=RUN+timedelta(hours=6); first=coordinator.query(selected)
+ clock[0]=590
+ with pytest.raises(OSError,match="refresh failed"):coordinator.query(selected,refresh=True)
+ assert coordinator.query(selected) is first
+ assert service.entries[first.key][0]==600
+ clock[0]=600
+ with pytest.raises(OSError,match="refresh failed"):coordinator.query(selected)
+ assert len(loads)==2
+
+
+def test_failed_discovery_refresh_preserves_unexpired_discovery():
+ clock=[0.0]; calls=[]
+ def discover(url):
+  calls.append(url)
+  if len(calls)>1: raise OSError("discovery failed")
+  return discovery_body(url)
+ service=GEFSQueryService(entry,clock=lambda:clock[0],preflight=lambda _:demand_operation_bounds())
+ coordinator=GEFSQueryCoordinator(service,now=lambda:RUN,clock=lambda:clock[0],discover_index=discover)
+ selected=RUN+timedelta(hours=6); first=coordinator.query(selected)
+ clock[0]=590
+ with pytest.raises(ValueError,match="no available"):coordinator.query(selected,refresh=True)
+ assert len(calls)==3 and coordinator.query(selected) is first
+ assert coordinator._discovery[1]==600
+ clock[0]=600
+ with pytest.raises(ValueError,match="backoff"):coordinator.query(selected)
+ assert len(calls)==3
+
+
+def test_concurrent_refreshes_share_one_complete_acquisition(monkeypatch):
+ import threading
+ import weather_api.gefs_query as module
+ waiting=threading.Event(); entered=threading.Event(); release=threading.Event(); loads=[]; discoveries=[]
+ class ObservedFuture(Future):
+  def result(self,*args,**kwargs):
+   waiting.set()
+   return super().result(*args,**kwargs)
+ monkeypatch.setattr(module,"Future",ObservedFuture)
+ def loader(k):
+  loads.append(k)
+  if len(loads)==2:
+   entered.set()
+   assert release.wait(5)
+  return entry(k)
+ service=GEFSQueryService(loader,preflight=lambda _:demand_operation_bounds())
+ coordinator=GEFSQueryCoordinator(service,now=lambda:RUN,discover_index=lambda url:discoveries.append(url) or discovery_body(url))
+ selected=RUN+timedelta(hours=6); coordinator.query(selected)
+ with ThreadPoolExecutor(max_workers=2) as pool:
+  first=pool.submit(coordinator.query,selected,refresh=True)
+  assert entered.wait(5)
+  second=pool.submit(coordinator.query,selected,refresh=True)
+  assert waiting.wait(5)
+  release.set()
+  assert first.result() is second.result()
+ assert len(loads)==len(discoveries)==2
+ assert coordinator._query_inflight is None
+
+
+def test_point_fields_forwards_explicit_refresh_before_sampling(monkeypatch):
+ coordinator=GEFSQueryCoordinator(now=lambda:RUN)
+ def query(selected_time,*,refresh=False):
+  assert selected_time==RUN and refresh is True
+  raise OSError("fixture acquisition stop")
+ monkeypatch.setattr(coordinator,"query",query)
+ with pytest.raises(OSError,match="fixture acquisition stop"):
+  coordinator.point_fields(47.5,-52.7,RUN,member="gec00",refresh=True)
+
+
+def test_failed_refresh_with_changed_index_keeps_previous_family_reachable():
+ import hashlib
+ clock=[0.0]; calls=[]; loads=[]
+ def discover(url):
+  calls.append(url)
+  body,receipt=discovery_body(url)
+  if len(calls)>1:
+   body+=b"2:20:d=2026090612:RH:2 m above ground:6 hour fcst:\n"
+   receipt={**receipt,"byte_size":len(body),"sha256":hashlib.sha256(body).hexdigest()}
+  return body,receipt
+ def loader(k):
+  loads.append(k)
+  if len(loads)>1:raise OSError("new family failed")
+  return entry(k)
+ service=GEFSQueryService(loader,clock=lambda:clock[0],preflight=lambda _:demand_operation_bounds())
+ coordinator=GEFSQueryCoordinator(service,now=lambda:RUN,clock=lambda:clock[0],discover_index=discover)
+ selected=RUN+timedelta(hours=6); first=coordinator.query(selected)
+ clock[0]=100
+ with pytest.raises(OSError,match="new family failed"):coordinator.query(selected,refresh=True)
+ assert loads[0].availability_sha256!=loads[1].availability_sha256
+ assert coordinator.query(selected) is first
+ assert coordinator._discovery[1]==service.entries[first.key][0]==600
+ assert len(calls)==len(loads)==2
