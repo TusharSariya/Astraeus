@@ -346,6 +346,33 @@ class GEFSQueryCoordinator:
         self._query_lock = threading.Lock()
         self._query_inflight = None
 
+    def selected_lead_run(self, selected_time: datetime, *, refresh: bool = False) -> RunCandidate:
+        """Describe only the control-index-proven run and selected native lead.
+
+        This is deliberately not a run inventory: discovery stops at its first
+        success, and a predecessor is a fallback, not a separately selectable
+        run. No family payload or other lead is acquired by this operation.
+        """
+        from copy import deepcopy
+
+        with self._discovery_lock:
+            key = self.request_key(selected_time, refresh=refresh)
+            receipt = deepcopy(self._discovery[3])
+        valid_time = key.run_time + timedelta(hours=key.lead)
+        return RunCandidate(key.run_id, key.run_time, urls=[receipt["url"]], detail={
+            "date_str": key.run_time.strftime("%Y%m%d"),
+            "cycle": key.run_time.strftime("%H"),
+            "lead_hours": key.lead,
+            "valid_times": (valid_time,),
+            "product_set": key.product_set,
+            "members_declared": key.members,
+            "fields": key.fields,
+            "bounds": dict(key.bounds),
+            "availability_sha256": key.availability_sha256,
+            "availability_receipt": receipt,
+            "availability_scope": "selected_lead_control_index_only",
+        })
+
     def request_key(self, selected_time: datetime, *, refresh: bool = False) -> GEFSRequestKey:
         if selected_time.tzinfo is None:
             raise ValueError("GEFS selected time must be aware")
