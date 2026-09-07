@@ -961,7 +961,10 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             z_index=Z_INDEX_BY_KIND["alert"], evidence_basis="demand_query", group="alert",
             raster_available=False, legend_available=False,
         )], notices=["CAP layer listing read a fresh source-local cache entry and made no provider request"])
+    from .aqhi_query import demand_layer as aqhi_demand_layer  # noqa: PLC0415
+
     ovation_demand_layer = aurora.demand_layer(Layer, z_index=Z_INDEX_BY_KIND["raster"])
+    aqhi_layer = aqhi_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
     if product is not None and product.upper() == "OVATION":
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=[ovation_demand_layer],
@@ -997,7 +1000,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     store = live_store()
     if store is None:
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["no live artifact store is reachable; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1007,7 +1010,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published artifacts could not be listed for the layer index")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1022,7 +1025,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
         # The aged-out names travel on both branches: a proxied layer is not
         # this deployment's stored evidence, so its presence says nothing about
         # whether the stored evidence aged out.
-        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
@@ -1030,7 +1033,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised while reading coverage; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1040,6 +1043,11 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     layers: list[Layer] = []
     for artifact in artifacts:
         from .gfs_query import hides_legacy_published_gfs_layer  # noqa: PLC0415
+        if artifact.source_id == "eccc-aqhi":
+            notices.append(
+                f"{artifact.source_id}-{artifact.logical_name} is retained for audit but is not a current demand-query observation layer"
+            )
+            continue
         if hides_legacy_published_gfs_layer(artifact.source_id):
             notices.append(
                 f"{artifact.source_id}-{artifact.logical_name} is retained for audit but is not a current demand-query raster; "
@@ -1144,6 +1152,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     # OVATION is a selected-time demand grid. Listing its requestable layer
     # never fetches a provider document or implies that a native frame exists.
     layers.append(ovation_demand_layer)
+    layers.append(aqhi_layer)
 
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
@@ -1239,6 +1248,25 @@ def _live_point(
         except Exception as error:
             LOGGER.info("METAR demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
             return [], ["awc-metar-speci has no validated observation less than one hour old at or before this selection"]
+
+    def demand_station_observations():
+        observations, notices = demand_metar()
+        unavailable = []
+        try:
+            from .aqhi_query import AqhiQueryUnavailable, aqhi_query_service  # noqa: PLC0415
+
+            aqhi = aqhi_query_service().point_field(latitude, longitude, time)
+            observations.append(aqhi)
+            notices.append(
+                f"eccc-aqhi station {aqhi.provenance.native_report.station_id} observation at "
+                f"{aqhi.provenance.valid_time.isoformat()} is shown with native station and transport provenance"
+            )
+        except Exception as error:
+            LOGGER.info("AQHI demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
+            notices.append("eccc-aqhi has no validated nearby station observation less than one hour old at or before this selection")
+            if isinstance(error, AqhiQueryUnavailable):
+                unavailable.append(error.outcome)
+        return observations, notices, unavailable
 
     def demand_consensus() -> tuple[list[EvidenceField], object, list[str], list[str], set[str]]:
         """Feed the unchanged consensus reader with independently queried sources."""
@@ -1467,8 +1495,8 @@ def _live_point(
             ],
         )
 
-    demand_observations, demand_notices = demand_metar()
     if product is None or product.lower() in CONSENSUS_PRODUCTS:
+        demand_observations, demand_notices, observation_unavailable = demand_station_observations()
         fields, consensus, sources, consensus_notices, eligible_temperature_sources = demand_consensus()
         fields = [*fields, *demand_observations]
         sources = sorted({*sources, *(item.provenance.source_id for item in demand_observations)})
@@ -1478,7 +1506,7 @@ def _live_point(
                 reason="no migrated demand source returned applicable point evidence",
                 flags=["demand_consensus_unavailable"],
                 notices=[*consensus_notices, *demand_notices, "No retained forecast artifact was read or substituted"],
-            )
+            ).model_copy(update={"observation_unavailable": observation_unavailable})
         live_hrdps = "eccc-hrdps" in eligible_temperature_sources
         mode, badge, reason = select_fallback(consensus.available, hrdps_fresh=live_hrdps, rdps_fresh=False)
         from .models import PointConsensus
@@ -1492,6 +1520,7 @@ def _live_point(
         )
         return PointResponse(
             data_mode=DataMode.LIVE,
+            observation_unavailable=observation_unavailable,
             latitude=latitude, longitude=longitude, valid_time=time,
             selection=Selection(
                 mode=mode, selected_source_id="multi-centre" if mode == "consensus" else ("eccc-hrdps" if live_hrdps else None),
@@ -1501,6 +1530,8 @@ def _live_point(
             fields=fields, consensus=summary,
             notices=[*consensus_notices, *demand_notices, "Consensus acquisition used demand sources only; no retained forecast artifact was read"],
         )
+    demand_observations, demand_notices = demand_metar()
+    observation_unavailable = []
     store = live_store()
     if store is None:
         if demand_observations:

@@ -26,6 +26,21 @@ def fixture_only_deployment(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setenv(DATA_MODE_ENV, "fixture")
     reset_live_store()
+    # Live tests opt into fixed provider responses explicitly. Keep the new
+    # demand observation from ever contacting GeoMet as a side effect of an
+    # otherwise unrelated API test.
+    import weather_api.aqhi_query as aqhi_query
+
+    class NoAqhiFixture:
+        @staticmethod
+        def point_field(*_args, **_kwargs):
+            raise RuntimeError("explicit fixture: no AQHI demand observation")
+
+        @staticmethod
+        def cached_entry():
+            return None
+
+    monkeypatch.setattr(aqhi_query, "aqhi_query_service", lambda: NoAqhiFixture())
     yield
     reset_live_store()
 
