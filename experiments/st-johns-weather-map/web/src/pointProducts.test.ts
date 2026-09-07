@@ -1,6 +1,6 @@
 import fixture from '../../contracts/fixtures/source-delivery.json'
 import { afterEach, expect, it, vi } from 'vitest'
-import { loadCatalog, pointProductFor } from './api'
+import { loadCatalog, normalizePoint, pointProductFor } from './api'
 import type { SourceCapability } from './types'
 import { isSourceCapability } from './sourceContract'
 import { capabilityOptions } from './workbench/sourceCapabilities'
@@ -35,4 +35,16 @@ it('filters unsafe optional point tokens at the catalog boundary', async () => {
   const result = await loadCatalog()
   expect(result.sources[0].capabilities).toEqual([])
   expect(pointProductFor(result.sources[0])).toBeNull()
+})
+
+// Source-delivery contract: preserve exact returned AOD, native time and gaps.
+it.each([0.15, 0.07, 0.004, 0, null])('retains CAMS AOD %s in the evidence ledger without decimal truncation', (value) => {
+  const point = fixture.point_cams_aod
+  const snapshot = normalizePoint({ ...point, selection: { ...point.selection, mode: 'evidence_only' }, fields: [{ ...point.fields[0], value }] })
+  const row = snapshot.servedFields[0]
+  expect(row.text).toBe(value === null ? 'no value' : `${value} 1`)
+  expect(row.hasValue).toBe(value !== null)
+  expect(row.attribution.evidenceClass).toBe('reprocessed')
+  expect(row.attribution.runTime).toBeNull()
+  expect(row.attribution.validTime).toBe(point.valid_time)
 })

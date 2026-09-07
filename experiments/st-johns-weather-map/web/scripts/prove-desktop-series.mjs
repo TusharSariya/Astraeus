@@ -25,6 +25,7 @@ await page.route('**/*', async (route) => {
   const path = url.pathname.split('/v0')[1]
   let body = { data_mode: 'unavailable', notices: ['Fixed proof: capability not supplied'] }
   if (path === '/point') {
+    if (sharedFixture && url.searchParams.get('product') === 'CAMS AOD') return route.fulfill({ contentType: 'application/json', body: JSON.stringify(sharedFixture.point_cams_aod) })
     if (companionMode) return route.fulfill({ contentType: 'application/json', body: JSON.stringify(companionFixture[companionMode]) })
     if (failPoint) return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Fixed failure' }) })
     body = { latitude: Number(url.searchParams.get('latitude')), longitude: Number(url.searchParams.get('longitude')), valid_time: url.searchParams.get('valid_time'), data_mode: 'fixture', selection: { mode: 'evidence_only', badge: 'Fixed browser fixture', reason: 'Constructed values, no provider retrieval' }, fields: [
@@ -83,6 +84,45 @@ if (sharedFixture) {
       }
       companionMode = null
     }
+    // Select the declared point token in the assembled app; consume the exact
+    // backend fixture without turning intermediary hourly labels into Series.
+    const cams = sharedFixture.point_cams_aod
+    await page.goto(`${base}/?view=map&lat=${cams.latitude}&lon=${cams.longitude}&t=${cams.valid_time}`)
+    await page.getByRole('button', { name: 'Existing evidence panels', exact: true }).click()
+    await page.locator('summary').filter({ hasText: /^Forecast model/ }).click()
+    await page.locator('.model-buttons button').filter({ hasText: 'CAMS AOD' }).click()
+    await page.getByText('CAMS AOD via Open-Meteo', { exact: true }).first().waitFor()
+    assert.ok(requests.some((request) => {
+      const url = new URL(request, base)
+      return url.pathname.endsWith('/point') && url.searchParams.get('product') === 'CAMS AOD'
+        && Number(url.searchParams.get('latitude')) === cams.latitude
+        && Number(url.searchParams.get('longitude')) === cams.longitude
+        && Date.parse(url.searchParams.get('valid_time')) === Date.parse(cams.valid_time)
+    }))
+    await page.getByRole('button', { name: 'Return to desktop Bench', exact: true }).click()
+    await page.getByText('Point evidence ledger', { exact: true }).click()
+    const camsOpener = page.getByRole('button', { name: /^Inspect aerosol_optical_depth_550nm from openmeteo-cams-aod/ })
+    await camsOpener.click()
+    const camsInspector = page.getByRole('complementary', { name: 'Evidence inspector' })
+    const detail = async (name) => camsInspector.locator('dt').filter({ hasText: new RegExp(`^${name}$`) }).locator('..').locator('dd').innerText()
+    assert.equal(await detail('Source'), 'openmeteo-cams-aod')
+    assert.equal(await detail('Intermediary'), 'Open-Meteo')
+    assert.equal(await detail('Run'), 'Not supplied')
+    assert.equal(await detail('Delivery kind'), 'reprocessed')
+    assert.equal(Date.parse(await detail('Native valid time')), Date.parse(cams.valid_time))
+    const returned = JSON.parse(await detail('Complete returned provenance'))
+    assert.equal(returned.display_primary_eligible, false)
+    assert.equal(returned.operational, false)
+    assert.equal(returned.run_time, null)
+    assert.equal(returned.data_mode, 'fixture')
+    assert.ok((await camsInspector.innerText()).includes('0.15'))
+    await page.screenshot({ path: `${output}/cams-aod-exact-point-provenance.png` })
+    await page.keyboard.press('Escape')
+    assert.equal(await camsOpener.evaluate((element) => element === document.activeElement), true)
+    await page.getByRole('button', { name: 'Series', exact: true }).click()
+    const seriesOptions = await page.getByRole('combobox', { name: 'Series A', exact: true }).locator('option').allTextContents()
+    assert.equal(seriesOptions.some((option) => /cams|aerosol_optical_depth/i.test(option)), false)
+    await page.screenshot({ path: `${output}/cams-aod-no-native-series.png` })
     const selection = sharedFixture.series.selection
     await page.goto(`${base}/?view=series&lat=${selection.latitude}&lon=${selection.longitude}&t=${at}`)
     await page.getByRole('img', { name: /temperature_2m native samples/ }).waitFor()
@@ -115,8 +155,12 @@ if (sharedFixture) {
     assert.equal(await page.locator('.native-track').count(), 0)
     assert.equal(await page.getByRole('button', { name: 'Check for changes', exact: true }).isDisabled(), true)
     assert.deepEqual(errors, [])
-    await writeFile(`${output}/source-delivery-checks.json`, JSON.stringify({ fixture: 'contracts/fixtures/source-delivery.json', exactBackendResponses: ['catalog', 'status', 'series', ...(companionFixture ? ['selected-model AQHI success', 'selected-model AQHI failure'] : [])], companionProof: companionFixture?.proof ?? null, nativeRequests: sharedRequests, checks: ['declarative choices without point samples', 'exact native request identity', 'configuration dispositions', 'inspector focus return', 'finite expiry'], errors }, null, 2))
+    await writeFile(`${output}/source-delivery-checks.json`, JSON.stringify({ fixture: 'contracts/fixtures/source-delivery.json', exactBackendResponses: ['catalog', 'status', 'series', 'point_cams_aod', ...(companionFixture ? ['selected-model AQHI success', 'selected-model AQHI failure'] : [])], companionProof: companionFixture?.proof ?? null, nativeRequests: sharedRequests, checks: ['declarative choices without point samples', 'exact native request identity', 'configuration dispositions', 'inspector focus return', 'finite expiry', 'CAMS exact point selection and provenance', 'CAMS non-primary no native Series'], pointRequests: requests.filter((request) => request.includes('/point?')), weatherProviderRequests: 0, externalRequests: 'blocked', errors }, null, 2))
     console.log('Source delivery shared backend fixture proof passed')
+  } catch (error) {
+    await page.screenshot({ path: `${output}/failure.png` })
+    await writeFile(`${output}/failure.txt`, await page.locator('body').innerText())
+    throw error
   } finally { await browser.close() }
   process.exit(0)
 }

@@ -119,7 +119,9 @@ function describeValue(field: ApiEvidenceField): string {
   const value = field.value
   const units = String(field.provenance?.normalized_units ?? field.provenance?.original_units ?? '').trim()
   if (typeof value === 'number' && Number.isFinite(value)) {
-    const shown = Number.isInteger(value) ? String(value) : value.toFixed(1)
+    // AOD commonly varies below one tenth. Preserve its returned precision so
+    // a small nonzero optical depth never becomes an apparent zero.
+    const shown = field.field === 'aerosol_optical_depth_550nm' || Number.isInteger(value) ? String(value) : value.toFixed(1)
     return units ? `${shown} ${units}` : shown
   }
   if (typeof value === 'string' && value.trim()) return value
