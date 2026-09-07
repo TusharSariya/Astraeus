@@ -471,6 +471,39 @@ class GDPSDemandUnavailable(StrictModel):
     expired_acquisition: GDPSAcquisition | None = None
 
 
+AQHI_METADATA_MAX_BYTES = 12 * 1024
+
+
+class AQHIAcquisition(StrictModel):
+    """Bounded transport identity for one normalized AQHI station document."""
+
+    provider_url: _BoundedUrl
+    effective_url: _BoundedUrl
+    request_headers: _BoundedHeaders
+    response_headers: _BoundedHeaders
+    transport_completed_at: AwareDatetime
+    body_bytes: int = Field(gt=0, le=2 * 1024 * 1024)
+    body_sha256: _SHA256
+    cached_at: AwareDatetime
+    expires_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def bound_metadata(self):
+        if self.expires_at <= self.cached_at:
+            raise ValueError("AQHI cache expiry must follow admission")
+        if len(self.model_dump_json().encode()) > AQHI_METADATA_MAX_BYTES:
+            raise ValueError("AQHI acquisition metadata exceeds its byte ceiling")
+        return self
+
+
+class AQHIDemandUnavailable(StrictModel):
+    source_id: Literal["eccc-aqhi"] = "eccc-aqhi"
+    reason: Literal["refresh_failed", "query_failed"]
+    error_type: _BoundedName
+    expired_acquisition: AQHIAcquisition | None = None
+    values_withheld: Literal[True] = True
+
+
 class Provenance(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
@@ -528,6 +561,7 @@ class Provenance(StrictModel):
     adapter_version: str
     native_report: NativeReportIdentity | None = None
     demand_acquisition: RDPSAcquisition | GDPSAcquisition | None = None
+    aqhi_acquisition: AQHIAcquisition | None = None
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
     #: echoing the request back would overstate where the reading came from.
@@ -737,6 +771,7 @@ CATALOGUE_KEY_BY_FIELD: dict[str, str] = {
     "wind_speed": "wind_speed_10m",
     "wind_direction": "wind_direction_10m",
     "wind_gust": "wind_gust_10m",
+    "aqhi": "air_quality_health_index",
 }
 
 
@@ -1342,6 +1377,7 @@ class PointConsensus(StrictModel):
 
 class PointResponse(StrictModel):
     demand_unavailable: RDPSDemandUnavailable | GDPSDemandUnavailable | None = None
+    observation_unavailable: list[AQHIDemandUnavailable] = Field(default_factory=list)
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
     latitude: float
