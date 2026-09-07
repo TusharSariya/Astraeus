@@ -20,6 +20,29 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Bench implementation checkpoint, September 7, 2026
+
+Contracts #239 and #256 are merged as `3aaa593` and `392f7ab`, with the single
+owner acceptance record linked above. The first desktop implementation is in
+isolated `/tmp/astraeus-desktop-bench`, branch `execution/desktop-bench`.
+Root user WIP is untouched; no subagent was used.
+
+Implemented: shared Bench/Focus, five view controls and one optional companion,
+fixed/live URL distinction with exact coordinates, read-only versioned audited
+sites and explicit adoption, Hyperlegible fonts and three theme foundations,
+ordered Map controls/Saved stacks, actual raster draw-order repair, shared
+native-value ledger and focus-return inspector. Existing panels remain reachable.
+The fixed-response browser demo blocks all external traffic; it is interface
+verification, not a new live-source acquisition proof.
+
+Not complete: native Series/paging/change-check/run API and view; Sources three
+perspectives; Horizon instrument; server verdict lanes; complete Map station and
+sample inspection, provider palettes, and assembled-desktop accessibility.
+No view-completion or source-completion issue is closed by this checkpoint.
+Continue the same accepted OpenSpec tasks, then the full #70 queue in the owner's
+specified batches. Camera placement, new scientific rules and physical checks
+remain their own boundaries; no new master plan or bulk archive is introduced.
+
 ## Reuse-first source workflow
 
 Use [the durable reuse-first source workflow](../agents/reuse-workflow.md) before

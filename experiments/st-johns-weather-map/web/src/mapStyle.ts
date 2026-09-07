@@ -1,11 +1,16 @@
 import type { Map as MapLibreMap, StyleSpecification } from 'maplibre-gl'
 
-export type Theme = 'light' | 'dark'
+export type Theme = 'light' | 'dark' | 'night'
 
 export const REFERENCE_SOURCE_ID = 'openfreemap'
 export const WEATHER_REFERENCE_ANCHOR_ID = 'reference-water-casing'
 
 const themes = {
+  night: {
+    land: '#170100', ocean: '#000000', park: '#290101', urban: '#290101',
+    casing: '#000000', core: '#fd2c29', road: '#ac1b18', label: '#fd2c29',
+    labelHalo: '#000000', boundary: '#ac1b18', waterLabel: '#fd2c29',
+  },
   dark: {
     land: '#527267', ocean: '#071D2A', park: '#476A5C', urban: '#5D746D',
     casing: '#07151C', core: '#F7FBFA', road: '#F2B85B', label: '#F7FBFA',

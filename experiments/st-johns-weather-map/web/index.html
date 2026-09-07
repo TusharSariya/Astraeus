@@ -9,12 +9,13 @@
     <title>Avalon Weather Evidence Desk</title>
     <script>
       (() => {
-        const stored = localStorage.getItem('astraeus-weather-theme')
-        const theme = stored === 'light' || stored === 'dark'
+        let stored
+        try { stored = localStorage.getItem('astraeus-weather-theme') } catch { /* optional preference */ }
+        const theme = stored === 'light' || stored === 'dark' || stored === 'night'
           ? stored
           : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         document.documentElement.dataset.theme = theme
-        document.documentElement.style.colorScheme = theme
+        document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark'
       })()
     </script>
   </head>

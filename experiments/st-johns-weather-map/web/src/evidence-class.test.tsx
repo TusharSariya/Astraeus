@@ -87,7 +87,7 @@ describe('every value shows its class', () => {
       { field: 'temperature', value: 12.4, provenance: hrdps({ evidence_class: 'retrieved' }) },
       { field: 'dew_point', value: 9.1, provenance: hrdps({ evidence_class: 'retrieved' }) },
     ])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const dewPoint = await waitFor(() => screen.getByText('Dew point').closest('.metric') as HTMLElement)
     await waitFor(() => expect(within(dewPoint).getByText('9.1°C')).toBeInTheDocument())
     const badge = within(dewPoint).getByText('retrieved')
@@ -101,7 +101,7 @@ describe('every value shows its class', () => {
       { field: 'temperature', value: 12.4, provenance: hrdps({ evidence_class: 'retrieved' }) },
       { field: 'visibility', value: 9000, provenance: hrdps({ evidence_class: 'reprocessed', normalized_units: 'm', delivery_kind: 'reprocessed', intermediary: 'Open-Meteo' }) },
     ])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     // The reprocessed value may not be the reading, so the metric is Unknown...
     const visibility = await waitFor(() => screen.getByText('Visibility').closest('.metric') as HTMLElement)
     await waitFor(() => expect(within(visibility).getByText('Unknown')).toBeInTheDocument())
@@ -120,7 +120,7 @@ describe('an unrecognised class is unavailable with its reason', () => {
       { field: 'temperature', value: 12.4, provenance: hrdps({ evidence_class: 'retrieved' }) },
       { field: 'dew_point', value: 9.1, provenance: hrdps({ evidence_class: 'consensus_blend' }) },
     ])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const dewPoint = await waitFor(() => screen.getByText('Dew point').closest('.metric') as HTMLElement)
     await waitFor(() => expect(within(dewPoint).getByText('Unavailable')).toBeInTheDocument())
     expect(within(dewPoint).queryByText('9.1°C')).not.toBeInTheDocument()
@@ -133,7 +133,7 @@ describe('an unrecognised class is unavailable with its reason', () => {
       { field: 'temperature', value: 12.4, provenance: hrdps({ evidence_class: 'retrieved' }) },
       { field: 'dew_point', value: 9.1, provenance: hrdps({}) },
     ])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const dewPoint = await waitFor(() => screen.getByText('Dew point').closest('.metric') as HTMLElement)
     await waitFor(() => expect(within(dewPoint).getByText('Unavailable')).toBeInTheDocument())
     expect(within(dewPoint).getByText(/unrecognised evidence class — the response declared none/)).toBeInTheDocument()
@@ -143,7 +143,7 @@ describe('an unrecognised class is unavailable with its reason', () => {
     vi.stubGlobal('fetch', routedFetch(point([
       { field: 'temperature', value: 12.4, provenance: hrdps({ evidence_class: 'not_a_class' }) },
     ])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     await waitFor(() => expect(screen.getByText(/unrecognised evidence class “not_a_class”/)).toBeInTheDocument())
     expect(screen.queryByText('12.4')).not.toBeInTheDocument()
   })
@@ -154,7 +154,7 @@ describe('the legend names all six classes', () => {
     vi.stubGlobal('fetch', routedFetch(point([
       { field: 'temperature', value: 12.4, provenance: hrdps({ evidence_class: 'retrieved' }) },
     ])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const legend = await waitFor(() => screen.getByText('Evidence class legend').closest('details') as HTMLElement)
     for (const label of ['retrieved', 'reprocessed', 'derived here', 'intermediary derived', 'generated display', 'uncalibrated observation', 'unrecognised evidence class']) {
       expect(within(legend).getAllByText(label).length).toBeGreaterThan(0)

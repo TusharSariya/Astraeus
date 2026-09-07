@@ -190,7 +190,7 @@ describe('the reader can decode every empty slot', () => {
 
   it('shows an aged-out field with its last valid time, apart from a failed retrieval', async () => {
     vi.stubGlobal('fetch', routedFetch(point([hrdpsCloud, agedOut, retrievalFailed])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const families = await screen.findByLabelText('Readings by field family')
 
     const aged = within(families).getByText('wind_speed_10m').closest('li') as HTMLElement
@@ -216,7 +216,7 @@ describe('the reader can decode every empty slot', () => {
   it('shows an aged-out claim with no last valid time as unavailable, never as never-retrieved', async () => {
     const noTime = { ...agedOut, provenance: { ...agedOut.provenance, last_valid_time: null } }
     vi.stubGlobal('fetch', routedFetch(point([hrdpsCloud, noTime])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const families = await screen.findByLabelText('Readings by field family')
     const row = within(families).getByText('wind_speed_10m').closest('li') as HTMLElement
     // Every state this row claims, read off the badges themselves. Enumerated

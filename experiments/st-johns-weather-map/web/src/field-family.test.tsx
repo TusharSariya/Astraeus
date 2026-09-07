@@ -121,7 +121,7 @@ describe('a family is what the response says it is, never what a key looks like'
 
   it('renders the served values grouped by family, key and definition beside each', async () => {
     vi.stubGlobal('fetch', routedFetch(point([hrdpsCloud, gfsCloud], { comparability: [cloudPair] })))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const cloud = await screen.findByLabelText('Cloud cover family')
     expect(within(cloud).getByText('total_cloud_opacity')).toBeInTheDocument()
     expect(within(cloud).getByText('total_cloud_geometric')).toBeInTheDocument()
@@ -152,7 +152,7 @@ describe('two non-comparable members are never drawn as one thing', () => {
 
   it('states beside each member which siblings it may not be drawn with', async () => {
     vi.stubGlobal('fetch', routedFetch(point([hrdpsCloud, gfsCloud], { comparability: [cloudPair] })))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const cloud = await screen.findByLabelText('Cloud cover family')
     const statements = within(cloud).getAllByText(/are never drawn on one/)
     expect(statements).toHaveLength(2)
@@ -182,7 +182,7 @@ describe('a difference between non-comparable members is refused with the reason
 
   it('refuses HRDPS minus GFS cloud in the interface, showing the reason', async () => {
     vi.stubGlobal('fetch', routedFetch(point([hrdpsCloud, gfsCloud], { comparability: [cloudPair] })))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const panel = await screen.findByLabelText('Difference between two family members')
     const user = userEvent.setup()
     await user.selectOptions(within(panel).getByLabelText('Difference member A'), 'total_cloud_opacity · eccc-hrdps')
@@ -289,7 +289,7 @@ describe('available-not-stored and not-published are shown as themselves', () =>
       },
     }
     vi.stubGlobal('fetch', routedFetch(point([hrdpsCloud, notStored])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const families = await screen.findByLabelText('Readings by field family')
     const row = within(families).getByText('aerosol_optical_thickness').closest('li') as HTMLElement
     expect(within(row).getByText('Not stored here')).toBeInTheDocument()
@@ -312,7 +312,7 @@ describe('available-not-stored and not-published are shown as themselves', () =>
       ],
     }]
     vi.stubGlobal('fetch', routedFetch(point([hrdpsCloud]), sources))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const catalogue = await screen.findByLabelText('Fields by source and family')
     expect(catalogue.querySelector('[data-field-key="aerosol_optical_thickness"]')).toHaveAttribute('data-storage', 'available-not-stored')
     expect(catalogue.querySelector('[data-field-key="wind_direction_10m"]')).toHaveAttribute('data-storage', 'not-published')
@@ -347,7 +347,7 @@ describe('an uncatalogued variable is refused, not rendered as a reading', () =>
         },
       },
     ], { notices: ['visibility has no catalogue key; no value is served for it'] })))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     const metric = (await screen.findByText('Visibility')).closest('.metric') as HTMLElement
     expect(within(metric).getByText('Unavailable')).toBeInTheDocument()
     expect(within(metric).getByText(/has no catalogue key/)).toBeInTheDocument()
@@ -367,7 +367,7 @@ describe('the page renders against an API that serves none of this yet', () => {
     expect(snapshot.comparability).toEqual([])
     expect(snapshot.servedFields[0].attribution.storage).toBeNull()
     vi.stubGlobal('fetch', routedFetch(point([bare])))
-    render(<App />)
+    render(<App initialLayout="legacy" />)
     // The temperature still reads: an absent family is a gap in the response,
     // never a reason to blank a value the producer did publish.
     await screen.findByText(/12\.4/)

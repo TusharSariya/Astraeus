@@ -1,3 +1,4 @@
+import type { DrawEvidence } from './workbench/MapStack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CollisionFilterExtension, type CollisionFilterExtensionProps } from '@deck.gl/extensions'
 import { GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer } from '@deck.gl/layers'
@@ -23,6 +24,8 @@ export interface MapEvidenceRow {
 }
 
 interface MapPanelProps {
+  onDrawEvidence?: (rows: DrawEvidence[]) => void
+  compactDisclosure?: boolean
   label: string
   field: string
   comparison?: string
@@ -365,10 +368,12 @@ function describeAppliedOptions(applied: string[] | undefined): string {
   return applied && applied.length > 0 ? applied.join(', ') : 'no option named by the server'
 }
 
+const EMPTY_METHOD_STATUS = {}
+
 export function MapPanel({
   label, field, comparison, selected, onSelect, validTime, reference, interpolate,
-  interpolationMethod = DEFAULT_INTERPOLATION_METHOD, methodStatus = {}, fixtureMode = false,
-  layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, responseSourceIds, theme = 'dark', initialDrawerOpen = false,
+  interpolationMethod = DEFAULT_INTERPOLATION_METHOD, methodStatus = EMPTY_METHOD_STATUS, fixtureMode = false,
+  layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, responseSourceIds, theme = 'dark', initialDrawerOpen = false, onDrawEvidence, compactDisclosure = false,
 }: MapPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -984,7 +989,7 @@ export function MapPanel({
       .map(({ layer, entry }) => ({ layer, entry, state: rasters[layer.id] }))
       .filter((row): row is { layer: LayerItem; entry: LayerSelection; state: Extract<RasterState, { status: 'shown' } | { status: 'refreshing' }> } =>
         row.state?.status === 'shown' || row.state?.status === 'refreshing')
-      .sort((a, b) => (a.layer.z_index ?? 0) - (b.layer.z_index ?? 0))
+      .sort((a, b) => compactDisclosure ? selections.findIndex((entry) => entry.id === a.layer.id) - selections.findIndex((entry) => entry.id === b.layer.id) : (a.layer.z_index ?? 0) - (b.layer.z_index ?? 0))
     // One image source per slot: one for a plain frame, two for a display
     // composite, earlier frame below the later. Stacked translucent layers
     // compose as 1-(1-a)(1-b) rather than a linear crossfade, which is why
@@ -1165,7 +1170,7 @@ export function MapPanel({
     if (map.isStyleLoaded()) return
     map.once('idle', reconcile)
     return () => { map.off('idle', reconcile) }
-  }, [rasters, resolved, extent, flowVersion, interpolate])
+  }, [rasters, resolved, extent, flowVersion, interpolate, compactDisclosure, selections])
 
   // Re-pad when the drawer opens or closes. The first application is made by
   // the `load` handler above; before that the map is not ready to be padded.
@@ -1199,7 +1204,7 @@ export function MapPanel({
   }, [label, selected, states, resolved, coverageFor])
 
   useEffect(() => {
-    if (selected.kind === 'map') mapRef.current?.easeTo({ center: [selected.longitude, selected.latitude], duration: 450 })
+    if (selected.kind === 'map') mapRef.current?.easeTo({ center: [selected.longitude, selected.latitude], duration: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 450 })
   }, [selected])
 
   const describeState = (layer: LayerItem): string => {
@@ -1273,6 +1278,20 @@ export function MapPanel({
     }
     return describeImage(state.slots[0], layer)
   }
+
+  const drawEvidence = useMemo<DrawEvidence[]>(() => selections.map((entry) => {
+    const layer = layers.find((layer) => layer.id === entry.id)
+    const raster = rasters[entry.id]
+    const features = states[entry.id]
+    const slots = raster && (raster.status === 'shown' || raster.status === 'refreshing') ? raster.slots : []
+    return {
+      id: entry.id,
+      drawn: entry.visible && entry.opacity > 0 && (slots.length > 0 || features?.status === 'drawn'),
+      description: !entry.visible ? 'Hidden by reader.' : !layer ? 'Requested layer unavailable in published response.' : `${describeState(layer)} ${describeRaster(layer)} ${fallbackNotes.find((note) => note.layer.id === entry.id)?.text ?? ''}`,
+      times: slots.map((slot) => slot.image.provenance.validTime ?? new Date(slot.frame.time).toISOString()).concat(features?.status === 'drawn' ? [new Date(features.frame.time).toISOString()] : []),
+    }
+  }), [selections, layers, rasters, states, frameKey, flowVersion, interpolationMethod, methodStatus])
+  useEffect(() => { onDrawEvidence?.(drawEvidence) }, [drawEvidence, onDrawEvidence])
 
   const onLegendError = (layer: LayerItem) => {
     void loadLegendFailure(layer).then((reason) => {
@@ -1408,7 +1427,11 @@ export function MapPanel({
   }
 
   return (
-    <section className={`map-pane ${drawerOpen ? 'drawer-open' : 'drawer-closed'}`} aria-label={`${label} map pane`}>
+    <section className={`map-pane ${compactDisclosure ? 'bench-map' : ''} ${drawerOpen ? 'drawer-open' : 'drawer-closed'}`} aria-label={`${label} map pane`}>
+      {compactDisclosure && <details className="bench-map-disclosure">
+        <summary>{drawEvidence.filter((row) => row.drawn).length} of {selections.length} layers drawn · {drawEvidence.some((row) => row.drawn && row.description.includes('GENERATED')) ? 'GENERATED display' : interpolate ? 'display interpolation enabled' : 'generated display off'} · frame details</summary>
+        <table><caption>Actual Map evidence</caption><thead><tr><th scope="col">Layer</th><th scope="col">Drawn</th><th scope="col">Frame and reason</th></tr></thead><tbody>{drawEvidence.map((row) => <tr key={row.id}><th scope="row">{row.id}</th><td>{row.drawn ? 'Yes' : 'No'}</td><td>{row.description}</td></tr>)}</tbody></table>
+      </details>}
       <div className="map-caption">
         <span>{label}</span>
         <strong>{field}</strong>
