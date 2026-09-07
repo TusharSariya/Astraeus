@@ -20,6 +20,28 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Provider-token checkpoint, September 7, 2026
+
+Map inspection #287 merged as `8bf81747`. The current isolated batch is
+`execution/desktop-provider-tokens`, `/tmp/astraeus-desktop-provider-tokens`.
+Selected #41 provider slots/model swatches and evidence colours are shared by
+Map, native Series, Sources and Sky. Native samples retain gaps and same-source
+run shapes. Unknown source bindings use Other; provider legends are unchanged.
+
+497 full client tests, 36 focused tests, build, strict desktop OpenSpec and
+specctl pass. Production-preview Chrome proof asserts fonts loaded, exact theme
+colours, stable slots/styles after filtering, reduced motion and 200% text zoom.
+`/tmp/astraeus-provider-tokens-proof/` holds the receipt/screenshots outside Git.
+Dev-server font loads returned 403 because dependencies were symlinked outside
+the worktree. Use the built preview for further visual evidence; earlier dev
+screenshots do not prove the selected font. No app filesystem permission change
+was needed. Map/Sky proofs also run against the built preview.
+
+Task 5.5 remains open for Activity/strips and the final token audit. Next, finish
+independent Activity paths and assembled verification while holding only the
+recorded missing-weight-budget decision. No desktop or source milestone is
+silently closed. Review stays a separate main-agent pass.
+
 ## Map native inspection checkpoint, September 7, 2026
 
 Sources selection #286 merged as `a0e35947`. The current isolated batch is

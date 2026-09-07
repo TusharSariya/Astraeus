@@ -1,3 +1,4 @@
+import { SourceTag, sourceAttributes } from './SourceTag'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { attributionOf, type ApiEvidenceField } from '../api'
 import type { LocationPoint, ServedFieldValue } from '../types'
@@ -194,11 +195,11 @@ export function NativeTrack({ row, start, end, onInspect, hidePlot = false }: { 
   const units = new Set(numeric.map(({ sample }) => sample.provenance?.normalized_units))
   const values = numeric.map(({ sample }) => Number(sample.value))
   const min = Math.min(...values), max = Math.max(...values)
-  return <section className="native-track"><h3>{row.field} · {row.source_id} · {row.requested_run}</h3><p>{row.availability}: {row.reason}</p>
+  return <section className="native-track"><h3>{row.field} · <SourceTag id={row.source_id} /> · {row.requested_run}</h3><p>{row.availability}: {row.reason}</p>
     {!hidePlot && values.length > 0 && units.size === 1 && typeof [...units][0] === 'string' && <figure><svg viewBox="0 0 720 160" role="img" aria-label={`${row.field} native samples; exact values and times in the following table`}>
       <path d="M65 12V125H700" fill="none" stroke="currentColor" />
       <text x="0" y="22">{max.toPrecision(4)}</text><text x="0" y="118">{min.toPrecision(4)}</text>
-      {numeric.map(({ sample, a }, i) => <circle key={i} cx={65 + 630 * (Date.parse(a!.validTime!) - start) / (end - start)} cy={max === min ? 68 : 115 - 95 * (Number(sample.value) - min) / (max - min)} r="4" fill="currentColor" />)}
+      <g className="native-samples" {...sourceAttributes(row.source_id)}>{numeric.map(({ sample, a }, i) => <circle key={i} cx={65 + 630 * (Date.parse(a!.validTime!) - start) / (end - start)} cy={max === min ? 68 : 115 - 95 * (Number(sample.value) - min) / (max - min)} r="4" fill="currentColor" />)}</g>
       <text x="65" y="150">{new Date(start).toISOString().slice(11, 16)} UTC</text><text x="620" y="150">{new Date(end).toISOString().slice(11, 16)} UTC</text>
     </svg><figcaption>{String([...units][0])} · Discrete native points, no connecting interpolation</figcaption></figure>}
     <details><summary>Native values, gaps and run identity · {readings.length} readings</summary><table><caption>Exact native readings</caption><thead><tr><th scope="col">Native time</th><th scope="col">Value / absence</th><th scope="col">Run / identity</th><th scope="col">Evidence</th></tr></thead><tbody>
@@ -222,9 +223,9 @@ function RunOverlay({ rows, start, end }: { rows: NativeSeriesRow[]; start: numb
   const min = Math.min(...points.map(({ sample }) => Number(sample.value))), max = Math.max(...points.map(({ sample }) => Number(sample.value)))
   return <figure><svg viewBox="0 0 720 160" role="img" aria-label="Same-field run overlay; circles for run A, squares for run B; exact native readings in the following tables">
     <path d="M65 12V125H700" fill="none" stroke="currentColor" /><text x="0" y="22">{max.toPrecision(4)}</text><text x="0" y="118">{min.toPrecision(4)}</text>
-    {points.map(({ series, sample, time }, index) => {
+    <g className="native-samples" {...sourceAttributes(rows[0].source_id)}>{points.map(({ series, sample, time }, index) => {
       const x = 65 + 630 * (time - start) / (end - start), y = max === min ? 68 : 115 - 95 * (Number(sample.value) - min) / (max - min)
       return series === 0 ? <circle key={index} cx={x} cy={y} r="4" fill="currentColor" /> : <rect key={index} x={x - 5} y={y - 5} width="10" height="10" fill="none" stroke="currentColor" />
-    })}<text x="65" y="150">{new Date(start).toISOString().slice(11, 16)} UTC</text><text x="620" y="150">{new Date(end).toISOString().slice(11, 16)} UTC</text>
+    })}</g><text x="65" y="150">{new Date(start).toISOString().slice(11, 16)} UTC</text><text x="620" y="150">{new Date(end).toISOString().slice(11, 16)} UTC</text>
   </svg><figcaption>{String([...units][0])} · Run A (filled circles): {rows[0].requested_run}; Run B (open squares): {rows[1].requested_run}. Native gaps remain empty; no difference is calculated.</figcaption></figure>
 }

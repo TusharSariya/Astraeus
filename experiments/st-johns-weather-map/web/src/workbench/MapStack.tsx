@@ -1,3 +1,4 @@
+import { SourceTag } from './SourceTag'
 import { mapLayerEvidence } from './MapEvidenceDetails'
 import { layerMapping, layerImagery } from './layerIdentity'
 import { useState } from 'react'
@@ -57,11 +58,11 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect }: {
       const actual = drawn.find((row) => row.id === entry.id)
       const mapping = layer ? layerMapping(layer) : null
       const availability = layer ? layerImagery(layer) : null
-      const sourceLabel = mapping?.fields.length ? [...new Set(mapping.fields.map((row) => row.source_id))].join(', ') : 'Source identity not supplied'
+      const sourceIds = [...new Set(mapping?.fields.map((row) => row.source_id) ?? [])]
       const title = layer?.title ?? entry.id
       const description = layer ? actual?.description ?? 'No frame has been drawn.' : 'Requested layer is unavailable in the published layer response.'
       return <li key={entry.id}>
-        <div><EvidenceGlyph kind={actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} /><strong>{actual?.evidenceClass === 'generated_display' && 'GENERATED · '}{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product ? `Product ${layer.product}` : 'Product not supplied'} · {sourceLabel}</small></div>
+        <div><EvidenceGlyph kind={actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} /><strong>{actual?.evidenceClass === 'generated_display' && 'GENERATED · '}{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product ? `Product ${layer.product}` : 'Product not supplied'} · {sourceIds.length ? sourceIds.map((id) => <SourceTag key={id} id={id} />) : 'Source identity not supplied'}</small></div>
         <p>{entry.visible ? description : 'Hidden by reader.'}</p>
         {availability && <p>Imagery availability: {availability.status} · {availability.reason}</p>}
         <p>Actual frame: {actual?.times.length ? actual.times.join(', ') : 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map((time) => layer?.frames?.find((frame) => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}{layer?.run_stale === true ? ' (stale run)' : layer?.run_stale === null ? ` (${layer.run_stale_reason ?? 'freshness unknown'})` : ''}</p>

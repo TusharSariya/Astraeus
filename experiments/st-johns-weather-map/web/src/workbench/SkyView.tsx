@@ -1,3 +1,4 @@
+import { SourceTag } from './SourceTag'
 import type { AstronomyResponse, ServedFieldValue, SpaceWeatherResponse, SpaceWeatherSeries } from '../types'
 import { EvidenceGlyph, EvidenceLedger, evidenceKey, type InspectedEvidence } from './EvidenceInspector'
 import type { RegisteredSite } from './registeredSites'
@@ -33,7 +34,7 @@ export function SkyView(props: Props) {
       return <div className="sky-cloud-gauge" key={row ? evidenceKey(row) : `missing:${index}`}><h4>{label}</h4><svg viewBox="0 0 100 100" role="img" aria-label={`${label}: ${shown(value, row?.units ?? '')}; scalar gauge, not direction`}>
         <circle className="sky-gauge-track" cx="50" cy="50" r="35" />
         {percent !== null ? <circle className="sky-gauge-value" cx="50" cy="50" r="35" pathLength="100" strokeDasharray={`${percent} ${100 - percent}`} transform="rotate(-90 50 50)" /> : <path d="M35 50H65" stroke="currentColor" fill="none" />}
-      </svg><p>{shown(value, row?.units ?? '')}</p><p><EvidenceGlyph kind={row?.attribution.evidenceClass ?? 'unrecognised'} />{row?.attribution.sourceId ?? 'Source not returned'}</p>
+      </svg><p>{shown(value, row?.units ?? '')}</p><p><EvidenceGlyph kind={row?.attribution.evidenceClass ?? 'unrecognised'} /><SourceTag id={row?.attribution.sourceId} /></p>
         {value !== null && percent === null && <p>No gauge scale for the returned unit</p>}
         {row ? <button onClick={(event) => onInspect({ key: evidenceKey(row), label: row.field, text: allowed(row) ? row.text : 'Unavailable', attribution: row.attribution }, event.currentTarget)}>Inspect {row.field} from {row.attribution.sourceId}</button> : <p>No layer fraction returned</p>}
       </div>
@@ -57,8 +58,8 @@ export function SkyView(props: Props) {
     </section>
     <KpContext series={spaceWeather?.kp_observed} label="Kp observed" onInspect={onInspect} /><KpContext series={spaceWeather?.kp_forecast} label="Kp outlook" onInspect={onInspect} />
     <section className="sky-panel"><h3>Solar wind · planetary context</h3><p>Solar-wind measurements and planetary indices are not a local aurora probability.</p>
-      {spaceWeather ? <><p>{spaceWeather.solar_wind.source_id ?? 'Source not supplied'} · Measured {spaceWeather.solar_wind.measured_at ?? 'time not supplied'} · {spaceWeather.solar_wind.freshness.status}</p><p><EvidenceGlyph kind="unrecognised" />Class not supplied · Bz GSM: {shown(spaceWeather.solar_wind.available ? spaceWeather.solar_wind.bz_gsm_nt : null, 'nT')} · <EvidenceGlyph kind="unrecognised" />Bt: {shown(spaceWeather.solar_wind.available ? spaceWeather.solar_wind.bt_nt : null, 'nT')}</p>
-        <p>{spaceWeather.solar_wind_plasma.source_id ?? 'Source not supplied'} · Measured {spaceWeather.solar_wind_plasma.measured_at ?? 'time not supplied'} · {spaceWeather.solar_wind_plasma.freshness.status}</p><p><EvidenceGlyph kind="unrecognised" />Class not supplied · Proton speed: {shown(spaceWeather.solar_wind_plasma.available ? spaceWeather.solar_wind_plasma.proton_speed_km_s : null, 'km/s')} · <EvidenceGlyph kind="unrecognised" />Density: {shown(spaceWeather.solar_wind_plasma.available ? spaceWeather.solar_wind_plasma.proton_density_cm3 : null, 'cm⁻³')} · <EvidenceGlyph kind="unrecognised" />Temperature: {shown(spaceWeather.solar_wind_plasma.available ? spaceWeather.solar_wind_plasma.proton_temperature_k : null, 'K')}</p>
+      {spaceWeather ? <><p><SourceTag id={spaceWeather.solar_wind.source_id} /> · Measured {spaceWeather.solar_wind.measured_at ?? 'time not supplied'} · {spaceWeather.solar_wind.freshness.status}</p><p><EvidenceGlyph kind="unrecognised" />Class not supplied · Bz GSM: {shown(spaceWeather.solar_wind.available ? spaceWeather.solar_wind.bz_gsm_nt : null, 'nT')} · <EvidenceGlyph kind="unrecognised" />Bt: {shown(spaceWeather.solar_wind.available ? spaceWeather.solar_wind.bt_nt : null, 'nT')}</p>
+        <p><SourceTag id={spaceWeather.solar_wind_plasma.source_id} /> · Measured {spaceWeather.solar_wind_plasma.measured_at ?? 'time not supplied'} · {spaceWeather.solar_wind_plasma.freshness.status}</p><p><EvidenceGlyph kind="unrecognised" />Class not supplied · Proton speed: {shown(spaceWeather.solar_wind_plasma.available ? spaceWeather.solar_wind_plasma.proton_speed_km_s : null, 'km/s')} · <EvidenceGlyph kind="unrecognised" />Density: {shown(spaceWeather.solar_wind_plasma.available ? spaceWeather.solar_wind_plasma.proton_density_cm3 : null, 'cm⁻³')} · <EvidenceGlyph kind="unrecognised" />Temperature: {shown(spaceWeather.solar_wind_plasma.available ? spaceWeather.solar_wind_plasma.proton_temperature_k : null, 'K')}</p>
         {inspect('solar-wind', 'solar wind evidence', 'Native planetary context; no local score', { 'Complete returned evidence': spaceWeather })}</> : <p>Space weather unavailable: {props.spaceWeatherNotice ?? 'No response'}</p>}
     </section></div>
   </div>
@@ -74,7 +75,7 @@ function Horizon({ site }: { site: RegisteredSite | null }) {
   </svg>
 }
 function KpContext({ series, label, onInspect }: { series?: SpaceWeatherSeries; label: string; onInspect: Props['onInspect'] }) {
-  return <section className="sky-panel"><h3>{label}</h3><p><EvidenceGlyph kind="unrecognised" />Class not supplied · {series?.source_id ?? 'Source not supplied'} · {series?.freshness.status ?? 'Freshness unknown'}</p><p>Native planetary index; provider status is retained separately from evidence class. No points are connected and no local probability is inferred.</p>
+  return <section className="sky-panel"><h3>{label}</h3><p><EvidenceGlyph kind="unrecognised" />Class not supplied · <SourceTag id={series?.source_id} /> · {series?.freshness.status ?? 'Freshness unknown'}</p><p>Native planetary index; provider status is retained separately from evidence class. No points are connected and no local probability is inferred.</p>
     {series?.available ? <table><caption>{label} at returned native timestamps</caption><thead><tr><th scope="col">Native UTC time</th><th scope="col">Kp</th><th scope="col">Provider status</th></tr></thead><tbody>{series.readings.map((reading, index) => <tr key={index}><th scope="row">{reading.time}</th><td><EvidenceGlyph kind="unrecognised" />{shown(reading.value)}</td><td>{reading.status ?? 'Not supplied'}</td></tr>)}</tbody></table> : <p>Unavailable: {series?.notices.join('; ') || 'No applicable native readings returned'}</p>}
     <button onClick={(event) => onInspect({ key: `sky:${label}`, label, text: 'Planetary context only', details: { 'Complete returned series': series ?? null } }, event.currentTarget)}>Inspect {label}</button>
   </section>
