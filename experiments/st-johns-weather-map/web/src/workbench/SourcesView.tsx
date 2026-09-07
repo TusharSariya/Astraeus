@@ -1,3 +1,4 @@
+import { SourceTag, sourceAttributes } from './SourceTag'
 import { NativeTrack, selectedEvidence, type SharedSeriesSelection } from './NativeSeries'
 import { layerMapping, layerImagery } from './layerIdentity'
 import { useState } from 'react'
@@ -54,7 +55,7 @@ export function useSourcesView(props: Props) {
     {perspective === 'Ledger' && <div className="sources-table"><table><caption>Source Ledger at the shared Focus</caption><thead><tr><th scope="col">Source</th><th scope="col">Declared capability</th><th scope="col">Acquisition report</th><th scope="col">Returned point evidence</th><th scope="col">Provenance</th></tr></thead><tbody>
       {visible.map((id) => {
         const source = catalog.find((entry) => entry.id === id), status = statuses?.find((entry) => entry.source_id === id), values = readings(id)
-        return <tr key={id} data-selected={selected === id}><th scope="row">{id}<small>{source?.producer ?? 'Producer not declared'} · {source?.product ?? 'Product not declared'}</small></th>
+        return <tr key={id} data-selected={selected === id}><th scope="row"><SourceTag id={id} /><small>{source?.producer ?? 'Producer not declared'} · {source?.product ?? 'Product not declared'}</small></th>
           <td>{source?.state ?? 'Registry state unknown'}<small>{source?.status_reason}</small><small>{source?.geographic_coverage ?? 'Geography not declared'}</small><small>{source?.fields ? `${source.fields.length} declared fields` : 'Fields not declared'}</small></td>
           <td>{status ? `${status.state} · ${status.data_mode}` : 'Acquisition status unknown'}<small>{status?.last_retrieval ? `Reported retrieval ${status.last_retrieval}` : 'No retrieval time supplied'}</small><small>{status?.detail}</small></td>
           <td>{values.length ? `${values.length} returned readings; inspect their individual availability` : 'No readings returned at Focus; coverage unestablished'}</td><td>{inspectButton(id)}</td></tr>
@@ -63,11 +64,11 @@ export function useSourcesView(props: Props) {
     {perspective === 'Family finder' && <div>{(family ? [family] : families).map((name) => {
       const declarations = visible.flatMap((id) => catalog.find((source) => source.id === id)?.fields?.filter((field) => field.family === name).map((field) => ({ id, field })) ?? [])
       return <section className="source-family-card" key={name}><h3>{familyTitle(name)}</h3>{declarations.length === 0 && <p>No matching field declaration was returned.</p>}
-        <ul>{declarations.map(({ id, field }) => <li key={`${id}:${field.key}`}><strong>{field.key}</strong> · {id}<p>{fieldDefinition(field.key)}</p><p>Declared storage: {field.storage ?? 'unknown'} · Native field: {field.upstream ?? 'not supplied'}</p>{field.note && <p>{field.note}</p>}{inspectButton(id)}</li>)}</ul>
+        <ul>{declarations.map(({ id, field }) => <li key={`${id}:${field.key}`}><strong>{field.key}</strong> · <SourceTag id={id} /><p>{fieldDefinition(field.key)}</p><p>Declared storage: {field.storage ?? 'unknown'} · Native field: {field.upstream ?? 'not supplied'}</p>{field.note && <p>{field.note}</p>}{inspectButton(id)}</li>)}</ul>
       </section>
     })}</div>}
     {perspective === 'Coverage lanes' && <div><p>Each marker is a returned native timestamp, within 24 hours either side of Focus. Unmarked spans are unqueried. × means a returned reading is absent or withheld, not an all-clear.</p>
-      {visible.map((id) => <section className="source-coverage-lane" key={id}><h3>{id}</h3><CoverageMarks values={readings(id)} instant={instant} />
+      {visible.map((id) => <section className="source-coverage-lane" key={id}><h3><SourceTag id={id} /></h3><CoverageMarks values={readings(id)} instant={instant} />
         {readings(id).length === 0 && <p>No point samples were returned. Declared horizon and retrieval status do not fill this lane.</p>}
         {inspectButton(id)}<details><summary>Native values and absence states · {readings(id).length} readings</summary><EvidenceLedger rows={readings(id)} onInspect={onInspect} /></details>
       </section>)}
@@ -101,7 +102,7 @@ function CoverageMarks({ values, instant }: { values: ServedFieldValue[]; instan
     <path d="M20 24H700M360 12V38" stroke="currentColor" strokeDasharray="3 4" fill="none" />
     {plotted.map((value, index) => {
       const x = 20 + 680 * (Date.parse(value.attribution.validTime!) - instant + 86400000) / 172800000
-      return value.hasValue && value.attribution.evidenceClass !== 'unrecognised' && !value.attribution.derivationRefused && !value.attribution.provenanceUnmodelled && !value.attribution.uncatalogued ? <circle key={index} cx={x} cy="24" r="4" fill="currentColor" /> : <path key={index} d={`M${x - 4} 20l8 8m0-8l-8 8`} stroke="currentColor" fill="none" />
+      return value.hasValue && value.attribution.evidenceClass !== 'unrecognised' && !value.attribution.derivationRefused && !value.attribution.provenanceUnmodelled && !value.attribution.uncatalogued ? <circle className="native-samples" {...sourceAttributes(value.attribution.sourceId)} key={index} cx={x} cy="24" r="4" fill="currentColor" /> : <path className="native-samples" {...sourceAttributes(value.attribution.sourceId)} key={index} d={`M${x - 4} 20l8 8m0-8l-8 8`} stroke="currentColor" fill="none" />
     })}
     <text x="20" y="58">−24h</text><text x="342" y="58">Focus</text><text x="662" y="58">+24h</text>
   </svg>{values.length > plotted.length && <p>{values.length - plotted.length} readings have no in-range timestamp; see their individual provenance.</p>}

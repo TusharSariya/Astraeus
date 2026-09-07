@@ -198,3 +198,34 @@ this proof does not claim new live provider retrieval or a live generated raster
 Separate main-agent review corrected hidden/failed draw receipts and preserved
 missing version/capture values. Physical screen-reader/outdoor proof, provider
 tokens, Activity and the assembled five-view milestone remain open.
+
+
+## September 7 provider-token checkpoint
+
+The selected #41 C palette now supplies fixed provider slots and source/model
+line swatches in Map, native Series, Sources and Sky. Native plot markers use
+the same slots without connecting gaps; same-source run overlay retains its
+circle/square distinction. Source IDs remain printed in ordinary readable ink;
+the colour swatch is redundant. Bindings are the explicit selected prototype
+list, copied from `prototype/tokens` commit `58857e38`; unknown/unassigned sources
+use Other without inferring a provider from their spelling. Provider PNG legends
+and existing scalar-colour calculations are untouched. Evidence glyph colours
+use the selected light/dark hues and red-night ink. Timeline UI inherits Next;
+times and source tags use Mono, with reduced motion preserved.
+
+497 full client tests, 36 final focused workbench tests, build, strict desktop
+OpenSpec and specctl pass. `web/scripts/prove-desktop-provider-tokens.mjs` runs
+against a production preview (`npm run build`; `npx vite preview --port 5246`),
+asserting loaded Next/Mono fonts, exact palette values in three themes, stable
+slots/styles through filtering, unknown Other, native gaps, reduced motion and
+200% text zoom. Screenshots/receipt: `/tmp/astraeus-provider-tokens-proof/`.
+The development-server proof initially exposed HTTP 403 font requests through
+the shared node_modules symlink. Production assets load normally; no server
+filesystem allowlist was widened. Earlier development screenshots with fallback
+fonts are not evidence of Hyperlegible typography. Map and Sky proofs are rerun
+against the production preview; captures remain outside Git.
+
+This completes the shared source-style component, not all of task 5.5: Activity
+body/strips and final cross-view token audit remain with the assembled milestone.
+No new science, provider acquisition, API or source admission changes. Physical
+screen-reader/outdoor verification remains separate.

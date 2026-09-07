@@ -1,0 +1,94 @@
+{
+  "origin": "Wayfinder #41 selected C / red / provider; prototype/tokens tokens.json",
+  "sources": [
+    {
+      "slot": 1,
+      "hue": "blue",
+      "provider": "ECCC models",
+      "sources": [
+        "eccc-hrdps",
+        "eccc-rdps",
+        "eccc-gdps",
+        "eccc-reps"
+      ],
+      "hex": "#338bf6"
+    },
+    {
+      "slot": 2,
+      "hue": "orange",
+      "provider": "NOAA NCEP",
+      "sources": [
+        "noaa-gfs",
+        "noaa-gefs"
+      ],
+      "hex": "#a83a02"
+    },
+    {
+      "slot": 3,
+      "hue": "aqua",
+      "provider": "ECMWF",
+      "sources": [
+        "ecmwf-ifs",
+        "ecmwf-ens",
+        "ecmwf-aifs-ens"
+      ],
+      "hex": "#01a672"
+    },
+    {
+      "slot": 4,
+      "hue": "yellow",
+      "provider": "DWD",
+      "sources": [
+        "dwd-icon-global"
+      ],
+      "hex": "#865900"
+    },
+    {
+      "slot": 5,
+      "hue": "magenta",
+      "provider": "Observations",
+      "sources": [
+        "awc-metar-speci",
+        "awc-taf",
+        "eccc-swob"
+      ],
+      "hex": "#dd538d"
+    },
+    {
+      "slot": 6,
+      "hue": "green",
+      "provider": "Space weather",
+      "sources": [
+        "noaa-swpc-kp",
+        "noaa-swpc-ovation"
+      ],
+      "hex": "#007900"
+    },
+    {
+      "slot": 7,
+      "hue": "violet",
+      "provider": "Imagery",
+      "sources": [
+        "noaa-goes-east",
+        "eccc-radar",
+        "eccc-lightning"
+      ],
+      "hex": "#8178f4"
+    },
+    {
+      "slot": 8,
+      "hue": "red",
+      "provider": "Other",
+      "sources": [
+        "everything else folds here"
+      ],
+      "hex": "#b32229"
+    }
+  ],
+  "modelStyles": [
+    "solid",
+    "dashed",
+    "dotted",
+    "dash-dot"
+  ]
+}
