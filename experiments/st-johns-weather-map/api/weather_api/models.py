@@ -1595,6 +1595,32 @@ class SolarWindLatest(StrictModel):
     notices: list[str] = Field(default_factory=list)
 
 
+class SolarWindPlasmaLatest(StrictModel):
+    """One retrieved native SWPC plasma row, or its explicit absence."""
+
+    available: bool
+    source_id: str
+    product: str
+    proton_density_cm3: float | None
+    proton_speed_km_s: float | None
+    proton_temperature_k: float | None
+    measured_at: datetime | None
+    feed_declared_spacecraft: str | None
+    active: bool | None = None
+    overall_quality: float | None = None
+    freshness: Freshness
+    acquisition: KpAcquisition | None = None
+    notices: list[str] = Field(default_factory=list)
+
+
+class PlasmaDemandUnavailable(StrictModel):
+    """Expired plasma receipt disclosed while every native value is withheld."""
+
+    reason: str
+    cached_acquisition: KpAcquisition | None = None
+    values_withheld: Literal[True] = True
+
+
 class SpaceWeatherResponse(StrictModel):
     data_mode: DataMode
     operational: Literal[False] = False
@@ -1602,6 +1628,8 @@ class SpaceWeatherResponse(StrictModel):
     kp_observed: SpaceWeatherSeries
     kp_forecast: SpaceWeatherSeries
     solar_wind: SolarWindLatest
+    solar_wind_plasma: SolarWindPlasmaLatest
+    plasma_demand_unavailable: PlasmaDemandUnavailable | None = None
     notices: list[str] = Field(default_factory=list)
 
 

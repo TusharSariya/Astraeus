@@ -111,6 +111,21 @@ const liveSpaceWeather = {
       expires_at: new Date(Date.now() + 60 * 1000).toISOString(), last_revalidation: null,
     },
   },
+  solar_wind_plasma: {
+    available: true, source_id: 'noaa-swpc-plasma', product: 'Real-time solar wind plasma (1-minute, per spacecraft)',
+    proton_density_cm3: 3.63, proton_speed_km_s: 339.2, proton_temperature_k: 86894,
+    measured_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(), feed_declared_spacecraft: 'SOLAR1',
+    active: true, overall_quality: 0,
+    freshness: { status: 'fresh', age_seconds: 120, threshold_seconds: 900 }, notices: [],
+    acquisition: {
+      provider_url: 'https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json',
+      effective_url: 'https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json',
+      request_headers: { accept: 'application/json', 'accept-encoding': 'identity' }, response_headers: { etag: '"native-plasma"' },
+      transport_completed_at: new Date(Date.now() - 60 * 1000).toISOString(), body_bytes: 7245, body_sha256: 'b'.repeat(64),
+      expires_at: new Date(Date.now() + 60 * 1000).toISOString(), last_revalidation: null,
+    },
+  },
+  plasma_demand_unavailable: null,
   notices: [],
 }
 
@@ -1340,12 +1355,22 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
     expect(screen.getByText(/provider status: predicted/)).toBeInTheDocument()
     expect(screen.getByText(/photographable at St. John's from about Kp 4-5/)).toBeInTheDocument()
     expect(screen.getByText('-4.1 nT')).toBeInTheDocument()
-    expect(screen.getByText(/feed-declared spacecraft SOLAR1/)).toBeInTheDocument()
+    const plasmaCard = screen.getByText('Solar wind plasma').closest('article')
+    expect(plasmaCard).not.toBeNull()
+    const plasmaMetric = within(plasmaCard as HTMLElement)
+    expect(plasmaMetric.getByText('339.2 km/s')).toBeInTheDocument()
+    expect(plasmaMetric.getByText(/feed-declared spacecraft SOLAR1/)).toBeInTheDocument()
+    expect(plasmaMetric.getByText(/active flag true/)).toBeInTheDocument()
+    expect(plasmaMetric.getByText(/overall quality 0/)).toBeInTheDocument()
+    expect(plasmaMetric.getByText(/source transport/)).toBeInTheDocument()
+    expect(screen.getAllByText(/feed-declared spacecraft SOLAR1/)).toHaveLength(2)
     expect(screen.getByText(/Bt 4\.3 nT/)).toBeInTheDocument()
-    expect(screen.getByText(/active flag true/)).toBeInTheDocument()
-    expect(screen.getByText(/overall quality 0/)).toBeInTheDocument()
-    expect(screen.getByText(/source transport/)).toBeInTheDocument()
+    expect(screen.getAllByText(/active flag true/)).toHaveLength(2)
+    expect(screen.getAllByText(/overall quality 0/)).toHaveLength(2)
+    expect(screen.getAllByText(/source transport/)).toHaveLength(2)
     expect(screen.getByText(/southward \(negative\) Bz is the aurora tripwire/)).toBeInTheDocument()
+    expect(screen.getByText(/proton density 3\.63 cm⁻³/)).toBeInTheDocument()
+    expect(screen.getByText(/proton temperature 86894 K/)).toBeInTheDocument()
     // Planetary indices, never local readings: the section says so.
     expect(screen.getByText(/planetary indices, not local readings/)).toBeInTheDocument()
   })
@@ -1357,6 +1382,8 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
         kp_observed: { available: false, source_id: 'noaa-swpc-kp', product: 'unavailable', readings: [], freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 21600 }, notices: [] },
         kp_forecast: { available: false, source_id: 'noaa-swpc-kp', product: 'unavailable', readings: [], freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 21600 }, notices: [] },
         solar_wind: { available: false, source_id: 'noaa-swpc-rtsw', product: 'unavailable', bz_gsm_nt: null, bt_nt: null, measured_at: null, feed_declared_spacecraft: null, active: null, overall_quality: null, freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 900 }, acquisition: null, notices: [] },
+        solar_wind_plasma: { available: false, source_id: 'noaa-swpc-plasma', product: 'unavailable', proton_density_cm3: null, proton_speed_km_s: null, proton_temperature_k: null, measured_at: null, feed_declared_spacecraft: null, active: null, overall_quality: null, freshness: { status: 'unknown', age_seconds: null, threshold_seconds: 900 }, acquisition: null, notices: [] },
+        plasma_demand_unavailable: null,
         notices: ['no fixture space weather exists; fixture mode answers unavailable rather than inventing planetary indices'],
       },
     }))
@@ -1389,13 +1416,29 @@ describe('space weather cards: Kp and Bz, fail-closed', () => {
         ...liveSpaceWeather.solar_wind,
         feed_declared_spacecraft: null, bt_nt: null, active: null, overall_quality: null, acquisition: null,
       },
+      solar_wind_plasma: {
+        ...liveSpaceWeather.solar_wind_plasma,
+        proton_density_cm3: null, proton_speed_km_s: null, proton_temperature_k: null,
+        feed_declared_spacecraft: null, active: null, overall_quality: null, acquisition: null,
+      },
     } }))
     render(<App />)
-    expect(await screen.findByText(/feed-declared spacecraft unknown/)).toBeInTheDocument()
+    expect(await screen.findAllByText(/feed-declared spacecraft unknown/)).toHaveLength(2)
+    const plasmaCard = screen.getByText('Solar wind plasma').closest('article')
+    expect(plasmaCard).not.toBeNull()
+    const plasmaMetric = within(plasmaCard as HTMLElement)
+    expect(plasmaMetric.getByText('Unknown')).toBeInTheDocument()
+    expect(plasmaMetric.getByText(/feed-declared spacecraft unknown/)).toBeInTheDocument()
+    expect(plasmaMetric.getByText(/active flag unknown/)).toBeInTheDocument()
+    expect(plasmaMetric.getByText(/overall quality unknown/)).toBeInTheDocument()
+    expect(plasmaMetric.getByText(/source transport unknown/)).toBeInTheDocument()
     expect(screen.getByText(/Bt unknown/)).toBeInTheDocument()
-    expect(screen.getByText(/active flag unknown/)).toBeInTheDocument()
-    expect(screen.getByText(/overall quality unknown/)).toBeInTheDocument()
-    expect(screen.getByText(/source transport unknown/)).toBeInTheDocument()
+    expect(screen.getAllByText(/active flag unknown/)).toHaveLength(2)
+    expect(screen.getAllByText(/overall quality unknown/)).toHaveLength(2)
+    expect(screen.getAllByText(/source transport unknown/)).toHaveLength(2)
+    expect(screen.getAllByText('Unknown').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/proton density unknown/)).toBeInTheDocument()
+    expect(screen.getByText(/proton temperature unknown/)).toBeInTheDocument()
   })
 })
 

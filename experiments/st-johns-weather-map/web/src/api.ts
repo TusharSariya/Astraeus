@@ -812,7 +812,7 @@ export async function loadSpaceWeather(at: Date, signal?: AbortSignal): Promise<
     const response = await fetch(`${prefix}/space-weather?${params}`, { signal, headers: { Accept: 'application/json' } })
     if (!response.ok) return { spaceWeather: null, error: `space-weather returned ${response.status}` }
     const body: unknown = await response.json()
-    if (!body || typeof body !== 'object' || !(body as { kp_observed?: unknown }).kp_observed || !(body as { solar_wind?: unknown }).solar_wind) {
+    if (!body || typeof body !== 'object' || !(body as { kp_observed?: unknown }).kp_observed || !(body as { solar_wind?: unknown }).solar_wind || !(body as { solar_wind_plasma?: unknown }).solar_wind_plasma) {
       return { spaceWeather: null, error: 'space-weather returned an incompatible schema' }
     }
     const spaceWeather = body as SpaceWeatherResponse
