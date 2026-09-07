@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 
 import weather_api.app  # noqa: F401
 import weather_api.swpc_kp_query as kp_query_module
+import weather_api.swpc_plasma_query as plasma_query_module
 import weather_api.swpc_rtsw_query as rtsw_query_module
 from ingest.store import CurrentArtifact
 from weather_api.app import PREFIX, app
@@ -150,6 +151,10 @@ def use_store(monkeypatch, data_mode, store) -> None:
         def latest(self, at):
             return api_module._solar_wind_latest(store.read_series("noaa-swpc-rtsw", "solar_wind"), at)
     monkeypatch.setattr(rtsw_query_module, "swpc_rtsw_query_service", lambda: DemandRTSW())
+    class UnavailablePlasma:
+        def latest(self, _at):
+            raise plasma_query_module.SWPCPlasmaUnavailable("plasma fixture intentionally unavailable")
+    monkeypatch.setattr(plasma_query_module, "swpc_plasma_query_service", lambda: UnavailablePlasma())
 
 
 def full_store(reference: datetime) -> StubStore:

@@ -617,6 +617,8 @@ describe('space weather is read fail-closed', () => {
     kp_observed: { available: true, source_id: 'noaa-swpc-kp', product: 'Planetary K index (observed)', readings: [{ time: '2026-08-31T00:00:00Z', value: 4.33, status: null }], freshness: { status: 'fresh', age_seconds: 1800, threshold_seconds: 21600 }, notices: [] },
     kp_forecast: { available: true, source_id: 'noaa-swpc-kp', product: 'Planetary K index (3-day outlook, per-value status)', readings: [{ time: '2026-08-31T06:00:00Z', value: 5.0, status: 'predicted' }], freshness: { status: 'fresh', age_seconds: 1800, threshold_seconds: 21600 }, notices: [] },
     solar_wind: { available: true, source_id: 'noaa-swpc-rtsw', product: 'Real-time solar wind magnetic field (1-minute)', bz_gsm_nt: -4.1, bt_nt: 4.3, measured_at: '2026-08-31T01:59:00Z', feed_declared_spacecraft: 'SOLAR1', freshness: { status: 'fresh', age_seconds: 120, threshold_seconds: 900 }, notices: [] },
+    solar_wind_plasma: { available: true, source_id: 'noaa-swpc-plasma', product: 'Real-time solar wind plasma (1-minute, per spacecraft)', proton_density_cm3: 3.63, proton_speed_km_s: 339.2, proton_temperature_k: 86894, measured_at: '2026-08-31T01:59:00Z', feed_declared_spacecraft: 'SOLAR1', active: true, overall_quality: 0, freshness: { status: 'fresh', age_seconds: 120, threshold_seconds: 900 }, acquisition: null, notices: [] },
+    plasma_demand_unavailable: null,
     notices: [],
   }
 
@@ -626,6 +628,7 @@ describe('space weather is read fail-closed', () => {
     expect(result.error).toBeNull()
     expect(result.spaceWeather?.kp_forecast.readings[0].status).toBe('predicted')
     expect(result.spaceWeather?.solar_wind.bz_gsm_nt).toBe(-4.1)
+    expect(result.spaceWeather?.solar_wind_plasma.proton_speed_km_s).toBe(339.2)
   })
 
   it('fails closed on a non-live mode, keeping the API notice as the reason', async () => {
@@ -640,6 +643,14 @@ describe('space weather is read fail-closed', () => {
     const { data_mode: _dropped, ...noMode } = liveBody
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(noMode), { status: 200 })))
     expect((await loadSpaceWeather(selected)).spaceWeather).toBeNull()
+  })
+
+  it('fails closed when the plasma member is absent from the response contract', async () => {
+    const { solar_wind_plasma: _dropped, ...missingPlasma } = liveBody
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(missingPlasma), { status: 200 })))
+    const result = await loadSpaceWeather(selected)
+    expect(result.spaceWeather).toBeNull()
+    expect(result.error).toMatch(/incompatible schema/)
   })
 
   it('returns null with the transport failure, never an invented zero', async () => {

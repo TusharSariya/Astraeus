@@ -1656,7 +1656,7 @@ SOURCE_FIELDS: list[dict[str, Any]] = [
     _sf("noaa-swpc-ovation", "aurora_probability", "ovation_aurora_latest.json", "stored",
         "Sampled at the requested coordinate exactly as stored."),
     _sf("noaa-swpc-plasma", "solar_wind_density", "rtsw_wind_1m.json proton_density", "stored", "Stored per spacecraft with every feed quality flag."),
-    _sf("noaa-swpc-plasma", "solar_wind_speed", "rtsw_wind_1m.json bulk_speed", "stored", "Stored per spacecraft with every feed quality flag."),
+    _sf("noaa-swpc-plasma", "solar_wind_speed", "rtsw_wind_1m.json proton_speed", "stored", "Stored per spacecraft with every feed quality flag."),
     _sf("noaa-swpc-plasma", "solar_wind_temperature", "rtsw_wind_1m.json proton_temperature", "stored", "Stored per spacecraft with every feed quality flag."),
     _sf("noaa-swpc-propagated-solar-wind", "solar_wind_speed", "propagated-solar-wind-1-hour.json speed", "stored", "Provider propagation instant retained; no lag derived here."),
     _sf("noaa-swpc-propagated-solar-wind", "solar_wind_density", "propagated-solar-wind-1-hour.json density", "stored", "Provider propagation instant retained; no lag derived here."),

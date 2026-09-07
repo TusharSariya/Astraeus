@@ -1384,6 +1384,7 @@ export default function App() {
                     const observed = latestKpReading(spaceWeather.kp_observed)
                     const forecast = maxForecastKp(spaceWeather.kp_forecast, windowStartMs, windowEndMs)
                     const wind = spaceWeather.solar_wind
+                    const plasma = spaceWeather.solar_wind_plasma
                     const windNativeDetail = [
                       `measured ${wind.measured_at ? nlTime(wind.measured_at) : 'at an unknown instant'} NT${staleSuffix(wind.freshness)}`,
                       wind.feed_declared_spacecraft ? `feed-declared spacecraft ${wind.feed_declared_spacecraft}` : 'feed-declared spacecraft unknown',
@@ -1392,6 +1393,15 @@ export default function App() {
                       wind.overall_quality === null ? 'overall quality unknown' : `overall quality ${wind.overall_quality}`,
                       wind.acquisition ? `source transport ${nlTime(wind.acquisition.transport_completed_at)} NT` : 'source transport unknown',
                       'southward (negative) Bz is the aurora tripwire',
+                    ].join(' · ')
+                    const plasmaNativeDetail = [
+                      `measured ${plasma.measured_at ? nlTime(plasma.measured_at) : 'at an unknown instant'} NT${staleSuffix(plasma.freshness)}`,
+                      plasma.feed_declared_spacecraft ? `feed-declared spacecraft ${plasma.feed_declared_spacecraft}` : 'feed-declared spacecraft unknown',
+                      plasma.proton_density_cm3 === null ? 'proton density unknown' : `proton density ${plasma.proton_density_cm3.toFixed(2)} cm⁻³`,
+                      plasma.proton_temperature_k === null ? 'proton temperature unknown' : `proton temperature ${plasma.proton_temperature_k.toFixed(0)} K`,
+                      plasma.active === null ? 'active flag unknown' : `active flag ${plasma.active ? 'true' : 'false'}`,
+                      plasma.overall_quality === null ? 'overall quality unknown' : `overall quality ${plasma.overall_quality}`,
+                      plasma.acquisition ? `source transport ${nlTime(plasma.acquisition.transport_completed_at)} NT` : 'source transport unknown',
                     ].join(' · ')
                     return (
                       <div className="metric-grid">
@@ -1418,6 +1428,13 @@ export default function App() {
                           detail={wind.available && wind.bz_gsm_nt !== null
                             ? windNativeDetail
                             : wind.notices[0] ?? 'No Bz value was returned'}
+                        />
+                        <Metric
+                          label="Solar wind plasma"
+                          value={plasma.available && plasma.proton_speed_km_s !== null ? `${plasma.proton_speed_km_s.toFixed(1)} km/s` : 'Unknown'}
+                          detail={plasma.available
+                            ? plasmaNativeDetail
+                            : plasma.notices[0] ?? 'No native plasma row was returned'}
                         />
                       </div>
                     )

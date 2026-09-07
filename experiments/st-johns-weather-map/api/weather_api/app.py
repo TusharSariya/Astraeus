@@ -85,7 +85,9 @@ from .models import (
     AstronomyResponse,
 )
 from .models import (
+    PlasmaDemandUnavailable,
     SolarWindLatest,
+    SolarWindPlasmaLatest,
     SpaceWeatherReading,
     SpaceWeatherResponse,
     SpaceWeatherSeries,
@@ -2439,6 +2441,7 @@ def get_astronomy(
 
 SWPC_KP_SOURCE = "noaa-swpc-kp"
 SWPC_RTSW_SOURCE = "noaa-swpc-rtsw"
+SWPC_PLASMA_SOURCE = "noaa-swpc-plasma"
 
 
 def _swpc_threshold(source_id: str) -> int | None:
@@ -2469,6 +2472,23 @@ def _absent_solar_wind(notice: str) -> SolarWindLatest:
     )
 
 
+def _absent_solar_wind_plasma(notice: str) -> SolarWindPlasmaLatest:
+    return SolarWindPlasmaLatest(
+        available=False,
+        source_id=SWPC_PLASMA_SOURCE,
+        product="unavailable",
+        proton_density_cm3=None,
+        proton_speed_km_s=None,
+        proton_temperature_k=None,
+        measured_at=None,
+        feed_declared_spacecraft=None,
+        active=None,
+        overall_quality=None,
+        freshness=Freshness.evaluate(None, _swpc_threshold(SWPC_PLASMA_SOURCE)),
+        notices=[notice],
+    )
+
+
 def _unavailable_space_weather(reference: datetime, reason: str, *, extra_notices: list[str] | None = None) -> SpaceWeatherResponse:
     return SpaceWeatherResponse(
         data_mode=DataMode.UNAVAILABLE,
@@ -2476,6 +2496,8 @@ def _unavailable_space_weather(reference: datetime, reason: str, *, extra_notice
         kp_observed=_absent_series(SWPC_KP_SOURCE, reason),
         kp_forecast=_absent_series(SWPC_KP_SOURCE, reason),
         solar_wind=_absent_solar_wind(reason),
+        solar_wind_plasma=_absent_solar_wind_plasma(reason),
+        plasma_demand_unavailable=None,
         notices=[reason, *(extra_notices or [])],
     )
 
@@ -2673,14 +2695,49 @@ def get_space_weather(at: datetime = Query(..., description="Aware selected evid
     except (SWPCRTSWUnavailable, ValueError) as error:
         solar_wind = _absent_solar_wind(str(error))
         solar_wind_notice = [str(error)]
-    available = kp_observed.available or kp_forecast.available or solar_wind.available
+
+    from .swpc_plasma_query import SWPCPlasmaUnavailable, swpc_plasma_query_service  # noqa: PLC0415
+    try:
+        native_plasma = swpc_plasma_query_service().latest(reference)
+        solar_wind_plasma = SolarWindPlasmaLatest(
+            available=True,
+            source_id=native_plasma.source_id,
+            product=native_plasma.product,
+            proton_density_cm3=native_plasma.proton_density_cm3,
+            proton_speed_km_s=native_plasma.proton_speed_km_s,
+            proton_temperature_k=native_plasma.proton_temperature_k,
+            measured_at=native_plasma.measured_at,
+            feed_declared_spacecraft=native_plasma.feed_declared_spacecraft,
+            active=native_plasma.active,
+            overall_quality=native_plasma.overall_quality,
+            freshness=native_plasma.freshness,
+            acquisition=native_plasma.acquisition,
+            notices=list(native_plasma.notices),
+        )
+        plasma_notices: list[str] = []
+        plasma_unavailable = None
+    except (SWPCPlasmaUnavailable, ValueError) as error:
+        solar_wind_plasma = _absent_solar_wind_plasma(str(error))
+        plasma_notices = [str(error)]
+        plasma_unavailable = PlasmaDemandUnavailable(
+            reason=str(error),
+            cached_acquisition=error.cached if isinstance(error, SWPCPlasmaUnavailable) else None,
+        )
+    available = (
+        kp_observed.available
+        or kp_forecast.available
+        or solar_wind.available
+        or solar_wind_plasma.available
+    )
     return SpaceWeatherResponse(
         data_mode=DataMode.LIVE if available else DataMode.UNAVAILABLE,
         generated_at=reference,
         kp_observed=kp_observed,
         kp_forecast=kp_forecast,
         solar_wind=solar_wind,
-        notices=solar_wind_notice if available else [*solar_wind_notice, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
+        solar_wind_plasma=solar_wind_plasma,
+        plasma_demand_unavailable=plasma_unavailable,
+        notices=[*solar_wind_notice, *plasma_notices] if available else [*solar_wind_notice, *plasma_notices, "no applicable demand Kp or solar-wind evidence is available; nothing is invented"],
     )
 
 
