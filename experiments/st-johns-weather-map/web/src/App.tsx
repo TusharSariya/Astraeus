@@ -385,10 +385,11 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [mapDrawReceipts, setDrawn] = useState<DrawEvidence[]>([])
   const [inspected, setInspected] = useState<InspectedEvidence | null>(null)
   const opener = useRef<HTMLButtonElement | null>(null)
-  const inspectorFallback = useRef<HTMLInputElement | null>(null)
+  const inspectorFallback = useRef<HTMLInputElement | HTMLSelectElement | null>(null)
   const inspect = useCallback((evidence: InspectedEvidence, element: HTMLButtonElement) => {
     opener.current = element
-    inspectorFallback.current = element.closest('.sources-view')?.querySelector<HTMLInputElement>('input[type="search"]') ?? null
+    inspectorFallback.current = element.closest('.sources-view')?.querySelector<HTMLInputElement>('input[type="search"]')
+      ?? element.closest('.native-series')?.querySelector<HTMLSelectElement>('[data-inspector-return]') ?? null
     setInspected(evidence)
   }, [])
   const closeInspector = () => {

@@ -164,7 +164,7 @@ export function useNativeSeries(props: Props) {
   return <section className="native-series" aria-label="Native Series">
     <div className="series-controls"><button aria-pressed={!compare} onClick={() => setCompare(false)}>Overview</button><button aria-pressed={compare} onClick={() => setCompare(true)}>Temporary Compare</button>
       {!runPair && <>{select('Series A', first, setFirst)}{compare && select('Series B', second, setSecond)}</>}
-      <label>Window from Focus<select value={hours} onChange={(event) => setHours(Number(event.target.value))}>{[1, 3, 6, 12].map((n) => <option key={n} value={n}>{n} hours</option>)}</select></label>
+      <label>Window from Focus<select data-inspector-return value={hours} onChange={(event) => setHours(Number(event.target.value))}>{[1, 3, 6, 12].map((n) => <option key={n} value={n}>{n} hours</option>)}</select></label>
       <button disabled={busy || !focusReady || selectionMoving} onClick={() => void read(selection)}>Refresh Series</button>
       <button disabled={busy || !data || expired} onClick={() => void checkChanges()}>Check for changes</button>
     </div>

@@ -306,3 +306,30 @@ Actual screen-reader testing remains outstanding; #69 remains open.
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; desktop workbench requirements
 “Evidence interactions preserve keyboard context” and “Sources retains all three
 selected perspectives”.
+
+
+## Issue #69: Series selection and expiry focus return
+
+After the Sources repair merged as #292, the next collaborative keyboard check
+confirmed that Series already withholds old provenance on selection change but
+returns to the stage root after its opener disappears. Series now marks the
+persistent Window from Focus control as its local inspector-return fallback.
+An available opener still wins; Sources search and the final stage fallback
+retain their roles. No scoring, data, request, cache or native-time semantics
+change. The window control persists through temporary run comparison.
+
+Verification: 14 affected NativeSeries/inspector/shell tests and production
+build pass. `web/scripts/prove-series-keyboard.mjs` uses Tab/Shift+Tab, native
+select type-ahead, Enter and Escape to check window replacement, unchanged-opener
+return, fixed expiry, old-provenance removal, unchanged Focus URL and exactly two
+Series requests (initial plus changed window; expiry does not reacquire).
+Baseline returnedToWindow=false; repaired true. Receipts/screenshots stay outside
+Git at `/tmp/astraeus-series-keyboard-before/` and
+`/tmp/astraeus-series-keyboard-proof/`. The Sources keyboard proof also passes.
+Strict desktop OpenSpec, specctl and diff checks pass. Separate main-agent review
+checked control lifetime and fallback precedence. Actual screen-reader output
+remains untested; #69 remains open.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; desktop workbench requirements
+“Evidence interactions preserve keyboard context” and “Series implements the
+selected Overview and temporary Compare”.
