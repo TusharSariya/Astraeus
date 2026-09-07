@@ -169,3 +169,50 @@ Fixed Chrome proof `web/scripts/prove-desktop-layer-identity.mjs` passes with
 all external requests blocked; screenshots/receipt remain in
 `/tmp/astraeus-layer-proof/`. No live source or physical-accessibility proof.
 Task 4 is complete; source admission and remaining desktop obligations are not.
+
+
+## September 7 named-run implementation
+
+The existing HRDPS/RDPS/GDPS demand coordinators now expose finite latest/previous
+candidates from their existing bounded directory discovery. Named reads resolve
+one candidate before native-lead matching and reuse the existing run-specific
+cache and decoder. The inventory retains at most two metadata candidates with
+fixed expiry; failed refresh cannot return expired candidates. No new provider
+archive, database, scheduled job, acquisition format or scientific mapping.
+The source listing's older dated roots are not inferred when absent.
+
+Native Series returns candidate IDs/times and an explicit inventory limitation.
+Latest fills only timestamps absent from the newest listed run with actual prior
+run segments. Named reads never substitute another run. Acquisition bounds count
+source/run/time tuples, so comparison still fits the existing 12-read limit.
+The relevant-evidence change baseline excludes unrelated inventory updates.
+Existing unexpired selections keep their original rows and fixed expiry.
+GFS retains its existing latest-only reader; other sources keep explicit native
+reader absence. These are source integration residuals, not invented run access.
+
+The desktop writes source-scoped pins beside Focus in the URL. Temporary
+same-field run comparison uses discrete circle/square markers on one compatible
+axis and native tables with zeros and checked gaps. It does not change the
+browsing pin or Activity, persist comparison, or calculate a difference. Removed
+pins remain selected with explicit Latest recovery. Current Map delivery routes
+do not accept named runs: explicitly mapped layers and matching point-ledger
+values are withheld for a pin, preserving the stack and inspector refusal.
+Unmapped layers remain explicitly unscoped; no title-based association is added.
+
+Verification: 66 affected API tests pass, including all three existing query
+suites, inventory concurrent misses/fixed expiry/failure/removal, two-run keys,
+segment provenance, wrong-run refusal and relevant change baselines. Three
+fixed-date HTTP failures reproduce on unchanged parent 2409906; affected test
+modules now pin their HTTP clock. Receipt: `/tmp/astraeus-runs-clock-baseline.log`.
+489 full client tests pass; after final display fixes, 97 affected client tests
+and production build pass. Strict validation of both desktop OpenSpec changes
+and repository specctl pass. Main-agent review found and fixed a named-query
+failure attaching the default-run expiry receipt; a regression case covers both
+RDPS and GDPS. No independent-agent review is claimed.
+
+`node web/scripts/prove-desktop-runs.mjs` (from the experiment directory, with
+its Vite server on 5242) passes using a fixed clock, constructed API responses,
+Chrome and blocked external requests. It covers URL pin, two-run overlay, native
+missing sample, three themes, 200% text zoom, view-switch retention, Map refusal
+inspection and explicit Latest recovery. Screenshots/receipt are outside Git in
+`/tmp/astraeus-runs-proof/`; no new provider-live or physical-accessibility proof.

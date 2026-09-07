@@ -1,3 +1,4 @@
+import { mapRunRefusals } from './workbench/layerIdentity'
 import { SkyView } from './workbench/SkyView'
 import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
 import { sourceEvidence, useSourcesView } from './workbench/SourcesView'
@@ -1173,6 +1174,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     </div>
   )
 
+  const runRefusals = useMemo(() => mapRunRefusals(layers, runChoices), [layers, runChoices])
   const benchMap = (
     <>
               <MapPanel
@@ -1198,6 +1200,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
                 sourceStatuses={sourceStatuses}
                 responseSourceIds={responseSourceIds}
                 theme={theme}
+                runRefusals={runRefusals}
                 onDrawEvidence={setDrawn}
                 compactDisclosure
               />
@@ -1809,15 +1812,17 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const nativeSeries = useNativeSeries({ location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
     enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
     focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
+    onRun: (source, run) => setRunChoices((current) => ({ ...current, [source]: run })),
     onLatest: (source) => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next }),
   })
   if (legacyOpen) return <><button className="return-bench" onClick={() => setLegacyOpen(false)}>Return to desktop Bench</button>{legacy}</>
-  const ledger = <EvidenceLedger rows={snapshot.servedFields} onInspect={inspect} />
+  const ledger = <EvidenceLedger rows={snapshot.servedFields.filter((field) => !runChoices[field.attribution.sourceId ?? ''] || runChoices[field.attribution.sourceId ?? ''] === 'latest')} onInspect={inspect} />
   const migrationNotice = <p className="bench-migration">The selected view is being assembled. Current response-backed panels remain available in Existing evidence panels.</p>
   return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock}
     focus={<FocusBar location={location} site={site} registry={registeredSites} registryError={registryError} nearest={nearestSite} onSite={setSite} instant={selectedMs} liveNow={liveNow}
       onPoint={(point) => { setSite(null); setLocation(point) }} onInstant={(value) => { pausePlayback(); setSelectedMs(value) }} onNow={() => { pausePlayback(); setSelectedMsState(reference.getTime()); setLiveNow(true) }}>
       <div className="bench-themes" role="group" aria-label="Colour theme">{(['light', 'dark', 'night'] as const).map((name) => <button key={name} aria-pressed={theme === name} onClick={() => setTheme(name)}>{name === 'night' ? 'Red night' : name}</button>)}</div>
+      {Object.entries(runChoices).filter(([, run]) => run !== 'latest').map(([source, run]) => <details className="bench-run-pin" key={source}><summary>Browsing run · {source}: {run}</summary><p>Map delivery cannot request named runs; matching imagery and point ledger values are withheld. Sky and Activity retain their own evidence selection. <button onClick={() => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next })}>Use Latest available for {source}</button></p></details>)}
       <button onClick={() => setLegacyOpen(true)}>Existing evidence panels</button>
     </FocusBar>}
     status={<><strong>{dataPathCopy[dataSource]}</strong> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices

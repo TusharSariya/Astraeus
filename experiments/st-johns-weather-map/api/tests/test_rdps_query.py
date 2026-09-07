@@ -22,6 +22,12 @@ from weather_api.rdps_query import (
 )
 app_module = importlib.import_module("weather_api.app")
 
+@pytest.fixture(autouse=True)
+def fixed_http_clock(monkeypatch):
+    """HTTP selection bounds use the fixture date, never the wall clock."""
+    monkeypatch.setattr(app_module, "now", lambda: datetime(2026, 9, 6, 12, tzinfo=UTC))
+
+
 
 def key(lead: int = 8) -> RDPSRequestKey:
     return RDPSRequestKey("https://example/12/", "2026090612", lead,

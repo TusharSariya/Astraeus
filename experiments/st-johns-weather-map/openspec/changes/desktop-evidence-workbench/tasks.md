@@ -28,7 +28,7 @@ Contract acceptance does not check off implementation tasks.
 
 ## 5. Complete the selected view bodies
 
-- [ ] 5.1 Implement Series Overview and temporary Compare using the approved bounded API interactions; verify native sparse times, compatible/incompatible axes, unsampled versus checked gaps, and Focus/selection continuity with fixed responses.
+- [x] 5.1 Implement Series Overview and temporary Compare using the approved bounded API interactions; verify native sparse times, compatible/incompatible axes, unsampled versus checked gaps, and Focus/selection continuity with fixed responses.
 - [x] 5.2 Implement Sky Horizon instrument; verify registered/unsurveyed versus arbitrary-point horizons, scalar cloud gauges, missing directional geometry, Kp/outlook separation and explicit camera absence.
 - [ ] 5.3 Implement Activity Operational stack using the owning server verdict contract; verify four lanes, one inline expansion, hard-stop ordering, coverage/withholding, provenance and Saved stack absence. Do not implement client scoring.
 - [ ] 5.4 Implement Sources Ledger, Family finder and Coverage lanes; verify filters and inspector survive switching, declarations never imply retrieved coverage, and unmapped/unknown/expired evidence stays inspectable.
@@ -130,3 +130,17 @@ without populating point coverage from a declaration. Map names supplied sources
 and preserves unknown mappings. See the API implementation evidence for exact
 scope, tests and the fixed browser procedure. Task 5.4 remains open only for the
 remaining assembled Sources/Series cache scope; no view selection is reopened.
+
+
+## September 7 supported named-run checkpoint
+
+Task 5.1 is complete for the existing bounded native readers: Overview,
+temporary field/source Compare, compatible same-field run overlay, actual
+latest/previous selection for HRDPS/RDPS/GDPS, explicit GFS latest-only capability,
+URL-scoped pins, native gaps and fixed selection lifetime. Sources without a
+native reader remain explicitly unavailable; their integration belongs to the
+existing #70 queue. Current image delivery cannot request a named run, so Map
+preserves the requested stack with a shared inspector refusal instead of drawing
+Latest. See the API implementation evidence and `prove-desktop-runs.mjs` for
+verification. Full desktop task 5.6 remains open for Activity, shared inspection,
+provider tokens and assembled proof; no source integration issue is closed.

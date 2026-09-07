@@ -22,6 +22,7 @@ from ingest.adapters.eccc_datamart import (
     ECCCDataMartAdapter,
     GDPS_DEMAND_VARS,
 )
+from .native_runs import NativeRunInventory, RunUnavailable
 from ingest.contract import FetchWindow, RunCandidate
 from .models import GDPSAcquisition, GDPSDemandRequest, GDPSDemandUnavailable
 
@@ -204,11 +205,12 @@ class GDPSQueryCoordinator:
         self._adapter = adapter or ECCCDataMartAdapter(source_id="eccc-gdps", model_subpath="model_gdps/15km", grid_token="LatLon0.15", var_map=GDPS_DEMAND_VARS, bounds=AVALON_CORE_BOUNDS, adapter_version="gdps-demand-v1")
         self._now, self._clock = now, clock
         self._candidate: tuple[float, RunCandidate] | None = None
+        self._run_inventory = NativeRunInventory(lambda window: self._adapter.discover(window), now=now, clock=clock, ttl=GDPS_CACHE_TTL_SECONDS)
         self._prepared: dict[GDPSRequestKey, RunCandidate] = {}
         self._lock = threading.Lock()
         self._cache = GDPSQueryService(self._load, clock=clock, now=now)
 
-    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = GDPS_POINT_FIELDS) -> GDPSQueryEntry:
+    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = GDPS_POINT_FIELDS, run_id: str | None = None) -> GDPSQueryEntry:
         if selected_time.tzinfo is None:
             raise ValueError("GDPS selected time must include an offset")
         fields = tuple(sorted(set(fields)))
@@ -223,12 +225,14 @@ class GDPSQueryCoordinator:
         self._adapter.demand_operation_bounds(len(fields))
         with self._lock:
             try:
-                candidate = self._discover(selected_time)
+                candidate = self._run_inventory.resolve(run_id) if run_id is not None else self._discover(selected_time)
+            except RunUnavailable:
+                raise
             except Exception as error:
                 # An expired directory candidate is identity evidence only;
                 # it must never authorize a fetch or a cached-value fallback.
                 expired = None
-                if self._candidate is not None:
+                if run_id is None and self._candidate is not None:
                     prior = self._candidate[1]
                     if prior.run_time is not None:
                         lead = int((selected_time - prior.run_time).total_seconds() // 3600)
@@ -275,9 +279,18 @@ class GDPSQueryCoordinator:
             if 0 <= int(lead) < 241
         )
 
-    def point_fields(self, latitude: float, longitude: float, selected_time: datetime):
+    def run_inventory(self):
+        self._adapter.demand_operation_bounds(1)
+        return self._run_inventory.candidates()
+
+    def run_times(self, run_id: str):
+        self._adapter.demand_operation_bounds(1)
+        candidate = self._run_inventory.resolve(run_id)
+        return tuple(candidate.run_time + timedelta(hours=int(lead)) for lead in candidate.detail.get("available_hours", ()) if 0 <= int(lead) < 241)
+
+    def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *, run_id: str | None = None):
         from .store import live_point_fields
-        entry = self.query(selected_time, fields=GDPS_POINT_FIELDS)
+        entry = self.query(selected_time, fields=GDPS_POINT_FIELDS, **({"run_id": run_id} if run_id is not None else {}))
         samples, sampler = self._samples(entry, latitude, longitude)
         class Samples:
             skipped, unmodelled = sampler.skipped, sampler.unmodelled

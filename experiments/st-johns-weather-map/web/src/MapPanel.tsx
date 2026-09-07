@@ -26,6 +26,7 @@ export interface MapEvidenceRow {
 interface MapPanelProps {
   onDrawEvidence?: (rows: DrawEvidence[]) => void
   compactDisclosure?: boolean
+  runRefusals?: Record<string, string>
   label: string
   field: string
   comparison?: string
@@ -369,12 +370,14 @@ function describeAppliedOptions(applied: string[] | undefined): string {
 }
 
 const EMPTY_METHOD_STATUS = {}
+const EMPTY_RUN_REFUSALS = {}
 
 export function MapPanel({
   label, field, comparison, selected, onSelect, validTime, reference, interpolate,
   interpolationMethod = DEFAULT_INTERPOLATION_METHOD, methodStatus = EMPTY_METHOD_STATUS, fixtureMode = false,
-  layers, layersError, layersLoading, selections, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, responseSourceIds, theme = 'dark', initialDrawerOpen = false, onDrawEvidence, compactDisclosure = false,
+  layers, layersError, layersLoading, selections: requestedSelections, runRefusals = EMPTY_RUN_REFUSALS, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, responseSourceIds, theme = 'dark', initialDrawerOpen = false, onDrawEvidence, compactDisclosure = false,
 }: MapPanelProps) {
+  const selections = useMemo(() => requestedSelections.filter((entry) => !runRefusals[entry.id]), [requestedSelections, runRefusals])
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const stationPickAtRef = useRef(0)
@@ -1279,7 +1282,8 @@ export function MapPanel({
     return describeImage(state.slots[0], layer)
   }
 
-  const drawEvidence = useMemo<DrawEvidence[]>(() => selections.map((entry) => {
+  const drawEvidence = useMemo<DrawEvidence[]>(() => requestedSelections.map((entry) => {
+    if (runRefusals[entry.id]) return { id: entry.id, drawn: false, description: runRefusals[entry.id], times: [] }
     const layer = layers.find((layer) => layer.id === entry.id)
     const raster = rasters[entry.id]
     const features = states[entry.id]
@@ -1290,7 +1294,7 @@ export function MapPanel({
       description: !entry.visible ? 'Hidden by reader.' : !layer ? 'Requested layer unavailable in published response.' : `${describeState(layer)} ${describeRaster(layer)} ${fallbackNotes.find((note) => note.layer.id === entry.id)?.text ?? ''}`,
       times: slots.map((slot) => slot.image.provenance.validTime ?? new Date(slot.frame.time).toISOString()).concat(features?.status === 'drawn' ? [new Date(features.frame.time).toISOString()] : []),
     }
-  }), [selections, layers, rasters, states, frameKey, flowVersion, interpolationMethod, methodStatus])
+  }), [requestedSelections, runRefusals, layers, rasters, states, frameKey, flowVersion, interpolationMethod, methodStatus])
   useEffect(() => { onDrawEvidence?.(drawEvidence) }, [drawEvidence, onDrawEvidence])
 
   const onLegendError = (layer: LayerItem) => {
@@ -1429,7 +1433,7 @@ export function MapPanel({
   return (
     <section className={`map-pane ${compactDisclosure ? 'bench-map' : ''} ${drawerOpen ? 'drawer-open' : 'drawer-closed'}`} aria-label={`${label} map pane`}>
       {compactDisclosure && <details className="bench-map-disclosure">
-        <summary>{drawEvidence.filter((row) => row.drawn).length} of {selections.length} layers drawn · {drawEvidence.some((row) => row.drawn && row.description.includes('GENERATED')) ? 'GENERATED display' : interpolate ? 'display interpolation enabled' : 'generated display off'} · frame details</summary>
+        <summary>{drawEvidence.filter((row) => row.drawn).length} of {requestedSelections.length} layers drawn · {drawEvidence.some((row) => row.drawn && row.description.includes('GENERATED')) ? 'GENERATED display' : interpolate ? 'display interpolation enabled' : 'generated display off'} · frame details</summary>
         <table><caption>Actual Map evidence</caption><thead><tr><th scope="col">Layer</th><th scope="col">Drawn</th><th scope="col">Frame and reason</th></tr></thead><tbody>{drawEvidence.map((row) => <tr key={row.id}><th scope="row">{row.id}</th><td>{row.drawn ? 'Yes' : 'No'}</td><td>{row.description}</td></tr>)}</tbody></table>
       </details>}
       <div className="map-caption">

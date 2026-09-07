@@ -184,3 +184,6 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 .sky-panel summary { padding-block: .75rem; }
 .bench-companion .sky-instrument { grid-template-columns: 1fr; }
 @media (max-width: 1000px) { .sky-instrument { grid-template-columns: 1fr; } }
+
+.bench-run-pin { max-width: 30rem; overflow-wrap: anywhere; }
+.bench-run-pin[open] { flex-basis: 100%; max-width: 100%; }

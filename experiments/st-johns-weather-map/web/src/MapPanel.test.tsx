@@ -416,6 +416,21 @@ describe('MapPanel imagery', () => {
     await waitFor(() => expect((globalThis as Record<string, unknown>).__mapLayersNow).toEqual([`raster-${other.id}-0`, `raster-${proxiedLayer.id}-0`]))
   })
 
+  it('refuses pinned-run imagery before acquisition and tears down a previously drawn latest image', async () => {
+    const fetcher = routedFetch(() => rasterResponse())
+    vi.stubGlobal('fetch', fetcher)
+    const refusals = { [proxiedLayer.id]: 'Pinned old. This Map delivery path cannot request that named run.' }
+    const { rerender } = render(proxiedPanel({ compactDisclosure: true, runRefusals: refusals }))
+    expect(screen.getByText(/0 of 1 layers drawn/)).toBeInTheDocument()
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('/raster'))).toBe(false)
+    rerender(proxiedPanel({ compactDisclosure: true }))
+    await screen.findByText(/1 of 1 layers drawn/)
+    rerender(proxiedPanel({ compactDisclosure: true, runRefusals: refusals }))
+    await waitFor(() => expect((globalThis as Record<string, unknown>).__mapLayersNow).toEqual([]))
+    expect(screen.getByText(/0 of 1 layers drawn/)).toBeInTheDocument()
+    expect(screen.getByText(/Pinned old. This Map delivery path/)).toBeInTheDocument()
+  })
+
   it('draws the retrieved image beneath the basemap labels and names what it retrieved', async () => {
     vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
     render(proxiedPanel())
