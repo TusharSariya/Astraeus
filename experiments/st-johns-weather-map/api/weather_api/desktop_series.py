@@ -78,11 +78,18 @@ class ChangeRequest(StrictModel):
     change_token: str = Field(min_length=1, max_length=160)
 
 
+class SelectableRun(StrictModel):
+    id: str
+    run_time: datetime
+
+
 class SeriesRow(StrictModel):
     selector_id: str
     source_id: str
     field: str
     requested_run: str
+    selectable_runs: list[SelectableRun] = Field(default_factory=list, max_length=2)
+    run_inventory_reason: str = "This native reader does not expose a selectable run inventory"
     availability: Literal['available', 'checked_empty', 'unknown', 'unavailable']
     reason: str | None = None
     samples: list[EvidenceField] = Field(default_factory=list)
@@ -152,61 +159,96 @@ class NativeForecastReader:
                      'eccc-gdps': gdps_query_coordinator, 'noaa-gfs': gfs_query_coordinator}
         rows: list[SeriesRow] = []
         inventory = {}
+        runs = {}
         queried = {}
         reads = 0
+        from .native_runs import RunUnavailable
         for selector in selection.selectors:
             if stop():
                 fail('snapshot_unreadable', 'Native Series acquisition deadline exceeded', status=503)
-            if selector.run != 'latest':
-                rows.append(_row(selector, 'unavailable', 'This delivery path cannot pin that named run; choose Latest available explicitly'))
-                continue
             factory = factories.get(selector.source_id)
             if factory is None:
                 rows.append(_row(selector, 'unavailable', 'Native Series acquisition is not implemented for this source'))
                 continue
+            selectable = []
+            run_reason = 'This native reader does not expose a selectable run inventory'
+            def result(availability, reason, samples=()):
+                row = _row(selector, availability, reason, samples)
+                row.selectable_runs = selectable
+                row.run_inventory_reason = run_reason
+                return row
             try:
                 coordinator = factory()
-                if selector.source_id not in inventory:
-                    stamps = coordinator.timeline_times(selection.start)
-                    if selector.source_id == 'noaa-gfs':
-                        stamps, _receipt = stamps
-                    inventory[selector.source_id] = sorted({stamp for stamp in stamps if selection.start <= stamp < selection.end})
-                stamps = inventory[selector.source_id]
-                if reads + sum((selector.source_id, stamp) not in queried for stamp in stamps) > MAX_NATIVE_READS:
-                    fail('query_limit_exceeded', 'Selection exceeds 12 native timestamp reads; shorten the window')
+                supports_runs = callable(getattr(coordinator, 'run_inventory', None))
+                if selector.run != 'latest' and not supports_runs:
+                    rows.append(result('unavailable', 'This delivery path cannot pin that named run; choose Latest available explicitly'))
+                    continue
+                if supports_runs:
+                    if selector.source_id not in runs:
+                        runs[selector.source_id] = coordinator.run_inventory()
+                    declared = runs[selector.source_id]
+                    selectable = [SelectableRun(id=run.provider_run_id, run_time=run.run_time) for run in declared]
+                    run_reason = 'Latest/previous from the existing bounded source directory listing; listed paths are validated on acquisition. Missing older dated roots are not inferred.'
+                    if selector.run != 'latest' and selector.run not in {run.id for run in selectable}:
+                        raise RunUnavailable('Run no longer available in the bounded latest/previous inventory')
+                    times_to_run = {}
+                    # Walk newest first: older-run segments fill only the times
+                    # the newer inventory does not cover, with actual runs kept.
+                    for run in selectable:
+                        if selector.run not in ('latest', run.id):
+                            continue
+                        key = (selector.source_id, run.id)
+                        if key not in inventory:
+                            inventory[key] = coordinator.run_times(run.id)
+                        for stamp in inventory[key]:
+                            if selection.start <= stamp < selection.end:
+                                times_to_run.setdefault(stamp, run)
+                    stamps = sorted(times_to_run)
+                else:
+                    key = (selector.source_id, 'latest')
+                    if key not in inventory:
+                        stamps = coordinator.timeline_times(selection.start)
+                        if selector.source_id == 'noaa-gfs':
+                            stamps, _receipt = stamps
+                        inventory[key] = sorted({stamp for stamp in stamps if selection.start <= stamp < selection.end})
+                    stamps = inventory[key]
+                    times_to_run = {}
+                keys = [(selector.source_id, times_to_run[stamp].id if stamp in times_to_run else 'latest', stamp) for stamp in stamps]
+                if reads + sum(key not in queried for key in keys) > MAX_NATIVE_READS:
+                    fail('query_limit_exceeded', 'Selection exceeds 12 native source/run/timestamp reads; shorten the window')
                 if not stamps:
-                    # A latest-eligible-run listing does not establish that all
-                    # older runs or other provider products have empty coverage.
-                    rows.append(_row(selector, 'unknown', 'No native timestamps in the consulted run listing for this window'))
+                    rows.append(result('unknown', 'No native timestamps in the consulted run listing for this window; a pinned run is not substituted'))
                     continue
                 samples = []
                 incomplete = False
-                for stamp in stamps:
+                for stamp, key in zip(stamps, keys):
                     if stop():
                         fail('snapshot_unreadable', 'Native Series acquisition deadline exceeded', status=503)
-                    key = (selector.source_id, stamp)
                     if key not in queried:
-                        if reads >= MAX_NATIVE_READS:
-                            fail('query_limit_exceeded', 'Selection exceeds 12 native timestamp reads; shorten the window')
                         reads += 1
-                        queried[key], _, _ = coordinator.point_fields(selection.latitude, selection.longitude, stamp)
+                        options = {'run_id': key[1]} if supports_runs else {}
+                        queried[key], _, _ = coordinator.point_fields(selection.latitude, selection.longitude, stamp, **options)
                     matching = [field for field in queried[key] if field.key == selector.field
                                 and field.provenance.source_id == selector.source_id
-                                and field.provenance.valid_time == stamp]
+                                and field.provenance.valid_time == stamp
+                                and (not supports_runs or field.provenance.run_time == times_to_run[stamp].run_time)]
                     samples.extend(matching)
                     incomplete |= not bool(matching)
-                rows.append(_row(selector, 'unknown' if incomplete else 'available',
-                                 'Some advertised timestamps did not return this field; these intervals are unknown' if incomplete else 'Native provider timestamps only', samples))
+                rows.append(result('unknown' if incomplete else 'available',
+                                   'Some advertised timestamps did not return the selected field/run; these intervals are unknown' if incomplete else 'Native provider timestamps and actual run segments only', samples))
+            except RunUnavailable as error:
+                rows.append(result('unavailable', str(error)))
             except HTTPException:
                 raise
             except Exception:
-                rows.append(_row(selector, 'unknown', 'The native source inventory or selected-time acquisition could not be read'))
+                rows.append(result('unknown', 'The native source inventory or selected-time acquisition could not be read'))
+
         return rows
 
 
 def baseline(row: SeriesRow) -> str:
     """Compare selected evidence, not its elapsed age or HTTP revalidation time."""
-    value = row.model_dump(mode='json')
+    value = row.model_dump(mode='json', exclude={'selectable_runs', 'run_inventory_reason'})
     for sample in value['samples']:
         provenance = sample['provenance']
         for name in ('retrieval_time', 'freshness', 'demand_acquisition', 'aqhi_acquisition', 'swob_acquisition'):

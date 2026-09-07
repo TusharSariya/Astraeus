@@ -20,6 +20,28 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Named-run implementation checkpoint, September 7, 2026
+
+Layer identity #284 merged as `01835da1`. Current isolated batch is
+`execution/desktop-run-selection`, `/tmp/astraeus-desktop-run-selection`.
+HRDPS/RDPS/GDPS expose bounded latest/previous metadata and named native reads.
+Series pins preserve actual runs, native gaps, fixed expiry and URL source scope;
+its temporary same-field overlay leaves Map browsing and Activity unchanged.
+Map paths cannot request named runs, so mapped pinned imagery and its point
+ledger values are withheld with explicit Latest recovery. GFS stays latest-only;
+other native readers remain source-backlog work. No archive/database is added.
+
+Verification: 66 API, 489 full client plus 97 final focused client cases, build,
+strict desktop OpenSpec and specctl pass. Fixed Chrome proof and three-theme/
+200% text screenshots are at `/tmp/astraeus-runs-proof/` outside Git. Main-agent
+review fixed default-run failure metadata leaking into a named-run failure.
+Task 5.1 is complete for currently supported readers; no source is promoted.
+
+The Activity budget decision remains pending exactly as recorded below. Continue
+shared station/generated inspection, provider tokens, Sources/Series evidence
+scope and assembled desktop work. Do not mark Activity or the full desktop
+complete, and do not treat the unanswered decision as scoring authorization.
+
 ## Layer identity implementation checkpoint, September 7, 2026
 
 Activity curve/input #283 merged as `2409906`. Current batch is

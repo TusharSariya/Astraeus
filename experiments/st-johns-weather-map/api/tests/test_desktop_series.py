@@ -251,3 +251,39 @@ def test_unselected_source_update_does_not_change_selection_and_check_cannot_out
     service.reader = slow_read
     with pytest.raises(HTTPException) as caught: service.changes(first.snapshot.change_token)
     assert caught.value.detail['code'] == 'snapshot_expired'
+
+
+def test_named_native_run_pin_gap_segments_and_no_inventory_only_change(monkeypatch):
+    from ingest.contract import RunCandidate
+    from weather_api.desktop_series import baseline, SelectableRun
+    monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
+    import weather_api.hrdps_query as hrdps
+    calls = []
+    latest, previous = NOW, NOW - timedelta(hours=6)
+    class Source:
+        def run_inventory(self): return (RunCandidate('new', latest), RunCandidate('old', previous))
+        def run_times(self, run): return (NOW + timedelta(hours=1),) if run == 'new' else (NOW, NOW + timedelta(hours=1))
+        def point_fields(self, lat, lon, stamp, *, run_id):
+            calls.append((run_id, stamp))
+            field = sample(stamp)
+            field.provenance.run_time = latest if run_id == 'new' else previous
+            wrong = field.model_copy(deep=True); wrong.provenance.run_time = NOW - timedelta(hours=12)
+            return [field, wrong], None, []
+    monkeypatch.setattr(hrdps, 'hrdps_query_coordinator', Source)
+    request = selection()
+    result = NativeForecastReader()(request, lambda: False)[0]
+    assert [(s.provenance.valid_time, s.provenance.run_time) for s in result.samples] == [(NOW, previous), (NOW + timedelta(hours=1), latest)]
+    before = baseline(result)
+    result.selectable_runs = [SelectableRun(id='future', run_time=NOW + timedelta(hours=6))]
+    assert baseline(result) == before
+    request.selectors[0].run = 'old'
+    request.selectors.append(request.selectors[0].model_copy(update={'id': 'b', 'run': 'new'}))
+    calls.clear()
+    result = NativeForecastReader()(request, lambda: False)
+    assert calls == [('old', NOW), ('old', NOW + timedelta(hours=1)), ('new', NOW + timedelta(hours=1))]
+    assert len(result[0].samples) == 2 and len(result[1].samples) == 1
+    assert all(s.provenance.run_time == previous for s in result[0].samples)
+    request.selectors[0].run = 'removed'
+    result = NativeForecastReader()(request, lambda: False)
+    assert result[0].availability == 'unavailable' and result[0].samples == []
+    assert result[0].requested_run == 'removed'

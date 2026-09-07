@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import type { LayerItem } from '../types'
-import { layerImagery, layerMapping } from './layerIdentity'
+import { layerImagery, layerMapping, mapRunRefusals } from './layerIdentity'
 import { sourceEvidence, useSourcesView } from './SourcesView'
 
 const at = '2026-09-07T12:00:00Z'
@@ -38,4 +38,12 @@ it('joins each explicitly named source without turning the layer into a point re
   expect(screen.getByText('2026-09-07T13:00:00Z')).toBeInTheDocument()
   expect(screen.getByText(/Listed native frames:/)).toHaveTextContent(at)
   expect(sourceEvidence('unnamed', [], [], [], [layer]).details?.['Explicitly associated layers']).toEqual([])
+})
+
+
+it('withholds only explicitly mapped source pins without inferring a source from a product', () => {
+  expect(mapRunRefusals([layer], { unrelated: 'old' })).toEqual({})
+  expect(mapRunRefusals([layer], { 'actual-source-a': 'old' }).bundle).toContain('actual-source-a: old')
+  expect(mapRunRefusals([layer], { 'actual-source-a': 'latest' })).toEqual({})
+  expect(mapRunRefusals([{ ...layer, field_mappings: undefined, mapping_status: undefined }], { 'Other product': 'old' })).toEqual({})
 })

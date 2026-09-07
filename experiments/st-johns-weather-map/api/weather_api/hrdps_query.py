@@ -24,6 +24,7 @@ from ingest.adapters.eccc_datamart import (
     HRDPS_OMEGA_VARS,
     HRDPS_THERMO_VARS,
 )
+from .native_runs import NativeRunInventory, RunUnavailable
 from ingest.contract import FetchWindow, RunCandidate
 
 HRDPS_POINT_FIELDS = (
@@ -136,11 +137,12 @@ class HRDPSQueryCoordinator:
         self._adapter = adapter or HRDPS_ADAPTER
         self._now, self._clock = now, clock
         self._candidate: tuple[float, RunCandidate] | None = None
+        self._run_inventory = NativeRunInventory(lambda window: self._adapter.discover(window), now=now, clock=clock, ttl=HRDPS_CACHE_TTL_SECONDS)
         self._prepared: dict[HRDPSRequestKey, RunCandidate] = {}
         self._lock = threading.Lock()
         self._cache = HRDPSQueryService(self._load, clock=clock)
 
-    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = HRDPS_POINT_FIELDS) -> HRDPSQueryEntry:
+    def query(self, selected_time: datetime, *, fields: tuple[str, ...] = HRDPS_POINT_FIELDS, run_id: str | None = None) -> HRDPSQueryEntry:
         if selected_time.tzinfo is None:
             raise ValueError("HRDPS selected time must include an offset")
         requested_time = selected_time.astimezone(UTC)
@@ -151,7 +153,7 @@ class HRDPSQueryCoordinator:
         # provider payload too, so an unsupported runtime never opens one.
         self._adapter.demand_operation_bounds(len(fields))
         with self._lock:
-            candidate = self._discover(selected_time)
+            candidate = self._run_inventory.resolve(run_id) if run_id is not None else self._discover(selected_time)
             assert candidate.run_time is not None
             seconds = (selected_time - candidate.run_time).total_seconds()
             if seconds < 0 or seconds % 3600:
@@ -188,9 +190,18 @@ class HRDPSQueryCoordinator:
             if 0 <= int(lead) < 25
         )
 
-    def point_fields(self, latitude: float, longitude: float, selected_time: datetime):
+    def run_inventory(self):
+        self._adapter.demand_operation_bounds(1)
+        return self._run_inventory.candidates()
+
+    def run_times(self, run_id: str):
+        self._adapter.demand_operation_bounds(1)
+        candidate = self._run_inventory.resolve(run_id)
+        return tuple(candidate.run_time + timedelta(hours=int(lead)) for lead in candidate.detail.get("available_hours", ()) if 0 <= int(lead) < 25)
+
+    def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *, run_id: str | None = None):
         from .store import LiveStore, live_point_fields
-        entry = self.query(selected_time, fields=HRDPS_POINT_FIELDS)
+        entry = self.query(selected_time, fields=HRDPS_POINT_FIELDS, **({"run_id": run_id} if run_id is not None else {}))
         samples, sampler = self._samples(entry, latitude, longitude)
         class Samples:
             skipped, unmodelled = sampler.skipped, sampler.unmodelled

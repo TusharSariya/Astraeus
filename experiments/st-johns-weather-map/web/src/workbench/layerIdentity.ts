@@ -22,3 +22,11 @@ export function layerImagery(layer: LayerItem) {
     || (value.status === 'known' && value.checked_at === null) || (value.status !== 'known' && value.times.length > 0)) return { ...unknown, reason: 'Imagery availability is unreadable' }
   return value
 }
+
+/** No current image delivery interface accepts a named run. Never draw Latest for a pin. */
+export function mapRunRefusals(layers: LayerItem[], runs: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(layers.flatMap((layer) => {
+    const pins = [...new Set(layerMapping(layer).fields.map((field) => field.source_id))].filter((source) => runs[source] && runs[source] !== 'latest')
+    return pins.length ? [[layer.id, `Pinned ${pins.map((source) => `${source}: ${runs[source]}`).join(', ')}. This Map delivery path cannot request that named run; no frame is drawn. Choose Latest available explicitly.`]] : []
+  }))
+}

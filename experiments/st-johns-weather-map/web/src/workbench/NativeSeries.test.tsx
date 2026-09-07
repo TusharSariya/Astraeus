@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, useState } from 'react'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -10,7 +10,8 @@ let initial: NativeSeriesResponse
 let calls: Array<{ path: string; body: Record<string, unknown> }>
 let failRefresh: boolean
 function Harness({ instant = Date.parse(at), enabled = true, moving = false }: { instant?: number; enabled?: boolean; moving?: boolean }) {
-  const view = useNativeSeries({ location, instant, enabled, selectionMoving: moving, fields: [], runs: {}, onLatest: vi.fn(), onInspect: vi.fn() })
+  const [runs, setRuns] = useState<Record<string, string>>({})
+  const view = useNativeSeries({ location, instant, enabled, selectionMoving: moving, fields: [], runs, onRun: (source, run) => setRuns({ [source]: run }), onLatest: () => setRuns({}), onInspect: vi.fn() })
   return enabled ? view : <p>Another view</p>
 }
 beforeEach(() => {
@@ -25,8 +26,8 @@ beforeEach(() => {
       series: [{ ...initial.series[0], samples: [{ ...initial.series[0].samples[0], value: 2, provenance: { ...initial.series[0].samples[0].provenance, valid_time: '2026-09-07T13:37:00Z' } }] }] }))
     initial = { selection: { ...body, start: String(body.start).replace('.000Z', 'Z'), end: String(body.end).replace('.000Z', 'Z') },
       snapshot: { id: 'fixed', selected_at: at, expires_at: '2026-09-07T12:05:00Z', change_token: 'check', identities: [] }, next_cursor: 'next', complete: false, notices: ['Constructed fixture'],
-      series: body.selectors.map((s: { id: string; source_id: string; field: string; run: string }) => ({ selector_id: s.id, source_id: s.source_id, field: s.field, requested_run: s.run, availability: 'available', reason: 'Native rows',
-        samples: [{ field: s.field, key: s.field, value: 0, provenance: { source_id: s.source_id, evidence_class: 'retrieved', data_mode: 'fixture', valid_time: String(body.start), run_time: at, normalized_units: s.field === 'temperature_2m' ? 'degC' : '1', quality: { status: 'good', flags: [] } } }] })) }
+      series: body.selectors.map((s: { id: string; source_id: string; field: string; run: string }) => ({ selector_id: s.id, source_id: s.source_id, field: s.field, requested_run: s.run, availability: 'available', reason: 'Native rows', selectable_runs: [{ id: 'new', run_time: at }, { id: 'old', run_time: '2026-09-07T06:00:00Z' }], run_inventory_reason: 'Constructed two-run inventory',
+        samples: [{ field: s.field, key: s.field, value: 0, provenance: { source_id: s.source_id, evidence_class: 'retrieved', data_mode: 'fixture', valid_time: String(body.start), run_time: s.run === 'old' ? '2026-09-07T06:00:00Z' : at, normalized_units: s.field === 'temperature_2m' ? 'degC' : '1', quality: { status: 'good', flags: [] } } }] })) }
     return new Response(JSON.stringify(initial))
   }))
 })
@@ -103,4 +104,46 @@ it('withholds selection reads during playback and resumes once at the exact paus
   await screen.findAllByRole('img')
   expect(calls).toHaveLength(2)
   expect(calls[1].body.start).toBe('2026-09-07T12:00:00.456Z')
+})
+
+
+it('pins a named previous run and keeps temporary two-run comparison out of browsing state', async () => {
+  render(<Harness />)
+  await screen.findAllByRole('img')
+  const runControl = screen.getByRole('combobox', { name: 'Browsing run for eccc-hrdps' })
+  await userEvent.selectOptions(runControl, 'old')
+  await screen.findAllByRole('img')
+  expect(calls.at(-1)?.body.selectors).toEqual(expect.arrayContaining([expect.objectContaining({ run: 'old' })]))
+  expect(screen.getByRole('combobox', { name: 'Browsing run for eccc-hrdps' })).toBe(runControl)
+  await userEvent.click(screen.getByRole('button', { name: 'Temporary Compare' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Compare latest and previous runs of Series A' }))
+  await screen.findByRole('img', { name: /Same-field run overlay/ })
+  expect(calls.at(-1)?.body.selectors).toEqual([
+    { id: '0', source_id: 'eccc-hrdps', field: 'temperature_2m', run: 'new' },
+    { id: '1', source_id: 'eccc-hrdps', field: 'temperature_2m', run: 'old' },
+  ])
+  expect(runControl).toHaveValue('old')
+  const count = calls.length
+  await userEvent.click(screen.getByRole('button', { name: 'Overview' }))
+  expect(calls).toHaveLength(count)
+  await userEvent.click(screen.getByRole('button', { name: 'Stop run comparison' }))
+  await screen.findAllByRole('img')
+  expect(calls.at(-1)?.body.selectors).toEqual(expect.arrayContaining([expect.objectContaining({ run: 'old' })]))
+})
+
+it('retains a removed pin without substituting latest readings and permits explicit recovery', async () => {
+  render(<Harness />)
+  await screen.findAllByRole('img')
+  vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+    const body = JSON.parse(init.body)
+    return new Response(JSON.stringify({ ...initial, selection: body, series: body.selectors.map((s: { id: string; run: string }) => ({ ...initial.series[0], selector_id: s.id, field: s.id === '0' ? 'temperature_2m' : 'total_cloud_opacity', requested_run: s.run,
+      availability: 'unavailable', reason: 'Run no longer available', samples: [], selectable_runs: [{ id: 'newer', run_time: at }, { id: 'new', run_time: at }] })) }))
+  }))
+  await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Browsing run for eccc-hrdps' }), 'old')
+  await screen.findAllByText(/unavailable: Run no longer available/)
+  expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'Browsing run for eccc-hrdps' })).toHaveValue('old')
+  expect(screen.getByRole('option', { name: /Pinned · old · Run no longer available/ })).toBeInTheDocument()
+  await userEvent.click(screen.getAllByRole('button', { name: 'Use Latest available for eccc-hrdps' })[0])
+  expect(screen.getByRole('combobox', { name: 'Browsing run for eccc-hrdps' })).toHaveValue('latest')
 })
