@@ -164,10 +164,18 @@ class FailingStore:
         raise RuntimeError("legacy store failed")
 
 
+class CoverageFailStore:
+    def current(self):
+        return [object()]
+
+    def published_layer_times(self):
+        raise RuntimeError("legacy coverage failed")
+
+
 def test_demand_layer_listing_survives_absent_failing_or_empty_legacy_store(monkeypatch, data_mode):
     data_mode("live")
     monkeypatch.setattr(api_module, "_proxied_forecast_layers", lambda: ([], []))
-    for store in (None, FailingStore(), NoArtifactsStore()):
+    for store in (None, FailingStore(), NoArtifactsStore(), CoverageFailStore()):
         monkeypatch.setattr(api_module, "live_store", lambda store=store: store)
         response = client.get(f"{PREFIX}/layers")
         assert response.status_code == 200

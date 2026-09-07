@@ -1019,13 +1019,11 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
         proxied, proxy_notices = _proxied_forecast_layers()
-        if proxied:
-            return LayersResponse(
-                data_mode=DataMode.LIVE,
-                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
-                notices=["the legacy artifact store raised while reading coverage; only timestamp-demand provider proxies are offered", *proxy_notices],
-            )
-        return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["the live artifact store raised while reading layer time coverage"])
+        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        return LayersResponse(
+            data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
+            notices=["the legacy artifact store raised while reading coverage; OVATION remains requestable and listing made no provider request", *proxy_notices],
+        )
 
     notices = skip_notices(store)
     layers: list[Layer] = []
