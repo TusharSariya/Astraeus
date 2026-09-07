@@ -504,6 +504,45 @@ class AQHIDemandUnavailable(StrictModel):
     values_withheld: Literal[True] = True
 
 
+SWOB_METADATA_MAX_BYTES = 16 * 1024
+
+
+class SWOBDemandRequest(StrictModel):
+    source_id: Literal["eccc-swob"] = "eccc-swob"
+    selected_time: AwareDatetime
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    provider_url: _BoundedUrl
+
+
+class SWOBAcquisition(StrictModel):
+    request: SWOBDemandRequest
+    effective_url: _BoundedUrl
+    request_headers: _BoundedHeaders
+    response_headers: _BoundedHeaders
+    transport_completed_at: AwareDatetime
+    body_bytes: int = Field(gt=0, le=256 * 1024)
+    body_sha256: _SHA256
+    cached_at: AwareDatetime
+    expires_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def bound_metadata(self):
+        if self.expires_at <= self.cached_at:
+            raise ValueError("SWOB cache expiry must follow admission")
+        if len(self.model_dump_json().encode()) > SWOB_METADATA_MAX_BYTES:
+            raise ValueError("SWOB acquisition metadata exceeds its byte ceiling")
+        return self
+
+
+class SWOBDemandUnavailable(StrictModel):
+    source_id: Literal["eccc-swob"] = "eccc-swob"
+    reason: Literal["unsupported_time", "refresh_failed", "query_failed"]
+    error_type: _BoundedName
+    expired_acquisition: SWOBAcquisition | None = None
+    values_withheld: Literal[True] = True
+
+
 class Provenance(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
@@ -562,6 +601,7 @@ class Provenance(StrictModel):
     native_report: NativeReportIdentity | None = None
     demand_acquisition: RDPSAcquisition | GDPSAcquisition | None = None
     aqhi_acquisition: AQHIAcquisition | None = None
+    swob_acquisition: SWOBAcquisition | None = None
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
     #: echoing the request back would overstate where the reading came from.
@@ -1377,7 +1417,7 @@ class PointConsensus(StrictModel):
 
 class PointResponse(StrictModel):
     demand_unavailable: RDPSDemandUnavailable | GDPSDemandUnavailable | None = None
-    observation_unavailable: list[AQHIDemandUnavailable] = Field(default_factory=list)
+    observation_unavailable: list[AQHIDemandUnavailable | SWOBDemandUnavailable] = Field(default_factory=list)
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
     latitude: float

@@ -964,9 +964,11 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             raster_available=False, legend_available=False,
         )], notices=["CAP layer listing read a fresh source-local cache entry and made no provider request"])
     from .aqhi_query import demand_layer as aqhi_demand_layer  # noqa: PLC0415
+    from .swob_query import demand_layer as swob_demand_layer  # noqa: PLC0415
 
     ovation_demand_layer = aurora.demand_layer(Layer, z_index=Z_INDEX_BY_KIND["raster"])
     aqhi_layer = aqhi_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
+    swob_layer = swob_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
     if product is not None and product.upper() == "OVATION":
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=[ovation_demand_layer],
@@ -1002,7 +1004,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     store = live_store()
     if store is None:
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["no live artifact store is reachable; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1012,7 +1014,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published artifacts could not be listed for the layer index")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1027,7 +1029,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
         # The aged-out names travel on both branches: a proxied layer is not
         # this deployment's stored evidence, so its presence says nothing about
         # whether the stored evidence aged out.
-        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
@@ -1035,7 +1037,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised while reading coverage; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1155,6 +1157,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     # never fetches a provider document or implies that a native frame exists.
     layers.append(ovation_demand_layer)
     layers.append(aqhi_layer)
+    layers.append(swob_layer)
 
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
@@ -1267,6 +1270,21 @@ def _live_point(
             LOGGER.info("AQHI demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
             notices.append("eccc-aqhi has no validated nearby station observation less than one hour old at or before this selection")
             if isinstance(error, AqhiQueryUnavailable):
+                unavailable.append(error.outcome)
+        try:
+            from .swob_query import SwobQueryUnavailable, swob_query_service  # noqa: PLC0415
+
+            swob = swob_query_service().point_fields(latitude, longitude, time)
+            observations.extend(swob)
+            report = swob[0].provenance.native_report
+            notices.append(
+                f"eccc-swob station {report.station_id} observation at {report.observation_time.isoformat()} "
+                "is shown with native station and transport provenance"
+            )
+        except Exception as error:
+            LOGGER.info("SWOB demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
+            notices.append("eccc-swob has no validated nearby MSC station report at the exact selected time")
+            if isinstance(error, SwobQueryUnavailable):
                 unavailable.append(error.outcome)
         return observations, notices, unavailable
 
