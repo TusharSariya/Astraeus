@@ -148,6 +148,15 @@ class HolyroodQueryService:
             self._inflight = None
         return evidence
 
+    def retained_images(self) -> HolyroodImageEvidence:
+        """Read the retained pair without discovery, refresh, or expiry extension."""
+        with self._lock:
+            if not self._valid_cache():
+                self._cached = None
+                raise HolyroodUnavailable("CASHR image revision is not retained")
+            assert self._cached is not None
+            return replace(self._cached, cache_status="hit")
+
     def _acquire(self, *, refresh: bool) -> tuple[HolyroodImageEvidence, float]:
         deadline = self._monotonic() + RETENTION_SECONDS
         listing, receipt = self._fetch(BASE_URL + "/", MAX_LISTING_BYTES)
