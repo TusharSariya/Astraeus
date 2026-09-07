@@ -13,6 +13,9 @@ paths independently from broader published-field inventory and actual coverage.
 Legacy Series selectors omit product/variant/level; explicit selectors are
 validated against declared implemented paths before provider work. Actual
 reading identity remains alongside unchanged EvidenceField provenance.
+Selector levels use the canonical field catalogue. Reading identity additionally
+keeps `native_level` from source provenance: a native artifact's grouping such
+as surface or column is not silently rewritten as a physical height.
 
 `scripts/generate_source_contract.py` emits the affected OpenAPI routes and
 fixed fixture responses from the actual Pydantic/API models. A pinned

@@ -50,6 +50,12 @@ class SourceCapability(ContractModel):
     time_semantics: str
     coverage_description: str
 
+    @model_validator(mode="after")
+    def known_variant(self):
+        if any(variant.kind == "unknown" for variant in self.variants):
+            raise ValueError("an unknown reading identity cannot be a selectable capability")
+        return self
+
 
 class SourceConfiguration(ContractModel):
     """Safe configuration/acquisition disposition, separate from admission."""
@@ -66,6 +72,7 @@ class SourceReadingIdentity(ContractModel):
     field: str
     variant: SourceVariant
     level: str
+    native_level: str | None = None
     run_time: datetime | None
     valid_time: datetime
     station_id: str | None = None

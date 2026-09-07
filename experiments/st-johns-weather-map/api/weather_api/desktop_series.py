@@ -110,6 +110,7 @@ class ReadingIdentity(StrictModel):
     product_id: str | None = None
     variant: SourceVariant | None = None
     level: str | None = None
+    native_level: str | None = None
     valid_time: datetime | None = None
     station_id: str | None = None
     sampled_latitude: float | None = None

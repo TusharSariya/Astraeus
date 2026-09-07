@@ -1924,7 +1924,7 @@
               "display_primary_eligible": true,
               "ensemble": null,
               "evidence_class": "retrieved",
-              "forecast_centre": "independent centres",
+              "forecast_centre": "ECCC",
               "freshness": {
                 "age_seconds": null,
                 "status": "unknown",
@@ -1938,20 +1938,20 @@
               "member_control": null,
               "native_crs": "EPSG:4326",
               "native_report": null,
-              "native_resolution": "approximately 10 km",
+              "native_resolution": "2.5 km",
               "normalized_units": "degC",
               "operational": false,
               "original_units": "degC",
-              "product": "experimental-consensus",
-              "provider": "multi-centre",
+              "product": "HRDPS",
+              "provider": "ECCC",
               "quality": {
                 "flags": [],
                 "status": "passed"
               },
-              "retrieval_time": "2026-09-07T20:55:00Z",
+              "retrieval_time": "2026-09-07T12:00:00Z",
               "run_stale": null,
               "run_stale_reason": null,
-              "run_time": "2026-09-07T18:00:00Z",
+              "run_time": "2026-09-07T06:00:00Z",
               "sample_distance_km": null,
               "sample_method": null,
               "sampled_latitude": null,
@@ -1960,7 +1960,7 @@
               "source_id": "eccc-hrdps",
               "swob_acquisition": null,
               "valid_time": "2026-09-07T12:00:00Z",
-              "vertical_level": "approximately 10 km grid"
+              "vertical_level": "2 m"
             },
             "storage": "stored",
             "value": 13.0
@@ -2012,7 +2012,7 @@
               "display_primary_eligible": true,
               "ensemble": null,
               "evidence_class": "retrieved",
-              "forecast_centre": "independent centres",
+              "forecast_centre": "ECCC",
               "freshness": {
                 "age_seconds": null,
                 "status": "unknown",
@@ -2026,20 +2026,20 @@
               "member_control": null,
               "native_crs": "EPSG:4326",
               "native_report": null,
-              "native_resolution": "approximately 10 km",
+              "native_resolution": "2.5 km",
               "normalized_units": "degC",
               "operational": false,
               "original_units": "degC",
-              "product": "experimental-consensus",
-              "provider": "multi-centre",
+              "product": "HRDPS",
+              "provider": "ECCC",
               "quality": {
                 "flags": [],
                 "status": "passed"
               },
-              "retrieval_time": "2026-09-07T20:55:00Z",
+              "retrieval_time": "2026-09-07T12:00:00Z",
               "run_stale": null,
               "run_stale_reason": null,
-              "run_time": "2026-09-07T18:00:00Z",
+              "run_time": "2026-09-07T06:00:00Z",
               "sample_distance_km": null,
               "sample_method": null,
               "sampled_latitude": null,
@@ -2048,7 +2048,7 @@
               "source_id": "eccc-hrdps",
               "swob_acquisition": null,
               "valid_time": "2026-09-07T14:00:00Z",
-              "vertical_level": "approximately 10 km grid"
+              "vertical_level": "2 m"
             },
             "storage": "stored",
             "value": 13.0
@@ -2128,10 +2128,10 @@
                 "flags": [],
                 "status": "passed"
               },
-              "retrieval_time": "2026-09-07T20:55:00Z",
+              "retrieval_time": "2026-09-07T12:00:00Z",
               "run_stale": null,
               "run_stale_reason": null,
-              "run_time": "2026-09-07T18:00:00Z",
+              "run_time": "2026-09-07T06:00:00Z",
               "sample_distance_km": null,
               "sample_method": null,
               "sampled_latitude": null,
@@ -2140,7 +2140,7 @@
               "source_id": "eccc-hrdps",
               "swob_acquisition": null,
               "valid_time": "2026-09-07T12:00:00Z",
-              "vertical_level": "total atmosphere"
+              "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
             "value": 95.2
@@ -2198,10 +2198,10 @@
                 "flags": [],
                 "status": "passed"
               },
-              "retrieval_time": "2026-09-07T20:55:00Z",
+              "retrieval_time": "2026-09-07T12:00:00Z",
               "run_stale": null,
               "run_stale_reason": null,
-              "run_time": "2026-09-07T18:00:00Z",
+              "run_time": "2026-09-07T06:00:00Z",
               "sample_distance_km": null,
               "sample_method": null,
               "sampled_latitude": null,
@@ -2210,7 +2210,7 @@
               "source_id": "eccc-hrdps",
               "swob_acquisition": null,
               "valid_time": "2026-09-07T14:00:00Z",
-              "vertical_level": "total atmosphere"
+              "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
             "value": 95.2
@@ -2237,9 +2237,10 @@
         {
           "artifact_revision": null,
           "field": "temperature_2m",
-          "level": "approximately 10 km grid",
+          "level": "2 m",
+          "native_level": "2 m",
           "product_id": "hrdps",
-          "run_time": "2026-09-07T18:00:00Z",
+          "run_time": "2026-09-07T06:00:00Z",
           "sampled_latitude": null,
           "sampled_longitude": null,
           "source_id": "eccc-hrdps",
@@ -2257,9 +2258,10 @@
         {
           "artifact_revision": null,
           "field": "temperature_2m",
-          "level": "approximately 10 km grid",
+          "level": "2 m",
+          "native_level": "2 m",
           "product_id": "hrdps",
-          "run_time": "2026-09-07T18:00:00Z",
+          "run_time": "2026-09-07T06:00:00Z",
           "sampled_latitude": null,
           "sampled_longitude": null,
           "source_id": "eccc-hrdps",
@@ -2277,9 +2279,10 @@
         {
           "artifact_revision": null,
           "field": "total_cloud_opacity",
-          "level": "total atmosphere",
+          "level": "entire atmosphere (column)",
+          "native_level": "entire atmosphere (column)",
           "product_id": "hrdps",
-          "run_time": "2026-09-07T18:00:00Z",
+          "run_time": "2026-09-07T06:00:00Z",
           "sampled_latitude": null,
           "sampled_longitude": null,
           "source_id": "eccc-hrdps",
@@ -2297,9 +2300,10 @@
         {
           "artifact_revision": null,
           "field": "total_cloud_opacity",
-          "level": "total atmosphere",
+          "level": "entire atmosphere (column)",
+          "native_level": "entire atmosphere (column)",
           "product_id": "hrdps",
-          "run_time": "2026-09-07T18:00:00Z",
+          "run_time": "2026-09-07T06:00:00Z",
           "sampled_latitude": null,
           "sampled_longitude": null,
           "source_id": "eccc-hrdps",

@@ -19,7 +19,7 @@ from typing import Callable
 import httpx
 
 from ingest.experimental.holyrood_radar import (
-    BASE_URL, MAX_IMAGE_BYTES, MAX_LISTING_BYTES, _NAME, _time,
+    BASE_URL, MAX_IMAGE_BYTES, MAX_LISTING_BYTES, HolyroodDPQPEAdapter, _NAME, _time,
 )
 from ingest.http import USER_AGENT, parse_directory_listing
 from ingest.isolation import ProcessAllocationLimits, run_bounded_process
@@ -57,9 +57,9 @@ class HolyroodImageEvidence:
     listing_receipt: ImageReceipt
     retained_until: datetime
     cache_status: str = "miss"
-    source_id: str = "eccc-holyrood-radar"
+    source_id: str = HolyroodDPQPEAdapter.source_id
     station_id: str = "CASHR"
-    product: str = "DPQPE"
+    product: str = HolyroodDPQPEAdapter.product
     semantics: str = "rendered-image-only"
     source_quality: str = "unknown"
     operational: bool = False

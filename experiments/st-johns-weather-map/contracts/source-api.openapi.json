@@ -1775,6 +1775,17 @@
             ],
             "title": "Level"
           },
+          "native_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Level"
+          },
           "product_id": {
             "anyOf": [
               {

@@ -1455,9 +1455,9 @@ def _live_point(
             notices=["GEFS members remain separate and preserve provider member identities; no member averaging was substituted"])
     if product and product.upper() == "GFS":
         try:
-            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            fields, _consensus, _sources = gfs_query_coordinator().point_fields(latitude, longitude, time)
+            fields = list(source_readers()["noaa-gfs"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.exception("GFS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
             return _unavailable_point(
@@ -2382,11 +2382,16 @@ def get_point(
             member=member, statistic=statistic,
         )
     if mode == LIVE_MODE:
-        return _live_point(
+        response = _live_point(
             latitude, longitude, time, product,
             member=member, statistic=statistic,
             quantile=quantile, threshold=threshold, comparison=comparison,
         )
+        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS), "GDPS", "GEFS"}:
+            from .observation_companions import with_aqhi_observation  # noqa: PLC0415
+
+            response = with_aqhi_observation(response)
+        return response
     return _unavailable_point(latitude, longitude, time, reason="WEATHER_DATA_MODE is not set to live or fixture", flags=["data_mode_unconfigured"], notices=["WEATHER_DATA_MODE is missing or malformed; this deployment fails closed"])
 
 

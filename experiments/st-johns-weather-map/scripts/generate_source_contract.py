@@ -74,14 +74,20 @@ def fixtures():
     identities = []
     for selector in selection.selectors:
         field = next(item for item in fields if item.key == selector.field).model_copy(deep=True)
+        capability = next(item for record in records if record.id == selector.source_id for item in record.capabilities if item.field == selector.field)
         field.provenance.source_id = selector.source_id
+        field.provenance.provider = field.provenance.forecast_centre = "ECCC"
+        field.provenance.product = "HRDPS"
+        field.provenance.run_time = now - timedelta(hours=6)
+        field.provenance.retrieval_time = now
+        field.provenance.vertical_level = capability.levels[0]
+        field.provenance.native_resolution = "2.5 km"
         # Two actual fixture timestamps with a deliberate native gap. These
         # values are fixture evidence, never a capture of provider traffic.
         samples = [field]
         later = field.model_copy(deep=True)
         later.provenance.valid_time = now + timedelta(hours=2)
         samples.append(later)
-        capability = next(item for record in records if record.id == selector.source_id for item in record.capabilities if item.field == selector.field)
         rows.append(SeriesRow(selector_id=selector.id, source_id=selector.source_id, field=selector.field,
             requested_run=selector.run, product_id=capability.product_id, variant=capability.variants[0], level=capability.levels[0],
             availability="available", reason="Fixed native-gap contract fixture", samples=samples))

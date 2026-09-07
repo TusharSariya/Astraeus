@@ -753,6 +753,8 @@ export interface components {
             field: string;
             /** Level */
             level?: string | null;
+            /** Native Level */
+            native_level?: string | null;
             /** Product Id */
             product_id?: string | null;
             /** Run Time */

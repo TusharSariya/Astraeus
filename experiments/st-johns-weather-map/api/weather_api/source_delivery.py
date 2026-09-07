@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Protocol
 
+from ingest.contract import RunCandidate
+
 from .models import EvidenceField
 from .source_contract import SourceCapability, SourceConfiguration, SourceReadingIdentity, SourceVariant
 
@@ -23,7 +25,7 @@ class NativeFrame:
 @dataclass(frozen=True)
 class NativePlan:
     frames: tuple[NativeFrame, ...]
-    runs: tuple[object, ...] = ()
+    runs: tuple[RunCandidate, ...] = ()
     reason: str = "This native reader does not expose a selectable run inventory"
 
 
@@ -37,6 +39,7 @@ class SourceReader(Protocol):
 
 
 def reading_identity(field: EvidenceField, product_id: str) -> SourceReadingIdentity:
+    from registry import fields as catalogue
     provenance = field.provenance
     ensemble = provenance.ensemble
     if provenance.member is not None:
@@ -47,8 +50,10 @@ def reading_identity(field: EvidenceField, product_id: str) -> SourceReadingIden
             comparison=ensemble.comparison)
     else:
         variant = SourceVariant(kind="observation" if provenance.native_report is not None else "deterministic" if provenance.run_time is not None else "unknown")
+    definition = catalogue.field(field.key) if field.key is not None else None
+    level = definition.level if definition is not None and not definition.is_profile else provenance.vertical_level
     return SourceReadingIdentity(source_id=provenance.source_id, product_id=product_id,
-        field=field.key or field.field, variant=variant, level=provenance.vertical_level,
+        field=field.key or field.field, variant=variant, level=level, native_level=provenance.vertical_level,
         run_time=provenance.run_time, valid_time=provenance.valid_time,
         station_id=provenance.native_report.station_id if provenance.native_report else None,
         sampled_latitude=provenance.sampled_latitude, sampled_longitude=provenance.sampled_longitude,
