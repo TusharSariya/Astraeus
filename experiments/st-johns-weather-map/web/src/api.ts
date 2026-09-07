@@ -1179,7 +1179,13 @@ export function layerLegendUrl(layer: LayerItem): string {
  *  and are requested only for that method. */
 export type FlowTextureName = 'motion' | 'tangents' | 'visibility' | 'residual'
 
+/** Returned image metadata only; absent headers stay explicitly absent. */
+function imageHeaderEvidence(headers: Headers): Record<string, string | null> {
+  return Object.fromEntries(['Source-Id', 'Evidence-Class', 'Evidence-Basis', 'Image-Basis', 'Derivation', 'Derivation-Version', 'Artifact-Revision', 'Capture-Id', 'Valid-Time', 'Reference-Time', 'Observation-Time', 'Frame-From', 'Frame-To', 'Interpolation-Method', 'Flow-Shader', 'Render-Semantics', 'Sample-Method', 'Colormap', 'Units', 'Crs', 'Attribution'].map((name) => [name, headers.get(`X-Weather-${name}`)]))
+}
+
 export interface FlowTexture {
+  responseHeaders?: Record<string, string | null>
   objectUrl: string
   /** Max displacement in output pixels encoded at channel value 255. */
   scalePixels: number
@@ -1354,7 +1360,7 @@ export async function loadLayerFlow(
   signal?: AbortSignal,
   method: string = DEFAULT_INTERPOLATION_METHOD,
 ): Promise<{ flow: FlowTexture | null; absent: boolean; error: string | null }> {
-  const fetchTexture = async (texture: FlowTextureName): Promise<{ objectUrl: string; scale: number; frameFrom: string | null; frameTo: string | null; method: string | null; shader: string | null } | 'absent' | { error: string }> => {
+  const fetchTexture = async (texture: FlowTextureName): Promise<{ responseHeaders: Record<string, string | null>; objectUrl: string; scale: number; frameFrom: string | null; frameTo: string | null; method: string | null; shader: string | null } | 'absent' | { error: string }> => {
     const response = await fetch(layerFlowUrl(layer, request, texture, method), { signal, headers: { Accept: 'image/png,image/*' } })
     if (response.status === 404) return 'absent'
     if (!response.ok) return { error: `motion texture request returned ${response.status}` }
@@ -1367,6 +1373,7 @@ export async function loadLayerFlow(
     return {
       objectUrl: URL.createObjectURL(blob),
       scale,
+      responseHeaders: imageHeaderEvidence(response.headers),
       frameFrom: response.headers.get('X-Weather-Frame-From'),
       frameTo: response.headers.get('X-Weather-Frame-To'),
       method: response.headers.get('X-Weather-Interpolation-Method'),
@@ -1408,6 +1415,7 @@ export async function loadLayerFlow(
     return {
       flow: {
         objectUrl: motion.objectUrl,
+        responseHeaders: motion.responseHeaders,
         scalePixels: motion.scale,
         tangentsUrl: tangents?.objectUrl ?? null,
         tangentsScalePixels: tangents?.scale ?? 0,
@@ -1496,6 +1504,7 @@ async function inspectCoverage(blob: Blob): Promise<RasterCoverage> {
 /** The retrieval facts the response carries about one image. Every field here is
  *  read from an `X-Weather-*` header; none of it is inferred from the bytes. */
 export interface RasterProvenance {
+  responseHeaders?: Record<string, string | null>
   retrievalStatus: string
   /** The upstream WMS layer the image was drawn from, or null for a
    *  rendered-grid image, which has no upstream: its pixels are the stored
@@ -1583,6 +1592,7 @@ export async function loadLayerRaster(layer: LayerItem, request: RasterRequest, 
           retrievalStatus,
           wmsLayer,
           sourceId,
+          responseHeaders: imageHeaderEvidence(response.headers),
           evidenceBasis: response.headers.get('X-Weather-Evidence-Basis'),
           imageBasis,
           validTime: response.headers.get('X-Weather-Valid-Time'),

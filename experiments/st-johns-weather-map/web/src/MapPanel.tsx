@@ -27,6 +27,7 @@ interface MapPanelProps {
   onDrawEvidence?: (rows: DrawEvidence[]) => void
   compactDisclosure?: boolean
   runRefusals?: Record<string, string>
+  onFeatureInspect?: (layer: string, index: number) => void
   label: string
   field: string
   comparison?: string
@@ -340,12 +341,13 @@ function describeLead(frameTime: string, now: number): string | null {
 
 /** Everything the API returned for one layer, drawn as published. Geometry comes
  *  from the response; only the colour, which carries no value, is chosen here. */
-function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: number) {
+function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: number, onInspect?: (index: number) => void) {
   const [r, g, b] = colourFor(layer.kind)
   const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
   return [
     new GeoJsonLayer({
       id: `evidence-${layer.id}`,
+      onClick: (info) => { if (info.index >= 0) onInspect?.(info.index) },
       // The features are exactly what the API returned; the cast only restates
       // that shape in deck.gl's own prop type, which is narrower than `object`.
       data: { type: 'FeatureCollection', features } as unknown as GeoJsonLayerProps['data'],
@@ -375,13 +377,15 @@ const EMPTY_RUN_REFUSALS = {}
 export function MapPanel({
   label, field, comparison, selected, onSelect, validTime, reference, interpolate,
   interpolationMethod = DEFAULT_INTERPOLATION_METHOD, methodStatus = EMPTY_METHOD_STATUS, fixtureMode = false,
-  layers, layersError, layersLoading, selections: requestedSelections, runRefusals = EMPTY_RUN_REFUSALS, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, responseSourceIds, theme = 'dark', initialDrawerOpen = false, onDrawEvidence, compactDisclosure = false,
+  layers, layersError, layersLoading, selections: requestedSelections, runRefusals = EMPTY_RUN_REFUSALS, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, responseSourceIds, theme = 'dark', initialDrawerOpen = false, onDrawEvidence, onFeatureInspect, compactDisclosure = false,
 }: MapPanelProps) {
   const selections = useMemo(() => requestedSelections.filter((entry) => !runRefusals[entry.id]), [requestedSelections, runRefusals])
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const stationPickAtRef = useRef(0)
   const overlayRef = useRef<MapboxOverlay | null>(null)
+  const onFeatureInspectRef = useRef(onFeatureInspect)
+  onFeatureInspectRef.current = onFeatureInspect
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
   const selectedRef = useRef(selected)
@@ -1196,7 +1200,7 @@ export function MapPanel({
   useEffect(() => {
     const drawn = resolved.flatMap(({ layer, entry }) => {
       const state = states[layer.id]
-      return state && state.status === 'drawn' ? evidenceLayers(layer, state.features, entry.opacity) : []
+      return state && state.status === 'drawn' ? evidenceLayers(layer, state.features, entry.opacity, (index) => { if (onFeatureInspectRef.current) { stationPickAtRef.current = performance.now(); onFeatureInspectRef.current(layer.id, index) } }) : []
     })
     overlayRef.current?.setProps({
       layers: [
@@ -1283,18 +1287,35 @@ export function MapPanel({
   }
 
   const drawEvidence = useMemo<DrawEvidence[]>(() => requestedSelections.map((entry) => {
-    if (runRefusals[entry.id]) return { id: entry.id, drawn: false, description: runRefusals[entry.id], times: [] }
+    const selection = { latitude: selected.latitude, longitude: selected.longitude, instant: validTime.getTime() }
+    if (runRefusals[entry.id]) return { selection, id: entry.id, drawn: false, description: runRefusals[entry.id], times: [] }
     const layer = layers.find((layer) => layer.id === entry.id)
     const raster = rasters[entry.id]
     const features = states[entry.id]
-    const slots = raster && (raster.status === 'shown' || raster.status === 'refreshing') ? raster.slots : []
+    const visible = entry.visible && entry.opacity > 0
+    const slots = visible && !renderErrors[entry.id] && raster && (raster.status === 'shown' || raster.status === 'refreshing') ? raster.slots : []
+    const actualFeatures = visible && features?.status === 'drawn' ? features.features : []
+    const pair = slots.length === 2 && layer && isLocallyRendered(layer)
+    const prefix = pair ? `${slots[0].frame.time}->${slots[1].frame.time}|${interpolationMethod}|` : null
+    const held = prefix ? [...(flowCacheRef.current.get(entry.id)?.entries() ?? [])].find(([key]) => key.startsWith(prefix))?.[1] : null
+    const motion = held && held !== 'absent' ? held : null
+    const generated = Boolean(pair && motion?.shader === 'residual-advection' && motion.residualUrl && motion.method === 'residual-generative')
+    const times = slots.map((slot) => slot.image.provenance.validTime ?? new Date(slot.frame.time).toISOString()).concat(visible && features?.status === 'drawn' ? [new Date(features.frame.time).toISOString()] : [])
     return {
-      id: entry.id,
-      drawn: entry.visible && entry.opacity > 0 && (slots.length > 0 || features?.status === 'drawn'),
-      description: !entry.visible ? 'Hidden by reader.' : !layer ? 'Requested layer unavailable in published response.' : `${describeState(layer)} ${describeRaster(layer)} ${fallbackNotes.find((note) => note.layer.id === entry.id)?.text ?? ''}`,
-      times: slots.map((slot) => slot.image.provenance.validTime ?? new Date(slot.frame.time).toISOString()).concat(features?.status === 'drawn' ? [new Date(features.frame.time).toISOString()] : []),
+      selection, id: entry.id,
+      drawn: visible && (slots.length > 0 || features?.status === 'drawn'),
+      description: !entry.visible ? 'Hidden by reader.' : entry.opacity <= 0 ? 'Opacity is zero; no image or feature is visible.' : !layer ? 'Requested layer unavailable in published response.' : `${describeState(layer)} ${describeRaster(layer)} ${fallbackNotes.find((note) => note.layer.id === entry.id)?.text ?? ''}`,
+      times,
+      evidenceClass: generated ? 'generated_display' : layer ? layerEvidenceClass(layer) : 'unrecognised',
+      images: slots.map((slot) => ({ frame: slot.frame.time, weight: slot.weight, request: slot.image.request, provenance: slot.image.provenance })),
+      display: { kind: generated ? 'GENERATED display only' : pair ? 'Display interpolation only' : slots.length > 1 ? 'Display composite only' : 'Native frame or feature display',
+        selectedMethod: interpolationMethod, usedMethod: motion?.method ?? (pair ? 'linear cross-dissolve' : slots.length === 1 ? slots[0].image.provenance.responseHeaders?.Derivation ?? null : null), shader: motion?.shader ?? null,
+        inputFrames: slots.map((slot) => slot.frame.time), responseHeaders: motion?.responseHeaders ?? null, options: methodStatus[entry.id] ?? null,
+        captureIdentity: motion?.responseHeaders?.['Artifact-Revision'] ?? motion?.responseHeaders?.['Capture-Id'] ?? (slots.length === 1 ? slots[0].image.provenance.responseHeaders?.['Artifact-Revision'] ?? slots[0].image.provenance.responseHeaders?.['Capture-Id'] ?? null : null),
+        methodVersion: motion?.responseHeaders?.['Derivation-Version'] ?? (slots.length === 1 ? slots[0].image.provenance.responseHeaders?.['Derivation-Version'] ?? null : null) },
+      features: actualFeatures,
     }
-  }), [requestedSelections, runRefusals, layers, rasters, states, frameKey, flowVersion, interpolationMethod, methodStatus])
+  }), [requestedSelections, runRefusals, layers, rasters, states, frameKey, flowVersion, interpolationMethod, methodStatus, renderErrors, selected.latitude, selected.longitude, validTime])
   useEffect(() => { onDrawEvidence?.(drawEvidence) }, [drawEvidence, onDrawEvidence])
 
   const onLegendError = (layer: LayerItem) => {
@@ -1433,8 +1454,8 @@ export function MapPanel({
   return (
     <section className={`map-pane ${compactDisclosure ? 'bench-map' : ''} ${drawerOpen ? 'drawer-open' : 'drawer-closed'}`} aria-label={`${label} map pane`}>
       {compactDisclosure && <details className="bench-map-disclosure">
-        <summary>{drawEvidence.filter((row) => row.drawn).length} of {requestedSelections.length} layers drawn · {drawEvidence.some((row) => row.drawn && row.description.includes('GENERATED')) ? 'GENERATED display' : interpolate ? 'display interpolation enabled' : 'generated display off'} · frame details</summary>
-        <table><caption>Actual Map evidence</caption><thead><tr><th scope="col">Layer</th><th scope="col">Drawn</th><th scope="col">Frame and reason</th></tr></thead><tbody>{drawEvidence.map((row) => <tr key={row.id}><th scope="row">{row.id}</th><td>{row.drawn ? 'Yes' : 'No'}</td><td>{row.description}</td></tr>)}</tbody></table>
+        <summary>{drawEvidence.filter((row) => row.drawn).length} of {requestedSelections.length} layers drawn · {drawEvidence.some((row) => row.drawn && row.evidenceClass === 'generated_display') ? 'GENERATED display' : interpolate ? 'display interpolation enabled' : 'generated display off'} · {drawEvidence.filter((row) => !row.drawn).length} not drawn · frame details</summary>
+        <table><caption>Actual Map evidence</caption><thead><tr><th scope="col">Layer</th><th scope="col">Drawn</th><th scope="col">Frame and reason</th></tr></thead><tbody>{drawEvidence.map((row) => <tr key={row.id}><th scope="row">{row.id}</th><td>{row.drawn ? 'Yes' : 'No'}</td><td>{row.description}<br />Actual frame times: {row.times.join(', ') || 'None drawn'}</td></tr>)}</tbody></table>
       </details>}
       <div className="map-caption">
         <span>{label}</span>
@@ -1542,7 +1563,7 @@ export function MapPanel({
 
       <div className="map-text-alternative">
         <h3>Map contents as text</h3>
-        {active.length === 0
+        {requestedSelections.length === 0
           ? <p>Basemap only. No meteorological layer is requested.</p>
           : <ul className="layer-text-list">{resolved.map(({ layer, resolution }) => {
             const note = layerNoteFor(layer, resolution)
@@ -1552,6 +1573,7 @@ export function MapPanel({
               </li>
             )
           })}</ul>}
+        <ul>{drawEvidence.filter((row) => runRefusals[row.id]).map((row) => <li key={row.id}>{row.id}: {row.description}</li>)}</ul>
         <dl aria-label={`Evidence at ${selected.name}`}>
           <div><dt>Selected point</dt><dd>{selected.name} · {selected.latitude.toFixed(3)}, {selected.longitude.toFixed(3)}</dd></div>
           {evidence.map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}

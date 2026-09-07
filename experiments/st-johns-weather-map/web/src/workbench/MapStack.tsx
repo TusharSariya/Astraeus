@@ -1,6 +1,7 @@
+import { mapLayerEvidence } from './MapEvidenceDetails'
 import { layerMapping, layerImagery } from './layerIdentity'
 import { useState } from 'react'
-import type { LayerItem, LayerSelection } from '../types'
+import type { LayerItem, LayerSelection, GeoJsonFeature, ResolvedEvidenceClass } from '../types'
 import { layerFamily, layerGroup, layerLegendUrl } from '../api'
 import { ActiveFamilyLegends } from '../MapFamilyLegend'
 import { familyTitle, groupByFamily } from '../fieldFamily'
@@ -9,7 +10,14 @@ import { EvidenceGlyph, type InspectedEvidence } from './EvidenceInspector'
 
 // Selected #46 built-in identities. Missing members remain requested, never substituted.
 export const NOWCAST_STACK: LayerSelection[] = ['geomet-live-goes-east-naturalcolor', 'eccc-hrdps-surface-total-cloud', 'eccc-cap-alerts-alerts_features', 'eccc-radar-radar', 'eccc-lightning-lightning'].map((id) => ({ id, opacity: 0.85, visible: true }))
-export interface DrawEvidence { id: string; drawn: boolean; description: string; times: string[] }
+export interface DrawEvidence {
+  id: string; drawn: boolean; description: string; times: string[]
+  selection?: { latitude: number; longitude: number; instant: number }
+  evidenceClass?: ResolvedEvidenceClass
+  images?: Array<{ frame: string; weight: number; request: unknown; provenance: unknown }>
+  display?: { kind: string; selectedMethod: string; usedMethod: string | null; shader: string | null; inputFrames: string[]; responseHeaders: Record<string, string | null> | null; options: unknown; captureIdentity: string | null; methodVersion: string | null }
+  features?: GeoJsonFeature[]
+}
 const STORAGE_KEY = 'astraeus-saved-map-stacks'
 function readSaved(): Record<string, LayerSelection[]> {
   try {
@@ -53,14 +61,14 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect }: {
       const title = layer?.title ?? entry.id
       const description = layer ? actual?.description ?? 'No frame has been drawn.' : 'Requested layer is unavailable in the published layer response.'
       return <li key={entry.id}>
-        <div><EvidenceGlyph kind={resolveEvidenceClass(layer?.evidence_class)} /><strong>{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product ? `Product ${layer.product}` : 'Product not supplied'} · {sourceLabel}</small></div>
+        <div><EvidenceGlyph kind={actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} /><strong>{actual?.evidenceClass === 'generated_display' && 'GENERATED · '}{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product ? `Product ${layer.product}` : 'Product not supplied'} · {sourceLabel}</small></div>
         <p>{entry.visible ? description : 'Hidden by reader.'}</p>
         {availability && <p>Imagery availability: {availability.status} · {availability.reason}</p>}
         <p>Actual frame: {actual?.times.length ? actual.times.join(', ') : 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map((time) => layer?.frames?.find((frame) => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}{layer?.run_stale === true ? ' (stale run)' : layer?.run_stale === null ? ` (${layer.run_stale_reason ?? 'freshness unknown'})` : ''}</p>
         <div className="bench-stack-row-actions"><label><input type="checkbox" checked={entry.visible} onChange={(e) => patch(entry.id, { visible: e.target.checked })} />Show {title}</label>
           <label>Opacity<input aria-label={`Stack opacity ${title}`} type="range" min={0} max={1} step={0.05} value={entry.opacity} onChange={(e) => patch(entry.id, { opacity: Number(e.target.value) })} /></label>
           <button aria-label={`Raise ${title}`} disabled={index === stack.length - 1} onClick={() => move(index, 1)}>↑</button><button aria-label={`Lower ${title}`} disabled={index === 0} onClick={() => move(index, -1)}>↓</button>
-          <button aria-label={`Inspect layer ${title}`} onClick={(e) => onInspect({ key: `layer:${entry.id}`, label: title, text: description, details: { 'Returned layer': layer ?? null, 'Actual frame times': actual?.times ?? null, 'Source/field mapping': mapping, 'Imagery availability': availability, 'Run freshness assessed at': layer?.freshness_assessed_at ?? null } }, e.currentTarget)}>Inspect</button>
+          <button aria-label={`Inspect layer ${title}`} onClick={(e) => onInspect(mapLayerEvidence(entry.id, layer, actual), e.currentTarget)}>Inspect</button>
           <button aria-label={`Remove ${title}`} onClick={() => onChange(stack.filter((row) => row.id !== entry.id))}>Remove</button>
         </div>
       </li>
