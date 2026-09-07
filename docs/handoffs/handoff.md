@@ -20,6 +20,28 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Sources and Map-family implementation checkpoint, September 7, 2026
+
+Initial Series #279 merged as `206ce4e`. Current isolated batch:
+`execution/desktop-sources`, `/tmp/astraeus-desktop-sources`.
+The Sources Ledger, Family finder and Coverage lanes now use existing response
+records, preserve filters and inspection, and keep declared capability separate
+from point readings and acquisition reports. Unmapped layer/frame records stay
+separate. Map family legends move into the stack, with actual frame run identity
+separate from the newest index run; the shared inspector exposes sampled geometry
+and distinct native reading identities.
+
+Validation: 478 client tests and build pass. The fixed browser proof at
+`web/scripts/prove-desktop-sources.mjs` passes with external traffic blocked;
+receipt and three-perspective screenshots remain in `/tmp/astraeus-sources-proof/`.
+Review is main-agent only. No provider/raw evidence is added to Git.
+
+Remaining: explicit API layer/source-field joins and imagery availability;
+station/generated inspection and provider palette completion; source/run/native
+Series residuals, Sky Horizon, Activity verdict lanes, and assembled desktop proof.
+The accepted workbench tasks remain the implementation tracker; no source or full
+desktop obligation is closed by this checkpoint.
+
 ## Native Series implementation checkpoint, September 7, 2026
 
 Bench #278 merged as `a155c35`. The next isolated batch is

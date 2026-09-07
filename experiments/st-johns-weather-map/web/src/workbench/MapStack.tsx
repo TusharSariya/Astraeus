@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { LayerItem, LayerSelection } from '../types'
-import { layerFamily } from '../api'
-import { familyTitle } from '../fieldFamily'
+import { layerFamily, layerGroup, layerLegendUrl } from '../api'
+import { ActiveFamilyLegends } from '../MapFamilyLegend'
+import { familyTitle, groupByFamily } from '../fieldFamily'
 import { resolveEvidenceClass } from '../evidenceClass'
 import { EvidenceGlyph, type InspectedEvidence } from './EvidenceInspector'
 
@@ -27,6 +28,7 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect }: {
 }) {
   const [saved, setSaved] = useState(readSaved)
   const [name, setName] = useState(''); const [notice, setNotice] = useState('')
+  const activeLayers = stack.filter((entry) => entry.visible).flatMap((entry) => { const layer = layers.find((candidate) => candidate.id === entry.id); return layer ? [layer] : [] })
   const patch = (id: string, values: Partial<LayerSelection>) => onChange(stack.map((entry) => entry.id === id ? { ...entry, ...values } : entry))
   const move = (index: number, delta: number) => { const next = [...stack]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; onChange(next) }
   return <section className="bench-stack" aria-label="Ordered Map stack">
@@ -47,8 +49,9 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect }: {
       const title = layer?.title ?? entry.id
       const description = layer ? actual?.description ?? 'No frame has been drawn.' : 'Requested layer is unavailable in the published layer response.'
       return <li key={entry.id}>
-        <div><EvidenceGlyph kind={resolveEvidenceClass(layer?.evidence_class)} /><strong>{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product || 'Source identity not supplied'}</small></div>
+        <div><EvidenceGlyph kind={resolveEvidenceClass(layer?.evidence_class)} /><strong>{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product ? `Product ${layer.product}` : 'Product not supplied'} · Source identity not supplied</small></div>
         <p>{entry.visible ? description : 'Hidden by reader.'}</p>
+        <p>Actual frame: {actual?.times.length ? actual.times.join(', ') : 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map((time) => layer?.frames?.find((frame) => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}{layer?.run_stale === true ? ' (stale run)' : layer?.run_stale === null ? ` (${layer.run_stale_reason ?? 'freshness unknown'})` : ''}</p>
         <div className="bench-stack-row-actions"><label><input type="checkbox" checked={entry.visible} onChange={(e) => patch(entry.id, { visible: e.target.checked })} />Show {title}</label>
           <label>Opacity<input aria-label={`Stack opacity ${title}`} type="range" min={0} max={1} step={0.05} value={entry.opacity} onChange={(e) => patch(entry.id, { opacity: Number(e.target.value) })} /></label>
           <button aria-label={`Raise ${title}`} disabled={index === stack.length - 1} onClick={() => move(index, 1)}>↑</button><button aria-label={`Lower ${title}`} disabled={index === 0} onClick={() => move(index, -1)}>↓</button>
@@ -57,5 +60,15 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect }: {
         </div>
       </li>
     })}</ol>
+    <details className="bench-family-legends"><summary>Family legends</summary><h4>Active family scales</h4>{groupByFamily(activeLayers, layerFamily).map((group) => <section key={group.family}>
+      <ActiveFamilyLegends layers={group.members} />
+      {group.members.filter((layer) => layer.raster_available === true).map((layer) => <FamilyScale key={layer.id} layer={layer} />)}
+    </section>)}</details>
   </section>
+}
+
+function FamilyScale({ layer }: { layer: LayerItem }) {
+  const [failed, setFailed] = useState(false)
+  if (!layer.legend_available || failed) return <p>{layer.title} · {failed ? 'Legend could not be retrieved' : 'No provider legend declared'}; no scale is invented.</p>
+  return <figure><img src={layerLegendUrl(layer)} alt={`Legend for ${layer.title}`} onError={() => setFailed(true)} /><figcaption>{layer.title} · {layerGroup(layer) === 'rendered_grid' ? 'Exact rendering colormap' : 'Provider legend'}</figcaption></figure>
 }

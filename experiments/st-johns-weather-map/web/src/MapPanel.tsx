@@ -1454,7 +1454,7 @@ export function MapPanel({
         </div>
       )}
 
-      {active.length > 0 && (
+      {!compactDisclosure && active.length > 0 && (
         <aside className="map-legend-rail" aria-label="Active map legends">
           <strong>Active legends</strong>
           {/* The definitions the ramps are ramps OF, and the statement that two

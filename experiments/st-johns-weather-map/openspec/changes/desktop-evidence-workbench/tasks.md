@@ -10,7 +10,7 @@ Contract acceptance does not check off implementation tasks.
 ## 2. Map stack
 
 - [x] 2.1 Add `web/src/workbench/MapStack.tsx` and mount the existing `MapPanel` imagery pipeline in the stage; verify top-first order, opacity, visibility, absence retention, and URL replacement with `npm test -- --run src/workbench/MapStack.test.tsx src/MapPanel.test.tsx`.
-- [ ] 2.2 Add the Nowcast built-in and family legend presentation without changing frame requests; verify missing default members remain explicit and no substitute request occurs with `npm test -- --run src/workbench/MapStack.test.tsx src/api.test.ts`.
+- [x] 2.2 Add the Nowcast built-in and family legend presentation without changing frame requests; verify missing default members remain explicit and no substitute request occurs with `npm test -- --run src/workbench/MapStack.test.tsx src/api.test.ts`.
 - [ ] 2.3 Add the one-line Map disclosure and complete detail table using returned draw states; verify generated, partial, nothing-drawn, and truncation cases with `npm test -- --run src/workbench/MapDisclosure.test.tsx`.
 
 ## 3. Shared provenance and accessibility
@@ -63,3 +63,32 @@ five-minute expiry. Switching display or stage/dock preserves the same selection
 See [implementation evidence](../desktop-evidence-api-contract/implementation-evidence.md).
 Task 5.1 stays open for the full source/run workspace; task 5.6 stays open for
 the complete desktop. No other view or source is completed by this slice.
+
+## September 7 Sources and Map-family checkpoint
+
+`SourcesView.tsx` adds Ledger, Family finder and Coverage lanes using the existing
+catalogue, acquisition status, current point fields and separate layer records.
+App owns its filters, perspective and selected source across stage/dock switches.
+A declaration/retrieval timestamp cannot populate a native coverage lane; sparse
+returned values and absences retain timestamps and shared inspection. Missing
+layer joins remain inspectable and explicitly unmapped.
+
+Map family legends now live with the ordered stack, once per family with separate
+provider scales/definitions. The compact Map no longer repeats the floating
+legend. Drawn-frame runs are read from the matching frame identity and are distinct
+from the newest run in the index. The value inspector shows returned sampled-cell
+geometry and distinguishes same-field readings by native time, run and report.
+
+Verification: full client suite 478 passed, build passed;
+`node scripts/prove-desktop-sources.mjs` passed in Chrome with fixed responses and
+clock and all external requests blocked. The proof covers Sources filters and
+inspector persistence, declaration-only empty coverage, native zero/absence,
+three themes, and scoped Escape returning to a logical fallback after its opener
+is removed. Screenshots and receipt are outside Git at `/tmp/astraeus-sources-proof/`.
+No provider-live, screen-reader or outdoor proof is claimed.
+
+Still open: explicit API layer/source-field joins and imagery availability;
+complete station/generated-display inspection and stable provider palettes;
+Series run/native-reader residuals and the assembled Sources/Series cache view;
+Sky and Activity. Task 5.4 remains open for that assembled source-evidence scope,
+not because the three perspectives need another owner selection.

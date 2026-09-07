@@ -153,3 +153,15 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 .native-track table { width: 100%; text-align: left; border-collapse: collapse; }
 .native-track th, .native-track td { padding: .4rem; border-bottom: 1px solid var(--bench-line); }
 .native-track small { display: block; }
+
+.sources-view { padding: 1rem; }
+.sources-controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
+.sources-controls label { display: grid; gap: .25rem; }
+.sources-table { overflow-x: auto; }
+.sources-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.sources-table th, .sources-table td { padding: .6rem; border-bottom: 1px solid var(--bench-line); vertical-align: top; }
+.sources-view small { display: block; }
+.source-family-card, .source-coverage-lane, .sources-unmapped > section { border-top: 1px solid var(--bench-line); padding-block: .75rem; }
+.source-coverage-marks { width: 100%; max-width: 60rem; height: auto; max-height: 6rem; }
+.source-coverage-marks text { fill: currentColor; font-size: 12px; }
+.sources-view summary { padding-block: .75rem; }
