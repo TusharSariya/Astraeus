@@ -20,8 +20,8 @@ tests pass; OpenSpec 75/75 and specctl 0/0 pass. The preceding full API run's
 honestly; no full rerun or RDPS reacquisition followed the owner correction.
 Fresh independent targeted re-review of remediation head `e12a0f9` found no
 remaining Standards or Spec blocker. The focused deterministic tests and exact
-GitHub checks passed, so PR234 is approved for its authorized squash merge. No
-normative or operational status is promoted.
+GitHub checks passed. PR234 was squash-merged as `77c857c` with its reviewed
+tree unchanged. No normative or operational status is promoted.
 
 ## Destination and map ownership
 
@@ -278,8 +278,9 @@ Older no-fallback tests use explicit unavailable demand fixtures so public
 provider variability cannot change their expected empty-demand result.
 
 PR #234 passed fresh independent targeted re-review after its two correction
-findings, with zero remaining Standards or Spec blockers. The review covered
-the exact typed provenance and expired-metadata paths; the wider native/UI proof
-remains the previously accepted evidence above. No normative status was
-promoted. Raw receipts, API responses and browser proof remain outside Git in
+findings, with zero remaining Standards or Spec blockers, and was squash-merged
+as `77c857c`. The reviewed and merged trees match. The review covered the exact
+typed provenance and expired-metadata paths; the wider native/UI proof remains
+the previously accepted evidence above. No normative status was promoted. Raw
+receipts, API responses and browser proof remain outside Git in
 `/private/tmp/rdps233-live`; this is audit evidence, never an application archive.
