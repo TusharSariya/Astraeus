@@ -179,3 +179,32 @@ def test_all_bad_native_quality_cannot_publish_a_complete_revision(tmp_path):
     changed.to_netcdf(native, mode="w")
     with pytest.raises(Exception):
         query.decode_phase(native.read_bytes(), KEY)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="kernel-limited scientific decoder proof runs in Linux")
+@pytest.mark.parametrize("invalid_phase", [0.5, 2.5, 4.999])
+def test_actual_bounded_decoder_refuses_fractional_native_phase(tmp_path, invalid_phase):
+    from ingest.isolation import BoundedProcessError
+
+    native = _granule(tmp_path / "fractional-phase.nc", "ABI-L2-ACTPF")
+    with xarray.open_dataset(native) as opened:
+        changed = opened.load()
+    changed["Phase"].values[:] = invalid_phase
+    changed.to_netcdf(native, mode="w")
+    with pytest.raises(BoundedProcessError, match="exact native categorical domain"):
+        query.decode_phase(native.read_bytes(), KEY)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="kernel-limited scientific decoder proof runs in Linux")
+def test_actual_bounded_decoder_preserves_every_native_phase_category(tmp_path):
+    native = _granule(tmp_path / "all-phase-codes.nc", "ABI-L2-ACTPF")
+    with xarray.open_dataset(native) as opened:
+        changed = opened.load()
+    changed["Phase"].values[:] = numpy.arange(changed["Phase"].size).reshape(changed["Phase"].shape) % 6
+    changed.to_netcdf(native, mode="w")
+    artifact, _ = query.decode_phase(native.read_bytes(), KEY)
+    result = tmp_path / "result.nc"
+    result.write_bytes(artifact)
+    with xarray.open_dataset(result) as decoded:
+        phase = decoded.cloud_top_phase.values
+        assert set(numpy.unique(phase[numpy.isfinite(phase)])) == {0, 1, 2, 3, 4, 5}

@@ -10,13 +10,15 @@ source contract, scheduler registration, route or source activation changes.
 The prior `GOESABIL2Adapter` could acquire and crop ACTPF, but had no finite
 source-local demand coordinator. `GOESPhaseQueryService.read_native()` now
 returns one native cropped NetCDF revision with provenance. It reuses
-`PRODUCTS['ABI-L2-ACTPF']` and `crop_product`: native Phase codes 0–5, unchanged
+`PRODUCTS['ABI-L2-ACTPF']` and `crop_product`: native Phase codes exactly {0, 1, 2, 3, 4, 5}, unchanged
 code units, producer-readable DQF zero, preserved quality flags and meanings,
 file-derived curvilinear latitude/longitude and exact observed scan start.
 Source scan end and creation time remain in the receipt metadata. It makes no
 fog classification, cloud-percentage conversion, interpolation, parallax
 correction, or local uncertainty estimate. A scan with no readable phase cell
-fails acquisition and cannot replace the prior revision.
+fails acquisition and cannot replace the prior revision. Readable finite
+fractional phase values are refused before publication; a numeric range check
+alone cannot establish categorical validity.
 
 The anonymous transport permits exactly six hourly listings (512 KiB each,
 max-keys=1000) and at most one 64 MiB ACTPF granule. No pagination, redirect,
@@ -67,8 +69,11 @@ uv run --project tools/specs python tools/specs/specctl.py validate
 git diff --check
 ```
 
-Result: 34 tests passed (64 upstream NumPy/netCDF deprecation warnings),
+Result: 38 tests passed (80 upstream NumPy/netCDF deprecation warnings),
 `specctl` reported 0 errors and 0 warnings, and whitespace verification passed.
+The actual bounded leaf regressions refuse fractional codes 0.5, 2.5 and 4.999,
+and confirm that every native integer category 0 through 5 survives unchanged.
+The categorical correction used no provider requests.
 
 Remaining: shared delivery descriptor/point mapping, public API readback,
 immutable publication integration and owner acceptance. The new local return

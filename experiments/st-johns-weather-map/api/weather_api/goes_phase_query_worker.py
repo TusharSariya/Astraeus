@@ -11,6 +11,8 @@ os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+import numpy
+
 from ingest.adapters.goes_abi import parse_scan_stamp
 from ingest.adapters.goes_abi_l2 import MAX_GRANULE_BYTES, PRODUCTS, crop_product, parse_product_key
 from ingest.contract import EVIDENCE_BOX_BOUNDS
@@ -31,6 +33,9 @@ if __name__ == "__main__":
             raise ValueError("ACTPF granule object identity mismatch")
         if abs((stats["scan_start"] - parse_scan_stamp(stamp)).total_seconds()) > 1:
             raise ValueError("ACTPF granule time mismatch")
+        phase = dataset["cloud_top_phase"].values
+        if numpy.any(numpy.isfinite(phase) & ~numpy.isin(phase, (0, 1, 2, 3, 4, 5))):
+            raise ValueError("ACTPF phase is outside the exact native categorical domain")
         if not stats["field_dispositions"][0]["usable_cells"]:
             raise ValueError("ACTPF has no producer-readable phase cells")
         # Native uncertainty categories and DQF stay codes. No clear/fog inference.
