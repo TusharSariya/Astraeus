@@ -125,6 +125,18 @@ they SHALL NOT silently enter weights or be represented as verified by a fixture
 Replacing a proxy SHALL require the recorded replacement path and a new profile
 version; correlated proxy and replacement SHALL NOT be graded simultaneously.
 
+The active-weight normalization explicitly selected in #64 SHALL preserve the
+relative weights in the intended design: divide each admitted positive intended
+weight by the sum of admitted positive intended weights. The profile/version
+SHALL record both intended and effective active weights, excluded field paths
+and the reason for each exclusion. No eligible weight budget SHALL mean no
+score. A null, failed-QC, blocked or aged-out reading from an already admitted
+path SHALL NOT remove that path from the active budget or trigger normalization
+at request time; its coverage effect follows the existing rules above. Admission
+or replacement changes SHALL increment the profile version. This staged budget
+SHALL NOT be described as complete intended field coverage.
+
+
 | Profile / field | Curve and anchors | Weight |
 | --- | --- | --- |
 | Running temperature_2m | band outer -27 / 30, comfort 0 / 20 degC | 0.25 |
@@ -161,6 +173,13 @@ their separately verified contracts. Road state, light pollution and local
 magnetometer gaps SHALL remain explicit. The replacement targets, variants and
 context/admission classifications in #64 SHALL remain residual tasks; they SHALL
 NOT silently be treated as active implementations by this contract.
+
+#### Scenario: The intended design includes a path not yet admitted
+- **WHEN** a profile has intended weights 0.25 and 0.75 but only the first field
+  has an admitted verified path
+- **THEN** its effective active weight is 1.0, the intended weights and excluded
+  path remain disclosed, and a later missing reading still reduces coverage
+  instead of being removed from the active budget
 
 #### Scenario: A replacement source is only catalogued
 - **WHEN** humidex has a registry entry without its verified data path
