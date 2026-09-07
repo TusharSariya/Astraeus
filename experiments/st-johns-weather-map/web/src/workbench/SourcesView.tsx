@@ -1,3 +1,4 @@
+import { layerMapping, layerImagery } from './layerIdentity'
 import { useState } from 'react'
 import type { CatalogSource, LayerItem, ServedFieldValue, SourceStatusItem } from '../types'
 import { familyTitle, fieldDefinition } from '../fieldFamily'
@@ -9,12 +10,13 @@ interface Props {
   instant: number; catalogError: string | null; statusError: string | null
   onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void
 }
-export function sourceEvidence(id: string, catalog: CatalogSource[], statuses: SourceStatusItem[] | null, fields: ServedFieldValue[]): InspectedEvidence {
+export function sourceEvidence(id: string, catalog: CatalogSource[], statuses: SourceStatusItem[] | null, fields: ServedFieldValue[], layers: LayerItem[] = []): InspectedEvidence {
   return { key: `source:${id}`, label: id, text: 'Registry declaration, acquisition status and returned point evidence have separate scopes.', details: {
     'Source identity': id,
     'Registry declaration': catalog.find((source) => source.id === id) ?? 'Not present in the returned catalogue',
     'Acquisition status': statuses?.find((status) => status.source_id === id) ?? 'Not supplied; successful point retrieval is not inferred',
     'Returned evidence at Focus': fields.filter((field) => field.attribution.sourceId === id).map((field) => ({ field: field.field, text: field.text, has_value: field.hasValue, provenance: field.attribution.responseProvenance })),
+    'Explicitly associated layers': layers.filter((layer) => layerMapping(layer).fields.some((row) => row.source_id === id)).map((layer) => ({ id: layer.id, mapping: layerMapping(layer), imagery: layerImagery(layer), listed_times: layer.times ?? [], freshness_assessed_at: layer.freshness_assessed_at ?? null })),
     'Coverage limitation': 'Declared geography, a retrieval timestamp or a layer listing does not establish availability at this coordinate and time.',
   } }
 }
@@ -25,7 +27,7 @@ export function useSourcesView(props: Props) {
   const [family, setFamily] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const { catalog, statuses, fields, layers, drawn, instant, onInspect } = props
-  const allIds = [...new Set([...catalog.map((source) => source.id), ...fields.flatMap((field) => field.attribution.sourceId ? [field.attribution.sourceId] : []), ...(statuses ?? []).map((status) => status.source_id)])]
+  const allIds = [...new Set([...catalog.map((source) => source.id), ...fields.flatMap((field) => field.attribution.sourceId ? [field.attribution.sourceId] : []), ...(statuses ?? []).map((status) => status.source_id), ...layers.flatMap((layer) => layerMapping(layer).fields.map((row) => row.source_id))])]
   const families = [...new Set([...catalog.flatMap((source) => source.fields?.map((field) => field.family) ?? []), ...fields.map((field) => field.attribution.family)].filter((value): value is string => typeof value === 'string' && value.length > 0))].sort()
   const visible = allIds.filter((id) => {
     const source = catalog.find((entry) => entry.id === id)
@@ -33,7 +35,7 @@ export function useSourcesView(props: Props) {
     return [id, source?.producer, source?.product, ...source?.fields?.map((field) => field.key) ?? []].join(' ').toLowerCase().includes(query.trim().toLowerCase())
       && (!family || source?.fields?.some((field) => field.family === family) || values.some((field) => field.attribution.family === family))
   })
-  function inspect(id: string, opener: HTMLButtonElement) { setSelected(id); onInspect(sourceEvidence(id, catalog, statuses, fields), opener) }
+  function inspect(id: string, opener: HTMLButtonElement) { setSelected(id); onInspect(sourceEvidence(id, catalog, statuses, fields, layers), opener) }
   const inspectButton = (id: string) => <button aria-pressed={selected === id} onClick={(event) => inspect(id, event.currentTarget)}>Inspect source {id}</button>
   const readings = (id: string) => fields.filter((field) => field.attribution.sourceId === id && (!family || field.attribution.family === family))
   return <section className="sources-view" aria-label="Source evidence catalogue">
@@ -67,12 +69,17 @@ export function useSourcesView(props: Props) {
       </section>)}
     </div>}
     {selected && perspective !== 'Coverage lanes' && <details className="source-selected-values"><summary>Returned values from {selected}</summary><EvidenceLedger rows={readings(selected)} onInspect={onInspect} /></details>}
-    <details className="sources-unmapped"><summary>Layer frame identities · {layers.length} layers</summary><p>The layer API does not yet supply explicit source-to-field joins. These records stay separate from source coverage; no join is inferred from a title or product.</p>
+    <details className="sources-unmapped"><summary>Layer frame identities · {layers.length} layers</summary><p>Explicit source-to-field associations are declarations. Listed samples, advertised imagery and actual draw receipts stay separate; no join is inferred from a title or product.</p>
       {layers.filter((layer) => `${layer.id} ${layer.title}`.toLowerCase().includes(query.toLowerCase())).map((layer) => {
         const actual = drawn.find((entry) => entry.id === layer.id)
-        return <section key={layer.id}><h3>{layer.title}</h3><p>Layer {layer.id} · Source mapping unknown · Field {layer.field_key ?? 'not supplied'}</p>
+        const mapping = layerMapping(layer), availability = layerImagery(layer)
+        return <section key={layer.id}><h3>{layer.title}</h3><p>Layer {layer.id} · Source mapping {mapping.status} · Field {layer.field_key ?? 'not supplied'}</p>
+          <p>{mapping.reason}</p><ul>{mapping.fields.map((row, index) => <li key={index}>{row.source_id} · {row.field_key ?? `Unmapped declared field: ${row.declared_field ?? 'not supplied'}`}</li>)}</ul>
+          <p>Imagery availability: {availability.status} · {availability.reason}. Checked {availability.checked_at ?? 'time not supplied'} · {availability.basis}</p>
+          <details><summary>Advertised image times · {availability.times.length}</summary><p>{availability.times.length ? availability.times.join(', ') : 'No image times declared'}</p></details>
+          <p>Run freshness assessed at: {layer.freshness_assessed_at ?? 'Not supplied'}</p>
           <p>Listed native frames: {layer.times?.length ? layer.times.join(', ') : 'None supplied; imagery availability is unknown'}</p><p>Actual drawn frames: {actual?.times.length ? actual.times.join(', ') : 'None'} · {actual?.description ?? 'No draw receipt'}</p>
-          <button onClick={(event) => onInspect({ key: `layer:${layer.id}`, label: layer.title, text: actual?.description ?? 'Layer index only; no drawn frame confirmed', details: { 'Returned layer': layer, 'Actual draw': actual ?? null, 'Source mapping': 'Unknown' } }, event.currentTarget)}>Inspect layer record {layer.title}</button>
+          <button onClick={(event) => onInspect({ key: `layer:${layer.id}`, label: layer.title, text: actual?.description ?? 'Layer index only; no drawn frame confirmed', details: { 'Returned layer': layer, 'Actual draw': actual ?? null, 'Source mapping': mapping, 'Imagery availability': availability } }, event.currentTarget)}>Inspect layer record {layer.title}</button>
         </section>
       })}
     </details>

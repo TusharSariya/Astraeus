@@ -257,6 +257,7 @@ class ForecastLayerSpec:
     semantics: str | None = None
     group: str | None = None
     legend: bool = True
+    source_id: str | None = None
 
 
 #: What a proxied layer says about itself, verbatim, in ``semantics``.
@@ -294,21 +295,21 @@ WEONG_FOG_SEMANTICS = LIVE_PROXY_SEMANTICS + (
 #: unit. Thirteen specs cost thirteen capability fetches on a cold cache,
 #: inside :data:`MAX_UPSTREAM_CALLS_PER_REQUEST`.
 FORECAST_LAYERS: tuple[ForecastLayerSpec, ...] = (
-    ForecastLayerSpec("geomet-live-hrdps-tt", "HRDPS.CONTINENTAL_TT", "temperature", "HRDPS air temperature (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-td", "HRDPS.CONTINENTAL_TD", "dew_point", "HRDPS dew point (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-hr", "HRDPS.CONTINENTAL_HR", "relative_humidity", "HRDPS relative humidity (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-wspd", "HRDPS.CONTINENTAL_WSPD", "wind_speed", "HRDPS wind speed (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-wd", "HRDPS.CONTINENTAL_WD", "wind_direction", "HRDPS wind direction (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-uu", "HRDPS.CONTINENTAL_UU", "wind_u", "HRDPS wind, u component (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-pr", "HRDPS.CONTINENTAL_PR", "precipitation_accumulation", "HRDPS precipitation (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-pn", "HRDPS.CONTINENTAL_PN", "mean_sea_level_pressure", "HRDPS mean sea level pressure (live proxy)"),
-    ForecastLayerSpec("geomet-live-hrdps-nt", "HRDPS.CONTINENTAL_NT", "total_cloud_opacity", "HRDPS total cloud (live proxy)"),
+    ForecastLayerSpec("geomet-live-hrdps-tt", "HRDPS.CONTINENTAL_TT", "temperature", "HRDPS air temperature (live proxy)", source_id="eccc-hrdps"),
+    ForecastLayerSpec("geomet-live-hrdps-td", "HRDPS.CONTINENTAL_TD", "dew_point", "HRDPS dew point (live proxy)", source_id="eccc-hrdps"),
+    ForecastLayerSpec("geomet-live-hrdps-hr", "HRDPS.CONTINENTAL_HR", "relative_humidity", "HRDPS relative humidity (live proxy)", source_id="eccc-hrdps"),
+    ForecastLayerSpec("geomet-live-hrdps-wspd", "HRDPS.CONTINENTAL_WSPD", "wind_speed", "HRDPS wind speed (live proxy)", source_id="eccc-hrdps"),
+    ForecastLayerSpec("geomet-live-hrdps-wd", "HRDPS.CONTINENTAL_WD", "wind_direction", "HRDPS wind direction (live proxy)", source_id="eccc-hrdps"),
+    ForecastLayerSpec("geomet-live-hrdps-uu", "HRDPS.CONTINENTAL_UU", "wind_u", "HRDPS wind, u component (live proxy)", source_id="eccc-hrdps"),
+    ForecastLayerSpec("geomet-live-hrdps-pr", "HRDPS.CONTINENTAL_PR", "precipitation_accumulation", "HRDPS precipitation (live proxy)", source_id="eccc-hrdps"),
+    ForecastLayerSpec("geomet-live-hrdps-pn", "HRDPS.CONTINENTAL_PN", "mean_sea_level_pressure", "HRDPS mean sea level pressure (live proxy)", source_id="eccc-hrdps"),
+    ForecastLayerSpec("geomet-live-hrdps-nt", "HRDPS.CONTINENTAL_NT", "total_cloud_opacity", "HRDPS total cloud (live proxy)", source_id="eccc-hrdps"),
     ForecastLayerSpec(
         "geomet-live-hrdps-weong-fog-liquid",
         "HRDPS-WEonG_2.5km_LiquidFogVisibility",
         "visibility_through_liquid_fog",
         "HRDPS-WEonG visibility through liquid fog (live proxy)",
-        product="HRDPS-WEonG",
+        product="HRDPS-WEonG", source_id="eccc-hrdps-weg-prognos",
         semantics=WEONG_FOG_SEMANTICS,
     ),
     ForecastLayerSpec(
@@ -316,7 +317,7 @@ FORECAST_LAYERS: tuple[ForecastLayerSpec, ...] = (
         "HRDPS-WEonG_2.5km_IceFogVisibility",
         "visibility_through_ice_fog",
         "HRDPS-WEonG visibility through ice fog (live proxy)",
-        product="HRDPS-WEonG",
+        product="HRDPS-WEonG", source_id="eccc-hrdps-weg-prognos",
         semantics=WEONG_FOG_SEMANTICS,
     ),
     ForecastLayerSpec(

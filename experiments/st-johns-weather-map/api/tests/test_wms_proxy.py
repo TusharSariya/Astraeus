@@ -444,7 +444,10 @@ def test_a_proxied_layer_never_appears_as_a_stored_artifact(monkeypatch, data_mo
     stub_capabilities(monkeypatch, forward_hours())
 
     layers = client.get(f"{PREFIX}/layers").json()["layers"]
-    assert all(layer["evidence_basis"] == "live_proxy" for layer in layers)
+    proxy_ids = {spec.layer_id for spec in wms.PROXIED_LAYERS}
+    proxies = [layer for layer in layers if layer["id"] in proxy_ids]
+    assert {layer["id"] for layer in proxies} == proxy_ids
+    assert all(layer["evidence_basis"] == "live_proxy" for layer in proxies)
 
     # Neither the timeline nor the point response knows anything about them.
     timeline = client.get(f"{PREFIX}/timeline").json()

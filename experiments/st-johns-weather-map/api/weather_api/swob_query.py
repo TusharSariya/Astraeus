@@ -336,7 +336,11 @@ def demand_layer(layer_type, *, z_index: int):
     """Describe cached SWOB station capability without making a provider request."""
     entries = swob_query_service().cached_entries()
     times = sorted({observation.observation_time for entry in entries for observation in entry.observations})
+    from .layer_identity import imagery, mappings
+    from datetime import UTC
     return layer_type(
+        **mappings([('eccc-swob', key) for key in _FIELDS]),
+        imagery_availability=imagery("unavailable", datetime.now(UTC), "non_raster_layer", "This source exposes station features, not raster imagery"),
         id="eccc-swob-demand-observations",
         title="ECCC MSC SWOB station observations (selected-time demand points)",
         kind="point", field="temperature_2m", product="ECCC MSC SWOB", units="mixed native units",

@@ -303,7 +303,11 @@ def demand_layer(layer_type, *, z_index: int):
     """Describe the local demand capability from cache metadata only."""
     entry = aqhi_query_service().cached_entry()
     times = sorted({item.observation_time for item in entry.observations}) if entry else []
+    from .layer_identity import imagery, mappings
+    from datetime import UTC
     return layer_type(
+        **mappings([('eccc-aqhi', 'air_quality_health_index')]),
+        imagery_availability=imagery("unavailable", datetime.now(UTC), "non_raster_layer", "This source exposes station features, not raster imagery"),
         id="eccc-aqhi-demand-observations",
         title="ECCC AQHI station observations (selected-time demand points)",
         kind="point", field="aqhi", product="ECCC AQHI", units="index",

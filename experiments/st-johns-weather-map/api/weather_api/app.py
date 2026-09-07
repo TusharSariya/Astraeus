@@ -102,6 +102,7 @@ from .space_weather_products import (
     unavailable_products,
 )
 from . import astronomy, aurora, grids, satellite as goes_satellite, wms
+from .layer_identity import imagery, mappings
 from .config import WINDOW_BACK, WINDOW_STEPS, sliding_window
 from .store import (
     FIXTURE_MODE,
@@ -817,6 +818,7 @@ def _with_run_attribution(
     """
     attributed: list[Layer] = []
     for layer in layers:
+        layer = layer.model_copy(update={"freshness_assessed_at": reference})
         if layer.evidence_basis == wms.LIVE_PROXY:
             attributed.append(_unattributed_layer(layer, LIVE_PROXY_RUN_REASON))
             continue
@@ -908,6 +910,8 @@ def _proxied_forecast_layers() -> tuple[list[Layer], list[str]]:
         title = f"[experimental] {coverage.spec.title}" if coverage.experimental else coverage.spec.title
         layers.append(
             Layer(
+                **mappings([(coverage.spec.source_id, coverage.spec.field)] if coverage.spec.source_id else []),
+                imagery_availability=imagery("known" if coverage.times else "unknown", now(), "provider_capabilities_read", coverage.notice or "Advertised image times; capabilities may be cached, and rendering may still fail", frames if coverage.times else []),
                 id=coverage.spec.layer_id,
                 title=title,
                 kind="raster",
@@ -961,6 +965,8 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
                 notices=["ECCC CAP current-alert capability has no fresh validated cache entry; listing performed no provider request"],
             )
         return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
+            **mappings([("eccc-cap-alerts", "alerts_in_force")]),
+            imagery_availability=imagery("unavailable", now(), "non_raster_layer", "CAP serves native features, not raster images"),
             id="eccc-cap-alerts-current", title="ECCC current CAP alerts (selected-time demand features)",
             kind="alert", field="alerts_in_force", product="ECCC CAP", units="count",
             evidence_class="retrieved", family="hazard", field_key="alerts_in_force",
@@ -998,6 +1004,8 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             ("noaa-gfs-demand-cloud-high", "GFS high cloud", "cloud_high", "high-layer"),
         )
         return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
+            **mappings([("noaa-gfs", field)]),
+            imagery_availability=imagery("known", now(), "cached_native_inventory", "Cached advertised GFS native hours; no grid download or raster success is implied", availability[field]),
             id=layer_id, title=f"{title} (selected-time native grid)",
             kind="raster", field=field, product="GFS", units="percent",
             evidence_class="retrieved", family="cloud_cover", field_key=field,
@@ -1107,6 +1115,8 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             )
         layers.append(
             Layer(
+                **mappings([(artifact.source_id, artifact.provenance.get("field"))]),
+                imagery_availability=imagery("unknown" if binding else "unavailable", now(), "stored_samples_not_image_inventory" if binding else "no_raster_binding", "Stored sample times do not establish provider imagery availability" if binding else "No raster binding exists for this published layer"),
                 id=identifier,
                 title=published_layer_title(artifact, kind),
                 kind=kind,

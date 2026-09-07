@@ -556,6 +556,11 @@ export interface ProfileResponse {
 }
 
 export interface LayerItem {
+  field_mappings?: Array<{ source_id: string; field_key: string | null; declared_field: string | null }>
+  mapping_status?: 'known' | 'partial' | 'unknown'
+  mapping_reason?: string
+  imagery_availability?: { status: 'known' | 'unknown' | 'unavailable'; checked_at: string | null; basis: string; times: string[]; reason: string }
+  freshness_assessed_at?: string | null
   id: string
   title: string
   kind: string

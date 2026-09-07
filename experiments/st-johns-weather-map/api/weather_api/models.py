@@ -1189,7 +1189,41 @@ class LayerRunSummary(StrictModel):
     frame_count: int
 
 
+class LayerFieldMapping(StrictModel):
+    source_id: str
+    field_key: str | None = None
+    declared_field: str | None = None
+
+    @field_validator("field_key")
+    @classmethod
+    def catalogue_field(cls, value):
+        if value is not None and catalogue_key_for(value) != value:
+            raise ValueError("layer field_key must be canonical")
+        return value
+
+
+class ImageryAvailability(StrictModel):
+    status: Literal["known", "unknown", "unavailable"] = "unknown"
+    checked_at: datetime | None = None
+    basis: str = "not_checked"
+    times: list[datetime] = Field(default_factory=list)
+    reason: str = "Imagery availability has not been established separately from sample times"
+
+    @model_validator(mode="after")
+    def truthful_inventory(self):
+        if self.status != "known" and self.times:
+            raise ValueError("unknown or unavailable imagery cannot advertise image times")
+        if self.status == "known" and self.checked_at is None:
+            raise ValueError("known imagery inventory requires its assessment time")
+        return self
+
+
 class Layer(StrictModel):
+    field_mappings: list[LayerFieldMapping] = Field(default_factory=list)
+    mapping_status: Literal["known", "partial", "unknown"] = "unknown"
+    mapping_reason: str = "No explicit source-to-catalogue-field association was supplied"
+    imagery_availability: ImageryAvailability = Field(default_factory=ImageryAvailability)
+    freshness_assessed_at: datetime | None = None
     id: str
     title: str
     kind: Literal["raster", "point", "line", "alert", "mask"]
@@ -1266,6 +1300,14 @@ class Layer(StrictModel):
     #: The runs behind those frames, newest first, each with how many frames of
     #: this layer it answers for.
     runs: list[LayerRunSummary] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def coherent_mapping(self):
+        complete = bool(self.field_mappings) and all(row.field_key is not None for row in self.field_mappings)
+        expected = "known" if complete else "partial" if self.field_mappings else "unknown"
+        if self.mapping_status != expected:
+            raise ValueError("layer mapping status disagrees with explicit associations")
+        return self
 
 
 class LayersResponse(StrictModel):

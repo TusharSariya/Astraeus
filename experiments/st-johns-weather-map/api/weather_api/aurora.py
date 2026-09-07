@@ -368,7 +368,11 @@ def aurora_layers(store: Any, layer_model: Any, *, z_index: int, now: datetime |
 
 def demand_layer(layer_model: Any, *, z_index: int) -> Any:
     """The requestable OVATION layer; values appear only after a native query."""
+    from .layer_identity import imagery, mappings
+    from datetime import UTC
     return layer_model(
+        **mappings([(SOURCE_ID, VARIABLE)]),
+        imagery_availability=imagery("unknown", datetime.now(UTC), "selected_time_demand", "Listing makes no request and establishes no native OVATION image time"),
         id=LAYER_ID, title=TITLE, kind="raster", field=VARIABLE,
         product="OVATION aurora probability nowcast", units=UNITS,
         evidence_class="retrieved", family="space_weather", field_key=VARIABLE,
