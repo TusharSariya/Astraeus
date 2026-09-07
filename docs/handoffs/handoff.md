@@ -8,7 +8,7 @@ history and the owner's earlier design selections.
 
 The owner requested larger autonomous implementation/review/merge batches.
 Map/Sources/Series keyboard fixes #291–293 and assembled access #294 are merged.
-The current batch implements Activity end to end on
+[PR #295](https://github.com/TusharSariya/Astraeus/pull/295) implements Activity end to end on
 `execution/desktop-activity-delivery` at `/tmp/astraeus-desktop-activity-delivery`.
 
 All four v2 profiles, bounded verdict/strip routes, finite cache, native demand
@@ -18,7 +18,8 @@ build/import, strict OpenSpec and specctl pass. Actual Chrome fixed-fixture proo
 now covers the assembled five-view desktop, three themes, zoom, fullscreen/dock
 return and failed/expired evidence. See the existing desktop task checkpoint and
 API implementation evidence for exact bounds, scripts and compact receipts.
-Finish the passing merge of this batch before the next source batch in #70.
+The PR and owning #38 issue carry its merge receipt. After its passing merge,
+continue the next source batch in #70.
 
 Live hard-stop/sector/azimuth inputs and named profile replacement fields remain
 explicit residuals. DE442 requires its configured kernel; selected PM2.5 imagery
