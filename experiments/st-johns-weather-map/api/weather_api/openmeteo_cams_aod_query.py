@@ -1,7 +1,7 @@
 """Isolated finite CAMS-global AOD delivery over the existing experimental adapter.
 
 Hourly timestamps belong to Open-Meteo's reprocessed series, not the producer's
-three-hour grid. This service is not registered, scheduled, or operational.
+three-hour grid. This service remains unscheduled and nonoperational.
 """
 from __future__ import annotations
 
@@ -261,3 +261,15 @@ class OpenMeteoCamsAodQueryService:
             sample_distance_km=distance, sample_method="rectilinear", run_stale=None,
             run_stale_reason="Rolling intermediary series has no per-value producer run reference",
         ))]
+
+
+_service: OpenMeteoCamsAodQueryService | None = None
+_service_lock = threading.Lock()
+
+
+def openmeteo_cams_aod_query_service() -> OpenMeteoCamsAodQueryService:
+    global _service
+    with _service_lock:
+        if _service is None:
+            _service = OpenMeteoCamsAodQueryService()
+        return _service

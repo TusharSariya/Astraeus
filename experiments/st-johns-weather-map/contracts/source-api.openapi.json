@@ -2844,6 +2844,17 @@
             "title": "Point",
             "type": "boolean"
           },
+          "point_product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Point Product"
+          },
           "product_id": {
             "title": "Product Id",
             "type": "string"

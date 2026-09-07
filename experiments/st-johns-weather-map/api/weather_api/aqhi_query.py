@@ -164,6 +164,7 @@ class AQHIQueryService:
         try:
             with self._client.stream("GET", self.request_url, headers={"Accept": "application/json", "Accept-Encoding": "identity"}) as response:
                 if response.status_code != 200:
+                    response.raise_for_status()
                     raise AqhiQueryUnavailable(f"ECCC AQHI returned HTTP {response.status_code}")
                 declared = response.headers.get("content-length")
                 if declared is not None and (not declared.isdigit() or int(declared) > AQHI_BODY_MAX_BYTES):

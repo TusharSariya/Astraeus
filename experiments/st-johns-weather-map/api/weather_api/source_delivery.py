@@ -13,6 +13,7 @@ from ingest.contract import RunCandidate
 
 from .models import EvidenceField
 from .source_contract import SourceCapability, SourceConfiguration, SourceReadingIdentity, SourceVariant
+from .source_status import latest_configuration, observed_read
 
 
 @dataclass(frozen=True)
@@ -69,11 +70,12 @@ class ForecastSource:
         from registry import fields as catalogue
         return tuple(SourceCapability(source_id=self.source_id, product_id=self.product_id,
             field=key, variants=[SourceVariant(kind="deterministic")],
-            levels=[str(catalogue.field(key).level)], point=True, native_series=True,
+            levels=[str(catalogue.field(key).level)], point=True, point_product=self.product_id.upper(), native_series=True,
             run_selection="latest_previous" if self.named_runs else "latest",
             time_semantics="Provider-native forecast frames; ordinary point reads retain the source's existing matching rule",
             coverage_description="Existing Avalon point bounds; actual field and time coverage is established only by retrieval") for key in self.fields)
 
+    @observed_read
     def read_point(self, latitude, longitude, selected, *, run="latest", refresh=False):
         coordinator = self.factory()
         options = {}
@@ -87,6 +89,7 @@ class ForecastSource:
         values, _consensus, _sources = coordinator.point_fields(latitude, longitude, selected, **options)
         return tuple(value.model_copy(deep=True) for value in values if value.provenance.source_id == self.source_id)
 
+    @observed_read
     def plan_series(self, start, end, *, run="latest"):
         from .native_runs import RunUnavailable
         coordinator = self.factory()
@@ -125,12 +128,41 @@ class AQHISource:
             time_semantics="Nearest applicable native station observation at or before selection, strictly less than one hour old",
             coverage_description="Accepted Avalon station box and existing distance ceiling; no archive or forecast promise"),)
 
+    @observed_read
     def read_point(self, latitude, longitude, selected, *, run="latest", refresh=False):
         if run != "latest":
             from .native_runs import RunUnavailable
             raise RunUnavailable("AQHI observations have no forecast run selection")
         options = {"refresh": True} if refresh else {}
         return (self.factory().point_field(latitude, longitude, selected, **options).model_copy(deep=True),)
+
+    def plan_series(self, start, end, *, run="latest"):
+        return None
+
+
+class CAMSAODSource:
+    source_id = "openmeteo-cams-aod"
+    product_id = "cams-global-aod"
+
+    def __init__(self, factory):
+        self.factory = factory
+
+    def descriptors(self):
+        from registry import fields as catalogue
+        key = "aerosol_optical_depth_550nm"
+        return (SourceCapability(source_id=self.source_id, product_id=self.product_id, field=key,
+            variants=[SourceVariant(kind="deterministic")], levels=[str(catalogue.field(key).level)],
+            point=True, point_product="CAMS AOD", native_series=False, run_selection="not_applicable",
+            time_semantics="Exact hourly labels returned by Open-Meteo; these are reprocessed from native three-hourly CAMS data and do not identify a producer run",
+            coverage_description="Selected point only, with the returned intermediary cell and missing values preserved; no primary or derived evidence admission"),)
+
+    @observed_read
+    def read_point(self, latitude, longitude, selected, *, run="latest", refresh=False):
+        if run != "latest":
+            from .native_runs import RunUnavailable
+            raise RunUnavailable("CAMS intermediary values do not expose selectable producer runs")
+        return tuple(field.model_copy(deep=True) for field in self.factory().point_fields(
+            latitude, longitude, selected, refresh=refresh))
 
     def plan_series(self, start, end, *, run="latest"):
         return None
@@ -145,6 +177,7 @@ def source_readers() -> dict[str, SourceReader]:
     from .gdps_query import gdps_query_coordinator
     from .gfs_query import gfs_query_coordinator
     from .aqhi_query import aqhi_query_service
+    from .openmeteo_cams_aod_query import openmeteo_cams_aod_query_service
     common = ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure")
     readers = [
         ForecastSource("eccc-hrdps", "hrdps", hrdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
@@ -152,6 +185,7 @@ def source_readers() -> dict[str, SourceReader]:
         ForecastSource("eccc-gdps", "gdps", gdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
         ForecastSource("noaa-gfs", "gfs", gfs_query_coordinator, (*common, "visibility", "total_cloud_geometric", "cloud_low", "cloud_middle", "cloud_high"), named_runs=True),
         AQHISource(aqhi_query_service),
+        CAMSAODSource(openmeteo_cams_aod_query_service),
     ]
     return {reader.source_id: reader for reader in readers}
 
@@ -162,6 +196,9 @@ def source_capabilities(source_id: str) -> list[SourceCapability]:
 
 
 def source_configuration(source_id: str) -> SourceConfiguration:
+    reported = latest_configuration(source_id)
+    if reported is not None:
+        return reported
     if source_id in source_readers():
         return SourceConfiguration(state="ready", reason="Anonymous source read software is available; this does not establish successful retrieval or coverage")
     return SourceConfiguration()

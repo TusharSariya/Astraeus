@@ -17,6 +17,13 @@ remain authoritative. API shape is additive and backward compatible. Source
 workers own acquisition; the orchestrator owns shared integration. Only passing
 reviewed changes are integrated, with fixture proof distinguished from live proof.
 
+The same API-first instruction authorizes the named Open-Meteo CAMS AOD
+experimental point path using the existing composition adapter's field, unit,
+intermediary timing and missing-value contract. It supersedes the earlier
+isolated-only delivery restriction for this bounded point path. It does not
+register background ingestion, assign a producer run, promote display-primary
+admission or admit other composition fields.
+
 The source-specific lightning WMS point vocabulary has a separately recorded
 contract conflict and is held for the explicit owner answer. This authorization
 does not invent sampling rules, settle WeatherNext redistribution terms, deploy

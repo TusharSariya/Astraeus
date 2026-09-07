@@ -154,6 +154,7 @@ PRODUCT_SOURCE_IDS = {
     "GFS": "noaa-gfs",
     "NOAA": "noaa-gfs",
     "GFS Wave": "openmeteo-gfs-wave",
+    "CAMS AOD": "openmeteo-cams-aod",
     "IFS": "ecmwf-ifs",
     "ECMWF": "ecmwf-ifs",
     "ICON": "dwd-icon-global",
@@ -1335,9 +1336,9 @@ def _live_point(
 
     if product and product.upper() == "HRDPS":
         try:
-            from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            fields, _consensus, _sources = hrdps_query_coordinator().point_fields(latitude, longitude, time)
+            fields = list(source_readers()["eccc-hrdps"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.exception("HRDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
             return _unavailable_point(
@@ -1367,9 +1368,10 @@ def _live_point(
         )
     if product and product.upper() == "RDPS":
         try:
-            from .rdps_query import RDPSQueryUnavailable, rdps_query_coordinator  # noqa: PLC0415
+            from .rdps_query import RDPSQueryUnavailable  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            fields, _consensus, _sources = rdps_query_coordinator().point_fields(latitude, longitude, time)
+            fields = list(source_readers()["eccc-rdps"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.exception("RDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
             return _unavailable_point(
@@ -1399,9 +1401,10 @@ def _live_point(
         )
     if product and product.upper() == "GDPS":
         try:
-            from .gdps_query import GDPSQueryUnavailable, gdps_query_coordinator  # noqa: PLC0415
+            from .gdps_query import GDPSQueryUnavailable  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            fields, _consensus, _sources = gdps_query_coordinator().point_fields(latitude, longitude, time)
+            fields = list(source_readers()["eccc-gdps"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.exception("GDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
             return _unavailable_point(
@@ -1498,6 +1501,23 @@ def _live_point(
             fields=fields + observations,
             notices=[f"GFS values are from native timestep {actual_time.isoformat()}; no temporal interpolation was applied", *observation_notices],
         )
+    if product and product.upper() == "CAMS AOD":
+        from .source_delivery import source_readers  # noqa: PLC0415
+
+        try:
+            fields = list(source_readers()["openmeteo-cams-aod"].read_point(latitude, longitude, time))
+        except Exception:
+            return PointResponse(data_mode=DataMode.UNAVAILABLE, latitude=latitude, longitude=longitude,
+                valid_time=time, fields=[], selection=Selection(mode="evidence_only", selected_source_id=None,
+                    selected_product_id=None, badge="CAMS AOD unavailable",
+                    reason="The exact selected intermediary hour has no validated CAMS AOD response"),
+                notices=["CAMS AOD acquisition is unavailable; no other air-quality product or neighbouring time was substituted"])
+        return PointResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+            fields=fields, selection=Selection(mode="evidence_only", selected_source_id=None,
+                selected_product_id=None, badge="CAMS AOD via Open-Meteo",
+                reason="Reprocessed aerosol optical depth evidence is not a display primary"),
+            notices=["CAMS AOD uses the exact hourly label returned by Open-Meteo; native CAMS is three-hourly",
+                     "The intermediary series does not expose a producer run for this value; metadata context is not assigned as its run"])
     if product and product.upper() == "GFS WAVE":
         try:
             from .openmeteo_gfs_wave_query import openmeteo_gfs_wave_query_service  # noqa: PLC0415

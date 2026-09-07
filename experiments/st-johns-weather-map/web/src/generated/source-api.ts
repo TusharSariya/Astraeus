@@ -1182,6 +1182,8 @@ export interface components {
             native_series: boolean;
             /** Point */
             point: boolean;
+            /** Point Product */
+            point_product?: string | null;
             /** Product Id */
             product_id: string;
             /**

@@ -24,7 +24,8 @@ def test_shared_fixture_validates_actual_response_models():
     # Wire responses include Pydantic computed output properties, which are
     # deliberately not accepted back as model constructor inputs.
     for key, model in [("catalog", CatalogResponse), ("status", SourceStatusResponse), ("series", SeriesResponse),
-                       ("point_aqhi", PointResponse), ("point_aqhi_unavailable", PointResponse)]:
+                       ("point_aqhi", PointResponse), ("point_aqhi_unavailable", PointResponse),
+                       ("point_cams_aod", PointResponse)]:
         Draft202012Validator({"$ref": f"#/components/schemas/{model.__name__}",
                               "components": contract["components"]}).validate(fixture[key])
     stamps = [sample["provenance"]["valid_time"] for sample in fixture["series"]["series"][0]["samples"]]
@@ -34,14 +35,17 @@ def test_shared_fixture_validates_actual_response_models():
 def test_descriptors_do_not_instantiate_provider_clients(monkeypatch):
     import weather_api.gfs_query as gfs
     import weather_api.aqhi_query as aqhi
+    import weather_api.openmeteo_cams_aod_query as cams
     def forbidden():
         pytest.fail("catalogue caused provider work")
     monkeypatch.setattr(gfs, "gfs_query_coordinator", forbidden)
     monkeypatch.setattr(aqhi, "aqhi_query_service", forbidden)
+    monkeypatch.setattr(cams, "openmeteo_cams_aod_query_service", forbidden)
     readers = source_readers()
     assert readers["noaa-gfs"].descriptors()[0].native_series
     assert readers["eccc-aqhi"].descriptors()[0].point
     assert not readers["eccc-aqhi"].descriptors()[0].native_series
+    assert readers["openmeteo-cams-aod"].descriptors()[0].point_product == "CAMS AOD"
 
 
 def test_both_existing_point_shapes_share_one_seam():

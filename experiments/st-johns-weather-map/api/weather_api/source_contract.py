@@ -45,6 +45,7 @@ class SourceCapability(ContractModel):
     variants: list[SourceVariant] = Field(min_length=1)
     levels: list[str] = Field(min_length=1)
     point: bool
+    point_product: str | None = None
     native_series: bool
     run_selection: Literal["latest", "latest_previous", "not_applicable"]
     time_semantics: str

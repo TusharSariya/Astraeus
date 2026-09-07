@@ -56,7 +56,7 @@ def contract():
 
 def fixtures():
     now = datetime(2026, 9, 7, 12, tzinfo=UTC)
-    source_ids = {"eccc-hrdps", "eccc-rdps", "eccc-gdps", "noaa-gfs", "eccc-aqhi"}
+    source_ids = {"eccc-hrdps", "eccc-rdps", "eccc-gdps", "noaa-gfs", "eccc-aqhi", "openmeteo-cams-aod"}
     records = [record for record in registry_source_records() if record.id in source_ids]
     catalogue = CatalogResponse(data_mode=DataMode.FIXTURE, generated_at=now, sources=records)
     statuses = SourceStatusResponse(data_mode=DataMode.FIXTURE,
@@ -99,7 +99,31 @@ def fixtures():
     point, failed_point = observation_fixtures(now, rows[0].samples[0])
     return {"catalog": catalogue.model_dump(mode="json"), "status": statuses.model_dump(mode="json"),
             "series": series.model_dump(mode="json"), "point_aqhi": point.model_dump(mode="json"),
-            "point_aqhi_unavailable": failed_point.model_dump(mode="json")}
+            "point_aqhi_unavailable": failed_point.model_dump(mode="json"),
+            "point_cams_aod": cams_fixture(now).model_dump(mode="json")}
+
+
+def cams_fixture(now):
+    """Offline named product fixture through the source adapter and point builder."""
+    from unittest.mock import patch
+    import importlib
+    from weather_api.openmeteo_cams_aod_query import OpenMeteoCamsAodQueryService
+    class Client:
+        def download(self, url, path, **_options):
+            body = ({"last_run_initialisation_time": now.timestamp()} if "meta.json" in url else {
+                "latitude": 47.55, "longitude": -52.7, "utc_offset_seconds": 0,
+                "hourly_units": {"time": "iso8601", "aerosol_optical_depth": ""},
+                "hourly": {"time": [now.strftime("%Y-%m-%dT%H:%M")], "aerosol_optical_depth": [0.15]}})
+            path.write_text(json.dumps(body))
+    service = OpenMeteoCamsAodQueryService(client=Client(), clock=lambda: 0.0, utcnow=lambda: now)
+    module = importlib.import_module("weather_api.app")
+    with patch("weather_api.openmeteo_cams_aod_query.openmeteo_cams_aod_query_service", return_value=service):
+        response = module._live_point(47.5615, -52.7126, now, product="CAMS AOD")
+    response.data_mode = DataMode.FIXTURE
+    response.notices.append("Deterministic fixture: no provider traffic or live evidence")
+    for field in response.fields:
+        field.provenance.data_mode = DataMode.FIXTURE
+    return response
 
 
 def observation_fixtures(now, forecast):

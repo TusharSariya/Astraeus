@@ -7,11 +7,21 @@ the catalogue SHALL perform no provider request. Capability SHALL NOT establish
 successful retrieval, coverage, freshness, QC or source admission. An absent
 implementation SHALL remain distinguishable from an implemented path with no
 applicable reading.
+An optional point-product token SHALL identify the existing point query selector
+separately from native product identity. Ambiguous tokens SHALL not select a
+product. CAMS AOD SHALL expose only the exact intermediary hourly point path;
+it SHALL retain reprocessed evidence, unknown producer-run identity and the
+existing prohibition on display-primary admission.
 
 #### Scenario: A configured path has never retrieved data
 - **WHEN** its catalogue and status are read
 - **THEN** its software capability remains visible while retrieval and coverage
   remain unknown or unavailable
+
+#### Scenario: CAMS AOD has no value at the selected hour
+- **WHEN** the intermediary returns a null, lacks the exact hour or fails
+- **THEN** the point response preserves the null or explicit unavailable result
+  without substituting another field, provider or neighbouring hour
 
 ### Requirement: Native source selections preserve complete identity
 Explicit selectors SHALL preserve source/product/field/variant/level/run and

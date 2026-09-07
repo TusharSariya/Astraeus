@@ -21,6 +21,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "HRDPS",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -44,6 +45,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "HRDPS",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -67,6 +69,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "HRDPS",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -90,6 +93,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "HRDPS",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -113,6 +117,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "HRDPS",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -136,6 +141,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "HRDPS",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -159,6 +165,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "HRDPS",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -534,6 +541,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "RDPS",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -557,6 +565,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "RDPS",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -580,6 +589,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "RDPS",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -603,6 +613,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "RDPS",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -626,6 +637,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "RDPS",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -649,6 +661,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "RDPS",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -672,6 +685,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "RDPS",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -972,6 +986,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GDPS",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -995,6 +1010,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GDPS",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1018,6 +1034,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GDPS",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1041,6 +1058,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GDPS",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1064,6 +1082,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GDPS",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1087,6 +1106,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GDPS",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1110,6 +1130,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GDPS",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1345,6 +1366,7 @@
             ],
             "native_series": false,
             "point": true,
+            "point_product": null,
             "product_id": "aqhi-observations",
             "run_selection": "not_applicable",
             "source_id": "eccc-aqhi",
@@ -1419,6 +1441,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1442,6 +1465,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1465,6 +1489,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1488,6 +1513,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1511,6 +1537,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1534,6 +1561,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1557,6 +1585,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1580,6 +1609,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1603,6 +1633,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1626,6 +1657,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1649,6 +1681,7 @@
             ],
             "native_series": true,
             "point": true,
+            "point_product": "GFS",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -1817,6 +1850,77 @@
         "schema_version": "current NCEP GFS GRIB2 production schema",
         "state": "implemented-unverified",
         "status_reason": "Official NOAA cloud/NOMADS data are public; Herbie path and GRIB inventory fixtures remain."
+      },
+      {
+        "access_endpoint": "https://air-quality-api.open-meteo.com/v1/air-quality",
+        "archival": "Retain the immutable JSON response and its meta.json run stamp for the experiment retention window only.",
+        "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit ECMWF CAMS as the producer of the composition forecast. The upstream ADS licence dispute recorded on copernicus-cams is inherited here: if it reaches this delivery the record is re-read.",
+        "authentication": "none",
+        "caching": "Cache point series only, inside the 25 GiB experiment cap, with the run stamp read from data/<domain>/static/meta.json beside every call.",
+        "cadence": "two runs a day (00Z and 12Z), hourly steps, published at about T+10 h 16 m",
+        "capabilities": [
+          {
+            "coverage_description": "Selected point only, with the returned intermediary cell and missing values preserved; no primary or derived evidence admission",
+            "field": "aerosol_optical_depth_550nm",
+            "levels": [
+              "entire atmosphere (column)"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "CAMS AOD",
+            "product_id": "cams-global-aod",
+            "run_selection": "not_applicable",
+            "source_id": "openmeteo-cams-aod",
+            "time_semantics": "Exact hourly labels returned by Open-Meteo; these are reprocessed from native three-hourly CAMS data and do not identify a producer run",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "air_quality",
+        "delivery_kind": "reprocessed",
+        "display_primary": false,
+        "documentation_url": "https://open-meteo.com/en/docs/air-quality-api",
+        "exact_variables": [
+          "aerosol_optical_depth"
+        ],
+        "fields": [
+          {
+            "family": "air_quality",
+            "key": "aerosol_optical_depth_550nm",
+            "note": "CAMS total AOD at 550 nm through the explicitly selected cams_global path.",
+            "storage": "available-not-stored",
+            "upstream": "aerosol_optical_depth"
+          }
+        ],
+        "fixture_status": "planned",
+        "forecast_horizon": "about 4 days of non-null forward reach; the trailing hours of a 7-day request return null with no marker",
+        "freshness_threshold_seconds": 43200,
+        "geographic_coverage": "CAMS global 0.4 degree grid served at 0.1 degree cell centres; queried per point over the evidence box",
+        "id": "openmeteo-cams-aod",
+        "integration": "typed_adapter: httpx + Pydantic adapter reading data/cams_global/static/meta.json beside every call; no adapter is registered yet",
+        "intermediary": "Open-Meteo",
+        "levels": [
+          "total column"
+        ],
+        "licence": "Open-Meteo API data under CC BY 4.0; the producer's own upstream terms apply in addition, and the free tier is non-commercial use only",
+        "live_smoke_status": "planned",
+        "may_enter_consensus": false,
+        "producer": "ECMWF Copernicus Atmosphere Monitoring Service (CAMS)",
+        "product": "CAMS global atmospheric composition forecast delivered by Open-Meteo",
+        "redistribution": "Redistribution under CC BY 4.0 with the Open-Meteo link and the producer's own attribution preserved; the free tier is non-commercial use only.",
+        "role": "Aerosol optical depth evidence for sky transparency; never the display primary and never a derivation input",
+        "schedulable": false,
+        "schema_version": "Open-Meteo air-quality JSON as served; the CAMS cycle version is not exposed",
+        "state": "catalogued",
+        "status_reason": "The only aerosol optical depth reachable over the box without a credential: GeoMet publishes no AOD at all and every direct CAMS path is credential-gated (the ADS execute call and the NASA MAIAC and VIIRS granule GETs all return HTTP 401 anonymously), so this delivery closes a gap nothing else closes (docs/research/wayfinder/open-meteo-endpoints.md section 2.4). Total AOD at 550 nm only, with no speciation, so sea-salt AOD, the term that matters most in a maritime box, is not served. Two runs a day (00Z and 12Z) published at T+10 h 16 m, hourly steps, about 4 days of usable forward reach. The record declares the 0.1 versus 0.4 degree upsampling trap rather than leaving it to be discovered: CAMS global publishes a 0.4 degree grid and Open-Meteo returns cell centres stepping in 0.1 degree, so a stored value looks like a 0.1 degree field and is not one; the native 0.4 degree grid is what this record claims. Reprocessed, so never the display primary and never a derivation input. Anything reachable only through best_match is refused: it names no producer. Catalogued until a registered adapter claims the id; admission by the 2026-09-02 resolutions is a ceiling, not a fetch."
       }
     ]
   },
@@ -1912,7 +2016,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 13.0
+        "value": 13.2
       },
       {
         "absence_state": null,
@@ -2129,7 +2233,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 13.0
+        "value": 13.2
       }
     ],
     "latitude": 47.56,
@@ -2156,6 +2260,103 @@
       "selected_source_id": "eccc-hrdps"
     },
     "valid_time": "2026-09-07T12:30:00Z"
+  },
+  "point_cams_aod": {
+    "comparability": [],
+    "consensus": null,
+    "data_mode": "fixture",
+    "demand_unavailable": null,
+    "fields": [
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Particulate mass and aerosol optical depth are not the same quantity and no conversion between them is a measurement. Mass carries no wavelength dependence and no hygroscopic growth; a mass-to-extinction conversion is a citable method and must be declared derived-here. A surface concentration and a column burden are also not comparable. The health index is a categorical scale, not a concentration.",
+        "family": "air_quality",
+        "field": "aerosol_optical_depth_550nm",
+        "key": "aerosol_optical_depth_550nm",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "openmeteo-cams-aod-demand-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:19d49ca901ae1202a6b4f7cbfe930fbe3e22f074b61cbfae4e0cb4b5ec8de57a",
+          "attribution": "CAMS global atmospheric composition via Open-Meteo",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "reprocessed",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "reprocessed",
+          "forecast_centre": "ECMWF",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 300
+          },
+          "intermediary": "Open-Meteo",
+          "intermediary_method": "Regridding the CAMS 0.4 degree producer grid onto Open-Meteo 0.1 degree cell centres.; Temporal interpolation onto the hourly point-series step served by Open-Meteo.",
+          "last_valid_time": null,
+          "licence": "Open-Meteo CC BY 4.0 plus upstream terms",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "0.4 degree served at 0.1 degree cell centres",
+          "normalized_units": "1",
+          "operational": false,
+          "original_units": "",
+          "product": "CAMS global atmospheric composition forecast",
+          "provider": "ECMWF Copernicus Atmosphere Monitoring Service (CAMS)",
+          "quality": {
+            "flags": [
+              "exact_intermediary_hour"
+            ],
+            "status": "passed"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": "Rolling intermediary series has no per-value producer run reference",
+          "run_time": null,
+          "sample_distance_km": 1.5903528393737714,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.55,
+          "sampled_longitude": -52.7,
+          "source_display_primary": false,
+          "source_id": "openmeteo-cams-aod",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "total atmosphere"
+        },
+        "storage": "stored",
+        "value": 0.15
+      }
+    ],
+    "latitude": 47.5615,
+    "longitude": -52.7126,
+    "notices": [
+      "CAMS AOD uses the exact hourly label returned by Open-Meteo; native CAMS is three-hourly",
+      "The intermediary series does not expose a producer run for this value; metadata context is not assigned as its run",
+      "Deterministic fixture: no provider traffic or live evidence"
+    ],
+    "observation_unavailable": [],
+    "operational": false,
+    "selection": {
+      "badge": "CAMS AOD via Open-Meteo",
+      "mode": "evidence_only",
+      "reason": "Reprocessed aerosol optical depth evidence is not a display primary",
+      "selected_product_id": null,
+      "selected_source_id": null
+    },
+    "valid_time": "2026-09-07T12:00:00Z"
   },
   "series": {
     "complete": true,
@@ -2300,7 +2501,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 13.0
+            "value": 13.2
           },
           {
             "absence_state": null,
@@ -2388,7 +2589,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 13.0
+            "value": 13.2
           }
         ],
         "selectable_runs": [],
@@ -2480,7 +2681,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 95.2
+            "value": 96.0
           },
           {
             "absence_state": null,
@@ -2550,7 +2751,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 95.2
+            "value": 96.0
           }
         ],
         "selectable_runs": [],
@@ -2760,6 +2961,25 @@
         "operational": false,
         "source_id": "noaa-gfs",
         "state": "implemented-unverified"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; The only aerosol optical depth reachable over the box without a credential: GeoMet publishes no AOD at all and every direct CAMS path is credential-gated (the ADS execute call and the NASA MAIAC and VIIRS granule GETs all return HTTP 401 anonymously), so this delivery closes a gap nothing else closes (docs/research/wayfinder/open-meteo-endpoints.md section 2.4). Total AOD at 550 nm only, with no speciation, so sea-salt AOD, the term that matters most in a maritime box, is not served. Two runs a day (00Z and 12Z) published at T+10 h 16 m, hourly steps, about 4 days of usable forward reach. The record declares the 0.1 versus 0.4 degree upsampling trap rather than leaving it to be discovered: CAMS global publishes a 0.4 degree grid and Open-Meteo returns cell centres stepping in 0.1 degree, so a stored value looks like a 0.1 degree field and is not one; the native 0.4 degree grid is what this record claims. Reprocessed, so never the display primary and never a derivation input. Anything reachable only through best_match is refused: it names no producer. Catalogued until a registered adapter claims the id; admission by the 2026-09-02 resolutions is a ceiling, not a fetch.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 43200
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "openmeteo-cams-aod",
+        "state": "catalogued"
       }
     ]
   }
