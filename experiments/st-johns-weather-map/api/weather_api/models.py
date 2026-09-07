@@ -9,6 +9,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from .source_contract import SourceCapability, SourceConfiguration
+
 EXPERIMENT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(EXPERIMENT_ROOT) not in sys.path:  # registry/ ships beside api/ in both images
     sys.path.insert(0, str(EXPERIMENT_ROOT))
@@ -1062,6 +1064,7 @@ class SourceRecord(StrictModel):
     #: field the producer publishes and this deployment does not fetch is
     #: visible here rather than absent.
     fields: list[SourceFieldEntry] = Field(default_factory=list)
+    capabilities: list[SourceCapability] = Field(default_factory=list)
     exact_variables: list[str]
     levels: list[str]
     geographic_coverage: str
@@ -1547,6 +1550,7 @@ class SourceStatus(StrictModel):
     last_retrieval: datetime | None
     freshness: Freshness
     detail: str
+    configuration: SourceConfiguration = Field(default_factory=SourceConfiguration)
 
 
 class SourceStatusResponse(StrictModel):

@@ -1,0 +1,3057 @@
+{
+  "components": {
+    "schemas": {
+      "AQHIAcquisition": {
+        "additionalProperties": false,
+        "description": "Bounded transport identity for one normalized AQHI station document.",
+        "properties": {
+          "body_bytes": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2097152.0,
+            "title": "Body Bytes",
+            "type": "integer"
+          },
+          "body_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Body Sha256",
+            "type": "string"
+          },
+          "cached_at": {
+            "format": "date-time",
+            "title": "Cached At",
+            "type": "string"
+          },
+          "effective_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Effective Url",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "provider_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Provider Url",
+            "type": "string"
+          },
+          "request_headers": {
+            "additionalProperties": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "title": "Request Headers",
+            "type": "object"
+          },
+          "response_headers": {
+            "additionalProperties": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "title": "Response Headers",
+            "type": "object"
+          },
+          "transport_completed_at": {
+            "format": "date-time",
+            "title": "Transport Completed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_url",
+          "effective_url",
+          "request_headers",
+          "response_headers",
+          "transport_completed_at",
+          "body_bytes",
+          "body_sha256",
+          "cached_at",
+          "expires_at"
+        ],
+        "title": "AQHIAcquisition",
+        "type": "object"
+      },
+      "BlockedReason": {
+        "additionalProperties": false,
+        "description": "Why a known field is refused under current terms.\n\n``terms`` names or quotes the clause doing the refusing, so a reader can\ncheck it rather than take the refusal on trust. ``request`` records an\noutstanding permission or credential request where one has been made, so a\nblock that is being worked on reads differently from one that is not.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "licence",
+              "credential",
+              "partnership"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "request": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "terms": {
+            "title": "Terms",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "source_id",
+          "terms"
+        ],
+        "title": "BlockedReason",
+        "type": "object"
+      },
+      "CatalogResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data_mode": {
+            "$ref": "#/components/schemas/DataMode",
+            "default": "fixture"
+          },
+          "experimental": {
+            "const": true,
+            "default": true,
+            "title": "Experimental",
+            "type": "boolean"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "operational": {
+            "const": false,
+            "default": false,
+            "title": "Operational",
+            "type": "boolean"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceRecord"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "generated_at",
+          "sources"
+        ],
+        "title": "CatalogResponse",
+        "type": "object"
+      },
+      "ChangeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "change_token": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Change Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "change_token"
+        ],
+        "title": "ChangeRequest",
+        "type": "object"
+      },
+      "ChangeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "changed_selector_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed Selector Ids",
+            "type": "array"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "unchanged",
+              "changed",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "checked_at",
+          "state",
+          "changed_selector_ids",
+          "reason"
+        ],
+        "title": "ChangeResponse",
+        "type": "object"
+      },
+      "Continuation": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Cursor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cursor"
+        ],
+        "title": "Continuation",
+        "type": "object"
+      },
+      "ContributorProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "attribution": {
+            "title": "Attribution",
+            "type": "string"
+          },
+          "licence": {
+            "title": "Licence",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "provider",
+          "product",
+          "licence",
+          "attribution"
+        ],
+        "title": "ContributorProvenance",
+        "type": "object"
+      },
+      "Coverage": {
+        "additionalProperties": false,
+        "properties": {
+          "fraction": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraction"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "partial",
+              "outside",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Coverage",
+        "type": "object"
+      },
+      "DataMode": {
+        "description": "How a response was produced. ``operational`` stays False regardless.\n\n``UNAVAILABLE`` is the fail-closed value: it means nothing was retrieved and\nnothing was invented. It exists so a caller can never mistake an outage for\na reading, which is what a silent fixture fallthrough used to do.",
+        "enum": [
+          "live",
+          "fixture",
+          "mixed",
+          "unavailable"
+        ],
+        "title": "DataMode",
+        "type": "string"
+      },
+      "DerivedInput": {
+        "additionalProperties": false,
+        "description": "One value a ``derived_here`` construction read, with its own lineage.\n\nEvery input of a derived value is listed, whatever source it came from, so\na reader can see what the number was built out of rather than being asked\nto trust the method's name.",
+        "properties": {
+          "evidence_class": {
+            "enum": [
+              "retrieved",
+              "reprocessed",
+              "derived_here",
+              "intermediary_derived",
+              "generated_display",
+              "uncalibrated_observation"
+            ],
+            "title": "Evidence Class",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "run_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Time"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "units": {
+            "title": "Units",
+            "type": "string"
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "source_id",
+          "product",
+          "valid_time",
+          "units",
+          "evidence_class",
+          "quality"
+        ],
+        "title": "DerivedInput",
+        "type": "object"
+      },
+      "EnsembleMemberSet": {
+        "additionalProperties": false,
+        "description": "The members one ensemble number covers, as they actually resolved.\n\nCarried on the value rather than beside it, because a statistic whose\nmember set a reader cannot recover is exactly the unnamed ensemble number\nthis project refuses. ``members_declared`` is what the family's registry\nrecord declares, ``members_used`` is what resolved a value, and\n``members_missing`` names the shortfall wherever the identifiers are known\n(the shortfall is never filled with invented member ids). ``partial``\nfollows from the two counts at the derive step and is carried so a reader\nneed not recompute it.\n\nThere is deliberately no run-staleness field here. Run staleness is\n``Provenance.run_stale`` with ``Provenance.run_stale_reason``, added by the\nhorizon-tiers change, and this model hangs off that same ``Provenance``: a\nsecond field would let one value say two things about one run.",
+        "properties": {
+          "control_included": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Control Included"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "members_declared": {
+            "minimum": 0.0,
+            "title": "Members Declared",
+            "type": "integer"
+          },
+          "members_missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Members Missing",
+            "type": "array"
+          },
+          "members_used": {
+            "minimum": 0.0,
+            "title": "Members Used",
+            "type": "integer"
+          },
+          "partial": {
+            "default": false,
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "run_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Time"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "family",
+          "source_id",
+          "run_time",
+          "members_declared",
+          "members_used"
+        ],
+        "title": "EnsembleMemberSet",
+        "type": "object"
+      },
+      "EnsembleProvenance": {
+        "additionalProperties": false,
+        "description": "What makes one value an ensemble number: family, statistic, member set.\n\n``statistic`` is null on a per-member value (that value is one member's\nown reading, not a summary of any set) and is one of the five registered\nentry names on a statistic. ``computed_here`` separates a statistic this\ndeployment computed over members it can serve from a provider's own\npublished reduction, which is ``retrieved`` and stays the provider's.\n\n``refusal`` names the condition code the derive step failed\n(``one_family:``, ``one_run:``, ``provider_reduction_mixed``,\n``averaged_with_instantaneous``, ``below_minimum:``, ``no_member_resolved``\nor a switch level). A refusal is not an absence, so it only ever appears on\na field whose value is null and whose quality carries\n``statistic_refused``.",
+        "properties": {
+          "averaging_window_hours": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Averaging Window Hours"
+          },
+          "comparison": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ge",
+                  "gt",
+                  "le",
+                  "lt"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison"
+          },
+          "computed_here": {
+            "title": "Computed Here",
+            "type": "boolean"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "member_set": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnsembleMemberSet"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantile": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantile"
+          },
+          "refusal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal"
+          },
+          "statistic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statistic"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "threshold_units": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Units"
+          }
+        },
+        "required": [
+          "family",
+          "statistic",
+          "computed_here",
+          "member_set"
+        ],
+        "title": "EnsembleProvenance",
+        "type": "object"
+      },
+      "EvidenceField": {
+        "additionalProperties": false,
+        "description": "One served value, and where the catalogue files it.\n\n``key`` is the catalogue key; ``field`` stays the API's own name for the\nquantity, which for most fields is the same string. ``family`` follows from\nthe key and is never set independently - two names for one grouping is how\n``total_cloud`` came to mean three quantities. ``phase`` is non-null only\nwhere the catalogue requires a phase (the humidity fields) and is read from\n``catalogue.PHASE_ATTRIBUTE`` on the value, never assumed. ``storage`` says\nwhether this deployment holds the field at all, so\n``available-not-stored`` and ``not-published`` stay distinguishable from a\nreading that is simply absent.",
+        "properties": {
+          "absence_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "null",
+                  "blocked",
+                  "aged_out"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Absence State"
+          },
+          "blocked": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlockedReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comparability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparability"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "enum": [
+                  "liquid",
+                  "mixed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          },
+          "storage": {
+            "default": "stored",
+            "enum": [
+              "stored",
+              "available-not-stored",
+              "not-published"
+            ],
+            "title": "Storage",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "provenance"
+        ],
+        "title": "EvidenceField",
+        "type": "object"
+      },
+      "Freshness": {
+        "additionalProperties": false,
+        "properties": {
+          "age_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Seconds"
+          },
+          "status": {
+            "enum": [
+              "fresh",
+              "stale",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "threshold_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Seconds"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Freshness",
+        "type": "object"
+      },
+      "GDPSAcquisition": {
+        "additionalProperties": false,
+        "properties": {
+          "cached_at": {
+            "format": "date-time",
+            "title": "Cached At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "normalized_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Normalized Sha256",
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/GDPSDemandRequest"
+          },
+          "retrieval_time": {
+            "format": "date-time",
+            "title": "Retrieval Time",
+            "type": "string"
+          },
+          "run_time": {
+            "format": "date-time",
+            "title": "Run Time",
+            "type": "string"
+          },
+          "transport_receipts": {
+            "items": {
+              "$ref": "#/components/schemas/GDPSTransportReceipt"
+            },
+            "maxItems": 5,
+            "title": "Transport Receipts",
+            "type": "array"
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request",
+          "run_time",
+          "valid_time",
+          "retrieval_time",
+          "normalized_sha256",
+          "transport_receipts",
+          "cached_at",
+          "expires_at"
+        ],
+        "title": "GDPSAcquisition",
+        "type": "object"
+      },
+      "GDPSDemandRequest": {
+        "additionalProperties": false,
+        "description": "Canonical selectors for one bounded native GDPS frame.",
+        "properties": {
+          "bounds": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "maxProperties": 4,
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "north",
+                "south",
+                "east",
+                "west"
+              ]
+            },
+            "title": "Bounds",
+            "type": "object"
+          },
+          "cycle_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Cycle Url",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Fields",
+            "type": "array"
+          },
+          "lead": {
+            "maximum": 240.0,
+            "minimum": 0.0,
+            "title": "Lead",
+            "type": "integer"
+          },
+          "product": {
+            "const": "GDPS",
+            "default": "GDPS",
+            "title": "Product",
+            "type": "string"
+          },
+          "provider_run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Provider Run Id",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "eccc-gdps",
+            "default": "eccc-gdps",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle_url",
+          "provider_run_id",
+          "lead",
+          "fields",
+          "bounds"
+        ],
+        "title": "GDPSDemandRequest",
+        "type": "object"
+      },
+      "GDPSTransportReceipt": {
+        "additionalProperties": false,
+        "description": "One completed GDPS native-field transfer, without provider bytes.",
+        "properties": {
+          "bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "title": "Completed At",
+            "type": "string"
+          },
+          "field": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "request_headers": {
+            "additionalProperties": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "title": "Request Headers",
+            "type": "object"
+          },
+          "response_headers": {
+            "additionalProperties": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "title": "Response Headers",
+            "type": "object"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "url",
+          "request_headers",
+          "response_headers",
+          "bytes",
+          "sha256",
+          "completed_at"
+        ],
+        "title": "GDPSTransportReceipt",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "NativeReportIdentity": {
+        "additionalProperties": false,
+        "description": "Bounded identity for one provider report behind a demand value.",
+        "properties": {
+          "flight_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flight Category"
+          },
+          "native_metadata": {
+            "additionalProperties": true,
+            "title": "Native Metadata",
+            "type": "object"
+          },
+          "observation_time": {
+            "format": "date-time",
+            "title": "Observation Time",
+            "type": "string"
+          },
+          "provider_elevation_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Elevation M"
+          },
+          "provider_latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Latitude"
+          },
+          "provider_longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Longitude"
+          },
+          "provider_report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Report Id"
+          },
+          "provider_station_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Station Name"
+          },
+          "quality_code": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Code"
+          },
+          "raw_report_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Report Sha256"
+          },
+          "receipt_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Time"
+          },
+          "report_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Time"
+          },
+          "report_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Type"
+          },
+          "station_id": {
+            "title": "Station Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "observation_time"
+        ],
+        "title": "NativeReportIdentity",
+        "type": "object"
+      },
+      "Provenance": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter_version": {
+            "title": "Adapter Version",
+            "type": "string"
+          },
+          "aqhi_acquisition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AQHIAcquisition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artifact_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Revision"
+          },
+          "attribution": {
+            "title": "Attribution",
+            "type": "string"
+          },
+          "contributing_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contributing Evidence",
+            "type": "array"
+          },
+          "contributors": {
+            "items": {
+              "$ref": "#/components/schemas/ContributorProvenance"
+            },
+            "title": "Contributors",
+            "type": "array"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "data_mode": {
+            "$ref": "#/components/schemas/DataMode",
+            "default": "fixture"
+          },
+          "delivery_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "published_cell",
+                  "reprocessed",
+                  "intermediary_derived"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Kind"
+          },
+          "demand_acquisition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RDPSAcquisition"
+              },
+              {
+                "$ref": "#/components/schemas/GDPSAcquisition"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demand Acquisition"
+          },
+          "derivation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derivation"
+          },
+          "derivation_citation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derivation Citation"
+          },
+          "derivation_inputs": {
+            "items": {
+              "$ref": "#/components/schemas/DerivedInput"
+            },
+            "title": "Derivation Inputs",
+            "type": "array"
+          },
+          "derivation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Derivation Version"
+          },
+          "display_primary_eligible": {
+            "description": "Whether this value may be a field's display primary.\n\nThree things can refuse it and none can grant it alone: the evidence\nclass (a reprocessed, intermediary-derived or uncalibrated value is\nshown beside the others, labelled, and never promoted over a\nproducer's own published cell), the delivery kind (a value a third\nparty transformed is not the producer's own cell either), and the\nsource record's own `display_primary`, which a record may set false\nfor a reason no other field states. Computed rather than stored so it\ncan never disagree with what it is computed from.",
+            "readOnly": true,
+            "title": "Display Primary Eligible",
+            "type": "boolean"
+          },
+          "ensemble": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnsembleProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_class": {
+            "enum": [
+              "retrieved",
+              "reprocessed",
+              "derived_here",
+              "intermediary_derived",
+              "generated_display",
+              "uncalibrated_observation"
+            ],
+            "title": "Evidence Class",
+            "type": "string"
+          },
+          "forecast_centre": {
+            "title": "Forecast Centre",
+            "type": "string"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
+          },
+          "intermediary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intermediary"
+          },
+          "intermediary_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intermediary Method"
+          },
+          "last_valid_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Valid Time"
+          },
+          "licence": {
+            "title": "Licence",
+            "type": "string"
+          },
+          "member": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member"
+          },
+          "member_control": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Control"
+          },
+          "native_crs": {
+            "title": "Native Crs",
+            "type": "string"
+          },
+          "native_report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeReportIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "native_resolution": {
+            "title": "Native Resolution",
+            "type": "string"
+          },
+          "normalized_units": {
+            "title": "Normalized Units",
+            "type": "string"
+          },
+          "operational": {
+            "const": false,
+            "default": false,
+            "title": "Operational",
+            "type": "boolean"
+          },
+          "original_units": {
+            "title": "Original Units",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/Quality"
+          },
+          "retrieval_time": {
+            "format": "date-time",
+            "title": "Retrieval Time",
+            "type": "string"
+          },
+          "run_stale": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Stale"
+          },
+          "run_stale_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Stale Reason"
+          },
+          "run_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Time"
+          },
+          "sample_distance_km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Distance Km"
+          },
+          "sample_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Method"
+          },
+          "sampled_latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampled Latitude"
+          },
+          "sampled_longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampled Longitude"
+          },
+          "source_display_primary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Display Primary"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "swob_acquisition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SWOBAcquisition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          },
+          "vertical_level": {
+            "title": "Vertical Level",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_class",
+          "source_id",
+          "provider",
+          "product",
+          "forecast_centre",
+          "run_time",
+          "valid_time",
+          "retrieval_time",
+          "vertical_level",
+          "original_units",
+          "normalized_units",
+          "native_resolution",
+          "native_crs",
+          "quality",
+          "coverage",
+          "freshness",
+          "licence",
+          "attribution",
+          "adapter_version",
+          "display_primary_eligible"
+        ],
+        "title": "Provenance",
+        "type": "object"
+      },
+      "Quality": {
+        "additionalProperties": false,
+        "description": "QC verdict on one value.\n\n``status`` keeps exactly four values. Recognised ``flags`` include\n``derived`` (this value was computed here by a registered method) and\n``range_clamped``; the list stays open because adapters record their own\nQC flags, but ``derived`` is the one a client reads to know a number was\nconstructed rather than read.",
+        "properties": {
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "suspect",
+              "failed",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Quality",
+        "type": "object"
+      },
+      "RDPSAcquisition": {
+        "additionalProperties": false,
+        "properties": {
+          "cached_at": {
+            "format": "date-time",
+            "title": "Cached At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "normalized_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Normalized Sha256",
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/RDPSDemandRequest"
+          },
+          "retrieval_time": {
+            "format": "date-time",
+            "title": "Retrieval Time",
+            "type": "string"
+          },
+          "run_time": {
+            "format": "date-time",
+            "title": "Run Time",
+            "type": "string"
+          },
+          "transport_receipts": {
+            "items": {
+              "$ref": "#/components/schemas/RDPSTransportReceipt"
+            },
+            "maxItems": 64,
+            "title": "Transport Receipts",
+            "type": "array"
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request",
+          "run_time",
+          "valid_time",
+          "retrieval_time",
+          "normalized_sha256",
+          "transport_receipts",
+          "cached_at",
+          "expires_at"
+        ],
+        "title": "RDPSAcquisition",
+        "type": "object"
+      },
+      "RDPSDemandRequest": {
+        "additionalProperties": false,
+        "description": "Canonical provider selectors, independent of the client's minute.",
+        "properties": {
+          "bounds": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "maxProperties": 4,
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "north",
+                "south",
+                "east",
+                "west"
+              ]
+            },
+            "title": "Bounds",
+            "type": "object"
+          },
+          "cycle_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Cycle Url",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Fields",
+            "type": "array"
+          },
+          "lead": {
+            "maximum": 84.0,
+            "minimum": 0.0,
+            "title": "Lead",
+            "type": "integer"
+          },
+          "product": {
+            "const": "RDPS",
+            "default": "RDPS",
+            "title": "Product",
+            "type": "string"
+          },
+          "provider_run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Provider Run Id",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "eccc-rdps",
+            "default": "eccc-rdps",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cycle_url",
+          "provider_run_id",
+          "lead",
+          "fields",
+          "bounds"
+        ],
+        "title": "RDPSDemandRequest",
+        "type": "object"
+      },
+      "RDPSTransportReceipt": {
+        "additionalProperties": false,
+        "description": "One completed native field transfer; never the upstream body.",
+        "properties": {
+          "bytes": {
+            "exclusiveMinimum": 0.0,
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "title": "Completed At",
+            "type": "string"
+          },
+          "field": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "request_headers": {
+            "additionalProperties": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "title": "Request Headers",
+            "type": "object"
+          },
+          "response_headers": {
+            "additionalProperties": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "title": "Response Headers",
+            "type": "object"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "url",
+          "request_headers",
+          "response_headers",
+          "bytes",
+          "sha256",
+          "completed_at"
+        ],
+        "title": "RDPSTransportReceipt",
+        "type": "object"
+      },
+      "ReadingIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Revision"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "run_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Time"
+          },
+          "sampled_latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampled Latitude"
+          },
+          "sampled_longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampled Longitude"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "station_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Id"
+          },
+          "valid_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Time"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceVariant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source_id",
+          "field",
+          "run_time",
+          "artifact_revision"
+        ],
+        "title": "ReadingIdentity",
+        "type": "object"
+      },
+      "SWOBAcquisition": {
+        "additionalProperties": false,
+        "properties": {
+          "body_bytes": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 262144.0,
+            "title": "Body Bytes",
+            "type": "integer"
+          },
+          "body_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Body Sha256",
+            "type": "string"
+          },
+          "cached_at": {
+            "format": "date-time",
+            "title": "Cached At",
+            "type": "string"
+          },
+          "effective_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Effective Url",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/SWOBDemandRequest"
+          },
+          "request_headers": {
+            "additionalProperties": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "title": "Request Headers",
+            "type": "object"
+          },
+          "response_headers": {
+            "additionalProperties": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxProperties": 16,
+            "propertyNames": {
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "title": "Response Headers",
+            "type": "object"
+          },
+          "transport_completed_at": {
+            "format": "date-time",
+            "title": "Transport Completed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request",
+          "effective_url",
+          "request_headers",
+          "response_headers",
+          "transport_completed_at",
+          "body_bytes",
+          "body_sha256",
+          "cached_at",
+          "expires_at"
+        ],
+        "title": "SWOBAcquisition",
+        "type": "object"
+      },
+      "SWOBDemandRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "provider_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Provider Url",
+            "type": "string"
+          },
+          "selected_time": {
+            "format": "date-time",
+            "title": "Selected Time",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "eccc-swob",
+            "default": "eccc-swob",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "selected_time",
+          "latitude",
+          "longitude",
+          "provider_url"
+        ],
+        "title": "SWOBDemandRequest",
+        "type": "object"
+      },
+      "SelectableRun": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "run_time": {
+            "format": "date-time",
+            "title": "Run Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "run_time"
+        ],
+        "title": "SelectableRun",
+        "type": "object"
+      },
+      "Selector": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_.-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "run": {
+            "default": "latest",
+            "maxLength": 100,
+            "title": "Run",
+            "type": "string"
+          },
+          "source_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Source Id",
+            "type": "string"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceVariant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "field"
+        ],
+        "title": "Selector",
+        "type": "object"
+      },
+      "SeriesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/SeriesSelection"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesRow"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/Snapshot"
+          }
+        },
+        "required": [
+          "selection",
+          "snapshot",
+          "series",
+          "next_cursor",
+          "complete",
+          "notices"
+        ],
+        "title": "SeriesResponse",
+        "type": "object"
+      },
+      "SeriesRow": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "enum": [
+              "available",
+              "checked_empty",
+              "unknown",
+              "unavailable"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "requested_run": {
+            "title": "Requested Run",
+            "type": "string"
+          },
+          "run_inventory_reason": {
+            "default": "This native reader does not expose a selectable run inventory",
+            "title": "Run Inventory Reason",
+            "type": "string"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceField"
+            },
+            "title": "Samples",
+            "type": "array"
+          },
+          "selectable_runs": {
+            "items": {
+              "$ref": "#/components/schemas/SelectableRun"
+            },
+            "maxItems": 2,
+            "title": "Selectable Runs",
+            "type": "array"
+          },
+          "selector_id": {
+            "title": "Selector Id",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceVariant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "selector_id",
+          "source_id",
+          "field",
+          "requested_run",
+          "availability"
+        ],
+        "title": "SeriesRow",
+        "type": "object"
+      },
+      "SeriesSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "page_size": {
+            "default": 12,
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "selectors": {
+            "items": {
+              "$ref": "#/components/schemas/Selector"
+            },
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Selectors",
+            "type": "array"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "start",
+          "end",
+          "selectors"
+        ],
+        "title": "SeriesSelection",
+        "type": "object"
+      },
+      "Snapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "change_token": {
+            "title": "Change Token",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "identities": {
+            "items": {
+              "$ref": "#/components/schemas/ReadingIdentity"
+            },
+            "title": "Identities",
+            "type": "array"
+          },
+          "selected_at": {
+            "format": "date-time",
+            "title": "Selected At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "selected_at",
+          "expires_at",
+          "change_token",
+          "identities"
+        ],
+        "title": "Snapshot",
+        "type": "object"
+      },
+      "SourceCapability": {
+        "additionalProperties": false,
+        "description": "Implemented read path. Its declaration does not assert available data.",
+        "properties": {
+          "coverage_description": {
+            "title": "Coverage Description",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "levels": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Levels",
+            "type": "array"
+          },
+          "native_series": {
+            "title": "Native Series",
+            "type": "boolean"
+          },
+          "point": {
+            "title": "Point",
+            "type": "boolean"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "run_selection": {
+            "enum": [
+              "latest",
+              "latest_previous",
+              "not_applicable"
+            ],
+            "title": "Run Selection",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "time_semantics": {
+            "title": "Time Semantics",
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/SourceVariant"
+            },
+            "minItems": 1,
+            "title": "Variants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "source_id",
+          "product_id",
+          "field",
+          "variants",
+          "levels",
+          "point",
+          "native_series",
+          "run_selection",
+          "time_semantics",
+          "coverage_description"
+        ],
+        "title": "SourceCapability",
+        "type": "object"
+      },
+      "SourceConfiguration": {
+        "additionalProperties": false,
+        "description": "Safe configuration/acquisition disposition, separate from admission.",
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "reason": {
+            "default": "This source delivery path has not been assessed",
+            "title": "Reason",
+            "type": "string"
+          },
+          "required_environment": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Environment",
+            "type": "array"
+          },
+          "state": {
+            "default": "unknown",
+            "enum": [
+              "ready",
+              "missing_configuration",
+              "access_denied",
+              "product_unavailable",
+              "missing_compute",
+              "acquisition_failed",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "title": "SourceConfiguration",
+        "type": "object"
+      },
+      "SourceFieldEntry": {
+        "additionalProperties": false,
+        "description": "What one source does about one catalogue field, from the catalogue.\n\n``storage`` is the answer the interface needs to tell three different\nthings apart: the deployment holds it, the producer publishes it and the\ndeployment does not fetch it, and the producer does not publish it at all.",
+        "properties": {
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "storage": {
+            "enum": [
+              "stored",
+              "available-not-stored",
+              "not-published"
+            ],
+            "title": "Storage",
+            "type": "string"
+          },
+          "upstream": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upstream"
+          }
+        },
+        "required": [
+          "key",
+          "family",
+          "storage"
+        ],
+        "title": "SourceFieldEntry",
+        "type": "object"
+      },
+      "SourceRecord": {
+        "additionalProperties": false,
+        "description": "One catalogue entry. Derived from ``registry/source_data.py`` in every\nmode: the registry is a checked-in declaration of what may be retrieved, not\nretrieved evidence, so publishing it is honest regardless of data mode.",
+        "properties": {
+          "access_endpoint": {
+            "title": "Access Endpoint",
+            "type": "string"
+          },
+          "archival": {
+            "title": "Archival",
+            "type": "string"
+          },
+          "attribution": {
+            "title": "Attribution",
+            "type": "string"
+          },
+          "authentication": {
+            "title": "Authentication",
+            "type": "string"
+          },
+          "caching": {
+            "title": "Caching",
+            "type": "string"
+          },
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/SourceCapability"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "delivery_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "published_cell",
+                  "reprocessed",
+                  "intermediary_derived"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Kind"
+          },
+          "display_primary": {
+            "default": true,
+            "title": "Display Primary",
+            "type": "boolean"
+          },
+          "documentation_url": {
+            "title": "Documentation Url",
+            "type": "string"
+          },
+          "exact_variables": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exact Variables",
+            "type": "array"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/SourceFieldEntry"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "fixture_status": {
+            "enum": [
+              "passing",
+              "missing",
+              "not_applicable",
+              "planned",
+              "blocked"
+            ],
+            "title": "Fixture Status",
+            "type": "string"
+          },
+          "forecast_horizon": {
+            "title": "Forecast Horizon",
+            "type": "string"
+          },
+          "freshness_threshold_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Freshness Threshold Seconds"
+          },
+          "geographic_coverage": {
+            "title": "Geographic Coverage",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "integration": {
+            "title": "Integration",
+            "type": "string"
+          },
+          "intermediary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intermediary"
+          },
+          "levels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "licence": {
+            "title": "Licence",
+            "type": "string"
+          },
+          "live_smoke_status": {
+            "enum": [
+              "not_run",
+              "passing",
+              "failing",
+              "credential_required",
+              "planned",
+              "blocked",
+              "not_applicable"
+            ],
+            "title": "Live Smoke Status",
+            "type": "string"
+          },
+          "may_enter_consensus": {
+            "title": "May Enter Consensus",
+            "type": "boolean"
+          },
+          "producer": {
+            "title": "Producer",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "redistribution": {
+            "title": "Redistribution",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "schedulable": {
+            "title": "Schedulable",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SourceState"
+          },
+          "status_reason": {
+            "title": "Status Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "producer",
+          "product",
+          "state",
+          "status_reason",
+          "role",
+          "may_enter_consensus",
+          "exact_variables",
+          "levels",
+          "geographic_coverage",
+          "cadence",
+          "forecast_horizon",
+          "authentication",
+          "licence",
+          "attribution",
+          "caching",
+          "archival",
+          "redistribution",
+          "schema_version",
+          "documentation_url",
+          "access_endpoint",
+          "integration",
+          "schedulable",
+          "fixture_status",
+          "live_smoke_status"
+        ],
+        "title": "SourceRecord",
+        "type": "object"
+      },
+      "SourceState": {
+        "enum": [
+          "operational",
+          "implemented-unverified",
+          "catalogued",
+          "credential-required",
+          "licence-blocked",
+          "link-only",
+          "partnership-only",
+          "unavailable",
+          "rejected",
+          "superseded"
+        ],
+        "title": "SourceState",
+        "type": "string"
+      },
+      "SourceStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "configuration": {
+            "$ref": "#/components/schemas/SourceConfiguration"
+          },
+          "data_mode": {
+            "$ref": "#/components/schemas/DataMode",
+            "default": "fixture"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
+          },
+          "last_retrieval": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Retrieval"
+          },
+          "operational": {
+            "const": false,
+            "default": false,
+            "title": "Operational",
+            "type": "boolean"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SourceState"
+          }
+        },
+        "required": [
+          "source_id",
+          "state",
+          "last_retrieval",
+          "freshness",
+          "detail"
+        ],
+        "title": "SourceStatus",
+        "type": "object"
+      },
+      "SourceStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "data_mode": {
+            "$ref": "#/components/schemas/DataMode",
+            "default": "fixture"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "operational": {
+            "const": false,
+            "default": false,
+            "title": "Operational",
+            "type": "boolean"
+          },
+          "statuses": {
+            "items": {
+              "$ref": "#/components/schemas/SourceStatus"
+            },
+            "title": "Statuses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "statuses"
+        ],
+        "title": "SourceStatusResponse",
+        "type": "object"
+      },
+      "SourceVariant": {
+        "additionalProperties": false,
+        "properties": {
+          "comparison": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison"
+          },
+          "kind": {
+            "enum": [
+              "deterministic",
+              "observation",
+              "member",
+              "provider_statistic",
+              "derived_statistic",
+              "unknown"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "member": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member"
+          },
+          "quantile": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantile"
+          },
+          "statistic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statistic"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SourceVariant",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Astraeus experimental source delivery",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/experiments/weather/v0/catalog": {
+      "get": {
+        "description": "The registry is the catalogue in every mode; it declares what may be\nretrieved, which is true independently of what has been.",
+        "operationId": "get_catalog_api_experiments_weather_v0_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Catalog"
+      }
+    },
+    "/api/experiments/weather/v0/point/series": {
+      "post": {
+        "operationId": "read_series_api_experiments_weather_v0_point_series_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SeriesSelection"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Continuation"
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Series"
+      }
+    },
+    "/api/experiments/weather/v0/point/series/changes": {
+      "post": {
+        "operationId": "check_series_changes_api_experiments_weather_v0_point_series_changes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Series Changes"
+      }
+    },
+    "/api/experiments/weather/v0/sources/status": {
+      "get": {
+        "description": "Registry state per source. Recorded retrieval makes freshness measurable;\nit never promotes a source past the state the registry declares.",
+        "operationId": "get_source_status_api_experiments_weather_v0_sources_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Source Status"
+      }
+    }
+  }
+}

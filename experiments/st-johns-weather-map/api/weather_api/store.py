@@ -3405,6 +3405,7 @@ def _registry_records() -> list[dict[str, Any]]:
 def registry_source_records() -> list[Any]:
     """Every registry record as a catalogue entry, in registry order."""
     from registry.admission import ceiling_state  # noqa: PLC0415
+    from .source_delivery import source_capabilities
 
     from .models import SourceFieldEntry, SourceRecord, SourceState  # noqa: PLC0415
 
@@ -3421,6 +3422,7 @@ def registry_source_records() -> list[Any]:
         records.append(
             SourceRecord(
                 id=source_id,
+                capabilities=source_capabilities(source_id),
                 category=str(record["category"]),
                 producer=str(record["producer"]),
                 product=str(record["product"]),
@@ -3530,6 +3532,7 @@ def registry_source_statuses(activity: dict[str, datetime] | None = None, *, ref
     here ever emits ``active``.
     """
     from .models import DataMode, Freshness, SourceStatus  # noqa: PLC0415
+    from .source_delivery import source_configuration
 
     from ingest.registry import ingest_configs  # noqa: PLC0415
 
@@ -3545,6 +3548,7 @@ def registry_source_statuses(activity: dict[str, datetime] | None = None, *, ref
         statuses.append(
             SourceStatus(
                 source_id=record.id,
+                configuration=source_configuration(record.id),
                 state=record.state,
                 data_mode=DataMode.LIVE if retrieved is not None else DataMode.UNAVAILABLE,
                 last_retrieval=retrieved,
