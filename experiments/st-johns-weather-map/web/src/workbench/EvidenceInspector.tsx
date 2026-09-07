@@ -1,3 +1,4 @@
+import { NativeImages, type NativeImageSelection } from './NativeImages'
 import { ReturnedValue, readableGeometry } from './ReturnedValue'
 import { SourceTag } from './SourceTag'
 import { useEffect, useRef } from 'react'
@@ -36,7 +37,18 @@ export function EvidenceLedger({ rows, onInspect }: { rows: ServedFieldValue[]; 
   </table>
 }
 const show = (value: unknown): string => value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0) ? 'Not supplied' : typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
-export function EvidenceInspector({ evidence, onClose }: { evidence: InspectedEvidence; onClose: () => void }) {
+/** Show identity and receipt counts without duplicating transport URLs or headers. */
+function acquisitionSummary(attribution: FieldAttribution) {
+  const receipt = attribution.responseProvenance?.source_acquisition
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) return null
+  const value = receipt as Record<string, unknown>
+  if (value.source_id !== attribution.sourceId || !Array.isArray(value.transport_receipts)) return null
+  return { source_id: value.source_id, product_id: value.product_id, provider_run_id: value.provider_run_id,
+    run_time: value.run_time, valid_time: value.valid_time, retrieval_time: value.retrieval_time,
+    expires_at: value.expires_at, normalized_sha256: value.normalized_sha256,
+    transfer_count: value.transport_receipts.length }
+}
+export function EvidenceInspector({ evidence, onClose, nativeImages }: { evidence: InspectedEvidence; onClose: () => void; nativeImages?: NativeImageSelection }) {
   const heading = useRef<HTMLHeadingElement | null>(null)
   useEffect(() => { heading.current?.focus() }, [evidence.key])
   const a = evidence.attribution
@@ -47,6 +59,7 @@ export function EvidenceInspector({ evidence, onClose }: { evidence: InspectedEv
   }}>
     <div className="bench-view-heading"><h2 ref={heading} tabIndex={-1}>Evidence · {evidence.label}</h2><button onClick={onClose}>Close inspector</button></div>
     <p>{evidence.text}</p>
+    {nativeImages && <NativeImages key={`${nativeImages.sourceId}:${nativeImages.endpoint}:${nativeImages.instant}`} selection={nativeImages} />}
     <dl>{Object.entries(a ? {
       Class: EVIDENCE_CLASS_LABELS[a.evidenceClass], Source: a.sourceId, Producer: a.provider, Product: a.product,
       'Delivery kind': a.deliveryKind, Intermediary: a.intermediary, 'Native valid time': a.validTime,
@@ -56,6 +69,7 @@ export function EvidenceInspector({ evidence, onClose }: { evidence: InspectedEv
       'Method sentence': a.derivation, 'Method version': a.derivationVersion,
       Member: a.member, Ensemble: a.ensemble, Phase: a.phase,
       'Sample geometry': ['sampled_latitude', 'sampled_longitude', 'sample_distance_km', 'sample_method'].some((key) => a.responseProvenance?.[key] != null) ? { latitude: a.responseProvenance?.sampled_latitude ?? null, longitude: a.responseProvenance?.sampled_longitude ?? null, distance_km: a.responseProvenance?.sample_distance_km ?? null, method: a.responseProvenance?.sample_method ?? null } : null, 'Freshness assessment': a.responseProvenance?.freshness, Terms: a.responseProvenance?.licence,
+      'Source acquisition receipt': acquisitionSummary(a),
       'Complete returned provenance': a.responseProvenance,
       ...evidence.details,
     } : evidence.details ?? { Provenance: null }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{structured ? <ReturnedValue value={label === 'Returned feature geometry' ? readableGeometry(value) : value} /> : show(value)}</dd></div>)}</dl>

@@ -1866,7 +1866,10 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     status={<><strong>{dataPathCopy[dataSource]}</strong> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices
       {sourceError && <span> · {sourceError}</span>}{initialFocus.notices.map((notice) => <span key={notice}> · {notice}</span>)}</>}
     timeline={benchTimeline}
-    inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} /> : undefined}
+    inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} nativeImages={(() => {
+      const source = inspected.key.startsWith('source:') ? catalog.find((entry) => entry.id === inspected.key.slice(7)) : null
+      return source?.native_image_endpoint ? { sourceId: source.id, endpoint: source.native_image_endpoint, instant: selectedMs } : undefined
+    })()} /> : undefined}
     views={{
       Map: <><MapSamplesLink /><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
       Series: nativeSeries,
