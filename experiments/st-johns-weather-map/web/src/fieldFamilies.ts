@@ -43,7 +43,7 @@ export interface FieldCatalogueCopy {
 export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
   "version": "1.0.0",
   "asOf": "2026-09-02",
-  "fingerprint": "56291abe05a1880c08bc5a6f5927a30a10e0dcdbfafac0239d1f9838cd35f9e7",
+  "fingerprint": "e66d3fde9f1e74c2578366e81ce08a64cd84cb63497a935acd84c175af57cb93",
   "families": [
     {
       "name": "air_quality",
@@ -347,7 +347,7 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "units": "percent",
       "level": "surface",
       "comparabilityGroup": "aurora_probability",
-      "description": "SWPC OVATION modelled probability of visible aurora over a grid cell, sampled as stored. The one genuinely gridded space-weather product."
+      "description": "SWPC OVATION modelled probability of visible aurora over a grid cell, sampled from the selected native grid. The one genuinely gridded space-weather product."
     },
     {
       "key": "boundary_layer_height",

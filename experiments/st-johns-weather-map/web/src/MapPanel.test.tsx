@@ -1131,6 +1131,29 @@ describe('MapPanel layer drawer', () => {
     expect(screen.queryByText(/stored noaa-gfs artifact/i)).not.toBeInTheDocument()
   })
 
+  it('requests the selected instant for an unadvertised current OVATION demand layer', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(rasterResponse({
+      'X-Weather-Evidence-Basis': 'demand_query', 'X-Weather-Image-Basis': 'rendered_grid',
+      'X-Weather-Source-Id': 'noaa-swpc-ovation', 'X-Weather-Valid-Time': '2026-08-30T04:00:00Z',
+      'X-Weather-Reference-Time': 'none', 'X-Weather-Observation-Time': '2026-08-30T03:20:00Z',
+    }, ['X-Weather-Wms-Layer']))
+    vi.stubGlobal('fetch', fetchMock)
+    const ovation: LayerItem = {
+      id: 'noaa-swpc-aurora-oval', title: 'Aurora probability (OVATION model nowcast)',
+      kind: 'raster', field: 'aurora_probability', product: 'OVATION aurora probability nowcast', units: 'percent',
+      semantics: 'bounded selected-time query of the current NOAA SWPC OVATION model grid', times: [], cadence_seconds: 600,
+      staleness_tolerance_seconds: 600, evidence_basis: 'demand_query', raster_available: true,
+      legend_available: true, group: 'published_model', evidence_class: 'retrieved', family: 'space_weather',
+    }
+    render(panel({ layers: [ovation], selections: [{ id: ovation.id, visible: true, opacity: 0.85 }] }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(String(fetchMock.mock.calls[0][0])).toContain('valid_time=2026-08-30T04%3A00%3A00.000Z')
+    expect((await screen.findAllByText(/bounded selected-time noaa-swpc-ovation cache entry/i)).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/stored noaa-swpc-ovation artifact/i)).not.toBeInTheDocument()
+    expect((await screen.findAllByText(/observation time 2026-08-30T03:20:00Z/i)).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/model run 2026-08-30T03:20:00Z/i)).not.toBeInTheDocument()
+  })
+
   it('never composites adjacent frames for a selected-time demand layer', async () => {
     const fetchMock = vi.fn().mockResolvedValue(rasterResponse({
       'X-Weather-Evidence-Basis': 'demand_query', 'X-Weather-Image-Basis': 'rendered_grid',

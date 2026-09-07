@@ -1009,7 +1009,7 @@ FIELDS: list[dict[str, Any]] = [
        "measuring spacecraft at L1", "solar_wind_plasma", "Proton temperature at L1."),
     _f("aurora_probability", "aurora visibility probability", "percent", "space_weather",
        "surface", "aurora_probability",
-       "SWPC OVATION modelled probability of visible aurora over a grid cell, sampled as stored. "
+       "SWPC OVATION modelled probability of visible aurora over a grid cell, sampled from the selected native grid. "
        "The one genuinely gridded space-weather product.",
        evidence_classes=_RETRIEVED_OR_REPROCESSED, value_range=(0.0, 100.0)),
     _f("xray_flux_long", "solar X-ray flux, 0.1-0.8 nm", "W m-2", "space_weather",

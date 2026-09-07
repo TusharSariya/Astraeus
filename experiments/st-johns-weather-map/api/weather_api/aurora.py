@@ -1,22 +1,17 @@
-"""The aurora-oval layer, rendered from the published OVATION probability grid.
+"""The aurora-oval layer, rendered from one bounded OVATION demand query.
 
-NOAA SWPC's OVATION nowcast is a *model* grid, not an observation, and the one
-thing this layer must never do is dress it up as either a photograph of the sky
-or a promise of aurora. Rules, mirroring ``weather_api.satellite``:
+NOAA SWPC's OVATION nowcast is a *model* grid, not an observation.  The
+renderer keeps the source's normalized native cells and model interpretation:
 
-* **Only stored values, nearest-neighbor, at the stored cells.** The artifact
-  is the OVATION grid exactly as retrieved (percent, 1-degree cells, cropped
-  to the Atlantic context box); nothing here interpolates, smooths or invents
-  an edge.
-* **Times are the file's own.** The single offered frame is the payload's own
-  Forecast Time, stored by the adapter; a requested instant with no stored
-  frame within tolerance is a 422, never a silently substituted frame.
-* **Transparent means below the disclosed threshold.** Cells under
-  :data:`THRESHOLD_PERCENT` are fully transparent and the legend says so; the
-  colormap is identical day and night.
-* **A feed gap fails closed.** A grid older than the staleness tolerance makes
-  the layer unavailable with a notice — a missing feed is never rendered as an
-  absence of aurora.
+* **Only retrieved values, nearest-neighbor, at native cells.** No smoothing,
+  interpolation, or invented edge is applied after the Atlantic-context crop.
+* **Selection is the payload Forecast Time.** A selected instant farther than
+  the established one native interval is unavailable; no neighbouring frame is
+  substituted.
+* **Transparent means the disclosed threshold.** Cells below
+  :data:`THRESHOLD_PERCENT` are fully transparent; absent cells stay absent.
+* **A failed or expired query withholds values.** The raster never presents an
+  older grid as current or treats unavailable data as no aurora.
 """
 
 from __future__ import annotations
@@ -71,14 +66,14 @@ COLORMAP_DOC = (
 )
 
 RENDER_SEMANTICS_DOC = (
-    "each pixel is the stored OVATION probability of the single 1-degree grid cell "
+    "each pixel is the retrieved OVATION probability of the single 1-degree grid cell "
     "containing it (nearest-neighbor); nothing is interpolated, smoothed or extrapolated; "
-    "a transparent pixel means no stored cell, no stored value, or a stored probability "
+    "a transparent pixel means no retrieved cell, no retrieved value, or a retrieved probability "
     "below the disclosed 2 percent threshold"
 )
 
 RENDER_DERIVATION = (
-    "weather_api.aurora: nearest-neighbor rasterization of the published OVATION grid at "
+    "weather_api.aurora: nearest-neighbor rasterization of the bounded retrieved OVATION grid at "
     "its native 1-degree cells; colormap " + COLORMAP_DOC
 )
 RENDER_DERIVATION_VERSION = "aurora-oval-v1"
@@ -99,7 +94,7 @@ LEGEND_CAPTION = (
     "OVATION model nowcast (~30-40 minute horizon): probability of visible aurora per "
     "1-degree cell, in percent, as retrieved from NOAA SWPC. Cells below the 2 percent "
     "threshold are fully transparent. " + GUIDANCE_SENTENCE + " "
-    "Rendered by this experiment from the stored grid; the ramp is presentation only and "
+    "Rendered by this experiment from the bounded retrieved grid; the ramp is presentation only and "
     "identical day and night."
 )
 
@@ -107,12 +102,12 @@ LEGEND_CAPTION = (
 def semantics() -> str:
     """What the layer says about itself, verbatim, in ``/layers``."""
     return (
-        "rendered by this experiment from the stored NOAA SWPC OVATION aurora nowcast grid "
+        "rendered by this experiment from one bounded NOAA SWPC OVATION aurora nowcast query "
         "(1-degree cells cropped to the Atlantic context box), displayed nearest-neighbor at "
-        "the stored cells and never smoothed, valid at the file's own Forecast Time. "
+        "the retrieved cells and never smoothed, valid at the file's own Forecast Time. "
         + MODEL_SENTENCE + " " + GUIDANCE_SENTENCE + " "
-        "Cells below the 2 percent threshold are fully transparent; a stale or missing grid "
-        "makes the layer unavailable with a notice, never an absence of aurora. Colormap "
+        "Cells below the 2 percent threshold are fully transparent; an expired or failed query "
+        "withholds the layer values rather than showing absence of aurora. Colormap "
         "(presentation only): " + COLORMAP_DOC + "."
     )
 
@@ -369,3 +364,46 @@ def aurora_layers(store: Any, layer_model: Any, *, z_index: int, now: datetime |
         upstream_endpoint=None,
     )
     return [layer], []
+
+
+def demand_layer(layer_model: Any, *, z_index: int) -> Any:
+    """The requestable OVATION layer; values appear only after a native query."""
+    return layer_model(
+        id=LAYER_ID, title=TITLE, kind="raster", field=VARIABLE,
+        product="OVATION aurora probability nowcast", units=UNITS,
+        evidence_class="retrieved", family="space_weather", field_key=VARIABLE,
+        semantics=("Bounded selected-time query of the current NOAA SWPC OVATION model grid; "
+                   "the payload's Forecast Time must be within one native 10-minute interval of the selection. " + semantics()),
+        times=[], cadence_seconds=NOMINAL_CADENCE_SECONDS,
+        staleness_tolerance_seconds=STALENESS_TOLERANCE_SECONDS, z_index=z_index,
+        evidence_basis="demand_query", group="published_model", raster_available=True, legend_available=True,
+        upstream_wms_layer=None, upstream_endpoint=None,
+    )
+
+
+def render_demand_aurora(entry: Any, *, bounds: Mapping[str, float], width: int, height: int,
+                          crs: str, valid_time: datetime) -> AuroraImage:
+    """Render only the normalized current-grid entry; no store or interpolation."""
+    import numpy  # noqa: PLC0415
+
+    moment = valid_time.astimezone(UTC)
+    if not entry.supports(moment):
+        raise FrameNotStored(
+            f"no native OVATION Forecast Time within {NOMINAL_CADENCE_SECONDS} s of {moment.isoformat()}; "
+            f"the current payload is valid at {entry.forecast_time.isoformat()}"
+        )
+    cells = entry.cells
+    latitudes = numpy.array(sorted({latitude for latitude, _, _ in cells}))
+    longitudes = numpy.array(sorted({longitude for _, longitude, _ in cells}))
+    grid = numpy.full((latitudes.size, longitudes.size), numpy.nan)
+    lat_index = {value: index for index, value in enumerate(latitudes)}
+    lon_index = {value: index for index, value in enumerate(longitudes)}
+    for latitude, longitude, probability in cells:
+        grid[lat_index[latitude], lon_index[longitude]] = probability
+    sampled, inside = grids.sample_field(grid, latitudes, longitudes, bounds=bounds, width=width, height=height, crs=crs)
+    licence, attribution = grids._registry_terms(SOURCE_ID)
+    return AuroraImage(
+        payload=grids.encode_png(colorize(sampled, inside)), content_type="image/png",
+        valid_time=entry.forecast_time, run_time=entry.observation_time, crs=crs,
+        product="OVATION aurora probability nowcast", licence=licence, attribution=attribution,
+    )

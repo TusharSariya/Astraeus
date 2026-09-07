@@ -694,7 +694,7 @@ export default function App() {
     return () => controller.abort()
   }, [])
 
-  const demandLayerProduct = selectedProduct === 'GFS' || selectedProduct === 'HRDPS' ? selectedProduct : undefined
+  const demandLayerProduct = selectedProduct === 'GFS' || selectedProduct === 'HRDPS' || selectedProduct === 'OVATION' ? selectedProduct : undefined
   const demandLayerIdentity = demandLayerRefreshIdentity(demandLayerProduct, dataSource, snapshot)
 
   useEffect(() => {

@@ -1498,6 +1498,7 @@ export interface RasterProvenance {
   imageBasis: string | null
   validTime: string | null
   referenceTime: string | null
+  observationTime: string | null
   upstreamUrl: string | null
   attribution: string | null
   byteSize: number | null
@@ -1576,6 +1577,7 @@ export async function loadLayerRaster(layer: LayerItem, request: RasterRequest, 
           imageBasis,
           validTime: response.headers.get('X-Weather-Valid-Time'),
           referenceTime: response.headers.get('X-Weather-Reference-Time'),
+          observationTime: response.headers.get('X-Weather-Observation-Time'),
           upstreamUrl: response.headers.get('X-Weather-Upstream-Url'),
           attribution: response.headers.get('X-Weather-Attribution'),
           byteSize: Number.isFinite(byteSize) && byteSize > 0 ? byteSize : null,
@@ -1743,6 +1745,14 @@ function sameRunOrUnknown(layer: LayerItem, previousTime: string, nextTime: stri
 }
 
 export function resolveLayerFrame(layer: LayerItem, at: Date, opts: { interpolate: boolean; reference: Date }): FrameResolution {
+  // A current demand layer deliberately advertises no fetched frame: the
+  // selected instant is sent to its bounded native-query endpoint, which then
+  // accepts or refuses it. Giving it an invented advertised frame would claim
+  // provider coverage before that query; refusing it here would make the
+  // requestable layer unusable.
+  if ((layer.times?.length ?? 0) === 0 && layer.evidence_basis === 'demand_query' && layer.raster_available === true) {
+    return { kind: 'exact', frame: { time: at.toISOString(), offsetSeconds: 0 } }
+  }
   if ((layer.times?.length ?? 0) === 0) return { kind: 'none', reason: 'this layer published no frames', nearest: null }
   const observed = isObservedGroup(layer)
   // A forecast layer under the display-interpolation setting composites its

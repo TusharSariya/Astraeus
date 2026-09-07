@@ -1232,7 +1232,11 @@ export function MapPanel({
     const when = provenance.validTime === 'none'
       ? 'current image, not time-indexed'
       : `valid ${provenance.validTime ?? new Date(slot.frame.time).toISOString()}`
-    const run = provenance.referenceTime && provenance.referenceTime !== 'none' ? `, model run ${provenance.referenceTime}` : ''
+    const reference = provenance.referenceTime && provenance.referenceTime !== 'none'
+      ? `, model run ${provenance.referenceTime}`
+      : provenance.observationTime && provenance.observationTime !== 'none'
+        ? `, observation time ${provenance.observationTime}`
+        : ''
     // A rendered-grid image can come from a published artifact or the bounded
     // selected-time cache. Naming either one as the other would invent a
     // durability claim; neither has an upstream WMS layer.
@@ -1242,7 +1246,7 @@ export function MapPanel({
           ? `the bounded selected-time ${provenance.sourceId ?? 'grid'} cache entry, rendered by this experiment at its native cells (nearest-neighbor, never smoothed)`
           : `the stored ${provenance.sourceId ?? 'grid'} artifact, rendered by this experiment at its native cells (nearest-neighbor, never smoothed)`
         : 'an unnamed source')
-    const head = `Imagery retrieved from ${drawnFrom}, ${when}${run}`
+    const head = `Imagery retrieved from ${drawnFrom}, ${when}${reference}`
     const notice = provenance.notice ? ` Notice: ${provenance.notice}.` : ''
     if (coverage === 'fully-transparent') return `${head}. The image is fully transparent: retrieved, and nothing was detected. That is a reading, not an outage.${notice}`
     if (coverage === 'not-inspected') return `${head}. Its pixels were not inspected in this browser, so "nothing detected" cannot be distinguished from a drawn field here.${notice}`

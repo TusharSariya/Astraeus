@@ -950,6 +950,12 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             z_index=Z_INDEX_BY_KIND["alert"], evidence_basis="demand_query", group="alert",
             raster_available=False, legend_available=False,
         )], notices=["CAP layer listing read a fresh source-local cache entry and made no provider request"])
+    ovation_demand_layer = aurora.demand_layer(Layer, z_index=Z_INDEX_BY_KIND["raster"])
+    if product is not None and product.upper() == "OVATION":
+        return LayersResponse(
+            data_mode=DataMode.LIVE, layers=[ovation_demand_layer],
+            notices=["OVATION is a selected-time demand layer; listing made no provider request and advertises no native frame"],
+        )
     if product is not None and product.upper() not in {"GFS", "HRDPS"}:
         return LayersResponse(
             data_mode=DataMode.UNAVAILABLE, layers=[],
@@ -980,25 +986,21 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     store = live_store()
     if store is None:
         proxied, proxy_notices = _proxied_forecast_layers()
-        if proxied:
-            return LayersResponse(
-                data_mode=DataMode.LIVE,
-                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
-                notices=["no live artifact store is reachable; only timestamp-demand provider proxies are offered", *proxy_notices],
-            )
-        return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["no live artifact store is reachable; no layer can be offered"])
+        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        return LayersResponse(
+            data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
+            notices=["no live artifact store is reachable; OVATION remains requestable and listing made no provider request", *proxy_notices],
+        )
     try:
         artifacts = store.current()
     except Exception:
         LOGGER.exception("published artifacts could not be listed for the layer index")
         proxied, proxy_notices = _proxied_forecast_layers()
-        if proxied:
-            return LayersResponse(
-                data_mode=DataMode.LIVE,
-                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
-                notices=["the legacy artifact store raised; only timestamp-demand provider proxies are offered", *proxy_notices],
-            )
-        return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["the live artifact store raised while listing published artifacts"])
+        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        return LayersResponse(
+            data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
+            notices=["the legacy artifact store raised; OVATION remains requestable and listing made no provider request", *proxy_notices],
+        )
     if not artifacts:
         # Nothing is published, but the forward window can still be shown as
         # live-proxied imagery. It is offered here only because every one of
@@ -1009,23 +1011,19 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
         # The aged-out names travel on both branches: a proxied layer is not
         # this deployment's stored evidence, so its presence says nothing about
         # whether the stored evidence aged out.
-        if not proxied:
-            return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=notices, aged_out_sources=aged_out)
-        proxied = _with_run_attribution(proxied, [], {}, None, now())
-        return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(proxied, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
+        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
         coverage = store.published_layer_times()
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
         proxied, proxy_notices = _proxied_forecast_layers()
-        if proxied:
-            return LayersResponse(
-                data_mode=DataMode.LIVE,
-                layers=sorted(_with_run_attribution(proxied, [], {}, None, now()), key=lambda item: (item.z_index, item.id)),
-                notices=["the legacy artifact store raised while reading coverage; only timestamp-demand provider proxies are offered", *proxy_notices],
-            )
-        return LayersResponse(data_mode=DataMode.UNAVAILABLE, layers=[], notices=["the live artifact store raised while reading layer time coverage"])
+        layers = [ovation_demand_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        return LayersResponse(
+            data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
+            notices=["the legacy artifact store raised while reading coverage; OVATION remains requestable and listing made no provider request", *proxy_notices],
+        )
 
     notices = skip_notices(store)
     layers: list[Layer] = []
@@ -1132,17 +1130,9 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     layers.extend(satellite_layers)
     notices.extend(satellite_notices)
 
-    # The aurora oval rendered by this experiment from the stored OVATION
-    # nowcast grid, filed with the other rendered grids. Fail-closed both
-    # ways: an absent or stale grid removes the layer with a notice - a feed
-    # gap is never rendered as absence of aurora.
-    try:
-        aurora_layer_list, aurora_notices = aurora.aurora_layers(store, Layer, z_index=Z_INDEX_BY_KIND["raster"])
-    except Exception as error:  # the aurora layer must never take the layer index down
-        LOGGER.exception("the aurora layer could not be resolved")
-        aurora_layer_list, aurora_notices = [], [f"the aurora layer is unavailable: {type(error).__name__}: {error}"]
-    layers.extend(aurora_layer_list)
-    notices.extend(aurora_notices)
+    # OVATION is a selected-time demand grid. Listing its requestable layer
+    # never fetches a provider document or implies that a native frame exists.
+    layers.append(ovation_demand_layer)
 
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
@@ -1802,22 +1792,32 @@ def _satellite_raster(*, moment, bounds, width, height, crs) -> Response:
 
 
 def _aurora_raster(*, moment, bounds, width, height, crs) -> Response:
-    """The aurora frame drawn here from the published OVATION artifact."""
-    store = live_store()
-    if store is None:
-        raise HTTPException(status_code=503, detail="no live artifact store is reachable; the stored aurora grid cannot be read")
+    """Render the exact selected OVATION current-grid demand entry."""
+    from .ovation_query import OvationFrameUnavailable, OvationUnavailable, ovation_query_service, public_acquisition  # noqa: PLC0415
     try:
-        image = aurora.render_aurora(store, bounds=bounds, width=width, height=height, crs=crs, valid_time=moment)
-    except grids.GridNotPublished as error:
-        raise HTTPException(status_code=404, detail=f"{aurora.LAYER_ID}: {error}") from error
-    except grids.FrameNotStored as error:
+        entry = ovation_query_service().entry_for(moment)
+        image = aurora.render_demand_aurora(entry, bounds=bounds, width=width, height=height, crs=crs, valid_time=moment)
+    except (grids.FrameNotStored, OvationFrameUnavailable) as error:
         raise HTTPException(status_code=422, detail=f"{aurora.LAYER_ID}: {error}") from error
+    except OvationUnavailable as error:
+        headers = {"X-Weather-Values-Withheld": "true"}
+        if error.cached is not None:
+            headers["X-Weather-Cached-Content-Digest"] = error.cached.body_sha256
+            headers["X-Weather-Cached-Expiry"] = error.cached.expires_at.isoformat()
+        raise HTTPException(status_code=502, detail=error.detail, headers=headers) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    except grids.GridUnavailable as error:
-        # Nothing was read, and nothing is substituted for it.
-        raise HTTPException(status_code=502, detail=f"{aurora.LAYER_ID}: no aurora grid was read: {error}") from error
-    return Response(content=image.payload, media_type=image.content_type, headers=image.headers())
+    headers = image.headers()
+    headers["X-Weather-Evidence-Basis"] = "demand_query"
+    # OVATION declares Observation Time and Forecast Time, not a producer run.
+    # Do not relabel the observation as a model run through the generic header.
+    headers["X-Weather-Reference-Time"] = "none"
+    headers["X-Weather-Observation-Time"] = entry.observation_time.isoformat()
+    headers["X-Weather-Retrieval-Time"] = entry.acquisition.transport_completed_at.isoformat()
+    headers["X-Weather-Upstream-Completion-Time"] = entry.acquisition.transport_completed_at.isoformat()
+    headers["X-Weather-Content-Digest"] = entry.acquisition.body_sha256
+    headers["X-Weather-Acquisition"] = public_acquisition(entry.acquisition)
+    return Response(content=image.payload, media_type=image.content_type, headers=headers)
 
 
 @app.get(f"{PREFIX}/layers/{{layer_id}}/raster", responses={501: {"model": ErrorResponse}})
