@@ -385,8 +385,20 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [mapDrawReceipts, setDrawn] = useState<DrawEvidence[]>([])
   const [inspected, setInspected] = useState<InspectedEvidence | null>(null)
   const opener = useRef<HTMLButtonElement | null>(null)
-  const inspect = useCallback((evidence: InspectedEvidence, element: HTMLButtonElement) => { opener.current = element; setInspected(evidence) }, [])
-  const closeInspector = () => { setInspected(null); opener.current?.focus(); if (!opener.current?.isConnected || document.activeElement !== opener.current) document.getElementById('bench-stage')?.focus() }
+  const inspectorFallback = useRef<HTMLInputElement | null>(null)
+  const inspect = useCallback((evidence: InspectedEvidence, element: HTMLButtonElement) => {
+    opener.current = element
+    inspectorFallback.current = element.closest('.sources-view')?.querySelector<HTMLInputElement>('input[type="search"]') ?? null
+    setInspected(evidence)
+  }, [])
+  const closeInspector = () => {
+    setInspected(null)
+    opener.current?.focus()
+    if (opener.current?.isConnected && document.activeElement === opener.current) return
+    inspectorFallback.current?.focus()
+    if (inspectorFallback.current?.isConnected && document.activeElement === inspectorFallback.current) return
+    document.getElementById('bench-stage')?.focus()
+  }
 
   const { theme, setTheme } = useTheme()
   const [mode, setMode] = useState<AppMode>('simple')

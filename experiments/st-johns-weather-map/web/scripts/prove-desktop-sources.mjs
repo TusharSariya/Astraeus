@@ -119,7 +119,7 @@ try {
   await page.getByText('No point samples were returned. Declared horizon and retrieval status do not fill this lane.', { exact: true }).waitFor()
   await page.getByRole('button', { name: 'Close inspector', exact: true }).focus()
   await page.keyboard.press('Escape')
-  assert.equal(await page.locator('#bench-stage').evaluate((el) => el === document.activeElement), true)
+  assert.equal(await page.getByRole('searchbox', { name: 'Find source or field' }).evaluate((el) => el === document.activeElement), true)
   await page.getByRole('button', { name: 'Map', exact: true }).click()
   await page.getByRole('button', { name: 'Sources', exact: true }).click()
   assert.equal(await page.getByRole('searchbox').inputValue(), 'declared-only')
@@ -130,6 +130,6 @@ try {
   assert.equal(new URL(page.url()).searchParams.get('lat'), '48.123456789')
   assert.ok(requests.some((url) => url.includes('latitude=47.5123456789') && url.includes('valid_time=2026-09-07T12')))
   assert.deepEqual(errors, [])
-  await writeFile(`${output}/receipt.json`, JSON.stringify({ at, viewport: '1440x900', weatherProviderRequests: 0, externalRequests: 'blocked', checks: ['exact Focus request', 'inspector focus and Escape return', 'dock replacement', 'three themes', '200% text zoom without page overflow', 'failed read clears values', 'native Series zero and missing sample', 'separate axes', 'Compare preserves pin', 'non-mutating change check', 'failed refresh preserves labelled selection', 'fixed expiry clears expired Series', 'Sources filters and inspector persist across perspectives', 'declaration does not populate a coverage lane', 'removed opener returns to stage'], requests, errors }, null, 2))
+  await writeFile(`${output}/receipt.json`, JSON.stringify({ at, viewport: '1440x900', weatherProviderRequests: 0, externalRequests: 'blocked', checks: ['exact Focus request', 'inspector focus and Escape return', 'dock replacement', 'three themes', '200% text zoom without page overflow', 'failed read clears values', 'native Series zero and missing sample', 'separate axes', 'Compare preserves pin', 'non-mutating change check', 'failed refresh preserves labelled selection', 'fixed expiry clears expired Series', 'Sources filters and inspector persist across perspectives', 'declaration does not populate a coverage lane', 'removed Sources opener returns to search'], requests, errors }, null, 2))
   console.log(`PASS: fixed desktop Bench, Series and Sources proof at ${output}`)
 } catch (error) { await page.screenshot({ path: `${output}/failure.png` }); console.error(errors); throw error } finally { await browser.close() }
