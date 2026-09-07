@@ -10,7 +10,7 @@
 - [x] Preserve bounded typed canonical request/transport identity in public point/profile provenance.
 - [x] Retain only bounded expired metadata and return typed unavailable outcomes after failed payload or directory refresh; no stale values or stored fallback.
 - [x] Verify 21 focused RDPS cases and offline replay of all 25 retained native receipts; freeze two pre-existing GFS test clocks and pass their focused rerun.
-- [ ] Obtain fresh independent re-review of the correction; PR234 remains unmerged.
+- [x] Obtain fresh independent targeted re-review of the correction: zero remaining Standards or Spec blockers; authorized squash merge may proceed.
 
 Owned files: rdps_query.py, rdps_query_worker.py, test_rdps_query.py; narrow
 shared changes in app.py and eccc_datamart.py. Marine worker has finished its

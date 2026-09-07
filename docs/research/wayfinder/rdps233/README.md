@@ -72,9 +72,10 @@ claim that the native opacity field is absent. No UI redesign was included.
 Verification at handoff: 16 focused RDPS tests; 10 isolated legacy no-fallback
 cases; 237 registry tests and four strict profile audits; 452 web tests and
 production build; 75 strict OpenSpec items; specctl 0 errors/0 warnings. The full
-API suite passed 2,088 tests with 50 skips; the 46-case cutover group passed. Independent review remains
-pending because the runtime rejected a fresh reviewer with agent-thread-limit.
-No merge or acceptance/status promotion is claimed.
+API suite passed 2,088 tests with 50 skips; the 46-case cutover group passed.
+The first independent review found the two correction items documented below;
+a fresh targeted re-review of their remediation later passed with no remaining
+Standards or Spec blocker. No acceptance/status promotion is claimed.
 
 ## PR234 independent-review corrections
 
@@ -118,4 +119,7 @@ No production freshness behavior changed and no full suite was rerun solely
 because the fixture aged. Earlier uninstrumented broad runs cannot establish
 zero unrelated-provider attempts; the RDPS replay explicitly enforces zero
 upstream requests. No RDPS provider bytes were reacquired for this correction.
-Fresh independent re-review remains required before merge; no status promotion.
+Fresh independent targeted re-review passed the exact correction with zero
+remaining Standards or Spec blockers. The review reran only the 21 RDPS and two
+fixed-clock GFS tests plus OpenSpec/specctl validation; it did not reacquire
+provider data or rerun the full suite. No status promotion.

@@ -18,7 +18,10 @@ Retained native proof was replayed offline with zero upstream access and all
 tests pass; OpenSpec 75/75 and specctl 0/0 pass. The preceding full API run's
 2,090 passes/44 skips/two baseline fixture-clock failures remain recorded
 honestly; no full rerun or RDPS reacquisition followed the owner correction.
-PR234 must remain unmerged pending fresh independent re-review.
+Fresh independent targeted re-review of remediation head `e12a0f9` found no
+remaining Standards or Spec blocker. The focused deterministic tests and exact
+GitHub checks passed, so PR234 is approved for its authorized squash merge. No
+normative or operational status is promoted.
 
 ## Destination and map ownership
 
@@ -274,8 +277,9 @@ six-hourly IFS source; an explicit RDPS stored-layer test asserts it is hidden.
 Older no-fallback tests use explicit unavailable demand fixtures so public
 provider variability cannot change their expected empty-demand result.
 
-PR #234 is implemented but unmerged. Fresh independent reviewer creation was
-rejected by the agent-thread limit; no reviewer reuse authorization or
-independent approval is assumed. No normative status was promoted. Raw,
-receipts, API responses and browser proof remain outside Git in
+PR #234 passed fresh independent targeted re-review after its two correction
+findings, with zero remaining Standards or Spec blockers. The review covered
+the exact typed provenance and expired-metadata paths; the wider native/UI proof
+remains the previously accepted evidence above. No normative status was
+promoted. Raw receipts, API responses and browser proof remain outside Git in
 `/private/tmp/rdps233-live`; this is audit evidence, never an application archive.
