@@ -221,3 +221,92 @@ def test_expiry_during_adapter_validation_never_enters_cache(monkeypatch):
     with pytest.raises(OpenMeteoCamsAodUnavailable, match="expired"):
         query.query(47.5, -52.7, NOW)
     assert not query._entries
+
+
+def test_download_time_counts_toward_total_budget():
+    query, client, clock = service()
+    original = client.download
+
+    def delayed(*args, **kwargs):
+        result = original(*args, **kwargs)
+        clock[0] += 600
+        return result
+
+    client.download = delayed
+    with pytest.raises(OpenMeteoCamsAodUnavailable, match="total acquisition budget"):
+        query.query(47.5, -52.7, NOW)
+    assert len(client.calls) == 1 and not query._entries
+
+
+def test_dateline_distance_uses_shortest_geodesic():
+    query, client, _ = service()
+    client.payload.update(latitude=0, longitude=-179.95)
+    field = query.point_fields(0, 179.99, NOW)[0]
+    assert field.provenance.sample_distance_km == pytest.approx(6.6717, abs=0.01)
+    assert field.provenance.sampled_longitude == -179.95
+
+
+def test_default_cancellable_child_runs_existing_adapter_offline(tmp_path, monkeypatch):
+    import weather_api.openmeteo_cams_aod_query as module
+    original = module.run_bounded_process
+    script = tmp_path / "child_fixture.py"
+    script.write_text('''
+import json
+import weather_api.openmeteo_cams_aod_query_worker as worker
+class Client:
+    def __init__(self, **kwargs): pass
+    def __enter__(self): return self
+    def __exit__(self, *args): pass
+    def download(self, url, path, **kwargs):
+        data = {"last_run_initialisation_time": 1788782400} if "meta.json" in url else {"latitude":47.55,"longitude":-52.7,"utc_offset_seconds":0,"hourly_units":{"time":"iso8601","aerosol_optical_depth":""},"hourly":{"time":["2026-09-07T12:00"],"aerosol_optical_depth":[0.15]}}
+        path.write_text(json.dumps(data))
+worker.PoliteClient = Client
+worker.main()
+''')
+
+    def run(**kwargs):
+        kwargs["command"][1] = str(script)
+        return original(**kwargs)
+
+    monkeypatch.setattr(module, "run_bounded_process", run)
+    query = module.OpenMeteoCamsAodQueryService()
+    entry = query.query(47.5, -52.7, NOW)
+    assert entry.values == (0.15,) and entry.times == (NOW,)
+    assert query.query(47.5, -52.7, NOW) is entry
+
+
+def test_default_child_timeout_cancels_work_and_refuses_cache(tmp_path, monkeypatch):
+    import weather_api.openmeteo_cams_aod_query as module
+    original = module.run_bounded_process
+    script = tmp_path / "stalled_acquisition.py"
+    script.write_text("import time\ntime.sleep(60)\n")
+
+    def run(**kwargs):
+        kwargs["command"][1] = str(script)
+        kwargs["timeout_seconds"] = 0.2
+        return original(**kwargs)
+
+    monkeypatch.setattr(module, "run_bounded_process", run)
+    query = module.OpenMeteoCamsAodQueryService()
+    with pytest.raises(OpenMeteoCamsAodUnavailable, match="bounded acquisition"):
+        query.query(47.5, -52.7, NOW)
+    assert not query._entries and not query._inflight
+
+
+def test_coalesced_wait_has_explicit_deadline():
+    from concurrent.futures import Future
+    import weather_api.openmeteo_cams_aod_query as module
+    query, client, _ = service()
+    observed = []
+
+    class Pending(Future):
+        def result(self, timeout=None):
+            observed.append(timeout)
+            raise TimeoutError()
+
+    key = module.CamsAodSelection(47.5, -52.7, NOW, NOW)
+    query._inflight[key] = Pending()
+    with pytest.raises(OpenMeteoCamsAodUnavailable, match="wait expired"):
+        query.query(47.5, -52.7, NOW)
+    assert observed == [module.ACQUISITION_TIMEOUT_SECONDS + 5]
+    assert not client.calls and not query._entries

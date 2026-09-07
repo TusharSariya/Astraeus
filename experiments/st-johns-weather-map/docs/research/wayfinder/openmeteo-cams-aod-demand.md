@@ -32,7 +32,12 @@ input; public contract identity and integration remain root-owned.
 
 Acquisition permits two concurrent distinct selections, coalesces identical
 misses, makes two anonymous requests with one attempt each through `PoliteClient`,
-and caps each JSON response at 16 KiB with 1 KiB transport chunks. Canonical
+and caps each JSON response at 16 KiB with 1 KiB transport chunks. Default acquisition runs both requests and artifact
+validation in the existing cancellable Linux isolation process with a 60-second
+total wall-clock budget, 2 GiB address-space ceiling, 1 MiB per-file ceiling and
+32 KiB stdout/stderr ceilings. Coalesced callers wait at most 65 seconds. The
+injected-client fixture seam additionally checks the total budget before and
+after downloads and validation; it is not the default transport path. Canonical
 shape admits at most 24 values before artifact creation. Temporary response and
 artifact files are removed after validation. Cache retention is capped at 32
 entries and 256 KiB of conservatively accounted normalized data. Five-minute
@@ -66,7 +71,25 @@ docker run --rm --network none --memory 1g \
   api/tests/test_adapter_openmeteo.py -q -p no:cacheprovider
 ```
 
-Result: 61 tests passed. Source-specific tests number 27; existing adapter tests
+Result: 66 tests passed. Source-specific tests number 32; existing adapter tests
 number 34. This is fixture-backed software evidence, with zero provider calls.
 `uv run --project tools/specs python tools/specs/specctl.py validate` passed with
 0 errors / 0 warnings; `git diff --check` passed.
+
+## Root review corrections
+
+Root review reproduced two P2 defects in the first implementation: acquisition
+could take arbitrarily long before its freshness clock started, and longitude
+differences across the antimeridian produced a nearly global sample distance.
+The follow-up adds the full-operation cancellable child above, preserves a
+separate fixed cache deadline after bounded transport completion, and uses
+wrapped-longitude haversine distance. The 179.99 to -179.95 degree equatorial
+regression measures approximately 6.672 km while retaining literal sampled
+coordinates.
+
+New verification exercises a fake 600-second first download (refused before
+request two), bounded coalesced waits, actual offline child adapter/Zarr
+readback, and actual child timeout/cancellation with no cache or inflight
+residue. These fixtures make zero external provider reads. Default process
+execution depends on the existing Linux isolation capability; unsupported
+platforms fail closed.

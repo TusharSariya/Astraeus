@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 import tempfile
 import threading
 import time
-from concurrent.futures import Future
-from dataclasses import dataclass
+from concurrent.futures import Future, TimeoutError as FutureTimeout
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Callable
@@ -22,6 +23,7 @@ import zarr
 from ingest.contract import AdapterUnavailable, FetchWindow
 from ingest.experimental.openmeteo import OpenMeteoCompositionAdapter, _times
 from ingest.http import PoliteClient
+from ingest.isolation import ProcessAllocationLimits, run_bounded_process
 from .models import Coverage, DataMode, EvidenceField, Freshness, Provenance, Quality
 
 SOURCE_ID = "openmeteo-cams-aod"
@@ -32,6 +34,8 @@ MAX_CACHE_ENTRIES = 32
 MAX_CACHE_BYTES = 256 * 1024
 MAX_INFLIGHT = 2
 TTL_SECONDS = 300
+ACQUISITION_TIMEOUT_SECONDS = 60
+ACQUISITION_LIMITS = ProcessAllocationLimits(2 * 1024**3, 1024**2, 4096, 32 * 1024, 32 * 1024)
 
 
 class OpenMeteoCamsAodUnavailable(RuntimeError):
@@ -69,12 +73,16 @@ class CamsAodEntry:
 class _FiniteClient:
     """Keep the adapter's bounded download seam, with a smaller point ceiling."""
 
-    def __init__(self, client: PoliteClient):
+    def __init__(self, client: PoliteClient, check_deadline: Callable[[], None]):
         self.client = client
+        self.check_deadline = check_deadline
 
     def download(self, url: str, path: Path, *, max_bytes: int):
-        return self.client.download(url, path, max_bytes=min(max_bytes, MAX_RESPONSE_BYTES),
+        self.check_deadline()
+        result = self.client.download(url, path, max_bytes=min(max_bytes, MAX_RESPONSE_BYTES),
                                     headers={"Accept-Encoding": "identity"}, chunk_size=1024)
+        self.check_deadline()
+        return result
 
 
 def _hour(value: datetime) -> datetime:
@@ -92,7 +100,7 @@ class OpenMeteoCamsAodQueryService:
     def __init__(self, *, client: PoliteClient | None = None,
                  clock: Callable[[], float] = time.monotonic,
                  utcnow: Callable[[], datetime] = lambda: datetime.now(UTC)):
-        self._client = _FiniteClient(client or PoliteClient(attempts=1))
+        self._client = client
         self._clock, self._utcnow = clock, utcnow
         self._lock = threading.Lock()
         self._entries: dict[CamsAodSelection, CamsAodEntry] = {}
@@ -122,7 +130,10 @@ class OpenMeteoCamsAodQueryService:
                 self._inflight[key] = future
         assert future is not None
         if not owner:
-            return future.result()
+            try:
+                return future.result(timeout=ACQUISITION_TIMEOUT_SECONDS + 5)
+            except FutureTimeout as error:
+                raise OpenMeteoCamsAodUnavailable("CAMS AOD coalesced acquisition wait expired") from error
         try:
             entry = self._fetch(key)
             with self._lock:
@@ -141,11 +152,44 @@ class OpenMeteoCamsAodQueryService:
                 self._inflight.pop(key, None)
 
     def _fetch(self, key: CamsAodSelection) -> CamsAodEntry:
+        if self._client is not None:
+            # Injected clients exercise the adapter offline. The public default
+            # always owns a cancellable process, including transport and decode.
+            return self._acquire(key)
+        try:
+            result = run_bounded_process(
+                command=[sys.executable, str(Path(__file__).with_name("openmeteo_cams_aod_query_worker.py")), "{output}"],
+                stdin=json.dumps(asdict(key), default=str).encode(), destination=None,
+                limits=ACQUISITION_LIMITS, timeout_seconds=ACQUISITION_TIMEOUT_SECONDS,
+                require_output=False,
+            )
+            data = json.loads(result.stdout)
+            data["selection"] = key
+            data["times"] = tuple(datetime.fromisoformat(t) for t in data["times"])
+            for name in ("retrieved_at", "expires_at"):
+                data[name] = datetime.fromisoformat(data[name])
+            data["values"] = tuple(data["values"])
+            data["transformations"] = tuple(data["transformations"])
+            entry = CamsAodEntry(**data)
+            if self._clock() >= entry.expires_at_monotonic or entry.backing_bytes > MAX_CACHE_BYTES:
+                raise ValueError("expired or oversized acquisition result")
+            return entry
+        except Exception as error:
+            raise OpenMeteoCamsAodUnavailable(f"CAMS AOD bounded acquisition failed: {type(error).__name__}") from error
+
+    def _acquire(self, key: CamsAodSelection) -> CamsAodEntry:
+        started = self._clock()
+
+        def check_deadline():
+            if self._clock() - started >= ACQUISITION_TIMEOUT_SECONDS:
+                raise AdapterUnavailable("AOD total acquisition budget expired")
+
         window = FetchWindow(key.start, back_hours=0, forward_hours=(key.end-key.start).total_seconds()/3600)
-        adapter = OpenMeteoCompositionAdapter(SOURCE_ID, client=self._client,
+        adapter = OpenMeteoCompositionAdapter(SOURCE_ID, client=_FiniteClient(self._client, check_deadline),
                                               latitude=key.latitude, longitude=key.longitude)
         try:
             candidate = adapter.discover(window)[0]
+            check_deadline()
             acquired = self._utcnow()
             deadline = self._clock() + TTL_SECONDS
             payload = candidate.detail["payload"]
@@ -172,6 +216,7 @@ class OpenMeteoCamsAodQueryService:
                         raw = dataset[FIELD_KEY].values[:, 0, 0]
                         values = tuple(float(v) if math.isfinite(float(v)) else None for v in raw)
                 provenance = artifact.provenance
+            check_deadline()
             if self._clock() >= deadline:
                 raise AdapterUnavailable("AOD acquisition expired during validation")
             entry = CamsAodEntry(key, times, values, *provenance["returned_coordinates"],
@@ -191,8 +236,12 @@ class OpenMeteoCamsAodQueryService:
         if selected.astimezone(UTC) not in entry.times:
             raise OpenMeteoCamsAodUnavailable("CAMS AOD has no exact returned hour")
         value = entry.values[entry.times.index(selected.astimezone(UTC))]
-        distance = math.hypot(entry.sampled_latitude-latitude,
-                              (entry.sampled_longitude-longitude)*math.cos(math.radians(latitude))) * 111.32
+        delta_lon = (entry.sampled_longitude - longitude + 180) % 360 - 180
+        delta_lat = math.radians(entry.sampled_latitude - latitude)
+        haversine = (math.sin(delta_lat / 2) ** 2
+                     + math.cos(math.radians(latitude)) * math.cos(math.radians(entry.sampled_latitude))
+                     * math.sin(math.radians(delta_lon) / 2) ** 2)
+        distance = 2 * 6371.0088 * math.asin(math.sqrt(min(1.0, max(0.0, haversine))))
         return [EvidenceField(field=FIELD_KEY, key=FIELD_KEY, value=value, provenance=Provenance(
             data_mode=DataMode.LIVE, evidence_class="reprocessed", source_id=SOURCE_ID,
             artifact_revision=f"demand:{entry.response_sha256}",
