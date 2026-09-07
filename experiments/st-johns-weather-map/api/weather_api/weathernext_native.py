@@ -156,6 +156,10 @@ class NativeStatisticsReader:
                 for name in sorted(names):
                     dimensions = [] if name == "init_time" else [name]
                     value = node(name, dimensions)
+                    coordinate_unit = ("degrees_north" if name.startswith("lat_") else
+                                       "degrees_east" if name.startswith("lon_") else None)
+                    if coordinate_unit and value.get("attributes", {}).get("units") != coordinate_unit:
+                        raise ValueError("native geographic coordinate unit")
                     if value["shape"] != value["chunk_grid"]["configuration"]["chunk_shape"]:
                         raise ValueError("coordinate requires multiple chunks")
                     if math.prod(value["shape"]) > 10000:
@@ -210,6 +214,9 @@ class NativeStatisticsReader:
                     relative = field + "/c/" + "/".join(str(i // c) for i, c in zip(index, chunks))
                     raw = float(decode(field, value, relative, index))
                     fill = value.get("fill_value")
+                    if fill is not None:
+                        # JSON decimals must be compared at the native precision.
+                        fill = float(np.asarray(fill, dtype=value["data_type"]))
                     result = None if not math.isfinite(raw) or raw == fill else raw
                     if result is not None and "cloud_cover" in field and not 0 <= result <= 1:
                         raise ValueError("cloud range")

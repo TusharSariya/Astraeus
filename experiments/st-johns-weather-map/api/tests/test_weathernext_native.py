@@ -130,3 +130,27 @@ def test_nan_is_preserved(transport, tmp_path):
     zarr.create_array(target, data=np.array([[[.3, np.nan]]], dtype='float32'), chunks=(1, 1, 2))
     transport.bodies[FIELD + '/c/1/1/0'] = (target / 'c/0/0/0').read_bytes()
     assert NativeStatisticsReader(transport).read_point(selection(), now=NOW).values[0].value is None
+
+
+
+def test_decimal_float32_fill_is_preserved(transport, tmp_path):
+    target = tmp_path / 'decimal-fill'
+    zarr.create_array(target, data=np.array([[[.3, .1]]], dtype='float32'),
+                      chunks=(1, 1, 2), fill_value=.1)
+    transport.nodes[FIELD]['fill_value'] = .1
+    transport.bodies[FIELD + '/c/1/1/0'] = (target / 'c/0/0/0').read_bytes()
+    assert float(np.float32(.1)) != .1  # The original promoted comparison loses the mask.
+    assert NativeStatisticsReader(transport).read_point(selection(), now=NOW).values[0].value is None
+
+
+@pytest.mark.parametrize('coordinate', ['lat_0p1', 'lon_0p1'])
+@pytest.mark.parametrize('unit', ['radians', 'unknown', None])
+def test_geographic_coordinate_units_fail_before_field_acquisition(transport, coordinate, unit):
+    attrs = transport.nodes[coordinate]['attributes']
+    if unit is None:
+        del attrs['units']
+    else:
+        attrs['units'] = unit
+    with pytest.raises(NativeUnavailable):
+        NativeStatisticsReader(transport).read_point(selection(), now=NOW)
+    assert not any(path.startswith(FIELD) for _, path in transport.calls)
