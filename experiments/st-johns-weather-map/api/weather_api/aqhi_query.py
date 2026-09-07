@@ -11,6 +11,7 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 from typing import Callable, Mapping
 
 import httpx
@@ -106,7 +107,10 @@ def _ttl(headers: Mapping[str, str], completed: datetime) -> int:
 
 def _decode(body: bytes) -> tuple[AQHIStationObservation, ...]:
     result = run_bounded_process(
-        command=[sys.executable, "-m", "weather_api.aqhi_query_worker", "{output}"], stdin=body,
+        # Execute the leaf script directly. ``python -m weather_api...`` first
+        # imports weather_api.__init__ and the full scientific API, which does
+        # not fit (and need not fit) inside this JSON decoder's 128 MiB limit.
+        command=[sys.executable, str(Path(__file__).with_name("aqhi_query_worker.py")), "{output}"], stdin=body,
         destination=None, limits=AQHI_DECODE_LIMITS, require_output=False,
     )
     parsed = json.loads(result.stdout)
