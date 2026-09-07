@@ -249,5 +249,6 @@ entries as history rather than copying them into this index.
 Queue merges serially. A mergeable status does not prove the branch satisfies
 an up-to-date-base rule; the actual merge result is authoritative. When only
 documentation advanced the base, perform the required rebase, compare the
-implementation tree with the reviewed tree, and reuse its proofs. Rerun only
-checks affected by a real conflict or content change.
+implementation patch or owned implementation paths with the reviewed patch or
+paths, and reuse its proofs only when those are exactly equal. Rerun only checks
+affected by a real conflict or content change.
