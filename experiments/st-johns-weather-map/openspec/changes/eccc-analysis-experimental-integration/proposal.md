@@ -50,9 +50,12 @@ reviewable initial demand scope is deliberately exact:
   six-hour precipitation accumulation ending at the selected advertised time.
   It has no forecast lead or invented model run and is never divided into a
   rate.
-- HREPA may initially expose only the provider-published `PCT25` and `PCT75`
-  six-hour analysis coverages. They remain two retrieved percentile fields,
-  never locally recomputed percentiles, member values, probabilities,
+- The scaffold's `HREPA.6P_2.5km_PCT25` and
+  `HREPA.6P_2.5km_PCT75` identifiers are candidate coverages only. They remain
+  unavailable until a bounded provider receipt proves that they are advertised
+  percentile fields and records their literal interval, units, geometry, masks,
+  and shared time. If proven, they remain distinct retrieved fields and are
+  never locally recomputed into percentiles, member values, probabilities,
   uncertainty, or confidence.
 - The wider HREPA source remains in scope. Public precipitation-analysis,
   uncertainty, confidence-index, probability, and 24-perturbed-member-plus-

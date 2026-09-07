@@ -43,13 +43,15 @@
       transport and retained HRDPA receipt already present in this change.
 - [x] Define the proposed exact-time HRDPA six-hour accumulation behavior,
       including no rate conversion, neighbour substitution, run or lead.
-- [x] Define PCT25/PCT75 as separate provider-published HREPA percentile
-      candidates and prohibit inferred distribution/member/probability claims.
+- [x] Record PCT25/PCT75 as unproven HREPA candidate identifiers, require a
+      bounded provider receipt before serving them, and prohibit inferred
+      distribution/member/probability claims.
 - [x] Specify the finite canonical demand cache, zero-request fresh hit,
       coalescing, expiry withholding and bounded metadata-only failure state.
 - [ ] Retain one bounded HREPA provider receipt and fixed fixture that prove the
-      two coverage units, geometry, masks and shared selected time; metadata
-      declarations alone are insufficient.
+      two advertised identities, percentile ranks, literal intervals, units,
+      geometry, masks and shared selected time; metadata declarations alone are
+      insufficient.
 - [ ] Identify exact provider contracts for HREPA precipitation analysis,
       uncertainty, confidence, probabilities, and 24 perturbed members plus
       control; keep each residual explicit until then.

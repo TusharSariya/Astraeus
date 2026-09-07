@@ -53,9 +53,10 @@ and must not describe the cell as a native-resolution point.
 | Source | Initial public field | Meaning | Time/run rule | Unresolved source scope |
 | --- | --- | --- | --- | --- |
 | `eccc-hrdpa` | `precipitation_accumulation` from `HRDPA_2.5km_Precip-Accum6h` | Final six-hour accumulated precipitation, provider values unchanged | Exact advertised end time; no forecast lead; no invented run | Other accumulation intervals need exact coverage and interval evidence |
-| `eccc-hrepa` | Source-scoped PCT25 and PCT75 fields from `HREPA.6P_2.5km_PCT25` and `HREPA.6P_2.5km_PCT75` | Provider-published six-hour percentiles, kept distinct | Exact advertised analysis time; no forecast lead; no invented run | Analysis, uncertainty, confidence, probabilities, members/control, units, masks and quality mappings |
+| `eccc-hrepa` | Candidate source-scoped fields named `HREPA.6P_2.5km_PCT25` and `HREPA.6P_2.5km_PCT75` in the scaffold | Unavailable until provider evidence proves their percentile ranks and literal interval | Exact advertised analysis time only after proof; no forecast lead or invented run | Coverage advertisement, units, interval, geometry, masks, shared time, analysis, uncertainty, confidence, probabilities, members/control and quality mappings |
 
-The HREPA percentile fields remain source-scoped until a retained fixed fixture
-and one bounded provider receipt prove their published units and geometry. The
-reader never manufactures an ensemble distribution from the two percentiles or
-claims that they prove the registry's wider HREPA field inventory.
+The HREPA candidates remain unavailable until a retained fixed fixture and one
+bounded provider receipt prove their advertised identities, percentile ranks,
+literal interval, units, geometry, masks, and shared time. The reader never
+manufactures an ensemble distribution from those candidates or claims that
+they prove the registry's wider HREPA field inventory.

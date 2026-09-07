@@ -31,7 +31,8 @@ analysis time.
 #### Scenario: Selected time is advertised
 
 - **WHEN** HRDPA advertises the requested analysis end time and returns a valid bounded coverage
-- **THEN** the applicable published cell is returned with `accumulation_period_hours = 6` and `cell_methods = "time: sum"`
+- **THEN** the applicable published cell is returned with `accumulation_period_hours = 6`
+- **AND** provider cell-method metadata is preserved exactly when published and remains unknown when absent
 - **AND** provenance identifies `eccc-hrdpa`, the exact coverage, selected time, published units, requested and sampled geometry, final-byte completion, digest and cache expiry
 
 #### Scenario: Selected time is not advertised
@@ -40,26 +41,28 @@ analysis time.
 - **THEN** HRDPA is unavailable for that selection
 - **AND** no earlier or later analysis value is returned
 
-### Requirement: Initial HREPA demand fields remain provider-published percentiles
+### Requirement: HREPA candidates remain unavailable until provider evidence
 
-After owner acceptance and provider evidence for units and geometry, the
-initial HREPA demand path SHALL treat `HREPA.6P_2.5km_PCT25` and
-`HREPA.6P_2.5km_PCT75` as two distinct provider-published six-hour analysis
-percentiles at an exact advertised time. It SHALL preserve each coverage's
-native value, units, mask, identity and unknown quality state. It SHALL NOT
-recompute a percentile, interpolate between the two fields, expose a member or
-control, infer a probability distribution, or relabel either percentile as
-analysis uncertainty or confidence.
+The scaffold's `HREPA.6P_2.5km_PCT25` and
+`HREPA.6P_2.5km_PCT75` identifiers SHALL remain unavailable until a bounded
+provider receipt proves that both are advertised and records their literal
+semantic labels, percentile ranks, intervals, units, geometry, masks, and
+shared selected time. After that evidence and owner acceptance, an initial
+HREPA demand path MAY expose them as two distinct retrieved percentile fields.
+It SHALL preserve each coverage's native value, units, mask, identity and
+unknown quality state. It SHALL NOT recompute a percentile, interpolate between
+the two fields, expose a member or control, infer a probability distribution,
+or relabel either percentile as analysis uncertainty or confidence.
 
-#### Scenario: Two percentile coverages are complete
+#### Scenario: Candidate coverage evidence is complete
 
-- **WHEN** both selected HREPA percentile coverages return the same exact analysis time with compatible published units and geometry
+- **WHEN** one bounded provider receipt proves both candidate identifiers, their percentile ranks and literal intervals, and they return the same exact analysis time with compatible published units and geometry
 - **THEN** both source-scoped percentile fields may be returned as retrieved evidence
 - **AND** provenance binds each value to its own coverage id and percentile rank
 
 #### Scenario: HREPA field evidence is incomplete
 
-- **WHEN** a percentile lacks provider-evidenced units or geometry, the two selected coverages disagree on time, or either required coverage is missing or malformed
+- **WHEN** a candidate lacks provider-evidenced identity, percentile rank, interval, units, mask or geometry, the two coverages disagree on time, or either coverage is missing or malformed
 - **THEN** the HREPA percentile group is unavailable
 - **AND** no partial group, inferred statistic, member, probability, uncertainty or confidence value is returned
 
