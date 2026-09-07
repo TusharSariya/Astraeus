@@ -262,7 +262,7 @@ function ensembleProvenanceOf(raw: unknown): EnsembleProvenance | null {
   }
 }
 
-function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | null {
+export function attributionOf(field: ApiEvidenceField | undefined): FieldAttribution | null {
   if (!field) return null
   const provenance = field.provenance ?? {}
   const quality = qualityOf(provenance)

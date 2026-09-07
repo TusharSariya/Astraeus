@@ -54,3 +54,12 @@ complete family-grouped stack/station/sample inspection and provider palettes;
 complete fixed-clock keyboard coverage and screen-reader/outdoor evidence.
 The Map renderer, native times and source-specific display restrictions are
 retained. This checkpoint does not complete the desktop milestone or #38/#55.
+
+## September 7 native Series checkpoint
+
+The initial native API and two-track Overview/temporary Compare are implemented
+with stable cursor pages, selection-specific change checks, explicit refresh and
+five-minute expiry. Switching display or stage/dock preserves the same selection.
+See [implementation evidence](../desktop-evidence-api-contract/implementation-evidence.md).
+Task 5.1 stays open for the full source/run workspace; task 5.6 stays open for
+the complete desktop. No other view or source is completed by this slice.

@@ -39,3 +39,10 @@ it('keeps keyboard inspection coherent across a response and theme change', asyn
   await userEvent.click(screen.getByRole('button', { name: 'Close inspector' }))
   expect(opener).toHaveFocus()
 })
+it('does not query a default Series point while a named site awaits registered geometry', async () => {
+  window.history.replaceState(null, '', `/?site=signal-hill&view=Series&t=${at}&stack=[]`)
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Series' })
+  await waitFor(() => expect(screen.getByText(/Registered site signal-hill awaits registry metadata/)).toBeInTheDocument())
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/point/series'))).toBe(false)
+})

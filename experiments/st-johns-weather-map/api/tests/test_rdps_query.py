@@ -266,7 +266,11 @@ def test_live_proxy_layers_survive_a_raising_legacy_store(monkeypatch) -> None:
     monkeypatch.setattr(app_module, "_proxied_forecast_layers", lambda: ([proxy], ["provider metadata retained"]))
     body = TestClient(app_module.app).get(f"{app_module.PREFIX}/layers").json()
     assert body["data_mode"] == "live"
-    assert [item["id"] for item in body["layers"]] == [proxy.id]
+    # Other admitted live proxies remain in the shared catalogue. This
+    # source's assertion is survival and identity, not catalogue exclusivity.
+    retained = [item for item in body["layers"] if item["id"] == proxy.id]
+    assert len(retained) == 1
+    assert retained[0]["evidence_basis"] == "live_proxy"
     assert any("legacy artifact store raised" in notice for notice in body["notices"])
 
 

@@ -13,12 +13,35 @@ records authorization to formalize #239 and #256. Earlier statements below that
 these selected contracts await an owner decision are historical and superseded.
 Camera placement, new science, phone, band math and physical checks remain separate.
 
-Active batch: reconcile and validate #239 and #256; then implement Bench/Focus,
+Contract reconciliation (#239/#256) and initial Bench (#278) are merged. Continue
 Map/provenance, API/Series, Sources, Sky, and Activity in that order. Demonstrate
 Bench/Map/inspector and then the assembled desktop. Continue every eligible source
 batch afterward, recording field residuals and evidence-backed access dispositions.
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
+
+## Native Series implementation checkpoint, September 7, 2026
+
+Bench #278 merged as `a155c35`. The next isolated batch is
+`execution/desktop-native-series` in `/tmp/astraeus-desktop-series`.
+It implements bounded native Series/cursor/change-check routes and an initial
+Overview/temporary Compare with shared Focus, separate value axes, exact-time
+semantic tables, provenance inspection, explicit refresh and fixed expiry.
+The native reader connects existing HRDPS/RDPS/GDPS/GFS coordinators only;
+other sources and unreadable named pins are explicit, without fallback.
+
+[Implementation evidence and residuals](../../experiments/st-johns-weather-map/openspec/changes/desktop-evidence-api-contract/implementation-evidence.md)
+record numeric bounds, mapped fixtures, two repaired pre-existing layer assertions,
+and browser proof procedure. Source acquisition stays in its existing finite
+cache; there is no archive/database/scheduled ingestion addition. Validation: 89 affected API tests, 473 full client tests, eight final Focus/Series
+cases, build, both strict OpenSpec packages, specctl and fixed browser proof pass.
+Main-agent review only. No independent review or provider-live proof is claimed.
+
+Remaining desktop work: Map family/station/sample refinements, supported actual
+previous-run reads/two-run comparison, broader native Series readers, Sources
+perspectives, Horizon instrument and server verdict lanes, then assembled demo
+and accessibility verification. All source batches on #70 remain after that
+milestone. No source or full-view obligation is closed here.
 
 ## Bench implementation checkpoint, September 7, 2026
 

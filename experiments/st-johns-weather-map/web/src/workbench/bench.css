@@ -141,3 +141,15 @@ html[data-theme='night'] .bench :is(img,canvas) { filter: url(#bench-night-red);
 .bench .timeline-dock { font-family: inherit; }
 html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scrubber-now-mark) { background-color: var(--bench-ink) !important; color: var(--bench-ink) !important; }
 @media (max-width: 900px) { .bench-body, .bench-body:has(> .bench-companion) { grid-template-columns: minmax(0, 1fr); } }
+
+.native-series { padding: 1rem; }
+.series-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem; }
+.series-controls label { display: grid; gap: .25rem; max-width: 100%; }
+.series-controls select { max-width: 100%; }
+.native-track { margin-block: 1.5rem; overflow-x: auto; border-top: 1px solid var(--bench-line); }
+.native-track figure { margin: 0; max-width: 60rem; }
+.native-track figure > svg { width: 100%; min-width: 22rem; height: auto; max-height: 9rem; }
+.native-track figure > svg text { fill: currentColor; font-size: 12px; }
+.native-track table { width: 100%; text-align: left; border-collapse: collapse; }
+.native-track th, .native-track td { padding: .4rem; border-bottom: 1px solid var(--bench-line); }
+.native-track small { display: block; }

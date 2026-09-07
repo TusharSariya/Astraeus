@@ -1,3 +1,4 @@
+import { useNativeSeries } from './workbench/NativeSeries'
 import { loadRegisteredSites, nearestRegisteredSite, type RegisteredSites } from './workbench/registeredSites'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
 import { FocusBar } from './workbench/FocusBar'
@@ -1763,6 +1764,11 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       {mode === 'expert' && <footer><span>POC // St. John’s · Avalon · Grand Banks</span><p>Experimental evidence display. Not a calibrated probability, warning service, or navigation product.</p></footer>}
     </div>
   )
+  const nativeSeries = useNativeSeries({ location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
+    enabled: !legacyOpen && (view === 'Series' || dock === 'Series'),
+    focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
+    onLatest: (source) => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next }),
+  })
   if (legacyOpen) return <><button className="return-bench" onClick={() => setLegacyOpen(false)}>Return to desktop Bench</button>{legacy}</>
   const ledger = <EvidenceLedger rows={snapshot.servedFields} onInspect={inspect} />
   const migrationNotice = <p className="bench-migration">The selected view is being assembled. Current response-backed panels remain available in Existing evidence panels.</p>
@@ -1778,7 +1784,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} /> : undefined}
     views={{
       Map: <><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
-      Series: <>{migrationNotice}<h3>Selected-instant evidence</h3><p>Bounded native-time Series is not implemented yet.</p>{ledger}</>,
+      Series: nativeSeries,
       Sky: <>{migrationNotice}<p>{site ? 'Registered horizon metadata not loaded.' : 'No registered horizon at this point.'}</p><FieldFamilyGroups snapshot={snapshot} /></>,
       Activity: <>{migrationNotice}<p>Server profile verdicts are not wired into these lanes yet. No score is calculated by this client.</p></>,
       Sources: <>{migrationNotice}{modelStrip}<SourceFieldCatalogue sources={catalog} />{ledger}</>,
