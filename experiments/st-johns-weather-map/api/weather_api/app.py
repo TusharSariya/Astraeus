@@ -1300,7 +1300,7 @@ def _live_point(
         )
     if product and product.upper() == "RDPS":
         try:
-            from .rdps_query import rdps_query_coordinator  # noqa: PLC0415
+            from .rdps_query import RDPSQueryUnavailable, rdps_query_coordinator  # noqa: PLC0415
 
             fields, _consensus, _sources = rdps_query_coordinator().point_fields(latitude, longitude, time)
         except Exception as error:
@@ -1311,7 +1311,7 @@ def _live_point(
                 flags=["demand_query_unavailable:eccc-rdps"],
                 notices=["eccc-rdps could not retrieve and validate the exact selected native timestep"],
                 source_id="eccc-rdps", product="RDPS",
-            )
+            ).model_copy(update={"demand_unavailable": error.outcome if isinstance(error, RDPSQueryUnavailable) else None})
         if not fields:
             return _unavailable_point(
                 latitude, longitude, time,
@@ -2729,11 +2729,12 @@ def get_profile(
 
     if product and product.upper() == "RDPS":
         try:
-            from .rdps_query import rdps_query_coordinator  # noqa: PLC0415
+            from .rdps_query import RDPSQueryUnavailable, rdps_query_coordinator  # noqa: PLC0415
             levels, native_time = rdps_query_coordinator().profile_levels(latitude, longitude, time, PROFILE_PRESSURES)
         except Exception as error:
             LOGGER.exception("RDPS demand profile failed for %s", time.isoformat())
-            return unavailable(f"RDPS selected profile is unavailable: {type(error).__name__}", "demand_query_unavailable:eccc-rdps", [])
+            return unavailable(f"RDPS selected profile is unavailable: {type(error).__name__}", "demand_query_unavailable:eccc-rdps", []).model_copy(
+                update={"demand_unavailable": error.outcome if isinstance(error, RDPSQueryUnavailable) else None})
         return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude,
                                valid_time=native_time, levels=levels,
                                notices=[f"RDPS pressure fields were fetched for native timestep {native_time.isoformat()} only"])

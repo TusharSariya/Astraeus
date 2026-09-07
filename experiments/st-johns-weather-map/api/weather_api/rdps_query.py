@@ -11,7 +11,7 @@ import threading
 import time
 from collections import OrderedDict
 from concurrent.futures import Future
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,9 +21,9 @@ from ingest.adapters.eccc_datamart import (
     AVALON_CORE_BOUNDS,
     ECCCDataMartAdapter,
     RDPS_DEMAND_VARS,
-    HRDPS_FILE_BYTES,
 )
 from ingest.contract import FetchWindow, RunCandidate
+from .models import RDPSAcquisition, RDPSDemandRequest, RDPSDemandUnavailable
 
 RDPS_POINT_FIELDS = (
     "temperature_2m", "dew_point_2m",
@@ -44,7 +44,6 @@ RDPS_CACHE_TTL_SECONDS = 600.0
 RDPS_CACHE_MAX_ENTRIES = 4
 RDPS_CACHE_MAX_BYTES = 32 * 1024 * 1024
 RDPS_LIMITS = ProcessAllocationLimits(2 * 1024 * 1024 * 1024, 16 * 1024 * 1024, 2 * 1024 * 1024, 64 * 1024, 256 * 1024)
-RDPS_SELECTED_RECEIVED_BYTES = len(RDPS_POINT_FIELDS) * HRDPS_FILE_BYTES
 RDPS_FAILURE_BACKOFF_SECONDS = 60.0
 _COORDINATOR: "RDPSQueryCoordinator | None" = None
 
@@ -67,10 +66,20 @@ class RDPSQueryEntry:
     content_digest: str
     payload: bytes
     provenance: Mapping[str, object]
+    acquisition: RDPSAcquisition | None = None
 
     @property
     def backing_bytes(self) -> int:
-        return len(self.payload) + len(json.dumps(self.provenance, sort_keys=True, default=str).encode())
+        return (len(self.payload) + len(json.dumps(self.provenance, sort_keys=True, default=str).encode())
+                + (len(self.acquisition.model_dump_json().encode()) if self.acquisition else 0))
+
+
+class RDPSQueryUnavailable(RuntimeError):
+    """Unavailable outcome with bounded identity, never cached native values."""
+
+    def __init__(self, outcome: RDPSDemandUnavailable):
+        super().__init__(f"RDPS {outcome.reason}: {outcome.error_type}")
+        self.outcome = outcome
 
 
 class RDPSQueryService:
@@ -78,18 +87,46 @@ class RDPSQueryService:
 
     def __init__(self, loader: Callable[[RDPSRequestKey], RDPSQueryEntry], *,
                  ttl_seconds: float = RDPS_CACHE_TTL_SECONDS,
-                 clock: Callable[[], float] = time.monotonic) -> None:
+                 clock: Callable[[], float] = time.monotonic,
+                 now: Callable[[], datetime] = lambda: datetime.now(UTC)) -> None:
         if ttl_seconds <= 0 or ttl_seconds > RDPS_CACHE_TTL_SECONDS:
             raise ValueError("RDPS cache TTL is outside its source-local ceiling")
-        self._loader, self._ttl, self._clock = loader, ttl_seconds, clock
+        self._loader, self._ttl, self._clock, self._now = loader, ttl_seconds, clock, now
         self._lock = threading.Lock()
         self._entries: OrderedDict[RDPSRequestKey, tuple[float, RDPSQueryEntry]] = OrderedDict()
         self._inflight: dict[RDPSRequestKey, Future[RDPSQueryEntry]] = {}
-        self._failures: dict[RDPSRequestKey, tuple[float, BaseException]] = {}
+        self._failures: dict[RDPSRequestKey, tuple[float, RDPSDemandUnavailable]] = {}
+        self._expired: OrderedDict[RDPSRequestKey, tuple[float, RDPSAcquisition]] = OrderedDict()
+
+    def _prune_locked(self, now: float) -> None:
+        # Sweep expired values on every lookup, retaining only bounded
+        # identity for one further TTL. Neither bookkeeping map owns an
+        # exception traceback, which could otherwise keep ZIP locals alive.
+        for old_key, (deadline, old_entry) in list(self._entries.items()):
+            if now >= deadline:
+                del self._entries[old_key]
+                if old_entry.acquisition is not None and now < deadline + self._ttl:
+                    self._expired[old_key] = (deadline + self._ttl, old_entry.acquisition)
+        for old_key, (deadline, _) in list(self._expired.items()):
+            if now >= deadline:
+                del self._expired[old_key]
+        while len(self._expired) > RDPS_CACHE_MAX_ENTRIES:
+            self._expired.popitem(last=False)
+        for old_key, (deadline, _) in list(self._failures.items()):
+            if now >= deadline:
+                del self._failures[old_key]
+
+    def expired_acquisition(self, key: RDPSRequestKey) -> RDPSAcquisition | None:
+        """Disclose identity even when directory refresh fails before loading."""
+        with self._lock:
+            self._prune_locked(self._clock())
+            expired = self._expired.get(key)
+            return expired[1] if expired else None
 
     def query(self, key: RDPSRequestKey) -> RDPSQueryEntry:
         with self._lock:
             now = self._clock()
+            self._prune_locked(now)
             cached = self._entries.get(key)
             if cached and now < cached[0]:
                 self._entries.move_to_end(key)
@@ -97,7 +134,7 @@ class RDPSQueryService:
             self._entries.pop(key, None)
             failure = self._failures.get(key)
             if failure and now < failure[0]:
-                raise failure[1]
+                raise RDPSQueryUnavailable(failure[1])
             self._failures.pop(key, None)
             future = self._inflight.get(key)
             owner = future is None
@@ -113,7 +150,20 @@ class RDPSQueryService:
                 raise ValueError("RDPS loader returned a different request identity")
             if not 0 < entry.backing_bytes <= RDPS_CACHE_MAX_BYTES:
                 raise ValueError("RDPS cache entry exceeds its finite byte ceiling")
+            cached_at = self._now()
+            acquisition = RDPSAcquisition(
+                request=RDPSDemandRequest(cycle_url=key.cycle_url, provider_run_id=key.provider_run_id,
+                    lead=key.lead, fields=key.fields, bounds=dict(key.bounds)),
+                run_time=entry.run_time, valid_time=entry.valid_time, retrieval_time=entry.fetched_at,
+                normalized_sha256=entry.content_digest,
+                transport_receipts=entry.provenance.get("transport_receipts", ()),
+                cached_at=cached_at, expires_at=cached_at + timedelta(seconds=self._ttl),
+            )
+            entry = replace(entry, acquisition=acquisition)
+            if entry.backing_bytes > RDPS_CACHE_MAX_BYTES:
+                raise ValueError("RDPS cache entry exceeds its finite byte ceiling")
             with self._lock:
+                self._expired.pop(key, None)
                 self._entries[key] = (self._clock() + self._ttl, entry)
                 while len(self._entries) > RDPS_CACHE_MAX_ENTRIES or sum(v.backing_bytes for _, v in self._entries.values()) > RDPS_CACHE_MAX_BYTES:
                     self._entries.popitem(last=False)
@@ -121,11 +171,25 @@ class RDPSQueryService:
             return entry
         except BaseException as error:
             with self._lock:
-                self._failures[key] = (self._clock() + RDPS_FAILURE_BACKOFF_SECONDS, error)
+                expired = self._expired.get(key)
+                if expired and self._clock() >= expired[0]:
+                    self._expired.pop(key, None)
+                    expired = None
+                outcome = RDPSDemandUnavailable(
+                    reason="refresh_failed" if expired else "query_failed",
+                    error_type=type(error).__name__,
+                    expired_acquisition=expired[1] if expired else None,
+                )
+                # Do not let failure backoff extend expired metadata retention.
+                deadline = self._clock() + RDPS_FAILURE_BACKOFF_SECONDS
+                if expired:
+                    deadline = min(deadline, expired[0])
+                self._failures[key] = (deadline, outcome)
                 while len(self._failures) > RDPS_CACHE_MAX_ENTRIES:
                     self._failures.pop(next(iter(self._failures)))
-            future.set_exception(error)
-            raise
+            unavailable = RDPSQueryUnavailable(outcome)
+            future.set_exception(unavailable)
+            raise unavailable from error
         finally:
             with self._lock:
                 self._inflight.pop(key, None)
@@ -140,7 +204,7 @@ class RDPSQueryCoordinator:
         self._candidate: tuple[float, RunCandidate] | None = None
         self._prepared: dict[RDPSRequestKey, RunCandidate] = {}
         self._lock = threading.Lock()
-        self._cache = RDPSQueryService(self._load, clock=clock)
+        self._cache = RDPSQueryService(self._load, clock=clock, now=now)
 
     def query(self, selected_time: datetime, *, fields: tuple[str, ...] = RDPS_POINT_FIELDS) -> RDPSQueryEntry:
         if selected_time.tzinfo is None:
@@ -156,7 +220,23 @@ class RDPSQueryCoordinator:
         # provider payload too, so an unsupported runtime never opens one.
         self._adapter.demand_operation_bounds(len(fields))
         with self._lock:
-            candidate = self._discover(selected_time)
+            try:
+                candidate = self._discover(selected_time)
+            except Exception as error:
+                # An expired directory candidate is identity evidence only;
+                # it must never authorize a fetch or a cached-value fallback.
+                expired = None
+                if self._candidate is not None:
+                    prior = self._candidate[1]
+                    if prior.run_time is not None:
+                        lead = int((selected_time - prior.run_time).total_seconds() // 3600)
+                        prior_key = RDPSRequestKey(str(prior.detail["cycle_url"]), prior.provider_run_id,
+                            lead, fields, tuple(sorted(self._adapter.bounds.items())))
+                        expired = self._cache.expired_acquisition(prior_key)
+                raise RDPSQueryUnavailable(RDPSDemandUnavailable(
+                    reason="refresh_failed" if expired else "query_failed",
+                    error_type=type(error).__name__, expired_acquisition=expired,
+                )) from error
             assert candidate.run_time is not None
             seconds = (selected_time - candidate.run_time).total_seconds()
             if seconds < 0 or seconds % 3600:
@@ -235,7 +315,8 @@ class RDPSQueryCoordinator:
             sampler.skipped, sampler.unmodelled = [], []
             try:
                 artifact = SimpleNamespace(source_id="eccc-rdps", logical_name="surface",
-                    revision_id=f"demand:{entry.content_digest}", provenance=dict(entry.provenance),
+                    revision_id=f"demand:{entry.content_digest}", provenance={**entry.provenance,
+                        "demand_acquisition": entry.acquisition},
                     run_time=entry.run_time, retrieved_at=entry.fetched_at,
                     native_crs=str(entry.provenance.get("native_crs", "EPSG:4326")))
                 samples = sampler._sample_dataset(dataset, artifact, latitude, longitude, entry.valid_time, pressure=pressure)

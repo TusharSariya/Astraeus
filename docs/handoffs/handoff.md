@@ -4,6 +4,22 @@ Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
 history and the owner's earlier design selections.
 
+## PR234 review correction checkpoint
+
+The two independent-review blockers now preserve bounded RDPS request/transport
+identity in point/profile provenance and disclose expired metadata on refresh
+failure while withholding all expired values. Metadata is capped at four
+64-KiB records and one further source TTL; no retained native values or exception
+tracebacks back a failure. Directory refresh failures preserve the same identity.
+Retained native proof was replayed offline with zero upstream access and all
+25 receipt/value/unit/time/cell checks unchanged. See
+[the review correction evidence](../research/wayfinder/rdps233/README.md#pr234-independent-review-corrections).
+21 focused RDPS tests and the two corrected deterministic GFS fixture-clock
+tests pass; OpenSpec 75/75 and specctl 0/0 pass. The preceding full API run's
+2,090 passes/44 skips/two baseline fixture-clock failures remain recorded
+honestly; no full rerun or RDPS reacquisition followed the owner correction.
+PR234 must remain unmerged pending fresh independent re-review.
+
 ## Destination and map ownership
 
 ## Current owner correction: timestamp-driven delivery

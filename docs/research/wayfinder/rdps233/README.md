@@ -75,3 +75,47 @@ production build; 75 strict OpenSpec items; specctl 0 errors/0 warnings. The ful
 API suite passed 2,088 tests with 50 skips; the 46-case cutover group passed. Independent review remains
 pending because the runtime rejected a fresh reviewer with agent-thread-limit.
 No merge or acceptance/status promotion is claimed.
+
+## PR234 independent-review corrections
+
+The independent review of `644ff2fc083d418a5a6731f9aefcb2c5a6cdc73b`
+identified dropped transport/request provenance and lost expired identity on
+failed refresh. Both are corrected without changing native values, science,
+provider selection, units, times, cells, or operational status.
+
+Each point/profile RDPS field now carries optional typed `demand_acquisition`:
+canonical cycle/run/lead, requested fields and crop; normalized ZIP SHA-256;
+actual run/native-valid/retrieval timestamps; every field's final effective URL,
+request/response headers, body SHA-256, byte count and final-byte completion;
+and UTC cache admission/expiry paired with the monotonic freshness deadline.
+Metadata is capped at 64 KiB, 64 receipts, 16 headers per map and bounded strings.
+The existing web parsers accept additive fields: point provenance is a record,
+and profile explicitly reads valid_time/levels/fields. No client edit is needed.
+
+After expiry, native ZIP/value entries are removed on lookup. At most four
+metadata-only acquisitions remain for one further TTL (600 seconds maximum),
+with lazy pruning. Failure backoff stores typed data, not exception tracebacks
+that could retain native payload locals. Both point/profile responses carry
+`demand_unavailable.expired_acquisition` on failed refresh, including directory
+refresh failure, and return only null unavailable fields. No stored fallback.
+
+Offline replay reused retained normalized ZIPs and all 25 native GRIBs, with
+upstream access prohibited. All receipt hashes/bytes, values, units, times and
+sampled cells matched the original capture. Point acquisition was 4,596 JSON
+bytes; profile was 13,515 bytes. Fresh repeat preserved identity; simulated
+expired refresh left zero native cache entries and two metadata-only records.
+See [compact results](review-fix-summary.json). Full response bodies and script
+are `/private/tmp/rdps233-live/review-fix-*-api.json`,
+`review-fix-*-expired.json`, and `review_fix_replay.py`. This is offline audit
+replay, not a new provider acquisition or application fallback.
+
+Verification: 21 focused RDPS tests; strict OpenSpec 75/75; specctl 0 errors and
+0 warnings. The broader API run had 2,090 passes, 44 skips and two pre-existing
+GFS fixture-clock failures, reproduced against the unmodified reviewed head.
+Per owner correction, those two tests now hardcode their fixture clock and
+explicitly stub independent METAR acquisition; their focused rerun passes 2/2.
+No production freshness behavior changed and no full suite was rerun solely
+because the fixture aged. Earlier uninstrumented broad runs cannot establish
+zero unrelated-provider attempts; the RDPS replay explicitly enforces zero
+upstream requests. No RDPS provider bytes were reacquired for this correction.
+Fresh independent re-review remains required before merge; no status promotion.

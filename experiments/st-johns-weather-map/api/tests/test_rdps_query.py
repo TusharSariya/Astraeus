@@ -15,6 +15,7 @@ from weather_api.rdps_query import (
     RDPS_POINT_FIELDS,
     rdps_profile_fields,
     RDPSQueryEntry,
+    RDPSQueryUnavailable,
     RDPSQueryCoordinator,
     RDPSQueryService,
     RDPSRequestKey,
@@ -66,7 +67,7 @@ def test_cache_expiry_reloads_and_never_returns_wrong_identity() -> None:
     assert calls == 2
 
     bad = RDPSQueryService(lambda _request: entry(key(9)))
-    with pytest.raises(ValueError, match="different request identity"):
+    with pytest.raises(RDPSQueryUnavailable, match="ValueError"):
         bad.query(key())
 
 
@@ -147,10 +148,10 @@ def test_failure_is_coalesced_and_backed_off() -> None:
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = [pool.submit(service.query, key()) for _ in range(8)]
         for future in futures:
-            with pytest.raises(RuntimeError, match="provider unavailable"):
+            with pytest.raises(RDPSQueryUnavailable, match="RuntimeError"):
                 future.result()
     assert calls == 1
-    with pytest.raises(RuntimeError, match="provider unavailable"):
+    with pytest.raises(RDPSQueryUnavailable, match="RuntimeError"):
         service.query(key())
     assert calls == 1
 
@@ -285,7 +286,13 @@ def test_native_direction_and_mask_reach_real_api_unchanged(tmp_path, monkeypatc
                   "original_units": {"wind_direction_10m": "Degree true", "wind_direction_850hPa": "Degree true"},
                   "quality": {"status": "passed", "flags": []}, "coverage": {"status": "complete", "fraction": 1.0},
                   **manifest_for("eccc-rdps", {name: RDPS_DEMAND_VARS[name] for name in ds.data_vars}).as_manifest_block()}
-    selected = RDPSQueryEntry(key(2), valid-timedelta(hours=2), valid, valid, "b"*64, payload, provenance)
+    receipt = {"field": "wind_direction_10m", "url": "https://example/12/002/native.grib2",
+               "request_headers": {"accept": "*/*"}, "response_headers": {"etag": '"native"'},
+               "bytes": 12345, "sha256": "c" * 64, "completed_at": valid.isoformat()}
+    provenance["transport_receipts"] = [receipt]
+    selected = RDPSQueryService(lambda request: RDPSQueryEntry(
+        request, valid-timedelta(hours=2), valid, valid, "b"*64, payload, provenance),
+        now=lambda: valid + timedelta(seconds=3)).query(key(2))
     coordinator = RDPSQueryCoordinator(adapter=object())
     monkeypatch.setattr(coordinator, "query", lambda *_args, **_kwargs: selected)
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
@@ -309,6 +316,17 @@ def test_native_direction_and_mask_reach_real_api_unchanged(tmp_path, monkeypatc
     direction = next(f for level in profile["levels"] for f in level["fields"] if f["field"]=="wind_direction_850hPa")
     assert direction["value"] == 125.5
     assert direction["provenance"]["derivation"] is None
+    acquisition = fields["wind_direction"]["provenance"]["demand_acquisition"]
+    assert direction["provenance"]["demand_acquisition"] == acquisition
+    assert acquisition["request"] == {"source_id": "eccc-rdps", "product": "RDPS",
+        "cycle_url": key(2).cycle_url, "provider_run_id": key(2).provider_run_id,
+        "lead": 2, "fields": list(key(2).fields), "bounds": dict(key(2).bounds)}
+    assert acquisition["normalized_sha256"] == "b" * 64
+    assert acquisition["transport_receipts"] == [{**receipt, "completed_at": "2026-09-06T14:00:00Z"}]
+    assert acquisition["retrieval_time"] == "2026-09-06T14:00:00Z"
+    assert acquisition["cached_at"] == "2026-09-06T14:00:03Z"
+    assert acquisition["expires_at"] == "2026-09-06T14:10:03Z"
+    assert client.get(f"{app_module.PREFIX}/point", params=params).json()["fields"] == body["fields"]
 
 
 def test_cache_bounds_evict_and_failure_bookkeeping_is_finite(monkeypatch):
@@ -318,10 +336,10 @@ def test_cache_bounds_evict_and_failure_bookkeeping_is_finite(monkeypatch):
     assert len(service._entries) == 4
     fail = RDPSQueryService(lambda _: (_ for _ in ()).throw(ValueError("bad")))
     for lead in range(20):
-        with pytest.raises(ValueError): fail.query(key(lead))
+        with pytest.raises(RDPSQueryUnavailable): fail.query(key(lead))
     assert len(fail._failures) == 4
     monkeypatch.setattr(module, "RDPS_CACHE_MAX_BYTES", 2)
-    with pytest.raises(ValueError, match="byte ceiling"): RDPSQueryService(entry).query(key())
+    with pytest.raises(RDPSQueryUnavailable, match="ValueError"): RDPSQueryService(entry).query(key())
 
 
 def test_native_identity_guard_refuses_wrong_parameter_level_time_grid_and_multiple(monkeypatch, tmp_path):
@@ -365,5 +383,105 @@ def test_permuted_fields_and_different_instants_share_canonical_request():
     first=q.query(run+timedelta(hours=2,minutes=1),fields=("temperature_2m","dew_point_2m"))
     second=q.query(run+timedelta(hours=2,minutes=59),fields=("dew_point_2m","temperature_2m","temperature_2m"))
     assert first is second and len(calls)==1
-    with pytest.raises(ValueError):q.query(run+timedelta(hours=3))
+    with pytest.raises(RDPSQueryUnavailable):q.query(run+timedelta(hours=3))
     assert len(calls)==1
+
+
+@pytest.mark.parametrize("route", ["point", "profile"])
+def test_expired_refresh_failure_discloses_identity_without_values(route, monkeypatch):
+    from weather_api.models import RDPSAcquisition, RDPSDemandUnavailable
+    current = 0.0
+    calls = 0
+    admitted = datetime(2026, 9, 6, 20, tzinfo=UTC)
+
+    def load(request):
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            raise RuntimeError("upstream unavailable")
+        return entry(request)
+
+    service = RDPSQueryService(load, ttl_seconds=10, clock=lambda: current, now=lambda: admitted)
+    original = service.query(key())
+    current = 11.0
+
+    class Coordinator:
+        def point_fields(self, *_args): return service.query(key())
+        def profile_levels(self, *_args): return service.query(key())
+
+    monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr("weather_api.rdps_query.rdps_query_coordinator", lambda: Coordinator())
+    monkeypatch.setattr(app_module, "live_store", lambda: pytest.fail("expired RDPS opened retained store"))
+    params = {"latitude": 47.56, "longitude": -52.71, "valid_time": admitted.isoformat(), "product": "RDPS"}
+    client = TestClient(app_module.app)
+    response = client.get(f"{app_module.PREFIX}/{route}", params=params)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data_mode"] == "unavailable"
+    outcome = body["demand_unavailable"]
+    assert outcome["reason"] == "refresh_failed"
+    assert outcome["error_type"] == "RuntimeError"
+    assert outcome["expired_acquisition"] == original.acquisition.model_dump(mode="json")
+    assert outcome["expired_acquisition"]["expires_at"] == "2026-09-06T20:00:10Z"
+    fields = body["fields"] if route == "point" else [field for level in body["levels"] for field in level["fields"]]
+    assert fields and all(field["value"] is None for field in fields)
+    assert not service._entries
+    assert isinstance(service._expired[key()][1], RDPSAcquisition)
+    assert isinstance(service._failures[key()][1], RDPSDemandUnavailable)
+    assert "payload" not in service._expired[key()][1].model_dump_json()
+    assert client.get(f"{app_module.PREFIX}/{route}", params=params).json()["demand_unavailable"] == outcome
+    assert calls == 2
+    current = 21.0
+    later = client.get(f"{app_module.PREFIX}/{route}", params=params).json()
+    assert later["demand_unavailable"]["expired_acquisition"] is None
+    assert not service._expired
+    assert calls == 3
+
+
+def test_expired_metadata_count_bytes_and_retention_are_bounded():
+    from weather_api.models import RDPS_METADATA_MAX_BYTES
+    current = 0.0
+    service = RDPSQueryService(entry, ttl_seconds=10, clock=lambda: current)
+    for lead in range(12):
+        service.query(key(lead))
+        current += 11
+        assert len(service._expired) <= 4
+        assert sum(len(value.model_dump_json().encode()) for _, value in service._expired.values()) <= 4 * RDPS_METADATA_MAX_BYTES
+    current += 30
+    service.query(key(20))
+    assert not service._expired
+    assert list(service._entries) == [key(20)]
+
+
+def test_oversized_transport_metadata_is_rejected_before_cache_admission():
+    from dataclasses import replace
+    receipt = {"field": "temperature_2m", "url": "https://example/native.grib2",
+               "request_headers": {"accept": "x" * 2049}, "response_headers": {},
+               "bytes": 3, "sha256": "c" * 64, "completed_at": "2026-09-06T20:00:00Z"}
+    service = RDPSQueryService(lambda request: replace(entry(request), provenance={"transport_receipts": [receipt]}))
+    with pytest.raises(RDPSQueryUnavailable, match="ValidationError"):
+        service.query(key())
+    assert not service._entries
+    assert not service._expired
+
+
+def test_expired_directory_refresh_also_discloses_cached_identity():
+    current = 0.0
+    run = datetime(2026, 9, 6, 12, tzinfo=UTC)
+    class Adapter:
+        var_map = RDPS_DEMAND_VARS
+        bounds = {"east": -52.4}
+        def demand_operation_bounds(self, _): pass
+        def discover(self, _):
+            if current > 600:
+                raise RuntimeError("directory unavailable")
+            return [RunCandidate("2026090612", run, [], {"cycle_url": "https://example/12/", "available_hours": ["008"]})]
+    class Coordinator(RDPSQueryCoordinator):
+        def _load(self, request): return entry(request)
+    coordinator = Coordinator(adapter=Adapter(), clock=lambda: current, now=lambda: run)
+    initial = coordinator.query(run + timedelta(hours=8))
+    current = 601
+    with pytest.raises(RDPSQueryUnavailable) as failure:
+        coordinator.query(run + timedelta(hours=8))
+    assert failure.value.outcome.expired_acquisition == initial.acquisition
+    assert not coordinator._cache._entries

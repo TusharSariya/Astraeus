@@ -191,9 +191,14 @@ def test_coordinator_fetches_one_native_lead_then_serves_exact_cache_hit(tmp_pat
     assert adapter.client.calls[0][1] == MAX_IDX_BYTES
 
 
-def test_cached_native_payload_uses_existing_point_evidence_builder(tmp_path):
+def test_cached_native_payload_uses_existing_point_evidence_builder(tmp_path, monkeypatch):
     run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
     valid_time = run_time + timedelta(hours=3)
+    class FixtureClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return (valid_time + timedelta(minutes=20)).astimezone(tz)
+    monkeypatch.setattr("weather_api.store.datetime", FixtureClock)
     path = tmp_path / "surface.zarr.zip"
     dataset = xarray.Dataset(
         {"temperature_2m": (("valid_time", "latitude", "longitude"), [[[14.25]]], {"units": "degC"})},
@@ -288,11 +293,19 @@ def test_cached_native_payload_uses_existing_profile_evidence_builder(tmp_path, 
 
 
 def test_live_point_selected_gfs_uses_demand_payload_without_artifact_store(tmp_path, monkeypatch):
+    monkeypatch.setattr("weather_api.metar_query.metar_query_service", lambda: type(
+        "EmptyObservations", (), {"point_fields": lambda *args: ([], None, None)}
+    )())
     from weather_api.app import _live_point
     import weather_api.gfs_query as gfs_query
 
     run_time = datetime(2026, 9, 6, 12, tzinfo=UTC)
     valid_time = run_time + timedelta(hours=3)
+    class FixtureClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return (valid_time + timedelta(minutes=20)).astimezone(tz)
+    monkeypatch.setattr("weather_api.store.datetime", FixtureClock)
     path = tmp_path / "surface.zarr.zip"
     write_zarr(
         xarray.Dataset(

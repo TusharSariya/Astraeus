@@ -1,0 +1,27 @@
+{
+  "mode": "offline replay of retained native proof; no new upstream acquisition",
+  "sources": {
+    "point": {
+      "native_field_receipts": 6,
+      "upstream_bytes": 3993252,
+      "acquisition_bytes": 4596,
+      "normalized_sha256": "95b5d7c242b7f78e09b9de0ed6194e24ccc528c99dd47ce6078912090364afdc",
+      "unchanged_values": 7
+    },
+    "profile": {
+      "native_field_receipts": 19,
+      "upstream_bytes": 13355315,
+      "acquisition_bytes": 13515,
+      "normalized_sha256": "5d95f46474af9e8c99ee7ec4cd9751dd053b6fc69568b08360282fc9284dc2f3",
+      "unchanged_values": 19
+    }
+  },
+  "loader_calls": [
+    "point",
+    "profile",
+    "point",
+    "profile"
+  ],
+  "expired_metadata_count": 2,
+  "cached_native_entries_after_expiry": 0
+}
