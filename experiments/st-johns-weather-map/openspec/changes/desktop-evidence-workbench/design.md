@@ -15,7 +15,7 @@ See [proposal.md](proposal.md). The current React Workbench already owns the API
 
 - New API routes, response fields, source admission, refresh architecture, Activity scoring, scientific derivations, or live-provider capture.
 - Phone layout, band math, screen-reader certification, camera images, or operational promotion.
-- Completing the redesigned Series, Sky, Activity, and Sources content in the first implementation slice. Existing usable panels and views remain reachable during migration; only capabilities with no current response-backed implementation receive bounded unavailable states.
+- Completing all five view bodies in the first implementation slice. The full desktop change still owns their selected designs, enumerated in selected-designs.md and the executable task list. Existing usable panels and views remain reachable during migration; only capabilities with no current response-backed implementation receive bounded unavailable states. A missing body does not complete this change.
 
 ## Decisions
 
@@ -52,5 +52,5 @@ Tests use current checked-in API fixtures and an injected fixed clock. Source mi
 1. Add URL/Focus state and shell components behind the existing fixture-backed entry point.
 2. Mount the existing Map pipeline inside the stage and add the selected stack presentation without changing API requests.
 3. Add the shared evidence row and inspector, then migrate Map rows first.
-4. Keep existing usable panels reachable from the shell, add explicit unavailable bodies only for absent capabilities, and implement redesigned view bodies in later accepted slices.
+4. Keep existing usable panels reachable from the shell, add explicit unavailable bodies only for absent capabilities, and implement the selected redesigned view bodies in subsequent slices of this change. API/scoring/camera behavior retains its own contract boundary; unavailable placeholders are transitional, not proof of completed view implementation.
 5. Replace the old page composition after focused unit, build, accessibility, and fixture-backed browser checks pass. Rollback restores the previous `App` composition while leaving salvaged modules unchanged.

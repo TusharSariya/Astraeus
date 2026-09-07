@@ -4,6 +4,75 @@ Define the desktop Bench that keeps one shared place and instant while presentin
 
 ## ADDED Requirements
 
+### Requirement: Series implements the selected Overview and temporary Compare
+Series SHALL provide separate time-aligned field tracks in Overview and a
+temporary in-memory field/source workspace in Compare. Switching SHALL
+preserve Focus, instant, selections and provenance. Only compatible quantities
+MAY share an axis; incompatible units or meanings SHALL retain separate aligned
+axes. Native timestamps, checked gaps, unqueried spans, observations, forecasts,
+raw ensemble members and provider reductions SHALL retain their distinctions.
+The workspace SHALL NOT be saved, shared, persisted or used to author scoring.
+
+#### Scenario: Incompatible fields are compared
+- **WHEN** the reader compares temperature and wind speed
+- **THEN** their axes remain separate and aligned in time, and switching to
+  Overview preserves the selected evidence and Focus
+
+### Requirement: Sky uses the selected Horizon instrument
+Sky SHALL lead with the registered site horizon and separate scalar cloud-layer
+gauges, with geometry and sky evidence alongside. An arbitrary point SHALL NOT
+borrow a horizon. Unsurveyed registration SHALL remain disclosed. Scalar cloud
+fractions SHALL NOT locate clouds or establish seeing/transparency. Absent
+azimuths SHALL NOT become directional celestial positions or horizon-adjusted
+events. Observed Kp, outlook and planetary context SHALL remain distinct from
+point aurora probability. Camera eligibility and unavailable evidence SHALL
+remain visible without inventing images or geometry.
+
+#### Scenario: An arbitrary point lacks directional evidence
+- **WHEN** Sky opens for a point with no registered horizon or celestial azimuths
+- **THEN** it preserves available scalar evidence and explicitly names the
+  missing horizon and direction without drawing invented geometry
+
+### Requirement: Activity uses the selected four-lane Operational stack
+Activity SHALL present four fixed-order horizontal profile lanes with the
+server-returned verdict, score or withholding reason, limiting criterion,
+aligned strip, coverage, next geometric window and disclosure. One lane SHALL
+expand inline with hard stops before graded criteria, provenance and its
+built-in Saved stack action, while other lanes remain legible. Printed labels
+and distinct shapes/fills SHALL carry verdict state independently of colour.
+The client SHALL NOT compute a missing verdict, score, criterion or window.
+
+#### Scenario: A verdict is unavailable
+- **WHEN** the server cannot return a profile verdict
+- **THEN** its lane identifies the absence without a manufactured score, and
+  any available evidence retains its own provenance
+
+### Requirement: Sources retains all three selected perspectives
+Sources SHALL provide Ledger by default, Family finder and Coverage lanes.
+Switching SHALL preserve filters, Focus and the inspected source. Declared
+registry/field coverage SHALL remain distinct from successful retrieval and
+coordinate/time availability. Layer frames, native samples and expired evidence
+SHALL retain their own identities. Unknown evidence class and unmapped layers
+SHALL remain inspectable without inferred success or a capture fallback.
+
+#### Scenario: A declared source has no retrieved samples
+- **WHEN** the reader switches from its Ledger entry to Coverage lanes
+- **THEN** the source remains selected and its declaration does not become
+  demonstrated temporal or location coverage
+
+### Requirement: All views use the selected Hyperlegible design system
+The desktop SHALL use the #41 variant C canonical tokens: Atkinson Hyperlegible
+Next and Mono, neutral greys, 15px base and 44px controls, with light, dark and
+red-on-black night themes. Source slots SHALL remain stable by provider with
+model line styles, and state/evidence shape and text SHALL remain meaningful
+without colour. The selected red night tokens supersede the older Activity
+ember treatment. Reduced motion SHALL suppress optional motion.
+
+#### Scenario: A view switches to red night
+- **WHEN** the reader changes theme while inspecting a source
+- **THEN** Focus and inspector selection remain unchanged and evidence classes
+  and verdict states remain identifiable through shape and text
+
 ### Requirement: The desktop shell is one Bench around a shared Focus
 The interface SHALL present vertical controls for Map, Series, Sky, Activity, and Sources, one active view on the main stage, and at most one different view docked at the right. The Focus SHALL contain one site or arbitrary point and one exact instant shared by every open view. A view MAY enter full screen, and Escape SHALL return it to the Bench without changing the Focus.
 

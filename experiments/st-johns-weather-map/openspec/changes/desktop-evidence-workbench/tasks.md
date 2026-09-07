@@ -22,3 +22,12 @@
 - [ ] 4.2 Run the focused client suite and production build with `npm test -- --run src/workbench src/MapPanel.test.tsx src/api.test.ts && npm run build` from `experiments/st-johns-weather-map/web`.
 - [ ] 4.3 Run the fixture-backed Chromium procedure with a fixed clock and confirm zero live-provider requests, all controls keyboard-reachable, inspector focus entry/return, and identical visual/text absence reasons; record browser coordinates and results in the issue without claiming a screen-reader pass.
 - [ ] 4.4 Run `npx -y @fission-ai/openspec@latest validate desktop-evidence-workbench --strict` from `experiments/st-johns-weather-map` and `uv run --project tools/specs python tools/specs/specctl.py validate` from the repository root before implementation handoff.
+
+## 5. Complete the selected view bodies
+
+- [ ] 5.1 Implement Series Overview and temporary Compare using the approved bounded API interactions; verify native sparse times, compatible/incompatible axes, unsampled versus checked gaps, and Focus/selection continuity with fixed responses.
+- [ ] 5.2 Implement Sky Horizon instrument; verify registered/unsurveyed versus arbitrary-point horizons, scalar cloud gauges, missing directional geometry, Kp/outlook separation and explicit camera absence.
+- [ ] 5.3 Implement Activity Operational stack using the owning server verdict contract; verify four lanes, one inline expansion, hard-stop ordering, coverage/withholding, provenance and Saved stack absence. Do not implement client scoring.
+- [ ] 5.4 Implement Sources Ledger, Family finder and Coverage lanes; verify filters and inspector survive switching, declarations never imply retrieved coverage, and unmapped/unknown/expired evidence stays inspectable.
+- [ ] 5.5 Apply canonical #41 tokens across all five views; verify stable provider slots, red-on-black night, non-colour state distinctions and reduced motion.
+- [ ] 5.6 Demonstrate all five selected view bodies with fixed-clock browser fixtures, shared Focus and provenance, failure/absence states and keyboard entry/return. Record unavailable backend capabilities separately; do not close full-view obligations on shell-only evidence.

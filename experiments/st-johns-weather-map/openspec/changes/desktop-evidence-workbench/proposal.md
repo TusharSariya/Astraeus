@@ -8,6 +8,8 @@ The existing Workbench proves retrieved weather layers and timestamp-driven read
 - Persist the selected site or point, instant, active view, optional dock, and Map stack in the URL while keeping theme as a browser preference.
 - Rebuild Map controls around the selected layer-stack contract, including explicit frame alignment, absence states, evidence identity, one-line disclosure, family legends, and Saved stacks.
 - Add the selected ledger-and-inspector provenance component with permanent evidence-class glyph and source tag, bounded disclosure, and fail-closed absence wording.
+- Carry the already-selected Series Overview/temporary Compare, Sky Horizon instrument, Activity Operational stack, and Sources Ledger/Family finder/Coverage lanes into the desktop contract. These are staged implementation obligations, not deferred design choices.
+- Use the selected Hyperlegible tokens and light, dark and red-on-black night themes from #41.
 - Require semantic controls, stable focus across rerenders, explicit inspector entry and return, scoped Escape handling, text alternatives, and concise status announcements.
 - Preserve the existing API routes and timestamp-demand behavior. This change adds no API route, source admission, science, scoring, interpolation, or synthetic value.
 - Keep the phone brief, new API contract, screen-reader certification, Activity scoring, band math, and source completion outside this change.
@@ -28,3 +30,4 @@ The existing Workbench proves retrieved weather layers and timestamp-driven read
 - Verification uses deterministic API fixtures and a fixed clock in Vitest plus a fixture-backed Chromium keyboard pass; it does not reacquire live provider data.
 - The implementation salvages the existing API client, types, field families, evidence classes, playback, scrubber, tier boundary, FlowBlendLayer, and tested Map imagery pipeline.
 - Owner-selected inputs: Wayfinder #39 (shell/Focus), #40 (provenance), #46 (Map stack), and #69 (accessibility repair contract), under parent #38 and proposal task #55.
+- Full-view inputs and existing prototype assets are indexed in [selected-designs.md](selected-designs.md). Existing owner design selections are preserved; no replacement layout is proposed.
