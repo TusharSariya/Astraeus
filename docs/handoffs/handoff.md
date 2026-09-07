@@ -13,15 +13,28 @@ PR metadata. This handoff remains the record of completed work and decisions.
 
 ## Current execution strategy, September 7, 2026
 
-The owner keeps the full eligible-source outcome of [#70](https://github.com/TusharSariya/Astraeus/issues/70)
-and the working desktop outcome of [#38](https://github.com/TusharSariya/Astraeus/issues/38).
-Execution now prioritizes small protocol-family batches that reuse an existing
-provider client or adapter, then add only source-specific native mapping. Each
-batch starts with an early eligibility, timestamp, unit and QC contract check;
-it uses one reusable fixed-data end-to-end proof harness rather than a new
-framework. Once the governing proposal is actually accepted, frontend work may
-advance beside its source batch. Genuine owner decisions are batched for review;
-routine engineering proceeds autonomously within accepted scope.
+The owner keeps the full all-source outcome across [#70](https://github.com/TusharSariya/Astraeus/issues/70)
+and [#38](https://github.com/TusharSariya/Astraeus/issues/38). Every source
+listed in those maps is active scope, including sources that currently lack an
+admission, native contract, client, fixture or app path. Readiness and protocol
+family determine sequencing and reuse; they never remove a source from scope.
+The next work targets actual missing source-to-existing-app integrations and,
+where needed, the concrete provider verification or owner proposal that makes
+one possible. A paid, rights-dependent or unavailable path needs an explicit,
+evidence-backed disposition rather than silent deferral or invented access.
+
+Execution groups compatible work behind an existing provider client or adapter,
+then adds only source-specific native mapping. Each batch starts with an early
+eligibility, timestamp, unit and QC contract check; it uses one reusable
+fixed-data end-to-end proof harness rather than a new framework. Once a
+governing proposal is actually accepted, frontend work may advance beside its
+source batch. Genuine owner decisions are batched for review; routine
+engineering proceeds autonomously within accepted scope. Draft proposals
+[#239](https://github.com/TusharSariya/Astraeus/pull/239),
+[#244](https://github.com/TusharSariya/Astraeus/pull/244),
+[#250](https://github.com/TusharSariya/Astraeus/pull/250), and
+[#256](https://github.com/TusharSariya/Astraeus/pull/256) remain unaccepted and
+must not be treated as implementation authority.
 
 The active delivery model is selected-timestamp live queries with finite
 relevant caches, bounded receipts and truthful expiry/unavailability. Do not
