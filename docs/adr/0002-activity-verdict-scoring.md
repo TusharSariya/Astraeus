@@ -1,4 +1,4 @@
-# One registered verdict entry with profile-declared grading curves, cached in the store
+# One registered verdict entry with profile-declared grading curves and finite caching
 
 Status: accepted (owner decision, wayfinder ticket #49, 2026-09-03)
 
@@ -13,9 +13,13 @@ weight lost, with every curve anchor a named threshold in the profile file, so r
 CI audit and provenance stay the mechanisms already built for thresholds; binary grading was
 rejected because the owner wants each criterion tunable and researched per activity. One source
 supplies each field, chosen by a per-tier source precedence in API config with any fallback
-flagged on the row, never averaged. Verdicts are computed on request and persisted in a Postgres
-cache table keyed by profile, focus, instant and override record, each row naming the artifact
-revisions it read and served only while all of them are current; they are not artifacts (no
-manifest, not listed under `/layers`) because they have no layer, run or legend, and they purge
-with the retention window. An in-memory-only cache was rejected because the owner refreshes the
-app by rebooting and wants site verdicts to survive it.
+flagged on the row, never averaged. Verdicts are computed on request through existing selected-time queries with
+bounded finite caching. The September 7 owner direction supersedes this ADR's
+original Postgres table, persistence across reboots, poller precomputation and
+warm-up requirements. The earlier persistence choice is historical; it is no
+longer an implementation prerequisite. Profile anchors and staged budgets follow
+#64, including band low_cap and explicit applicability; no new scientific rules
+are inferred from the cache or the desktop layout.
+
+The [accepted Activity contract](../../experiments/st-johns-weather-map/openspec/changes/desktop-evidence-api-contract/specs/activity-verdict/spec.md)
+records #48/#49/#64 and references the existing single owner authorization.

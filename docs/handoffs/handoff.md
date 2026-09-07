@@ -20,6 +20,17 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Activity contract handoff, September 7, 2026
+
+Sky #281 merged as `bf85b53`. The main agent is completing the previously
+selected #48/#49/#64 executable Activity contract in the existing desktop API
+OpenSpec change, isolated at `/tmp/astraeus-desktop-activity-contract`.
+The existing owner authorization applies; no new approval round or master plan.
+ADR 0002 now records the later finite-cache direction in place of its historical
+Postgres/poller requirement. API tasks 8–11 track evaluator, field dispositions,
+bounded reads and four-lane implementation. Contract acceptance alone completes
+none of those implementation tasks.
+
 ## Sky implementation checkpoint, September 7, 2026
 
 Sources #280 merged as `2bdb7bf`. Current isolated batch is

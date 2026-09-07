@@ -36,9 +36,10 @@ run selection, registry metadata, provenance and imagery availability. This
 acceptance claims neither completed routes nor verified/operational status.
 The September 7 desktop-first direction supersedes older persistence dependencies.
 
-The accepted API surface is limited to:
+The accepted API surface includes:
 
 - a bounded, paged evidence Series read and selection-specific change check;
+- the recorded #48/#49/#64 server verdict and verdict-strip reads;
 - response identity and full per-reading provenance needed by the desktop;
 - read-only registered site, horizon and camera metadata;
 - imagery availability distinct from stored sample times; and
@@ -51,7 +52,7 @@ They still require mapped verification, but not another owner approval round.
 Serve only public registered metadata using an explicit response allowlist;
 private configuration and camera-image placement/delivery remain excluded.
 
-The proposal excludes verdict/scoring mechanics, band math, phone work,
+The proposal excludes new or unrecorded verdict/scoring mechanics, band math, phone work,
 camera-image delivery, registry writes or admission, new science, source
 licensing, provider access, interpolation, persistent comparison workspaces,
 and deployment or operational promotion.
@@ -74,3 +75,11 @@ or new database without a demonstrated requirement.
 
 Spec-Impact: requirement change; owner-authorized acceptance.
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-005, GOV-SPEC-006.
+
+
+## Activity contract completion, September 7
+
+The accepted activity-verdict delta formalizes the already-selected #48/#49/#64
+mechanics under the same owner authorization. It introduces no new grading
+choice. The later finite-cache direction supersedes the Postgres/poller/warm-up
+portion of ADR 0002. Implementation, fixtures and source admission remain separate.

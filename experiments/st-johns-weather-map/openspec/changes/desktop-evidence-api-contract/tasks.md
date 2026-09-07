@@ -22,3 +22,19 @@ proposal.md. Tasks below are implementation obligations, not owner gates.
 Implementation coverage, finite bounds and explicit source/run residuals are
 recorded in [implementation evidence](implementation-evidence.md). The checks
 above do not close full-view or source-integration obligations.
+
+
+## Activity implementation obligations (#48/#49/#64)
+
+- [ ] 8. Implement one registered profile evaluator, versioned curves/anchors,
+  override validation, explicit applicability and source precedence; verify
+  hand-calculated curve boundaries, direction, ties, all six states and worst quality.
+- [ ] 9. Classify each intended active/replacement field against its existing
+  admitted path and evidence; preserve named residuals rather than silently
+  assigning unavailable fields weight or inventing scientific rules.
+- [ ] 10. Implement bounded `/verdicts` and `/verdicts/series` over existing demand
+  queries with fixed finite cache, native issued cells and exact Focus; verify
+  bounds, concurrent misses, expiry, source isolation and failed replacement.
+- [ ] 11. Wire four Activity lanes, one expansion, hard stops before grades,
+  coverage, geometry windows, provenance, Series jumps and profile Saved stacks;
+  verify fixed-clock integration, absence, keyboard and planning presentation.
