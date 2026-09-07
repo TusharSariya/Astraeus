@@ -49,7 +49,7 @@ def station_rows(body: bytes):
         station_id=item["station_id"], station_name=item["station_name"],
         observation_time=datetime.fromisoformat(item["observation_time"]),
         latitude=item["latitude"], longitude=item["longitude"], value=item["value"],
-        quality=item.get("quality"),
+        quality=item.get("quality"), feature_id=item.get("feature_id"),
     ) for item in normalize(json.loads(body)))
 
 
@@ -351,3 +351,149 @@ def test_default_api_serializes_expired_receipt_without_values_when_every_demand
     assert unavailable["values_withheld"] is True
     assert unavailable["expired_acquisition"]["body_sha256"] == original.body_sha256
     assert unavailable["expired_acquisition"]["expires_at"] == original.expires_at.isoformat().replace("+00:00", "Z")
+
+
+def test_explicit_refresh_replaces_fresh_entry_without_sliding_cache_hits():
+    clock = Clock()
+    calls = []
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200, json=document(feature(
+            "ABEFS", len(calls), "2026-09-07T00:00:00Z", -52.7252, 47.5658,
+        )), headers={"Cache-Control": "max-age=60"})
+    service = AQHIQueryService(client=mock_client(handler), clock=clock,
+                               utcnow=lambda: SELECTED, decode=station_rows)
+    first = service.point_field(47.56, -52.72, SELECTED)
+    deadline = service.cached_entry().expires_at_monotonic
+    clock.value += 10
+    assert service.point_field(47.56, -52.72, SELECTED).value == first.value
+    assert service.cached_entry().expires_at_monotonic == deadline
+    refreshed = service.point_field(47.56, -52.72, SELECTED, refresh=True)
+    assert refreshed.value == 2 and len(calls) == 2
+    assert refreshed.provenance.artifact_revision != first.provenance.artifact_revision
+    assert service.cached_entry().expires_at_monotonic == clock.value + 60
+
+
+def test_final_byte_expiry_includes_decode_time():
+    clock = Clock()
+    def slow_decode(body):
+        clock.value += 20
+        return station_rows(body)
+    service = AQHIQueryService(client=mock_client(lambda _: httpx.Response(
+        200, json=document(feature("ABEFS", 2, "2026-09-07T00:00:00Z", -52.7252, 47.5658)),
+        headers={"Cache-Control": "max-age=60"},
+    )), clock=clock, utcnow=lambda: SELECTED, decode=slow_decode)
+    assert service.entry().expires_at_monotonic == 160
+    clock.value = 160
+    assert service.cached_entry() is None
+
+
+def test_response_expiring_during_decode_is_never_admitted():
+    clock = Clock()
+    def slow_decode(body):
+        clock.value += 60
+        return station_rows(body)
+    service = AQHIQueryService(client=mock_client(lambda _: httpx.Response(
+        200, json=document(feature("ABEFS", 2, "2026-09-07T00:00:00Z", -52.7252, 47.5658)),
+        headers={"Cache-Control": "max-age=60"},
+    )), clock=clock, utcnow=lambda: SELECTED, decode=slow_decode)
+    with pytest.raises(AqhiQueryUnavailable, match="expired during validation"):
+        service.entry()
+    assert service.cached_entry() is None
+
+
+def test_numeric_zero_quality_token_is_preserved_without_certification():
+    service = AQHIQueryService(client=mock_client(lambda _: httpx.Response(
+        200, json=document(feature("ABEFS", 2, "2026-09-07T00:00:00Z", -52.7252, 47.5658, quality=0)),
+    )), clock=Clock(), utcnow=lambda: SELECTED, decode=station_rows)
+    field = service.point_field(47.56, -52.72, SELECTED)
+    assert field.provenance.native_report.native_metadata == {"provider_quality": "0"}
+    assert field.provenance.quality.status == "unknown"
+    assert "provider_quality:0" in field.provenance.quality.flags
+
+
+@pytest.mark.parametrize("latitude,longitude", [(float("nan"), -52.72), (47.56, float("inf")), (91, 0), (0, -181)])
+def test_invalid_point_fails_before_provider_request(latitude, longitude):
+    calls = []
+    service = AQHIQueryService(client=mock_client(lambda request: calls.append(request)))
+    with pytest.raises(ValueError, match="coordinates"):
+        service.point_field(latitude, longitude, SELECTED)
+    assert calls == []
+
+
+def test_companion_predicate_admits_only_native_aqhi_observation_identity():
+    from weather_api.aqhi_query import is_aqhi_observation_companion
+
+    service = AQHIQueryService(client=mock_client(lambda _: httpx.Response(
+        200, json=document(feature("ABEFS", 2, "2026-09-07T00:00:00Z", -52.7252, 47.5658)),
+    )), clock=Clock(), utcnow=lambda: SELECTED, decode=station_rows)
+    field = service.point_field(47.56, -52.72, SELECTED)
+    assert is_aqhi_observation_companion(field)
+    for update in ({"field": "pm25"}, {"key": "particulate_matter_2_5"}, {"value": None}, {"value": float("nan")}):
+        assert not is_aqhi_observation_companion(field.model_copy(update=update))
+    for update in (
+        {"source_id": "eccc-raqdps"}, {"source_id": "eccc-rdaqa"},
+        {"product": "AQHI forecast regions"}, {"run_time": SELECTED},
+        {"native_report": None}, {"aqhi_acquisition": None},
+        {"valid_time": SELECTED}, {"sampled_latitude": 48},
+        {"sampled_longitude": -53}, {"original_units": "ug/m3"},
+        {"normalized_units": "ug/m3"}, {"adapter_version": "other"},
+        {"data_mode": "fixture"}, {"evidence_class": "derived"},
+    ):
+        assert not is_aqhi_observation_companion(field.model_copy(update={
+            "provenance": field.provenance.model_copy(update=update),
+        })), update
+
+
+def test_concurrent_explicit_refreshes_coalesce_and_failure_withholds_previous_values():
+    from threading import Event
+
+    started, release = Event(), Event()
+    calls = []
+    def handler(request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(200, json=document(feature(
+                "ABEFS", 2, "2026-09-07T00:00:00Z", -52.7252, 47.5658,
+            )), headers={"Cache-Control": "max-age=60"})
+        started.set()
+        assert release.wait(5)
+        return httpx.Response(503)
+    service = AQHIQueryService(client=mock_client(handler), clock=Clock(),
+                               utcnow=lambda: SELECTED, decode=station_rows)
+    original = service.entry().acquisition
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        owner = pool.submit(service.entry, refresh=True)
+        assert started.wait(5)
+        # Signal after the waiter has joined the actual in-flight Future.
+        joined = Event()
+        pending = service._inflight
+        original_result = pending.result
+        def joined_result(*args, **kwargs):
+            joined.set()
+            return original_result(*args, **kwargs)
+        pending.result = joined_result
+        waiter = pool.submit(service.entry, refresh=True)
+        assert joined.wait(5)
+        assert service.cached_entry() is None
+        release.set()
+        for future in (owner, waiter):
+            with pytest.raises(AqhiQueryUnavailable) as caught:
+                future.result()
+            assert caught.value.outcome.values_withheld is True
+            assert caught.value.outcome.expired_acquisition == original
+    assert len(calls) == 2
+    assert service.cached_entry() is None
+
+
+def test_native_location_id_is_station_identity_and_feature_id_is_retained():
+    native = feature("AQ_OBS-ABEFS-20260907000000", 2, "2026-09-07T00:00:00Z", -52.7252, 47.5658)
+    native["properties"].update({"properties.location_id": "ABEFS", "properties.aqhi_type": "AQHI-Observation"})
+    service = AQHIQueryService(client=mock_client(lambda _: httpx.Response(200, json=document(native))),
+                               clock=Clock(), utcnow=lambda: SELECTED, decode=station_rows)
+    report = service.point_field(47.56, -52.72, SELECTED).provenance.native_report
+    assert report.station_id == "ABEFS"
+    assert report.native_metadata["provider_feature_id"] == "AQ_OBS-ABEFS-20260907000000"
+    native["properties"]["properties.aqhi_type"] = "AQHI-Forecast"
+    with pytest.raises(ValueError, match="not an observation"):
+        normalize(document(native))
