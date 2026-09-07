@@ -232,7 +232,7 @@ class ReachDatamartFallbackTests(unittest.TestCase):
         expected = {
             "eccc-hrdps": "https://dd.weather.gc.ca/{YYYYMMDD}/WXO-DD/model_hrdps/continental/2.5km/{HH}/{FFF}/",
             "eccc-rdps": "https://dd.weather.gc.ca/{YYYYMMDD}/WXO-DD/model_rdps/10km/{HH}/{FFF}/",
-            "eccc-gdps": "https://dd.weather.gc.ca/{YYYYMMDD}/WXO-DD/model_gdps/10km/{HH}/{FFF}/",
+            "eccc-gdps": "https://dd.weather.gc.ca/{YYYYMMDD}/WXO-DD/model_gdps/15km/{HH}/{FFF}/",
         }
         for source_id, path in expected.items():
             with self.subTest(source_id=source_id):

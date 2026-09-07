@@ -546,7 +546,8 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
   const selectionMode = invalidConsensus ? 'unavailable' : requestedConsensus ? 'consensus'
     : point.selection.mode === 'evidence_only' ? 'unavailable'
       : selectedProduct === 'HRDPS' ? 'hrdps'
-        : selectedProduct === 'RDPS' ? 'rdps' : 'unavailable'
+        : selectedProduct === 'RDPS' ? 'rdps'
+          : selectedProduct === 'GDPS' ? 'gdps' : 'unavailable'
   const allFields = point.fields
   // Every metric reads from the values that MAY be a reading. A reprocessed,
   // intermediary-derived or uncalibrated value, or one from a source the
@@ -868,6 +869,7 @@ export async function loadTimeline(product?: string, signal?: AbortSignal): Prom
 export const POINT_PRODUCT_BY_SOURCE_ID: Record<string, string> = {
   'eccc-hrdps': 'HRDPS',
   'eccc-rdps': 'RDPS',
+  'eccc-gdps': 'GDPS',
   'eccc-reps': 'REPS',
   'noaa-gfs': 'GFS',
   'openmeteo-gfs-wave': 'GFS Wave',

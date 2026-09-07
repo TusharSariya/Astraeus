@@ -421,6 +421,56 @@ class RDPSDemandUnavailable(StrictModel):
     expired_acquisition: RDPSAcquisition | None = None
 
 
+class GDPSDemandRequest(StrictModel):
+    """Canonical selectors for one bounded native GDPS frame."""
+
+    source_id: Literal["eccc-gdps"] = "eccc-gdps"
+    product: Literal["GDPS"] = "GDPS"
+    cycle_url: _BoundedUrl
+    provider_run_id: _BoundedName
+    lead: int = Field(ge=0, le=240)
+    fields: tuple[_BoundedName, ...] = Field(min_length=1, max_length=5)
+    bounds: dict[Literal["north", "south", "east", "west"], float] = Field(min_length=1, max_length=4)
+
+
+class GDPSTransportReceipt(StrictModel):
+    """One completed GDPS native-field transfer, without provider bytes."""
+
+    field: _BoundedName
+    url: _BoundedUrl
+    request_headers: _BoundedHeaders
+    response_headers: _BoundedHeaders
+    bytes: int = Field(gt=0)
+    sha256: _SHA256
+    completed_at: AwareDatetime
+
+
+class GDPSAcquisition(StrictModel):
+    request: GDPSDemandRequest
+    run_time: AwareDatetime
+    valid_time: AwareDatetime
+    retrieval_time: AwareDatetime
+    normalized_sha256: _SHA256
+    transport_receipts: tuple[GDPSTransportReceipt, ...] = Field(max_length=5)
+    cached_at: AwareDatetime
+    expires_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def bound_metadata(self):
+        if self.expires_at <= self.cached_at:
+            raise ValueError("GDPS cache expiry must follow admission")
+        if len(self.model_dump_json().encode()) > RDPS_METADATA_MAX_BYTES:
+            raise ValueError("GDPS acquisition metadata exceeds its byte ceiling")
+        return self
+
+
+class GDPSDemandUnavailable(StrictModel):
+    source_id: Literal["eccc-gdps"] = "eccc-gdps"
+    reason: Literal["refresh_failed", "query_failed"]
+    error_type: _BoundedName
+    expired_acquisition: GDPSAcquisition | None = None
+
+
 class Provenance(StrictModel):
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
@@ -477,7 +527,7 @@ class Provenance(StrictModel):
     intermediary_method: str | None = None
     adapter_version: str
     native_report: NativeReportIdentity | None = None
-    demand_acquisition: RDPSAcquisition | None = None
+    demand_acquisition: RDPSAcquisition | GDPSAcquisition | None = None
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
     #: echoing the request back would overstate where the reading came from.
@@ -1291,7 +1341,7 @@ class PointConsensus(StrictModel):
 
 
 class PointResponse(StrictModel):
-    demand_unavailable: RDPSDemandUnavailable | None = None
+    demand_unavailable: RDPSDemandUnavailable | GDPSDemandUnavailable | None = None
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
     latitude: float
@@ -1337,7 +1387,7 @@ class ProfileLevel(StrictModel):
 
 
 class ProfileResponse(StrictModel):
-    demand_unavailable: RDPSDemandUnavailable | None = None
+    demand_unavailable: RDPSDemandUnavailable | GDPSDemandUnavailable | None = None
     data_mode: DataMode = DataMode.FIXTURE
     operational: Literal[False] = False
     latitude: float

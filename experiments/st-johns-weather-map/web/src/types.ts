@@ -1,4 +1,4 @@
-export type FallbackMode = 'consensus' | 'hrdps' | 'rdps' | 'unavailable'
+export type FallbackMode = 'consensus' | 'hrdps' | 'rdps' | 'gdps' | 'unavailable'
 export type AppMode = 'simple' | 'expert'
 
 /** How a single response, or a single field inside one, was produced.

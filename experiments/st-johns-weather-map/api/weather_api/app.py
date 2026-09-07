@@ -452,7 +452,7 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
         )
 
     selected_product = product.upper() if product else None
-    if selected_product not in {None, "HRDPS", "RDPS", "GFS"}:
+    if selected_product not in {None, "HRDPS", "RDPS", "GDPS", "GFS"}:
         return TimelineResponse(
             data_mode=DataMode.UNAVAILABLE, start=start, end=end, items=_window_items(reference),
             boundary=boundary, tiers=tiers,
@@ -481,6 +481,16 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
             demand_notices.append(
                 f"eccc-rdps demand availability could not be resolved: {type(error).__name__}"
             )
+    if selected_product == "GDPS":
+        try:
+            from .gdps_query import gdps_query_coordinator  # noqa: PLC0415
+            for stamp in gdps_query_coordinator().timeline_times(reference):
+                if start <= stamp <= end:
+                    demand_products.setdefault(_floor_to_hour(stamp), []).append("eccc-gdps")
+        except Exception as error:  # noqa: BLE001 - provider metadata absence is source-local
+            demand_notices.append(
+                f"eccc-gdps demand availability could not be resolved: {type(error).__name__}"
+            )
     if selected_product == "GFS":
         try:
             from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
@@ -493,11 +503,12 @@ def get_timeline(product: str | None = Query(default=None)) -> TimelineResponse:
                 f"noaa-gfs demand availability could not be resolved: {type(error).__name__}"
             )
 
-    if selected_product == "RDPS":
+    if selected_product in {"RDPS", "GDPS"}:
+        product_name = selected_product
         return TimelineResponse(
             data_mode=DataMode.LIVE if demand_products else DataMode.UNAVAILABLE,
             start=start, end=end, items=_window_items(reference, demand_products), boundary=boundary, tiers=tiers,
-            notices=[*demand_notices, "RDPS provider-advertised demand availability is metadata only; no GRIB prefetch or retained artifact coverage"],
+            notices=[*demand_notices, f"{product_name} provider-advertised demand availability is metadata only; no GRIB prefetch or retained artifact coverage"],
         )
     store = live_store()
     if store is None:
@@ -1319,6 +1330,38 @@ def _live_point(
                                 reason=f"Selected RDPS native timestep {actual_time.isoformat()}"),
             fields=fields + observations,
             notices=[f"RDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
+        )
+    if product and product.upper() == "GDPS":
+        try:
+            from .gdps_query import GDPSQueryUnavailable, gdps_query_coordinator  # noqa: PLC0415
+
+            fields, _consensus, _sources = gdps_query_coordinator().point_fields(latitude, longitude, time)
+        except Exception as error:
+            LOGGER.exception("GDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason=f"GDPS selected timestamp is unavailable: {type(error).__name__}",
+                flags=["demand_query_unavailable:eccc-gdps"],
+                notices=["eccc-gdps could not retrieve and validate the exact selected native timestep"],
+                source_id="eccc-gdps", product="GDPS",
+            ).model_copy(update={"demand_unavailable": error.outcome if isinstance(error, GDPSQueryUnavailable) else None})
+        if not fields:
+            return _unavailable_point(
+                latitude, longitude, time,
+                reason="GDPS has no native value at this coordinate and selected timestamp",
+                flags=["demand_query_empty:eccc-gdps"],
+                notices=["eccc-gdps returned no validated native value for the selected point"],
+                source_id="eccc-gdps", product="GDPS",
+            )
+        actual_time = fields[0].provenance.valid_time
+        observations, observation_notices = demand_metar()
+        return PointResponse(
+            data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+            selection=Selection(mode="fallback", selected_source_id="eccc-gdps",
+                                selected_product_id="gdps", badge="GDPS selected model",
+                                reason=f"Selected GDPS native timestep {actual_time.isoformat()}"),
+            fields=fields + observations,
+            notices=[f"GDPS values are from latest native timestep {actual_time.isoformat()} before the selection; no temporal interpolation was applied", *observation_notices],
         )
     if product and product.upper() == "GEFS":
         try:
@@ -2738,6 +2781,13 @@ def get_profile(
         return ProfileResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude,
                                valid_time=native_time, levels=levels,
                                notices=[f"RDPS pressure fields were fetched for native timestep {native_time.isoformat()} only"])
+
+    if product and product.upper() == "GDPS":
+        return unavailable(
+            "GDPS pressure-level fields remain explicitly deferred under #189; this point-only slice performed no provider request",
+            "unsupported_profile:eccc-gdps",
+            [],
+        )
 
     store = live_store()
     if store is None:
