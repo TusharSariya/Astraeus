@@ -1,3 +1,4 @@
+import { ReturnedValue, readableGeometry } from './ReturnedValue'
 import { SourceTag } from './SourceTag'
 import { useEffect, useRef } from 'react'
 import { EVIDENCE_CLASS_LABELS } from '../evidenceClass'
@@ -39,6 +40,7 @@ export function EvidenceInspector({ evidence, onClose }: { evidence: InspectedEv
   const heading = useRef<HTMLHeadingElement | null>(null)
   useEffect(() => { heading.current?.focus() }, [evidence.key])
   const a = evidence.attribution
+  const nativeFeature = evidence.key.startsWith('map-feature:')
   return <aside className="bench-companion bench-inspector" aria-label="Evidence inspector" onKeyDown={(event) => {
     if (event.key === 'Escape' && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLSelectElement)) { event.stopPropagation(); event.preventDefault(); onClose() }
   }}>
@@ -55,6 +57,7 @@ export function EvidenceInspector({ evidence, onClose }: { evidence: InspectedEv
       'Sample geometry': ['sampled_latitude', 'sampled_longitude', 'sample_distance_km', 'sample_method'].some((key) => a.responseProvenance?.[key] != null) ? { latitude: a.responseProvenance?.sampled_latitude ?? null, longitude: a.responseProvenance?.sampled_longitude ?? null, distance_km: a.responseProvenance?.sample_distance_km ?? null, method: a.responseProvenance?.sample_method ?? null } : null, 'Freshness assessment': a.responseProvenance?.freshness, Terms: a.responseProvenance?.licence,
       'Complete returned provenance': a.responseProvenance,
       ...evidence.details,
-    } : evidence.details ?? { Provenance: null }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{show(value)}</dd></div>)}</dl>
+    } : evidence.details ?? { Provenance: null }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{nativeFeature ? <ReturnedValue value={label === 'Returned feature geometry' ? readableGeometry(value) : value} /> : show(value)}</dd></div>)}</dl>
+    {nativeFeature && evidence.details?.['Returned feature properties'] !== undefined && <details><summary>Complete returned Map record · JSON</summary><pre>{JSON.stringify(evidence.details, null, 2)}</pre></details>}
   </aside>
 }

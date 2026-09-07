@@ -254,3 +254,29 @@ obligations remain open. No actual screen-reader or outdoor pass is claimed.
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; desktop workbench requirements
 “Evidence interactions preserve keyboard context” and “Canvas evidence has a
 semantic alternative”.
+
+
+## Issue #69: readable native Map evidence
+
+The next owner-selected repair presents native Map properties and inspector
+metadata as semantic labels and values, with returned properties first. Zero,
+false, null, empty text and empty collections remain distinct; provider units
+and quality are displayed without inference. Two-coordinate GeoJSON Points name
+longitude and latitude; other geometry retains its returned structure. Complete
+inspected details remain available in a collapsed JSON disclosure. Raw provider
+keys are retained there; visible labels replace underscores with spaces only.
+Expired/changed Map evidence removes both readable values and the raw disclosure.
+Other evidence views retain their existing rendering in this bounded repair.
+
+Verification: 10 affected component tests and production build pass. The fixed
+keyboard browser proof checks structured accessible values, closed raw disclosure
+and retained skip/open/close/return behavior. Existing Map inspection proof covers
+hide/Focus invalidation, three themes and 200% text zoom. Captures remain outside
+Git. Strict desktop OpenSpec and specctl pass. Separate main-agent review checked
+zero/null handling, coordinate order, unchanged evidence and removal semantics.
+Actual screen-reader testing and broader #69 work remain outstanding.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; desktop workbench requirements
+“Every listed value uses the shared provenance ledger and inspector”, “Evidence
+interactions preserve keyboard context” and “Canvas evidence has a semantic
+alternative”.
