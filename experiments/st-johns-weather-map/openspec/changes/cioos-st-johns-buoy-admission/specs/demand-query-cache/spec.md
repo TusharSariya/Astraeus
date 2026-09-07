@@ -16,6 +16,43 @@ units, derive a field, or reinterpret wind/wave `from` directions.
 - **THEN** the source is unavailable and no mismatched value is relabelled or
   converted
 
+
+### Requirement: CIOOS buoy current-context selection is bounded by native time and metadata coverage
+
+After owner acceptance, the CIOOS buoy reader SHALL select the newest native
+record at or before the aware selected instant only when its age is strictly
+less than one hour. Before serving that record for a current-context request,
+it SHALL parse the bounded metadata `time_coverage_end` and require it to be strictly less than two hours before the metadata acquisition
+final-byte completion. A
+future record, an exactly one-hour-old record, a missing/invalid coverage end,
+a coverage end exactly two hours old, or duplicate newest native report
+identity SHALL produce unavailable evidence. It SHALL NOT interpolate, choose a
+future or older report, substitute another station, or infer a cadence.
+
+#### Scenario: The newest native report is exactly one hour old
+
+- **WHEN** the newest native report at or before the selected instant is exactly
+  one hour old
+- **THEN** no buoy value is served
+
+#### Scenario: A future native record exists
+
+- **WHEN** a row is later than the selected instant
+- **THEN** it is not eligible for selection and is not used to fill the request
+
+#### Scenario: Duplicate newest native report identity is returned
+
+- **WHEN** two rows have the same newest eligible report identity
+- **THEN** current-context buoy evidence is unavailable because the reader does
+  not choose between duplicate native reports
+
+#### Scenario: Metadata coverage is stale at its boundary
+
+- **WHEN** `time_coverage_end` is exactly two hours before metadata final-byte
+  completion, or older
+- **THEN** current-context buoy evidence is unavailable and no cached or
+  historical report substitutes
+
 ### Requirement: CIOOS buoy demand cache expires without stale report fallback
 
 After owner acceptance, a CIOOS buoy cache key SHALL identify the canonical

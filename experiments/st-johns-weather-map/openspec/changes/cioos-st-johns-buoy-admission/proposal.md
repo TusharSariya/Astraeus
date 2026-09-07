@@ -12,11 +12,12 @@ This proposal records one distinct, named candidate:
 `cioos-atlantic-sma-st-johns`, delivered by CIOOS Atlantic ERDDAP dataset
 `SMA_st_johns`. The publisher's metadata identifies a Marine Institute
 TimeSeries with `station_name`, latitude and longitude and records CC BY 4.0;
-the CIOOS catalogue also states CC BY 4.0. The canonical metadata observed on
-2026-09-07 reports `time_coverage_end: 2026-04-13T18:30:01Z`. It is evidence of
-an accessible, named source, not evidence that the source is presently live. This
-draft reads metadata only; it makes no current data request and therefore does
-not claim the latest published observation.
+the CIOOS catalogue also states CC BY 4.0. A dated official metadata rendering recorded
+`time_coverage_end: 2026-04-13T18:30:01Z`; a separate current web read reported
+`2026-09-05T20:30:01Z`. These differing metadata observations prove neither a
+current payload nor a stable feed. This draft makes no data request and claims
+no latest published observation. A future implementation must retain its own
+bounded metadata receipt before serving any current-context value.
 
 No existing registry record, ERDDAP client, fixture, adapter, cache, API route
 or catalogue capability implements this CIOOS delivery. The local research

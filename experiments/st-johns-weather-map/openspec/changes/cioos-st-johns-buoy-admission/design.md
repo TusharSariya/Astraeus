@@ -16,14 +16,13 @@ hostname is not source identity. The record therefore names:
 - canonical data endpoint:
   `https://cioosatlantic.ca/erddap/tabledap/SMA_st_johns.csv`.
 
-On 2026-09-07 the canonical metadata declared TimeSeries identity through
-`station_name,longitude,latitude`, CC BY 4.0 and
-`time_coverage_end: 2026-04-13T18:30:01Z`. The catalogue independently lists
-CC BY 4.0. The record must preserve those citations and retrieval dates. A
-future implementation re-reads bounded metadata before responding; it does
-not assume that the historical coverage observation means the feed is current.
-This proposal makes no latest-data request, so the displayed metadata end is a
-stale-coverage signal rather than a claim about a current native sample.
+The canonical metadata declares TimeSeries identity through
+`station_name,longitude,latitude` and CC BY 4.0; the catalogue independently
+lists CC BY 4.0. A dated metadata rendering recorded
+`time_coverage_end: 2026-04-13T18:30:01Z`, while a separate current web read
+reported `2026-09-05T20:30:01Z`. The discrepancy is a reason to retain a
+bounded metadata receipt at implementation time, not a claim that either value
+is a current native sample. This proposal makes no data request.
 
 ## Native schema boundary
 
@@ -54,8 +53,10 @@ spectral array, conversion, or numerical quality check belongs in this slice.
 metadata, is a platform attribute and not a substitute for a row's station
 identity. The response carries a finite `precise_lat`/`precise_lon` row pair
 when both are finite; otherwise it carries the finite `latitude`/`longitude`
-pair. A mixed pair, a missing station name, or coordinates outside the metadata
-station identity fails the record rather than creating a location.
+pair. `precise_*` values are provider-published row coordinates and are not
+required to equal the metadata bounding coordinate, whose observed range is
+fixed for the nominal station. A mixed pair or missing/non-finite pair fails
+the record rather than creating a location.
 
 ## Proposed query and selection boundary
 
