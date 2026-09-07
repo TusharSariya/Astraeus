@@ -1,0 +1,126 @@
+from datetime import UTC, datetime
+import json
+import httpx
+import numpy as np
+import pytest
+
+from test_adapter_sst_analysis import _ostia_metadata, _compressed, _client
+from weather_api.ostia_query import OSTIAQueryService, OSTIAUnavailable
+
+DAY = datetime(2026, 9, 4, tzinfo=UTC)
+
+
+def service():
+    metadata = _ostia_metadata()
+    m = metadata['metadata']
+    seconds = int((DAY-datetime(1981, 1, 1, tzinfo=UTC)).total_seconds())
+    payloads = {'/.zmetadata': json.dumps(metadata).encode()}
+    values = {'time': np.array([seconds]), 'latitude': np.array([44.95,45.05,50.45,50.55]),
+              'longitude': np.array([-58.05,-57.95,-46.05,-45.95]),
+              'analysed_sst': np.full((4,4),1000), 'analysis_error': np.full((4,4),25), 'mask': np.ones((4,4))}
+    values['mask'][1,1] = 2
+    values['mask'][2,1] = 9  # Water + sea ice remains the native bitmask.
+    values['analysed_sst'][2,2] = -32768
+    values['analysis_error'][2,2] = -32768
+    for name, arr in values.items():
+        payloads[f'/{name}/'+('0' if arr.ndim == 1 else '0.0.0')] = _compressed(arr,m[f'{name}/.zarray'])
+    requests = []
+    def handler(request):
+        key = '/' + str(request.url).split('.zarr/',1)[1]
+        requests.append(key)
+        return httpx.Response(200, content=payloads[key])
+    clock = [0.0]
+    return OSTIAQueryService(client=_client(handler), clock=lambda: clock[0], utcnow=lambda: DAY), requests, clock
+
+
+def test_actual_native_adapter_point_masks_identity_and_shared_cache():
+    query, requests, _ = service()
+    land = query.point_fields(45.05, -57.95, DAY)
+    assert [f.value for f in land] == [None,None,2]
+    count = len(requests)
+    sea = query.point_fields(50.45,-57.95,DAY)
+    assert len(requests) == count == 7
+    assert [f.value for f in sea] == pytest.approx([10,.25,9],abs=.0001)
+    assert sea[0].provenance.valid_time == DAY
+    assert sea[0].provenance.run_time is None
+    assert sea[0].provenance.original_units == 'kelvin'
+    assert sea[0].provenance.normalized_units == 'degC'
+    assert sea[0].provenance.operational is False
+    missing = query.point_fields(50.45,-46.05,DAY)
+    assert [f.value for f in missing] == [None,None,1]
+
+
+def test_nonexact_analysis_does_not_fetch_native_fields():
+    query, requests, _ = service()
+    with pytest.raises(OSTIAUnavailable):
+        query.query(DAY.replace(hour=1))
+    assert requests == ['/.zmetadata','/time/0']
+
+
+def test_expiry_failed_refresh_and_defensive_copy():
+    query, requests, clock = service()
+    data = query.query(DAY)
+    data['valid_time'] = 'invalid'
+    assert query.query(DAY)['valid_time'] == DAY.isoformat()
+    query.client = _client(lambda request: httpx.Response(404))
+    with pytest.raises(OSTIAUnavailable):
+        query.query(DAY, refresh=True)
+    assert query.query(DAY)['valid_time'] == DAY.isoformat()
+    clock[0] = 301
+    with pytest.raises(OSTIAUnavailable):
+        query.query(DAY)
+
+
+@pytest.mark.parametrize('lat,lon',[(44,-53),(47,float('nan')),(True,-53)])
+def test_invalid_point_performs_no_io(lat,lon):
+    query, requests, _ = service()
+    with pytest.raises(ValueError):
+        query.point_fields(lat,lon,DAY)
+    assert not requests
+
+
+def test_actual_linux_bounded_worker_replays_native_fixture():
+    import sys
+    from ingest.isolation import run_bounded_process
+    from weather_api.ostia_query import LIMITS
+    code = "import runpy; from test_ostia_query import service; import ingest.http; ingest.http.PoliteClient=lambda **kwargs: service()[0].client; runpy.run_module('weather_api.ostia_query_worker', run_name='__main__')"
+    result = run_bounded_process(command=[sys.executable, '-c', code, '{output}'], stdin=DAY.isoformat().encode(), destination=None, limits=LIMITS, timeout_seconds=30, require_output=False)
+    data = json.loads(result.stdout)
+    assert data['valid_time'] == DAY.isoformat()
+    assert data['sea_surface_temperature_mask'] == [[2, 1], [9, 1]]
+    assert data['sea_surface_temperature'][1][1] is None
+
+
+def test_identical_misses_coalesce(monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    import weather_api.ostia_query as module
+    query, requests, _ = service()
+    entered, release = threading.Event(), threading.Event()
+    original = module.acquire
+    def delayed(*args):
+        entered.set()
+        assert release.wait(5)
+        return original(*args)
+    monkeypatch.setattr(module, 'acquire', delayed)
+    with ThreadPoolExecutor(2) as pool:
+        first = pool.submit(query.query, DAY)
+        assert entered.wait(5)
+        second = pool.submit(query.query, DAY)
+        release.set()
+        assert first.result() == second.result()
+    assert len(requests) == 7
+
+
+def test_oversized_native_chunks_refused_before_field_payload(monkeypatch):
+    import weather_api.ostia_query as module
+    query, requests, _ = service()
+    original = module.OSTIAAdapter.discover
+    def changed(self, window):
+        candidates = original(self, window)
+        candidates[0].detail['metadata']['metadata']['analysed_sst/.zarray']['chunks'] = [1, 100000, 100000]
+        return candidates
+    monkeypatch.setattr(module.OSTIAAdapter, 'discover', changed)
+    with pytest.raises(OSTIAUnavailable):
+        query.query(DAY)
+    assert requests == ['/.zmetadata', '/time/0']
