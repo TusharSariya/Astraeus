@@ -11,7 +11,7 @@ Contract acceptance does not check off implementation tasks.
 
 - [x] 2.1 Add `web/src/workbench/MapStack.tsx` and mount the existing `MapPanel` imagery pipeline in the stage; verify top-first order, opacity, visibility, absence retention, and URL replacement with `npm test -- --run src/workbench/MapStack.test.tsx src/MapPanel.test.tsx`.
 - [x] 2.2 Add the Nowcast built-in and family legend presentation without changing frame requests; verify missing default members remain explicit and no substitute request occurs with `npm test -- --run src/workbench/MapStack.test.tsx src/api.test.ts`.
-- [ ] 2.3 Add the one-line Map disclosure and complete detail table using returned draw states; verify generated, partial, nothing-drawn, and truncation cases with `npm test -- --run src/workbench/MapDisclosure.test.tsx`.
+- [x] 2.3 Add the one-line Map disclosure and complete detail table using returned draw states; verify generated, partial, nothing-drawn, shader failure and bounded exception count with `npm test -- --run src/MapPanel.test.tsx src/workbench/MapEvidenceDetails.test.tsx`. The disclosure lives in the existing `MapPanel.tsx`; no parallel renderer is introduced.
 
 ## 3. Shared provenance and accessibility
 
@@ -169,3 +169,32 @@ independent-agent or physical accessibility review is claimed.
 No API, source adapter, registry status, acquisition or scientific rule changes.
 Task 5.6 remains open for Activity, shared Map inspection/tokens and assembled
 verification. Source completion still belongs to #70 after the desktop milestone.
+
+
+## September 7 Map native inspection checkpoint
+
+Actual GeoJSON picks and the semantic feature table share one inspector action.
+Returned station properties retain native zero, null, units, QC and geometry;
+reference location pickers remain distinct from reports. Image receipts expose
+actual frame inputs, returned metadata, method/version and capture identity,
+with explicit absence. Actual admitted generated display sets the generated
+glyph/label independently of the layer catalogue. No raster pixel becomes a
+numeric observation, and no generated picture enters a native value path.
+
+Receipts exclude hidden/zero-opacity layers and failed renderers. Open native
+feature inspectors withhold old values when the feature disappears or Focus
+changes. Exact Focus identity also prevents retained Map receipts from appearing
+at a different location/instant when switching views. The one-line disclosure
+uses a bounded exception count; its table exposes all requested layers and actual
+times without truncating the reasons.
+
+Verification: 496 full client tests, 71 final focused tests, production build, strict desktop OpenSpec
+and specctl; `web/scripts/prove-desktop-map-inspection.mjs` verifies actual feature
+inspection, source identity, zero/null, keyboard entry/return and removed-opener
+fallback, hide/Focus invalidation, three themes and 200% text zoom. Receipts and
+screenshots stay outside Git at `/tmp/astraeus-map-inspection-proof/`. Generated
+method/header and shader-failure verification uses fixed component fixtures;
+this proof does not claim new live provider retrieval or a live generated raster.
+Separate main-agent review corrected hidden/failed draw receipts and preserved
+missing version/capture values. Physical screen-reader/outdoor proof, provider
+tokens, Activity and the assembled five-view milestone remain open.

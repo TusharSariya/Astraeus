@@ -113,7 +113,7 @@ vi.mock('@deck.gl/layers', () => ({
   // The label layer's props are recorded: whether a glyph outside ASCII renders
   // at all is decided by `characterSet`, and that is invisible without WebGL.
   TextLayer: class { constructor(props: unknown) { (globalThis as Record<string, unknown>).__textLayerProps = props } },
-  GeoJsonLayer: class { constructor(_props: unknown) {} },
+  GeoJsonLayer: class { constructor(props: unknown) { (globalThis as Record<string, unknown>).__featureLayerProps = props } },
 }))
 
 vi.mock('@deck.gl/extensions', () => ({
@@ -181,6 +181,18 @@ const panel = (props: Partial<React.ComponentProps<typeof MapPanel>> = {}) => (
 describe('MapPanel layer stack', () => {
   beforeEach(() => { (globalThis as Record<string, unknown>).__mapControls = [] })
   afterEach(() => vi.unstubAllGlobals())
+
+  it('routes an actual feature pick to its shared semantic inspection action', async () => {
+    const inspect = vi.fn(), receipt = vi.fn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [-52.7, 47.5] }, properties: { station_id: 'FIXTURE', value: 0 } }] }))))
+    render(panel({ onFeatureInspect: inspect, onDrawEvidence: receipt }))
+    await waitFor(() => expect(receipt.mock.lastCall?.[0][0].drawn).toBe(true))
+    const props = (globalThis as Record<string, unknown>).__featureLayerProps as { onClick: (info: { index: number }) => void }
+    props.onClick({ index: 0 })
+    expect(inspect).toHaveBeenCalledWith(radarLayer.id, 0)
+    expect(receipt.mock.lastCall?.[0][0].features[0].properties).toEqual({ station_id: 'FIXTURE', value: 0 })
+    expect(receipt.mock.lastCall?.[0][0].selection.instant).toBe(NOW.getTime())
+  })
 
   it('reports the failure and still surfaces the layer semantics when features cannot be read', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
@@ -428,7 +440,7 @@ describe('MapPanel imagery', () => {
     rerender(proxiedPanel({ compactDisclosure: true, runRefusals: refusals }))
     await waitFor(() => expect((globalThis as Record<string, unknown>).__mapLayersNow).toEqual([]))
     expect(screen.getByText(/0 of 1 layers drawn/)).toBeInTheDocument()
-    expect(screen.getByText(/Pinned old. This Map delivery path/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Pinned old. This Map delivery path/)).toHaveLength(2)
   })
 
   it('draws the retrieved image beneath the basemap labels and names what it retrieved', async () => {
@@ -680,11 +692,12 @@ describe('MapPanel imagery', () => {
   })
 
   it('discloses a generative residual picture as GENERATED and names the served options', async () => {
-    vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse({ 'X-Weather-Interpolation-Method': 'residual-generative', 'X-Weather-Flow-Shader': 'residual-advection' })))
+    const receipt = vi.fn()
+    vi.stubGlobal('fetch', routedFetch(() => renderedRaster(), undefined, () => flowResponse({ 'X-Weather-Interpolation-Method': 'residual-generative', 'X-Weather-Flow-Shader': 'residual-advection', 'X-Weather-Derivation-Version': 'fixture-v1', 'X-Weather-Capture-Id': 'fixture-capture' })))
     render(strataPanel({
       interpolate: true,
       validTime: new Date('2026-08-30T04:30:00Z'),
-      interpolationMethod: 'residual-generative',
+      interpolationMethod: 'residual-generative', onDrawEvidence: receipt,
       methodStatus: { [strataBlend.id]: { reducedToDefault: false, reasons: [], applied: ['sundqvist', 'omega'], expectedShader: 'residual-advection' } },
     }))
     await waitFor(() => {
@@ -693,6 +706,18 @@ describe('MapPanel imagery', () => {
       expect(note).toMatch(/interpolation method "residual-generative"/)
       expect(note).not.toMatch(/reduced to the default/)
     })
+    expect(receipt.mock.lastCall?.[0][0]).toMatchObject({ drawn: true, evidenceClass: 'generated_display', display: { usedMethod: 'residual-generative', methodVersion: 'fixture-v1', captureIdentity: 'fixture-capture', inputFrames: ['2026-08-30T04:00:00Z', '2026-08-30T05:00:00Z'] } })
+  })
+
+  it('does not claim a frame or generated display when the actual shader fails', async () => {
+    const error = vi.spyOn(FlowBlendLayer.prototype, 'renderError', 'get').mockReturnValue('fixed shader failure')
+    const receipt = vi.fn()
+    try {
+      vi.stubGlobal('fetch', routedFetch(() => renderedRaster()))
+      render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z'), onDrawEvidence: receipt }))
+      await waitFor(() => expect(receipt.mock.lastCall?.[0][0].description).toContain('fixed shader failure'))
+      expect(receipt.mock.lastCall?.[0][0]).toMatchObject({ drawn: false, times: [], images: [] })
+    } finally { error.mockRestore() }
   })
 
   it('describes the non-generative residual as staying between the two retrieved values', async () => {

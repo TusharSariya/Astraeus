@@ -161,6 +161,9 @@ describe('the interpolation bench', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['x']), { status: 200, headers })))
     const result = await loadLayerFlow(rasterLayer, { ...bounds, from: 'a', to: 'b' }, undefined, 'visibility-blend')
     expect(result.flow?.method).toBe('baseline')
+    expect(result.flow?.responseHeaders?.['Interpolation-Method']).toBe('baseline')
+    expect(result.flow?.responseHeaders?.['Derivation-Version']).toBeNull()
+    expect(result.flow?.responseHeaders?.['Capture-Id']).toBeNull()
     vi.unstubAllGlobals()
   })
 
@@ -259,6 +262,14 @@ describe('raster retrieval', () => {
     ;(URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn()
   })
   afterEach(() => vi.unstubAllGlobals())
+
+  it('retains returned image derivation metadata without inventing missing capture identity', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(pngBody(), { status: 200, headers: { ...rasterHeaders(), 'X-Weather-Derivation-Version': 'fixture-render-v2', 'X-Weather-Derivation': 'fixture sampled rendering' } })))
+    const result = await loadLayerRaster(rasterLayer, bounds)
+    expect(result.image?.provenance.responseHeaders?.['Derivation-Version']).toBe('fixture-render-v2')
+    expect(result.image?.provenance.responseHeaders?.Derivation).toBe('fixture sampled rendering')
+    expect(result.image?.provenance.responseHeaders?.['Capture-Id']).toBeNull()
+  })
 
   it('refuses to draw bytes that carry no retrieval provenance', async () => {
     const headers = rasterHeaders()

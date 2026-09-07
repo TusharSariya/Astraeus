@@ -187,3 +187,9 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 
 .bench-run-pin { max-width: 30rem; overflow-wrap: anywhere; }
 .bench-run-pin[open] { flex-basis: 100%; max-width: 100%; }
+
+.bench-map-evidence { padding: 1rem; overflow: auto; }
+.bench-map-evidence table { width: 100%; border-collapse: collapse; }
+.bench-map-evidence th, .bench-map-evidence td { padding: .5rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.bench-map-evidence pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .8rem; }
+.bench-map-evidence summary { min-height: 44px; }

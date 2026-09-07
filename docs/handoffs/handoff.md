@@ -20,6 +20,27 @@ batch afterward, recording field residuals and evidence-backed access dispositio
 No view or source is completed by contract acceptance. Keep timestamp-driven
 queries and finite caches; no persistent snapshot infrastructure is required.
 
+## Map native inspection checkpoint, September 7, 2026
+
+Sources selection #286 merged as `a0e35947`. The current isolated batch is
+`execution/desktop-map-inspection`, `/tmp/astraeus-desktop-map-inspection`.
+Map feature picks and the semantic native report table share the provenance
+inspector. Actual image inputs/returned method headers are inspectable, missing
+capture/version remain absent, and actual generated display has its own class.
+Hidden/zero-opacity/failed draws cannot claim real frame times. Open feature
+inspection clears old values across hiding or Focus changes; reference markers
+remain location pickers rather than station measurements.
+
+496 full client tests, 71 final focused tests, build, fixed Chrome proof, strict desktop OpenSpec and
+specctl pass. The proof covers three themes, 200% text zoom, exact native
+zero/null, keyboard focus return, removed opener fallback and stale inspector
+clearing. `/tmp/astraeus-map-inspection-proof/` contains screenshots and receipt
+outside Git. Generated draw/header and renderer failure use component fixtures;
+no new live source, physical screen-reader or outdoor proof is claimed.
+Main-agent review only. Continue canonical provider tokens and assembled desktop
+verification; Activity aggregation remains dependent on the recorded budget
+question. Do not promote #38 or any #70 source on this partial milestone.
+
 ## Sources selection implementation checkpoint, September 7, 2026
 
 Named runs #285 merged as `2711d785`. Current isolated batch is
