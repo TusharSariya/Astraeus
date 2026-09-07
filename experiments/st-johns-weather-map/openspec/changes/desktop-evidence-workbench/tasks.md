@@ -15,13 +15,13 @@ Contract acceptance does not check off implementation tasks.
 
 ## 3. Shared provenance and accessibility
 
-- [ ] 3.1 Add `web/src/workbench/EvidenceGlyph.tsx`, `EvidenceRow.tsx`, and `EvidenceInspector.tsx` with response-owned sentences and explicit missing-property states; verify retrieved, generated, null, blocked, aged-out, refused, and unknown-class fixtures with `npm test -- --run src/workbench/EvidenceInspector.test.tsx`.
+- [x] 3.1 Implement shared glyph/row/inspector presentation in `web/src/workbench/EvidenceInspector.tsx` and `ReturnedValue.tsx` with response-owned sentences and explicit missing-property states; verify retrieved, generated, null, blocked, aged-out, refused, and unknown-class fixtures with `npm test -- --run src/workbench/EvidenceInspector.test.tsx`.
 - [x] 3.2 Preserve opener and logical focus through inspector open, Close, scoped Escape, rerender, and opener removal; verify keyboard behavior with `npm test -- --run src/workbench/inspectorReturn.test.tsx src/workbench/WorkbenchShell.test.tsx`.
-- [ ] 3.3 Add Map and timeline semantic alternatives plus concise status announcements; verify accessible names, table content, and live-region updates with `npm test -- --run src/workbench/WorkbenchShell.test.tsx src/workbench/MapStack.test.tsx`.
+- [x] 3.3 Add Map and timeline semantic alternatives plus concise status announcements; verify accessible names, table content, and live-region updates with `npm test -- --run src/workbench/WorkbenchShell.test.tsx src/workbench/MapStack.test.tsx`.
 
 ## 4. Styling and deterministic acceptance
 
-- [ ] 4.1 Apply the selected desktop tokens and Bench layout in `web/src/styles.css`, including visible focus, non-colour state cues, 200% text zoom, dark and red-night themes, and reduced-motion handling; verify Chromium screenshots and keyboard order against fixed fixtures at 1440x900 and 200% zoom.
+- [x] 4.1 Apply the selected desktop tokens and Bench layout in `web/src/workbench/bench.css`, including visible focus, non-colour state cues, 200% text zoom, dark and red-night themes, and reduced-motion handling; verify Chromium screenshots and keyboard order against fixed fixtures at 1440x900 and 200% zoom.
 - [x] 4.2 Run the focused client suite and production build with `npm test -- --run src/workbench src/MapPanel.test.tsx src/api.test.ts && npm run build` from `experiments/st-johns-weather-map/web`.
 - [x] 4.3 Run the fixture-backed Chromium procedure with a fixed clock and confirm zero live-provider requests, all controls keyboard-reachable, inspector focus entry/return, and identical visual/text absence reasons; record browser coordinates and results in the issue without claiming a screen-reader pass.
 - [x] 4.4 Run `npx -y @fission-ai/openspec@latest validate desktop-evidence-workbench --strict` from `experiments/st-johns-weather-map` and `uv run --project tools/specs python tools/specs/specctl.py validate` from the repository root before implementation handoff.
@@ -30,10 +30,10 @@ Contract acceptance does not check off implementation tasks.
 
 - [x] 5.1 Implement Series Overview and temporary Compare using the approved bounded API interactions; verify native sparse times, compatible/incompatible axes, unsampled versus checked gaps, and Focus/selection continuity with fixed responses.
 - [x] 5.2 Implement Sky Horizon instrument; verify registered/unsurveyed versus arbitrary-point horizons, scalar cloud gauges, missing directional geometry, Kp/outlook separation and explicit camera absence.
-- [ ] 5.3 Implement Activity Operational stack using the owning server verdict contract; verify four lanes, one inline expansion, hard-stop ordering, coverage/withholding, provenance and Saved stack absence. Do not implement client scoring.
+- [x] 5.3 Implement Activity Operational stack using the owning server verdict contract; verify four lanes, one inline expansion, hard-stop ordering, coverage/withholding, provenance and Saved stack absence. Do not implement client scoring.
 - [x] 5.4 Implement Sources Ledger, Family finder and Coverage lanes; verify filters and inspector survive switching, declarations never imply retrieved coverage, and unmapped/unknown/expired evidence stays inspectable.
-- [ ] 5.5 Apply canonical #41 tokens across all five views; verify stable provider slots, red-on-black night, non-colour state distinctions and reduced motion.
-- [ ] 5.6 Demonstrate all five selected view bodies with fixed-clock browser fixtures, shared Focus and provenance, failure/absence states and keyboard entry/return. Record unavailable backend capabilities separately; do not close full-view obligations on shell-only evidence.
+- [x] 5.5 Apply canonical #41 tokens across all five views; verify stable provider slots, red-on-black night, non-colour state distinctions and reduced motion.
+- [x] 5.6 Demonstrate all five selected view bodies with fixed-clock browser fixtures, shared Focus and provenance, failure/absence states and keyboard entry/return. Record unavailable backend capabilities separately; do not close full-view obligations on shell-only evidence.
 
 ## September 7 Bench implementation checkpoint
 
@@ -391,3 +391,41 @@ outdoor/red-night testing remains #65, and Activity gets its own audit when wire
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; accepted desktop requirements
 for shared provenance, keyboard context, semantic alternatives, native Series,
 Sky, Sources and the Bench shell.
+
+
+## September 7 Activity and assembled five-view checkpoint
+
+Activity now uses the server-owned versioned evaluator across all four selected
+lanes, one inline expansion, hard stops before grades, native strips, geometry
+windows, profile Saved stacks, Series jumps and shared readable inspection.
+Overrides remain browser-local unless explicitly shared; invalid replacements,
+Focus changes and fixed expiry withhold old scores and provenance. Planning
+uses bands and each profile's actual driving-source native cadence. Missing
+current evidence retains its fixed profile weight and reduces coverage.
+
+Tasks 3.1/3.3/4.1 reconcile the existing shared implementation and prior keyboard
+proofs, rather than requiring redundant files. Tasks 5.3/5.5/5.6 now have body-level
+fixed-clock browser evidence across all five views, including Activity entry and
+return, fullscreen/dock remount, native holes, three themes, 200% text zoom,
+reduced motion, failed replacement and expiry without automatic reacquisition.
+The evaluator fixture is generated from actual v2 profiles and synthetic inputs;
+external traffic is blocked. This demonstrates the assembled desktop, not every
+live provider or an operational safety product.
+
+Verification: 2,251 API tests passed and 53 skipped; 510 client tests passed
+(including eight GPU cases), production build and runtime import passed. Both
+changed strict OpenSpec packages and repository specctl pass. Browser procedures:
+`web/scripts/prove-desktop-activity.mjs` and `prove-desktop-access.mjs`; receipts
+and screenshots remain outside Git at `/tmp/astraeus-desktop-activity-proof/`
+and `/tmp/activity-desktop-regression/`. Review was a separate main-agent pass.
+The API implementation evidence records finite bounds and field dispositions.
+
+Remaining: missing live lightning/rain/CAP point evidence, named replacement
+fields, sector queries and Sun azimuth; DE442 requires its configured kernel.
+Selected PM2.5 stack membership remains declared/unserved until #172. No new
+source admission is claimed. Actual screen-reader testing remains #69 and outdoor
+red-night testing #65; camera placement, phone and deferred science remain separate.
+The source Wayfinder #70 remains the subsequent queue.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; accepted Activity verdict
+contract and desktop workbench shared Focus/provenance/five-view requirements.

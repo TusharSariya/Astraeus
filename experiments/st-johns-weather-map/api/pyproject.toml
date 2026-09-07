@@ -10,6 +10,9 @@ dependencies = [
   "cfgrib==0.9.15.1",
   "fastapi==0.116.1",
   "httpx==0.28.1",
+  # Public site/camera and Activity registries validate at API startup/read time.
+  "jsonschema==4.25.1",
+  "pyyaml==6.0.3",
   "metpy==1.7.1",
   "netcdf4==1.7.2",
   "numpy==2.5.2",
@@ -40,12 +43,7 @@ derive = [
 
 [dependency-groups]
 dev = [
-  # The registry audits the tests import (registry/camera_audit.py and the
-  # rest) validate YAML records against JSON Schema, the same pins as
-  # registry/requirements.txt.
-  "jsonschema==4.25.1",
   "pytest==8.4.1",
-  "pyyaml==6.0.3",
 ]
 
 [tool.pytest.ini_options]

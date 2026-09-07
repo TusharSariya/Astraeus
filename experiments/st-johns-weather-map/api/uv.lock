@@ -37,6 +37,7 @@ dependencies = [
     { name = "cfgrib" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "metpy" },
     { name = "netcdf4" },
     { name = "numpy" },
@@ -44,6 +45,7 @@ dependencies = [
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pyproj" },
+    { name = "pyyaml" },
     { name = "scipy" },
     { name = "skyfield" },
     { name = "uvicorn" },
@@ -61,9 +63,7 @@ grib = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "jsonschema" },
     { name = "pytest" },
-    { name = "pyyaml" },
 ]
 
 [package.metadata]
@@ -73,6 +73,7 @@ requires-dist = [
     { name = "eccodeslib", marker = "extra == 'grib'", specifier = "==2.48.0.26" },
     { name = "fastapi", specifier = "==0.116.1" },
     { name = "httpx", specifier = "==0.28.1" },
+    { name = "jsonschema", specifier = "==4.25.1" },
     { name = "metpy", specifier = "==1.7.1" },
     { name = "netcdf4", specifier = "==1.7.2" },
     { name = "numpy", specifier = "==2.5.2" },
@@ -81,6 +82,7 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.4" },
     { name = "pydantic", specifier = "==2.11.7" },
     { name = "pyproj", specifier = "==3.7.2" },
+    { name = "pyyaml", specifier = "==6.0.3" },
     { name = "scipy", specifier = "==1.18.1" },
     { name = "skyfield", specifier = "==1.55" },
     { name = "uvicorn", specifier = "==0.35.0" },
@@ -90,11 +92,7 @@ requires-dist = [
 provides-extras = ["grib", "derive"]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "jsonschema", specifier = "==4.25.1" },
-    { name = "pytest", specifier = "==8.4.1" },
-    { name = "pyyaml", specifier = "==6.0.3" },
-]
+dev = [{ name = "pytest", specifier = "==8.4.1" }]
 
 [[package]]
 name = "attrs"

@@ -85,6 +85,7 @@ class SkyGeometry:
     sun_altitude_deg: float
     moon_altitude_deg: float
     core_altitude_deg: float
+    sun_samples: tuple[tuple[datetime, float], ...] = ()
 
 
 def derivation() -> str:
@@ -212,6 +213,7 @@ def sky_geometry(latitude: float, longitude: float, window_start: datetime, wind
     return SkyGeometry(
         window_start=window_start,
         window_end=window_end,
+        sun_samples=tuple(zip(instants, map(float, sun_alt))),
         twilight_bands=bands,
         moon=MoonFacts(
             rise=rises[0] if rises else None,

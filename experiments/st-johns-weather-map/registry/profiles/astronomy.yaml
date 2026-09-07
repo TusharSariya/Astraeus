@@ -1,5 +1,5 @@
 id: astronomy
-version: 1
+version: 2
 title: Astronomy
 families:
 - cloud_cover
@@ -22,55 +22,84 @@ thresholds:
     default: 1000.0
     units: m
     comparison: le
-  cloud_high_thresh:
+  astronomy_high_cloud_start:
     field: cloud_high
-    default: 30.0
+    default: 10
     units: percent
     comparison: ge
-  transparency_thresh:
-    field: transparency_extinction
-    default: 0.3
-    units: mag airmass-1
+  astronomy_high_cloud_full:
+    field: cloud_high
+    default: 90
+    units: percent
     comparison: ge
-  seeing_thresh:
-    field: seeing_arcsec
-    default: 3.0
-    units: arcsec
+  astronomy_middle_cloud_start:
+    field: cloud_middle
+    default: 10
+    units: percent
     comparison: ge
-  pwv_thresh:
+  astronomy_middle_cloud_full:
+    field: cloud_middle
+    default: 70
+    units: percent
+    comparison: ge
+  astronomy_low_cloud_start:
+    field: cloud_low
+    default: 10
+    units: percent
+    comparison: ge
+  astronomy_low_cloud_full:
+    field: cloud_low
+    default: 50
+    units: percent
+    comparison: ge
+  astronomy_water_vapour_start:
     field: precipitable_water
-    default: 20.0
+    default: 10
     units: kg m-2
     comparison: ge
-  aod_thresh:
-    field: aerosol_optical_depth_550nm
+  astronomy_water_vapour_full:
+    field: precipitable_water
+    default: 30
+    units: kg m-2
+    comparison: ge
+  astronomy_moon_start:
+    field: moon_illuminated_fraction
     default: 0.2
     units: '1'
     comparison: ge
-  moon_thresh:
+  astronomy_moon_full:
     field: moon_illuminated_fraction
-    default: 0.5
+    default: 1
     units: '1'
     comparison: ge
-  wind_thresh:
+  astronomy_wind_start:
     field: wind_speed_10m
-    default: 10.0
+    default: 5.4
     units: m s-1
     comparison: ge
-  dew_point_thresh:
-    field: dew_point_2m
-    default: 10.0
-    units: degC
+  astronomy_wind_full:
+    field: wind_speed_10m
+    default: 15
+    units: m s-1
+    comparison: ge
+  astronomy_humidity_start:
+    field: relative_humidity_2m
+    default: 70
+    units: percent
+    comparison: ge
+  astronomy_humidity_full:
+    field: relative_humidity_2m
+    default: 90
+    units: percent
     comparison: ge
 weights:
-  cloud: 0.2
-  transparency: 0.15
-  seeing: 0.15
-  humidity: 0.1
-  air_quality: 0.1
-  moon: 0.15
-  wind: 0.1
-  dew_point: 0.05
+  high_cloud: 0.2
+  middle_cloud: 0.1
+  low_cloud: 0.15
+  water_vapour: 0.05
+  moon: 0.2
+  wind: 0.15
+  humidity: 0.15
 hard_stops:
 - name: overcast
   field: total_cloud_opacity
@@ -79,38 +108,70 @@ hard_stops:
   field: visibility
   threshold: vis_min
 graded_criteria:
-- name: cloud_north_high
+- name: high_cloud
   field: cloud_high
-  threshold: cloud_high_thresh
-  weight: cloud
-- name: transparency_load
-  field: transparency_extinction
-  threshold: transparency_thresh
-  weight: transparency
-- name: seeing_load
-  field: seeing_arcsec
-  threshold: seeing_thresh
-  weight: seeing
-- name: precipitable_water_load
+  weight: high_cloud
+  grade:
+    curve: linear
+    parameters:
+      start: astronomy_high_cloud_start
+      full: astronomy_high_cloud_full
+    comparison: ge
+- name: middle_cloud
+  field: cloud_middle
+  weight: middle_cloud
+  grade:
+    curve: linear
+    parameters:
+      start: astronomy_middle_cloud_start
+      full: astronomy_middle_cloud_full
+    comparison: ge
+- name: low_cloud
+  field: cloud_low
+  weight: low_cloud
+  grade:
+    curve: linear
+    parameters:
+      start: astronomy_low_cloud_start
+      full: astronomy_low_cloud_full
+    comparison: ge
+- name: water_vapour
   field: precipitable_water
-  threshold: pwv_thresh
-  weight: humidity
-- name: aerosol_load
-  field: aerosol_optical_depth_550nm
-  threshold: aod_thresh
-  weight: air_quality
-- name: moon_brightness
+  weight: water_vapour
+  grade:
+    curve: linear
+    parameters:
+      start: astronomy_water_vapour_start
+      full: astronomy_water_vapour_full
+    comparison: ge
+- name: moon
   field: moon_illuminated_fraction
-  threshold: moon_thresh
   weight: moon
-- name: wind_load
+  grade:
+    curve: linear
+    parameters:
+      start: astronomy_moon_start
+      full: astronomy_moon_full
+    comparison: ge
+  applicability: moon_above_horizon
+- name: wind
   field: wind_speed_10m
-  threshold: wind_thresh
   weight: wind
-- name: dew_point_load
-  field: dew_point_2m
-  threshold: dew_point_thresh
-  weight: dew_point
+  grade:
+    curve: linear
+    parameters:
+      start: astronomy_wind_start
+      full: astronomy_wind_full
+    comparison: ge
+- name: humidity
+  field: relative_humidity_2m
+  weight: humidity
+  grade:
+    curve: linear
+    parameters:
+      start: astronomy_humidity_start
+      full: astronomy_humidity_full
+    comparison: ge
 window:
   rule: astronomical_night
   geometry_entry: de442_sun_moon_geometry
@@ -129,3 +190,59 @@ blocked_fields:
   terms: Falchi et al. 2016 world atlas, CC BY-NC 4.0 non-commercial clause
   request: null
 wanted_not_catalogued: []
+intended_weights:
+  high_cloud: 0.2
+  middle_cloud: 0.1
+  low_cloud: 0.15
+  water_vapour: 0.05
+  moon: 0.2
+  wind: 0.15
+  humidity: 0.15
+admitted_paths:
+  cloud_high:
+  - noaa-gfs
+  cloud_middle:
+  - noaa-gfs
+  cloud_low:
+  - noaa-gfs
+  precipitable_water:
+  - noaa-gfs
+  moon_illuminated_fraction:
+  - nasa-jpl-de442
+  wind_speed_10m:
+  - eccc-hrdps
+  - eccc-rdps
+  - eccc-gdps
+  - noaa-gfs
+  relative_humidity_2m:
+  - eccc-hrdps
+  - noaa-gfs
+admission_residuals:
+- field: transparency_seeing_moon_sky_brightening_dew_point_depression
+  reason: Replacement inputs and methods not admitted; no AOD duplicate
+  role: 'Replacement budget #64: cloud .35, extinction .15, seeing .10, PWV .05, Moon
+    sky brightening .15, wind .10, dew-point depression .10'
+- field: precipitation_on_optics_lightning_hold
+  reason: Precipitation/optics and 30-minute lightning contracts not verified
+  role: Future hard stops; no activation
+- field: eccc_seeing_transparency_classes
+  reason: Integer-to-class mappings are not verified
+  role: Potential temporary proxies only after mapping verification
+- field: planetary_lunar_deep_sky_milky_way_meteor_satellite_trail_winter_planning_horizon
+  reason: Named variants are not base-profile losses; returned geometric opportunities
+    remain in Sky
+  role: Variants and opportunity displays
+coverage_floor: 0.6
+saved_stack:
+- id: eccc-hrdps-surface-total-cloud
+  opacity: 0.85
+- id: noaa-gfs-demand-cloud-high
+  opacity: 0.85
+- id: noaa-gfs-demand-cloud-middle
+  opacity: 0.85
+- id: noaa-gfs-demand-cloud-low
+  opacity: 0.85
+- id: geomet-live-hrdps-weong-fog-liquid
+  opacity: 0.85
+- id: geomet-live-goes-east-nightir-2km
+  opacity: 0.85

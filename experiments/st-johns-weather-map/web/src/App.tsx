@@ -1,3 +1,4 @@
+import { useActivity, activityEvidence, type ActivityResponse } from './workbench/ActivityView'
 import { captureInspectorReturn, restoreInspectorReturn, type InspectorReturn } from './workbench/inspectorReturn'
 import { MapSamplesLink, MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
 import { mapRunRefusals } from './workbench/layerIdentity'
@@ -1828,12 +1829,23 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   }, [catalog, sourceStatuses, snapshot, layers, drawn, currentSeriesEvidence])
   const sourcesView = useSourcesView({ nativeSelection: currentSeriesEvidence, catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
     instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
-  const nativeSeries = useNativeSeries({ location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
+  const [activityResponse, setActivityResponse] = useState<ActivityResponse | null>(null)
+  const [activitySeries, setActivitySeries] = useState<{ field: string; source: string; revision: number } | null>(null)
+  const nativeSeries = useNativeSeries({ jumpTo: activitySeries, location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
     onEvidence: setSeriesEvidence, enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
     focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
     onRun: (source, run) => setRunChoices((current) => ({ ...current, [source]: run })),
     onLatest: (source) => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next }),
   })
+  const activity = useActivity({ windowEnd: windowEndMs, location, instant: selectedMs, siteId: site,
+    enabled: !legacyOpen && (view === 'Activity' || dock === 'Activity'), moving: playing,
+    focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude),
+    onInspect: inspect, onEvidence: setActivityResponse,
+    onInstant: value => { pausePlayback(); setSelectedMs(value) },
+    onStack: stack => { setSelections(stack); setView('Map'); if (dock === 'Map') setDock(null) },
+    onSeries: (field, source) => { setActivitySeries({ field, source, revision: Date.now() }); setView('Series'); if (dock === 'Series') setDock(null) },
+  })
+  useEffect(() => { setInspected(current => current?.key.startsWith('activity:') ? activityEvidence(current.key, activityResponse) : current) }, [activityResponse])
   const skyProps = useMemo(() => ({
     site: registeredFocus && registeredFocus.latitude === location.latitude && registeredFocus.longitude === location.longitude ? registeredFocus : null,
     registryVersion: registeredSites?.version ?? null, fields: snapshot.servedFields,
@@ -1844,7 +1856,6 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   useEffect(() => { setInspected(current => current?.key.startsWith('sky:') ? skyEvidence(current.key, skyProps) : current) }, [skyProps])
   if (legacyOpen) return <><button className="return-bench" onClick={() => setLegacyOpen(false)}>Return to desktop Bench</button>{legacy}</>
   const ledger = <EvidenceLedger rows={snapshot.servedFields.filter((field) => !runChoices[field.attribution.sourceId ?? ''] || runChoices[field.attribution.sourceId ?? ''] === 'latest')} onInspect={inspect} />
-  const migrationNotice = <p className="bench-migration">The selected view is being assembled. Current response-backed panels remain available in Existing evidence panels.</p>
   return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock}
     focus={<FocusBar location={location} site={site} registry={registeredSites} registryError={registryError} nearest={nearestSite} onSite={setSite} instant={selectedMs} liveNow={liveNow}
       onPoint={(point) => { setSite(null); setLocation(point) }} onInstant={(value) => { pausePlayback(); setSelectedMs(value) }} onNow={() => { pausePlayback(); setSelectedMsState(reference.getTime()); setLiveNow(true) }}>
@@ -1860,7 +1871,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       Map: <><MapSamplesLink /><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
       Series: nativeSeries,
       Sky: <SkyView {...skyProps} />,
-      Activity: <>{migrationNotice}<p>Server profile verdicts are not wired into these lanes yet. No score is calculated by this client.</p></>,
+      Activity: activity,
       Sources: sourcesView,
     }} />
 

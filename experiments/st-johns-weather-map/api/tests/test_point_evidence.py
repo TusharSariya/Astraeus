@@ -791,8 +791,9 @@ def test_the_layer_index_names_its_aged_out_sources(empty_live_store):
 
     payload = _client.get(f"{PREFIX}/layers").json()
 
-    assert payload["data_mode"] == "unavailable"
-    assert payload["layers"] == []
+    assert payload["data_mode"] == "live"
+    assert {layer['id'] for layer in payload['layers']} == {'noaa-swpc-aurora-oval', 'eccc-aqhi-demand-observations', 'eccc-swob-demand-observations'}
+    assert all(layer['times'] == [] for layer in payload['layers'])
     assert datetime.fromisoformat(payload["aged_out_sources"]["eccc-hrdps"]) == HELD_UNTIL
 
 

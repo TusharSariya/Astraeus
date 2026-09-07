@@ -434,6 +434,15 @@ class GFSQueryCoordinator:
         """Compatibility wrapper for the first GFS demand raster."""
         return self.cloud_raster(selected_time, layer_id="noaa-gfs-demand-total-cloud", bounds=bounds, width=width, height=height, crs=crs)
 
+    def native_resolution_seconds(self, selected_time: datetime, end: datetime) -> int:
+        """Use the same producer lead boundary as exact GFS acquisition."""
+        from ingest.adapters.noaa_s3 import GFS_HOURLY_LEAD_LIMIT
+        with self._candidate_lock:
+            candidate = self._discover()
+        if candidate.run_time is None:
+            raise ValueError('GFS run time unavailable')
+        return 10800 if end - candidate.run_time > timedelta(hours=GFS_HOURLY_LEAD_LIMIT + 1) else 3600
+
     def timeline_times(self, reference: datetime) -> tuple[tuple[datetime, ...], Mapping[str, object]]:
         """Return actual native frame keys from one bounded, coalesced S3 listing."""
         if reference.tzinfo is None:

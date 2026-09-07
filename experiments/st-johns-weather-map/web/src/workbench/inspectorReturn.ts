@@ -1,6 +1,6 @@
 /** Preserve the actual opener, including when the one inspector temporarily replaces a dock. */
 export function captureInspectorReturn(opener: HTMLButtonElement) {
-  const selector = ['.sources-view', '.native-series', '.sky-instrument', '.bench-map-evidence', '.bench-stack'].find(value => opener.closest(value))
+  const selector = ['.activity-view', '.sources-view', '.native-series', '.sky-instrument', '.bench-map-evidence', '.bench-stack'].find(value => opener.closest(value))
   return { opener, selector, scope: selector ? opener.closest(selector) : null, name: opener.getAttribute('aria-label') ?? opener.textContent }
 }
 export type InspectorReturn = ReturnType<typeof captureInspectorReturn>
@@ -25,5 +25,6 @@ export function restoreInspectorReturn(target: InspectorReturn | null) {
   if (target?.selector === '.sources-view' && focus(scope?.querySelector('input[type="search"]'))) return
   if (target?.selector === '.native-series' && focus(scope?.querySelector('[data-inspector-return]'))) return
   if (target?.selector === '.sky-instrument' && focus(scope?.querySelector('[data-inspector-return]'))) return
+  if (target?.selector === '.activity-view' && focus(scope?.querySelector('[data-inspector-return]'))) return
   focus(document.getElementById('bench-stage'))
 }

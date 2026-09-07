@@ -30,6 +30,7 @@ it('keeps an explicitly fixed instant equal to Now fixed, then makes Now links s
 })
 it('keeps keyboard inspection coherent across a response and theme change', async () => {
   render(<App />)
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Live API'))
   fireEvent.click(screen.getByText('Point evidence ledger'))
   const opener = await screen.findByRole('button', { name: /^Inspect temperature from noaa\-gfs/ })
   await userEvent.click(opener)
