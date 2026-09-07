@@ -1,3 +1,4 @@
+import { observationReceipt } from './observationReceipt'
 import type { ObservationUnavailable } from './types'
 import { isSourceCapability, isSourceConfiguration } from './sourceContract'
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
@@ -544,7 +545,7 @@ function observationFailures(value: unknown): ObservationUnavailable[] {
       || item.values_withheld !== true || typeof item.error_type !== 'string' || !/^[A-Za-z][A-Za-z0-9_.]{0,127}$/.test(item.error_type)) return []
     // Only the typed failure fields survive; arbitrary provider exception keys do not.
     return [{ source_id: item.source_id, reason: item.reason, error_type: item.error_type, values_withheld: true,
-      expired_acquisition: item.expired_acquisition ?? null } as ObservationUnavailable]
+      expired_acquisition: item.source_id === 'eccc-aqhi' ? observationReceipt('eccc-aqhi', item.expired_acquisition) : observationReceipt('eccc-swob', item.expired_acquisition) } as ObservationUnavailable]
   })
 }
 export function normalizePoint(point: ApiPointResponse, options: NormalizeOptions = {}): EvidenceSnapshot {
