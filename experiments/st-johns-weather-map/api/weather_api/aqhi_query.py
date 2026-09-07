@@ -15,7 +15,7 @@ from typing import Callable, Mapping
 
 import httpx
 
-from ingest.adapters.eccc_geomet import AQHI_LAYER, GEOMET_BASE_URL, GeoMetClient, avalon_probe_boxes
+from ingest.adapters.eccc_geomet import AQHI_LAYER, GeoMetClient, avalon_probe_boxes
 from ingest.isolation import ProcessAllocationLimits, run_bounded_process
 from .models import (
     AQHIAcquisition, AQHIDemandUnavailable, Coverage, DataMode, EvidenceField,
@@ -221,7 +221,7 @@ class AQHIQueryService:
             future.set_result(replacement)
             return replacement
         except BaseException as error:
-            if isinstance(error, AqhiQueryUnavailable):
+            if isinstance(error, AqhiQueryUnavailable) and self._expired_acquisition is not None:
                 error.outcome = AQHIDemandUnavailable(
                     reason="refresh_failed", error_type=type(error).__name__,
                     expired_acquisition=self._expired_acquisition,

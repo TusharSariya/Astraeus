@@ -193,6 +193,18 @@ def test_failed_expired_refresh_retains_only_bounded_receipt_and_withholds_value
     assert not hasattr(caught.value, "observations")
 
 
+def test_initial_query_failure_is_not_mislabeled_as_a_refresh():
+    service = AQHIQueryService(
+        client=mock_client(lambda _: httpx.Response(503)), clock=Clock(),
+        utcnow=lambda: SELECTED, decode=station_rows,
+    )
+    with pytest.raises(AqhiQueryUnavailable) as caught:
+        service.entry()
+    assert caught.value.outcome.reason == "query_failed"
+    assert caught.value.outcome.expired_acquisition is None
+    assert caught.value.outcome.values_withheld is True
+
+
 def test_cache_listing_never_fetches_and_expired_entry_is_not_listed():
     calls = []
     clock = Clock()
