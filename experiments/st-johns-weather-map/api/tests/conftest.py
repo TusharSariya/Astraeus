@@ -30,6 +30,7 @@ def fixture_only_deployment(monkeypatch: pytest.MonkeyPatch) -> None:
     # demand observation from ever contacting GeoMet as a side effect of an
     # otherwise unrelated API test.
     import weather_api.aqhi_query as aqhi_query
+    import weather_api.lightning_query as lightning_query
 
     class NoAqhiFixture:
         @staticmethod
@@ -41,6 +42,17 @@ def fixture_only_deployment(monkeypatch: pytest.MonkeyPatch) -> None:
             return None
 
     monkeypatch.setattr(aqhi_query, "aqhi_query_service", lambda: NoAqhiFixture())
+
+    class NoLightningFixture:
+        @staticmethod
+        def point_fields(*_args, **_kwargs):
+            raise RuntimeError("explicit fixture: no lightning demand observation")
+
+        @staticmethod
+        def cached_entries():
+            return ()
+
+    monkeypatch.setattr(lightning_query, "lightning_query_service", lambda: NoLightningFixture())
     yield
     reset_live_store()
 

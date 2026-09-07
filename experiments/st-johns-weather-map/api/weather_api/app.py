@@ -964,9 +964,11 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
             raster_available=False, legend_available=False,
         )], notices=["CAP layer listing read a fresh source-local cache entry and made no provider request"])
     from .aqhi_query import demand_layer as aqhi_demand_layer  # noqa: PLC0415
+    from .lightning_query import demand_layer as lightning_demand_layer  # noqa: PLC0415
 
     ovation_demand_layer = aurora.demand_layer(Layer, z_index=Z_INDEX_BY_KIND["raster"])
     aqhi_layer = aqhi_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
+    lightning_layer = lightning_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
     if product is not None and product.upper() == "OVATION":
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=[ovation_demand_layer],
@@ -1002,7 +1004,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     store = live_store()
     if store is None:
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, lightning_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["no live artifact store is reachable; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1012,7 +1014,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published artifacts could not be listed for the layer index")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, lightning_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1027,7 +1029,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
         # The aged-out names travel on both branches: a proxied layer is not
         # this deployment's stored evidence, so its presence says nothing about
         # whether the stored evidence aged out.
-        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, lightning_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
@@ -1035,7 +1037,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [ovation_demand_layer, aqhi_layer, lightning_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised while reading coverage; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1045,7 +1047,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     layers: list[Layer] = []
     for artifact in artifacts:
         from .gfs_query import hides_legacy_published_gfs_layer  # noqa: PLC0415
-        if artifact.source_id == "eccc-aqhi":
+        if artifact.source_id in {"eccc-aqhi", "eccc-lightning"}:
             notices.append(
                 f"{artifact.source_id}-{artifact.logical_name} is retained for audit but is not a current demand-query observation layer"
             )
@@ -1155,6 +1157,7 @@ def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
     # never fetches a provider document or implies that a native frame exists.
     layers.append(ovation_demand_layer)
     layers.append(aqhi_layer)
+    layers.append(lightning_layer)
 
     proxied, proxy_notices = _proxied_forecast_layers()
     notices.extend(proxy_notices)
@@ -1267,6 +1270,19 @@ def _live_point(
             LOGGER.info("AQHI demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
             notices.append("eccc-aqhi has no validated nearby station observation less than one hour old at or before this selection")
             if isinstance(error, AqhiQueryUnavailable):
+                unavailable.append(error.outcome)
+        try:
+            from .lightning_query import LightningQueryUnavailable, lightning_query_service  # noqa: PLC0415
+
+            lightning = lightning_query_service().point_fields(latitude, longitude, time)
+            observations.extend(lightning)
+            notices.append(
+                f"eccc-lightning exact native frame {time.isoformat()} is shown with native cell and transport provenance"
+            )
+        except Exception as error:
+            LOGGER.info("lightning demand observation unavailable for %s: %s", time.isoformat(), type(error).__name__)
+            notices.append("eccc-lightning has no validated exact provider-advertised frame for this selection")
+            if isinstance(error, LightningQueryUnavailable):
                 unavailable.append(error.outcome)
         return observations, notices, unavailable
 

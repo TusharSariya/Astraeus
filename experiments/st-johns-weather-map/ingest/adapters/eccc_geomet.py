@@ -1579,6 +1579,11 @@ class ECCCLightningGeoMetAdapter(_GeoMetPointAdapter):
     # The layer advertises three hours at PT10M, i.e. 19 intervals.
     max_time_steps = 19
 
+    def operation_bounds(self, _window: FetchWindow) -> ResourceBounds:
+        raise AdapterUnavailable(
+            "eccc-lightning scheduled ingestion is disabled; use exact-frame selected-timestamp demand queries"
+        )
+
     def discover(self, window: FetchWindow) -> list[RunCandidate]:
         client = self._geomet()
         capability = client.capabilities(LIGHTNING_LAYER)
