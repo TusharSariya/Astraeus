@@ -23,10 +23,10 @@ class NativeRunInventory:
         self._lock = threading.Lock()
         self._cached: tuple[float, tuple[RunCandidate, ...]] | None = None
 
-    def candidates(self) -> tuple[RunCandidate, ...]:
+    def candidates(self, *, refresh: bool = False) -> tuple[RunCandidate, ...]:
         with self._lock:
             elapsed = self._clock()
-            if self._cached is not None and elapsed < self._cached[0]:
+            if not refresh and self._cached is not None and elapsed < self._cached[0]:
                 return deepcopy(self._cached[1])
             reference = self._now()
             declared = self._discover(FetchWindow(now=reference, back_hours=24, forward_hours=0))
@@ -40,8 +40,8 @@ class NativeRunInventory:
             self._cached = (self._clock() + self._ttl, candidates)
             return deepcopy(candidates)
 
-    def resolve(self, run_id: str) -> RunCandidate:
-        for candidate in self.candidates():
+    def resolve(self, run_id: str, *, refresh: bool = False) -> RunCandidate:
+        for candidate in self.candidates(refresh=refresh):
             if candidate.provider_run_id == run_id:
                 return candidate
         raise RunUnavailable('Run no longer available in the bounded latest/previous inventory')
