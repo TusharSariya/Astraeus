@@ -2,6 +2,7 @@ import type { components as SourceApi } from '../generated/source-api'
 import { capabilityOptions, resolveSeriesOption, variantLabel } from './sourceCapabilities'
 import { SourceTag, sourceAttributes } from './SourceTag'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { isSourceVariant } from '../sourceContract'
 import { attributionOf } from '../api'
 import type { CatalogSource, LocationPoint, ServedFieldValue } from '../types'
 import { EvidenceGlyph, type InspectedEvidence } from './EvidenceInspector'
@@ -31,10 +32,32 @@ async function post(path: string, body: unknown, signal: AbortSignal): Promise<u
   if (!response.ok) throw new Error(`${value?.detail?.code ?? response.status}: ${value?.detail?.message ?? 'Series request failed'}`)
   return value
 }
+function readableSnapshotIdentities(value: unknown): boolean {
+  // The existing finite Series contract caps a selection at 48 native samples.
+  if (!Array.isArray(value) || value.length > 48) return false
+  const named = (part: unknown) => typeof part === 'string' && part.length > 0
+  return value.every((identity) => {
+    if (!identity || typeof identity !== 'object' || Array.isArray(identity)
+      || !named(identity.source_id) || !named(identity.field)) return false
+    for (const key of ['product_id', 'level', 'native_level', 'station_id', 'artifact_revision']) {
+      if (identity[key] != null && !named(identity[key])) return false
+    }
+    for (const key of ['run_time', 'valid_time']) {
+      if (identity[key] != null && (typeof identity[key] !== 'string' || !Number.isFinite(Date.parse(identity[key])))) return false
+    }
+    for (const [key, limit] of [['sampled_latitude', 90], ['sampled_longitude', 180]] as const) {
+      if (identity[key] != null && (typeof identity[key] !== 'number' || !Number.isFinite(identity[key]) || Math.abs(identity[key]) > limit)) return false
+    }
+    if (identity.variant != null && !isSourceVariant(identity.variant)
+      && !(identity.variant.kind === 'unknown' && isSourceVariant({ ...identity.variant, kind: 'deterministic' }))) return false
+    return true
+  })
+}
 export function readNativeSeriesResponse(value: unknown): NativeSeriesResponse {
   if (!value || typeof value !== 'object') throw new Error('Series response is unreadable')
   const body = value as NativeSeriesResponse
   if (!body.selection || !Array.isArray(body.selection.selectors) || !body.snapshot || typeof body.snapshot.id !== 'string'
+    || !readableSnapshotIdentities(body.snapshot.identities)
     || typeof body.snapshot.change_token !== 'string' || !Number.isFinite(Date.parse(body.snapshot.expires_at))
     || !Array.isArray(body.series) || typeof body.complete !== 'boolean'
     || !(body.next_cursor === null || typeof body.next_cursor === 'string') || !Array.isArray(body.notices)) throw new Error('Series response is unreadable')
@@ -160,10 +183,14 @@ export function useNativeSeries(props: Props) {
     finally { if (version === generation.current) setBusy(false) }
   }
   const options = new Map(declaredOptions.map((option) => [option.key, option]))
-  for (const key of [first, second]) if (!options.has(key)) options.set(key, resolveSeriesOption(key, declaredOptions))
+  for (const key of [first, second]) {
+    const selected = resolveSeriesOption(key, declaredOptions)
+    if (!declaredOptions.some((option) => JSON.stringify(option.selection) === JSON.stringify(selected.selection))) options.set(key, selected)
+  }
   const select = (label: string, value: string, setter: (value: string) => void) => {
     const selected = resolveSeriesOption(value, declaredOptions)
-    return <label>{label}<select aria-label={label} name={label} value={value} onChange={(event) => { setRunPair(null); setter(event.target.value) }}>{[...options.values()].map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select><small>{selected.reason}</small></label>
+    const displayValue = declaredOptions.find((option) => JSON.stringify(option.selection) === JSON.stringify(selected.selection))?.key ?? value
+    return <label>{label}<select aria-label={label} name={label} value={displayValue} onChange={(event) => { setRunPair(null); setter(event.target.value) }}>{[...options.values()].map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select><small>{selected.reason}</small></label>
   }
   const runInventories = new Map<string, { choices: RunChoice[]; reason: string }>()
   for (const row of inventoryRows) runInventories.set(row.source_id, { choices: row.selectable_runs ?? [], reason: row.run_inventory_reason ?? 'Selectable runs are not supplied by this reader' })

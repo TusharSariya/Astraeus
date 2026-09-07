@@ -90,3 +90,27 @@ it('keeps members, provider statistics, derived statistics and levels as separat
   expect(choices[2].label).toContain('provider statistic · probability · greater_than 0')
   expect(choices[4].label).toContain('derived statistic · percentile · quantile 0')
 })
+
+it('rejects malformed finite snapshot identities before Sources or inspection can consume them', () => {
+  const sample = fixture.series.snapshot.identities[0]
+  for (const identities of [undefined, null, {}, [null], [false], [{}], [{ ...sample, source_id: '' }], [{ ...sample, field: 12 }],
+    [{ ...sample, product_id: {} }], [{ ...sample, level: false }], [{ ...sample, native_level: [] }], [{ ...sample, station_id: 2 }],
+    [{ ...sample, artifact_revision: {} }], [{ ...sample, run_time: 'invalid' }], [{ ...sample, valid_time: 123 }],
+    [{ ...sample, sampled_latitude: 91 }], [{ ...sample, sampled_longitude: -181 }], [{ ...sample, sampled_latitude: NaN }],
+    [{ ...sample, variant: { kind: 'member' } }], Array.from({ length: 49 }, () => sample)]) {
+    expect(() => readNativeSeriesResponse({ ...fixture.series, snapshot: { ...fixture.series.snapshot, identities } })).toThrow('Series response is unreadable')
+  }
+  expect(() => readNativeSeriesResponse({ ...fixture.series, snapshot: { ...fixture.series.snapshot, identities: [] } })).not.toThrow()
+  expect(() => readNativeSeriesResponse({ ...fixture.series, snapshot: { ...fixture.series.snapshot, identities: [{ ...sample, variant: { kind: 'unknown' } }] } })).not.toThrow()
+})
+
+it('shows each declared default selection once while preserving its complete wire identity', async () => {
+  routeFixture()
+  const { sources } = await loadCatalog()
+  render(<Series catalog={sources} />)
+  await screen.findAllByRole('img')
+  const control = screen.getByRole('combobox', { name: 'Series A' })
+  const labels = within(control).getAllByRole('option').map((option) => option.textContent)
+  expect(new Set(labels).size).toBe(labels.length)
+  expect(within(control).getAllByRole('option')).toHaveLength(capabilityOptions(sources).length)
+})
