@@ -35,14 +35,14 @@ def test_native_schema_is_two_identity_keys_plus_exactly_29_fields():
     assert len(declared) == 31
     assert all(set(row) == declared for row in rows)
     plasma_fields = {
-        item["key"]: item["upstream"]
+        item["key"]: (item["upstream"], item["storage"])
         for item in SOURCE_FIELDS
         if item["source_id"] == "noaa-swpc-plasma"
     }
     assert plasma_fields == {
-        "solar_wind_density": "rtsw_wind_1m.json proton_density",
-        "solar_wind_speed": "rtsw_wind_1m.json proton_speed",
-        "solar_wind_temperature": "rtsw_wind_1m.json proton_temperature",
+        "solar_wind_density": ("rtsw_wind_1m.json proton_density", "available-not-stored"),
+        "solar_wind_speed": ("rtsw_wind_1m.json proton_speed", "available-not-stored"),
+        "solar_wind_temperature": ("rtsw_wind_1m.json proton_temperature", "available-not-stored"),
     }
 
 
