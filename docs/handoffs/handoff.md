@@ -11,6 +11,42 @@ starting or handing off a source slice. It is the current index for existing
 clients, bounded workers, receipt/cache behavior, focused proof commands and
 PR metadata. This handoff remains the record of completed work and decisions.
 
+## Current execution strategy, September 7, 2026
+
+The owner keeps the full eligible-source outcome of [#70](https://github.com/TusharSariya/Astraeus/issues/70)
+and the working desktop outcome of [#38](https://github.com/TusharSariya/Astraeus/issues/38).
+Execution now prioritizes small protocol-family batches that reuse an existing
+provider client or adapter, then add only source-specific native mapping. Each
+batch starts with an early eligibility, timestamp, unit and QC contract check;
+it uses one reusable fixed-data end-to-end proof harness rather than a new
+framework. Once the governing proposal is actually accepted, frontend work may
+advance beside its source batch. Genuine owner decisions are batched for review;
+routine engineering proceeds autonomously within accepted scope.
+
+The active delivery model is selected-timestamp live queries with finite
+relevant caches, bounded receipts and truthful expiry/unavailability. Do not
+revive a warehouse, permanent raw-provider archive, or two-run retention as the
+current execution strategy. This is an execution-direction correction, not a
+normative storage or source-admission transition. Rights, provenance, native
+science, free-access limits, and `operational: false` remain required. Measure
+milestones by completed source-to-existing-app integrations, rework loops and
+elapsed time. Record model and effort when known; successful-cost measurement
+is unknown without telemetry.
+
+This supersedes historical framework-first/archive execution guidance below;
+that material remains historical evidence, not a current launch instruction.
+
+## SWOB demand slice completed, September 7, 2026
+
+[PR254](https://github.com/TusharSariya/Astraeus/pull/254) merged at
+`978f6f8eed499e55d58fa64f148471f9204d8cfc`, closing [#251](https://github.com/TusharSariya/Astraeus/issues/251).
+It serves six native MSC `swob-realtime` station fields through an exact-time,
+bounded demand query with finite receipt/cache metadata and disabled scheduled
+ingestion. Fixed Linux worker/cache and fixed-live browser proofs used zero
+provider requests. The unserved partner WMO/city scope remains open in
+[#116](https://github.com/TusharSariya/Astraeus/issues/116); no partner record
+was admitted through this slice.
+
 ## Plasma demand slice completed, September 7, 2026
 
 [PR245](https://github.com/TusharSariya/Astraeus/pull/245) merged at
