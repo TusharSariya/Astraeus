@@ -280,3 +280,29 @@ Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; desktop workbench requireme
 “Every listed value uses the shared provenance ledger and inspector”, “Evidence
 interactions preserve keyboard context” and “Canvas evidence has a semantic
 alternative”.
+
+
+## Issue #69: Sources filter and inspector focus return
+
+The next collaborative check reproduced a lost local return point: filtering
+out an inspected Sources reading removed its opener, and Close returned to the
+stage root. App now remembers the Sources search control alongside that opener.
+Close and scoped Escape first return to an available opener, otherwise to the
+still-visible Sources search, otherwise to the existing stage fallback. Other
+views do not inherit a previous Sources fallback. Filtering preserves the selected
+inspector evidence as required; hiding a row is not evidence expiry.
+
+Verification: 10 affected Sources/inspector/shell component tests and production
+build pass. `web/scripts/prove-sources-keyboard.mjs` reproduces the complete flow
+using Tab/Shift+Tab, Enter, Escape and search typing: removed opener returns to
+search, unchanged opener wins, Focus URL is unchanged and filter interactions
+issue no new data requests. Baseline receipt has returnedToSearch=false; repaired
+receipt has true, both outside Git. Existing desktop Sources and Map inspection
+browser proofs cover perspective changes, themes, zoom and general focus fallback.
+Strict desktop OpenSpec, specctl and diff checks pass. A separate main-agent
+review checked fallback lifetime and preserved filter/selection behavior.
+Actual screen-reader testing remains outstanding; #69 remains open.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; desktop workbench requirements
+“Evidence interactions preserve keyboard context” and “Sources retains all three
+selected perspectives”.
