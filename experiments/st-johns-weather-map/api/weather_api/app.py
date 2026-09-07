@@ -52,6 +52,7 @@ from ingest.contract import MEDIA_COG, MEDIA_GEOJSON, MEDIA_PARQUET, MEDIA_ZARR
 from .jobs import job_store
 from .ephemeris import EPHEMERIS_ID, EPHEMERIS_SHA256
 from .registry_api import router as registry_router
+from .desktop_series import router as series_router
 from .models import (
     CatalogResponse,
     CrossSectionRequest,
@@ -272,6 +273,7 @@ def require_core_coverage(latitude: float, longitude: float) -> None:
 
 
 app.include_router(registry_router, prefix=PREFIX)
+app.include_router(series_router, prefix=PREFIX)
 
 
 @app.get(f"{PREFIX}/catalog", response_model=CatalogResponse)
