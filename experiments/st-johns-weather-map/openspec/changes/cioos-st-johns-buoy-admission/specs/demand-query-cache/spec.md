@@ -22,10 +22,10 @@ units, derive a field, or reinterpret wind/wave `from` directions.
 After owner acceptance, the CIOOS buoy reader SHALL select the newest native
 record at or before the aware selected instant only when its age is strictly
 less than one hour. Before serving that record for a current-context request,
-it SHALL parse the bounded metadata `time_coverage_end` and require it to be strictly less than two hours before the metadata acquisition
+it SHALL parse the bounded metadata `time_coverage_end` and require it to be no more than two hours before the metadata acquisition
 final-byte completion. A
 future record, an exactly one-hour-old record, a missing/invalid coverage end,
-a coverage end exactly two hours old, or duplicate newest native report
+a coverage end more than two hours old, or duplicate newest native report
 identity SHALL produce unavailable evidence. It SHALL NOT interpolate, choose a
 future or older report, substitute another station, or infer a cadence.
 
@@ -46,10 +46,10 @@ future or older report, substitute another station, or infer a cadence.
 - **THEN** current-context buoy evidence is unavailable because the reader does
   not choose between duplicate native reports
 
-#### Scenario: Metadata coverage is stale at its boundary
+#### Scenario: Metadata coverage exceeds its ceiling
 
-- **WHEN** `time_coverage_end` is exactly two hours before metadata final-byte
-  completion, or older
+- **WHEN** `time_coverage_end` is more than two hours before metadata final-byte
+  completion
 - **THEN** current-context buoy evidence is unavailable and no cached or
   historical report substitutes
 
