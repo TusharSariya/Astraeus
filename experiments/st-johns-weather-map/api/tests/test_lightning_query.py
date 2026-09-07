@@ -203,3 +203,77 @@ def test_ogc_exception_code_and_transport_limits_are_preserved():
         return httpx.Response(200, content=b'x', headers={'Content-Length': str(CAPABILITIES_MAX_BYTES + 1)})
     with pytest.raises(LightningQueryUnavailable, match='ceiling'):
         service(oversized, Clocks()).entry_for(47.56, -52.72, SELECTED)
+
+
+def test_wall_clock_rollback_during_decode_cannot_extend_monotonic_deadline():
+    calls, clocks = [], Clocks()
+    def decode(kind, body):
+        result = fixed_decode(kind, body)
+        if kind == 'sample':
+            clocks.monotonic += 20
+            clocks.wall -= timedelta(seconds=300)
+        return result
+    query = service(successful_handler(calls), clocks, decode=decode)
+    original = query.entry_for(47.56, -52.72, SELECTED)
+    assert original.expires_at_monotonic == 160
+    assert original.acquisition.expires_at == SELECTED + timedelta(seconds=61)
+    clocks.monotonic = 159
+    assert query.entry_for(47.56, -52.72, SELECTED) is original
+    clocks.monotonic = 160
+    assert query.cached_entries() == ()
+
+
+@pytest.mark.parametrize('expire_during_refresh', [False, True])
+def test_concurrent_failed_refresh_preserves_only_still_valid_evidence(expire_during_refresh):
+    from threading import Event
+    calls, clocks, entered, release = [], Clocks(), Event(), Event()
+    fail = False
+    initial = successful_handler(calls)
+    def handler(request):
+        if fail:
+            entered.set()
+            assert release.wait(5)
+            return httpx.Response(503)
+        return initial(request)
+    query = service(handler, clocks)
+    original = query.entry_for(47.56, -52.72, SELECTED)
+    fail = True
+    clocks.tick(10)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        refreshing = pool.submit(query.entry_for, 47.56, -52.72, SELECTED, refresh=True)
+        try:
+            assert entered.wait(5)
+            assert query.entry_for(47.56, -52.72, SELECTED) is original
+            assert query.cached_entries() == (original,)
+            assert not query._expired
+            if expire_during_refresh:
+                clocks.tick(50)
+                assert query.cached_entries() == ()
+        finally:
+            release.set()
+        with pytest.raises(LightningQueryUnavailable) as caught:
+            refreshing.result()
+    if expire_during_refresh:
+        assert caught.value.outcome.expired_acquisition == original.acquisition
+        assert caught.value.outcome.reason == 'refresh_failed'
+        assert query.cached_entries() == ()
+    else:
+        assert caught.value.outcome.expired_acquisition is None
+        assert query.entry_for(47.56, -52.72, SELECTED) is original
+        clocks.tick(50)
+        with pytest.raises(LightningQueryUnavailable) as expired:
+            query.entry_for(47.56, -52.72, SELECTED)
+        assert expired.value.outcome.expired_acquisition == original.acquisition
+
+
+@pytest.mark.parametrize('failure_kind', ['capabilities', 'sample'])
+def test_decoder_error_text_is_not_exposed(failure_kind):
+    def decode(kind, body):
+        if kind == failure_kind:
+            raise ValueError('untrusted-provider-detail')
+        return fixed_decode(kind, body)
+    query = service(successful_handler([]), Clocks(), decode=decode)
+    with pytest.raises(LightningQueryUnavailable) as caught:
+        query.entry_for(47.56, -52.72, SELECTED)
+    assert str(caught.value) == f'ECCC lightning {failure_kind} validation failed: ValueError'
+    assert 'untrusted-provider-detail' not in caught.value.outcome.model_dump_json()

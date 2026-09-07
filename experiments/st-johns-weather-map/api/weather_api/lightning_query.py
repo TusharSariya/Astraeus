@@ -170,7 +170,7 @@ class LightningQueryService:
             raise ValueError("lightning request box must remain inside geographic bounds")
         return selected.astimezone(UTC).isoformat(), latitude, longitude
 
-    def _get(self, url: str, kind: str, maximum: int) -> tuple[bytes, LightningTransportReceipt, int]:
+    def _get(self, url: str, kind: str, maximum: int) -> tuple[bytes, LightningTransportReceipt, int, float]:
         self._before_request()
         try:
             with self._client.stream("GET", url, headers={"Accept": "application/json" if kind == "sample" else "application/xml", "Accept-Encoding": "identity"}) as response:
@@ -186,6 +186,7 @@ class LightningQueryService:
                         raise LightningQueryUnavailable(f"ECCC lightning {kind} exceeds its received-body ceiling")
                     chunks.append(chunk)
                 body = b"".join(chunks)
+                completed_monotonic = self._clock()
                 completed = self._utcnow()
                 effective_url = str(response.request.url)
                 request_headers = _safe_headers(response.request.headers, {"accept", "accept-encoding", "user-agent"}, 4 * 1024)
@@ -200,7 +201,7 @@ class LightningQueryService:
             kind=kind, url=url, request_headers=request_headers, response_headers=response_headers,
             body_bytes=len(body), body_sha256=hashlib.sha256(body).hexdigest(), completed_at=completed,
         )
-        return body, receipt, _ttl(response_headers, completed)
+        return body, receipt, _ttl(response_headers, completed), completed_monotonic
 
     def _prune_locked(self) -> None:
         def resident_bytes() -> int:
@@ -219,17 +220,17 @@ class LightningQueryService:
     def _fetch(self, latitude: float, longitude: float, selected: datetime) -> LightningCacheEntry:
         instant = selected.astimezone(UTC)
         capabilities_url, sample_url = _request_urls(latitude, longitude, instant)
-        cap_body, cap_receipt, cap_ttl = self._get(capabilities_url, "capabilities", CAPABILITIES_MAX_BYTES)
+        cap_body, cap_receipt, cap_ttl, cap_final = self._get(capabilities_url, "capabilities", CAPABILITIES_MAX_BYTES)
         try:
             capability = self._decode("capabilities", cap_body)
             advertised = {datetime.fromisoformat(str(item)).astimezone(UTC) for item in capability["times"]}
         except Exception as error:
-            raise LightningQueryUnavailable(f"ECCC lightning capabilities validation failed: {error}") from error
+            raise LightningQueryUnavailable(f"ECCC lightning capabilities validation failed: {type(error).__name__}") from error
         if instant not in advertised:
             raise LightningQueryUnavailable(
                 "selected lightning time is not an exact provider-advertised native frame", reason="unsupported_time",
             )
-        sample_body, sample_receipt, sample_ttl = self._get(sample_url, "sample", SAMPLE_MAX_BYTES)
+        sample_body, sample_receipt, sample_ttl, sample_final = self._get(sample_url, "sample", SAMPLE_MAX_BYTES)
         try:
             decoded = self._decode("sample", sample_body)
             native_time = decoded.get("valid_time")
@@ -243,11 +244,11 @@ class LightningQueryService:
                 native_units=None if decoded.get("native_units") is None else str(decoded["native_units"]),
             )
         except Exception as error:
-            raise LightningQueryUnavailable(f"ECCC lightning sample validation failed: {error}") from error
+            raise LightningQueryUnavailable(f"ECCC lightning sample validation failed: {type(error).__name__}") from error
         completed = max(cap_receipt.completed_at, sample_receipt.completed_at)
         expires_at = min(cap_receipt.completed_at + timedelta(seconds=cap_ttl), sample_receipt.completed_at + timedelta(seconds=sample_ttl))
-        ttl = (expires_at - self._utcnow()).total_seconds()
-        if ttl <= 0:
+        monotonic_expiry = min(cap_final + cap_ttl, sample_final + sample_ttl)
+        if self._clock() >= monotonic_expiry or expires_at <= completed:
             raise LightningQueryUnavailable("lightning receipt expired before cache admission")
         acquisition = LightningAcquisition(
             request=LightningDemandRequest(
@@ -258,7 +259,7 @@ class LightningQueryService:
             transport_receipts=(cap_receipt, sample_receipt), cached_at=completed,
             expires_at=expires_at,
         )
-        entry = LightningCacheEntry(sample, acquisition, self._clock() + ttl)
+        entry = LightningCacheEntry(sample, acquisition, monotonic_expiry)
         if entry.backing_bytes > CACHE_MAX_BYTES:
             raise LightningQueryUnavailable("ECCC lightning normalized cache entry exceeds its ceiling")
         return entry
@@ -270,7 +271,7 @@ class LightningQueryService:
             if not refresh and cached is not None and self._clock() < cached.expires_at_monotonic:
                 self._entries.move_to_end(key)
                 return cached
-            if cached is not None:
+            if cached is not None and self._clock() >= cached.expires_at_monotonic:
                 self._expired[key] = cached.acquisition
                 self._expired.move_to_end(key)
                 del self._entries[key]
@@ -296,6 +297,12 @@ class LightningQueryService:
             return replacement
         except BaseException as error:
             with self._lock:
+                current = self._entries.get(key)
+                if current is not None and self._clock() >= current.expires_at_monotonic:
+                    self._expired[key] = current.acquisition
+                    self._expired.move_to_end(key)
+                    del self._entries[key]
+                    self._prune_locked()
                 expired = self._expired.get(key)
             if isinstance(error, LightningQueryUnavailable) and expired is not None:
                 error.outcome = LightningDemandUnavailable(

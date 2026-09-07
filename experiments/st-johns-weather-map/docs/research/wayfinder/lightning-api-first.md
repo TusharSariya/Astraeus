@@ -87,3 +87,21 @@ Remaining integration gates: owner WMS sampling decision, public typed point
 mapping, source descriptor/optional Series semantics and root-owned API/client
 verification. No live-source promotion or native cell-centre claim is authorized
 by this receipt.
+
+## Root review correction
+
+The subsequent bounded review correction keeps a still-valid entry resident
+while an explicit refresh runs; ordinary reads use that entry until its real
+monotonic deadline. A failed refresh caller receives failure without attaching
+`expired_acquisition` before expiry. If the deadline passes while refreshing,
+the old values are withheld and only then may expired metadata be attached.
+Both final-byte monotonic instants are captured by `_get`; the cache deadline
+is the minimum of their independent receipt TTL deadlines. Wall-clock rollback
+during decoding cannot extend that monotonic deadline. Public UTC expiry
+remains the minimum UTC receipt deadline. Decoder failures disclose only their
+exception class, not arbitrary provider or child-process error text.
+
+The same network-disabled Linux focused command now passes **20 tests**, adding
+fixed-clock rollback, concurrent refresh failure on either side of expiry, and
+safe error disclosure cases. The decoder implementation and live captured
+bodies are unchanged; no additional provider requests were made.
