@@ -4,6 +4,22 @@ Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
 history and the owner's earlier design selections.
 
+## AQHI demand slice completed, September 7, 2026
+
+[PR243](https://github.com/TusharSariya/Astraeus/pull/243) merged at
+`76058369b622220cad82779ca1a1b968111960e4`. Its merged tree exactly matches
+reviewed head `c28c805`. The default unselected point response now serves the
+bounded `eccc-aqhi` station-demand observation without a retained artifact;
+the browser proof used fixed local data and the Linux child-decoder proof used
+fixed MockTransport data. No provider payload was committed or used for those
+checks.
+
+Issue [#241](https://github.com/TusharSariya/Astraeus/issues/241) remains open.
+The accepted product-companion rule still excludes `air_quality` evidence from
+an explicitly selected forecast product. That source-specific decision is
+tracked separately by #244; do not infer selected-product AQHI behavior from
+PR243.
+
 ## PR234 review correction checkpoint
 
 The two independent-review blockers now preserve bounded RDPS request/transport
