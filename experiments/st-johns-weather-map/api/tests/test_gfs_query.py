@@ -711,3 +711,226 @@ def test_each_gfs_cloud_stratum_routes_to_its_exact_layer_identity(monkeypatch):
         assert response.status_code == 200
         assert response.headers['x-weather-evidence-basis'] == 'demand_query'
     assert called == layer_ids
+
+
+class RunSelectionAdapter:
+    _base_url = "https://example.invalid"
+    _bounds = {"north": 50.5, "south": 45.0, "west": -58.0, "east": -46.0}
+
+    def __init__(self):
+        self.run = datetime(2026, 9, 6, 12, tzinfo=UTC)
+        self.runs = [self.run, self.run - timedelta(hours=6)]
+        self.calls = []
+        self.discoveries = 0
+        self.fail = False
+
+    def discover(self, window):
+        self.discoveries += 1
+        if self.fail:
+            raise OSError("discovery unavailable")
+        return [RunCandidate(f"gfs-{run:%Y%m%d%H}", run, detail={
+            "date_str": f"{run:%Y%m%d}", "cycle": f"{run:%H}",
+        }) for run in self.runs]
+
+    def _get_client(self):
+        return self
+
+    def get_bytes_with_receipt(self, url, *, max_bytes):
+        from urllib.parse import parse_qs, urlsplit
+        self.calls.append(url)
+        if self.fail:
+            raise OSError("listing unavailable")
+        if "list-type=2" in url:
+            prefix = parse_qs(urlsplit(url).query)["prefix"][0]
+            keys = [f"{prefix}{lead:03d}.idx" for lead in (0, 3, 6, 120, 123, 384)]
+            keys += [f"{prefix}003.other.f009.idx", f"{prefix}121.idx"]
+            body = ("<ListBucketResult><IsTruncated>false</IsTruncated>" + "".join(
+                f"<Contents><Key>{key}</Key></Contents>" for key in keys
+            ) + "</ListBucketResult>").encode()
+        else:
+            body = b"1:0:d=2026090612:TMP:2 m above ground:3 hour fcst:\n2:4:d=2026090612:HGT:surface:3 hour fcst:\n"
+        return body, {"url": url, "bytes": len(body)}
+
+
+def run_coordinator(adapter, clock):
+    payload_calls = []
+    def fetch(key, candidate, selected):
+        payload_calls.append((key, candidate, selected))
+        return replace(entry(key), run_time=candidate.run_time, valid_time=selected)
+    return GFSQueryCoordinator(adapter, now=lambda: adapter.run, clock=lambda: clock[0], bounded_fetch=fetch), payload_calls
+
+
+def test_named_previous_run_preserves_exact_identity_and_zero_payload_hit():
+    adapter = RunSelectionAdapter()
+    coordinator, payload_calls = run_coordinator(adapter, [0.0])
+    runs = coordinator.run_inventory()
+    assert [run.provider_run_id for run in runs] == ["gfs-2026090612", "gfs-2026090606"]
+    previous = runs[1]
+    selected = previous.run_time + timedelta(hours=3, minutes=17)
+    first = coordinator.query(selected, run_id=previous.provider_run_id)
+    transport_count = len(adapter.calls)
+    second = coordinator.query(selected, run_id=previous.provider_run_id)
+    assert first is second
+    assert first.run_time == previous.run_time
+    assert first.valid_time == previous.run_time + timedelta(hours=3)
+    assert "/06/atmos/gfs.t06z.pgrb2.0p25.f003" in first.key.grib_url
+    assert first.key.bounds == tuple(sorted(adapter._bounds.items()))
+    assert len(payload_calls) == 1
+    assert len(adapter.calls) == transport_count == 2
+    assert adapter.discoveries == 1
+
+
+def test_named_run_rejects_unlisted_native_time_and_removed_run_without_substitution():
+    from weather_api.native_runs import RunUnavailable
+    adapter = RunSelectionAdapter()
+    clock = [0.0]
+    coordinator, payload_calls = run_coordinator(adapter, clock)
+    previous = "gfs-2026090606"
+    with pytest.raises(RunUnavailable, match="no listed native frame"):
+        coordinator.query(adapter.run + timedelta(hours=3), run_id=previous)
+    assert not payload_calls
+    adapter.runs = [adapter.run]
+    clock[0] = 600.0
+    with pytest.raises(RunUnavailable, match="no longer available"):
+        coordinator.query(adapter.run, run_id=previous)
+    assert not payload_calls
+
+
+def test_run_listing_is_two_run_bounded_exact_and_nonrenewing():
+    adapter = RunSelectionAdapter()
+    clock = [0.0]
+    coordinator, payload_calls = run_coordinator(adapter, clock)
+    for candidate in coordinator.run_inventory():
+        times = coordinator.run_times(candidate.provider_run_id)
+        assert times == tuple(candidate.run_time + timedelta(hours=lead) for lead in (0, 3, 6, 120, 123, 384))
+    assert len(coordinator._timeline) == 2
+    assert len(adapter.calls) == 2
+    clock[0] = 599.0
+    coordinator.run_times("gfs-2026090612")
+    assert len(adapter.calls) == 2
+    clock[0] = 600.0
+    adapter.fail = True
+    with pytest.raises(OSError, match="discovery unavailable"):
+        coordinator.run_times("gfs-2026090612")
+    assert not payload_calls
+
+
+def test_explicit_payload_refresh_preserves_fresh_entry_when_revalidation_fails():
+    clock = [0.0]
+    calls = []
+    def fetch(key):
+        calls.append(key)
+        if len(calls) > 1:
+            raise OSError("refresh unavailable")
+        return entry(key)
+    service = GFSQueryService(fetch, ttl_seconds=60, clock=lambda: clock[0])
+    first = service.query(KEY)
+    clock[0] = 30.0
+    with pytest.raises(OSError, match="refresh unavailable"):
+        service.query(KEY, refresh=True)
+    assert service.query(KEY) is first
+    clock[0] = 60.0
+    with pytest.raises(OSError, match="refresh unavailable"):
+        service.query(KEY)
+    assert len(calls) == 3
+
+
+def test_explicit_selected_refresh_reloads_exact_payload_and_keeps_fixed_expiry():
+    adapter = RunSelectionAdapter()
+    clock = [0.0]
+    coordinator, payload_calls = run_coordinator(adapter, clock)
+    selected = adapter.run + timedelta(hours=3)
+    first = coordinator.query(selected, run_id="gfs-2026090612")
+    clock[0] = 30.0
+    second = coordinator.query(selected, run_id="gfs-2026090612", refresh=True)
+    assert second is not first
+    assert second.key == first.key
+    assert len(payload_calls) == 2
+    assert adapter.discoveries == 2
+    assert len(adapter.calls) == 4  # one listing + index for each generation
+    expiry = coordinator._cache._entries[second.key][0]
+    clock[0] = 50.0
+    assert coordinator.query(selected, run_id="gfs-2026090612") is second
+    assert coordinator._cache._entries[second.key][0] == expiry == 630.0
+    adapter.fail = True
+    with pytest.raises(OSError, match="discovery unavailable"):
+        coordinator.query(selected, run_id="gfs-2026090612", refresh=True)
+    adapter.fail = False
+    assert coordinator.query(selected, run_id="gfs-2026090612") is second
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_selected_query_coalesces_concurrent_native_frame_refresh_outcomes(fail):
+    adapter = RunSelectionAdapter()
+    entered, release = Event(), Event()
+    calls = []
+    def fetch(key, candidate, selected):
+        calls.append(key)
+        entered.set()
+        assert release.wait(timeout=2)
+        if fail:
+            raise OSError("payload unavailable")
+        return replace(entry(key), run_time=candidate.run_time, valid_time=selected)
+    coordinator = GFSQueryCoordinator(adapter, now=lambda: adapter.run, bounded_fetch=fetch)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(coordinator.query, adapter.run + timedelta(hours=3, minutes=i),
+                               run_id="gfs-2026090612", refresh=True) for i in range(8)]
+        assert entered.wait(timeout=2)
+        sleep(0.05)
+        release.set()
+        if fail:
+            for future in futures:
+                with pytest.raises(OSError, match="payload unavailable"):
+                    future.result()
+        else:
+            results = [future.result() for future in futures]
+            assert all(result is results[0] for result in results)
+    assert len(calls) == 1
+    assert adapter.discoveries == 1
+    assert len(adapter.calls) == 2
+
+
+def test_explicit_inventory_refresh_updates_default_latest_without_a_second_cache():
+    adapter = RunSelectionAdapter()
+    coordinator, payload_calls = run_coordinator(adapter, [0.0])
+    selected = adapter.run + timedelta(hours=3)
+    assert coordinator.query(selected).run_time == adapter.run
+    adapter.run += timedelta(hours=6)
+    adapter.runs.insert(0, adapter.run)
+    assert coordinator.run_inventory(refresh=True)[0].run_time == adapter.run
+    assert coordinator.query(adapter.run + timedelta(hours=3)).run_time == adapter.run
+    assert len(payload_calls) == 2
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_run_inventory_coalesces_refresh_and_preserves_unexpired_generation(fail):
+    adapter = RunSelectionAdapter()
+    clock = [0.0]
+    coordinator, _payload_calls = run_coordinator(adapter, clock)
+    baseline = coordinator.run_inventory()
+    entered, release = Event(), Event()
+    original = adapter.discover
+    calls = []
+    def discover(window):
+        calls.append(window)
+        entered.set()
+        assert release.wait(timeout=2)
+        if fail:
+            raise OSError("refresh unavailable")
+        return original(window)
+    coordinator._run_inventory._discover = discover
+    clock[0] = 30.0
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(coordinator.run_inventory, refresh=True) for _ in range(8)]
+        assert entered.wait(timeout=2)
+        sleep(0.05)
+        release.set()
+        if fail:
+            for future in futures:
+                with pytest.raises(OSError, match="refresh unavailable"):
+                    future.result()
+        else:
+            assert all(future.result() == baseline for future in futures)
+    assert len(calls) == 1
+    assert coordinator.run_inventory() == baseline
+    assert coordinator._run_inventory._cached[0] == (600.0 if fail else 630.0)
