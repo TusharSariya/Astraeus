@@ -445,7 +445,7 @@ def test_companion_predicate_admits_only_native_aqhi_observation_identity():
         })), update
 
 
-def test_concurrent_explicit_refreshes_coalesce_and_failure_withholds_previous_values():
+def test_concurrent_explicit_refreshes_coalesce_and_failure_preserves_unexpired_entry():
     from threading import Event
 
     started, release = Event(), Event()
@@ -475,15 +475,16 @@ def test_concurrent_explicit_refreshes_coalesce_and_failure_withholds_previous_v
         pending.result = joined_result
         waiter = pool.submit(service.entry, refresh=True)
         assert joined.wait(5)
-        assert service.cached_entry() is None
+        assert service.cached_entry().acquisition == original
+        assert service.entry().acquisition == original
         release.set()
         for future in (owner, waiter):
             with pytest.raises(AqhiQueryUnavailable) as caught:
                 future.result()
             assert caught.value.outcome.values_withheld is True
-            assert caught.value.outcome.expired_acquisition == original
+            assert caught.value.outcome.expired_acquisition is None
     assert len(calls) == 2
-    assert service.cached_entry() is None
+    assert service.cached_entry().acquisition == original
 
 
 def test_native_location_id_is_station_identity_and_feature_id_is_retained():
@@ -497,3 +498,39 @@ def test_native_location_id_is_station_identity_and_feature_id_is_retained():
     native["properties"]["properties.aqhi_type"] = "AQHI-Forecast"
     with pytest.raises(ValueError, match="not an observation"):
         normalize(document(native))
+
+
+@pytest.mark.parametrize("expires_during_refresh", [False, True])
+def test_failed_refresh_retains_only_actually_expired_receipt(expires_during_refresh):
+    clock = Clock()
+    calls = []
+    def handler(request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(200, json=document(feature(
+                "ABEFS", 2, "2026-09-07T00:00:00Z", -52.7252, 47.5658,
+            )), headers={"Cache-Control": "max-age=60"})
+        if expires_during_refresh:
+            clock.value = 160
+        return httpx.Response(503)
+    service = AQHIQueryService(client=mock_client(handler), clock=clock,
+                               utcnow=lambda: SELECTED, decode=station_rows)
+    original = service.entry()
+    clock.value = 110
+    with pytest.raises(AqhiQueryUnavailable) as caught:
+        service.entry(refresh=True)
+    assert caught.value.outcome.reason == "refresh_failed"
+    assert caught.value.outcome.values_withheld is True
+    if expires_during_refresh:
+        assert caught.value.outcome.expired_acquisition == original.acquisition
+        assert service.cached_entry() is None
+    else:
+        assert caught.value.outcome.expired_acquisition is None
+        assert service.entry() is original
+        assert service.cached_entry().expires_at_monotonic == 160
+        assert len(calls) == 2
+        clock.value = 160
+        with pytest.raises(AqhiQueryUnavailable) as expired:
+            service.entry()
+        assert expired.value.outcome.expired_acquisition == original.acquisition
+        assert service.cached_entry() is None

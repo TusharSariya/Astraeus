@@ -212,8 +212,8 @@ class AQHIQueryService:
             cached = self._entry
             if not refresh and cached is not None and self._clock() < cached.expires_at_monotonic:
                 return cached
-            self._entry = None
-            if cached is not None:
+            if cached is not None and self._clock() >= cached.expires_at_monotonic:
+                self._entry = None
                 self._expired_acquisition = cached.acquisition
             future = self._inflight
             owner = future is None
@@ -231,11 +231,18 @@ class AQHIQueryService:
             future.set_result(replacement)
             return replacement
         except BaseException as error:
-            if isinstance(error, AqhiQueryUnavailable) and self._expired_acquisition is not None:
-                error.outcome = AQHIDemandUnavailable(
-                    reason="refresh_failed", error_type=type(error).__name__,
-                    expired_acquisition=self._expired_acquisition,
-                )
+            with self._lock:
+                # Revalidation does not change the original fixed deadline.
+                # It can pass while the failed replacement is in flight.
+                retained = self._entry
+                if retained is not None and self._clock() >= retained.expires_at_monotonic:
+                    self._entry = None
+                    self._expired_acquisition = retained.acquisition
+                if isinstance(error, AqhiQueryUnavailable) and (cached is not None or self._expired_acquisition is not None):
+                    error.outcome = AQHIDemandUnavailable(
+                        reason="refresh_failed", error_type=type(error).__name__,
+                        expired_acquisition=self._expired_acquisition,
+                    )
             future.set_exception(error)
             raise error
         finally:

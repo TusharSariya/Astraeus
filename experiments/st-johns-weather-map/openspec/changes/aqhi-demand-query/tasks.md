@@ -10,7 +10,7 @@
 
 ## API-first adapter verification (2026-09-07)
 
-- [x] Add explicit `entry(refresh=True)` / `point_field(..., refresh=True)` acquisition; concurrent refreshes coalesce and failed refresh withholds invalidated values.
+- [x] Add explicit `entry(refresh=True)` / `point_field(..., refresh=True)` acquisition; concurrent refreshes coalesce and failed refresh returns failure while preserving an unexpired entry for ordinary cache reads.
 - [x] Keep expiry anchored to final received byte, including decoder elapsed time; reject payloads whose deadline passes during validation.
 - [x] Preserve numeric zero provider QC as native metadata while local QC remains unknown.
 - [x] Add a narrow `is_aqhi_observation_companion` identity predicate for the separately authorized selected-model API composition. This helper neither changes selection headers nor relabels observations.
@@ -54,3 +54,11 @@ passed all 23 tests, including the genuine bounded child decoder. This closes
 the fixed-payload Linux decoder proof; the live receipt remains separately
 scoped to transport and normalization. `specctl validate` reported zero errors
 and zero warnings.
+
+
+Root-review correction: explicit revalidation keeps an unexpired entry available
+under its original fixed deadline. A failed refresh caller receives failure,
+never a cached value represented as refresh success. `expired_acquisition` is
+populated only once that actual deadline passes, including expiry during the
+failed request. Fixed-clock before/after-deadline tests and concurrent-refresh
+coverage verify this distinction.
