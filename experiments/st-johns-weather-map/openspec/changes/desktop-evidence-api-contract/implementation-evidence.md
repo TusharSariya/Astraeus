@@ -216,3 +216,36 @@ Chrome and blocked external requests. It covers URL pin, two-run overlay, native
 missing sample, three themes, 200% text zoom, view-switch retention, Map refusal
 inspection and explicit Latest recovery. Screenshots/receipt are outside Git in
 `/tmp/astraeus-runs-proof/`; no new provider-live or physical-accessibility proof.
+
+
+## Activity state/score aggregation checkpoint, September 7, 2026
+
+`api/weather_api/profiles/verdict.py` implements the selected six-state
+precedence over already-admitted criterion evidence. A lazy grading callback is
+never called after a fired hard stop. Unknown stops preserve grades/coverage but
+withhold scores. Lower conditions remain flags. Positive weights must sum to
+one; no incomplete budget is normalized. Every active criterion must retain its
+row, blocked access only reduces reachable weight, and coverage floor 0.60 is
+inclusive. Score uses evaluated weight; zero-weight context is not graded.
+Weighted-loss ties follow profile-file order, using decimal products so binary
+rounding cannot falsely break a tie. Evaluated native quality/freshness is
+preserved, with unknown age remaining unknown and no additional freshness gate.
+Returned evidence is copied, including its native nulls and QC reasons.
+
+This is an aggregation seam, not `/verdicts` or an admitted profile. Its quality
+and freshness summarize evaluated hard-stop/criterion inputs; the eventual
+route must also account for geometry/applicability evidence. The caller still
+owns registered method refusal, versioned profile validation/admission, source
+selection, explicit applicability, geometry, acquisition and finite caching.
+The recorded active-budget decision is unresolved; no deployed profile weights
+or source admission have changed. Tasks 8–11 remain open for those integrations.
+
+Verification: `uv run --project experiments/st-johns-weather-map/api pytest
+experiments/st-johns-weather-map/api/tests/test_activity_verdict.py
+experiments/st-johns-weather-map/api/tests/test_activity_evidence.py
+experiments/st-johns-weather-map/api/tests/test_activity_grading.py -q` passes
+41 cases, including 21 aggregation cases. The fixtures are explicitly constructed,
+not real profile scores or verified field paths. Strict API OpenSpec and specctl
+pass. Separate main-agent review caught binary tie ordering and excluded computed
+serialization properties when copying typed evidence. No API/client/registry
+behavior is enabled by this helper alone.
