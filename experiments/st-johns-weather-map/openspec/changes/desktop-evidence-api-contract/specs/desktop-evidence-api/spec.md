@@ -20,7 +20,7 @@ decision recorded in proposal.md; they require mapped verification.
   absences, without manufactured rows at the other source's times
 
 #### Scenario: A bounded selection expires
-- **WHEN** a continuation arrives after the proposed finite selection lifetime
+- **WHEN** a continuation arrives after the fixed finite selection lifetime
 - **THEN** it requires a fresh initial read and does not return cached values as
   current evidence
 
@@ -42,12 +42,12 @@ SHALL NOT by itself report `changed`. A failed comparison SHALL report
   evidence as confirmed current
 
 ### Requirement: Series uses selected cursor pagination and fixed expiry
-The desktop Series initial read SHALL use the proposed explicit selection
+The desktop Series initial read SHALL use the explicit selection
 request. It SHALL return an opaque cursor when another bounded page remains.
 A continuation SHALL contain that cursor only and SHALL bind the original
 selection, relevant finite cache identity and fixed nonrenewing expiry. The API
 SHALL reject a changed continuation. At expiry it SHALL return a
-restart-required proposed `snapshot_expired` error; it SHALL NOT renew the
+restart-required `snapshot_expired` error; it SHALL NOT renew the
 selection or treat a stale page as current.
 
 #### Scenario: A client alters a cursor request
@@ -59,7 +59,7 @@ Where a source/run-family delivery path supports run inventory and reads, the
 desktop API SHALL expose Latest available, named Previous, and temporary
 same-source two-run Compare according to the owner-selected run policy. Latest
 available MAY segment across actual runs only with every segment disclosed.
-Previous SHALL name and pin one actual retained run before frame matching.
+Previous SHALL name and pin one actual readable run before frame matching.
 Removed runs SHALL remain visibly selected with an explicit Latest available
 alternative. Run identity SHALL live beside Focus in the URL and apply only to
 its source/run family; Activity SHALL retain its own server-side evaluation.

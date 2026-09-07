@@ -15,7 +15,7 @@ format.
 
 ### Requirement: Read-only registered location metadata remains distinct from evidence
 The desktop API SHALL expose only registered site, horizon and camera metadata
-through read-only, versioned records after their serving schema is accepted. An
+through read-only, versioned records using an explicit public-field allowlist. An
 arbitrary point SHALL NOT gain a nearby registered horizon, a reference record
 SHALL NOT become an observation, and a metadata response SHALL NOT authorize
 camera imagery or registry writes.

@@ -71,12 +71,12 @@ numeric zero or all-clear.
 The proposed Series inventory and read contract implements the eight selected
 run behaviors only when a delivery path can serve them. Latest available is
 automatic but may segment a valid-time selection across actual runs, with every
-segment disclosed. Previous names one retained run and filters before frame
+segment disclosed. Previous names one readable run and filters before frame
 matching; missing frames stay missing. A run selection is scoped to its
 source/run family across Map layers and Series, never to unrelated streams.
 Pinned run identity lives beside Focus in the URL. Removed selections remain
 visible as unavailable with a Use Latest available action. Temporary Series
-Compare may overlay two retained/readable runs of one source with their native
+Compare may overlay two readable runs of one source with their native
 samples, gaps and provenance; it changes neither Map nor Activity and is not
 saved. Activity keeps its existing server-side evaluation policy. Ordinary
 new-read inventory is latest plus previous; only an existing unexpired finite
@@ -84,7 +84,7 @@ selection may retain a displaced revision until its fixed expiry, within the
 existing quota. No continuation renews that exception or makes a displaced run
 newly selectable.
 
-## Decision boundary after September 7 owner response
+## Accepted scope and implementation discretion
 
 The owner approved native Series samples/gaps, stable selections with explicit
 refresh and finite expiry, and supported latest/previous/two-run comparison.
@@ -94,7 +94,9 @@ existing code and verify those choices against the approved behavior; do not
 create another owner gate for them. This does not authorize a general shared
 snapshot framework or make #173 a mandatory dependency.
 
-Registered-camera privacy, additional imagery-availability behavior and any
-verdict Series relationship retain their separate decision/contract boundaries.
-The scoped approval is recorded in proposal.md; it does not accept unrelated
-proposed capabilities or claim implementation/verification.
+The single owner authorization linked in proposal.md also accepts the selected
+read-only public registry metadata, response identity and imagery availability.
+Use explicit public response fields; never serialize private configuration or
+credentials. Metadata serving does not authorize camera imagery or placement.
+Verdict science remains in its existing owning contracts. No implementation,
+verified status or persistent infrastructure is claimed here.
