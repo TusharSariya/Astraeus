@@ -236,6 +236,16 @@ class GEPSPointService:
                 return tuple(fields)
 
 
+def validate_variant(statistic, quantile=None, member=None, threshold=None, comparison=None, run=None):
+    """Refuse unimplemented identities before constructing an acquisition service."""
+    if member is not None or threshold is not None or comparison is not None or run not in (None, 'latest'):
+        raise ValueError('GEPS reductions do not support member, threshold, comparison or named run selection')
+    if not ((statistic in ('ensemble_mean', 'ensemble_spread') and quantile is None)
+            or (statistic == 'ensemble_quantile' and quantile == .5)):
+        raise ValueError('GEPS requires explicit ensemble_mean, ensemble_spread or ensemble_quantile with quantile=0.5')
+    return SourceVariant(kind='provider_statistic', statistic=statistic, quantile=quantile)
+
+
 class GEPSReductionSource:
     source_id = SOURCE_ID
     product_id = PRODUCT_ID
@@ -252,10 +262,18 @@ class GEPSReductionSource:
             coverage_description=RESIDUAL) for reduction, statistic in MAPPED)
 
     @observed_read
-    def read_point(self, latitude, longitude, selected, *, run='latest', refresh=False):
+    def read_point(self, latitude, longitude, selected, *, run='latest', refresh=False, variant=None):
+        if variant is not None:
+            expected = validate_variant(variant.statistic, variant.quantile, variant.member, variant.threshold, variant.comparison, run)
+            if variant != expected:
+                raise ValueError('GEPS requires a provider statistic identity')
         if run != 'latest':
             raise RunUnavailable('GEPS WCS does not establish selectable producer runs')
-        return self.factory().point_fields(latitude, longitude, selected, refresh=refresh)
+        fields = self.factory().point_fields(latitude, longitude, selected, refresh=refresh)
+        if variant is None:
+            return fields
+        return tuple(field for field in fields if field.provenance.ensemble.statistic == variant.statistic
+                     and field.provenance.ensemble.quantile == variant.quantile)
 
     def plan_series(self, start, end, *, run='latest'):
         return None

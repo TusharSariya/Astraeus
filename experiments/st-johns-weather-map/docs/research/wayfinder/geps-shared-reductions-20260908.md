@@ -50,22 +50,21 @@ provider input. The child uses the existing 2 GiB address-space and 4 MiB
 output bounds with a 180-second deadline. Parent crop/cache is capped at
 4 MiB; all scratch is temporary and no ArtifactStore or scheduler is added.
 
-## Root-owned registration
+## Shared API registration
 
-This commit intentionally does not edit `app.py` or `source_delivery.py`.
+`source_readers()` registers the GEPS reader. `/point?product=GEPS reductions`
+requires explicit aware whole-hour `valid_time` and `statistic=ensemble_mean`,
+`statistic=ensemble_spread`, or `statistic=ensemble_quantile&quantile=0.5`.
+The last selection returns temperature and cloud opacity; the others each
+return temperature. Member, threshold, comparison, named run, absent statistic,
+and mismatched quantile requests fail with 422 before acquisition.
 
-1. In `source_delivery.source_readers`, import
-   `GEPSReductionSource, geps_point_service` from `.geps_delivery` and add
-   `GEPSReductionSource(geps_point_service)` to the reader list.
-2. Add `GEPS reductions: eccc-geps` to the point-product/source mapping and
-   route its selected point through that reader, preserving all four returned
-   variants until explicit shared identity filtering is applied.
-3. Require an explicit matching statistic/quantile where the shared selector
-   selects one field. Temperature mean, spread and median are separate
-   identities; a missing variant cannot silently select the first one.
-4. Regenerate the source fixture/OpenAPI/TypeScript contract and add root HTTP
-   evidence for exact identities, null run, native masks and no implicit
-   statistic. Safe source-status mapping must not expose raw exceptions.
+All five provider coverages are still acquired together. The shared response
+filters only the requested exact provider variant, stays evidence-only, and
+never adds another source or infers a producer run. Provider failure returns
+unavailable without raw exception text. Unconfigured fixture mode does not
+synthesize GEPS values. Source contract/OpenAPI generation remains an assembly
+check owned by the integrating change.
 
 ## Verification
 
@@ -75,5 +74,7 @@ I/O, eleven accounted requests/all five acquired reductions, exact variant
 identity, original units, native nulls and sampled cells, unknown run/QC,
 unsupported run/time/box before acquisition, fixed final-byte expiry,
 coalescing and mutation isolation. No new live provider request was made;
-existing five-coverage evidence remains acquisition evidence, not a new shared
-HTTP proof.
+existing five-coverage live evidence remains acquisition evidence. Actual HTTP
+replay tests now exercise catalog/status without acquisition and all three exact
+statistic selections through FastAPI using offline transport fixtures. The
+frontend manifest is an offline replay artifact, not new live verification.
