@@ -236,10 +236,33 @@ def test_deadline_kills_descendant_holding_reply_pipe_after_parent_exits(tmp_pat
     assert time.monotonic() - started < 1.5
     pid = int(pid_path.read_text())
     status = Path(f"/proc/{pid}/status")
-    # PID 1 in some containers reaps orphan zombies asynchronously. A zombie
-    # has already stopped and cannot retain pipes or recreate scratch files.
-    if status.exists():
-        assert "State:\tZ" in status.read_text()
+    # killpg queues SIGKILL; its return does not synchronize an orphan's
+    # transition to zombie/absence. PID 1 may also reap it asynchronously.
+    # This finite grace is much shorter than the fixture child's five-second
+    # sleep, so a missing group kill still fails instead of passing naturally.
+    stopped = False
+    termination_deadline = time.monotonic() + .5
+    try:
+        while time.monotonic() < termination_deadline:
+            try:
+                state = status.read_text()
+            except FileNotFoundError:
+                stopped = True
+                break
+            if "State:\tZ" in state:
+                stopped = True
+                break
+            time.sleep(.005)
+        assert stopped, "descendant remained alive after bounded group termination"
+    finally:
+        if not stopped:
+            # Keep the negative/mutated regression self-cleaning as well.
+            import os
+            import signal
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
     assert _workspaces(tmp_path) == []
 
 
