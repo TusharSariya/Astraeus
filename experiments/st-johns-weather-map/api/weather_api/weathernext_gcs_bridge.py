@@ -21,6 +21,7 @@ from weather_api.weathernext_native import BUCKET, ObjectIdentity
 from weather_api.weathernext_query import HISTORICAL_DELAY, WeatherNextSelection
 
 CAP = 16 * 1024**2
+MAX_CAP = 64 * 1024**2
 ROOT = ObjectIdentity(BUCKET,'weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/zarr.json',
                       '1787792319369404','CLyhg7HNv5YDEAE=',182540)
 
@@ -31,14 +32,17 @@ class BridgeUnavailable(RuntimeError):
 
 class AccountedGCSTransport(WeatherNextGCSTransport):
     """Counts successful JSON metadata and payload response bodies together."""
-    def __init__(self, **kwargs):
+    def __init__(self, *, max_received_bytes=CAP, **kwargs):
+        if type(max_received_bytes) is not int or not 0 < max_received_bytes <= MAX_CAP:
+            raise ValueError("WeatherNext received-byte cap")
+        self.max_received_bytes = max_received_bytes
         super().__init__(**kwargs)
         self.received_bytes = 0
         self.operations = []
     def _get(self, name, params, *, cap, timeout, expected=None):
-        if len(self.operations) >= 30 or cap <= 0 or self.received_bytes >= CAP:
+        if len(self.operations) >= 30 or cap <= 0 or self.received_bytes >= self.max_received_bytes:
             raise BridgeUnavailable('WeatherNext operation or byte budget')
-        effective = min(cap, CAP-self.received_bytes)
+        effective = min(cap, self.max_received_bytes-self.received_bytes)
         if expected is not None and expected.size > effective:
             raise BridgeUnavailable('WeatherNext chunk exceeds remaining byte budget')
         operation={'name':name,'kind':'media' if expected else 'metadata','generation':expected.generation if expected else None}
@@ -48,7 +52,7 @@ class AccountedGCSTransport(WeatherNextGCSTransport):
         else:
             body=super()._get(name,params,cap=effective,timeout=timeout,expected=expected)
         self.received_bytes += len(body)
-        operation.update(bytes=len(body),sha256=hashlib.sha256(body).hexdigest())
+        operation.update(bytes=len(body),sha256=hashlib.sha256(body).hexdigest(),completed_at=datetime.now(UTC).isoformat())
         return body
 
     def _subprocess_get(self,name,params,cap,timeout,expected):
@@ -58,7 +62,7 @@ class AccountedGCSTransport(WeatherNextGCSTransport):
                                stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,start_new_session=True)
         try:
             output,_=child.communicate(json.dumps(request).encode(),timeout=timeout)
-            if child.returncode or len(output)>24*1024**2: raise BridgeUnavailable('WeatherNext HTTP child failed')
+            if child.returncode or len(output)>90*1024**2: raise BridgeUnavailable('WeatherNext HTTP child failed')
             response=json.loads(output)
             if 'body' not in response: raise BridgeUnavailable('WeatherNext HTTP child refused')
             body=base64.b64decode(response['body'],validate=True)
@@ -81,11 +85,13 @@ def worker_command(container_name=None):
 
 
 def read_historical_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentity,
-                          now: datetime | None = None, transport=None, command=None, timeout=90):
+                          now: datetime | None = None, transport=None, command=None, timeout=90, max_received_bytes=CAP):
     """Root identity must be explicitly supplied; no listing or current-run guess.
 
     No source registration/cache. Caller gets native reading plus response hashes.
     """
+    if type(max_received_bytes) is not int or not 0 < max_received_bytes <= MAX_CAP:
+        raise BridgeUnavailable("WeatherNext received-byte cap")
     now=now or datetime.now(UTC)
     if now.tzinfo is None or selection.valid_time >= now-HISTORICAL_DELAY:
         raise BridgeUnavailable('WeatherNext historical permission boundary')
@@ -94,7 +100,7 @@ def read_historical_point(selection: WeatherNextSelection, *, root_identity: Obj
             or not root_identity.generation.isdecimal() or not root_identity.etag or not 0<root_identity.size<=256*1024
             or len(selection.fields)!=1 or not 0<timeout<=90):
         raise BridgeUnavailable('WeatherNext explicit root or point bound')
-    transport=transport or AccountedGCSTransport(token_provider=GcloudProfileToken('astraeus'))
+    transport=transport or AccountedGCSTransport(token_provider=GcloudProfileToken('astraeus'),max_received_bytes=max_received_bytes)
     started=time.monotonic()
     deadline=started+timeout
     process=None
@@ -109,7 +115,7 @@ def read_historical_point(selection: WeatherNextSelection, *, root_identity: Obj
                                  stderr=subprocess.DEVNULL,start_new_session=True)
         selector.register(process.stdout,selectors.EVENT_READ)
         request={'initialization':selection.initialization.isoformat(),'valid_time':selection.valid_time.isoformat(),
-                 'latitude':selection.latitude,'longitude':selection.longitude,'fields':selection.fields,'now':now.isoformat()}
+                 'latitude':selection.latitude,'longitude':selection.longitude,'fields':selection.fields,'now':now.isoformat(),'max_received_bytes':max_received_bytes}
         os.set_blocking(process.stdin.fileno(),False)
         def send(value):
             body=memoryview(json.dumps(value,allow_nan=False).encode()+b'\n')
@@ -155,7 +161,7 @@ def read_historical_point(selection: WeatherNextSelection, *, root_identity: Obj
                 send({'identity':asdict(identity)})
             elif op=='read':
                 identity=ObjectIdentity(**message['identity'])
-                if described.get(identity.name)!=identity or message['max_bytes']!=identity.size or payload_bytes+identity.size>CAP:
+                if described.get(identity.name)!=identity or message['max_bytes']!=identity.size or payload_bytes+identity.size>max_received_bytes:
                     raise BridgeUnavailable('WeatherNext worker read identity or byte cap')
                 body=transport.read(identity,max_bytes=identity.size,timeout=remaining())
                 if len(body)!=identity.size: raise BridgeUnavailable('WeatherNext worker truncated payload')

@@ -2377,6 +2377,30 @@
                 "threshold": null
               }
             ]
+          },
+          {
+            "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "field": "precipitable_water",
+            "levels": [
+              "entire atmosphere (column)"
+            ],
+            "native_series": true,
+            "point": true,
+            "point_product": "GFS",
+            "product_id": "gfs",
+            "run_selection": "latest_previous",
+            "source_id": "noaa-gfs",
+            "time_semantics": "Provider-native forecast frames; ordinary point reads retain the source's existing matching rule",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
           }
         ],
         "category": "deterministic_forecast",
@@ -4754,6 +4778,7 @@
     "basis": "Constructed deterministic API fixtures; ECMWF native decoder seam and tiny 1x1 Holyrood GIF, not live evidence or representative radar",
     "mock_transport_reads": {
       "eccc-holyrood-cashr-dpqpe": 3,
+      "eccc-swob": 1,
       "ecmwf-aifs-single": 12,
       "ecmwf-ifs": 12
     },
@@ -4911,6 +4936,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "degC",
           "operational": false,
           "original_units": "K",
@@ -5087,6 +5113,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "hPa",
           "operational": false,
           "original_units": "Pa",
@@ -5290,6 +5317,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "percent",
           "operational": false,
           "original_units": "percent",
@@ -5468,6 +5496,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "degC",
           "operational": false,
           "original_units": "K",
@@ -5644,6 +5673,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "percent",
           "operational": false,
           "original_units": "%",
@@ -5871,6 +5901,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "2.5 km",
+          "native_variable": null,
           "normalized_units": "degC",
           "operational": false,
           "original_units": "degC",
@@ -5974,6 +6005,7 @@
             "station_id": "fixture-ABEFS"
           },
           "native_resolution": "station point",
+          "native_variable": null,
           "normalized_units": "index",
           "operational": false,
           "original_units": "index",
@@ -6090,6 +6122,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "2.5 km",
+          "native_variable": null,
           "normalized_units": "degC",
           "operational": false,
           "original_units": "degC",
@@ -6193,6 +6226,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "0.4 degree served at 0.1 degree cell centres",
+          "native_variable": null,
           "normalized_units": "1",
           "operational": false,
           "original_units": "",
@@ -6300,6 +6334,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "degC",
           "operational": false,
           "original_units": "K",
@@ -6476,6 +6511,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "hPa",
           "operational": false,
           "original_units": "Pa",
@@ -6679,6 +6715,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "percent",
           "operational": false,
           "original_units": "percent",
@@ -6857,6 +6894,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "degC",
           "operational": false,
           "original_units": "K",
@@ -7033,6 +7071,7 @@
           "native_crs": "EPSG:4326",
           "native_report": null,
           "native_resolution": "unknown",
+          "native_variable": null,
           "normalized_units": "percent",
           "operational": false,
           "original_units": "(0 - 1)",
@@ -7192,6 +7231,732 @@
     },
     "valid_time": "2026-09-07T12:00:00Z"
   },
+  "point_swob": {
+    "comparability": [
+      {
+        "a": "dew_point_2m",
+        "b": "relative_humidity_2m",
+        "comparable": false,
+        "detail": "dew_point_2m is Dew-point temperature. and relative_humidity_2m is Relative humidity, phase-dependent below freezing.. Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "reason": "definition"
+      },
+      {
+        "a": "wind_direction_10m",
+        "b": "wind_speed_10m",
+        "comparable": false,
+        "detail": "wind_direction_10m is Bearing the wind comes from, meteorological convention. and wind_speed_10m is Scalar horizontal wind speed.. Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+        "family": "wind",
+        "reason": "definition"
+      }
+    ],
+    "consensus": null,
+    "data_mode": "fixture",
+    "demand_unavailable": null,
+    "fields": [
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "field": "dew_point_2m",
+        "key": "dew_point_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "eccc-swob-demand-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+          "attribution": "Credit Environment and Climate Change Canada; MSC SWOB observation via GeoMet",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "Environment and Climate Change Canada",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 60
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "MSC Open Data licence",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": {
+            "flight_category": null,
+            "native_metadata": {
+              "dataset": "msc-observation-atmospheric-surface_weather-surface",
+              "wmo_id": "71801"
+            },
+            "observation_time": "2026-09-07T03:00:00Z",
+            "provider_elevation_m": null,
+            "provider_latitude": 47.56,
+            "provider_longitude": -52.72,
+            "provider_report_id": "CAJW",
+            "provider_station_name": "ST. JOHN'S WEST",
+            "quality_code": null,
+            "raw_report_sha256": null,
+            "receipt_time": null,
+            "report_time": null,
+            "report_type": null,
+            "station_id": "71801"
+          },
+          "native_resolution": "station point",
+          "native_variable": null,
+          "normalized_units": "degC",
+          "operational": false,
+          "original_units": "degC",
+          "product": "MSC SWOB real-time surface observation via GeoMet OGC API Features",
+          "provider": "Environment and Climate Change Canada",
+          "quality": {
+            "flags": [
+              "native_swob"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T03:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": "SWOB is a station observation and has no model run",
+          "run_time": null,
+          "sample_distance_km": 0.5804229579101012,
+          "sample_method": "nearest_published_cell",
+          "sampled_latitude": 47.56,
+          "sampled_longitude": -52.72,
+          "source_acquisition": null,
+          "source_display_primary": false,
+          "source_id": "eccc-swob",
+          "swob_acquisition": {
+            "body_bytes": 432,
+            "body_sha256": "429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+            "cached_at": "2026-09-07T03:00:00Z",
+            "effective_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+            "expires_at": "2026-09-07T03:01:00Z",
+            "request": {
+              "latitude": 47.5615,
+              "longitude": -52.7126,
+              "provider_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+              "selected_time": "2026-09-07T03:00:00Z",
+              "source_id": "eccc-swob"
+            },
+            "request_headers": {
+              "accept": "application/geo+json, application/json",
+              "accept-encoding": "identity",
+              "user-agent": "python-httpx/0.28.1"
+            },
+            "response_headers": {
+              "content-type": "application/json"
+            },
+            "transport_completed_at": "2026-09-07T03:00:00Z"
+          },
+          "valid_time": "2026-09-07T03:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 8.2
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Mean sea level pressure is reduced to sea level by the producer's own reduction; surface pressure is the pressure at the model's own orography. They differ by the station's elevation and are not comparable.",
+        "family": "pressure",
+        "field": "mean_sea_level_pressure",
+        "key": "mean_sea_level_pressure",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "eccc-swob-demand-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+          "attribution": "Credit Environment and Climate Change Canada; MSC SWOB observation via GeoMet",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "Environment and Climate Change Canada",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 60
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "MSC Open Data licence",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": {
+            "flight_category": null,
+            "native_metadata": {
+              "dataset": "msc-observation-atmospheric-surface_weather-surface",
+              "wmo_id": "71801"
+            },
+            "observation_time": "2026-09-07T03:00:00Z",
+            "provider_elevation_m": null,
+            "provider_latitude": 47.56,
+            "provider_longitude": -52.72,
+            "provider_report_id": "CAJW",
+            "provider_station_name": "ST. JOHN'S WEST",
+            "quality_code": null,
+            "raw_report_sha256": null,
+            "receipt_time": null,
+            "report_time": null,
+            "report_type": null,
+            "station_id": "71801"
+          },
+          "native_resolution": "station point",
+          "native_variable": null,
+          "normalized_units": "hPa",
+          "operational": false,
+          "original_units": "hPa",
+          "product": "MSC SWOB real-time surface observation via GeoMet OGC API Features",
+          "provider": "Environment and Climate Change Canada",
+          "quality": {
+            "flags": [
+              "native_swob"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T03:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": "SWOB is a station observation and has no model run",
+          "run_time": null,
+          "sample_distance_km": 0.5804229579101012,
+          "sample_method": "nearest_published_cell",
+          "sampled_latitude": 47.56,
+          "sampled_longitude": -52.72,
+          "source_acquisition": null,
+          "source_display_primary": false,
+          "source_id": "eccc-swob",
+          "swob_acquisition": {
+            "body_bytes": 432,
+            "body_sha256": "429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+            "cached_at": "2026-09-07T03:00:00Z",
+            "effective_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+            "expires_at": "2026-09-07T03:01:00Z",
+            "request": {
+              "latitude": 47.5615,
+              "longitude": -52.7126,
+              "provider_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+              "selected_time": "2026-09-07T03:00:00Z",
+              "source_id": "eccc-swob"
+            },
+            "request_headers": {
+              "accept": "application/geo+json, application/json",
+              "accept-encoding": "identity",
+              "user-agent": "python-httpx/0.28.1"
+            },
+            "response_headers": {
+              "content-type": "application/json"
+            },
+            "transport_completed_at": "2026-09-07T03:00:00Z"
+          },
+          "valid_time": "2026-09-07T03:00:00Z",
+          "vertical_level": "mean sea level"
+        },
+        "storage": "available-not-stored",
+        "value": 1013.4
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "field": "relative_humidity_2m",
+        "key": "relative_humidity_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "eccc-swob-demand-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+          "attribution": "Credit Environment and Climate Change Canada; MSC SWOB observation via GeoMet",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "Environment and Climate Change Canada",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 60
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "MSC Open Data licence",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": {
+            "flight_category": null,
+            "native_metadata": {
+              "dataset": "msc-observation-atmospheric-surface_weather-surface",
+              "wmo_id": "71801"
+            },
+            "observation_time": "2026-09-07T03:00:00Z",
+            "provider_elevation_m": null,
+            "provider_latitude": 47.56,
+            "provider_longitude": -52.72,
+            "provider_report_id": "CAJW",
+            "provider_station_name": "ST. JOHN'S WEST",
+            "quality_code": null,
+            "raw_report_sha256": null,
+            "receipt_time": null,
+            "report_time": null,
+            "report_type": null,
+            "station_id": "71801"
+          },
+          "native_resolution": "station point",
+          "native_variable": null,
+          "normalized_units": "percent",
+          "operational": false,
+          "original_units": "percent",
+          "product": "MSC SWOB real-time surface observation via GeoMet OGC API Features",
+          "provider": "Environment and Climate Change Canada",
+          "quality": {
+            "flags": [
+              "native_swob"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T03:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": "SWOB is a station observation and has no model run",
+          "run_time": null,
+          "sample_distance_km": 0.5804229579101012,
+          "sample_method": "nearest_published_cell",
+          "sampled_latitude": 47.56,
+          "sampled_longitude": -52.72,
+          "source_acquisition": null,
+          "source_display_primary": false,
+          "source_id": "eccc-swob",
+          "swob_acquisition": {
+            "body_bytes": 432,
+            "body_sha256": "429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+            "cached_at": "2026-09-07T03:00:00Z",
+            "effective_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+            "expires_at": "2026-09-07T03:01:00Z",
+            "request": {
+              "latitude": 47.5615,
+              "longitude": -52.7126,
+              "provider_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+              "selected_time": "2026-09-07T03:00:00Z",
+              "source_id": "eccc-swob"
+            },
+            "request_headers": {
+              "accept": "application/geo+json, application/json",
+              "accept-encoding": "identity",
+              "user-agent": "python-httpx/0.28.1"
+            },
+            "response_headers": {
+              "content-type": "application/json"
+            },
+            "transport_completed_at": "2026-09-07T03:00:00Z"
+          },
+          "valid_time": "2026-09-07T03:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 76.0
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+        "family": "temperature",
+        "field": "temperature_2m",
+        "key": "temperature_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "eccc-swob-demand-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+          "attribution": "Credit Environment and Climate Change Canada; MSC SWOB observation via GeoMet",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "Environment and Climate Change Canada",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 60
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "MSC Open Data licence",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": {
+            "flight_category": null,
+            "native_metadata": {
+              "dataset": "msc-observation-atmospheric-surface_weather-surface",
+              "wmo_id": "71801"
+            },
+            "observation_time": "2026-09-07T03:00:00Z",
+            "provider_elevation_m": null,
+            "provider_latitude": 47.56,
+            "provider_longitude": -52.72,
+            "provider_report_id": "CAJW",
+            "provider_station_name": "ST. JOHN'S WEST",
+            "quality_code": null,
+            "raw_report_sha256": null,
+            "receipt_time": null,
+            "report_time": null,
+            "report_type": null,
+            "station_id": "71801"
+          },
+          "native_resolution": "station point",
+          "native_variable": null,
+          "normalized_units": "degC",
+          "operational": false,
+          "original_units": "degC",
+          "product": "MSC SWOB real-time surface observation via GeoMet OGC API Features",
+          "provider": "Environment and Climate Change Canada",
+          "quality": {
+            "flags": [
+              "native_swob",
+              "provider_quality:passed"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T03:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": "SWOB is a station observation and has no model run",
+          "run_time": null,
+          "sample_distance_km": 0.5804229579101012,
+          "sample_method": "nearest_published_cell",
+          "sampled_latitude": 47.56,
+          "sampled_longitude": -52.72,
+          "source_acquisition": null,
+          "source_display_primary": false,
+          "source_id": "eccc-swob",
+          "swob_acquisition": {
+            "body_bytes": 432,
+            "body_sha256": "429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+            "cached_at": "2026-09-07T03:00:00Z",
+            "effective_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+            "expires_at": "2026-09-07T03:01:00Z",
+            "request": {
+              "latitude": 47.5615,
+              "longitude": -52.7126,
+              "provider_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+              "selected_time": "2026-09-07T03:00:00Z",
+              "source_id": "eccc-swob"
+            },
+            "request_headers": {
+              "accept": "application/geo+json, application/json",
+              "accept-encoding": "identity",
+              "user-agent": "python-httpx/0.28.1"
+            },
+            "response_headers": {
+              "content-type": "application/json"
+            },
+            "transport_completed_at": "2026-09-07T03:00:00Z"
+          },
+          "valid_time": "2026-09-07T03:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 12.4
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+        "family": "wind",
+        "field": "wind_direction_10m",
+        "key": "wind_direction_10m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "eccc-swob-demand-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+          "attribution": "Credit Environment and Climate Change Canada; MSC SWOB observation via GeoMet",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "Environment and Climate Change Canada",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 60
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "MSC Open Data licence",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": {
+            "flight_category": null,
+            "native_metadata": {
+              "dataset": "msc-observation-atmospheric-surface_weather-surface",
+              "wmo_id": "71801"
+            },
+            "observation_time": "2026-09-07T03:00:00Z",
+            "provider_elevation_m": null,
+            "provider_latitude": 47.56,
+            "provider_longitude": -52.72,
+            "provider_report_id": "CAJW",
+            "provider_station_name": "ST. JOHN'S WEST",
+            "quality_code": null,
+            "raw_report_sha256": null,
+            "receipt_time": null,
+            "report_time": null,
+            "report_type": null,
+            "station_id": "71801"
+          },
+          "native_resolution": "station point",
+          "native_variable": null,
+          "normalized_units": "degree",
+          "operational": false,
+          "original_units": "degree",
+          "product": "MSC SWOB real-time surface observation via GeoMet OGC API Features",
+          "provider": "Environment and Climate Change Canada",
+          "quality": {
+            "flags": [
+              "native_swob"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T03:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": "SWOB is a station observation and has no model run",
+          "run_time": null,
+          "sample_distance_km": 0.5804229579101012,
+          "sample_method": "nearest_published_cell",
+          "sampled_latitude": 47.56,
+          "sampled_longitude": -52.72,
+          "source_acquisition": null,
+          "source_display_primary": false,
+          "source_id": "eccc-swob",
+          "swob_acquisition": {
+            "body_bytes": 432,
+            "body_sha256": "429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+            "cached_at": "2026-09-07T03:00:00Z",
+            "effective_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+            "expires_at": "2026-09-07T03:01:00Z",
+            "request": {
+              "latitude": 47.5615,
+              "longitude": -52.7126,
+              "provider_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+              "selected_time": "2026-09-07T03:00:00Z",
+              "source_id": "eccc-swob"
+            },
+            "request_headers": {
+              "accept": "application/geo+json, application/json",
+              "accept-encoding": "identity",
+              "user-agent": "python-httpx/0.28.1"
+            },
+            "response_headers": {
+              "content-type": "application/json"
+            },
+            "transport_completed_at": "2026-09-07T03:00:00Z"
+          },
+          "valid_time": "2026-09-07T03:00:00Z",
+          "vertical_level": "10 m"
+        },
+        "storage": "available-not-stored",
+        "value": 210.0
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Wind as components and wind as speed and direction are the same vector in two encodings and are comparable within an encoding. A source stores what it publishes: GeoMet publishes speed and direction and no components anywhere, GRIB feeds publish components. Speed and direction reconstructed from components are derived-here and are served beside the raw values, never in place of them. Where a producer publishes speed only (REPS), direction stays null and nothing derives one.",
+        "family": "wind",
+        "field": "wind_speed_10m",
+        "key": "wind_speed_10m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "eccc-swob-demand-v1",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+          "attribution": "Credit Environment and Climate Change Canada; MSC SWOB observation via GeoMet",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": 1.0,
+            "status": "complete"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "Environment and Climate Change Canada",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 60
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "MSC Open Data licence",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": {
+            "flight_category": null,
+            "native_metadata": {
+              "dataset": "msc-observation-atmospheric-surface_weather-surface",
+              "wmo_id": "71801"
+            },
+            "observation_time": "2026-09-07T03:00:00Z",
+            "provider_elevation_m": null,
+            "provider_latitude": 47.56,
+            "provider_longitude": -52.72,
+            "provider_report_id": "CAJW",
+            "provider_station_name": "ST. JOHN'S WEST",
+            "quality_code": null,
+            "raw_report_sha256": null,
+            "receipt_time": null,
+            "report_time": null,
+            "report_type": null,
+            "station_id": "71801"
+          },
+          "native_resolution": "station point",
+          "native_variable": null,
+          "normalized_units": "m s-1",
+          "operational": false,
+          "original_units": "m s-1",
+          "product": "MSC SWOB real-time surface observation via GeoMet OGC API Features",
+          "provider": "Environment and Climate Change Canada",
+          "quality": {
+            "flags": [
+              "native_swob"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T03:00:00Z",
+          "run_stale": null,
+          "run_stale_reason": "SWOB is a station observation and has no model run",
+          "run_time": null,
+          "sample_distance_km": 0.5804229579101012,
+          "sample_method": "nearest_published_cell",
+          "sampled_latitude": 47.56,
+          "sampled_longitude": -52.72,
+          "source_acquisition": null,
+          "source_display_primary": false,
+          "source_id": "eccc-swob",
+          "swob_acquisition": {
+            "body_bytes": 432,
+            "body_sha256": "429f72c009de64b74afb70cd9314328d5b0dcb5a58d56403ed9d14dabe098604",
+            "cached_at": "2026-09-07T03:00:00Z",
+            "effective_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+            "expires_at": "2026-09-07T03:01:00Z",
+            "request": {
+              "latitude": 47.5615,
+              "longitude": -52.7126,
+              "provider_url": "https://api.weather.gc.ca/collections/swob-realtime/items?bbox=-53.840283%2C46.811500%2C-51.584917%2C48.311500&datetime=2026-09-07T03%3A00%3A00Z&limit=64&f=json",
+              "selected_time": "2026-09-07T03:00:00Z",
+              "source_id": "eccc-swob"
+            },
+            "request_headers": {
+              "accept": "application/geo+json, application/json",
+              "accept-encoding": "identity",
+              "user-agent": "python-httpx/0.28.1"
+            },
+            "response_headers": {
+              "content-type": "application/json"
+            },
+            "transport_completed_at": "2026-09-07T03:00:00Z"
+          },
+          "valid_time": "2026-09-07T03:00:00Z",
+          "vertical_level": "10 m"
+        },
+        "storage": "available-not-stored",
+        "value": 4.5
+      }
+    ],
+    "latitude": 47.5615,
+    "longitude": -52.7126,
+    "notices": [
+      "The selected source retains its own native time, units and provenance; no other model or time is substituted",
+      "Constructed SWOB contract fixture; no provider request or live evidence"
+    ],
+    "observation_unavailable": [],
+    "operational": false,
+    "selection": {
+      "badge": "SWOB selected",
+      "mode": "evidence_only",
+      "reason": "Exact native experimental evidence; source admission remains unchanged",
+      "selected_product_id": null,
+      "selected_source_id": null
+    },
+    "valid_time": "2026-09-07T03:00:00Z"
+  },
   "series": {
     "complete": true,
     "next_cursor": null,
@@ -7311,6 +8076,7 @@
               "native_crs": "EPSG:4326",
               "native_report": null,
               "native_resolution": "2.5 km",
+              "native_variable": null,
               "normalized_units": "degC",
               "operational": false,
               "original_units": "degC",
@@ -7400,6 +8166,7 @@
               "native_crs": "EPSG:4326",
               "native_report": null,
               "native_resolution": "2.5 km",
+              "native_variable": null,
               "normalized_units": "degC",
               "operational": false,
               "original_units": "degC",
@@ -7493,6 +8260,7 @@
               "native_crs": "EPSG:4326",
               "native_report": null,
               "native_resolution": "2.5 km",
+              "native_variable": null,
               "normalized_units": "percent",
               "operational": false,
               "original_units": "percent",
@@ -7564,6 +8332,7 @@
               "native_crs": "EPSG:4326",
               "native_report": null,
               "native_resolution": "2.5 km",
+              "native_variable": null,
               "normalized_units": "percent",
               "operational": false,
               "original_units": "percent",

@@ -1,0 +1,196 @@
+{
+  "evidence_kind": "deterministic_fixture",
+  "descriptor": {
+    "source_id": "google-weathernext-3-statistics",
+    "product_id": "weathernext_3_0_0_statistics",
+    "field": "temperature_2m",
+    "variants": [
+      {
+        "kind": "provider_statistic",
+        "member": null,
+        "statistic": "ensemble_mean",
+        "quantile": null,
+        "threshold": null,
+        "comparison": null
+      }
+    ],
+    "levels": [
+      "2 m"
+    ],
+    "point": true,
+    "point_product": "WeatherNext 3 historical",
+    "native_series": false,
+    "run_selection": "not_applicable",
+    "time_semantics": "Exact selected native hourly time in the explicitly configured historical run; valid time strictly older than 48 hours",
+    "coverage_description": "One native 0.1 degree temperature mean cell; pinned historical run, no current or full-run coverage promise"
+  },
+  "point": {
+    "field": "temperature_2m",
+    "value": 6.850000000000023,
+    "provenance": {
+      "data_mode": "fixture",
+      "operational": false,
+      "evidence_class": "retrieved",
+      "source_id": "google-weathernext-3-statistics",
+      "artifact_revision": "2d578459ba381cb19ab84442f321c7a223595ca2a528669bb13898db5f6bc0c8",
+      "provider": "Google",
+      "product": "weathernext_3_0_0_statistics",
+      "forecast_centre": "Google",
+      "run_time": "2026-08-01T00:00:00Z",
+      "valid_time": "2026-08-01T06:00:00Z",
+      "retrieval_time": "2026-09-08T00:00:00Z",
+      "member": null,
+      "member_control": null,
+      "vertical_level": "2 m",
+      "original_units": "K",
+      "normalized_units": "degC",
+      "native_resolution": "0.1 degree",
+      "native_crs": "EPSG:4326",
+      "quality": {
+        "status": "unknown",
+        "flags": [
+          "historical_forecast",
+          "provider_qc_not_supplied"
+        ]
+      },
+      "coverage": {
+        "status": "partial",
+        "fraction": null
+      },
+      "freshness": {
+        "status": "unknown",
+        "age_seconds": 0,
+        "threshold_seconds": null
+      },
+      "licence": "WeatherNext historical data terms; conservative valid-time age greater than 48 hours",
+      "attribution": "WeatherNext data provided by Google",
+      "derivation": null,
+      "derivation_version": null,
+      "derivation_citation": null,
+      "derivation_inputs": [],
+      "delivery_kind": "published_cell",
+      "source_display_primary": false,
+      "intermediary": null,
+      "intermediary_method": null,
+      "adapter_version": "weathernext-historical-temperature-v1",
+      "native_report": null,
+      "demand_acquisition": null,
+      "aqhi_acquisition": null,
+      "swob_acquisition": null,
+      "source_acquisition": {
+        "source_id": "google-weathernext-3-statistics",
+        "product_id": "weathernext_3_0_0_statistics",
+        "provider_run_id": "20260801_00hr_01_preds",
+        "run_time": "2026-08-01T00:00:00Z",
+        "valid_time": "2026-08-01T06:00:00Z",
+        "retrieval_time": "2026-09-08T00:00:00Z",
+        "expires_at": "2026-09-08T00:01:00Z",
+        "normalized_sha256": "2d578459ba381cb19ab84442f321c7a223595ca2a528669bb13898db5f6bc0c8",
+        "transport_receipts": [
+          {
+            "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1787792319369404",
+            "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1787792319369404",
+            "http_status": 200,
+            "request_headers": {
+              "Accept-Encoding": "identity"
+            },
+            "response_headers": {},
+            "byte_size": 182540,
+            "sha256": "14686d132dd7d68e4581daebea690d5f6e6304c74d71742f101cc0e15dcc46b6",
+            "completed_at": "2026-09-08T00:00:00Z"
+          },
+          {
+            "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=42",
+            "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=42",
+            "http_status": 200,
+            "request_headers": {
+              "Accept-Encoding": "identity"
+            },
+            "response_headers": {},
+            "byte_size": 4,
+            "sha256": "5f3729dafdf4a450f0a029800194807f9a714ccddcf44b285483fc8961d37799",
+            "completed_at": "2026-09-08T00:00:00Z"
+          },
+          {
+            "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=42",
+            "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=42",
+            "http_status": 200,
+            "request_headers": {
+              "Accept-Encoding": "identity"
+            },
+            "response_headers": {},
+            "byte_size": 4,
+            "sha256": "745cba8d557cc90ee526449630d66a276f2b9c51eb80dfafa235779b9eb5b0b6",
+            "completed_at": "2026-09-08T00:00:00Z"
+          },
+          {
+            "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=42",
+            "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=42",
+            "http_status": 200,
+            "request_headers": {
+              "Accept-Encoding": "identity"
+            },
+            "response_headers": {},
+            "byte_size": 4,
+            "sha256": "ffbdf68b60cb1955733792df374ab91fb9f0137d4ba9432552d32328141c5ac8",
+            "completed_at": "2026-09-08T00:00:00Z"
+          },
+          {
+            "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=42",
+            "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=42",
+            "http_status": 200,
+            "request_headers": {
+              "Accept-Encoding": "identity"
+            },
+            "response_headers": {},
+            "byte_size": 4,
+            "sha256": "96c20605bd6cfa409a0d4a2724fee499d9d41d491944bb73dc44cc45dc30e25d",
+            "completed_at": "2026-09-08T00:00:00Z"
+          },
+          {
+            "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Ftemperature_2m_mean%2Fc%2F5%2F0%2F0?alt=media&generation=42",
+            "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260801_00hr_01_preds%2Fpredictions.zarr%2Ftemperature_2m_mean%2Fc%2F5%2F0%2F0?alt=media&generation=42",
+            "http_status": 200,
+            "request_headers": {
+              "Accept-Encoding": "identity"
+            },
+            "response_headers": {},
+            "byte_size": 4,
+            "sha256": "bc4ea604c3ce3536d8885e993d73509d6658cdb65e60323b27c48794af086255",
+            "completed_at": "2026-09-08T00:00:00Z"
+          }
+        ]
+      },
+      "native_variable": "temperature_2m_mean",
+      "sampled_latitude": 47.5,
+      "sampled_longitude": -52.7,
+      "sample_distance_km": null,
+      "sample_method": "rectilinear",
+      "contributing_evidence": [],
+      "contributors": [],
+      "last_valid_time": null,
+      "run_stale": true,
+      "run_stale_reason": "Explicit historical run; not a current forecast",
+      "ensemble": {
+        "family": "google-weathernext-3",
+        "statistic": "ensemble_mean",
+        "computed_here": false,
+        "member_set": null,
+        "refusal": null,
+        "quantile": null,
+        "threshold": null,
+        "threshold_units": null,
+        "comparison": null,
+        "averaging_window_hours": null
+      },
+      "display_primary_eligible": false
+    },
+    "key": "temperature_2m",
+    "family": "temperature",
+    "phase": null,
+    "storage": "available-not-stored",
+    "absence_state": null,
+    "blocked": null,
+    "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart."
+  }
+}

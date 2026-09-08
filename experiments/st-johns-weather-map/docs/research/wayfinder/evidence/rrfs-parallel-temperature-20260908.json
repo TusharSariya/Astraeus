@@ -1,0 +1,103 @@
+{
+  "checked_at": "2026-09-08T00:28:22.814303+00:00",
+  "live_scope": "bounded directory, index, 1024-byte message header, one full indexed temperature message only",
+  "current_feed_phase": "RRFSv1.0 pre-implementation parallel",
+  "provider_requests_in_replay": 0,
+  "offline_transport_calls": 2,
+  "repeat_additional_calls": 0,
+  "selected_range": "bytes=25430125-26167494",
+  "payload_bytes": 737370,
+  "payload_sha256": "ce1f0465a11b48e7c7afd3da2ef001625ac2e13b9058cc4d6be0eb6aea9f24d7",
+  "index_bytes": 21115,
+  "index_sha256": "09c46b809cabd2128e7545de129213684b1e366ccc7155e1634bcf4019d9028e",
+  "point": {
+    "source_id": "noaa-rrfs",
+    "product_id": "rrfs-v1.0-parallel-13km-na-2dfld",
+    "variant": "deterministic",
+    "run_time": "2026-09-07T12:00:00+00:00",
+    "valid_time": "2026-09-07T18:00:00+00:00",
+    "native_field": "TMP",
+    "level": "2 m above ground",
+    "units": "K",
+    "value": 293.49,
+    "sampled_latitude": 47.531256,
+    "sampled_longitude": -52.735352,
+    "sample_distance_km": 3.71983232118291,
+    "native_index": 474239,
+    "native_masked": false,
+    "producer_qc": "unknown",
+    "operational": false,
+    "grid": {
+      "gridType": "rotated_ll",
+      "gridDefinitionTemplateNumber": 1,
+      "Ni": 1127,
+      "Nj": 683,
+      "numberOfPoints": 769741,
+      "latitudeOfSouthernPoleInDegrees": -35.0,
+      "longitudeOfSouthernPoleInDegrees": 247.0,
+      "angleOfRotationInDegrees": 0.0,
+      "scanningMode": 64,
+      "shapeOfTheEarth": 6,
+      "latitudeOfFirstGridPointInDegrees": -36.9303,
+      "longitudeOfFirstGridPointInDegrees": 299.0,
+      "latitudeOfLastGridPointInDegrees": 36.9303,
+      "longitudeOfLastGridPointInDegrees": 60.9458,
+      "iDirectionIncrementInDegrees": 0.1083,
+      "jDirectionIncrementInDegrees": 0.1083
+    },
+    "sha256": "ce1f0465a11b48e7c7afd3da2ef001625ac2e13b9058cc4d6be0eb6aea9f24d7",
+    "transport_receipts": [
+      {
+        "url": "https://nomads.ncep.noaa.gov/pub/data/nccf/com/rrfs/para/rrfs.20260907/12/rrfs.t12z.2dfld.13km.f006.na.grib2.idx",
+        "http_status": 200,
+        "range": null,
+        "byte_size": 21115,
+        "sha256": "09c46b809cabd2128e7545de129213684b1e366ccc7155e1634bcf4019d9028e",
+        "completed_at": "2026-09-08T00:28:20.841010+00:00"
+      },
+      {
+        "url": "https://nomads.ncep.noaa.gov/pub/data/nccf/com/rrfs/para/rrfs.20260907/12/rrfs.t12z.2dfld.13km.f006.na.grib2",
+        "http_status": 206,
+        "range": "bytes=25430125-26167494",
+        "byte_size": 737370,
+        "sha256": "ce1f0465a11b48e7c7afd3da2ef001625ac2e13b9058cc4d6be0eb6aea9f24d7",
+        "completed_at": "2026-09-08T00:28:20.843160+00:00"
+      }
+    ]
+  },
+  "corners": [
+    {
+      "sampled_latitude": 45.020232,
+      "sampled_longitude": -57.994936,
+      "sample_distance_km": 2.2847436613730854,
+      "value": 290.74,
+      "units": "K",
+      "native_masked": false
+    },
+    {
+      "sampled_latitude": 44.953808,
+      "sampled_longitude": -46.015372,
+      "sample_distance_km": 5.276940743373043,
+      "value": 291.02,
+      "units": "K",
+      "native_masked": false
+    },
+    {
+      "sampled_latitude": 50.447032,
+      "sampled_longitude": -57.98568,
+      "sample_distance_km": 5.976451962478916,
+      "value": 286.1,
+      "units": "K",
+      "native_masked": false
+    },
+    {
+      "sampled_latitude": 50.495184,
+      "sampled_longitude": -45.922964,
+      "sample_distance_km": 5.475452839266544,
+      "value": 287.8,
+      "units": "K",
+      "native_masked": false
+    }
+  ],
+  "raw_files_retained_outside_git": "/private/tmp/astraeus-rrfs-access-proof"
+}

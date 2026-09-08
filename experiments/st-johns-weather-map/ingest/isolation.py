@@ -14,13 +14,15 @@ file is refused and the entire workspace is removed.
 
 from __future__ import annotations
 
+import math
 import os
+import selectors
 import shutil
 import signal
 import subprocess
 import sys
 import tempfile
-import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -105,24 +107,61 @@ def _limit_preexec(limits: ProcessAllocationLimits) -> None:
         resource.setrlimit(limit, (requested, requested))
 
 
-def _bounded_reader(
-    stream: object,
-    *,
-    maximum: int,
-    process: subprocess.Popen[bytes],
-    exceeded: threading.Event,
-    collected: bytearray,
-) -> None:
-    """Drain one pipe without ever retaining more than its declared bound."""
-    while True:
-        chunk = stream.read(min(64 * 1024, maximum + 1))
-        if not chunk:
-            return
-        if len(collected) + len(chunk) > maximum:
-            exceeded.set()
-            process.terminate()
-            return
-        collected.extend(chunk)
+def _exchange_bounded(
+    process: subprocess.Popen[bytes], payload: bytes, limits: ProcessAllocationLimits,
+    deadline: float, timeout_seconds: float,
+) -> tuple[int, bytearray, bytearray]:
+    """Multiplex all three pipes under one deadline, including blocked writes."""
+    stdout, stderr = bytearray(), bytearray()
+    offset = 0
+
+    def remaining() -> float:
+        value = deadline - time.monotonic()
+        if value <= 0:
+            raise subprocess.TimeoutExpired(process.args, timeout_seconds)
+        return value
+
+    with selectors.DefaultSelector() as selector:
+        for stream, maximum, collected in (
+            (process.stdout, limits.stdout_bytes, stdout),
+            (process.stderr, limits.stderr_bytes, stderr),
+        ):
+            os.set_blocking(stream.fileno(), False)
+            selector.register(stream, selectors.EVENT_READ, (maximum, collected))
+        if payload:
+            os.set_blocking(process.stdin.fileno(), False)
+            selector.register(process.stdin, selectors.EVENT_WRITE)
+        else:
+            process.stdin.close()
+        while selector.get_map():
+            for key, _events in selector.select(remaining()):
+                remaining()
+                stream = key.fileobj
+                if stream is process.stdin:
+                    try:
+                        offset += os.write(stream.fileno(), memoryview(payload)[offset:offset + 65536])
+                    except BlockingIOError:
+                        continue
+                    except BrokenPipeError:
+                        offset = len(payload)
+                    if offset == len(payload):
+                        selector.unregister(stream)
+                        stream.close()
+                else:
+                    maximum, collected = key.data
+                    try:
+                        chunk = os.read(stream.fileno(), min(65536, maximum - len(collected) + 1))
+                    except BlockingIOError:
+                        continue
+                    if not chunk:
+                        selector.unregister(stream)
+                        stream.close()
+                    elif len(collected) + len(chunk) > maximum:
+                        raise BoundedProcessOutputExceeded("bounded decoder exceeded its stdout or stderr bound")
+                    else:
+                        collected.extend(chunk)
+        exit_code = process.wait(timeout=remaining())
+    return exit_code, stdout, stderr
 
 
 def _replace_output_argument(command: Sequence[str], output: Path) -> list[str]:
@@ -145,8 +184,9 @@ def run_bounded_process(
 
     The child starts in a private sibling workspace and receives the absolute
     path for its only allowed output via a literal ``{output}`` argv item.  It
-    receives at most ``stdin_bytes`` before exec, and parent-side pipe readers
-    terminate it before retaining more than either reply bound.  A discovery
+    receives at most ``stdin_bytes`` after limits are installed. Nonblocking
+    pipe exchange and process completion share one monotonic deadline, and
+    neither reply is retained beyond its declared bound.  A discovery
     caller may set ``require_output=False`` for a bounded inspect operation;
     that child must leave no workspace output and returns only ``stdout``.
     Failure never leaves a destination file or workspace behind.
@@ -160,7 +200,7 @@ def run_bounded_process(
         )
     if _resource_module() is None:
         raise BoundedProcessUnavailable("bounded decoding requires RLIMIT_AS and RLIMIT_FSIZE")
-    if timeout_seconds <= 0:
+    if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
         raise ValueError("bounded process timeout must be positive")
 
     if require_output and destination is None:
@@ -171,10 +211,7 @@ def run_bounded_process(
     workspace_parent = None if destination_path is None else destination_path.parent
     workspace = Path(tempfile.mkdtemp(prefix="bounded-decode-", dir=workspace_parent))
     output = workspace / "artifact"
-    stdout = bytearray()
-    stderr = bytearray()
-    stdout_exceeded = threading.Event()
-    stderr_exceeded = threading.Event()
+    deadline = time.monotonic() + timeout_seconds
     process: subprocess.Popen[bytes] | None = None
     try:
         try:
@@ -185,6 +222,8 @@ def run_bounded_process(
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 preexec_fn=lambda: _limit_preexec(limits),
+                start_new_session=True,
+                bufsize=0,
                 env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
             )
         except subprocess.SubprocessError as error:
@@ -197,39 +236,11 @@ def run_bounded_process(
         assert process.stdin is not None
         assert process.stdout is not None
         assert process.stderr is not None
-        out_reader = threading.Thread(
-            target=_bounded_reader,
-            kwargs={"stream": process.stdout, "maximum": limits.stdout_bytes, "process": process,
-                    "exceeded": stdout_exceeded, "collected": stdout},
-            daemon=True,
-        )
-        err_reader = threading.Thread(
-            target=_bounded_reader,
-            kwargs={"stream": process.stderr, "maximum": limits.stderr_bytes, "process": process,
-                    "exceeded": stderr_exceeded, "collected": stderr},
-            daemon=True,
-        )
-        out_reader.start()
-        err_reader.start()
         try:
-            try:
-                process.stdin.write(stdin)
-            except BrokenPipeError:
-                # The child failure is reported below using its exit status.
-                pass
-            finally:
-                process.stdin.close()
-            exit_code = process.wait(timeout=timeout_seconds)
+            exit_code, stdout, stderr = _exchange_bounded(process, stdin, limits, deadline, timeout_seconds)
         except subprocess.TimeoutExpired as error:
-            process.kill()
-            process.wait()
             raise BoundedProcessError(f"bounded decoder exceeded {timeout_seconds:g}-second timeout") from error
-        finally:
-            out_reader.join(timeout=5)
-            err_reader.join(timeout=5)
 
-        if stdout_exceeded.is_set() or stderr_exceeded.is_set():
-            raise BoundedProcessOutputExceeded("bounded decoder exceeded its stdout or stderr bound")
         if exit_code != 0:
             if exit_code < 0:
                 signame = signal.Signals(-exit_code).name
@@ -248,7 +259,16 @@ def run_bounded_process(
         output.replace(destination_path)
         return BoundedProcessResult(output_path=destination_path, stdout=bytes(stdout))
     finally:
-        if process is not None and process.poll() is None:
-            process.kill()
+        if process is not None:
+            # Descendants can inherit pipes or continue writing in the private
+            # workspace after the decoder exits. Stop the entire owned group
+            # before closing channels or removing its allocations.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             process.wait()
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream is not None:
+                    stream.close()
         shutil.rmtree(workspace, ignore_errors=True)

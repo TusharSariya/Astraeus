@@ -13,7 +13,7 @@ import { parseFocusUrl, serializeFocusUrl, type View } from './workbench/focusUr
 import { EvidenceInspector, EvidenceLedger, evidenceKey, type InspectedEvidence } from './workbench/EvidenceInspector'
 import { MapStack, NOWCAST_STACK, type DrawEvidence } from './workbench/MapStack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, isObservationPointProduct, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
@@ -196,7 +196,7 @@ function FieldControl({ label, children }: { label: string; children: React.Reac
 
 /** Options a selector can honestly offer. An empty list stays disabled and says why. */
 function EvidenceSelect({ options, value, onChange, emptyReason, label }: {
-  options: Array<{ value: string; label: string; disabled?: boolean; title?: string }>
+  options: Array<{ value: string; label: string; disabled?: boolean; title?: string; group?: string }>
   value: string
   onChange: (value: string) => void
   emptyReason: string
@@ -205,7 +205,10 @@ function EvidenceSelect({ options, value, onChange, emptyReason, label }: {
   if (options.length === 0) return <select disabled aria-label={label}><option>{emptyReason}</option></select>
   return (
     <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
-      {options.map((option) => <option key={option.value} value={option.value} disabled={option.disabled} title={option.title}>{option.label}</option>)}
+      {[...new Set(options.map((option) => option.group))].map((group) => {
+        const rows = options.filter((option) => option.group === group).map((option) => <option key={option.value} value={option.value} disabled={option.disabled} title={option.title}>{option.label}</option>)
+        return group ? <optgroup key={group} label={group}>{rows}</optgroup> : rows
+      })}
     </select>
   )
 }
@@ -931,10 +934,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   // design, so every model button was permanently dead beside a fully
   // implemented endpoint. A source the endpoint has no parameter value for is
   // not rendered as a disabled affordance either; it is simply not a control.
-  const forecastSources = useMemo(
-    () => catalog.filter((source) => source.forecast_horizon !== 'observation' && pointProductFor(source) !== null),
-    [catalog],
-  )
+  const pointSources = useMemo(() => catalog.filter((source) => pointProductFor(source) !== null), [catalog])
+  const forecastSources = useMemo(() => pointSources.filter((source) => !isObservationPointProduct(source)), [pointSources])
   const providers = useMemo(() => unique(catalog.map((source) => source.producer)), [catalog])
   /** The model row grouped by producer, producers in catalogue order and each
    *  producer's sources in catalogue order. BLEND stays first and ungrouped. */
@@ -947,7 +948,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     })
     return groups
   }, [forecastSources])
-  const productSources = useMemo(() => (provider ? forecastSources.filter((source) => source.producer === provider) : forecastSources), [forecastSources, provider])
+  const productSources = useMemo(() => (provider ? pointSources.filter((source) => source.producer === provider) : pointSources), [pointSources, provider])
   const runs = useMemo(() => unique(snapshot.provenance.map((row) => row.run)), [snapshot])
   const members = useMemo(() => unique(snapshot.provenance.map((row) => row.member ?? '')), [snapshot])
   const levels = useMemo(() => unique(snapshot.provenance.map((row) => row.level)), [snapshot])
@@ -1698,6 +1699,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
                   options={productSources.length > 0 ? [{ value: '', label: 'Consensus (API selection)' }, ...productSources.map((source) => ({
                     value: pointProductFor(source) as string,
                     label: `${pointProductFor(source)} — ${source.product}`,
+                    group: isObservationPointProduct(source) ? 'Native observations' : 'Forecast and other point products',
                     title: `${source.role} · registry state: ${source.state}`,
                   }))] : []}
                 />

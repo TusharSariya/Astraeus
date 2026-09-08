@@ -29,6 +29,8 @@ def build_native_fixtures(experiment_root: Path | None = None) -> dict:
     from fastapi.testclient import TestClient
     from test_ecmwf_query import Fixture, RUN, coordinator
     from test_source_point_integration import native_fixture
+    import httpx
+    from test_swob_query import Clocks, feature, fixture_document, query_service
     from test_holyrood_query import service
     from test_holyrood_api import SELECTED
     from test_experimental_holyrood_radar import GIF
@@ -90,6 +92,25 @@ def build_native_fixtures(experiment_root: Path | None = None) -> dict:
             result[key] = point
             counts[source] = count
             transport.client.close()
+
+        swob = importlib.import_module("weather_api.swob_query")
+        clocks, swob_calls = Clocks(), []
+        swob_query = query_service(lambda request: swob_calls.append(str(request.url)) or httpx.Response(200, json=fixture_document(feature())), clocks)
+        monkey.setattr(swob, "swob_query_service", lambda: swob_query)
+        monkey.setattr(app, "now", lambda: clocks.wall)
+        params = {"latitude": 47.5615, "longitude": -52.7126, "valid_time": clocks.wall.isoformat(), "product": "SWOB"}
+        response = client.get(f"{app.PREFIX}/point", params=params)
+        response.raise_for_status()
+        point = response.json()
+        assert len(point["fields"]) == 6 and not point["observation_unavailable"]
+        point["data_mode"] = "fixture"
+        point["notices"].append("Constructed SWOB contract fixture; no provider request or live evidence")
+        for field in point["fields"]:
+            field["provenance"]["data_mode"] = "fixture"
+        point["fields"].sort(key=lambda field: field["key"])
+        result["point_swob"] = point
+        counts["eccc-swob"] = len(swob_calls)
+        assert len(swob_calls) == 1
 
         query, calls, _clock, _responses = service()
         previous = app.app.dependency_overrides.get(holyrood_service)

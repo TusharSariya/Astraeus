@@ -156,6 +156,8 @@ PRODUCT_SOURCE_IDS = {
     "GFS Wave": "openmeteo-gfs-wave",
     "CAMS AOD": "openmeteo-cams-aod",
     "SWOB": "eccc-swob",
+    "METAR": "awc-metar-speci",
+    "OISST SST": "noaa-oisst-v2-1",
     "AIFS Single": "ecmwf-aifs-single",
     "IFS": "ecmwf-ifs",
     "ECMWF": "ecmwf-ifs",
@@ -1348,9 +1350,10 @@ def _live_point(
         consensus = build_consensus(candidates)
         return demanded, consensus, sorted({field.provenance.source_id for field in demanded}), notices, {item.source_id for item in candidates}
 
-    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB"}:
+    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB", "METAR", "OISST SST"}:
         from .source_delivery import source_readers
-        source_id = "eccc-swob" if product.upper() == "SWOB" else "ecmwf-aifs-single" if product.upper() == "AIFS SINGLE" else "ecmwf-ifs"
+        source_id = {"SWOB": "eccc-swob", "METAR": "awc-metar-speci", "OISST SST": "noaa-oisst-v2-1",
+            "AIFS SINGLE": "ecmwf-aifs-single"}.get(product.upper(), "ecmwf-ifs")
         try:
             fields = list(source_readers()[source_id].read_point(latitude, longitude, time))
         except Exception:
@@ -1549,9 +1552,8 @@ def _live_point(
                      "The intermediary series does not expose a producer run for this value; metadata context is not assigned as its run"])
     if product and product.upper() == "GFS WAVE":
         try:
-            from .openmeteo_gfs_wave_query import openmeteo_gfs_wave_query_service  # noqa: PLC0415
-
-            fields = openmeteo_gfs_wave_query_service().point_fields(latitude, longitude, time)
+            from .source_delivery import source_readers  # noqa: PLC0415
+            fields = list(source_readers()["openmeteo-gfs-wave"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.info("Open-Meteo GFS-Wave demand point failed at %s,%s for %s: %s", latitude, longitude, time.isoformat(), type(error).__name__)
             return _unavailable_point(
@@ -2422,7 +2424,17 @@ def get_point(
         raise HTTPException(status_code=422, detail=f"unknown statistic: {statistic}; the registered entries are {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
     if comparison is not None and comparison not in THRESHOLD_COMPARISONS:
         raise HTTPException(status_code=422, detail=f"unknown comparison: {comparison}; the accepted comparisons are {', '.join(THRESHOLD_COMPARISONS)}")
-    time = requested_time(valid_time)
+    if product and product.upper() == "OISST SST" and valid_time is not None:
+        if valid_time.tzinfo is None:
+            raise HTTPException(status_code=422, detail="valid_time must include a UTC offset")
+        time = valid_time.astimezone(timezone.utc)
+        # Daily analyses routinely arrive beyond the forecast UI's 24-hour
+        # lookback. Match the source's five UTC calendar dates; exact native
+        # 12Z availability is still decided by the OISST reader.
+        if not 0 <= (now().astimezone(timezone.utc).date() - time.date()).days < 5:
+            raise HTTPException(status_code=422, detail="OISST valid_time is outside its current five-day analysis window")
+    else:
+        time = requested_time(valid_time)
     mode = configured_mode()
     if mode == FIXTURE_MODE:
         return _fixture_point(
@@ -2436,7 +2448,7 @@ def get_point(
             member=member, statistic=statistic,
             quantile=quantile, threshold=threshold, comparison=comparison,
         )
-        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name != "SWOB"), "GDPS", "GEFS"}:
+        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"SWOB", "METAR", "OISST SST"}), "GDPS", "GEFS"}:
             from .observation_companions import with_aqhi_observation  # noqa: PLC0415
 
             response = with_aqhi_observation(response)

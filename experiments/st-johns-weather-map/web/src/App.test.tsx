@@ -1942,3 +1942,19 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     expect(toggle).toHaveFocus()
   })
 })
+it('offers declared native observations separately in Expert Product without putting them in Forecast model', async () => {
+  const capability = { source_id: 'example-observation', product_id: 'native-observation', field: 'temperature_2m', point: true, point_product: 'Native observation', native_series: false, variants: [{ kind: 'observation' }], levels: ['2 m'], run_selection: 'not_applicable', time_semantics: 'Native report time', coverage_description: 'Returned report only' }
+  const observation = { id: capability.source_id, producer: 'Fixture provider', product: 'Native station reports', state: 'implemented-unverified', forecast_horizon: 'observations only', capabilities: [capability] }
+  const forecast = { ...observation, id: 'example-forecast', product: 'Model output', forecast_horizon: '3 days', capabilities: [{ ...capability, source_id: 'example-forecast', point_product: 'Forecast model', variants: [{ kind: 'deterministic' }] }] }
+  const fetch = routedFetch({ catalog: { sources: [observation, forecast] }, point: apiPoint() })
+  vi.stubGlobal('fetch', fetch)
+  render(<App initialLayout="legacy" />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Workbench' }))
+  const product = screen.getByRole('combobox', { name: 'Product' })
+  expect(within(product).getByRole('group', { name: 'Native observations' })).toHaveTextContent('Native observation')
+  expect(within(product).getByRole('group', { name: 'Forecast and other point products' })).toHaveTextContent('Forecast model')
+  expect(within(screen.getByRole('region', { name: 'Forecast models' })).queryByRole('button', { name: /Native observation/ })).not.toBeInTheDocument()
+  await userEvent.selectOptions(product, 'Native observation')
+  await waitFor(() => expect(fetch.mock.calls.some(([url]) => url.includes('/point?') && new URL(url, 'http://localhost').searchParams.get('product') === 'Native observation')).toBe(true))
+  expect(product).toHaveValue('Native observation')
+})

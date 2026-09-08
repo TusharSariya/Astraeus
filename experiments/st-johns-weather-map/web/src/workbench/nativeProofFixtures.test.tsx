@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import sharedFixture from '../../../contracts/fixtures/source-delivery.json'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -8,7 +9,7 @@ import { isNativeImagePair, NativeImages } from './NativeImages'
 
 // Root's shared generator imports source-native-proof-fixture.py. The override
 // runs the same consumption cases before that shared-file integration lands.
-const fixture = JSON.parse(readFileSync(process.env.NATIVE_SOURCE_PROOF_FIXTURE ?? new URL('../../../contracts/fixtures/source-delivery.json', import.meta.url), 'utf8'))
+const fixture = process.env.NATIVE_SOURCE_PROOF_FIXTURE ? JSON.parse(readFileSync(process.env.NATIVE_SOURCE_PROOF_FIXTURE, 'utf8')) : sharedFixture
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 it.each([['point_ifs', 'ecmwf-ifs', '(0 - 1)'], ['point_aifs_single', 'ecmwf-aifs-single', '%']])('consumes exact %s source acquisition and native cloud units', (key, source, units) => {
   const body = fixture[key]
@@ -41,4 +42,16 @@ it('consumes the exact constructed Holyrood API pair and image bodies only after
   expect(screen.getAllByRole('img')[0]).toHaveAttribute('src', pair.images[0].image_url)
   expect(screen.getByRole('region')).toHaveTextContent('Scientific freshness unknown')
   expect(fixture.native_fixture_proof.provider_requests).toBe(0)
+})
+it('consumes SWOB as its own station observation with no model run or companion substitution', () => {
+  const body = fixture.point_swob
+  expect(body.data_mode).toBe('fixture')
+  const snapshot = normalizePoint(body)
+  expect(snapshot.servedFields).toHaveLength(6)
+  for (const row of snapshot.servedFields) {
+    expect(row.attribution.sourceId).toBe('eccc-swob')
+    expect(row.attribution.runTime).toBeNull()
+    expect(row.attribution.responseProvenance?.native_report).toMatchObject({ station_id: '71801', provider_report_id: 'CAJW' })
+  }
+  expect(body.observation_unavailable).toEqual([])
 })

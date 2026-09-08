@@ -1,0 +1,161 @@
+{
+  "head": "d4c3a47400665bfb60ae1fb3255a3c954c3a956f",
+  "recorded_at": "2026-09-08T00:21:22.761170+00:00",
+  "selected_time": "2026-09-08T00:00:00+00:00",
+  "source_id": "openmeteo-gfs-wave",
+  "model": "ncep_gfswave016",
+  "provider_requests": 1,
+  "local_http_reads": 2,
+  "local_http_status": [
+    200,
+    200
+  ],
+  "provider_url": "https://marine-api.open-meteo.com/v1/marine?latitude=47.561500&longitude=-52.712600&hourly=wave_height%2Cwave_period%2Cwave_direction%2Cswell_wave_height%2Cswell_wave_period%2Cswell_wave_direction%2Cwind_wave_height%2Cwind_wave_period%2Cwind_wave_direction&models=ncep_gfswave016&cell_selection=sea&timezone=GMT&start_hour=2026-09-08T00%3A00&end_hour=2026-09-08T00%3A00",
+  "body_bytes": 676,
+  "body_sha256": "902b0756b3819f58bbbc247a8e47bb1f6e9dbf72c81d87c57fae727c845db436",
+  "completed_at": "2026-09-08T00:21:22.125536+00:00",
+  "cache_ttl_seconds": 300,
+  "sampled_cell": [
+    47.666668,
+    -52.666664
+  ],
+  "operational": false,
+  "selection": {
+    "mode": "evidence_only",
+    "selected_source_id": null,
+    "selected_product_id": null,
+    "badge": "GFS-Wave sea-state evidence",
+    "reason": "Reprocessed Open-Meteo sea-state evidence is not a display primary"
+  },
+  "producer_run": null,
+  "fields": [
+    {
+      "field": "wave_height",
+      "key": "significant_wave_height",
+      "value": 1.74,
+      "original_units": "m",
+      "normalized_units": "m",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    },
+    {
+      "field": "wave_period",
+      "key": "wave_period",
+      "value": 8.35,
+      "original_units": "s",
+      "normalized_units": "s",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    },
+    {
+      "field": "wave_direction",
+      "key": "wave_direction",
+      "value": 94.0,
+      "original_units": "\u00b0",
+      "normalized_units": "degree",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    },
+    {
+      "field": "swell_height",
+      "key": "swell_height",
+      "value": 1.52,
+      "original_units": "m",
+      "normalized_units": "m",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    },
+    {
+      "field": "swell_wave_period",
+      "key": "swell_wave_period",
+      "value": 8.1,
+      "original_units": "s",
+      "normalized_units": "s",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    },
+    {
+      "field": "swell_wave_direction",
+      "key": "swell_wave_direction",
+      "value": 86.0,
+      "original_units": "\u00b0",
+      "normalized_units": "degree",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    },
+    {
+      "field": "wind_wave_height",
+      "key": "wind_wave_height",
+      "value": 0.0,
+      "original_units": "m",
+      "normalized_units": "m",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    },
+    {
+      "field": "wind_wave_period",
+      "key": "wind_wave_period",
+      "value": 0.0,
+      "original_units": "s",
+      "normalized_units": "s",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    },
+    {
+      "field": "wind_wave_direction",
+      "key": "wind_wave_direction",
+      "value": 0.0,
+      "original_units": "\u00b0",
+      "normalized_units": "degree",
+      "quality": {
+        "status": "passed",
+        "flags": [
+          "exact_native_hour",
+          "cell_selection:sea"
+        ]
+      }
+    }
+  ],
+  "api_body_sha256": "70b1024be08979e00eef9f6283c03ab9cafa6577c491df2d9215f02e73fb4d8a",
+  "raw_provider_body_retained": false
+}

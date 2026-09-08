@@ -223,6 +223,33 @@ class GEFSSource:
         return None
 
 
+class OISSTSource:
+    source_id, product_id = "noaa-oisst-v2-1", "oisst-avhrr-v2.1"
+
+    def __init__(self, factory):
+        self.factory = factory
+
+    def descriptors(self):
+        from registry import fields as catalogue
+        return tuple(SourceCapability(source_id=self.source_id, product_id=self.product_id,
+            field=key, variants=[SourceVariant(kind="deterministic")],
+            levels=[str(catalogue.field(key).level)], point=True, point_product="OISST SST",
+            native_series=False, run_selection="not_applicable",
+            time_semantics="Exact 12 UTC daily analysis within the current five-day acquisition window; no forecast run",
+            coverage_description="Native cells in the fixed coastal evidence box; preliminary/final identity, masks and uncertainty remain")
+            for key in ("sea_surface_temperature", "sea_surface_temperature_uncertainty"))
+
+    @observed_read
+    def read_point(self, latitude, longitude, selected, *, run="latest", refresh=False):
+        if run != "latest":
+            from .native_runs import RunUnavailable
+            raise RunUnavailable("OISST analyses have no selectable forecast runs")
+        return tuple(self.factory().point_fields(latitude, longitude, selected, refresh=refresh))
+
+    def plan_series(self, start, end, *, run="latest"):
+        return None
+
+
 def source_readers() -> dict[str, SourceReader]:
     # Lazy imports preserve existing monkeypatch seams and do not create clients
     # when the catalogue is read. Fields here name implemented delivery paths,
@@ -236,16 +263,23 @@ def source_readers() -> dict[str, SourceReader]:
     from .swob_query import swob_query_service
     from .gefs_query import gefs_query_coordinator
     from .ecmwf_query import ecmwf_query_coordinator
+    from .aviation_delivery import METARSource
+    from .gfs_wave_delivery import GFSWaveSource
+    from .openmeteo_gfs_wave_query import openmeteo_gfs_wave_query_service
+    from .oisst_query import oisst_query_service
     common = ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure")
     readers = [
         ForecastSource("eccc-hrdps", "hrdps", hrdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
         ForecastSource("eccc-rdps", "rdps", rdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
         ForecastSource("eccc-gdps", "gdps", gdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
-        ForecastSource("noaa-gfs", "gfs", gfs_query_coordinator, (*common, "visibility", "total_cloud_geometric", "cloud_low", "cloud_middle", "cloud_high"), named_runs=True),
+        ForecastSource("noaa-gfs", "gfs", gfs_query_coordinator, (*common, "visibility", "total_cloud_geometric", "cloud_low", "cloud_middle", "cloud_high", "precipitable_water"), named_runs=True),
         AQHISource(aqhi_query_service),
         CAMSAODSource(openmeteo_cams_aod_query_service),
         SWOBSource(swob_query_service),
         GEFSSource(gefs_query_coordinator),
+        METARSource(),
+        GFSWaveSource(openmeteo_gfs_wave_query_service),
+        OISSTSource(oisst_query_service),
         *(ECMWFSource(source_id, product_id, lambda source_id=source_id: ecmwf_query_coordinator(source_id),
             ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "mean_sea_level_pressure", "total_cloud_geometric"), named_runs=False)
             for source_id, product_id in (("ecmwf-ifs", "ifs"), ("ecmwf-aifs-single", "aifs-single"))),

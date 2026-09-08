@@ -1,0 +1,190 @@
+{
+  "captured_at": "2026-09-08T00:18:38.908055+00:00",
+  "provider_requests": 2,
+  "listing_bytes": 2190,
+  "listing_sha256": "601f7287083c856dcc8680606dab778a8a1422e7f683241e2e186dcf3a6b2920",
+  "native_response": {
+    "url": "https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/202609/oisst-avhrr-v02r01.20260906_preliminary.nc",
+    "request_headers": {
+      "accept": "*/*",
+      "user-agent": "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)",
+      "accept-encoding": "gzip"
+    },
+    "response_headers": {
+      "date": "Tue, 08 Sep 2026 00:17:13 GMT",
+      "server": "Apache",
+      "strict-transport-security": "max-age=31536000",
+      "last-modified": "Mon, 07 Sep 2026 13:31:35 GMT",
+      "etag": "\"17b74a-65ae4a3162403\"",
+      "accept-ranges": "bytes",
+      "content-length": "1554250",
+      "content-type": "application/x-netcdf",
+      "access-control-allow-origin": "*",
+      "access-control-allow-headers": "X-Requested-With, Content-Type",
+      "keep-alive": "timeout=3, max=100",
+      "connection": "Keep-Alive"
+    },
+    "completed_at": "2026-09-08 00:17:14.238477+00:00",
+    "byte_size": 1554250,
+    "sha256": "b739a63e610d01b187bb61463c4c58b6fe64f66a8b1f99293ddf3344347a9d2c"
+  },
+  "native_repeat_requests": 0,
+  "point": {
+    "latitude": 47.5,
+    "longitude": -52.0
+  },
+  "fields": [
+    {
+      "field": "sea_surface_temperature",
+      "value": 14.529999675229192,
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "noaa-oisst-v2-1",
+        "artifact_revision": "oisst-20260906-preliminary-118b45151142aaf5",
+        "provider": "NOAA National Centers for Environmental Information",
+        "product": "NOAA 0.25-degree Daily OISST AVHRR-only v2.1",
+        "forecast_centre": "NOAA NCEI",
+        "run_time": null,
+        "valid_time": "2026-09-06T12:00:00Z",
+        "retrieval_time": "2026-09-08T00:17:14.238477Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "sea surface",
+        "original_units": "Celsius",
+        "normalized_units": "degC",
+        "native_resolution": "0.25 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "passed",
+          "flags": [
+            "daily_analysis",
+            "native_missingness_retained",
+            "oisst-avhrr-v02r01.20260906_preliminary.nc"
+          ]
+        },
+        "coverage": {
+          "status": "complete",
+          "fraction": 0.8381
+        },
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "threshold_seconds": 300
+        },
+        "licence": "NOAA public data; cite OISST v2.1",
+        "attribution": "NOAA NCEI daily OISST v2.1",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "oisst-query-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": null,
+        "sampled_latitude": 47.625,
+        "sampled_longitude": -51.875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": null,
+        "ensemble": null,
+        "display_primary_eligible": false
+      },
+      "key": "sea_surface_temperature",
+      "family": "marine",
+      "phase": null,
+      "storage": "available-not-stored",
+      "absence_state": null,
+      "blocked": null,
+      "comparability": "Sea state, sea surface temperature, currents, ice and surge. A significant wave height that combines wind wave and swell is not comparable with either partition alone. A modelled sea surface temperature and a satellite skin SST are different measurements of a stratified surface."
+    },
+    {
+      "field": "sea_surface_temperature_uncertainty",
+      "value": 0.2899999935179949,
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "noaa-oisst-v2-1",
+        "artifact_revision": "oisst-20260906-preliminary-118b45151142aaf5",
+        "provider": "NOAA National Centers for Environmental Information",
+        "product": "NOAA 0.25-degree Daily OISST AVHRR-only v2.1",
+        "forecast_centre": "NOAA NCEI",
+        "run_time": null,
+        "valid_time": "2026-09-06T12:00:00Z",
+        "retrieval_time": "2026-09-08T00:17:14.238477Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "sea surface",
+        "original_units": "Celsius",
+        "normalized_units": "degC",
+        "native_resolution": "0.25 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "passed",
+          "flags": [
+            "daily_analysis",
+            "native_missingness_retained",
+            "oisst-avhrr-v02r01.20260906_preliminary.nc"
+          ]
+        },
+        "coverage": {
+          "status": "complete",
+          "fraction": 0.8381
+        },
+        "freshness": {
+          "status": "fresh",
+          "age_seconds": 0,
+          "threshold_seconds": 300
+        },
+        "licence": "NOAA public data; cite OISST v2.1",
+        "attribution": "NOAA NCEI daily OISST v2.1",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "oisst-query-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": null,
+        "sampled_latitude": 47.625,
+        "sampled_longitude": -51.875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": null,
+        "ensemble": null,
+        "display_primary_eligible": false
+      },
+      "key": "sea_surface_temperature_uncertainty",
+      "family": "marine",
+      "phase": null,
+      "storage": "available-not-stored",
+      "absence_state": null,
+      "blocked": null,
+      "comparability": "Sea state, sea surface temperature, currents, ice and surge. A significant wave height that combines wind wave and swell is not comparable with either partition alone. A modelled sea surface temperature and a satellite skin SST are different measurements of a stratified surface."
+    }
+  ],
+  "raw_capture_location": "/private/tmp/astraeus-oisst-live-proof",
+  "http_readback": "Pending root-owned shared route integration; source helper proof passed actual bounded Linux leaf"
+}
