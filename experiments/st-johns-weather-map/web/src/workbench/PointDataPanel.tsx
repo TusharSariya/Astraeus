@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CatalogSource, LayerItem, LayerSelection, LocationPoint, PointFieldSelection, ServedFieldValue } from '../types'
 import { familyTitle } from '../fieldFamily'
-import { selectionPoints, pointIdentity, pointFamily, pointLabel, pointUnavailable, matchesPoint, variantIdentity } from './pointSelections'
+import { selectionPoints, pointIdentity, pointFamily, pointLabel, pointFieldLabel, pointUnavailable, matchesPoint, variantIdentity } from './pointSelections'
 import { pointRequest, usePointRequests } from './pointRequests'
 import { EvidenceInspector, type InspectedEvidence } from './EvidenceInspector'
 import type { DrawEvidence } from './MapStack'
@@ -18,7 +18,7 @@ export function relativeValidTime(validTime: string | null | undefined, clock: n
 }
 export function compactValue(value: ServedFieldValue) {
   if (value.attribution.fieldKey === 'radar_echo' && value.value === 0) return '0 · no echo'
-  if (value.value !== null && ['%', 'percent', 'percentage'].includes(value.units ?? '')) return `${value.value}%`
+  if (value.value !== null && ['%', 'percent', 'percentage'].includes(value.units ?? '')) return `${Number(value.value.toFixed(1))}%`
   return value.text
 }
 export function concisePointReason(reason: string) {
@@ -155,11 +155,11 @@ export function PointDataPanel({ stack, layers, catalog, location, instant, draw
             const ambiguous = rows.filter(other => other.family === row.family && other.point?.sourceId === row.point?.sourceId).length > 1 || (catalog.find(source => source.id === row.point?.sourceId)?.fields?.filter(field => field.family === row.family).length ?? 0) > 1
             const levelAmbiguous = rows.some(other => other.point?.sourceId === row.point?.sourceId && other.point?.field === row.point?.field && other.point?.level !== row.point?.level)
             const productAmbiguous = rows.some(other => other.point?.sourceId === row.point?.sourceId && other.point?.productId !== row.point?.productId)
-            const qualifier = row.point ? [productAmbiguous ? row.point.productId : null, ambiguous && !(row.point.field === 'radar_echo' && values[0]?.value === 0) ? row.point.field.replaceAll('_',' ') : null, row.point.variant?.statistic, levelAmbiguous ? row.point.level : null].filter(Boolean).join(' · ') : ''
+            const qualifier = row.point ? [productAmbiguous ? row.point.productId : null, ambiguous && !(row.point.field === 'radar_echo' && values[0]?.value === 0) ? pointFieldLabel(row.point) : null, row.point.field.startsWith('weathernext3_') ? null : row.point.variant?.statistic, levelAmbiguous ? row.point.level : null].filter(Boolean).join(' · ') : ''
             return <li key={row.key}>
               <button className={`point-data-reading${omitted ? ' point-data-omitted' : ''}`} ref={node => { if (node) buttons.current.set(row.key,node); else buttons.current.delete(row.key) }} onFocus={event => { focused.current = {key:row.key,node:event.currentTarget} }} onBlur={() => { focused.current = null }} aria-label={`Details for point reading ${row.label}`} aria-description={[row.point?.sourceId, ...values.map(v => `${compactValue(v)} · ${v.attribution.validTime ?? 'Native time not supplied'}`), omitted ? reason : null].filter(Boolean).join('. ')} onClick={event => { setDetail({key:row.key,opener:event.currentTarget,scroll:contents.current?.scrollTop ?? 0}); if(contents.current) contents.current.scrollTop = 0 }}>
-                {omitted ? <><span>{row.point ? [row.point.sourceId,row.point.field.replaceAll('_',' '),row.point.variant?.member ? `Member ${row.point.variant.member}` : row.point.variant?.statistic].filter(Boolean).join(' · ') : row.label}</span><small title={reason}>{concisePointReason(reason)}</small></> : (values.length ? values : [null]).map((value,index) => <span className="point-data-line" key={index}>
-                  <span className="point-data-source">{row.point?.sourceId}<small>{[qualifier,value?.attribution.member ? `Member ${value.attribution.member}` : row.point?.variant?.member && row.point.variant.member !== 'all' ? `Member ${row.point.variant.member}` : null].filter(Boolean).join(' · ')}</small></span>
+                {omitted ? <><span>{row.point ? [row.point.sourceId,pointFieldLabel(row.point),row.point.variant?.member ? `Member ${row.point.variant.member}` : row.point.variant?.statistic].filter(Boolean).join(' · ') : row.label}</span><small title={reason}>{concisePointReason(reason)}</small></> : (values.length ? values : [null]).map((value,index) => <span className="point-data-line" key={index}>
+                  <span className="point-data-source">{row.point?.sourceId === 'google-weathernext-3-statistics' ? 'weathernext-3' : row.point?.sourceId}<small>{[qualifier,value?.attribution.member ? `Member ${value.attribution.member}` : row.point?.variant?.member && row.point.variant.member !== 'all' ? `Member ${row.point.variant.member}` : null].filter(Boolean).join(' · ')}</small></span>
                   <span className="point-data-value">{value ? compactValue(value) : loading ? 'Loading…' : '—'}</span>
                   <time dateTime={value?.attribution.validTime ?? undefined}>{value ? relativeValidTime(value.attribution.validTime,clock) : ''}</time>
                 </span>)}

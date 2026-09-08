@@ -17,7 +17,9 @@ services:
       # 2026-08-30 a stale compiled `vite.config.js` shadowed the .ts and hardcoded
       # this value, which meant the .ts was dead everywhere; the artifact is gone
       # and this variable is what replaces it.
-      WEATHER_API_PROXY_TARGET: http://api:8000
+      # Other experimental API services can join this network with the same
+      # generic `api` alias. Target this Compose project's unique container.
+      WEATHER_API_PROXY_TARGET: http://${COMPOSE_PROJECT_NAME:-astraeus-st-johns-weather}-api-1:8000
     ports:
       - "127.0.0.1:${WEATHER_WEB_PORT:-5173}:5173"
     depends_on:

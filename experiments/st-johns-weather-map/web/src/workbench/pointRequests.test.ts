@@ -42,3 +42,11 @@ it('requests settled playback steps and independently reports rejection', async 
   queue.replace([request('b',300000)]);await vi.advanceTimersByTimeAsync(250)
   expect(report).toHaveBeenLastCalledWith(request('b',300000).key,{result});queue.cancel()
 })
+
+it('keeps WeatherNext fields and percentiles in request identity', () => {
+  const base={sourceId:'google-weathernext-3-statistics',productId:'wn3',product:'WeatherNext 3 local',field:'temperature_2m',variant:{kind:'provider_statistic' as const,statistic:'ensemble_mean'}}
+  const first=pointRequest(stations[0],0,base)
+  const second=pointRequest(stations[0],0,{...base,field:'weathernext3_total_cloud_cover_mean'})
+  expect(first.options.field).toBe('temperature_2m')
+  expect(first.key).not.toBe(second.key)
+})

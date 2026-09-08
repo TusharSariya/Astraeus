@@ -2434,6 +2434,7 @@ def get_point(
     valid_time: datetime | None = None,
     product: str | None = None,
     time_selection: Literal["directional"] | None = None,
+    field: str | None = Query(default=None, max_length=256, description="Explicit WeatherNext 3 surface statistic field for directional point selection"),
     run: str | None = Query(default=None, description="GEPS reductions reject named producer runs"),
     hrdps_fresh: bool = True,
     rdps_fresh: bool = True,
@@ -2459,12 +2460,18 @@ def get_point(
         raise HTTPException(status_code=422, detail=f"unknown statistic: {statistic}; the registered entries are {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
     if comparison is not None and comparison not in THRESHOLD_COMPARISONS:
         raise HTTPException(status_code=422, detail=f"unknown comparison: {comparison}; the accepted comparisons are {', '.join(THRESHOLD_COMPARISONS)}")
+    if field is not None and (time_selection != 'directional' or (product or '').upper() not in {'WEATHERNEXT 3 LOCAL','WEATHERNEXT 3 HISTORICAL'}):
+        raise HTTPException(status_code=422, detail='Field selection is only supported for directional WeatherNext 3 points')
     if time_selection == 'directional':
         if valid_time is None or valid_time.tzinfo is None:
             raise HTTPException(status_code=422, detail='Directional point selection requires an offset-aware selected instant')
         if run is not None:
             raise HTTPException(status_code=422, detail='Directional point selection cannot select a named run')
         from .point_time import directional_point
+        if (product or '').upper() in {'WEATHERNEXT 3 LOCAL','WEATHERNEXT 3 HISTORICAL'}:
+            from .weathernext_delivery import directional_surface_point
+            return directional_surface_point(latitude,longitude,valid_time.astimezone(timezone.utc),product,field=field,
+                member=member,statistic=statistic,quantile=quantile,threshold=threshold,comparison=comparison)
         return directional_point(latitude, longitude, valid_time.astimezone(timezone.utc), product,
             member=member, statistic=statistic, quantile=quantile, threshold=threshold, comparison=comparison)
     if product and product.upper() == "GEPS REDUCTIONS":

@@ -77,7 +77,10 @@ def _runtime_auth_configuration():
 
 def historical_configuration_status():
     try:
-        load_historical_configuration()
+        if os.environ.get('WEATHER_WEATHERNEXT_AUTO_RUNS') == '1':
+            load_local_experimental_configuration()
+        else:
+            load_historical_configuration()
     except HistoricalConfigurationUnavailable:
         return SourceConfiguration(state='missing_configuration',required_environment=[CONFIG_ENV],
             reason='Select an explicit historical root generation and existing gcloud profile in the bounded nonsecret configuration JSON')
@@ -89,7 +92,7 @@ def historical_configuration_status():
     return SourceConfiguration(state='ready',reason='Historical root and runtime tools are configured; authentication, exact-object access and sampled coverage are established only on read')
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=8)
 def _service(configuration):
     return WeatherNextHistoricalDelivery(configuration)
 
@@ -113,7 +116,7 @@ def local_experimental_configuration_status():
     return SourceConfiguration(state='ready',reason='Local experimental root and runtime tools are configured; authentication, exact-object access and sampled coverage are established only on read')
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=8)
 def _local_service(configuration):
     return WeatherNextLocalExperimentalDelivery(configuration)
 

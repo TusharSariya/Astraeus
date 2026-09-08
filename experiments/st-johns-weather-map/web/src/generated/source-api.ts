@@ -1703,6 +1703,8 @@ export interface operations {
                 valid_time?: string | null;
                 product?: string | null;
                 time_selection?: "directional" | null;
+                /** @description Explicit WeatherNext 3 surface statistic field for directional point selection */
+                field?: string | null;
                 /** @description GEPS reductions reject named producer runs */
                 run?: string | null;
                 hrdps_fresh?: boolean;

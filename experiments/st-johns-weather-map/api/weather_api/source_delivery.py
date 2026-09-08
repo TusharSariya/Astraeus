@@ -362,7 +362,7 @@ def source_capabilities(source_id: str) -> list[SourceCapability]:
     observations = {'eccc-radar', 'eccc-aqhi', 'eccc-swob', 'awc-metar-speci', 'noaa-oisst-v2-1', 'metoffice-ostia-sst'}
     automatic = {'eccc-hrdps', 'eccc-rdps', 'eccc-gdps', 'noaa-gfs', 'eccc-radar', 'awc-metar-speci', 'eccc-aqhi', 'noaa-gefs', 'ecmwf-ifs', 'ecmwf-aifs-single'}
     return [cap.model_copy(update={'point_time_kind': 'observation' if source_id in observations else 'forecast',
-        'directional_time_selection': source_id in automatic}) for cap in reader.descriptors()]
+        'directional_time_selection': cap.directional_time_selection or source_id in automatic}) for cap in reader.descriptors()]
 
 
 def source_configuration(source_id: str) -> SourceConfiguration:

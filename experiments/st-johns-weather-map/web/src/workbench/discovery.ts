@@ -19,7 +19,7 @@ export const subjectsFor = (source: CatalogSource) => source.discovery?.subjects
   [...new Set(source.fields?.filter(f => f.storage !== 'not-published').map(f => subjectForFamily(f.family)) ?? [])]
 export function discoveryEntries(catalog: CatalogSource[], layers: LayerItem[]): DiscoveryEntry[] {
   const associated = new Set<string>()
-  const entries: DiscoveryEntry[] = catalog.map(source => {
+  const entries: DiscoveryEntry[] = catalog.filter(source => !['google-weathernext-2', 'open-meteo-weathernext-2'].includes(source.id)).map(source => {
     const mapped = layers.filter(layer => layerMapping(layer).fields.some(f => f.source_id === source.id) || source.discovery?.map_capabilities.some(c => c.layer_id === layer.id))
     mapped.forEach(layer => associated.add(layer.id))
     const caps = source.capabilities ?? [], meta = source.discovery

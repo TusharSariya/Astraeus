@@ -5,7 +5,13 @@ import { CATALOGUE_FIELDS } from '../fieldFamilies'
 export const pointIdentity = (p: PointFieldSelection) => JSON.stringify([p.sourceId, p.productId, p.product, p.field])
 export const pointSelectionId = (p: PointFieldSelection) => `point:${encodeURIComponent(pointIdentity(p))}`
 export const variantIdentity = (v?: SourceVariant | null) => JSON.stringify([v?.kind, v?.member, v?.statistic, v?.quantile, v?.threshold, v?.comparison])
-export const pointLabel = (p: PointFieldSelection) => `${p.product} · ${p.field.replaceAll('_', ' ')}`
+export function pointFieldLabel(p: PointFieldSelection) {
+  if (!p.field.startsWith('weathernext3_')) return p.field.replaceAll('_', ' ')
+  const stat=p.field.match(/_(mean|p10|p25|p50|p75|p90)(?=_|$)/)?.[1]
+  const name=p.field.replace(/^weathernext3_/, '').replace(/_(mean|p10|p25|p50|p75|p90)(?=_|$)/, '').replaceAll('_', ' ')
+  return `${stat} · ${name}`
+}
+export const pointLabel = (p: PointFieldSelection) => `${p.field.startsWith('weathernext3_') ? `WN3 ${p.product.endsWith('historical') ? 'historical' : 'forecast'}` : p.product} · ${pointFieldLabel(p)}`
 export function pointCapabilities(catalog: CatalogSource[]) {
   const result = new Map<string, {source: CatalogSource; capability: SourceCapability}>()
   for (const source of catalog) for (const c of source.capabilities ?? []) {

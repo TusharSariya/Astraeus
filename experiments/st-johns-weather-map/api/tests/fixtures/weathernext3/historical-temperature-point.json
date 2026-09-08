@@ -20,9 +20,11 @@
     "point": true,
     "point_product": "WeatherNext 3 historical",
     "native_series": false,
+    "point_time_kind": "forecast",
+    "directional_time_selection": true,
     "run_selection": "not_applicable",
-    "time_semantics": "Exact selected native hourly time in the explicitly configured historical run; valid time strictly older than 48 hours",
-    "coverage_description": "One native 0.1 degree temperature mean cell; pinned historical run, no current or full-run coverage promise"
+    "time_semantics": "Exact native hourly lead, or next native hour under directional selection, within configured run",
+    "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise"
   },
   "point": {
     "field": "temperature_2m",

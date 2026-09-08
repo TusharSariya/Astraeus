@@ -1930,6 +1930,25 @@ def _build() -> tuple[dict[str, Field], dict[str, Family], list[tuple[Any, Field
     return fields, families, patterns
 
 
+# Owner-authorized isolated WeatherNext 3 point mappings; no scheduled admission.
+if __package__:
+    from .weathernext import SURFACE_FIELDS as _WN3_FIELDS
+else:
+    from weathernext import SURFACE_FIELDS as _WN3_FIELDS
+for _wn in _WN3_FIELDS:
+    if _wn.key == 'temperature_2m':
+        continue  # Preserve the existing canonical temperature mean selector.
+    _base = _wn.native.rsplit('_', 1)[0]
+    _group = 'weathernext3_' + _base
+    next(f for f in FAMILIES if f['name'] == _wn.family)['groups'][_group] = (
+        'WeatherNext 3 native ' + _base + '; provider statistic and sampling head remain distinct.')
+    FIELDS.append(_f(_wn.key, _wn.native.replace('_', ' '), _wn.unit, _wn.family,
+        _wn.level, _group, 'Provider-published WeatherNext 3 ' + _wn.native +
+        '; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence.',
+        evidence_classes=_RETRIEVED, value_range=(0,100) if _wn.family == 'cloud_cover' else None))
+    SOURCE_FIELDS.append(_sf('google-weathernext-3-statistics', _wn.key, _wn.native,
+        'available-not-stored', 'Bounded experimental native point; exact provider statistic, grid and units.'))
+
 _FIELDS, _FAMILIES, _LEVEL_PATTERNS = _build()
 
 _SOURCE_FIELDS: tuple[SourceField, ...] = tuple(

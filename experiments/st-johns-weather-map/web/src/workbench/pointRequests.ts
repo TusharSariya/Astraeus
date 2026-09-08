@@ -6,7 +6,7 @@ export type PointResult = Awaited<ReturnType<typeof loadPoint>>
 export interface PointRequest { key: string; location: LocationPoint; instant: number; product: string; options: NormalizeOptions }
 export function pointRequest(location: LocationPoint, instant: number, p: PointFieldSelection): PointRequest {
   const v = p.variant
-  const options: NormalizeOptions = { timeSelection: 'directional', member: v?.member === 'all' ? null : v?.member ?? null, statistic: v?.statistic ?? null, quantile: v?.quantile ?? null, threshold: v?.threshold ?? null, comparison: v?.comparison ?? null }
+  const options: NormalizeOptions = { timeSelection: 'directional', ...(p.sourceId === 'google-weathernext-3-statistics' ? {field:p.field} : {}), member: v?.member === 'all' ? null : v?.member ?? null, statistic: v?.statistic ?? null, quantile: v?.quantile ?? null, threshold: v?.threshold ?? null, comparison: v?.comparison ?? null }
   return { key: JSON.stringify([location.latitude, location.longitude, instant, p.product, options]), location, instant, product: p.product, options }
 }
 export type RequestState = { result?: PointResult; error?: string }

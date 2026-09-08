@@ -1,5 +1,11 @@
 # Design
 
+Current internal point consumer scope is expanded by the owner-authorized
+[WeatherNext 3 surface point amendment](../weathernext3-surface-point/specs/source-delivery/spec.md).
+The earlier deferred consumer mappings below describe the acquisition proof
+slice; the new amendment exposes all 126 statistics internally. Production
+publication and scheduled acquisition remain excluded.
+
 ## Exact source
 
 The adapter accepts only Google DeepMind WeatherNext 3 product version `3.0.0`
