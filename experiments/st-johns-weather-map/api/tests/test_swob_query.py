@@ -491,3 +491,32 @@ def test_native_planning_snapshot_is_location_scoped_finite_and_cache_only():
     with pytest.raises(SwobQueryUnavailable, match="expired"):
         service.point_fields_from_entry(early, 47.5615, -52.7126, selected)
     assert len(requests) == 3
+
+
+# Spec-Refs: swob-demand-query native station/report identity and quality tokens.
+def test_native_msc_value_identifier_and_value_quality_tokens_preserve_wind_gaps():
+    item = feature()
+    item["id"] = "2026-09-07-2300-CAJW-AUTO-swob.xml"
+    properties = item["properties"]
+    properties.pop("wmo_id")
+    properties["msc_id-value"] = "8403603"
+    properties["dwpt_temp-data_flag-value"] = 1
+    properties["mslp-data_flag-value"] = 1
+    properties.pop("wnd_spd")
+    properties.pop("wnd_dir")
+    properties["avg_wnd_spd_10m_pst10mts"] = 13.4
+    properties["avg_wnd_dir_10m_pst10mts"] = 226
+    row, = normalize(fixture_document(item))
+    assert row["station_id"] == "8403603"
+    assert row["provider_report_id"] == item["id"]
+    assert row["station_metadata"] == {"msc_id-value": "8403603"}
+    assert row["field_quality_tokens"]["dew_point_2m"] == "1"
+    assert row["field_quality_tokens"]["mean_sea_level_pressure"] == "1"
+    assert row["values"]["wind_speed_10m"] is None
+    assert row["values"]["wind_direction_10m"] is None
+    clocks = Clocks()
+    service = query_service(lambda request: httpx.Response(200, json=fixture_document(item)), clocks)
+    fields = service.point_fields(47.5615, -52.7126, clocks.wall)
+    assert all(field.provenance.quality.status == "unknown" for field in fields)
+    assert "provider_quality:1" in fields[1].provenance.quality.flags
+    assert fields[1].value == 8.2
