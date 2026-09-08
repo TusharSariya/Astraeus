@@ -523,11 +523,11 @@ describe('MapPanel imagery', () => {
 
     await screen.findAllByText(/Imagery retrieved/i)
     const adds = (globalThis as Record<string, unknown>).__mapLayerAdds as Array<{ id: string; paint?: Record<string, unknown> }>
-    const shown = adds.filter((add) => add.id.startsWith(`raster-${proxiedLayer.id}`))
+    const shown = () => adds.filter((add) => add.id.startsWith(`raster-${proxiedLayer.id}`))
     // One slot, at the full stack opacity — never a lone fractional slot
     // presenting a partial retrieval as a blend.
-    expect(shown).toHaveLength(1)
-    expect(shown[0].paint?.['raster-opacity']).toBeCloseTo(0.6, 5)
+    await waitFor(() => expect(shown()).toHaveLength(1))
+    expect(shown()[0].paint?.['raster-opacity']).toBeCloseTo(0.6, 5)
     expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/the second frame of the display composite was not retrieved/i)
   })
 

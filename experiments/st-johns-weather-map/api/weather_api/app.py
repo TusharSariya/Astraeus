@@ -161,6 +161,7 @@ PRODUCT_SOURCE_IDS = {
     "OSTIA SST": "metoffice-ostia-sst",
     "GEPS reductions": "eccc-geps",
     "WeatherNext 3 historical": "google-weathernext-3-statistics",
+    "WeatherNext 3 local": "google-weathernext-3-statistics",
     "AIFS Single": "ecmwf-aifs-single",
     "IFS": "ecmwf-ifs",
     "ECMWF": "ecmwf-ifs",
@@ -1367,12 +1368,14 @@ def _live_point(
                 badge="GEPS reductions selected" if fields else "GEPS reductions unavailable",
                 reason="Exact provider statistic; producer run remains unknown"),
             notices=[RESIDUAL, "Requested WCS reference time is not verified producer-run identity"])
-    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB", "METAR", "OISST SST", "OSTIA SST", "WEATHERNEXT 3 HISTORICAL"}:
+    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB", "METAR", "OISST SST", "OSTIA SST", "WEATHERNEXT 3 HISTORICAL", "WEATHERNEXT 3 LOCAL"}:
         from .source_delivery import source_readers
-        source_id = {"OSTIA SST": "metoffice-ostia-sst", "WEATHERNEXT 3 HISTORICAL": "google-weathernext-3-statistics", "SWOB": "eccc-swob", "METAR": "awc-metar-speci", "OISST SST": "noaa-oisst-v2-1",
+        source_id = {"WEATHERNEXT 3 LOCAL": "google-weathernext-3-statistics", "OSTIA SST": "metoffice-ostia-sst", "WEATHERNEXT 3 HISTORICAL": "google-weathernext-3-statistics", "SWOB": "eccc-swob", "METAR": "awc-metar-speci", "OISST SST": "noaa-oisst-v2-1",
             "AIFS SINGLE": "ecmwf-aifs-single"}.get(product.upper(), "ecmwf-ifs")
         try:
-            fields = list(source_readers()[source_id].read_point(latitude, longitude, time))
+            reader = source_readers()[source_id]
+            options = {"internal_forecast": True} if product.upper() == "WEATHERNEXT 3 LOCAL" else {}
+            fields = list(reader.read_point(latitude, longitude, time, **options))
         except Exception:
             fields = []
         return PointResponse(data_mode=DataMode.LIVE if fields else DataMode.UNAVAILABLE,
@@ -2453,6 +2456,25 @@ def get_point(
             time = validate_selection(valid_time)
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from None
+    elif product and product.upper() == "WEATHERNEXT 3 LOCAL":
+        from .weathernext_query import WeatherNextSelection
+        from .weathernext_configuration import load_local_experimental_configuration, HistoricalConfigurationUnavailable
+        if valid_time is None or valid_time.tzinfo is None:
+            raise HTTPException(status_code=422, detail="WeatherNext local requires an explicit offset-aware valid_time")
+        if member is not None or statistic not in (None, "ensemble_mean") or any(v is not None for v in (quantile, threshold, comparison)):
+            raise HTTPException(status_code=422, detail="WeatherNext local supports only the provider temperature ensemble_mean")
+        time = requested_time(valid_time)
+        try:
+            configuration = load_local_experimental_configuration()
+        except HistoricalConfigurationUnavailable:
+            configuration = None
+        if configuration is not None:
+            try:
+                WeatherNextSelection(configuration.initialization, time, latitude, longitude, ("temperature_2m_mean",))
+                if configuration.initialization > now().astimezone(timezone.utc):
+                    raise ValueError("future initialization")
+            except ValueError:
+                raise HTTPException(status_code=422, detail="WeatherNext local requires a published configured run and exact native hourly lead") from None
     elif product and product.upper() == "WEATHERNEXT 3 HISTORICAL":
         from .weathernext_query import HISTORICAL_DELAY, WeatherNextSelection
         from .weathernext_configuration import load_historical_configuration, HistoricalConfigurationUnavailable
@@ -2502,7 +2524,7 @@ def get_point(
             member=member, statistic=statistic,
             quantile=quantile, threshold=threshold, comparison=comparison,
         )
-        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"SWOB", "METAR", "OISST SST", "OSTIA SST", "WeatherNext 3 historical", "GEPS reductions"}), "GDPS", "GEFS"}:
+        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"SWOB", "METAR", "OISST SST", "OSTIA SST", "WeatherNext 3 historical", "WeatherNext 3 local", "GEPS reductions"}), "GDPS", "GEFS"}:
             from .observation_companions import with_aqhi_observation  # noqa: PLC0415
 
             response = with_aqhi_observation(response)

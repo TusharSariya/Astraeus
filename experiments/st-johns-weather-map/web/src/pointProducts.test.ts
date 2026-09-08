@@ -1,6 +1,6 @@
 import fixture from '../../contracts/fixtures/source-delivery.json'
 import { afterEach, expect, it, vi } from 'vitest'
-import { loadCatalog, normalizePoint, pointProductFor } from './api'
+import { loadCatalog, normalizePoint, pointProductFor, pointProductsFor } from './api'
 import type { SourceCapability } from './types'
 import { isSourceCapability } from './sourceContract'
 import { capabilityOptions } from './workbench/sourceCapabilities'
@@ -47,4 +47,12 @@ it.each([0.15, 0.07, 0.004, 0, null])('retains CAMS AOD %s in the evidence ledge
   expect(row.attribution.evidenceClass).toBe('reprocessed')
   expect(row.attribution.runTime).toBeNull()
   expect(row.attribution.validTime).toBe(point.valid_time)
+})
+
+it('lists distinct explicit tokens for the same native field/product without choosing one implicitly', () => {
+  const historical = { ...cams, source_id: 'google-weathernext-3-statistics', product_id: 'weathernext_3_0_0_statistics', field: 'temperature_2m', point_product: 'WeatherNext 3 historical' }
+  const local = { ...historical, point_product: 'WeatherNext 3 local' }
+  const source = { id: historical.source_id, capabilities: [historical, local, historical] }
+  expect(pointProductsFor(source)).toEqual(['WeatherNext 3 historical', 'WeatherNext 3 local'])
+  expect(pointProductFor(source)).toBeNull()
 })

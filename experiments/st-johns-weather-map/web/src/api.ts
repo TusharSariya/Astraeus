@@ -899,17 +899,24 @@ export const POINT_PRODUCT_BY_SOURCE_ID: Record<string, string> = {
 /** The product token `/point` accepts for a catalogue source, or null when the
  *  endpoint has no parameter value for it and the control must not be offered. */
 /** Group by declared native variant, never by a provider name or product token. */
-export function isObservationPointProduct(source: Pick<CatalogSource, 'id' | 'capabilities' | 'forecast_horizon'>): boolean {
-  const product = pointProductFor(source)
+export function isObservationPointProduct(source: Pick<CatalogSource, 'id' | 'capabilities' | 'forecast_horizon'>, product = pointProductFor(source)): boolean {
   const declarations = (source.capabilities ?? []).filter((capability) => capability.point && capability.point_product === product)
   if (declarations.length) return declarations.every((capability) => capability.variants.length > 0 && capability.variants.every((variant) => variant.kind === 'observation'))
   return /^observations?(?: only)?$/i.test(source.forecast_horizon)
 }
 
-export function pointProductFor(source: Pick<CatalogSource, 'id' | 'capabilities'>): string | null {
+/** Explicit choices remain available when one source declares several paths.
+ * Callers must still choose a token; this list supplies no implicit default. */
+export function pointProductsFor(source: Pick<CatalogSource, 'id' | 'capabilities'>): string[] {
   const declared = new Set((source.capabilities ?? []).filter((capability) => isSourceCapability(capability, source.id) && capability.point && isPointProductToken(capability.point_product)).map((capability) => capability.point_product!))
-  if (declared.size > 1) return null // Conflicting declared products cannot select a source implicitly.
-  return declared.values().next().value ?? POINT_PRODUCT_BY_SOURCE_ID[source.id] ?? null
+  if (declared.size) return [...declared]
+  const legacy = POINT_PRODUCT_BY_SOURCE_ID[source.id]
+  return legacy ? [legacy] : []
+}
+
+export function pointProductFor(source: Pick<CatalogSource, 'id' | 'capabilities'>): string | null {
+  const products = pointProductsFor(source)
+  return products.length === 1 ? products[0] : null
 }
 
 /** The layer groups, in the order every grouped list shows them, with their

@@ -17,7 +17,9 @@ import numpy as np
 import zarr
 
 from ingest.adapters.weathernext3_statistics import _expected_grid, _expected_unit, _run_object_prefix
-from weather_api.weathernext_query import HISTORICAL_DELAY, WeatherNextSelection, WeatherNextValue
+from weather_api.weathernext_query import WeatherNextSelection, WeatherNextValue
+
+from .weathernext_scope import HISTORICAL, validate_scope
 
 BUCKET = "weathernext3_statistics_spatial"
 
@@ -70,10 +72,12 @@ class NativeStatisticsReader:
     def __init__(self, transport: ObjectTransport, *, limits: NativeLimits = NativeLimits()):
         self.transport, self.limits = transport, limits
 
-    def read_point(self, selection: WeatherNextSelection, *, now: datetime) -> NativeReading:
+    def read_point(self, selection: WeatherNextSelection, *, now: datetime, acquisition_scope: str = HISTORICAL) -> NativeReading:
         import time
-        if now.tzinfo is None or selection.valid_time >= now - HISTORICAL_DELAY:
-            raise NativeUnavailable("WeatherNext historical permission boundary")
+        try:
+            validate_scope(selection, now, acquisition_scope)
+        except ValueError as error:
+            raise NativeUnavailable(str(error)) from None
         started = time.monotonic()
         operations = received = 0
         identities = []

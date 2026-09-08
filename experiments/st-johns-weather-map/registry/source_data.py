@@ -949,7 +949,7 @@ def registry() -> dict[str, Any]:
         _source(
             "google-weathernext-3-statistics", "research_comparison", "catalogued",
             "Isolated historical temperature provider-mean point software with a bounded authenticated proof. Explicit configuration and exact root generation are required. No current forecast, full-source verification, scheduling or primary admission.",
-            "Google", "WeatherNext 3 historical statistics",
+            "Google", "WeatherNext 3 statistics",
             ["https://developers.google.com/weathernext/guides/gcs"],
             ["https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o"],
             ("typed_adapter", "Explicit gcloud profile runtime authentication, pinned GCS objects and bounded native Linux Zarr worker"),

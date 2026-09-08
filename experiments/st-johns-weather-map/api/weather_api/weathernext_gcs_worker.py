@@ -38,7 +38,8 @@ def main():
                                          request['latitude'],request['longitude'],tuple(request['fields']))
         result = NativeStatisticsReader(Transport(),limits=NativeLimits(metadata_bytes=256*1024,received_bytes=cap,
                                          decoded_chunk_bytes=128*1024**2,operations=30,seconds=85)).read_point(
-                                         selection,now=datetime.fromisoformat(request['now']))
+                                         selection,now=datetime.fromisoformat(request['now']),
+                                         acquisition_scope=request.get('acquisition_scope','historical'))
         output=asdict(result)
         output['initialization']=result.initialization.isoformat()
         output['valid_time']=result.valid_time.isoformat()
@@ -49,12 +50,13 @@ def main():
 
 def http_main():
     # Host-side helper: runtime auth remains in this short-lived process only.
-    from weather_api.weathernext_gcs import GcloudProfileToken, WeatherNextGCSTransport
+    from weather_api.weathernext_gcs import AccessTokenFile, GcloudProfileToken, WeatherNextGCSTransport
     from weather_api.weathernext_native import ObjectIdentity
     try:
         request=json.loads(sys.stdin.buffer.read(65536))
         expected=ObjectIdentity(**request['expected']) if request['expected'] else None
-        transport=WeatherNextGCSTransport(token_provider=GcloudProfileToken(request['profile']))
+        provider=AccessTokenFile(request['token_file']) if 'token_file' in request else GcloudProfileToken(request['profile'])
+        transport=WeatherNextGCSTransport(token_provider=provider)
         transport._validate('weathernext3_statistics_spatial',request['name'])
         body=transport._get(request['name'],request['params'],cap=request['cap'],timeout=request['timeout'],expected=expected)
         print(json.dumps({'body':base64.b64encode(body).decode('ascii')}),flush=True)

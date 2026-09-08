@@ -80,9 +80,10 @@ def test_blocked_worker_pipe_cannot_overrun_deadline(transport):
     assert time.monotonic()-started<1
 
 
-def test_http_operation_process_is_killed_at_deadline(monkeypatch):
+@pytest.mark.parametrize('file_provider',[False,True])
+def test_http_operation_process_is_killed_at_deadline(monkeypatch, file_provider):
     import subprocess,time
-    from weather_api.weathernext_gcs import GcloudProfileToken
+    from weather_api.weathernext_gcs import AccessTokenFile, GcloudProfileToken
     from weather_api import weathernext_gcs_bridge as bridge
     original=subprocess.Popen
     children=[]
@@ -92,7 +93,7 @@ def test_http_operation_process_is_killed_at_deadline(monkeypatch):
         children.append(child)
         return child
     monkeypatch.setattr(bridge.subprocess,'Popen',start)
-    transport=AccountedGCSTransport(token_provider=GcloudProfileToken('astraeus'))
+    transport=AccountedGCSTransport(token_provider=AccessTokenFile('/unused-private-token') if file_provider else GcloudProfileToken('astraeus'))
     started=time.monotonic()
     with pytest.raises(subprocess.TimeoutExpired):
         transport._get(ROOT.name,{'alt':'media'},cap=256*1024,timeout=.1,expected=ROOT)
@@ -113,3 +114,56 @@ def test_owned_docker_container_is_explicitly_removed(monkeypatch,transport):
         read_historical_point(selection(),root_identity=root(transport),now=NOW,transport=transport)
     assert names[0].startswith('weathernext-')
     assert cleanup==[['docker','rm','--force',names[0]]]
+
+
+def test_internal_future_scope_reaches_real_isolated_decoder(transport):
+    if sys.platform != 'linux': pytest.skip('Linux resource-limited worker')
+    from weather_api.weathernext_gcs_bridge import read_local_experimental_point
+    result = read_local_experimental_point(selection(), root_identity=root(transport),
+        now=selection().initialization, transport=transport)
+    assert result['reading']['valid_time'] == selection().valid_time.isoformat()
+    assert result['reading']['values'][0]['value'] == pytest.approx(.35)
+    assert result['receipt']['worker_operations'] == 12
+    assert result['receipt']['acquisition_scope'] == 'internal_experimental_forecast'
+
+
+def test_internal_future_initialization_refused_before_process(transport):
+    from datetime import timedelta
+    from weather_api.weathernext_gcs_bridge import read_local_experimental_point
+    with pytest.raises(BridgeUnavailable, match='initialization'):
+        read_local_experimental_point(selection(), root_identity=root(transport),
+            now=selection().initialization-timedelta(seconds=1), transport=transport, command=['does-not-exist'])
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize('mode', ['file', 'missing_file', 'gcloud'])
+def test_actual_http_child_selects_provider_without_token_output(tmp_path, mode):
+    import base64
+    import subprocess
+    path = tmp_path / 'synthetic-private-token'
+    path.write_text('synthetic-token\n')
+    path.chmod(0o600)
+    request = {'name': ROOT.name, 'params': {}, 'cap': 100, 'timeout': 5, 'expected': None}
+    if mode == 'gcloud': request['profile'] = 'astraeus'
+    else: request['token_file'] = str(path if mode == 'file' else tmp_path/'absent')
+    # Exercise real worker protocol and file provider in a child, replace only
+    # remote HTTP and gcloud execution. No provider/auth calls occur.
+    code = '''
+from weather_api.weathernext_gcs import WeatherNextGCSTransport, GcloudProfileToken
+from weather_api.weathernext_gcs_worker import http_main
+GcloudProfileToken.__call__ = lambda self, **kwargs: 'synthetic-token'
+def fake_get(self, *args, **kwargs):
+    assert self._token_provider(timeout=1) == 'synthetic-token'
+    return b'public-fixture-response'
+WeatherNextGCSTransport._get = fake_get
+http_main()
+'''
+    result = subprocess.run([sys.executable, '-c', code], input=json.dumps(request).encode(),
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10, check=True)
+    assert b'synthetic-token' not in result.stdout + result.stderr
+    assert str(path).encode() not in result.stdout + result.stderr
+    reply = json.loads(result.stdout)
+    if mode == 'missing_file':
+        assert reply == {'error': 'WeatherNext bounded HTTP worker failed', 'http_status': None}
+    else:
+        assert base64.b64decode(reply['body']) == b'public-fixture-response'
