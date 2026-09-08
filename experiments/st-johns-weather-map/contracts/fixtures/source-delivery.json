@@ -5150,7 +5150,7 @@
         "may_enter_consensus": false,
         "native_image_endpoint": null,
         "producer": "Google",
-        "product": "WeatherNext 3 historical statistics",
+        "product": "WeatherNext 3 statistics",
         "redistribution": "Only the authorized historical experimental path; no current/future serving permission inferred.",
         "role": "Non-primary historical temperature comparison",
         "schedulable": false,

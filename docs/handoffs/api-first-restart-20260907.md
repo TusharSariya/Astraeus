@@ -11,9 +11,9 @@ that Google supplies only historical data.
 The [current September 3 terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)
 section 2(a) permits internal use of real-time experimental data. Consequently,
 unresolved public redistribution rights must not be treated as a blanket blocker
-for the owner's local experimental map. Current-run discovery, future-valid
-native reads and the running API's Google runtime configuration remain actual
-implementation/verification work. Public redistribution remains a separate
+for the owner's local experimental map. Future-valid native reads, shared API delivery and the running Linux API's
+selected Google OAuth token are now verified. Current-run discovery/rollover
+and automatic token renewal remain implementation work. Public redistribution remains a separate
 scope decision; no new access, future retrieval or completion is claimed here.
 The statistics bucket remains the selected Requester-Pays-off access path.
 

@@ -69,3 +69,25 @@ the cache with zero additional acquisition. The browser replay preserved exact
 Focus, source/run/valid time, mean statistic and full provenance. Live captures
 remain outside Git under `/private/tmp/astraeus-weathernext-current-api-proof`
 and `/private/tmp/astraeus-weathernext-current-browser-proof`.
+
+The actual running Linux API on port8000 was configured with the private token
+file and returned the same future forecast in63.17seconds; its repeat took8ms
+with identical evidence. Exact runtime receipt:
+`/private/tmp/astraeus-weathernext-current-api-proof/docker-receipt.json`.
+The session compose override is `/private/tmp/astraeus-weathernext-runtime.yaml`
+and the nonsecret pinned-run JSON is
+`/private/tmp/astraeus-weathernext-current-api-proof/local.json`. Preserve this
+override when recreating the local API, then refresh its tmpfs token. The normal
+API launch command is restored; diagnostic faulthandler overrides are removed.
+
+Final verification:119 API tests passed with2platform-dependent skips;
+554 frontend tests passed; production build, generated contract drift checks,
+specctl and independent code/security review passed.
+
+The actual localhost:5173 desktop Bench also returned `Live API` and one field
+for the future selection. Opening Point evidence ledger displayed `16.1 degC`,
+source `google-weathernext-3-statistics`, valid September8 12Z, run September7 18Z.
+This explicit evidence remains nonprimary; it does not become the default map
+summary or consensus temperature. Source catalogue copy now says WeatherNext3
+statistics, with distinct local/historical selectors. The label change passed
+all237 registry tests; regenerated frontend fixture consumption passed separately.
