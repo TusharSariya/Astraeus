@@ -1,5 +1,48 @@
 # Internal WeatherNext forecast experiment
 
+## Current surface delivery (2026-09-08)
+
+The owner authorized all 126 surface statistics (21 native fields, each mean,
+p10, p25, p50, p75 and p90) and hiding both WeatherNext 2 entries. The current
+[experimental contract](../openspec/changes/weathernext3-surface-point/specs/source-delivery/spec.md)
+replaces the earlier temperature-only restriction described in the historical
+implementation notes below. Each selection fetches just one native array,
+retaining the existing 64 MiB receive, 128 MiB decoded-chunk and 90-second worker
+bounds, native units, null masks, grid and immutable object provenance.
+
+The opt-in compose runtime enables `WEATHER_WEATHERNEXT_AUTO_RUNS=1`. It reuses
+the configured `astraeus` identity and checks at most four main-cycle roots,
+under a 15-second/64 KiB metadata budget; successful metadata pins the exact
+run generation before any science download. The next hourly valid time at or
+after the timeline selection is verified against native coordinates. There is
+no interpolation, raw-member access, requester-pays billing project, scheduled
+ingestion or primary-source admission. Disabling that environment variable
+restores explicit pinned-run selection. Legacy exact-time temperature calls
+remain compatible.
+
+History currently uses declared `2026_to_present` archive paths. Missing runs,
+2024/2025 backfill, out-of-horizon selections and oversized fields remain
+unavailable. The historical reader retains its conservative older-than-48-hour
+boundary; the internal local path can serve recent past and future times under
+its separately authorized internal-use scope. Historical forecasts are model
+predictions, not observations. Live access requires the short-lived runtime
+token, which `make up` refreshes using the existing approved profile.
+
+Provider statistics include surface and station-trained temperature/dew point,
+10/100 m scalar winds and components, pressure, total/low/mid/high clouds,
+three distinct hourly precipitation heads, two solar-energy components and sea
+surface temperature. Cloud overlap assumptions and relative humidity are not
+inferred. Solar values remain one-hour energy (J/m2), precipitation remains
+one-hour accumulation (mm), and land SST masks stay null.
+
+The separate live checks returned a future cloud mean and a historical
+precipitation p90 through the real default Linux worker. This is not a claim
+that all 126 fields have been reacquired live in this change; all 126 mappings
+are tested with constructed receipts and earlier all-field acquisition evidence
+remains linked in the original experimental design.
+
+## Earlier temperature-only implementation notes
+
 Classification: experiment. Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006.
 
 The owner authorized the existing `astraeus` gcloud profile for the local

@@ -470,6 +470,7 @@ function cloudLayersOf(fields: ApiEvidenceField[], preferredSourceId: string | n
  *  the provenance gate alone and re-normalises when the catalogue lands. */
 export interface NormalizeOptions {
   timeSelection?: 'directional'
+  field?: string
   nonPrimarySources?: ReadonlySet<string>
   /** Seam D request parameters. Read only by `loadPoint`, which puts them on
    *  the query string; `normalizePoint` ignores them, because the response is
@@ -746,6 +747,7 @@ export async function loadPoint(location: LocationPoint, validTime?: string, pro
     // caller named one, so a request that narrows nothing looks exactly like
     // it did before this axis existed.
     if (options.timeSelection) params.set('time_selection', options.timeSelection)
+    if (options.field) params.set('field', options.field)
     if (options.member) params.set('member', options.member)
     if (options.statistic) params.set('statistic', options.statistic)
     if (typeof options.quantile === 'number') params.set('quantile', String(options.quantile))

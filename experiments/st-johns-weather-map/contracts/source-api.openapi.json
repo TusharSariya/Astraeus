@@ -4083,6 +4083,25 @@
             }
           },
           {
+            "description": "Explicit WeatherNext 3 surface statistic field for directional point selection",
+            "in": "query",
+            "name": "field",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Explicit WeatherNext 3 surface statistic field for directional point selection",
+              "title": "Field"
+            }
+          },
+          {
             "description": "GEPS reductions reject named producer runs",
             "in": "query",
             "name": "run",

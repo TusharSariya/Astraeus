@@ -133,3 +133,9 @@ it('details return to Browse search if a catalogue refresh removes the originati
   await userEvent.keyboard('{Escape}')
   await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus())
 })
+
+it('hides both WeatherNext 2 sources while retaining WeatherNext 3 discovery', () => {
+  const old = ['google-weathernext-2', 'open-meteo-weathernext-2'].map(id => ({...source,id,product:'WeatherNext 2',capabilities:[]}))
+  expect(discoveryEntries([...old,source],[]).map(entry => entry.id)).toEqual([source.id])
+  expect(discoveryRows([...old,source],[]).every(row => row.source?.id === source.id)).toBe(true)
+})

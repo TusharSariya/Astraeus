@@ -2,6 +2,7 @@
 services:
   api:
     environment:
+      WEATHER_WEATHERNEXT_AUTO_RUNS: "1"
       WEATHER_WEATHERNEXT_LOCAL_CONFIG: /run/weathernext-local.json
       WEATHER_WEATHERNEXT_ACCESS_TOKEN_FILE: /tmp/weathernext-auth/access-token
     volumes:

@@ -43,7 +43,7 @@ export interface FieldCatalogueCopy {
 export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
   "version": "1.0.0",
   "asOf": "2026-09-02",
-  "fingerprint": "e66d3fde9f1e74c2578366e81ce08a64cd84cb63497a935acd84c175af57cb93",
+  "fingerprint": "eddee4f80d715009c461b459e9afc236360ed9e3d4d77a7c010e9adbec3f895f",
   "families": [
     {
       "name": "air_quality",
@@ -97,7 +97,11 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "satellite_column": "Satellite-retrieved whole-column cloud fraction from a layered product; neither opacity-weighted nor geometric overlap.",
         "satellite_layer": "Satellite-retrieved fraction in one vertical layer of a layered product.",
         "scene_class": "A categorical clear/cloudy scene classification, not a fraction.",
-        "time_mean_column": "Column cover averaged over a stated window, never an instant."
+        "time_mean_column": "Column cover averaged over a stated window, never an instant.",
+        "weathernext3_high_cloud_cover": "WeatherNext 3 native high_cloud_cover; provider statistic and sampling head remain distinct.",
+        "weathernext3_low_cloud_cover": "WeatherNext 3 native low_cloud_cover; provider statistic and sampling head remain distinct.",
+        "weathernext3_medium_cloud_cover": "WeatherNext 3 native medium_cloud_cover; provider statistic and sampling head remain distinct.",
+        "weathernext3_total_cloud_cover": "WeatherNext 3 native total_cloud_cover; provider statistic and sampling head remain distinct."
       }
     },
     {
@@ -135,7 +139,9 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "column_vapour": "Vertically integrated water vapour over the whole column.",
         "dew_point": "Dew-point temperature.",
         "relative": "Relative humidity, phase-dependent below freezing.",
-        "specific": "Mass of water vapour per mass of moist air."
+        "specific": "Mass of water vapour per mass of moist air.",
+        "weathernext3_dewpoint_temperature_2m": "WeatherNext 3 native dewpoint_temperature_2m; provider statistic and sampling head remain distinct.",
+        "weathernext3_station_head_dewpoint_temperature_2m": "WeatherNext 3 native station_head_dewpoint_temperature_2m; provider statistic and sampling head remain distinct."
       }
     },
     {
@@ -176,7 +182,10 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "accumulation": "Depth accumulated over the producer's own stated interval.",
         "echo": "Radar detection flag; its zero means 'looked and saw nothing'.",
         "rate": "Instantaneous precipitation rate.",
-        "type": "Categorical precipitation type."
+        "type": "Categorical precipitation type.",
+        "weathernext3_experimental_tp_1hr": "WeatherNext 3 native experimental_tp_1hr; provider statistic and sampling head remain distinct.",
+        "weathernext3_imerg_tp_1hr": "WeatherNext 3 native imerg_tp_1hr; provider statistic and sampling head remain distinct.",
+        "weathernext3_total_precipitation_1hr": "WeatherNext 3 native total_precipitation_1hr; provider statistic and sampling head remain distinct."
       }
     },
     {
@@ -186,7 +195,8 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "groups": {
         "geopotential": "Geopotential height of a pressure surface.",
         "mean_sea_level": "Pressure reduced to mean sea level by the producer.",
-        "surface": "Pressure at the producer's own surface height."
+        "surface": "Pressure at the producer's own surface height.",
+        "weathernext3_mean_sea_level_pressure": "WeatherNext 3 native mean_sea_level_pressure; provider statistic and sampling head remain distinct."
       }
     },
     {
@@ -207,7 +217,9 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "terrestrial_hour_mean": "Hour-mean provider terrestrial-radiation series.",
         "terrestrial_instant": "Instantaneous provider terrestrial-radiation series.",
         "tilted_hour_mean": "Hour-mean global tilted irradiance under the provider geometry.",
-        "tilted_instant": "Instantaneous global tilted irradiance under the provider geometry."
+        "tilted_instant": "Instantaneous global tilted irradiance under the provider geometry.",
+        "weathernext3_surface_solar_radiation_downwards_1hr": "WeatherNext 3 native surface_solar_radiation_downwards_1hr; provider statistic and sampling head remain distinct.",
+        "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr": "WeatherNext 3 native total_sky_direct_solar_radiation_at_surface_1hr; provider statistic and sampling head remain distinct."
       }
     },
     {
@@ -251,7 +263,10 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "air": "Air temperature at a stated height or pressure level.",
         "cloud_top": "Satellite-retrieved radiative temperature of the cloud top.",
         "radiative": "Aggregate surface radiative temperature; not verified equal to skin.",
-        "skin": "Aggregate land surface skin temperature."
+        "skin": "Aggregate land surface skin temperature.",
+        "weathernext3_sea_surface_temperature": "WeatherNext 3 native sea_surface_temperature; provider statistic and sampling head remain distinct.",
+        "weathernext3_station_head_temperature_2m": "WeatherNext 3 native station_head_temperature_2m; provider statistic and sampling head remain distinct.",
+        "weathernext3_temperature_2m": "WeatherNext 3 native temperature_2m; provider statistic and sampling head remain distinct."
       }
     },
     {
@@ -299,7 +314,13 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "direction": "Bearing the wind comes from, meteorological convention.",
         "gust": "Peak gust over the producer's own reporting interval.",
         "satellite_vector": "Cloud-tracked motion vector at the producer-retrieved pressure.",
-        "speed": "Scalar horizontal wind speed."
+        "speed": "Scalar horizontal wind speed.",
+        "weathernext3_u_component_of_wind_100m": "WeatherNext 3 native u_component_of_wind_100m; provider statistic and sampling head remain distinct.",
+        "weathernext3_u_component_of_wind_10m": "WeatherNext 3 native u_component_of_wind_10m; provider statistic and sampling head remain distinct.",
+        "weathernext3_v_component_of_wind_100m": "WeatherNext 3 native v_component_of_wind_100m; provider statistic and sampling head remain distinct.",
+        "weathernext3_v_component_of_wind_10m": "WeatherNext 3 native v_component_of_wind_10m; provider statistic and sampling head remain distinct.",
+        "weathernext3_wind_speed_100m": "WeatherNext 3 native wind_speed_100m; provider statistic and sampling head remain distinct.",
+        "weathernext3_wind_speed_10m": "WeatherNext 3 native wind_speed_10m; provider statistic and sampling head remain distinct."
       }
     }
   ],
@@ -1761,6 +1782,1131 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "surface",
       "comparabilityGroup": "present_weather_flag",
       "description": "Fog read out of the METAR/TAF present-weather group (WMO No. 306 FM 15 table 4678). Retrieved: it is what the report said, not a judgement made here. Mist (BR) is a different phenomenon and is not this flag."
+    },
+    {
+      "key": "weathernext3_dewpoint_temperature_mean_2m",
+      "family": "humidity",
+      "quantity": "dewpoint temperature 2m mean",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 dewpoint_temperature_2m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_dewpoint_temperature_p10_2m",
+      "family": "humidity",
+      "quantity": "dewpoint temperature 2m p10",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 dewpoint_temperature_2m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_dewpoint_temperature_p25_2m",
+      "family": "humidity",
+      "quantity": "dewpoint temperature 2m p25",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 dewpoint_temperature_2m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_dewpoint_temperature_p50_2m",
+      "family": "humidity",
+      "quantity": "dewpoint temperature 2m p50",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 dewpoint_temperature_2m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_dewpoint_temperature_p75_2m",
+      "family": "humidity",
+      "quantity": "dewpoint temperature 2m p75",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 dewpoint_temperature_2m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_dewpoint_temperature_p90_2m",
+      "family": "humidity",
+      "quantity": "dewpoint temperature 2m p90",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 dewpoint_temperature_2m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_experimental_tp_1hr_mean",
+      "family": "precipitation",
+      "quantity": "experimental tp 1hr mean",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_experimental_tp_1hr",
+      "description": "Provider-published WeatherNext 3 experimental_tp_1hr_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_experimental_tp_1hr_p10",
+      "family": "precipitation",
+      "quantity": "experimental tp 1hr p10",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_experimental_tp_1hr",
+      "description": "Provider-published WeatherNext 3 experimental_tp_1hr_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_experimental_tp_1hr_p25",
+      "family": "precipitation",
+      "quantity": "experimental tp 1hr p25",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_experimental_tp_1hr",
+      "description": "Provider-published WeatherNext 3 experimental_tp_1hr_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_experimental_tp_1hr_p50",
+      "family": "precipitation",
+      "quantity": "experimental tp 1hr p50",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_experimental_tp_1hr",
+      "description": "Provider-published WeatherNext 3 experimental_tp_1hr_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_experimental_tp_1hr_p75",
+      "family": "precipitation",
+      "quantity": "experimental tp 1hr p75",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_experimental_tp_1hr",
+      "description": "Provider-published WeatherNext 3 experimental_tp_1hr_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_experimental_tp_1hr_p90",
+      "family": "precipitation",
+      "quantity": "experimental tp 1hr p90",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_experimental_tp_1hr",
+      "description": "Provider-published WeatherNext 3 experimental_tp_1hr_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_high_cloud_cover_mean",
+      "family": "cloud_cover",
+      "quantity": "high cloud cover mean",
+      "units": "percent",
+      "level": "high cloud",
+      "comparabilityGroup": "weathernext3_high_cloud_cover",
+      "description": "Provider-published WeatherNext 3 high_cloud_cover_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_high_cloud_cover_p10",
+      "family": "cloud_cover",
+      "quantity": "high cloud cover p10",
+      "units": "percent",
+      "level": "high cloud",
+      "comparabilityGroup": "weathernext3_high_cloud_cover",
+      "description": "Provider-published WeatherNext 3 high_cloud_cover_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_high_cloud_cover_p25",
+      "family": "cloud_cover",
+      "quantity": "high cloud cover p25",
+      "units": "percent",
+      "level": "high cloud",
+      "comparabilityGroup": "weathernext3_high_cloud_cover",
+      "description": "Provider-published WeatherNext 3 high_cloud_cover_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_high_cloud_cover_p50",
+      "family": "cloud_cover",
+      "quantity": "high cloud cover p50",
+      "units": "percent",
+      "level": "high cloud",
+      "comparabilityGroup": "weathernext3_high_cloud_cover",
+      "description": "Provider-published WeatherNext 3 high_cloud_cover_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_high_cloud_cover_p75",
+      "family": "cloud_cover",
+      "quantity": "high cloud cover p75",
+      "units": "percent",
+      "level": "high cloud",
+      "comparabilityGroup": "weathernext3_high_cloud_cover",
+      "description": "Provider-published WeatherNext 3 high_cloud_cover_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_high_cloud_cover_p90",
+      "family": "cloud_cover",
+      "quantity": "high cloud cover p90",
+      "units": "percent",
+      "level": "high cloud",
+      "comparabilityGroup": "weathernext3_high_cloud_cover",
+      "description": "Provider-published WeatherNext 3 high_cloud_cover_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_imerg_tp_1hr_mean",
+      "family": "precipitation",
+      "quantity": "imerg tp 1hr mean",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_imerg_tp_1hr",
+      "description": "Provider-published WeatherNext 3 imerg_tp_1hr_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_imerg_tp_1hr_p10",
+      "family": "precipitation",
+      "quantity": "imerg tp 1hr p10",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_imerg_tp_1hr",
+      "description": "Provider-published WeatherNext 3 imerg_tp_1hr_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_imerg_tp_1hr_p25",
+      "family": "precipitation",
+      "quantity": "imerg tp 1hr p25",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_imerg_tp_1hr",
+      "description": "Provider-published WeatherNext 3 imerg_tp_1hr_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_imerg_tp_1hr_p50",
+      "family": "precipitation",
+      "quantity": "imerg tp 1hr p50",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_imerg_tp_1hr",
+      "description": "Provider-published WeatherNext 3 imerg_tp_1hr_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_imerg_tp_1hr_p75",
+      "family": "precipitation",
+      "quantity": "imerg tp 1hr p75",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_imerg_tp_1hr",
+      "description": "Provider-published WeatherNext 3 imerg_tp_1hr_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_imerg_tp_1hr_p90",
+      "family": "precipitation",
+      "quantity": "imerg tp 1hr p90",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_imerg_tp_1hr",
+      "description": "Provider-published WeatherNext 3 imerg_tp_1hr_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_low_cloud_cover_mean",
+      "family": "cloud_cover",
+      "quantity": "low cloud cover mean",
+      "units": "percent",
+      "level": "low cloud",
+      "comparabilityGroup": "weathernext3_low_cloud_cover",
+      "description": "Provider-published WeatherNext 3 low_cloud_cover_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_low_cloud_cover_p10",
+      "family": "cloud_cover",
+      "quantity": "low cloud cover p10",
+      "units": "percent",
+      "level": "low cloud",
+      "comparabilityGroup": "weathernext3_low_cloud_cover",
+      "description": "Provider-published WeatherNext 3 low_cloud_cover_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_low_cloud_cover_p25",
+      "family": "cloud_cover",
+      "quantity": "low cloud cover p25",
+      "units": "percent",
+      "level": "low cloud",
+      "comparabilityGroup": "weathernext3_low_cloud_cover",
+      "description": "Provider-published WeatherNext 3 low_cloud_cover_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_low_cloud_cover_p50",
+      "family": "cloud_cover",
+      "quantity": "low cloud cover p50",
+      "units": "percent",
+      "level": "low cloud",
+      "comparabilityGroup": "weathernext3_low_cloud_cover",
+      "description": "Provider-published WeatherNext 3 low_cloud_cover_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_low_cloud_cover_p75",
+      "family": "cloud_cover",
+      "quantity": "low cloud cover p75",
+      "units": "percent",
+      "level": "low cloud",
+      "comparabilityGroup": "weathernext3_low_cloud_cover",
+      "description": "Provider-published WeatherNext 3 low_cloud_cover_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_low_cloud_cover_p90",
+      "family": "cloud_cover",
+      "quantity": "low cloud cover p90",
+      "units": "percent",
+      "level": "low cloud",
+      "comparabilityGroup": "weathernext3_low_cloud_cover",
+      "description": "Provider-published WeatherNext 3 low_cloud_cover_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_mean_sea_level_pressure_mean",
+      "family": "pressure",
+      "quantity": "mean sea level pressure mean",
+      "units": "hPa",
+      "level": "mean sea level",
+      "comparabilityGroup": "weathernext3_mean_sea_level_pressure",
+      "description": "Provider-published WeatherNext 3 mean_sea_level_pressure_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_mean_sea_level_pressure_p10",
+      "family": "pressure",
+      "quantity": "mean sea level pressure p10",
+      "units": "hPa",
+      "level": "mean sea level",
+      "comparabilityGroup": "weathernext3_mean_sea_level_pressure",
+      "description": "Provider-published WeatherNext 3 mean_sea_level_pressure_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_mean_sea_level_pressure_p25",
+      "family": "pressure",
+      "quantity": "mean sea level pressure p25",
+      "units": "hPa",
+      "level": "mean sea level",
+      "comparabilityGroup": "weathernext3_mean_sea_level_pressure",
+      "description": "Provider-published WeatherNext 3 mean_sea_level_pressure_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_mean_sea_level_pressure_p50",
+      "family": "pressure",
+      "quantity": "mean sea level pressure p50",
+      "units": "hPa",
+      "level": "mean sea level",
+      "comparabilityGroup": "weathernext3_mean_sea_level_pressure",
+      "description": "Provider-published WeatherNext 3 mean_sea_level_pressure_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_mean_sea_level_pressure_p75",
+      "family": "pressure",
+      "quantity": "mean sea level pressure p75",
+      "units": "hPa",
+      "level": "mean sea level",
+      "comparabilityGroup": "weathernext3_mean_sea_level_pressure",
+      "description": "Provider-published WeatherNext 3 mean_sea_level_pressure_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_mean_sea_level_pressure_p90",
+      "family": "pressure",
+      "quantity": "mean sea level pressure p90",
+      "units": "hPa",
+      "level": "mean sea level",
+      "comparabilityGroup": "weathernext3_mean_sea_level_pressure",
+      "description": "Provider-published WeatherNext 3 mean_sea_level_pressure_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_medium_cloud_cover_mean",
+      "family": "cloud_cover",
+      "quantity": "medium cloud cover mean",
+      "units": "percent",
+      "level": "middle cloud",
+      "comparabilityGroup": "weathernext3_medium_cloud_cover",
+      "description": "Provider-published WeatherNext 3 medium_cloud_cover_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_medium_cloud_cover_p10",
+      "family": "cloud_cover",
+      "quantity": "medium cloud cover p10",
+      "units": "percent",
+      "level": "middle cloud",
+      "comparabilityGroup": "weathernext3_medium_cloud_cover",
+      "description": "Provider-published WeatherNext 3 medium_cloud_cover_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_medium_cloud_cover_p25",
+      "family": "cloud_cover",
+      "quantity": "medium cloud cover p25",
+      "units": "percent",
+      "level": "middle cloud",
+      "comparabilityGroup": "weathernext3_medium_cloud_cover",
+      "description": "Provider-published WeatherNext 3 medium_cloud_cover_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_medium_cloud_cover_p50",
+      "family": "cloud_cover",
+      "quantity": "medium cloud cover p50",
+      "units": "percent",
+      "level": "middle cloud",
+      "comparabilityGroup": "weathernext3_medium_cloud_cover",
+      "description": "Provider-published WeatherNext 3 medium_cloud_cover_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_medium_cloud_cover_p75",
+      "family": "cloud_cover",
+      "quantity": "medium cloud cover p75",
+      "units": "percent",
+      "level": "middle cloud",
+      "comparabilityGroup": "weathernext3_medium_cloud_cover",
+      "description": "Provider-published WeatherNext 3 medium_cloud_cover_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_medium_cloud_cover_p90",
+      "family": "cloud_cover",
+      "quantity": "medium cloud cover p90",
+      "units": "percent",
+      "level": "middle cloud",
+      "comparabilityGroup": "weathernext3_medium_cloud_cover",
+      "description": "Provider-published WeatherNext 3 medium_cloud_cover_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_sea_surface_temperature_mean",
+      "family": "temperature",
+      "quantity": "sea surface temperature mean",
+      "units": "degC",
+      "level": "sea surface",
+      "comparabilityGroup": "weathernext3_sea_surface_temperature",
+      "description": "Provider-published WeatherNext 3 sea_surface_temperature_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_sea_surface_temperature_p10",
+      "family": "temperature",
+      "quantity": "sea surface temperature p10",
+      "units": "degC",
+      "level": "sea surface",
+      "comparabilityGroup": "weathernext3_sea_surface_temperature",
+      "description": "Provider-published WeatherNext 3 sea_surface_temperature_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_sea_surface_temperature_p25",
+      "family": "temperature",
+      "quantity": "sea surface temperature p25",
+      "units": "degC",
+      "level": "sea surface",
+      "comparabilityGroup": "weathernext3_sea_surface_temperature",
+      "description": "Provider-published WeatherNext 3 sea_surface_temperature_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_sea_surface_temperature_p50",
+      "family": "temperature",
+      "quantity": "sea surface temperature p50",
+      "units": "degC",
+      "level": "sea surface",
+      "comparabilityGroup": "weathernext3_sea_surface_temperature",
+      "description": "Provider-published WeatherNext 3 sea_surface_temperature_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_sea_surface_temperature_p75",
+      "family": "temperature",
+      "quantity": "sea surface temperature p75",
+      "units": "degC",
+      "level": "sea surface",
+      "comparabilityGroup": "weathernext3_sea_surface_temperature",
+      "description": "Provider-published WeatherNext 3 sea_surface_temperature_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_sea_surface_temperature_p90",
+      "family": "temperature",
+      "quantity": "sea surface temperature p90",
+      "units": "degC",
+      "level": "sea surface",
+      "comparabilityGroup": "weathernext3_sea_surface_temperature",
+      "description": "Provider-published WeatherNext 3 sea_surface_temperature_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_dewpoint_temperature_mean_2m",
+      "family": "humidity",
+      "quantity": "station head dewpoint temperature 2m mean",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_dewpoint_temperature_2m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_dewpoint_temperature_p10_2m",
+      "family": "humidity",
+      "quantity": "station head dewpoint temperature 2m p10",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_dewpoint_temperature_2m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_dewpoint_temperature_p25_2m",
+      "family": "humidity",
+      "quantity": "station head dewpoint temperature 2m p25",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_dewpoint_temperature_2m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_dewpoint_temperature_p50_2m",
+      "family": "humidity",
+      "quantity": "station head dewpoint temperature 2m p50",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_dewpoint_temperature_2m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_dewpoint_temperature_p75_2m",
+      "family": "humidity",
+      "quantity": "station head dewpoint temperature 2m p75",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_dewpoint_temperature_2m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_dewpoint_temperature_p90_2m",
+      "family": "humidity",
+      "quantity": "station head dewpoint temperature 2m p90",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_dewpoint_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_dewpoint_temperature_2m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_temperature_mean_2m",
+      "family": "temperature",
+      "quantity": "station head temperature 2m mean",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_temperature_2m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_temperature_p10_2m",
+      "family": "temperature",
+      "quantity": "station head temperature 2m p10",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_temperature_2m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_temperature_p25_2m",
+      "family": "temperature",
+      "quantity": "station head temperature 2m p25",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_temperature_2m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_temperature_p50_2m",
+      "family": "temperature",
+      "quantity": "station head temperature 2m p50",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_temperature_2m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_temperature_p75_2m",
+      "family": "temperature",
+      "quantity": "station head temperature 2m p75",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_temperature_2m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_station_head_temperature_p90_2m",
+      "family": "temperature",
+      "quantity": "station head temperature 2m p90",
+      "units": "degC",
+      "level": "2 m station-trained",
+      "comparabilityGroup": "weathernext3_station_head_temperature_2m",
+      "description": "Provider-published WeatherNext 3 station_head_temperature_2m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_surface_solar_radiation_downwards_1hr_mean",
+      "family": "radiation",
+      "quantity": "surface solar radiation downwards 1hr mean",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_surface_solar_radiation_downwards_1hr",
+      "description": "Provider-published WeatherNext 3 surface_solar_radiation_downwards_1hr_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_surface_solar_radiation_downwards_1hr_p10",
+      "family": "radiation",
+      "quantity": "surface solar radiation downwards 1hr p10",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_surface_solar_radiation_downwards_1hr",
+      "description": "Provider-published WeatherNext 3 surface_solar_radiation_downwards_1hr_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_surface_solar_radiation_downwards_1hr_p25",
+      "family": "radiation",
+      "quantity": "surface solar radiation downwards 1hr p25",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_surface_solar_radiation_downwards_1hr",
+      "description": "Provider-published WeatherNext 3 surface_solar_radiation_downwards_1hr_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_surface_solar_radiation_downwards_1hr_p50",
+      "family": "radiation",
+      "quantity": "surface solar radiation downwards 1hr p50",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_surface_solar_radiation_downwards_1hr",
+      "description": "Provider-published WeatherNext 3 surface_solar_radiation_downwards_1hr_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_surface_solar_radiation_downwards_1hr_p75",
+      "family": "radiation",
+      "quantity": "surface solar radiation downwards 1hr p75",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_surface_solar_radiation_downwards_1hr",
+      "description": "Provider-published WeatherNext 3 surface_solar_radiation_downwards_1hr_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_surface_solar_radiation_downwards_1hr_p90",
+      "family": "radiation",
+      "quantity": "surface solar radiation downwards 1hr p90",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_surface_solar_radiation_downwards_1hr",
+      "description": "Provider-published WeatherNext 3 surface_solar_radiation_downwards_1hr_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_temperature_p10_2m",
+      "family": "temperature",
+      "quantity": "temperature 2m p10",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_temperature_2m",
+      "description": "Provider-published WeatherNext 3 temperature_2m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_temperature_p25_2m",
+      "family": "temperature",
+      "quantity": "temperature 2m p25",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_temperature_2m",
+      "description": "Provider-published WeatherNext 3 temperature_2m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_temperature_p50_2m",
+      "family": "temperature",
+      "quantity": "temperature 2m p50",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_temperature_2m",
+      "description": "Provider-published WeatherNext 3 temperature_2m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_temperature_p75_2m",
+      "family": "temperature",
+      "quantity": "temperature 2m p75",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_temperature_2m",
+      "description": "Provider-published WeatherNext 3 temperature_2m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_temperature_p90_2m",
+      "family": "temperature",
+      "quantity": "temperature 2m p90",
+      "units": "degC",
+      "level": "2 m",
+      "comparabilityGroup": "weathernext3_temperature_2m",
+      "description": "Provider-published WeatherNext 3 temperature_2m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_cloud_cover_mean",
+      "family": "cloud_cover",
+      "quantity": "total cloud cover mean",
+      "units": "percent",
+      "level": "column",
+      "comparabilityGroup": "weathernext3_total_cloud_cover",
+      "description": "Provider-published WeatherNext 3 total_cloud_cover_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_cloud_cover_p10",
+      "family": "cloud_cover",
+      "quantity": "total cloud cover p10",
+      "units": "percent",
+      "level": "column",
+      "comparabilityGroup": "weathernext3_total_cloud_cover",
+      "description": "Provider-published WeatherNext 3 total_cloud_cover_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_cloud_cover_p25",
+      "family": "cloud_cover",
+      "quantity": "total cloud cover p25",
+      "units": "percent",
+      "level": "column",
+      "comparabilityGroup": "weathernext3_total_cloud_cover",
+      "description": "Provider-published WeatherNext 3 total_cloud_cover_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_cloud_cover_p50",
+      "family": "cloud_cover",
+      "quantity": "total cloud cover p50",
+      "units": "percent",
+      "level": "column",
+      "comparabilityGroup": "weathernext3_total_cloud_cover",
+      "description": "Provider-published WeatherNext 3 total_cloud_cover_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_cloud_cover_p75",
+      "family": "cloud_cover",
+      "quantity": "total cloud cover p75",
+      "units": "percent",
+      "level": "column",
+      "comparabilityGroup": "weathernext3_total_cloud_cover",
+      "description": "Provider-published WeatherNext 3 total_cloud_cover_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_cloud_cover_p90",
+      "family": "cloud_cover",
+      "quantity": "total cloud cover p90",
+      "units": "percent",
+      "level": "column",
+      "comparabilityGroup": "weathernext3_total_cloud_cover",
+      "description": "Provider-published WeatherNext 3 total_cloud_cover_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_precipitation_1hr_mean",
+      "family": "precipitation",
+      "quantity": "total precipitation 1hr mean",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_precipitation_1hr",
+      "description": "Provider-published WeatherNext 3 total_precipitation_1hr_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_precipitation_1hr_p10",
+      "family": "precipitation",
+      "quantity": "total precipitation 1hr p10",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_precipitation_1hr",
+      "description": "Provider-published WeatherNext 3 total_precipitation_1hr_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_precipitation_1hr_p25",
+      "family": "precipitation",
+      "quantity": "total precipitation 1hr p25",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_precipitation_1hr",
+      "description": "Provider-published WeatherNext 3 total_precipitation_1hr_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_precipitation_1hr_p50",
+      "family": "precipitation",
+      "quantity": "total precipitation 1hr p50",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_precipitation_1hr",
+      "description": "Provider-published WeatherNext 3 total_precipitation_1hr_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_precipitation_1hr_p75",
+      "family": "precipitation",
+      "quantity": "total precipitation 1hr p75",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_precipitation_1hr",
+      "description": "Provider-published WeatherNext 3 total_precipitation_1hr_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_precipitation_1hr_p90",
+      "family": "precipitation",
+      "quantity": "total precipitation 1hr p90",
+      "units": "mm",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_precipitation_1hr",
+      "description": "Provider-published WeatherNext 3 total_precipitation_1hr_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr_mean",
+      "family": "radiation",
+      "quantity": "total sky direct solar radiation at surface 1hr mean",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr",
+      "description": "Provider-published WeatherNext 3 total_sky_direct_solar_radiation_at_surface_1hr_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr_p10",
+      "family": "radiation",
+      "quantity": "total sky direct solar radiation at surface 1hr p10",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr",
+      "description": "Provider-published WeatherNext 3 total_sky_direct_solar_radiation_at_surface_1hr_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr_p25",
+      "family": "radiation",
+      "quantity": "total sky direct solar radiation at surface 1hr p25",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr",
+      "description": "Provider-published WeatherNext 3 total_sky_direct_solar_radiation_at_surface_1hr_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr_p50",
+      "family": "radiation",
+      "quantity": "total sky direct solar radiation at surface 1hr p50",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr",
+      "description": "Provider-published WeatherNext 3 total_sky_direct_solar_radiation_at_surface_1hr_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr_p75",
+      "family": "radiation",
+      "quantity": "total sky direct solar radiation at surface 1hr p75",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr",
+      "description": "Provider-published WeatherNext 3 total_sky_direct_solar_radiation_at_surface_1hr_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr_p90",
+      "family": "radiation",
+      "quantity": "total sky direct solar radiation at surface 1hr p90",
+      "units": "J/m2",
+      "level": "surface",
+      "comparabilityGroup": "weathernext3_total_sky_direct_solar_radiation_at_surface_1hr",
+      "description": "Provider-published WeatherNext 3 total_sky_direct_solar_radiation_at_surface_1hr_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_mean_100m",
+      "family": "wind",
+      "quantity": "u component of wind 100m mean",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_100m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_mean_10m",
+      "family": "wind",
+      "quantity": "u component of wind 10m mean",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_10m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p10_100m",
+      "family": "wind",
+      "quantity": "u component of wind 100m p10",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_100m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p10_10m",
+      "family": "wind",
+      "quantity": "u component of wind 10m p10",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_10m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p25_100m",
+      "family": "wind",
+      "quantity": "u component of wind 100m p25",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_100m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p25_10m",
+      "family": "wind",
+      "quantity": "u component of wind 10m p25",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_10m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p50_100m",
+      "family": "wind",
+      "quantity": "u component of wind 100m p50",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_100m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p50_10m",
+      "family": "wind",
+      "quantity": "u component of wind 10m p50",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_10m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p75_100m",
+      "family": "wind",
+      "quantity": "u component of wind 100m p75",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_100m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p75_10m",
+      "family": "wind",
+      "quantity": "u component of wind 10m p75",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_10m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p90_100m",
+      "family": "wind",
+      "quantity": "u component of wind 100m p90",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_100m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_u_component_of_wind_p90_10m",
+      "family": "wind",
+      "quantity": "u component of wind 10m p90",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_u_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 u_component_of_wind_10m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_mean_100m",
+      "family": "wind",
+      "quantity": "v component of wind 100m mean",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_100m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_mean_10m",
+      "family": "wind",
+      "quantity": "v component of wind 10m mean",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_10m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p10_100m",
+      "family": "wind",
+      "quantity": "v component of wind 100m p10",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_100m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p10_10m",
+      "family": "wind",
+      "quantity": "v component of wind 10m p10",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_10m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p25_100m",
+      "family": "wind",
+      "quantity": "v component of wind 100m p25",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_100m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p25_10m",
+      "family": "wind",
+      "quantity": "v component of wind 10m p25",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_10m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p50_100m",
+      "family": "wind",
+      "quantity": "v component of wind 100m p50",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_100m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p50_10m",
+      "family": "wind",
+      "quantity": "v component of wind 10m p50",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_10m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p75_100m",
+      "family": "wind",
+      "quantity": "v component of wind 100m p75",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_100m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p75_10m",
+      "family": "wind",
+      "quantity": "v component of wind 10m p75",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_10m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p90_100m",
+      "family": "wind",
+      "quantity": "v component of wind 100m p90",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_100m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_100m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_v_component_of_wind_p90_10m",
+      "family": "wind",
+      "quantity": "v component of wind 10m p90",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_v_component_of_wind_10m",
+      "description": "Provider-published WeatherNext 3 v_component_of_wind_10m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_mean_100m",
+      "family": "wind",
+      "quantity": "wind speed 100m mean",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_wind_speed_100m",
+      "description": "Provider-published WeatherNext 3 wind_speed_100m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_mean_10m",
+      "family": "wind",
+      "quantity": "wind speed 10m mean",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_wind_speed_10m",
+      "description": "Provider-published WeatherNext 3 wind_speed_10m_mean; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p10_100m",
+      "family": "wind",
+      "quantity": "wind speed 100m p10",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_wind_speed_100m",
+      "description": "Provider-published WeatherNext 3 wind_speed_100m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p10_10m",
+      "family": "wind",
+      "quantity": "wind speed 10m p10",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_wind_speed_10m",
+      "description": "Provider-published WeatherNext 3 wind_speed_10m_p10; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p25_100m",
+      "family": "wind",
+      "quantity": "wind speed 100m p25",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_wind_speed_100m",
+      "description": "Provider-published WeatherNext 3 wind_speed_100m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p25_10m",
+      "family": "wind",
+      "quantity": "wind speed 10m p25",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_wind_speed_10m",
+      "description": "Provider-published WeatherNext 3 wind_speed_10m_p25; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p50_100m",
+      "family": "wind",
+      "quantity": "wind speed 100m p50",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_wind_speed_100m",
+      "description": "Provider-published WeatherNext 3 wind_speed_100m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p50_10m",
+      "family": "wind",
+      "quantity": "wind speed 10m p50",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_wind_speed_10m",
+      "description": "Provider-published WeatherNext 3 wind_speed_10m_p50; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p75_100m",
+      "family": "wind",
+      "quantity": "wind speed 100m p75",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_wind_speed_100m",
+      "description": "Provider-published WeatherNext 3 wind_speed_100m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p75_10m",
+      "family": "wind",
+      "quantity": "wind speed 10m p75",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_wind_speed_10m",
+      "description": "Provider-published WeatherNext 3 wind_speed_10m_p75; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p90_100m",
+      "family": "wind",
+      "quantity": "wind speed 100m p90",
+      "units": "m/s",
+      "level": "100 m",
+      "comparabilityGroup": "weathernext3_wind_speed_100m",
+      "description": "Provider-published WeatherNext 3 wind_speed_100m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
+    },
+    {
+      "key": "weathernext3_wind_speed_p90_10m",
+      "family": "wind",
+      "quantity": "wind speed 10m p90",
+      "units": "m/s",
+      "level": "10 m",
+      "comparabilityGroup": "weathernext3_wind_speed_10m",
+      "description": "Provider-published WeatherNext 3 wind_speed_10m_p90; one-hour accumulation where named 1hr. No cross-head or cross-statistic equivalence."
     },
     {
       "key": "wind_direction_10m",

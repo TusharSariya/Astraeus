@@ -16,6 +16,7 @@ from urllib.parse import quote, urlencode
 
 from ingest.adapters.weathernext3_statistics import PRODUCT, SOURCE_ID
 from ingest.derive.registry import ENSEMBLE_MEAN
+from registry.weathernext import SURFACE_FIELDS, BY_KEY, BY_NATIVE
 from .models import Coverage, EnsembleProvenance, EvidenceField, Freshness, Provenance, Quality
 from .source_contract import SourceAcquisition, SourceCapability, SourceConfiguration, SourceTransferReceipt, SourceVariant
 from .weathernext_gcs import GcloudProfileToken, runtime_token_provider
@@ -83,15 +84,18 @@ def point_evidence(payload, selection, configuration, *, completed_at, data_mode
             or len(raw['values'])!=1):
         raise ValueError('native point identity')
     native=raw['values'][0]
-    if (native['field']!=NATIVE_FIELD or native['statistic']!='mean' or native['unit']!='K' or native['grid']!='0p1'):
+    mapping=BY_NATIVE[selection.fields[0]]
+    if (native['field']!=mapping.native or native['statistic']!=mapping.native.rsplit('_',1)[1] or native['unit']!=mapping.native_unit or native['grid']!=mapping.grid):
         raise ValueError('native temperature statistic identity')
     lat,lon=native['latitude'],native['longitude']
     if (not all(isinstance(n,(int,float)) and math.isfinite(n) for n in (lat,lon)) or not -90<=lat<=90 or not -180<=lon<=180
-            or abs(lat-selection.latitude)>.05005 or abs((lon-selection.longitude+180)%360-180)>.05005):
+            or abs(lat-selection.latitude)>(.02505 if mapping.grid=='0p05' else .05005) or abs((lon-selection.longitude+180)%360-180)>(.02505 if mapping.grid=='0p05' else .05005)):
         raise ValueError('native point footprint')
     value=native['value']
     if value is not None and (isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value)):
         raise ValueError('native value')
+    if value is not None and mapping.family == 'cloud_cover' and not 0 <= value <= 1:
+        raise ValueError('native cloud fraction range')
     identities=[ObjectIdentity(**item) for item in raw['objects']]
     if not identities or identities[0]!=configuration.root_identity or len(identities)>7:
         raise ValueError('root receipt identity')
@@ -99,7 +103,7 @@ def point_evidence(payload, selection, configuration, *, completed_at, data_mode
     prefix=configuration.root_identity.name.rsplit('/',1)[0]+'/'
     if (len(by_name)!=len(identities) or any(item.bucket!=BUCKET or not item.name.startswith(prefix)
         or not item.generation.isdecimal() or not item.etag or type(item.size) is not int or item.size<=0 for item in identities)
-        or not any(item.name.startswith(prefix+NATIVE_FIELD+'/c/') for item in identities)):
+        or not any(item.name.startswith(prefix+mapping.native+'/c/') for item in identities)):
         raise ValueError('native object receipt')
     if sum(item.size for item in identities)!=raw['received_bytes'] or raw['received_bytes']>MAX_ACQUISITION_BYTES:
         raise ValueError('native receipt byte bounds')
@@ -126,11 +130,11 @@ def point_evidence(payload, selection, configuration, *, completed_at, data_mode
         run_time=selection.initialization,valid_time=selection.valid_time,retrieval_time=completed_at,
         expires_at=completed_at+timedelta(seconds=TTL),normalized_sha256=digest,transport_receipts=tuple(transfers))
     flags=[('internal_experimental_forecast' if local else 'historical_forecast'),'provider_qc_not_supplied']+(['native_fill_mask'] if value is None else [])
-    return EvidenceField(field=FIELD,key=FIELD,value=None if value is None else value-273.15,storage='available-not-stored',
+    return EvidenceField(field=mapping.key,key=mapping.key,value=None if value is None else value*mapping.scale+mapping.offset,storage='available-not-stored',
         provenance=Provenance(data_mode=data_mode,evidence_class='retrieved',source_id=SOURCE_ID,provider='Google',
-            product=PRODUCT,native_variable=NATIVE_FIELD,forecast_centre='Google',artifact_revision=digest,
+            product=PRODUCT,native_variable=mapping.native,forecast_centre='Google',artifact_revision=digest,
             run_time=selection.initialization,valid_time=selection.valid_time,retrieval_time=completed_at,
-            vertical_level='2 m',original_units='K',normalized_units='degC',native_resolution='0.1 degree',native_crs='EPSG:4326',
+            vertical_level=mapping.level,original_units=mapping.native_unit,normalized_units=mapping.unit,native_resolution='0.05 degree' if mapping.grid=='0p05' else '0.1 degree',native_crs='EPSG:4326',
             quality=Quality(status='unknown',flags=flags),coverage=Coverage(status='partial'),
             freshness=Freshness(status='unknown',age_seconds=0,threshold_seconds=None),
             licence=('GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), '
@@ -141,7 +145,7 @@ def point_evidence(payload, selection, configuration, *, completed_at, data_mode
             adapter_version='weathernext-local-temperature-v1' if local else 'weathernext-historical-temperature-v1',source_acquisition=acquisition,
             sampled_latitude=lat,sampled_longitude=lon,sample_method='rectilinear',run_stale=None if local else True,
             run_stale_reason='Pinned experimental run; freshness is not established' if local else 'Explicit historical run; not a current forecast',
-            ensemble=EnsembleProvenance(family='google-weathernext-3',statistic=ENSEMBLE_MEAN,computed_here=False,member_set=None)))
+            ensemble=EnsembleProvenance(family='google-weathernext-3',statistic=mapping.statistic,quantile=mapping.quantile,computed_here=False,member_set=None)))
 
 
 class WeatherNextHistoricalDelivery:
@@ -165,11 +169,17 @@ class WeatherNextHistoricalDelivery:
                                      max_received_bytes=MAX_ACQUISITION_BYTES)
 
     def descriptors(self):
-        return (SourceCapability(source_id=SOURCE_ID,product_id=PRODUCT,field=FIELD,
-            variants=[SourceVariant(kind='provider_statistic',statistic=ENSEMBLE_MEAN)],levels=['2 m'],point=True,
-            point_product='WeatherNext 3 historical',native_series=False,run_selection='not_applicable',
-            time_semantics='Exact selected native hourly time in the explicitly configured historical run; valid time strictly older than 48 hours',
-            coverage_description='One native 0.1 degree temperature mean cell; pinned historical run, no current or full-run coverage promise'),)
+        return surface_descriptors('WeatherNext 3 historical')
+
+    def resolve_point_time(self, selected):
+        # The source's hourly convention only proposes a candidate; the native
+        # coordinate reader verifies its existence before returning evidence.
+        native = selected.replace(minute=0, second=0, microsecond=0)
+        if native < selected:
+            native += timedelta(hours=1)
+        WeatherNextSelection(self.config.initialization,native,0,0,(NATIVE_FIELD,))
+        self._validate_time(WeatherNextSelection(self.config.initialization,native,0,0,(NATIVE_FIELD,)),self._utcnow())
+        return native
 
     def configuration(self):
         return SourceConfiguration(state='ready',reason='Explicit historical root and existing gcloud profile selected; runtime authentication and object access are assessed on acquisition')
@@ -183,10 +193,10 @@ class WeatherNextHistoricalDelivery:
 
     def plan_series(self,*args,**kwargs): return None
 
-    def read_point(self,latitude,longitude,selected,*,run='latest',refresh=False):
+    def read_point(self,latitude,longitude,selected,*,run='latest',refresh=False,field=FIELD):
         if run not in ('latest',self.config.run_id): raise WeatherNextDeliveryUnavailable(f'WeatherNext configured {self._scope_label} run only')
         try:
-            selection=WeatherNextSelection(self.config.initialization,selected,latitude,longitude,(NATIVE_FIELD,))
+            selection=WeatherNextSelection(self.config.initialization,selected,latitude,longitude,(BY_KEY[field].native,))
             self._validate_time(selection,self._utcnow())
         except Exception:
             raise WeatherNextDeliveryUnavailable(f'WeatherNext {self._scope_label} selection unavailable') from None
@@ -268,11 +278,56 @@ class WeatherNextLocalExperimentalDelivery(WeatherNextHistoricalDelivery):
             data_mode=self._data_mode,scope='internal_experimental_forecast')
 
     def descriptors(self):
-        return (SourceCapability(source_id=SOURCE_ID,product_id=PRODUCT,field=FIELD,
-            variants=[SourceVariant(kind='provider_statistic',statistic=ENSEMBLE_MEAN)],levels=['2 m'],point=True,
-            point_product='WeatherNext 3 local',native_series=False,run_selection='not_applicable',
-            time_semantics='Exact selected native hourly time in the explicitly configured run; initialization must not be in the future',
-            coverage_description='Internal experimental forecast; one pinned native temperature mean cell, no latest-run or freshness promise'),)
+        return surface_descriptors('WeatherNext 3 local')
 
     def configuration(self):
         return SourceConfiguration(state='ready',reason='Explicit local experimental root and existing gcloud profile selected; runtime authentication and object access are assessed on acquisition')
+
+
+def surface_descriptors(product):
+    return tuple(SourceCapability(source_id=SOURCE_ID,product_id=PRODUCT,field=m.key,
+        variants=[SourceVariant(kind='provider_statistic',statistic=m.statistic,quantile=m.quantile)],
+        levels=[m.level],point=True,point_product=product,native_series=False,
+        point_time_kind='forecast',directional_time_selection=True,run_selection='not_applicable',
+        time_semantics='Exact native hourly lead, or next native hour under directional selection, within configured run',
+        coverage_description='Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise')
+        for m in SURFACE_FIELDS)
+
+
+def directional_surface_point(latitude,longitude,selected,product,*,field=None,member=None,statistic=None,quantile=None,threshold=None,comparison=None):
+    from fastapi import HTTPException
+    from .app import configured_mode, LIVE_MODE
+    from .models import PointResponse, Selection
+    from .weathernext_configuration import weathernext_historical_service, weathernext_local_experimental_service
+    mapping=BY_KEY.get(field or FIELD)
+    if (mapping is None or member is not None or threshold is not None or comparison is not None
+            or statistic not in (None,mapping.statistic) or quantile != mapping.quantile):
+        raise HTTPException(status_code=422,detail='Select an exact published WeatherNext 3 surface field/statistic; raw members are unsupported')
+    fields=[]
+    reason='WeatherNext 3 requires live mode'
+    if configured_mode()==LIVE_MODE:
+        try:
+            factory=weathernext_local_experimental_service if product.upper()=='WEATHERNEXT 3 LOCAL' else weathernext_historical_service
+            import os
+            if os.environ.get('WEATHER_WEATHERNEXT_AUTO_RUNS') == '1':
+                from .weathernext_configuration import load_local_experimental_configuration, _service, _local_service
+                from .weathernext_runs import discover_configuration
+                configured=load_local_experimental_configuration()
+                internal=product.upper()=='WEATHERNEXT 3 LOCAL'
+                configuration=discover_configuration(selected,configured.gcloud_profile,internal=internal)
+                service=(_local_service if internal else _service)(configuration)
+            else:
+                service=factory()
+            native=service.resolve_point_time(selected)
+            fields=list(service.read_point(latitude,longitude,native,field=mapping.key))
+            if any(f.provenance.valid_time!=native or f.provenance.valid_time<selected for f in fields):
+                raise ValueError('native time identity')
+            reason='Native forecast at or after selection within the configured WeatherNext 3 run'
+        except Exception as error:
+            fields=[]
+            reason='Credentials required for WeatherNext 3' if getattr(error,'http_status',None) in (401,403) else 'WeatherNext 3 source unavailable for selected native time; check configured run and runtime access'
+    return PointResponse(data_mode='live' if any(f.value is not None for f in fields) else 'unavailable',
+        latitude=latitude,longitude=longitude,valid_time=selected,time_selection='directional',fields=fields,
+        selection=Selection(mode='evidence_only',selected_source_id=None,selected_product_id=None,
+            badge='Point data' if fields else 'Point data unavailable',reason=reason),
+        notices=['Internal experimental WeatherNext 3; selected instant and native valid time retained separately; provider statistics, no member reconstruction'])
