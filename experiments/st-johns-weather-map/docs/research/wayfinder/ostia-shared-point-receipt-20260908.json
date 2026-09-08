@@ -1,0 +1,412 @@
+{
+  "status": "passed",
+  "valid_time": "2026-09-06T00:00:00+00:00",
+  "values": [
+    14.529998779296875,
+    0.47999998927116394,
+    1.0
+  ],
+  "requests": 7,
+  "bytes": 1466909,
+  "repeat_requests": 0,
+  "artifact_revision": "ostia-20260906-1c63dd7f81dad443",
+  "proof_mode": "Anonymous live native capture followed by network-disabled bounded Linux replay into actual FastAPI TestClient. Replay retains captured UTC completion and uses fixed monotonic clock.",
+  "requests_detail": [
+    {
+      "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/.zmetadata",
+      "byte_size": 11656,
+      "sha256": "cae943a026109782806824891a77e18e12e12c100674a651290103503a21a6d3",
+      "completed_at": "2026-09-08T02:05:50.303767+00:00"
+    },
+    {
+      "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/time/1",
+      "byte_size": 1648,
+      "sha256": "247ef9c0a3848fa9abe682f09f8b482509fd9287eee65fa49c15a70ab5939001",
+      "completed_at": "2026-09-08T02:05:50.463128+00:00"
+    },
+    {
+      "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/latitude/0",
+      "request_headers": {
+        "accept": "*/*",
+        "user-agent": "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)",
+        "accept-encoding": "gzip"
+      },
+      "response_headers": {
+        "server": "nginx/1.27.2",
+        "date": "Tue, 08 Sep 2026 02:05:52 GMT",
+        "content-type": "binary/octet-stream",
+        "content-length": "3151",
+        "accept-ranges": "bytes",
+        "last-modified": "Mon, 07 Sep 2026 06:42:08 GMT",
+        "x-rgw-object-type": "Normal",
+        "etag": "\"345ec70271d93e31296f74d38ac87f43\"",
+        "x-amz-request-id": "tx00000b09f17b4f7213bad-006a9f6d80-479db42fa-default"
+      },
+      "completed_at": "2026-09-08 02:05:52.341965+00:00",
+      "byte_size": 3151,
+      "sha256": "b64754961585a3e272592120fb2496e02892c7a27b291d40c3109168fcf8493a"
+    },
+    {
+      "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/longitude/0",
+      "request_headers": {
+        "accept": "*/*",
+        "user-agent": "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)",
+        "accept-encoding": "gzip"
+      },
+      "response_headers": {
+        "server": "nginx/1.27.2",
+        "date": "Tue, 08 Sep 2026 02:05:52 GMT",
+        "content-type": "binary/octet-stream",
+        "content-length": "4180",
+        "accept-ranges": "bytes",
+        "last-modified": "Mon, 07 Sep 2026 06:42:08 GMT",
+        "x-rgw-object-type": "Normal",
+        "etag": "\"689c75c3a7d0353a4ecfb56f01cabde4\"",
+        "x-amz-request-id": "tx000006a1d37cfa0030591-006a9f6d80-478856b8f-default"
+      },
+      "completed_at": "2026-09-08 02:05:52.505124+00:00",
+      "byte_size": 4180,
+      "sha256": "a76b6eacd3830c8cfd3a46e6e4cb69618c5183f240057e3855746e5c0b24efda"
+    },
+    {
+      "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/analysed_sst/7188.2.2",
+      "request_headers": {
+        "accept": "*/*",
+        "user-agent": "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)",
+        "accept-encoding": "gzip"
+      },
+      "response_headers": {
+        "server": "nginx/1.27.2",
+        "date": "Tue, 08 Sep 2026 02:05:53 GMT",
+        "content-type": "binary/octet-stream",
+        "content-length": "1006980",
+        "accept-ranges": "bytes",
+        "last-modified": "Mon, 07 Sep 2026 06:42:08 GMT",
+        "x-rgw-object-type": "Normal",
+        "etag": "\"7935915657c0ad3a291e4a54300bb8d6\"",
+        "x-amz-request-id": "tx000009a92f645e2836c54-006a9f6d81-478856b8f-default"
+      },
+      "completed_at": "2026-09-08 02:05:53.850270+00:00",
+      "byte_size": 1006980,
+      "sha256": "ab2cbf318c21af04818cf9cf0e1b46481e7bc238dfe8f4af22da4d4080d0f5b2"
+    },
+    {
+      "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/analysis_error/7188.2.2",
+      "request_headers": {
+        "accept": "*/*",
+        "user-agent": "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)",
+        "accept-encoding": "gzip"
+      },
+      "response_headers": {
+        "server": "nginx/1.27.2",
+        "date": "Tue, 08 Sep 2026 02:05:54 GMT",
+        "content-type": "binary/octet-stream",
+        "content-length": "416864",
+        "accept-ranges": "bytes",
+        "last-modified": "Mon, 07 Sep 2026 06:42:08 GMT",
+        "x-rgw-object-type": "Normal",
+        "etag": "\"a51288839e7ce58f900b92efe1ff8bc6\"",
+        "x-amz-request-id": "tx000006184c9a6a39429e6-006a9f6d82-478856b8f-default"
+      },
+      "completed_at": "2026-09-08 02:05:54.059741+00:00",
+      "byte_size": 416864,
+      "sha256": "dd31a133db56fbcaca71c6deae5959dcf9d2d909b7589d414ba1cc6a8aa98666"
+    },
+    {
+      "url": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/mask/7188.2.2",
+      "request_headers": {
+        "accept": "*/*",
+        "user-agent": "astraeus-weather-experiment/0.1 (research; contact tushar.sariya77@gmail.com)",
+        "accept-encoding": "gzip"
+      },
+      "response_headers": {
+        "server": "nginx/1.27.2",
+        "date": "Tue, 08 Sep 2026 02:05:54 GMT",
+        "content-type": "binary/octet-stream",
+        "content-length": "22430",
+        "accept-ranges": "bytes",
+        "last-modified": "Mon, 07 Sep 2026 06:42:09 GMT",
+        "x-rgw-object-type": "Normal",
+        "etag": "\"8e0f98037a589e367af676dec291647b\"",
+        "x-amz-request-id": "tx00000e95a4469a51d847d-006a9f6d82-478856b8f-default"
+      },
+      "completed_at": "2026-09-08 02:05:54.522627+00:00",
+      "byte_size": 22430,
+      "sha256": "4767d433c9b6f254ea20d3f3be5b6ac450c8e60d4fbad9ae27fa418f92f0c47f"
+    }
+  ],
+  "point": {
+    "demand_unavailable": null,
+    "observation_unavailable": [],
+    "data_mode": "live",
+    "operational": false,
+    "latitude": 47.5,
+    "longitude": -52.0,
+    "valid_time": "2026-09-06T00:00:00Z",
+    "selection": {
+      "mode": "evidence_only",
+      "selected_source_id": null,
+      "selected_product_id": null,
+      "badge": "OSTIA SST selected",
+      "reason": "Exact native experimental evidence; source admission remains unchanged"
+    },
+    "fields": [
+      {
+        "field": "sea_surface_temperature",
+        "value": 14.529998779296875,
+        "provenance": {
+          "data_mode": "live",
+          "operational": false,
+          "evidence_class": "retrieved",
+          "source_id": "metoffice-ostia-sst",
+          "artifact_revision": "ostia-20260906-1c63dd7f81dad443",
+          "provider": "Met Office",
+          "product": "METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2",
+          "forecast_centre": "Met Office",
+          "run_time": null,
+          "valid_time": "2026-09-06T00:00:00Z",
+          "retrieval_time": "2026-09-08T02:05:54.522627Z",
+          "member": null,
+          "member_control": null,
+          "vertical_level": "sea surface foundation",
+          "original_units": "kelvin",
+          "normalized_units": "degC",
+          "native_resolution": "0.05 degree",
+          "native_crs": "EPSG:4326",
+          "quality": {
+            "status": "passed",
+            "flags": [
+              "daily_analysis",
+              "native_surface_mask_retained"
+            ]
+          },
+          "coverage": {
+            "status": "complete",
+            "fraction": 0.8996
+          },
+          "freshness": {
+            "status": "fresh",
+            "age_seconds": 0,
+            "threshold_seconds": 300
+          },
+          "licence": "Copernicus Marine Service terms",
+          "attribution": "Met Office OSTIA via Copernicus Marine",
+          "derivation": null,
+          "derivation_version": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "delivery_kind": "published_cell",
+          "source_display_primary": false,
+          "intermediary": null,
+          "intermediary_method": null,
+          "adapter_version": "ostia-query-v1",
+          "native_report": null,
+          "demand_acquisition": null,
+          "aqhi_acquisition": null,
+          "swob_acquisition": null,
+          "source_acquisition": null,
+          "native_variable": null,
+          "sampled_latitude": 47.474998474121094,
+          "sampled_longitude": -52.025001525878906,
+          "sample_distance_km": null,
+          "sample_method": "rectilinear",
+          "contributing_evidence": [],
+          "contributors": [],
+          "last_valid_time": null,
+          "run_stale": null,
+          "run_stale_reason": null,
+          "ensemble": null,
+          "display_primary_eligible": false
+        },
+        "key": "sea_surface_temperature",
+        "family": "marine",
+        "phase": null,
+        "storage": "available-not-stored",
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Sea state, sea surface temperature, currents, ice and surge. A significant wave height that combines wind wave and swell is not comparable with either partition alone. A modelled sea surface temperature and a satellite skin SST are different measurements of a stratified surface."
+      },
+      {
+        "field": "sea_surface_temperature_uncertainty",
+        "value": 0.47999998927116394,
+        "provenance": {
+          "data_mode": "live",
+          "operational": false,
+          "evidence_class": "retrieved",
+          "source_id": "metoffice-ostia-sst",
+          "artifact_revision": "ostia-20260906-1c63dd7f81dad443",
+          "provider": "Met Office",
+          "product": "METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2",
+          "forecast_centre": "Met Office",
+          "run_time": null,
+          "valid_time": "2026-09-06T00:00:00Z",
+          "retrieval_time": "2026-09-08T02:05:54.522627Z",
+          "member": null,
+          "member_control": null,
+          "vertical_level": "sea surface foundation",
+          "original_units": "kelvin",
+          "normalized_units": "degC",
+          "native_resolution": "0.05 degree",
+          "native_crs": "EPSG:4326",
+          "quality": {
+            "status": "passed",
+            "flags": [
+              "daily_analysis",
+              "native_surface_mask_retained"
+            ]
+          },
+          "coverage": {
+            "status": "complete",
+            "fraction": 0.8996
+          },
+          "freshness": {
+            "status": "fresh",
+            "age_seconds": 0,
+            "threshold_seconds": 300
+          },
+          "licence": "Copernicus Marine Service terms",
+          "attribution": "Met Office OSTIA via Copernicus Marine",
+          "derivation": null,
+          "derivation_version": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "delivery_kind": "published_cell",
+          "source_display_primary": false,
+          "intermediary": null,
+          "intermediary_method": null,
+          "adapter_version": "ostia-query-v1",
+          "native_report": null,
+          "demand_acquisition": null,
+          "aqhi_acquisition": null,
+          "swob_acquisition": null,
+          "source_acquisition": null,
+          "native_variable": null,
+          "sampled_latitude": 47.474998474121094,
+          "sampled_longitude": -52.025001525878906,
+          "sample_distance_km": null,
+          "sample_method": "rectilinear",
+          "contributing_evidence": [],
+          "contributors": [],
+          "last_valid_time": null,
+          "run_stale": null,
+          "run_stale_reason": null,
+          "ensemble": null,
+          "display_primary_eligible": false
+        },
+        "key": "sea_surface_temperature_uncertainty",
+        "family": "marine",
+        "phase": null,
+        "storage": "available-not-stored",
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Sea state, sea surface temperature, currents, ice and surge. A significant wave height that combines wind wave and swell is not comparable with either partition alone. A modelled sea surface temperature and a satellite skin SST are different measurements of a stratified surface."
+      },
+      {
+        "field": "sea_surface_temperature_mask",
+        "value": 1.0,
+        "provenance": {
+          "data_mode": "live",
+          "operational": false,
+          "evidence_class": "retrieved",
+          "source_id": "metoffice-ostia-sst",
+          "artifact_revision": "ostia-20260906-1c63dd7f81dad443",
+          "provider": "Met Office",
+          "product": "METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2",
+          "forecast_centre": "Met Office",
+          "run_time": null,
+          "valid_time": "2026-09-06T00:00:00Z",
+          "retrieval_time": "2026-09-08T02:05:54.522627Z",
+          "member": null,
+          "member_control": null,
+          "vertical_level": "sea surface foundation",
+          "original_units": "native bit mask",
+          "normalized_units": "flag",
+          "native_resolution": "0.05 degree",
+          "native_crs": "EPSG:4326",
+          "quality": {
+            "status": "passed",
+            "flags": [
+              "daily_analysis",
+              "native_surface_mask_retained"
+            ]
+          },
+          "coverage": {
+            "status": "complete",
+            "fraction": 0.8996
+          },
+          "freshness": {
+            "status": "fresh",
+            "age_seconds": 0,
+            "threshold_seconds": 300
+          },
+          "licence": "Copernicus Marine Service terms",
+          "attribution": "Met Office OSTIA via Copernicus Marine",
+          "derivation": null,
+          "derivation_version": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "delivery_kind": "published_cell",
+          "source_display_primary": false,
+          "intermediary": null,
+          "intermediary_method": null,
+          "adapter_version": "ostia-query-v1",
+          "native_report": null,
+          "demand_acquisition": null,
+          "aqhi_acquisition": null,
+          "swob_acquisition": null,
+          "source_acquisition": null,
+          "native_variable": null,
+          "sampled_latitude": 47.474998474121094,
+          "sampled_longitude": -52.025001525878906,
+          "sample_distance_km": null,
+          "sample_method": "rectilinear",
+          "contributing_evidence": [],
+          "contributors": [],
+          "last_valid_time": null,
+          "run_stale": null,
+          "run_stale_reason": null,
+          "ensemble": null,
+          "display_primary_eligible": false
+        },
+        "key": "sea_surface_temperature_mask",
+        "family": "marine",
+        "phase": null,
+        "storage": "available-not-stored",
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Sea state, sea surface temperature, currents, ice and surge. A significant wave height that combines wind wave and swell is not comparable with either partition alone. A modelled sea surface temperature and a satellite skin SST are different measurements of a stratified surface."
+      }
+    ],
+    "consensus": null,
+    "notices": [
+      "The selected source retains its own native time, units and provenance; no other model or time is substituted"
+    ],
+    "comparability": [
+      {
+        "family": "marine",
+        "a": "sea_surface_temperature",
+        "b": "sea_surface_temperature_uncertainty",
+        "comparable": false,
+        "reason": "definition",
+        "detail": "sea_surface_temperature is Temperature of the sea surface layer. and sea_surface_temperature_uncertainty is Producer-published uncertainty for an analysed SST cell.. Sea state, sea surface temperature, currents, ice and surge. A significant wave height that combines wind wave and swell is not comparable with either partition alone. A modelled sea surface temperature and a satellite skin SST are different measurements of a stratified surface."
+      },
+      {
+        "family": "marine",
+        "a": "sea_surface_temperature",
+        "b": "sea_surface_temperature_mask",
+        "comparable": false,
+        "reason": "definition",
+        "detail": "sea_surface_temperature is Temperature of the sea surface layer. and sea_surface_temperature_mask is Producer-published surface-type mask retained as quality metadata.. Sea state, sea surface temperature, currents, ice and surge. A significant wave height that combines wind wave and swell is not comparable with either partition alone. A modelled sea surface temperature and a satellite skin SST are different measurements of a stratified surface."
+      },
+      {
+        "family": "marine",
+        "a": "sea_surface_temperature_mask",
+        "b": "sea_surface_temperature_uncertainty",
+        "comparable": false,
+        "reason": "definition",
+        "detail": "sea_surface_temperature_mask is Producer-published surface-type mask retained as quality metadata. and sea_surface_temperature_uncertainty is Producer-published uncertainty for an analysed SST cell.. Sea state, sea surface temperature, currents, ice and surge. A significant wave height that combines wind wave and swell is not comparable with either partition alone. A modelled sea surface temperature and a satellite skin SST are different measurements of a stratified surface."
+      }
+    ]
+  },
+  "raw_capture_location": "/private/tmp/astraeus-ostia-shared-live-proof"
+}

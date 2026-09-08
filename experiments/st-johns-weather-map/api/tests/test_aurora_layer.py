@@ -58,6 +58,7 @@ class DemandService:
 def use_demand(monkeypatch, data_mode, service: DemandService) -> None:
     # The layer index remains local. The provider call is made only by raster.
     use_store(monkeypatch, data_mode, GridStore(grid_dataset()))
+    monkeypatch.setattr(api_module, "now", lambda: FORECAST)
     monkeypatch.setattr(ovation_query, "ovation_query_service", lambda: service)
 
 

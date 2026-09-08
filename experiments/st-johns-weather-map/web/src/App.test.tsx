@@ -1958,3 +1958,36 @@ it('offers declared native observations separately in Expert Product without put
   await waitFor(() => expect(fetch.mock.calls.some(([url]) => url.includes('/point?') && new URL(url, 'http://localhost').searchParams.get('product') === 'Native observation')).toBe(true))
   expect(product).toHaveValue('Native observation')
 })
+
+// Explicit Focus selection is independent of the map scrubber's time window.
+// These empty responses prove capability visibility without claiming acquisition.
+it.each([
+  ['OISST SST', 'noaa-oisst-v2-1', '2026-09-03T00:00:00Z', 'observation'],
+  ['OSTIA SST', 'metoffice-ostia-sst', '2026-09-03T12:00:00Z', 'observation'],
+  ['WeatherNext 3 historical', 'google-weathernext-3-statistics', '2026-08-01T06:00:00Z', 'ensemble_mean'],
+])('preserves an explicit older Focus for declared %s even with unavailable point evidence', async (productToken, sourceId, instant, kind) => {
+  window.history.replaceState(null, '', '/')
+  const capability = { source_id: sourceId, product_id: 'native-product', field: 'temperature', point: true, point_product: productToken, native_series: false, variants: [kind === 'ensemble_mean' ? { kind: 'provider_statistic', statistic: kind } : { kind }], levels: ['surface'], run_selection: 'not_applicable', time_semantics: 'Exact native time', coverage_description: 'Native cell' }
+  const fetchMock = routedFetch({
+    catalog: { sources: [{ id: sourceId, producer: 'Fixture provider', product: productToken, state: 'implemented-unverified', forecast_horizon: 'native analyses only', capabilities: [capability] }] },
+    point: apiPoint([], { mode: 'evidence_only', badge: 'Unavailable fixture', reason: 'No acquired native reading' }, 'unavailable'),
+    timeline: { start: '2026-09-06T00:00:00Z', end: '2026-09-21T00:00:00Z', items: [] },
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+  fireEvent.click(document.querySelector('.bench-instant summary')!)
+  fireEvent.change(screen.getByLabelText('Instant (ISO, with timezone)'), { target: { value: instant } })
+  fireEvent.click(screen.getByRole('button', { name: 'Use instant' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Existing evidence panels' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Workbench' }))
+  const product = screen.getByRole('combobox', { name: 'Product' })
+  await userEvent.selectOptions(product, productToken)
+  await waitFor(() => expect(fetchMock.mock.calls.some(([request]) => {
+    const url = new URL(request, 'http://localhost')
+    return url.pathname.endsWith('/point') && url.searchParams.get('product') === productToken && Date.parse(url.searchParams.get('valid_time') ?? '') === Date.parse(instant)
+  })).toBe(true))
+  expect(product).toHaveValue(productToken)
+  await userEvent.click(screen.getByRole('button', { name: 'Return to desktop Bench' }))
+  expect(screen.getByLabelText('Instant (ISO, with timezone)')).toHaveValue(new Date(instant).toISOString())
+  expect(Date.parse(new URL(window.location.href).searchParams.get('t') ?? '')).toBe(Date.parse(instant))
+})

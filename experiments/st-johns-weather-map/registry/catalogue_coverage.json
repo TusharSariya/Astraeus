@@ -252,6 +252,9 @@
       "ccg-harbour-cameras",
       "city-st-johns-road-cameras",
       "ntv-cameras"
+    ],
+    "WeatherNext 3 historical statistics": [
+      "google-weathernext-3-statistics"
     ]
   }
 }

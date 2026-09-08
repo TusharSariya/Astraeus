@@ -1,5 +1,25 @@
 # Autonomous execution handoff: deliver the working desktop evidence app
 
+## Resumed source completion, September 7 owner direction
+
+The owner retired #69 (screen-reader validation), #57 (renderer prototype), and
+#65 (outdoor red-night validation) as no longer relevant. All three are closed
+as not planned with owner-direction comments; no missing test is claimed passed.
+This supersedes their open-gate references in historical checkpoints below.
+Source Wayfinder #70 remains open and is the active implementation objective.
+PR #299 merged the legacy documentation recovery at `538a363`.
+The local web/API containers were rebuilt from that integrated tree; the new
+five-view desktop is running at http://localhost:5173/ with the API on port 8000.
+
+The resumed integration branch is `execution/source-map-completion` in
+`/private/tmp/astraeus-api-first-delivery`. OSTIA and historical WeatherNext
+shared point delivery are assigned, with frontend daily/historical selection
+consumption in parallel. RAP and GOES ACTPF are checking their remaining typed
+delivery seams against existing contracts. Reuse reviewed native readers;
+these assignments are not new completion claims. Lightning's explicit WMS pixel
+contract remains the concrete owner decision in PR #250. Preserve the dirty
+normal checkout and merge passing reviewed source changes serially.
+
 ## API-first source delivery, September 7
 
 [PR #296](https://github.com/TusharSariya/Astraeus/pull/296) is merged into main at

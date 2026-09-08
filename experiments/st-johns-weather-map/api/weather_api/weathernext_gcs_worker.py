@@ -58,8 +58,9 @@ def http_main():
         transport._validate('weathernext3_statistics_spatial',request['name'])
         body=transport._get(request['name'],request['params'],cap=request['cap'],timeout=request['timeout'],expected=expected)
         print(json.dumps({'body':base64.b64encode(body).decode('ascii')}),flush=True)
-    except Exception:
-        print(json.dumps({'error':'WeatherNext bounded HTTP worker failed'}),flush=True)
+    except Exception as error:
+        status=getattr(error,'http_status',None)
+        print(json.dumps({'error':'WeatherNext bounded HTTP worker failed','http_status':status if status in (401,403) else None}),flush=True)
 
 
 if __name__ == '__main__':

@@ -75,6 +75,7 @@ class RAPEntry:
     valid_time: datetime
     data: dict
     receipts: tuple[dict, ...]
+    expires_at_monotonic: float
 
 
 class RAPQueryCoordinator:
@@ -135,7 +136,9 @@ class RAPQueryCoordinator:
                 raise RAPUnavailable("RAP selected frame is in failure backoff")
             try:
                 result = self._acquire(selected, now)
-                self.entries[selected] = (self.clock()+600, result)
+                if self.clock() >= result.expires_at_monotonic:
+                    raise RAPUnavailable("RAP result expired during decoding or validation")
+                self.entries[selected] = (result.expires_at_monotonic, result)
                 self.entries.move_to_end(selected)
                 while len(self.entries) > 4:
                     self.entries.popitem(last=False)
@@ -164,6 +167,17 @@ class RAPQueryCoordinator:
                     for field, byte_range in records.items():
                         body = http.read(url, limit=RECORD_BYTES, byte_range=byte_range)
                         (Path(directory)/f"{field}.grib2").write_bytes(body)
+                    # Anchor the deadline before native decoding can advance
+                    # either clock. The receipt precedes response close/write
+                    # bookkeeping, so account for that elapsed time as well.
+                    completed = datetime.fromisoformat(http.receipts[-1]["completed_at"])
+                    if completed.tzinfo is None or completed.utcoffset() is None:
+                        raise RAPUnavailable("RAP completion receipt needs an offset")
+                    observed = self.clock()
+                    age = max(0., (self.now()-completed).total_seconds())
+                    expires = observed-age+600
+                    if observed >= expires:
+                        raise RAPUnavailable("RAP transport receipt already expired")
                     request = dict(directory=directory, run_time=candidate.isoformat(),
                                    valid_time=selected.isoformat(), lead=lead)
                     data = self.decoder(request)
@@ -173,7 +187,7 @@ class RAPQueryCoordinator:
                             or set(data.get("fields", {})) != set(FIELDS)
                             or len(json.dumps(data, allow_nan=False).encode()) > OUTPUT_BYTES):
                         raise RAPUnavailable("RAP decoder returned incompatible identity")
-                    return RAPEntry(candidate, selected, data, tuple(copy.deepcopy(http.receipts)))
+                    return RAPEntry(candidate, selected, data, tuple(copy.deepcopy(http.receipts)), expires)
             raise RAPUnavailable("RAP has no published exact frame in two-cycle discovery")
         finally:
             client = getattr(http, "client", None)

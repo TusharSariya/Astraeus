@@ -158,6 +158,8 @@ PRODUCT_SOURCE_IDS = {
     "SWOB": "eccc-swob",
     "METAR": "awc-metar-speci",
     "OISST SST": "noaa-oisst-v2-1",
+    "OSTIA SST": "metoffice-ostia-sst",
+    "WeatherNext 3 historical": "google-weathernext-3-statistics",
     "AIFS Single": "ecmwf-aifs-single",
     "IFS": "ecmwf-ifs",
     "ECMWF": "ecmwf-ifs",
@@ -1350,9 +1352,9 @@ def _live_point(
         consensus = build_consensus(candidates)
         return demanded, consensus, sorted({field.provenance.source_id for field in demanded}), notices, {item.source_id for item in candidates}
 
-    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB", "METAR", "OISST SST"}:
+    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB", "METAR", "OISST SST", "OSTIA SST", "WEATHERNEXT 3 HISTORICAL"}:
         from .source_delivery import source_readers
-        source_id = {"SWOB": "eccc-swob", "METAR": "awc-metar-speci", "OISST SST": "noaa-oisst-v2-1",
+        source_id = {"OSTIA SST": "metoffice-ostia-sst", "WEATHERNEXT 3 HISTORICAL": "google-weathernext-3-statistics", "SWOB": "eccc-swob", "METAR": "awc-metar-speci", "OISST SST": "noaa-oisst-v2-1",
             "AIFS SINGLE": "ecmwf-aifs-single"}.get(product.upper(), "ecmwf-ifs")
         try:
             fields = list(source_readers()[source_id].read_point(latitude, longitude, time))
@@ -2424,15 +2426,34 @@ def get_point(
         raise HTTPException(status_code=422, detail=f"unknown statistic: {statistic}; the registered entries are {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
     if comparison is not None and comparison not in THRESHOLD_COMPARISONS:
         raise HTTPException(status_code=422, detail=f"unknown comparison: {comparison}; the accepted comparisons are {', '.join(THRESHOLD_COMPARISONS)}")
-    if product and product.upper() == "OISST SST" and valid_time is not None:
+    if product and product.upper() == "WEATHERNEXT 3 HISTORICAL":
+        from .weathernext_query import HISTORICAL_DELAY, WeatherNextSelection
+        from .weathernext_configuration import load_historical_configuration, HistoricalConfigurationUnavailable
+        if valid_time is None or valid_time.tzinfo is None:
+            raise HTTPException(status_code=422, detail="WeatherNext historical requires an explicit offset-aware valid_time")
+        if member is not None or statistic not in (None, "ensemble_mean") or any(v is not None for v in (quantile, threshold, comparison)):
+            raise HTTPException(status_code=422, detail="WeatherNext historical supports only the provider temperature ensemble_mean, with no member or statistic parameters")
+        time = valid_time.astimezone(timezone.utc)
+        if time >= now().astimezone(timezone.utc) - HISTORICAL_DELAY:
+            raise HTTPException(status_code=422, detail="WeatherNext historical valid_time must be strictly more than 48 hours old")
+        try:
+            configuration = load_historical_configuration()
+        except HistoricalConfigurationUnavailable:
+            configuration = None  # Shared delivery returns a safe unavailable result.
+        if configuration is not None:
+            try:
+                WeatherNextSelection(configuration.initialization, time, latitude, longitude, ("temperature_2m_mean",))
+            except ValueError:
+                raise HTTPException(status_code=422, detail="WeatherNext historical requires an exact hourly lead within the configured run") from None
+    elif product and product.upper() in {"OISST SST", "OSTIA SST"} and valid_time is not None:
         if valid_time.tzinfo is None:
             raise HTTPException(status_code=422, detail="valid_time must include a UTC offset")
         time = valid_time.astimezone(timezone.utc)
         # Daily analyses routinely arrive beyond the forecast UI's 24-hour
-        # lookback. Match the source's five UTC calendar dates; exact native
-        # 12Z availability is still decided by the OISST reader.
+        # lookback. Keep the existing five UTC calendar date SST envelope;
+        # exact daily availability is still decided by each native reader.
         if not 0 <= (now().astimezone(timezone.utc).date() - time.date()).days < 5:
-            raise HTTPException(status_code=422, detail="OISST valid_time is outside its current five-day analysis window")
+            raise HTTPException(status_code=422, detail=f"{product} valid_time is outside its current five-day analysis window")
     else:
         time = requested_time(valid_time)
     mode = configured_mode()
@@ -2448,7 +2469,7 @@ def get_point(
             member=member, statistic=statistic,
             quantile=quantile, threshold=threshold, comparison=comparison,
         )
-        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"SWOB", "METAR", "OISST SST"}), "GDPS", "GEFS"}:
+        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"SWOB", "METAR", "OISST SST", "OSTIA SST", "WeatherNext 3 historical"}), "GDPS", "GEFS"}:
             from .observation_companions import with_aqhi_observation  # noqa: PLC0415
 
             response = with_aqhi_observation(response)

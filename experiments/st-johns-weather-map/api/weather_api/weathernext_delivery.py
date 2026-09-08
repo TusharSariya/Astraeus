@@ -177,8 +177,11 @@ class WeatherNextHistoricalDelivery:
             if entry and not refresh:
                 self._entries.move_to_end(selection)
                 return (entry[0].model_copy(deep=True),)
-            if self._failures.get(selection,0)>self._clock():
-                raise WeatherNextDeliveryUnavailable('WeatherNext acquisition retry cooldown')
+            failed=self._failures.get(selection)
+            if failed and failed[0]>self._clock():
+                error=WeatherNextDeliveryUnavailable('WeatherNext acquisition retry cooldown')
+                error.http_status=failed[1]
+                raise error
             future=self._inflight.get(selection)
             owner=future is None
             if owner:
@@ -206,10 +209,11 @@ class WeatherNextHistoricalDelivery:
                 self._failures.pop(selection,None)
             future.set_result(evidence)
             return (evidence.model_copy(deep=True),)
-        except Exception:
+        except Exception as cause:
             error=WeatherNextDeliveryUnavailable('WeatherNext bounded historical acquisition failed')
+            error.http_status=getattr(cause,'http_status',None) if getattr(cause,'http_status',None) in (401,403) else None
             with self._lock:
-                self._failures[selection]=self._clock()+5
+                self._failures[selection]=(self._clock()+5,error.http_status)
                 self._failures.move_to_end(selection)
                 while len(self._failures)>MAX_ENTRIES:self._failures.popitem(last=False)
             future.set_exception(error)

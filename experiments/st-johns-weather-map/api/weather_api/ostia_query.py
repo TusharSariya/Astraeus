@@ -23,7 +23,6 @@ from ingest.captures.sst_analysis import OSTIAAdapter, EVIDENCE_BOUNDS
 from ingest.contract import AdapterUnavailable, FetchWindow
 from ingest.http import PoliteClient
 from ingest.isolation import ProcessAllocationLimits, run_bounded_process
-from .grids import _cell_indices
 from .models import Coverage, DataMode, EvidenceField, Freshness, Provenance, Quality
 
 TTL_SECONDS = 300
@@ -106,6 +105,24 @@ def acquire(selected: datetime, client, clock=time.monotonic,
         data.update(valid_time=candidate.run_time.isoformat(), provenance=provenance,
                     completed_monotonic=completion.completed_monotonic)
     return data
+
+
+def _native_axis_cell(value, centres):
+    """Choose one published centre despite native FP32 coordinate rounding.
+
+    OSTIA's 0.05-degree axis arrives as FP32, whose rounding is larger than
+    the raster helper's generic uniform-step tolerance. Keep original centres
+    and permit only their quantization error; never interpolate the SST.
+    """
+    axis = np.asarray(centres, dtype=float)
+    gaps = np.diff(axis)
+    step = float(np.median(gaps))
+    tolerance = 2 * np.finfo(np.float32).eps * float(np.max(np.abs(axis)))
+    if step <= 0 or not np.allclose(gaps, step, rtol=0, atol=max(step * 1e-6, tolerance)):
+        raise OSTIAUnavailable('OSTIA native axis spacing changed beyond FP32 precision')
+    if value < axis[0] - gaps[0] / 2 or value > axis[-1] + gaps[-1] / 2:
+        return -1
+    return int(np.argmin(np.abs(axis - value)))
 
 
 class OSTIAQueryService:
@@ -197,8 +214,8 @@ class OSTIAQueryService:
                 or not EVIDENCE_BOUNDS['west'] <= longitude <= EVIDENCE_BOUNDS['east']):
             raise ValueError('OSTIA point outside fixed evidence box')
         data = self.query(selected, refresh=refresh)
-        y = int(_cell_indices(np.array([latitude]), data['latitude'])[0])
-        x = int(_cell_indices(np.array([longitude]), data['longitude'])[0])
+        y = _native_axis_cell(latitude, data['latitude'])
+        x = _native_axis_cell(longitude, data['longitude'])
         if x < 0 or y < 0:
             raise OSTIAUnavailable('OSTIA point outside native cell support')
         p = data['provenance']
@@ -218,3 +235,15 @@ class OSTIAQueryService:
                 delivery_kind='published_cell', source_display_primary=False, adapter_version='ostia-query-v1',
                 sampled_latitude=data['latitude'][y], sampled_longitude=data['longitude'][x], sample_method='rectilinear')))
         return fields
+
+
+_service = None
+_service_lock = threading.Lock()
+
+
+def ostia_query_service():
+    global _service
+    with _service_lock:
+        if _service is None:
+            _service = OSTIAQueryService()
+        return _service

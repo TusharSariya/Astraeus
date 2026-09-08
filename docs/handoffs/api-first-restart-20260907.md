@@ -1,5 +1,43 @@
 # API-first source delivery - September 7, 2026
 
+## Resumed completion batch
+
+The owner closed #69, #57 and #65 as no longer relevant; all three are closed
+as not planned, without claiming their unfinished procedures passed. #70 is
+the active source objective. PR #299's legacy recovery is merged at `538a363`.
+The integration branch is now `execution/source-map-completion`; the normal
+dirty checkout remains untouched. Earlier deadline and open-desktop-check
+references below are historical and superseded by the resumed owner direction.
+
+This batch integrates OSTIA's exact daily point product, historical WeatherNext
+configuration/API delivery, and a RAP cache-expiry correction. OSTIA's native
+float32 coordinate quantization is preserved rather than rejected as an
+irregular grid. Captured actual API/browser readback covers SST, uncertainty,
+mask, native analysis time and revision. WeatherNext preserves the historical
+temperature provider mean and the conservative greater-than-48-hour gate;
+denied access is safely distinguished from missing configuration.
+
+The host Google profile is verified separately from the running Docker API.
+Docker has no configured WeatherNext runtime identity; the new source status
+reports missing configuration. The exact nonsecret configuration and runtime
+boundary are recorded in
+[the WeatherNext shared-API handoff](../../experiments/st-johns-weather-map/docs/research/wayfinder/weathernext-shared-api-20260908.md).
+Remaining WeatherNext fields, temporal coverage and future-serving permission
+are not completed by the historical temperature path.
+
+All three daily/historical browser replays (OSTIA, OISST and WeatherNext) pass
+with exact Focus/URL and complete provenance preservation, with no provider
+requests. Existing explicit ISO Focus entry supports dates older than the map
+scrubber window. The frontend passes 550 tests and a production build; regenerated
+shared fixture consumption passes eight tests. Combined OSTIA/WeatherNext/source
+API seam checks pass 35 tests. Final backend/registry checks and merge receipt
+are recorded in the completion PR before issue closure.
+
+RAP public mapping, GOES typed satellite provenance and lightning WMS pixel
+semantics remain distinct contract decisions. GEPS's four mapped reductions
+are the next shared-delivery slice; the fifth raw gust reduction and remaining
+527 reductions are not silently admitted.
+
 Current execution record, updated September 8 01:11 UTC / September 7 18:11 PDT.
 PR #296 is merged into main at a4f77c63b90acfd8cf1e5d797ee9414236d21839.
 PR #297 is also merged into main at 773a793540e85f59586828374e9f216040964b25.

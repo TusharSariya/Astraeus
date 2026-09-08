@@ -122,3 +122,44 @@ def test_query_boundary_keeps_the_nearest_native_cell_outside_box(tmp_path):
     with pytest.raises(RAPUnavailable):
         reader.point_native(44.953282, -46.012876, RUN)
     assert len(http.calls) == 3
+
+
+@pytest.mark.parametrize("decode_seconds", [40, 600, 650])
+def test_decode_cannot_extend_final_receipt_expiry(tmp_path, decode_seconds):
+    # timestamp-demand-query-cache: HTTP completion owns the fixed lifetime.
+    http, ticks = Transport(), [0.]
+    def delayed(request):
+        ticks[0] += decode_seconds
+        return result(request)
+    reader = RAPQueryCoordinator(now=lambda: RUN + timedelta(seconds=ticks[0]),
+        clock=lambda: ticks[0], transport_factory=lambda: http, decoder=delayed, workspace=tmp_path)
+    if decode_seconds >= 600:
+        with pytest.raises(RAPUnavailable):
+            reader.query(RUN)
+        assert not reader.entries
+    else:
+        first = reader.query(RUN)
+        assert first.receipts[-1]["completed_at"] == RUN.isoformat()
+        assert reader.entries[RUN][0] == 600
+        ticks[0] = 599
+        assert reader.query(RUN) == first
+        assert len(http.calls) == 3
+        ticks[0] = 600
+        http.fail = True
+        with pytest.raises(RAPUnavailable):
+            reader.query(RUN)
+
+
+def test_transport_bookkeeping_cannot_extend_final_receipt_expiry(tmp_path):
+    http, ticks = Transport(), [0.]
+    read = http.read
+    def delayed_read(*args, **kwargs):
+        body = read(*args, **kwargs)
+        if len(http.calls) == 3:
+            ticks[0] = 20  # Response close/write after final-byte receipt.
+        return body
+    http.read = delayed_read
+    reader = RAPQueryCoordinator(now=lambda: RUN + timedelta(seconds=ticks[0]),
+        clock=lambda: ticks[0], transport_factory=lambda: http, decoder=result, workspace=tmp_path)
+    reader.query(RUN)
+    assert reader.entries[RUN][0] == 600

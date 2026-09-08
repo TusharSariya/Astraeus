@@ -1354,6 +1354,246 @@
         "status_reason": "Official product is catalogued; ingestion and fixture/live tests are not implemented yet. The atmospheric forecast uses the dated 15 km LatLon0.15 tree; the separate 10 km tree carries sea-ice analysis NetCDF and is not a forecast fallback."
       },
       {
+        "access_endpoint": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/",
+        "archival": "Rolling current-analysis evidence only; historical acquisition remains ticket 94.",
+        "attribution": "Credit the Met Office, GHRSST and Copernicus Marine Service; retain product id and DOI 10.48670/moi-00165.",
+        "authentication": "anonymous HTTPS",
+        "caching": "Only evidence-box native chunks, inside the 64 GiB hot cache and per-operation bounds.",
+        "cadence": "daily; update by 12:00 UTC the following day",
+        "capabilities": [
+          {
+            "coverage_description": "Native cells in the fixed coastal evidence box; SST, uncertainty and surface mask retained",
+            "field": "sea_surface_temperature",
+            "levels": [
+              "sea surface"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "OSTIA SST",
+            "product_id": "ostia-foundation-sst-v2",
+            "run_selection": "not_applicable",
+            "source_id": "metoffice-ostia-sst",
+            "time_semantics": "Exact latest published daily analysis; no forecast run or interpolation",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Native cells in the fixed coastal evidence box; SST, uncertainty and surface mask retained",
+            "field": "sea_surface_temperature_uncertainty",
+            "levels": [
+              "sea surface"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "OSTIA SST",
+            "product_id": "ostia-foundation-sst-v2",
+            "run_selection": "not_applicable",
+            "source_id": "metoffice-ostia-sst",
+            "time_semantics": "Exact latest published daily analysis; no forecast run or interpolation",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Native cells in the fixed coastal evidence box; SST, uncertainty and surface mask retained",
+            "field": "sea_surface_temperature_mask",
+            "levels": [
+              "sea surface"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "OSTIA SST",
+            "product_id": "ostia-foundation-sst-v2",
+            "run_selection": "not_applicable",
+            "source_id": "metoffice-ostia-sst",
+            "time_semantics": "Exact latest published daily analysis; no forecast run or interpolation",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "analysis",
+        "delivery_kind": "published_cell",
+        "display_primary": true,
+        "documentation_url": "https://data.marine.copernicus.eu/product/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/description",
+        "exact_variables": [
+          "sea_surface_temperature",
+          "sea_surface_temperature_uncertainty",
+          "sea_surface_temperature_mask"
+        ],
+        "fields": [
+          {
+            "family": "marine",
+            "key": "sea_surface_temperature",
+            "note": "Daily 0.05 degree foundation SST; Kelvin is normalized to degC while original units remain in provenance.",
+            "storage": "stored",
+            "upstream": "analysed_sst"
+          },
+          {
+            "family": "marine",
+            "key": "sea_surface_temperature_uncertainty",
+            "note": "Producer-published analysis standard error.",
+            "storage": "stored",
+            "upstream": "analysis_error"
+          },
+          {
+            "family": "marine",
+            "key": "sea_surface_temperature_mask",
+            "note": "Native bit mask retained; land is masked from SST and the mask is not treated as sea-ice evidence.",
+            "storage": "stored",
+            "upstream": "mask"
+          }
+        ],
+        "fixture_status": "passing",
+        "forecast_horizon": "analysis instant only",
+        "freshness_threshold_seconds": 172800,
+        "geographic_coverage": "Global 0.05 degree WGS 84 grid; stored only for 45.0 to 50.5 N, 58.0 to 46.0 W",
+        "id": "metoffice-ostia-sst",
+        "integration": "typed_adapter: bounded anonymous HTTPS reader for consolidated timeChunked Zarr metadata and only the native chunks intersecting the evidence box",
+        "intermediary": null,
+        "levels": [
+          "foundation sea surface"
+        ],
+        "licence": "Copernicus Marine Service data licence, CC BY 4.0",
+        "live_smoke_status": "passing",
+        "may_enter_consensus": false,
+        "native_image_endpoint": null,
+        "producer": "Met Office",
+        "product": "OSTIA Global Ocean foundation SST analysis (METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2)",
+        "redistribution": "CC BY 4.0 with the required producer and Copernicus Marine attribution.",
+        "role": "Current observed-analysis SST input for coastal conditions; no fog formula or score",
+        "schedulable": false,
+        "schema_version": "GHRSST GDS 2.4 / CF-1.4",
+        "state": "catalogued",
+        "status_reason": "Isolated acquisition is authorized by the shared source-integration experiment, but no owner source-admission resolution names this new source id, so it remains catalogued and unschedulable. Anonymous current access verified through the Copernicus Marine ARCO time-chunked Zarr delivery. The product is the Met Office near-real-time Level 4 daily foundation SST analysis; its analysis error and native surface bit mask are retained. SST alone is not evidence that fog will occur."
+      },
+      {
+        "access_endpoint": "https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-interpolation/v2.1/access/avhrr/",
+        "archival": "Retain immutable source artifacts locally only for the experiment retention window.",
+        "attribution": "Credit NOAA and the named NOAA product office; preserve native metadata and quality flags.",
+        "authentication": "anonymous HTTPS",
+        "caching": "Cache bounded Avalon/Grand Banks subsets within the experiment cap.",
+        "cadence": "daily",
+        "capabilities": [
+          {
+            "coverage_description": "Native cells in the fixed coastal evidence box; preliminary/final identity, masks and uncertainty remain",
+            "field": "sea_surface_temperature",
+            "levels": [
+              "sea surface"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "OISST SST",
+            "product_id": "oisst-avhrr-v2.1",
+            "run_selection": "not_applicable",
+            "source_id": "noaa-oisst-v2-1",
+            "time_semantics": "Exact 12 UTC daily analysis within the current five-day acquisition window; no forecast run",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Native cells in the fixed coastal evidence box; preliminary/final identity, masks and uncertainty remain",
+            "field": "sea_surface_temperature_uncertainty",
+            "levels": [
+              "sea surface"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "OISST SST",
+            "product_id": "oisst-avhrr-v2.1",
+            "run_selection": "not_applicable",
+            "source_id": "noaa-oisst-v2-1",
+            "time_semantics": "Exact 12 UTC daily analysis within the current five-day acquisition window; no forecast run",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "deterministic",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "analysis",
+        "delivery_kind": "published_cell",
+        "display_primary": true,
+        "documentation_url": "https://www.ncei.noaa.gov/products/optimum-interpolation-sst",
+        "exact_variables": [
+          "sea_surface_temperature",
+          "sea_surface_temperature_uncertainty"
+        ],
+        "fields": [
+          {
+            "family": "marine",
+            "key": "sea_surface_temperature",
+            "note": "Daily 0.25 degree AVHRR-only OISST analysis; preliminary identity is retained from the file id.",
+            "storage": "stored",
+            "upstream": "sst"
+          },
+          {
+            "family": "marine",
+            "key": "sea_surface_temperature_uncertainty",
+            "note": "Producer-published estimated error standard deviation.",
+            "storage": "stored",
+            "upstream": "err"
+          }
+        ],
+        "fixture_status": "passing",
+        "forecast_horizon": "analysis instant only",
+        "freshness_threshold_seconds": 259200,
+        "geographic_coverage": "Global 0.25 degree grid; stored only for 45.0 to 50.5 N, 58.0 to 46.0 W",
+        "id": "noaa-oisst-v2-1",
+        "integration": "typed_adapter: bounded anonymous HTTPS directory discovery and NetCDF4 decode",
+        "intermediary": null,
+        "levels": [
+          "sea surface analysis"
+        ],
+        "licence": "United States government public data; product-specific terms still apply",
+        "live_smoke_status": "passing",
+        "may_enter_consensus": false,
+        "native_image_endpoint": null,
+        "producer": "NOAA National Centers for Environmental Information",
+        "product": "NOAA 0.25-degree Daily OISST AVHRR-only v2.1",
+        "redistribution": "May be redistributed, but NOAA attribution, disclaimers and any embedded third-party restrictions must remain.",
+        "role": "Independent coarse current SST analysis input for coastal conditions; no fog formula or score",
+        "schedulable": false,
+        "schema_version": "CF-1.6 / OISST v2.1",
+        "state": "catalogued",
+        "status_reason": "Isolated acquisition is authorized by the shared source-integration experiment, but no owner source-admission resolution names this new source id, so it remains catalogued and unschedulable. Anonymous current NCEI daily files verified. Discovery accepts the provider's preliminary suffix and preserves preliminary versus final identity; the native estimated error standard deviation is retained. SST alone is not evidence that fog will occur."
+      },
+      {
         "access_endpoint": "https://api.weather.gc.ca/collections/swob-realtime/items",
         "archival": "Immutable downloaded artifact plus seven days of run/status metadata; no claim of a permanent provider archive.",
         "attribution": "Credit Environment and Climate Change Canada; preserve producer, product, run/valid time and supplied notices.",
@@ -4661,6 +4901,78 @@
         "status_reason": "Official NOAA open store is available; member inventory and completeness fixtures remain."
       },
       {
+        "access_endpoint": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o",
+        "archival": "No current or future output archival; raw payloads are ephemeral.",
+        "attribution": "WeatherNext data provided by Google",
+        "authentication": "Existing approved Google gcloud profile; no WeatherNext API key or ADC mutation",
+        "caching": "Bounded historical point cache only; fixed 60-second receipt expiry.",
+        "cadence": "Exact hourly provider lead",
+        "capabilities": [
+          {
+            "coverage_description": "One native 0.1 degree temperature mean cell; pinned historical run, no current or full-run coverage promise",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "WeatherNext 3 historical",
+            "product_id": "weathernext_3_0_0_statistics",
+            "run_selection": "not_applicable",
+            "source_id": "google-weathernext-3-statistics",
+            "time_semantics": "Exact selected native hourly time in the explicitly configured historical run; valid time strictly older than 48 hours",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "provider_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "research_comparison",
+        "delivery_kind": "published_cell",
+        "display_primary": false,
+        "documentation_url": "https://developers.google.com/weathernext/guides/gcs",
+        "exact_variables": [
+          "temperature_2m_mean"
+        ],
+        "fields": [
+          {
+            "family": "temperature",
+            "key": "temperature_2m",
+            "note": "Historical provider ensemble_mean in K, converted to degC; exact hourly run/cell identity, no member fabrication or primary admission.",
+            "storage": "available-not-stored",
+            "upstream": "temperature_2m_mean"
+          }
+        ],
+        "fixture_status": "passing",
+        "forecast_horizon": "Configured historical run only",
+        "freshness_threshold_seconds": 7200,
+        "geographic_coverage": "Configured historical run; nearest native Avalon cell",
+        "id": "google-weathernext-3-statistics",
+        "integration": "typed_adapter: Explicit gcloud profile runtime authentication, pinned GCS objects and bounded native Linux Zarr worker",
+        "intermediary": null,
+        "levels": [
+          "2 m"
+        ],
+        "licence": "Historical-only experimental scope; conservative valid-time age strictly greater than 48 hours",
+        "live_smoke_status": "passing",
+        "may_enter_consensus": false,
+        "native_image_endpoint": null,
+        "producer": "Google",
+        "product": "WeatherNext 3 historical statistics",
+        "redistribution": "Only the authorized historical experimental path; no current/future serving permission inferred.",
+        "role": "Non-primary historical temperature comparison",
+        "schedulable": false,
+        "schema_version": "weathernext_3_0_0_statistics",
+        "state": "catalogued",
+        "status_reason": "Isolated historical temperature provider-mean point software with a bounded authenticated proof. Explicit configuration and exact root generation are required. No current forecast, full-source verification, scheduling or primary admission."
+      },
+      {
         "access_endpoint": "https://air-quality-api.open-meteo.com/v1/air-quality",
         "archival": "Retain the immutable JSON response and its meta.json run stamp for the experiment retention window only.",
         "attribution": "Weather data by Open-Meteo.com, linked beside every displayed value as CC BY 4.0 requires; credit ECMWF CAMS as the producer of the composition forecast. The upstream ADS licence dispute recorded on copernicus-cams is inherited here: if it reaches this delivery the record is re-read.",
@@ -5927,7 +6239,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 13.8
+        "value": 14.7
       },
       {
         "absence_state": null,
@@ -6148,7 +6460,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 13.8
+        "value": 14.7
       }
     ],
     "latitude": 47.56,
@@ -8102,7 +8414,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 13.8
+            "value": 14.7
           },
           {
             "absence_state": null,
@@ -8192,7 +8504,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 13.8
+            "value": 14.7
           }
         ],
         "selectable_runs": [],
@@ -8286,7 +8598,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 97.6
+            "value": 99.2
           },
           {
             "absence_state": null,
@@ -8358,7 +8670,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 97.6
+            "value": 99.2
           }
         ],
         "selectable_runs": [],
@@ -8539,6 +8851,44 @@
           "state": "ready"
         },
         "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Isolated acquisition is authorized by the shared source-integration experiment, but no owner source-admission resolution names this new source id, so it remains catalogued and unschedulable. Anonymous current access verified through the Copernicus Marine ARCO time-chunked Zarr delivery. The product is the Met Office near-real-time Level 4 daily foundation SST analysis; its analysis error and native surface bit mask are retained. SST alone is not evidence that fog will occur.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 172800
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "metoffice-ostia-sst",
+        "state": "catalogued"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Isolated acquisition is authorized by the shared source-integration experiment, but no owner source-admission resolution names this new source id, so it remains catalogued and unschedulable. Anonymous current NCEI daily files verified. Discovery accepts the provider's preliminary suffix and preserves preliminary versus final identity; the native estimated error standard deviation is retained. SST alone is not evidence that fog will occur.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 259200
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "noaa-oisst-v2-1",
+        "state": "catalogued"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
         "detail": "no live retrieval recorded; Canonical GeoMet OGC API Features `swob-realtime` is queried at the exact selected report instant; only MSC surface-weather datasets are admitted by native response identity.",
         "freshness": {
           "age_seconds": null,
@@ -8644,6 +8994,27 @@
         "operational": false,
         "source_id": "noaa-gefs",
         "state": "implemented-unverified"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Select an explicit historical root generation and existing gcloud profile in the bounded nonsecret configuration JSON",
+          "required_environment": [
+            "WEATHER_WEATHERNEXT_HISTORICAL_CONFIG"
+          ],
+          "state": "missing_configuration"
+        },
+        "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Isolated historical temperature provider-mean point software with a bounded authenticated proof. Explicit configuration and exact root generation are required. No current forecast, full-source verification, scheduling or primary admission.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 7200
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "google-weathernext-3-statistics",
+        "state": "catalogued"
       },
       {
         "configuration": {
