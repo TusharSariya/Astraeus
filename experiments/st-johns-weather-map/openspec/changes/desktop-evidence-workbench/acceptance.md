@@ -98,3 +98,13 @@ Subject grouping, compact multi-select filters. No new acquisition, scientific
 field, source admission or WeatherNext imagery is authorized. This records
 owner acceptance for the isolated experiment, not production or verified status.
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.
+
+## Owner-selected dense layer menus, September 8, 2026
+
+The owner requested implementation of “Dense, single-line layer menus”. This
+authorizes replacing expanded Browse source cards and Active rows with 28px
+layer rows and shared-space details, including click membership toggles and
+context-menu keyboard access. This non-breaking experimental desktop revision
+is `spec-compatible-change`. Existing API, acquisition, scientific metadata,
+saved-stack and URL schemas remain unchanged. #38 remains open for owner visual
+acceptance; no verified status is asserted.

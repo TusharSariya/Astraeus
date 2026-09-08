@@ -75,8 +75,11 @@ multi-subject associations SHALL not imply scientific comparability. Unknown
 metadata SHALL remain searchable; registered sources SHALL not disappear.
 
 Default grouping SHALL be Subject, with Provider, Model/product, Kind and
-Ungrouped alternatives. Search, group selector, deduplicated count and active
-filter chips SHALL remain visible. Collapsible Filters SHALL apply OR within
+Ungrouped alternatives. Search, group selector and active filter chips SHALL remain visible.
+Subject filters SHALL apply to individual layer rows using explicit capability
+subjects or layer family metadata; provider, model and method facets SHALL retain
+source-level metadata. Supported point and Series actions SHALL remain in details
+for each associated map layer. Collapsible Filters SHALL apply OR within
 each dimension and AND across dimensions. All sources SHALL show by default;
 actionable entries precede information-only entries. Multiple group appearances
 SHALL retain one identity and one stack selection. Sources SHALL reuse the

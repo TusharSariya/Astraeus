@@ -459,3 +459,17 @@ Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.
 - [ ] Owner visual acceptance on #38; not inferred from automated checks.
 
 Evidence: `docs/evidence/native-timeline-20260908/README.md` (repo root).
+
+## Dense layer-menu revision - owner authorized September 8
+
+- [x] Record the owner-selected 28px single-line Browse and Active contract.
+- [x] Flatten capabilities with per-layer subject filtering and retained source facets.
+- [x] Implement membership toggles, separate visibility and shared-space details.
+- [x] Verify all details gestures, actual drawing order, settings, removal focus and return context.
+- [x] Preserve missing selections, provenance, point/Series paths, saved stacks and URLs.
+- [x] Capture Browse and Active at three desktop sizes, all themes and native 200% zoom, including scrolled rows.
+- [x] Pass 597 frontend tests, build, generated contracts, strict OpenSpec and specctl.
+- [ ] Owner visual acceptance on #38; not inferred from automated checks.
+
+Evidence: `docs/evidence/dense-layer-menus-20260908/README.md` (repo root).
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.

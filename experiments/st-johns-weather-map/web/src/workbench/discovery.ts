@@ -41,7 +41,7 @@ export function matchesDiscovery(entry: DiscoveryEntry, query: string, filters: 
   return query.trim().toLowerCase().split(/\s+/).every(word => (entry.searchable.includes(word) || entry.searchable.replace(/[^a-z0-9]/g, '').includes(word.replace(/[^a-z0-9]/g, '')))) &&
     dimensions.every(key => !filters[key]?.length || filters[key]!.some(value => entry.facets[key].includes(value)))
 }
-export function groupDiscovery(entries: DiscoveryEntry[], group: Dimension | 'Ungrouped') {
+export function groupDiscovery<T extends DiscoveryEntry>(entries: T[], group: Dimension | 'Ungrouped') {
   if (group === 'Ungrouped') return [{ label: 'All sources', entries }]
   const labels = [...new Set(entries.flatMap(e => e.facets[group]))].sort((a,b) => Number(a === 'Unknown')-Number(b === 'Unknown') || a.localeCompare(b))
   return labels.map(label => ({ label, entries: entries.filter(e => e.facets[group].includes(label)) }))
@@ -54,4 +54,27 @@ export function readDiscovery(value: unknown): DiscoveryMetadata | undefined {
   if (!strings(record.subjects) || !strings(record.kinds) || !strings(record.methods) || !strings(record.ensemble_forms) || !Array.isArray(record.map_capabilities)) return undefined
   if (!record.map_capabilities.every(c => c && typeof c === 'object' && typeof c.layer_id === 'string' && typeof c.title === 'string' && (c.product === null || typeof c.product === 'string') && strings(c.subjects))) return undefined
   return record as unknown as DiscoveryMetadata
+}
+
+export interface DiscoveryRow extends DiscoveryEntry {
+  layerId?: string
+}
+/** The source ledger stays source-based; only Browse flattens capabilities. */
+export function discoveryRows(catalog: CatalogSource[], layers: LayerItem[]): DiscoveryRow[] {
+  return discoveryEntries(catalog, layers).flatMap(entry => {
+    const declared = entry.source?.discovery?.map_capabilities ?? []
+    const maps = [...declared.map(cap => {
+      const family = entry.layers.find(layer => layer.id === cap.layer_id)?.family
+      return { id: cap.layer_id, title: cap.title, subjects: cap.subjects.length ? cap.subjects : family ? [subjectForFamily(family)] : [] }
+    }),
+      ...entry.layers.filter(layer => !declared.some(cap => cap.layer_id === layer.id)).map(layer => ({
+        id: layer.id, title: layer.title, subjects: layer.family ? [subjectForFamily(layer.family)] : ['Unknown'],
+      }))]
+    if (!maps.length) return [entry]
+    return maps.map(map => ({ ...entry, id: `${entry.id}:layer:${map.id}`, layerId: map.id, title: map.title,
+      facets: { ...entry.facets, Subject: map.subjects.length ? map.subjects : ['Unknown'] },
+      searchable: [map.id, map.title, entry.source?.id, entry.source?.producer, entry.source?.product,
+        ...Object.entries(entry.facets).filter(([key]) => key !== 'Subject').flatMap(([, values]) => values), ...map.subjects].join(' ').toLowerCase(),
+    }))
+  })
 }

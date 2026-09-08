@@ -1,8 +1,9 @@
-import { DiscoveryBrowser, type DiscoveryActions } from './DiscoveryBrowser'
-import { SourceTag } from './SourceTag'
+import { DiscoveryBrowser, SourceActions, type DiscoveryActions } from './DiscoveryBrowser'
+import { LayerRow } from './LayerRow'
+import { discoveryRows, type DiscoveryRow } from './discovery'
 import { mapLayerEvidence } from './MapEvidenceDetails'
-import { layerMapping, layerImagery } from './layerIdentity'
-import { useRef, useState } from 'react'
+import { layerImagery } from './layerIdentity'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CatalogSource, LayerItem, LayerSelection, GeoJsonFeature, ResolvedEvidenceClass } from '../types'
 import { layerFamily, layerGroup, layerLegendUrl } from '../api'
 import { ActiveFamilyLegends } from '../MapFamilyLegend'
@@ -32,6 +33,12 @@ export interface DrawEvidence {
   display?: { kind: string; selectedMethod: string; usedMethod: string | null; shader: string | null; inputFrames: string[]; responseHeaders: Record<string, string | null> | null; options: unknown; captureIdentity: string | null; methodVersion: string | null }
   features?: GeoJsonFeature[]
 }
+interface DetailsSelection {
+  identity: { kind: 'layer'; id: string } | { kind: 'source'; id: string }
+  row?: DiscoveryRow
+  opener: HTMLButtonElement
+  scroll: number
+}
 const STORAGE_KEY = 'astraeus-saved-map-stacks'
 function readSaved(): Record<string, LayerSelection[]> {
   try {
@@ -50,13 +57,51 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
   layers: LayerItem[]; stack: LayerSelection[]; onChange: (stack: LayerSelection[]) => void; drawn: DrawEvidence[]
   onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void; loading?: boolean; error?: string | null; notices?: string[]
 }) {
+  const discovery = useMemo(() => discoveryRows(catalog, layers), [catalog, layers])
+  const [details, setDetails] = useState<DetailsSelection | null>(null)
+  const root = useRef<HTMLElement>(null)
+  const heading = useRef<HTMLHeadingElement>(null), listHeading = useRef<HTMLParagraphElement>(null)
+  const primaryButtons = useRef(new Map<string, HTMLButtonElement>())
+  const pendingFocus = useRef<string | 'heading' | null>(null)
+  useLayoutEffect(() => {
+    if (pendingFocus.current) {
+      (primaryButtons.current.get(pendingFocus.current) ?? listHeading.current)?.focus()
+      pendingFocus.current = null
+    }
+  }, [stack])
+  useLayoutEffect(() => { if (details) heading.current?.focus() }, [details?.identity.id])
+  const openDetails = (id: string, opener: HTMLButtonElement, row?: DiscoveryRow) => {
+    const overlay = opener.closest('.bench-overlay')
+    setDetails({ identity: row && !row.layerId ? { kind: 'source', id } : { kind: 'layer', id }, row, opener, scroll: overlay?.scrollTop ?? 0 })
+    if (overlay) overlay.scrollTop = 0
+  }
+  const closeDetails = () => {
+    const back = details; setDetails(null)
+    requestAnimationFrame(() => {
+      if (!back) return
+      const overlay = back.opener.closest('.bench-overlay')
+      if (overlay) overlay.scrollTop = back.scroll
+      if (back.opener.isConnected) back.opener.focus({ preventScroll: true })
+      else if (tab === 'Browse') root.current?.querySelector<HTMLInputElement>('input[type="search"]')?.focus()
+      else listHeading.current?.focus()
+    })
+  }
+  const remove = (id: string) => {
+    const order = [...stack].reverse(), index = order.findIndex(row => row.id === id)
+    pendingFocus.current = order[index + 1]?.id ?? order[index - 1]?.id ?? 'heading'
+    onChange(stack.filter(row => row.id !== id))
+  }
+  const toggle = (id: string) => onChange(stack.some(row => row.id === id) ? stack.filter(row => row.id !== id) : [...stack, { id, visible: true, opacity: .85 }])
   const replacementFocus = useRef<string | null>(null)
   const [saved, setSaved] = useState(readSaved)
   const [name, setName] = useState(''); const [notice, setNotice] = useState('')
   const [tab, setTab] = useState<'Active' | 'Browse'>('Active')
   const patch = (id: string, values: Partial<LayerSelection>) => onChange(stack.map(entry => entry.id === id ? { ...entry, ...values } : entry))
-  const move = (index: number, delta: number) => { const next = [...stack]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; onChange(next) }
-  return <section className="bench-stack" aria-label="Ordered Map stack">
+  const move = (index: number, delta: number) => { const next = [...stack]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; onChange(next); if (index + delta === 0 || index + delta === stack.length - 1) heading.current?.focus() }
+  return <section ref={root} className="bench-stack" aria-label="Ordered Map stack" onKeyDown={event => {
+    if (details && event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); event.stopPropagation(); closeDetails() }
+  }}>
+    <div hidden={!!details}>
     <div className="bench-stack-tabs" role="group" aria-label="Layer lists">{(['Active', 'Browse'] as const).map(value => <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>{value}{value === 'Active' ? ` · ${stack.length}` : ''}</button>)}</div>
     <details className="bench-stacks-menu"><summary>Stacks</summary><div className="bench-stack-actions">
       <button onClick={() => onChange(NOWCAST_STACK.map(entry => ({ ...entry })))}>Nowcast</button>
@@ -68,42 +113,57 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
     {notice && <p role="status">{notice}</p>}
     {loading && <p role="status">Loading available layers…</p>}{error && <p role="status">Layers unavailable: {error}</p>}
     <div hidden={tab !== 'Browse'}>
-      <DiscoveryBrowser catalog={catalog} layers={layers} stack={stack} error={catalogError} onPoint={onPoint} onSeries={onSeries} onSource={onSource} onAdd={id => { if (!stack.some(s => s.id === id)) onChange([...stack, { id, visible: true, opacity: .85 }]) }} />
+      <DiscoveryBrowser catalog={catalog} layers={layers} stack={stack} error={catalogError} onToggle={toggle} onDetails={(row, opener) => openDetails(row.layerId ?? row.id, opener, row)} />
     </div>
     <div hidden={tab !== 'Active'}>
-      <p className="bench-order-label">Drawing order · top first</p>
+      <p ref={listHeading} tabIndex={-1} className="bench-order-label">Drawing order · top first</p>
       {stack.length === 0 && <p>Basemap only. No meteorological layer is requested.</p>}
-      <ol reversed>{[...stack].reverse().map((entry, topIndex) => {
-        const index = stack.length - topIndex - 1
-        const layer = layers.find(candidate => candidate.id === entry.id); const actual = drawn.find(row => row.id === entry.id)
-        const title = layer?.title ?? entry.id
-        const update = DELIVERY_UPDATES[entry.id]
-        const replacement = !loading && !error && update ? layers.find(candidate => candidate.id === update.id) : undefined
-        const alreadySelected = replacement && stack.some(row => row.id === replacement.id)
-        const catalogueState = loading ? 'Checking layer catalogue' : error ? 'Catalogue request failed · availability unknown' : layer ? 'Listed in current catalogue' : 'Not in current catalogue · imagery not requested'
-        const state = !entry.visible ? 'Hidden' : entry.opacity <= 0 ? 'Opacity zero' : actual?.status === 'refreshing' ? `Refreshing · showing frame ${actual.times.join(', ') || 'time unknown'}` : actual?.drawn ? `Frame ${actual.times.join(', ') || 'time unknown'}` : !layer ? catalogueState : actual?.status === 'loading' ? 'Loading frame' : actual?.status === 'empty' ? 'No features returned' : 'Unavailable · no frame drawn'
-        const diagnosis = !layer ? `${catalogueState}.${error ? ` ${error}` : ''}` : actual?.description ?? 'No current draw receipt for this layer.'
-        const sources = layer ? [...new Set(layerMapping(layer).fields.map(row => row.source_id))] : []
-        return <li key={entry.id}>
-          <div className="bench-layer-title"><EvidenceGlyph kind={actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} /><strong title={title}>{actual?.evidenceClass === 'generated_display' && 'GENERATED · '}{title}</strong></div>
-          <small>{sources.length ? sources.map(id => <SourceTag key={id} id={id} />) : layer?.product ?? 'Source unknown'} · {actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)}</small>
-          <small className="bench-layer-state">{state} · {layer?.run_stale === true ? 'Stale run' : layer?.run_stale === false ? 'Run current' : 'Age unknown'}</small>
-          {update && <div className="bench-layer-repair"><p>{update.reason}</p>{replacement && !alreadySelected && <button onClick={() => { replacementFocus.current = replacement.id; patch(entry.id, { id: replacement.id }); setNotice(`Selected ${replacement.title}. Its returned evidence basis applies. Save the stack again to retain this change in browser storage.`) }}>Use {replacement.title}</button>}{alreadySelected && <small>Current delivery is already in this stack. Remove the older selection when ready.</small>}</div>}
-          <div className="bench-stack-row-actions"><label title={title}><input ref={node => { if (node && replacementFocus.current === entry.id) { node.focus(); replacementFocus.current = null } }} type="checkbox" aria-label={`Show ${title}`} checked={entry.visible} onChange={event => patch(entry.id, { visible: event.target.checked })} />Visible</label><button aria-label={`Remove ${title}`} onClick={() => onChange(stack.filter(row => row.id !== entry.id))}>Remove</button></div>
-          <details><summary>Adjust layer · run details</summary>
-            <p>{title}</p><p>{diagnosis}</p>
-            <p>Actual frame: {actual?.times.join(', ') || 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map(time => layer?.frames?.find(frame => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}</p>
-            <p>{layer ? layerImagery(layer).reason : 'No imagery request was made for this absent layer.'}</p>
-            {notices.length > 0 && <details><summary>Catalogue notices · all sources</summary><ul>{notices.map((value, index) => <li key={index}>{value}</li>)}</ul></details>}
-            <div className="bench-stack-row-actions">
-              <label>Opacity<input aria-label={`Stack opacity ${title}`} type="range" min={0} max={1} step={.05} value={entry.opacity} onChange={event => patch(entry.id, { opacity: Number(event.target.value) })} /></label>
-              <button aria-label={`Raise ${title}`} disabled={index === stack.length - 1} onClick={() => move(index, 1)}>↑</button><button aria-label={`Lower ${title}`} disabled={index === 0} onClick={() => move(index, -1)}>↓</button>
-              <button aria-label={`Inspect layer ${title}`} onClick={event => onInspect({ ...mapLayerEvidence(entry.id, layer, actual), text: diagnosis, details: { ...mapLayerEvidence(entry.id, layer, actual).details, 'Catalogue status': catalogueState, 'Catalogue error': error, 'Catalogue notices': notices, 'Delivery update': update ?? null } }, event.currentTarget)}>Inspect</button>
-            </div>
-          </details>
-        </li>
+      <ol reversed className="dense-layer-list">{[...stack].reverse().map(entry => {
+        const layer = layers.find(candidate => candidate.id === entry.id), actual = drawn.find(row => row.id === entry.id)
+        const title = layer?.title ?? discovery.find(row => row.layerId === entry.id)?.title ?? entry.id
+        const state = !entry.visible ? 'Hidden' : entry.opacity <= 0 ? 'Opacity zero' : loading && !layer ? 'Checking layer catalogue' : error && !layer ? 'Catalogue request failed · availability unknown' : !layer ? 'Not in current catalogue · imagery not requested' : actual?.status === 'loading' ? 'Loading frame' : actual?.status === 'refreshing' ? 'Refreshing' : actual?.status === 'empty' ? 'No features returned' : actual?.drawn ? actual.evidenceClass === 'generated_display' ? 'Generated' : layer.run_stale ? 'Stale' : 'Drawn' : 'Unavailable · no frame drawn'
+        return <li key={entry.id}><LayerRow title={title} status={state} onPrimary={() => remove(entry.id)}
+          primaryRef={node => { if (node) primaryButtons.current.set(entry.id, node); else primaryButtons.current.delete(entry.id) }}
+          onDetails={opener => openDetails(entry.id, opener)} visibility={<button className="dense-visibility" aria-label={`Show ${title}`} aria-pressed={entry.visible}
+            ref={node => { if (node && replacementFocus.current === entry.id) { node.focus(); replacementFocus.current = null } }}
+            onClick={() => patch(entry.id, { visible: !entry.visible })} title={entry.visible ? 'Hide layer' : 'Show layer'}>{entry.visible ? '◉' : '○'}</button>} /></li>
       })}</ol>
     </div>
+    </div>
+    {details && (() => {
+      const id = details.identity.id, isLayer = details.identity.kind === 'layer'
+      const layer = isLayer ? layers.find(candidate => candidate.id === id) : undefined
+      const actual = isLayer ? drawn.find(row => row.id === id) : undefined
+      const entry = isLayer ? stack.find(row => row.id === id) : undefined, index = stack.findIndex(row => row.id === id)
+      const row = discovery.find(row => isLayer ? row.layerId === id : row.id === id) ?? details.row
+      const title = layer?.title ?? row?.title ?? id
+      const source = row?.source
+      const update = isLayer ? DELIVERY_UPDATES[id] : undefined
+      const replacement = !loading && !error && update ? layers.find(candidate => candidate.id === update.id) : undefined
+      const alreadySelected = replacement && stack.some(row => row.id === replacement.id)
+      const catalogueState = loading ? 'Checking layer catalogue' : error ? 'Catalogue request failed · availability unknown' : layer ? 'Listed in current catalogue' : 'Not in current catalogue · imagery not requested'
+      const diagnosis = !layer ? `${catalogueState}.${error ? ` ${error}` : ''}` : actual?.description ?? 'No current draw receipt for this layer.'
+      return <section className="layer-details" aria-label="Layer or source details">
+        <div className="bench-view-heading"><h3 ref={heading} tabIndex={-1}>{title}</h3><button onClick={closeDetails}>Back to {tab}</button></div>
+        {isLayer && <>
+          <p>{id}</p><p><EvidenceGlyph kind={actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} /> {actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} · {source?.product ?? layer?.product ?? 'Source unknown'}</p>
+          <p>{layer?.semantics ?? 'No current layer metadata returned.'}</p><p>{diagnosis}</p>
+          <p>Actual frame: {actual?.times.join(', ') || 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map(time => layer?.frames?.find(frame => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}</p>
+          <p>Run state: {layer?.run_stale === true ? 'Stale' : layer?.run_stale === false ? 'Current' : 'Unknown'}. Imagery checked: {layer ? layerImagery(layer).checked_at ?? 'not supplied' : 'not supplied'}.</p>
+          <p>{layer ? layerImagery(layer).reason : 'No imagery request was made for this absent layer.'}</p>
+          {notices.length > 0 && <details><summary>Catalogue notices · all sources</summary><ul>{notices.map((value, index) => <li key={index}>{value}</li>)}</ul></details>}
+          {update && <div className="bench-layer-repair"><p>{update.reason}</p>{entry && replacement && !alreadySelected && <button onClick={() => { replacementFocus.current = replacement.id; patch(id, { id: replacement.id }); setDetails(null); setNotice(`Selected ${replacement.title}. Its returned evidence basis applies. Save the stack again to retain this change in browser storage.`) }}>Use {replacement.title}</button>}{alreadySelected && <small>Current delivery is already in this stack. Remove the older selection when ready.</small>}</div>}
+          {entry ? <div className="bench-stack-row-actions">
+            <label><input type="checkbox" aria-label={`Show ${title}`} checked={entry.visible} onChange={event => patch(id, { visible: event.target.checked })} />Visible</label>
+            <label>Opacity<input aria-label={`Stack opacity ${title}`} type="range" min={0} max={1} step={.05} value={entry.opacity} onChange={event => patch(id, { opacity: Number(event.target.value) })} /></label>
+            <button aria-label={`Raise ${title}`} disabled={index === stack.length - 1} onClick={() => move(index, 1)}>↑</button><button aria-label={`Lower ${title}`} disabled={index === 0} onClick={() => move(index, -1)}>↓</button>
+          </div> : <button onClick={() => toggle(id)}>Add {title}</button>}
+          <button aria-label={`Inspect layer ${title}`} onClick={event => onInspect({ ...mapLayerEvidence(id, layer, actual), text: diagnosis, details: { ...mapLayerEvidence(id, layer, actual).details, 'Catalogue status': catalogueState, 'Catalogue error': error, 'Catalogue notices': notices, 'Delivery update': update ?? null } }, event.currentTarget)}>Provenance</button>
+        </>}
+        <SourceActions source={source} onPoint={onPoint} onSeries={onSeries} onSource={onSource} />
+      </section>
+    })()}
+
   </section>
 }
 export function MapLegends({ layers, stack }: { layers: LayerItem[]; stack: LayerSelection[] }) {

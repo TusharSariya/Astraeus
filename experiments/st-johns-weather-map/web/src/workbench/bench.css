@@ -284,12 +284,32 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 .discovery-filters > fieldset > label { display: flex; align-items: center; gap: .4rem; padding: .2rem 0; overflow-wrap: anywhere; }
 .discovery-group { margin: .8rem 0; }
 .discovery-group > summary { font-weight: 700; padding: .4rem 0; }
-.discovery-card { padding: .75rem 0; border-bottom: 1px solid var(--bench-line); min-width: 0; }
-.discovery-card > strong, .discovery-capability > strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.discovery-card small { display: block; overflow-wrap: anywhere; opacity: .8; margin: .2rem 0; }
-.discovery-card details { margin: .5rem 0; }
-.discovery-card p { overflow-wrap: anywhere; }
-.discovery-capability { margin: .5rem 0; padding: .5rem; border-left: 2px solid var(--bench-line); }
 .discovery-selected-point { overflow-wrap: anywhere; }
 
-.discovery-absence { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
+/* Owner-selected dense menus; source ledger styles remain independent. */
+.bench-stack .dense-layer-list { margin: 0; padding: 0; list-style: none; }
+.bench-stack .dense-layer-list > li { padding: 0; border: 0; }
+.dense-layer-row { display: flex; align-items: center; height: 28px; min-width: 0; border-bottom: 1px solid var(--line); box-sizing: border-box; font-size: 13px; }
+.dense-layer-row button { min-height: 0; height: 27px; padding: 2px 4px; border: 0; border-radius: 0; background: transparent; font-size: inherit; }
+.dense-layer-row button:hover { background: var(--panel); }
+.dense-layer-row .dense-layer-primary { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; text-align: left; }
+.dense-layer-primary[aria-pressed='true'] { color: var(--bench-accent); }
+.dense-layer-name { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dense-layer-row .bench-layer-state { flex: 0 1 auto; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.dense-layer-details, .dense-visibility { flex: 0 0 28px; }
+.dense-selection { flex: 0 0 14px; }
+.bench-stack .discovery-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 8px; align-items: start; }
+.bench-stack .discovery-search { grid-column: 1 / -1; }
+.bench-stack .discovery-controls > label:not(.discovery-search) { display: flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 12px; }
+.bench-stack .discovery-controls :is(input[type='search'],select) { margin: 0; min-height: 0; height: 28px; padding: 3px; min-width: 0; }
+.bench-stack .discovery-chips { grid-column: 1 / -1; grid-row: 3; }
+.bench-stack .discovery-filters { grid-column: 2; grid-row: 2; }
+.bench-stack .discovery-filters[open] { grid-column: 1 / -1; grid-row: 4; }
+.bench-stack .discovery-clear { grid-column: 3; grid-row: 2; padding: 3px; min-height: 28px; }
+.bench-stack .discovery-group { margin: 4px 0; }
+.bench-stack .discovery-group > summary { padding: 3px 0; font-size: 12px; }
+.bench-stack .bench-order-label { margin: 6px 0; font-size: 12px; }
+.layer-details { overflow-wrap: anywhere; }
+.layer-details .bench-view-heading { align-items: start; }
+.layer-details h3 { margin: 0; }
