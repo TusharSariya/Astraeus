@@ -1,3 +1,9 @@
+import type { components as SourceApi } from './generated/source-api'
+export type ObservationUnavailable = SourceApi['schemas']['AQHIDemandUnavailable'] | SourceApi['schemas']['SWOBDemandUnavailable']
+export type SourceCapability = SourceApi['schemas']['SourceCapability']
+export type SourceConfiguration = SourceApi['schemas']['SourceConfiguration']
+export type SourceVariant = SourceApi['schemas']['SourceVariant']
+
 export type FallbackMode = 'consensus' | 'hrdps' | 'rdps' | 'gdps' | 'unavailable'
 export type AppMode = 'simple' | 'expert'
 
@@ -316,6 +322,7 @@ export interface EvidenceSnapshot {
   /** The response's own `notices`, verbatim. They carry the reason a
    *  derivation was refused or an artifact's provenance was not modelled. */
   notices: string[]
+  observationUnavailable?: ObservationUnavailable[]
   /** One entry per unordered pair of served members within a family, exactly as
    *  `/point` computed it. Empty against an API that does not serve it yet,
    *  which the interface reads as "no pair is stated", never as "comparable". */
@@ -657,6 +664,8 @@ export interface LayersResult {
 /** A `/catalog` source record. Only the fields the UI actually renders are typed;
  *  nothing here is defaulted, so a missing field stays visibly missing. */
 export interface CatalogSource {
+  native_image_endpoint?: string | null
+  capabilities?: SourceCapability[]
   id: string
   producer: string
   product: string
@@ -708,6 +717,7 @@ export interface ResolvedFrame {
 /** One `/sources/status` row. Only the fields the UI renders are typed, so a
  *  field the API stops sending stays visibly missing instead of defaulting. */
 export interface SourceStatusItem {
+  configuration?: SourceConfiguration
   source_id: string
   state: string
   data_mode: FieldDataMode

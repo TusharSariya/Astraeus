@@ -2,25 +2,29 @@ import { SourceTag, sourceAttributes } from './SourceTag'
 import { NativeTrack, selectedEvidence, type SharedSeriesSelection } from './NativeSeries'
 import { layerMapping, layerImagery } from './layerIdentity'
 import { useState } from 'react'
-import type { CatalogSource, LayerItem, ServedFieldValue, SourceStatusItem } from '../types'
+import type { CatalogSource, LayerItem, ServedFieldValue, SourceStatusItem, ObservationUnavailable } from '../types'
 import { familyTitle, fieldDefinition, UNGROUPED_FAMILY } from '../fieldFamily'
 import { EvidenceGlyph, EvidenceLedger, type InspectedEvidence } from './EvidenceInspector'
 import type { DrawEvidence } from './MapStack'
 
 interface Props {
   catalog: CatalogSource[]; statuses: SourceStatusItem[] | null; fields: ServedFieldValue[]; layers: LayerItem[]; drawn: DrawEvidence[]
+  observationUnavailable?: ObservationUnavailable[]
   nativeSelection?: SharedSeriesSelection | null
   instant: number; catalogError: string | null; statusError: string | null
   onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void
 }
-export function sourceEvidence(id: string, catalog: CatalogSource[], statuses: SourceStatusItem[] | null, fields: ServedFieldValue[], layers: LayerItem[] = [], nativeSelection: SharedSeriesSelection | null = null): InspectedEvidence {
+export function sourceEvidence(id: string, catalog: CatalogSource[], statuses: SourceStatusItem[] | null, fields: ServedFieldValue[], layers: LayerItem[] = [], nativeSelection: SharedSeriesSelection | null = null, observationUnavailable: ObservationUnavailable[] = []): InspectedEvidence {
   return { key: `source:${id}`, label: id, text: 'Registry declaration, acquisition status and returned point evidence have separate scopes.', details: {
     'Source identity': id,
+    'Observation failure at Focus': observationUnavailable.filter((outcome) => outcome.source_id === id).map(({ source_id, reason, error_type, values_withheld }) => ({ source_id, reason, error_type, values_withheld })),
     'Registry declaration': catalog.find((source) => source.id === id) ?? 'Not present in the returned catalogue',
+    'Delivery configuration': statuses?.find((status) => status.source_id === id)?.configuration ?? 'Configuration unknown; no successful access is inferred',
+    'Delivery capabilities': catalog.find((source) => source.id === id)?.capabilities ?? 'No delivery descriptors supplied',
     'Acquisition status': statuses?.find((status) => status.source_id === id) ?? 'Not supplied; successful point retrieval is not inferred',
     'Returned evidence at Focus': fields.filter((field) => field.attribution.sourceId === id).map((field) => ({ field: field.field, text: field.text, has_value: field.hasValue, provenance: field.attribution.responseProvenance })),
     'Explicitly associated layers': layers.filter((layer) => layerMapping(layer).fields.some((row) => row.source_id === id)).map((layer) => ({ id: layer.id, mapping: layerMapping(layer), imagery: layerImagery(layer), listed_times: layer.times ?? [], freshness_assessed_at: layer.freshness_assessed_at ?? null })),
-    'Finite native Series selection': nativeSelection ? { id: nativeSelection.snapshot.id, selected_at: nativeSelection.snapshot.selected_at, expires_at: nativeSelection.snapshot.expires_at, expired: nativeSelection.expired, complete: nativeSelection.complete, coordinates: { latitude: nativeSelection.selection.latitude, longitude: nativeSelection.selection.longitude }, window: { start: nativeSelection.selection.start, end: nativeSelection.selection.end }, rows: nativeSelection.series.filter((row) => row.source_id === id).map((row) => ({ ...row, samples: nativeSelection.expired ? [] : row.samples })) } : 'No native Series selection at this Focus',
+    'Finite native Series selection': nativeSelection ? { id: nativeSelection.snapshot.id, selected_at: nativeSelection.snapshot.selected_at, expires_at: nativeSelection.snapshot.expires_at, identities: nativeSelection.snapshot.identities.filter((identity) => identity.source_id === id), expired: nativeSelection.expired, complete: nativeSelection.complete, coordinates: { latitude: nativeSelection.selection.latitude, longitude: nativeSelection.selection.longitude }, window: { start: nativeSelection.selection.start, end: nativeSelection.selection.end }, rows: nativeSelection.series.filter((row) => row.source_id === id).map((row) => ({ ...row, samples: nativeSelection.expired ? [] : row.samples })) } : 'No native Series selection at this Focus',
     'Coverage limitation': 'Declared geography, a retrieval timestamp or a layer listing does not establish availability at this coordinate and time.',
   } }
 }
@@ -30,9 +34,9 @@ export function useSourcesView(props: Props) {
   const [query, setQuery] = useState('')
   const [family, setFamily] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
-  const { catalog, statuses, fields, layers, drawn, instant, onInspect, nativeSelection = null } = props
+  const { catalog, statuses, fields, layers, drawn, instant, onInspect, nativeSelection = null, observationUnavailable = [] } = props
   const nativeFamilies = (row: NonNullable<typeof nativeSelection>['series'][number]) => nativeSelection?.families?.[row.selector_id]?.length ? nativeSelection.families[row.selector_id] : [UNGROUPED_FAMILY]
-  const allIds = [...new Set([...(nativeSelection?.series.map((row) => row.source_id) ?? []), ...catalog.map((source) => source.id), ...fields.flatMap((field) => field.attribution.sourceId ? [field.attribution.sourceId] : []), ...(statuses ?? []).map((status) => status.source_id), ...layers.flatMap((layer) => layerMapping(layer).fields.map((row) => row.source_id))])]
+  const allIds = [...new Set([...observationUnavailable.map((outcome) => outcome.source_id),...(nativeSelection?.series.map((row) => row.source_id) ?? []), ...catalog.map((source) => source.id), ...fields.flatMap((field) => field.attribution.sourceId ? [field.attribution.sourceId] : []), ...(statuses ?? []).map((status) => status.source_id), ...layers.flatMap((layer) => layerMapping(layer).fields.map((row) => row.source_id))])]
   const families = [...new Set([...(nativeSelection?.series.flatMap(nativeFamilies) ?? []), ...catalog.flatMap((source) => source.fields?.map((field) => field.family) ?? []), ...fields.map((field) => field.attribution.family)].filter((value): value is string => typeof value === 'string' && value.length > 0))].sort()
   const visible = allIds.filter((id) => {
     const source = catalog.find((entry) => entry.id === id)
@@ -40,7 +44,7 @@ export function useSourcesView(props: Props) {
     return [id, source?.producer, source?.product, ...(nativeSelection?.series.filter((row) => row.source_id === id).map((row) => row.field) ?? []), ...source?.fields?.map((field) => field.key) ?? []].join(' ').toLowerCase().includes(query.trim().toLowerCase())
       && (!family || source?.fields?.some((field) => field.family === family) || values.some((field) => field.attribution.family === family) || nativeSelection?.series.some((row) => row.source_id === id && nativeFamilies(row).includes(family)))
   })
-  function inspect(id: string, opener: HTMLButtonElement) { setSelected(id); onInspect(sourceEvidence(id, catalog, statuses, fields, layers, nativeSelection), opener) }
+  function inspect(id: string, opener: HTMLButtonElement) { setSelected(id); onInspect(sourceEvidence(id, catalog, statuses, fields, layers, nativeSelection, observationUnavailable), opener) }
   const inspectButton = (id: string) => <button aria-pressed={selected === id} onClick={(event) => inspect(id, event.currentTarget)}>Inspect source {id}</button>
   const readings = (id: string) => fields.filter((field) => field.attribution.sourceId === id && (!family || field.attribution.family === family))
   return <section className="sources-view" aria-label="Source evidence catalogue">
@@ -56,9 +60,9 @@ export function useSourcesView(props: Props) {
       {visible.map((id) => {
         const source = catalog.find((entry) => entry.id === id), status = statuses?.find((entry) => entry.source_id === id), values = readings(id)
         return <tr key={id} data-selected={selected === id}><th scope="row"><SourceTag id={id} /><small>{source?.producer ?? 'Producer not declared'} · {source?.product ?? 'Product not declared'}</small></th>
-          <td>{source?.state ?? 'Registry state unknown'}<small>{source?.status_reason}</small><small>{source?.geographic_coverage ?? 'Geography not declared'}</small><small>{source?.fields ? `${source.fields.length} declared fields` : 'Fields not declared'}</small></td>
-          <td>{status ? `${status.state} · ${status.data_mode}` : 'Acquisition status unknown'}<small>{status?.last_retrieval ? `Reported retrieval ${status.last_retrieval}` : 'No retrieval time supplied'}</small><small>{status?.detail}</small></td>
-          <td>{values.length ? `${values.length} returned readings; inspect their individual availability` : 'No readings returned at Focus; coverage unestablished'}</td><td>{inspectButton(id)}</td></tr>
+          <td>{source?.state ?? 'Registry state unknown'}<small>{source?.status_reason}</small><small>{source?.geographic_coverage ?? 'Geography not declared'}</small><small>{source?.fields ? `${source.fields.length} declared fields` : 'Fields not declared'}</small><small>{source?.capabilities ? `${source.capabilities.filter((capability) => capability.native_series).length} declared native Series paths` : 'Delivery paths not declared'}. This does not establish available samples.</small></td>
+          <td>{status ? `${status.state} · ${status.data_mode}` : 'Acquisition status unknown'}<small>{status?.last_retrieval ? `Reported retrieval ${status.last_retrieval}` : 'No retrieval time supplied'}</small><small>{status?.detail}</small><small>Configuration: {status?.configuration?.state ?? 'unknown'}</small><small>{status?.configuration?.reason ?? 'Configuration not assessed; access is not inferred'}</small><small>Configuration checked: {status?.configuration?.checked_at ?? 'not supplied'}</small>{status?.configuration?.required_environment?.length ? <small>Required setting names: {status.configuration.required_environment.join(', ')}</small> : null}</td>
+          <td>{observationUnavailable.filter((outcome) => outcome.source_id === id).map((outcome, index) => <small key={index}>Observation {outcome.reason} · {outcome.error_type}. Values withheld; selected model unchanged.</small>)}{values.length ? `${values.length} returned readings; inspect their individual availability` : 'No readings returned at Focus; coverage unestablished'}</td><td>{inspectButton(id)}</td></tr>
       })}
     </tbody></table></div>}
     {perspective === 'Family finder' && <div>{(family ? [family] : families).map((name) => {

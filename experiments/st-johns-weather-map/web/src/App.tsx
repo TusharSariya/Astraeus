@@ -1820,18 +1820,18 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const currentSeriesEvidence = seriesEvidence && !playing && seriesEvidence.selection.latitude === location.latitude && seriesEvidence.selection.longitude === location.longitude && Date.parse(seriesEvidence.selection.start) === selectedMs ? seriesEvidence : null
   useEffect(() => {
     setInspected((current) => current?.key.startsWith('source:')
-      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields, layers, currentSeriesEvidence)
+      ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields, layers, currentSeriesEvidence, snapshot.observationUnavailable)
       : current?.key.startsWith('layer:') ? mapLayerEvidence(current.key.slice(6), layers.find((layer) => layer.id === current.key.slice(6)), drawn.find((row) => row.id === current.key.slice(6)))
       : current?.key.startsWith('map-feature:') && !drawn.some((row) => row.features?.some((_, index) => featureEvidenceKey(row, index) === current.key)) && current.details?.['Feature unavailable'] !== true
         ? { ...current, text: 'This native feature is no longer in the current Map draw. Its old values are withheld; inspect the current frame explicitly.', attribution: undefined, details: { 'Feature unavailable': true } }
       : current?.key.startsWith('native:') && (!currentSeriesEvidence || currentSeriesEvidence.expired || !current.key.startsWith(`native:${currentSeriesEvidence.snapshot.id}:`)) && current.details?.['Selection unavailable'] !== true
         ? { ...current, text: 'Native selection expired or changed. Values are withheld; open Series and explicitly refresh to acquire another selection.', attribution: undefined, details: { 'Selection unavailable': true, 'Finite native selection': current.details?.['Finite native selection'] ?? null } } : current)
   }, [catalog, sourceStatuses, snapshot, layers, drawn, currentSeriesEvidence])
-  const sourcesView = useSourcesView({ nativeSelection: currentSeriesEvidence, catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
+  const sourcesView = useSourcesView({ observationUnavailable: snapshot.observationUnavailable, nativeSelection: currentSeriesEvidence, catalog, statuses: sourceStatuses, fields: snapshot.servedFields, layers, drawn,
     instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
   const [activityResponse, setActivityResponse] = useState<ActivityResponse | null>(null)
   const [activitySeries, setActivitySeries] = useState<{ field: string; source: string; revision: number } | null>(null)
-  const nativeSeries = useNativeSeries({ jumpTo: activitySeries, location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
+  const nativeSeries = useNativeSeries({ catalog, jumpTo: activitySeries, location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
     onEvidence: setSeriesEvidence, enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
     focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
     onRun: (source, run) => setRunChoices((current) => ({ ...current, [source]: run })),
@@ -1866,7 +1866,10 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     status={<><strong>{dataPathCopy[dataSource]}</strong> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices
       {sourceError && <span> · {sourceError}</span>}{initialFocus.notices.map((notice) => <span key={notice}> · {notice}</span>)}</>}
     timeline={benchTimeline}
-    inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} /> : undefined}
+    inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} nativeImages={(() => {
+      const source = inspected.key.startsWith('source:') ? catalog.find((entry) => entry.id === inspected.key.slice(7)) : null
+      return source?.native_image_endpoint ? { sourceId: source.id, endpoint: source.native_image_endpoint, instant: selectedMs } : undefined
+    })()} /> : undefined}
     views={{
       Map: <><MapSamplesLink /><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
       Series: nativeSeries,

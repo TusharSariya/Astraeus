@@ -50,3 +50,16 @@ it('reads native Map values without JSON while retaining the complete record on 
   expect(screen.queryByText('Longitude')).not.toBeInTheDocument()
   expect(screen.queryByText('Complete returned Map record · JSON')).not.toBeInTheDocument()
 })
+it('summarizes source acquisition identity without copying transfer URLs into the summary', () => {
+  const attribution = point(0).servedFields[0].attribution
+  attribution.responseProvenance = { ...attribution.responseProvenance, source_acquisition: {
+    source_id: 'noaa-gfs', product_id: 'gfs', run_time: '2026-09-07T06:00:00Z', valid_time: '2026-09-07T12:00:00Z',
+    retrieval_time: '2026-09-07T12:01:00Z', expires_at: '2026-09-07T12:06:00Z', normalized_sha256: 'a'.repeat(64),
+    transport_receipts: [{ url: 'https://example.test/captured' }],
+  } }
+  render(<EvidenceInspector evidence={{ key: 'receipt', label: 'Temperature', text: '0', attribution }} onClose={vi.fn()} />)
+  const summary = screen.getByText('Source acquisition receipt').nextSibling
+  expect(summary).toHaveTextContent('"transfer_count": 1')
+  expect(summary).toHaveTextContent('2026-09-07T06:00:00Z')
+  expect(summary).not.toHaveTextContent('https://')
+})

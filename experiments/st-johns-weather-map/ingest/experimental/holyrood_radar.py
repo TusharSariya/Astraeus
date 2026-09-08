@@ -21,7 +21,7 @@ from ingest.manifest import declared_classes, unresolved_manifest_validation
 
 UTC = timezone.utc
 BASE_URL = "https://dd.weather.gc.ca/today/radar/DPQPE/GIF/CASHR"
-MAX_LISTING_BYTES = 128 * 1024
+MAX_LISTING_BYTES = 512 * 1024
 MAX_IMAGE_BYTES = 512 * 1024
 MAX_GIF_PIXELS = 4096 * 4096
 RECEIPT_HEADERS = ("content-type", "content-length", "etag", "last-modified", "date")

@@ -14,3 +14,57 @@ Owner-authorized experiment; no normative status promotion. Spec-Refs: GOV-SPEC-
 - Full API at `8e197a6`: `uv run --project api pytest -q` → 2,324 passed, 50 skipped, 80 warnings. Focused GEFS/API review suite: 46 passed. Full web before the final notice rendering: 450 passed; final notice rendering: 451 tests pass across 22 files. The last bound-input detail mapping passes all 91 API-normalization tests, including opening the detail and seeing each deterministic input’s source, valid time and QC. Browser expansion confirms the same two inputs; GEFS is absent from the numeric input list. `npm run build` passes (existing bundle-size advisory). `specctl validate`: zero errors, zero warnings.
 
 Independent exact-head review is required before merge. This verification changes no accepted/verified/superseded status and activates no operational profile.
+
+## API-first source-local refresh, September 7, 2026
+
+Classification: owner-authorized experiment. Spec-Refs: GOV-SPEC-004,
+GOV-SPEC-006; owning delta: `specs/demand-query-cache/spec.md`, requirements
+“GEFS demand retrieves one bounded native member family” and “GEFS availability
+uses a bounded exact control index”. The resumed API-first task explicitly
+requires source-local refresh and preservation of unexpired entries after a
+failed refresh. No normative status or source admission changes.
+
+`GEFSQueryCoordinator.query` and `point_fields` now accept explicit `refresh`.
+It reacquires the bounded control-index discovery and selected family, retaining
+the existing preflight, validation, native member/control identities, intervals,
+QC and 60-second failure backoff. Concurrent identical refreshes share one
+complete acquisition; different selections wait behind that one acquisition.
+Ordinary hits never move the 600-second discovery or payload deadline. A failed
+refresh retains the old unexpired family and discovery receipt, including when
+the new index changed digest; expiry never serves that old family as fresh.
+
+Mapped fixture verification in `api/tests/test_gefs_query.py`:
+
+- `test_refresh_reacquires_discovery_and_family_without_renewing_hits`: refresh,
+  unchanged hit deadlines and reacquisition at the exact expiry boundary.
+- `test_failed_family_refresh_preserves_unexpired_entry_and_original_deadline`:
+  cached recovery after payload failure and refusal at expiry during backoff.
+- `test_failed_discovery_refresh_preserves_unexpired_discovery`: the two-index
+  failure bound, cached recovery, and refusal after expiry.
+- `test_concurrent_refreshes_share_one_complete_acquisition`: event-coordinated
+  callers share one discovery and one family load without timing sleeps.
+- `test_point_fields_forwards_explicit_refresh_before_sampling`: source-local
+  point-read refresh propagation before sampling.
+- `test_failed_refresh_with_changed_index_keeps_previous_family_reachable`:
+  failed new-digest acquisition cannot hide the prior unexpired cached family.
+
+Exact verification:
+
+```sh
+docker run --rm --network none --memory 1g -v /private/tmp/astraeus-api-first-ensembles/experiments/st-johns-weather-map:/work:ro -e PYTHONPATH=/work/api:/work -w /work astraeus-lightning-proof:c88ff83 python -m pytest api/tests/test_gefs_query.py -q -p no:cacheprovider
+uv run --project tools/specs python tools/specs/specctl.py validate
+git diff --check
+```
+
+Result: 37 fixture tests pass; specification validation has zero errors and
+warnings; diff check passes. This offline 1 GiB test container exercises injected
+loaders, not the actual GEFS decoder, whose unchanged preflight requires a
+measured 4 GiB cgroup and 3 GiB temporary filesystem. No provider requests,
+credentials, deployment, browser verification or new native acquisition occur.
+
+Residual: GEFS native run inventory/nativeSeries planning and shared delivery
+registration are not implemented by this change. Its settled discovery remains
+one selected lead in at most two eligible cycles; a latest/previous complete
+run-time inventory would need a separately bounded native availability design.
+REPS/GEPS delivery is unchanged. Member/statistic/quantile/threshold/comparison
+semantics continue through the existing point sampler without new reductions.

@@ -438,6 +438,8 @@ class OpenMeteoCompositionAdapter:
 
     source_id: str
     client: PoliteClient | None = None
+    latitude: float = 47.5615
+    longitude: float = -52.7126
 
     adapter_version = "openmeteo-composition-point-v1"
 
@@ -446,7 +448,10 @@ class OpenMeteoCompositionAdapter:
             raise ValueError(f"unsupported composition source: {self.source_id}")
 
     def _url(self, window: FetchWindow) -> str:
-        common = {"latitude": "47.5615", "longitude": "-52.7126", "timezone": "GMT"}
+        if not (math.isfinite(self.latitude) and -90 <= self.latitude <= 90
+                and math.isfinite(self.longitude) and -180 <= self.longitude <= 180):
+            raise ValueError("Open-Meteo composition coordinates must be finite and in range")
+        common = {"latitude": str(self.latitude), "longitude": str(self.longitude), "timezone": "GMT"}
         if self.source_id == "openmeteo-lsa-saf-radiation":
             fields = tuple(RADIATION_FIELDS)
             archive_end = min(window.end, window.now)

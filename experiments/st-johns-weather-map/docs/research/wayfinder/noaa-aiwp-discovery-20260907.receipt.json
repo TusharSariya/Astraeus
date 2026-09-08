@@ -1,0 +1,49 @@
+{
+  "retrieved_at": "2026-09-07T21:43:44.337041+00:00",
+  "requests": [
+    {
+      "url": "https://noaa-oar-mlwp-data.s3.amazonaws.com/README.txt",
+      "status": 200,
+      "bytes": 6546,
+      "sha256": "2ef89b5f5c87ac7c54e049433ef21bea939f9e8836a09aeaf3a1829aad780f45"
+    },
+    {
+      "url": "https://noaa-oar-mlwp-data.s3.amazonaws.com/?list-type=2&prefix=FOUR_v200_GFS%2F2026%2F0907%2F&max-keys=2",
+      "status": 200,
+      "bytes": 622,
+      "sha256": "1480b72ff6e3918c9b9cdf14bc03c599e5297bd849ac416a7eea517048e04b4b",
+      "objects": [
+        {
+          "Key": "FOUR_v200_GFS/2026/0907/FOUR_v200_GFS_2026090712_f000_f240_06.nc",
+          "Size": "4526908784",
+          "LastModified": "2026-09-07T16:51:47.000Z",
+          "ETag": "\"48c28a739bacb1fbb1b309f6ce78b817-540\""
+        }
+      ],
+      "is_truncated": "false"
+    }
+  ],
+  "classification": "non-normative discovery evidence",
+  "source_candidate": "noaa-aiwp-fourcastnet-v2-small-gfs",
+  "operational": false,
+  "implementation_status": "blocked_missing_source_contract",
+  "model_payload_bytes_fetched": 0,
+  "request_bounds": {
+    "max_requests": 2,
+    "max_response_bytes_each": 131072,
+    "timeout_seconds_each": 20,
+    "listing_max_keys": 2
+  },
+  "existing_contract": "openspec/changes/optional-north-atlantic-models/specs/optional-forecast-centres/spec.md",
+  "missing_contract": [
+    "Externally produced NOAA/CIRA FOUR_v200_GFS identity and provenance mapping; existing FourCastNet requirement describes generated-here FCN1/FCN3.",
+    "Native NetCDF variable identifiers, dimensions, coordinates, units, missing/QC behavior and field catalogue mappings.",
+    "Full evidence-box and upstream-sector coverage, native run/lead semantics and stale/absent behavior.",
+    "Bounded field/lead/region retrieval strategy for the listed 4.53 GB object; no whole-object download or assumed HTTP subset API."
+  ],
+  "verification_limits": [
+    "HTTP discovery and documentation only; no NetCDF payload or scientific values decoded.",
+    "Listing of one requested date does not establish cadence, completeness, latency guarantees or operational skill.",
+    "No query, cache, registry, model or production path implemented."
+  ]
+}

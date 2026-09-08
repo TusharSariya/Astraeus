@@ -170,7 +170,18 @@ def fetch_unresolved_product(
     from ingest.adapters.eccc_geomet_wcs import fetch_artifact
 
     contract = product_contract(name)
-    model = "raqdps" if name.startswith("raqdps_") else "rdaqa"
+    if contract.source_id not in {"eccc-raqdps", "eccc-rdaqa"}:
+        raise ValueError("unresolved chemistry fetch accepts only RAQDPS/RDAQA products")
+    model = "raqdps" if contract.source_id == "eccc-raqdps" else "rdaqa"
+    if valid_time is None or valid_time.utcoffset() is None:
+        raise ValueError("chemistry valid time must be timezone-aware")
+    if model == "rdaqa" and reference_time is not None:
+        raise ValueError("RDAQA is an analysis and cannot carry a forecast reference time")
+    if model == "raqdps":
+        if reference_time is None or reference_time.utcoffset() is None:
+            raise ValueError("RAQDPS requires a timezone-aware forecast reference time")
+        if reference_time > valid_time:
+            raise ValueError("RAQDPS reference time cannot follow valid time")
     artifacts = [
         fetch_artifact(
             client, field, valid_time=valid_time, reference_time=reference_time,

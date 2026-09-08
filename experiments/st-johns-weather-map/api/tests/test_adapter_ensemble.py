@@ -1626,7 +1626,7 @@ def test_gefs_selected_loader_runs_existing_decoder_and_cache_once(tmp_path: Pat
     assert len(receipts) == 31 * 8
     assert max(item["completed_at"] for item in receipts) == "2026-09-01T00:00:02+00:00"
     coordinator = GEFSQueryCoordinator(service, workspace=tmp_path)
-    coordinator.request_key = lambda _selected: key
+    coordinator.request_key = lambda _selected, *, refresh=False: key
     fields, _consensus, sources = coordinator.point_fields(47.5, -52.5, run + timedelta(hours=24), member="gec00")
     temperatures = [field for field in fields if field.field == "temperature"]
     assert len(temperatures) == 1

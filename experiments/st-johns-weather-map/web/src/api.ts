@@ -1,3 +1,6 @@
+import { observationReceipt } from './observationReceipt'
+import type { ObservationUnavailable } from './types'
+import { isPointProductToken, isSourceCapability, isSourceConfiguration } from './sourceContract'
 import { fixtureSnapshot, unavailableSnapshot } from './fixtures'
 import { declaredEvidenceClass, resolveEvidenceClass } from './evidenceClass'
 import { resolveDeliveryKind } from './deliveryKind'
@@ -39,6 +42,7 @@ export interface ApiEvidenceField {
 }
 
 export interface ApiPointResponse {
+  observation_unavailable?: unknown
   data_mode?: unknown
   valid_time: string
   selection: {
@@ -115,7 +119,9 @@ function describeValue(field: ApiEvidenceField): string {
   const value = field.value
   const units = String(field.provenance?.normalized_units ?? field.provenance?.original_units ?? '').trim()
   if (typeof value === 'number' && Number.isFinite(value)) {
-    const shown = Number.isInteger(value) ? String(value) : value.toFixed(1)
+    // AOD commonly varies below one tenth. Preserve its returned precision so
+    // a small nonzero optical depth never becomes an apparent zero.
+    const shown = field.field === 'aerosol_optical_depth_550nm' || Number.isInteger(value) ? String(value) : value.toFixed(1)
     return units ? `${shown} ${units}` : shown
   }
   if (typeof value === 'string' && value.trim()) return value
@@ -533,6 +539,17 @@ function validConsensusSummary(value: ApiPointResponse['consensus'], fields: Api
         && JSON.stringify(field.provenance) === JSON.stringify(input.provenance)))
 }
 
+function observationFailures(value: unknown): ObservationUnavailable[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object' || !['eccc-aqhi', 'eccc-swob'].includes(item.source_id)
+      || !['query_failed', 'refresh_failed', ...(item.source_id === 'eccc-swob' ? ['unsupported_time'] : [])].includes(item.reason)
+      || item.values_withheld !== true || typeof item.error_type !== 'string' || !/^[A-Za-z][A-Za-z0-9_.]{0,127}$/.test(item.error_type)) return []
+    // Only the typed failure fields survive; arbitrary provider exception keys do not.
+    return [{ source_id: item.source_id, reason: item.reason, error_type: item.error_type, values_withheld: true,
+      expired_acquisition: item.source_id === 'eccc-aqhi' ? observationReceipt('eccc-aqhi', item.expired_acquisition) : observationReceipt('eccc-swob', item.expired_acquisition) } as ObservationUnavailable]
+  })
+}
 export function normalizePoint(point: ApiPointResponse, options: NormalizeOptions = {}): EvidenceSnapshot {
   const nonPrimarySources = options.nonPrimarySources ?? EMPTY_SOURCES
   // The response names the product it answered with. The old code inferred the
@@ -657,6 +674,7 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
     })
     .filter((entry): entry is ServedFieldValue => entry !== null)
   return {
+    observationUnavailable: observationFailures(point.observation_unavailable),
     fieldAlternatives,
     servedFields,
     notices,
@@ -864,16 +882,9 @@ export async function loadTimeline(product?: string, signal?: AbortSignal): Prom
   }
 }
 
-/** Products the `/point` endpoint will actually accept, keyed by the catalogue
- *  source id that names them.
- *
- *  The catalogue reports `state`, which is a registry CEILING: no source is ever
- *  `active`, by design. Gating the product control on `state === 'active'` made
- *  it permanently dead while `/point?product=` is fully implemented. The
- *  catalogue's own `product` text ("HRDPS raw") is not the accepted token
- *  either — the endpoint answers 422 to it. Source id is the one thing the
- *  catalogue reports that maps onto the endpoint's declared vocabulary, so a
- *  source is offered when, and only when, its id appears here. */
+/** Legacy `/point` product tokens keyed by source identity. Explicit capability
+ *  declarations take precedence. Registry state remains an admission ceiling;
+ *  it does not establish acquisition or geographic/time coverage. */
 export const POINT_PRODUCT_BY_SOURCE_ID: Record<string, string> = {
   'eccc-hrdps': 'HRDPS',
   'eccc-rdps': 'RDPS',
@@ -887,8 +898,10 @@ export const POINT_PRODUCT_BY_SOURCE_ID: Record<string, string> = {
 
 /** The product token `/point` accepts for a catalogue source, or null when the
  *  endpoint has no parameter value for it and the control must not be offered. */
-export function pointProductFor(source: { id: string }): string | null {
-  return POINT_PRODUCT_BY_SOURCE_ID[source.id] ?? null
+export function pointProductFor(source: Pick<CatalogSource, 'id' | 'capabilities'>): string | null {
+  const declared = new Set((source.capabilities ?? []).filter((capability) => isSourceCapability(capability, source.id) && capability.point && isPointProductToken(capability.point_product)).map((capability) => capability.point_product!))
+  if (declared.size > 1) return null // Conflicting declared products cannot select a source implicitly.
+  return declared.values().next().value ?? POINT_PRODUCT_BY_SOURCE_ID[source.id] ?? null
 }
 
 /** The layer groups, in the order every grouped list shows them, with their
@@ -1072,7 +1085,7 @@ export async function loadCatalog(signal?: AbortSignal): Promise<CatalogResult> 
     if (!body || typeof body !== 'object' || !Array.isArray((body as { sources?: unknown }).sources)) {
       return { sources: [], dataMode: 'unavailable', error: 'catalog returned an incompatible schema' }
     }
-    const sources = (body as { sources: unknown[] }).sources.filter(isCatalogSource)
+    const sources = (body as { sources: unknown[] }).sources.filter(isCatalogSource).map((source) => ({ ...source, capabilities: Array.isArray(source.capabilities) ? source.capabilities.filter((capability) => isSourceCapability(capability, source.id)) : undefined }))
     return { sources, dataMode: toDataMode((body as { data_mode?: unknown }).data_mode), error: null }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
@@ -1100,6 +1113,7 @@ export async function loadSourceStatus(signal?: AbortSignal): Promise<SourceStat
     }
     const statuses: SourceStatusItem[] = (body as { statuses: unknown[] }).statuses.filter(isSourceStatus).map((row) => ({
       source_id: row.source_id,
+      configuration: isSourceConfiguration(row.configuration) ? row.configuration : undefined,
       state: row.state,
       // A row that does not declare its own data_mode is not treated as live.
       data_mode: toDataMode((row as { data_mode?: unknown }).data_mode),

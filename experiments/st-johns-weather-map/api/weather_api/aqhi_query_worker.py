@@ -53,18 +53,27 @@ def normalize(document: object) -> list[dict[str, object]]:
             raise ValueError(f"AQHI feature {index} has no numeric AQHI") from error
         if not math.isfinite(value):
             raise ValueError(f"AQHI feature {index} has non-finite AQHI")
+        product_type = _property(properties, "aqhi_type")
+        if product_type is not None and product_type != "AQHI-Observation":
+            raise ValueError(f"AQHI feature {index} is not an observation")
         identifier = feature.get("id") or _property(properties, "id") or _property(properties, "_id") or _property(properties, "identifier") or _property(properties, "station_id")
         if not isinstance(identifier, (str, int)) or not str(identifier).strip():
             raise ValueError(f"AQHI feature {index} has no station identifier")
+        station_id = _property(properties, "location_id")
+        if station_id is not None and (not isinstance(station_id, str) or not station_id.strip()):
+            raise ValueError(f"AQHI feature {index} has an invalid station identifier")
         row: dict[str, object] = {
-            "station_id": str(identifier),
+            "station_id": station_id or str(identifier),
             "station_name": str(_property(properties, "location_name_en") or "") or None,
             "observation_time": _instant(_property(properties, "observation_datetime")),
             "latitude": latitude,
             "longitude": longitude,
             "value": value,
         }
-        quality = _property(properties, "quality") or _property(properties, "qc") or _property(properties, "quality_flag")
+        if station_id is not None:
+            row["feature_id"] = str(identifier)
+        quality = next((token for name in ("quality", "qc", "quality_flag")
+                        if (token := _property(properties, name)) not in (None, "")), None)
         if quality not in (None, ""):
             row["quality"] = str(quality)
         rows.append(row)

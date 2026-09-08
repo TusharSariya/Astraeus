@@ -170,7 +170,8 @@ def test_latest_before_selection_is_normalized_and_sampled_without_artifact_stor
     assert by_name["temperature"].value==10
     assert by_name["dew_point"].value==8
     assert by_name["visibility"].value==pytest.approx(9656.064)
-    assert by_name["wind_speed"].value==pytest.approx(5.1)
+    # Keep the adapter's direct knots-to-m/s conversion, without display rounding.
+    assert by_name["wind_speed"].value==pytest.approx(5.14444)
     assert by_name["wind_gust"].value==pytest.approx(10.28888)
     assert by_name["fog_state"].value=="unknown"
     assert by_name["wind_speed"].provenance.evidence_class=="retrieved"

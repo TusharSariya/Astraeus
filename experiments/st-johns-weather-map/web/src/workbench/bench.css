@@ -250,3 +250,7 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 .bench-companion .activity-summary > div { display: contents; }
 .bench-companion .activity-summary .activity-strip { display: none; }
 .bench-companion .activity-summary p { margin: 0; }
+
+.native-images img { max-width: 100%; height: auto; }
+.native-images figure { margin: 1rem 0; }
+.native-images { overflow-wrap: anywhere; }

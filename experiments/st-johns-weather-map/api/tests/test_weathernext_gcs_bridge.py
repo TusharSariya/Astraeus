@@ -1,0 +1,115 @@
+"""Actual isolated native worker over deterministic Zarr transport objects."""
+from datetime import UTC,datetime
+import json
+import sys
+
+import pytest
+
+from test_weathernext_native import transport, selection
+from weather_api.weathernext_gcs_bridge import BridgeUnavailable, read_historical_point, ROOT, AccountedGCSTransport, CAP
+from weather_api.weathernext_native import BUCKET,ObjectIdentity
+
+NOW=datetime(2026,9,1,tzinfo=UTC)
+
+
+def root(transport):
+    body=transport.body('zarr.json')
+    return ObjectIdentity(BUCKET,ROOT.name,'42','etag',len(body))
+
+
+def test_actual_native_worker(transport):
+    if sys.platform!='linux': pytest.skip('Linux resource-limited worker')
+    result=read_historical_point(selection(),root_identity=root(transport),now=NOW,transport=transport)
+    assert result['reading']['values'][0]['value']==pytest.approx(.35)
+    assert result['reading']['values'][0]['statistic']=='p90'
+    assert result['receipt']['payload_bytes']==sum(o['size'] for o in result['reading']['objects'])
+    assert result['receipt']['worker_operations']==12
+    assert not any(op=='describe' and path=='zarr.json' for op,path in transport.calls)
+
+
+def test_historical_refusal_before_process(transport):
+    with pytest.raises(BridgeUnavailable,match='historical'):
+        read_historical_point(selection(),root_identity=root(transport),now=selection().valid_time,transport=transport,command=['does-not-exist'])
+    assert transport.calls==[]
+
+
+def test_root_mismatch_before_process(transport):
+    with pytest.raises(BridgeUnavailable,match='root'):
+        read_historical_point(selection(),root_identity=ObjectIdentity(BUCKET,ROOT.name+'wrong','42','etag',10),now=NOW,command=['does-not-exist'])
+
+
+def test_child_timeout_is_bounded_and_safe(transport):
+    with pytest.raises(BridgeUnavailable,match='bounded point'):
+        read_historical_point(selection(),root_identity=root(transport),now=NOW,transport=transport,
+            command=[sys.executable,'-c','import time;time.sleep(5)'],timeout=.1)
+
+
+def test_child_bad_request_cannot_fetch_foreign_object(transport):
+    code='import json; print(json.dumps({"op":"describe","bucket":"other","name":"secret"}),flush=True);input()'
+    with pytest.raises(BridgeUnavailable):
+        read_historical_point(selection(),root_identity=root(transport),now=NOW,transport=transport,command=[sys.executable,'-c',code])
+    assert transport.calls==[]
+
+
+def test_chunk_over_total_cap_refused_before_get(transport):
+    original=transport.describe
+    def describe(bucket,name,*,timeout):
+        identity=original(bucket,name,timeout=timeout)
+        if '/total_cloud_cover_p90/' in name:
+            return ObjectIdentity(bucket,name,'42','etag',CAP+1)
+        return identity
+    transport.describe=describe
+    with pytest.raises(BridgeUnavailable):
+        read_historical_point(selection(),root_identity=root(transport),now=NOW,transport=transport)
+    assert not any(op=='read' and path.startswith('total_cloud_cover') for op,path in transport.calls)
+
+
+def test_blocked_worker_pipe_cannot_overrun_deadline(transport):
+    import time
+    name=ROOT.name.rsplit('/',1)[0]+'/total_cloud_cover_p90/c/1/1/0'
+    original=transport.describe
+    def describe(bucket,path,*,timeout):
+        return ObjectIdentity(bucket,path,'42','etag',1024**2) if path==name else original(bucket,path,timeout=timeout)
+    transport.describe=describe
+    transport.read=lambda identity,**kwargs: b'x'*identity.size
+    code='import sys,json,time;sys.stdin.readline();print(json.dumps({"op":"describe","bucket":'+repr(BUCKET)+',"name":'+repr(name)+'}),flush=True);r=json.loads(sys.stdin.readline());print(json.dumps({"op":"read","identity":r["identity"],"max_bytes":1048576}),flush=True);time.sleep(5)'
+    started=time.monotonic()
+    with pytest.raises(BridgeUnavailable):
+        read_historical_point(selection(),root_identity=root(transport),now=NOW,transport=transport,
+                              command=[sys.executable,'-c',code],timeout=.2)
+    assert time.monotonic()-started<1
+
+
+def test_http_operation_process_is_killed_at_deadline(monkeypatch):
+    import subprocess,time
+    from weather_api.weathernext_gcs import GcloudProfileToken
+    from weather_api import weathernext_gcs_bridge as bridge
+    original=subprocess.Popen
+    children=[]
+    def start(*args,**kwargs):
+        # Never invokes gcloud or network; simulate a blocked HTTP operation.
+        child=original([sys.executable,'-c','import time;time.sleep(5)'],**kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr(bridge.subprocess,'Popen',start)
+    transport=AccountedGCSTransport(token_provider=GcloudProfileToken('astraeus'))
+    started=time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        transport._get(ROOT.name,{'alt':'media'},cap=256*1024,timeout=.1,expected=ROOT)
+    assert time.monotonic()-started<1 and children[0].poll() is not None
+
+
+def test_owned_docker_container_is_explicitly_removed(monkeypatch,transport):
+    from weather_api import weathernext_gcs_bridge as bridge
+    names=[]
+    cleanup=[]
+    monkeypatch.setattr(bridge.sys,'platform','darwin')
+    def command(name):
+        names.append(name)
+        return [sys.executable,'-c','print("{}",flush=True)']
+    monkeypatch.setattr(bridge,'worker_command',command)
+    monkeypatch.setattr(bridge.subprocess,'run',lambda args,**kwargs: cleanup.append(args))
+    with pytest.raises(BridgeUnavailable):
+        read_historical_point(selection(),root_identity=root(transport),now=NOW,transport=transport)
+    assert names[0].startswith('weathernext-')
+    assert cleanup==[['docker','rm','--force',names[0]]]

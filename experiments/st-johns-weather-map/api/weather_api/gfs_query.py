@@ -29,14 +29,15 @@ from ingest.adapters.noaa_s3 import (
     gfs_native_time_at_or_before,
     select_gfs_ranges,
 )
-from ingest.contract import FetchWindow, RunCandidate
+from ingest.contract import RunCandidate
 from ingest.isolation import ProcessAllocationLimits, run_bounded_process
+
+from .native_runs import NativeRunInventory, RunUnavailable
 
 GFS_OBJECT_CACHE_TTL_SECONDS = 600.0
 GFS_TIMELINE_LISTING_MAX_BYTES = 1024 * 1024
 GFS_TIMELINE_LISTING_MAX_KEYS = 1000
 GFS_TIMELINE_LISTING_MAX_NODES = 8 * GFS_TIMELINE_LISTING_MAX_KEYS + 64
-_GFS_LISTED_LEAD = re.compile(r"\.f(\d{3})\.idx$")
 GFS_CACHE_MAX_ENTRIES = 4
 GFS_CACHE_MAX_BYTES = 256 * 1024 * 1024
 GFS_DEMAND_WORKSPACE_BYTES = 192 * 1024 * 1024
@@ -113,15 +114,15 @@ class GFSQueryService:
         self._entries: OrderedDict[GFSRequestKey, tuple[float, GFSQueryEntry]] = OrderedDict()
         self._inflight: dict[GFSRequestKey, Future[GFSQueryEntry]] = {}
 
-    def query(self, key: GFSRequestKey) -> GFSQueryEntry:
+    def query(self, key: GFSRequestKey, *, refresh: bool = False) -> GFSQueryEntry:
         while True:
             with self._lock:
                 now = self._clock()
                 cached = self._entries.get(key)
-                if cached is not None and now < cached[0]:
+                if cached is not None and now < cached[0] and not refresh:
                     self._entries.move_to_end(key)
                     return cached[1]
-                if cached is not None:
+                if cached is not None and now >= cached[0]:
                     self._entries.pop(key)
                 future = self._inflight.get(key)
                 if future is None:
@@ -148,8 +149,6 @@ class GFSQueryService:
                     future.set_result(entry)
                     return entry
                 except BaseException as error:
-                    with self._lock:
-                        self._entries.pop(key, None)
                     future.set_exception(error)
                     raise
                 finally:
@@ -190,19 +189,53 @@ class GFSQueryCoordinator:
         self._clock = clock
         self._now = now
         self._lock = threading.Lock()
-        self._candidate_lock = threading.Lock()
         self._timeline_lock = threading.Lock()
-        self._candidate: tuple[float, RunCandidate] | None = None
         self._indices: OrderedDict[str, tuple[float, str, Mapping[str, object] | None]] = OrderedDict()
-        self._timeline: tuple[float, str, tuple[datetime, ...], Mapping[str, object]] | None = None
-        self._timeline_inflight: Future[tuple[tuple[datetime, ...], Mapping[str, object]]] | None = None
+        self._timeline: OrderedDict[str, tuple[float, tuple[datetime, ...], Mapping[str, object]]] = OrderedDict()
+        self._timeline_inflight: dict[str, Future[tuple[tuple[datetime, ...], Mapping[str, object]]]] = {}
+        self._query_lock = threading.Lock()
+        self._query_inflight: dict[tuple[datetime, str | None, bool], Future[GFSQueryEntry]] = {}
+        self._run_inventory = NativeRunInventory(self._adapter.discover, now=now, clock=clock, ttl=GFS_OBJECT_CACHE_TTL_SECONDS)
         self._prepared: dict[GFSRequestKey, RunCandidate] = {}
         self._bounded_fetch = bounded_fetch
         self._cache = GFSQueryService(self._load, clock=clock)
 
-    def query(self, selected_time: datetime) -> GFSQueryEntry:
-        with self._candidate_lock:
-            candidate = self._discover()
+    def query(self, selected_time: datetime, *, run_id: str | None = None, refresh: bool = False) -> GFSQueryEntry:
+        if selected_time.tzinfo is None:
+            raise ValueError("GFS selected time must be timezone-aware")
+        selection = (selected_time.astimezone(UTC).replace(minute=0, second=0, microsecond=0), run_id, refresh)
+        with self._query_lock:
+            future = self._query_inflight.get(selection)
+            owner = future is None
+            if owner:
+                if len(self._query_inflight) >= GFS_CACHE_MAX_ENTRIES:
+                    raise RunUnavailable("GFS selected-query concurrency limit reached")
+                future = Future()
+                self._query_inflight[selection] = future
+        assert future is not None
+        if not owner:
+            return future.result()
+        try:
+            entry = self._query(selected_time, run_id=run_id, refresh=refresh)
+            future.set_result(entry)
+            return entry
+        except BaseException as error:
+            future.set_exception(error)
+            raise
+        finally:
+            with self._query_lock:
+                self._query_inflight.pop(selection, None)
+
+    def _query(self, selected_time: datetime, *, run_id: str | None, refresh: bool) -> GFSQueryEntry:
+        candidate = (self._run_inventory.resolve(run_id, refresh=refresh)
+                     if run_id is not None else self._discover(refresh=refresh))
+        if run_id is not None:
+            if candidate.run_time is None:
+                raise RunUnavailable("GFS selected run has no producer run time")
+            native = gfs_native_time_at_or_before(candidate.run_time, selected_time)
+            times, _receipt = self._run_listing(candidate, refresh=refresh)
+            if native not in times:
+                raise RunUnavailable("GFS selected run has no listed native frame for this time")
         with self._lock:
             if candidate.run_time is None:
                 raise ValueError("GFS discovery returned no producer run time")
@@ -213,7 +246,7 @@ class GFSQueryCoordinator:
             stem = f"gfs.t{cycle}z.pgrb2.0p25.f{lead:03d}"
             grib_url = f"{self._adapter._base_url}/gfs.{date_str}/{cycle}/atmos/{stem}"
             idx_url = f"{grib_url}.idx"
-            idx_text, idx_receipt = self._index(idx_url)
+            idx_text, idx_receipt = self._index(idx_url, refresh=refresh)
             ranges, _present = select_gfs_ranges(idx_text)
             ranges = cap_open_range(ranges)
             key = GFSRequestKey(
@@ -230,7 +263,7 @@ class GFSQueryCoordinator:
                 {**candidate.detail, "idx_text_by_lead": {lead: idx_text}, "idx_receipts_by_lead": {lead: idx_receipt}},
             )
             try:
-                return self._cache.query(key)
+                return self._cache.query(key, refresh=refresh)
             finally:
                 self._prepared.pop(key, None)
 
@@ -248,7 +281,7 @@ class GFSQueryCoordinator:
                     result[field].append(entry.valid_time)
         return {field: tuple(sorted(set(times))) for field, times in result.items()}
 
-    def point_fields(self, latitude: float, longitude: float, selected_time: datetime) -> tuple[list[Any], Any, list[str]]:
+    def point_fields(self, latitude: float, longitude: float, selected_time: datetime, *, run_id: str | None = None, refresh: bool = False) -> tuple[list[Any], Any, list[str]]:
         """Answer one point through the existing evidence/provenance builder.
 
         Demand payloads remain memory-resident cache entries.  They are opened
@@ -258,7 +291,7 @@ class GFSQueryCoordinator:
         """
         from .store import LiveStore, live_point_fields  # noqa: PLC0415
 
-        entry = self.query(selected_time)
+        entry = self.query(selected_time, **({"run_id": run_id} if run_id is not None else {}), **({"refresh": True} if refresh else {}))
         samples = []
         with tempfile.TemporaryDirectory(prefix="gfs-demand-read-") as directory:
             sampler = LiveStore.__new__(LiveStore)
@@ -274,6 +307,12 @@ class GFSQueryCoordinator:
                 dataset = xarray.open_zarr(zipped, consolidated=False)
                 try:
                     provenance = dict(entry.provenance[logical_name])
+                    # Normalization retains producer units on each variable;
+                    # the shared sampler consumes the artifact-level map.
+                    provenance["original_units"] = {
+                        str(name): str(variable.attrs.get("original_units", variable.attrs.get("units", "")))
+                        for name, variable in dataset.data_vars.items()
+                    }
                     provenance.setdefault("run_time", entry.run_time.isoformat())
                     artifact = SimpleNamespace(
                         source_id="noaa-gfs",
@@ -301,7 +340,7 @@ class GFSQueryCoordinator:
 
         return live_point_fields(_Samples(), latitude, longitude, entry.valid_time)
 
-    def profile_levels(self, latitude: float, longitude: float, selected_time: datetime, pressures: tuple[int, ...]) -> list[Any]:
+    def profile_levels(self, latitude: float, longitude: float, selected_time: datetime, pressures: tuple[int, ...], *, run_id: str | None = None, refresh: bool = False) -> list[Any]:
         """Answer the existing pressure-level profile from one cached frame."""
         from .store import (  # noqa: PLC0415
             WIND_METHOD,
@@ -312,7 +351,7 @@ class GFSQueryCoordinator:
         )
         from .science import WIND_DIRECTION_UNITS, WIND_SPEED_UNITS  # noqa: PLC0415
 
-        entry = self.query(selected_time)
+        entry = self.query(selected_time, **({"run_id": run_id} if run_id is not None else {}), **({"refresh": True} if refresh else {}))
         by_pressure: dict[int, list[Any]] = {}
         with tempfile.TemporaryDirectory(prefix="gfs-demand-profile-") as directory:
             sampler = LiveStore.__new__(LiveStore)
@@ -328,6 +367,12 @@ class GFSQueryCoordinator:
                 dataset = xarray.open_zarr(zipped, consolidated=False)
                 try:
                     provenance = dict(entry.provenance[logical_name])
+                    # Normalization retains producer units on each variable;
+                    # the shared sampler consumes the artifact-level map.
+                    provenance["original_units"] = {
+                        str(name): str(variable.attrs.get("original_units", variable.attrs.get("units", "")))
+                        for name, variable in dataset.data_vars.items()
+                    }
                     provenance.setdefault("run_time", entry.run_time.isoformat())
                     artifact = SimpleNamespace(
                         source_id="noaa-gfs",
@@ -437,30 +482,38 @@ class GFSQueryCoordinator:
     def native_resolution_seconds(self, selected_time: datetime, end: datetime) -> int:
         """Use the same producer lead boundary as exact GFS acquisition."""
         from ingest.adapters.noaa_s3 import GFS_HOURLY_LEAD_LIMIT
-        with self._candidate_lock:
-            candidate = self._discover()
+        candidate = self._discover()
         if candidate.run_time is None:
             raise ValueError('GFS run time unavailable')
         return 10800 if end - candidate.run_time > timedelta(hours=GFS_HOURLY_LEAD_LIMIT + 1) else 3600
 
-    def timeline_times(self, reference: datetime) -> tuple[tuple[datetime, ...], Mapping[str, object]]:
-        """Return actual native frame keys from one bounded, coalesced S3 listing."""
+    def run_inventory(self, *, refresh: bool = False):
+        return self._run_inventory.candidates(refresh=refresh)
+
+    def run_times(self, run_id: str, *, refresh: bool = False):
+        candidate = self._run_inventory.resolve(run_id, refresh=refresh)
+        return self._run_listing(candidate, refresh=refresh)[0]
+
+    def timeline_times(self, reference: datetime, *, refresh: bool = False) -> tuple[tuple[datetime, ...], Mapping[str, object]]:
+        """Return actual native frame keys within the current evidence window."""
         if reference.tzinfo is None:
             raise ValueError("reference must be timezone-aware")
-        current = self._clock()
+        candidate = self._discover(refresh=refresh)
+        times, receipt = self._run_listing(candidate, refresh=refresh)
+        start, end = reference.astimezone(UTC) - timedelta(hours=24), reference.astimezone(UTC) + timedelta(days=14)
+        return tuple(stamp for stamp in times if start <= stamp <= end), receipt
+
+    def _run_listing(self, candidate: RunCandidate, *, refresh: bool = False) -> tuple[tuple[datetime, ...], Mapping[str, object]]:
+        run_id = candidate.provider_run_id
         with self._timeline_lock:
-            if self._timeline is not None and current < self._timeline[0]:
-                return self._timeline[2], self._timeline[3]
-        with self._candidate_lock:
-            candidate = self._discover()
-        with self._timeline_lock:
-            if self._timeline is not None and current < self._timeline[0] and self._timeline[1] == candidate.provider_run_id:
-                return self._timeline[2], self._timeline[3]
-            future = self._timeline_inflight
+            cached = self._timeline.get(run_id)
+            if cached is not None and self._clock() < cached[0] and not refresh:
+                return cached[1], cached[2]
+            future = self._timeline_inflight.get(run_id)
             owner = future is None
             if owner:
                 future = Future()
-                self._timeline_inflight = future
+                self._timeline_inflight[run_id] = future
         assert future is not None
         if not owner:
             return future.result()
@@ -492,21 +545,18 @@ class GFSQueryCoordinator:
             for node in nodes:
                 if node.tag.rsplit("}", 1)[-1] != "Key" or not isinstance(node.text, str) or not node.text.startswith(prefix):
                     continue
-                match = _GFS_LISTED_LEAD.search(node.text)
+                match = re.fullmatch(re.escape(prefix) + r"(\d{3})\.idx", node.text)
                 if match:
                     lead = int(match.group(1))
                     if lead <= 384 and (lead <= 120 or lead % 3 == 0):
                         leads.add(lead)
-            start = reference.astimezone(UTC) - timedelta(hours=24)
-            end = reference.astimezone(UTC) + timedelta(days=14)
-            times = tuple(
-                candidate.run_time + timedelta(hours=lead)
-                for lead in sorted(leads)
-                if start <= candidate.run_time + timedelta(hours=lead) <= end
-            )
+            times = tuple(candidate.run_time + timedelta(hours=lead) for lead in sorted(leads))
             result = (times, receipt)
             with self._timeline_lock:
-                self._timeline = (current + GFS_OBJECT_CACHE_TTL_SECONDS, candidate.provider_run_id, times, receipt)
+                self._timeline[run_id] = (self._clock() + GFS_OBJECT_CACHE_TTL_SECONDS, times, receipt)
+                self._timeline.move_to_end(run_id)
+                while len(self._timeline) > 2:
+                    self._timeline.popitem(last=False)
             future.set_result(result)
             return result
         except BaseException as error:
@@ -514,20 +564,18 @@ class GFSQueryCoordinator:
             raise
         finally:
             with self._timeline_lock:
-                self._timeline_inflight = None
+                self._timeline_inflight.pop(run_id, None)
 
-    def _discover(self) -> RunCandidate:
-        current = self._clock()
-        if self._candidate is not None and current < self._candidate[0]:
-            return self._candidate[1]
-        candidate = self._adapter.discover(FetchWindow(now=self._now()))[0]
-        self._candidate = (current + GFS_OBJECT_CACHE_TTL_SECONDS, candidate)
-        return candidate
+    def _discover(self, *, refresh: bool = False) -> RunCandidate:
+        candidates = self.run_inventory(refresh=refresh)
+        if not candidates:
+            raise RunUnavailable("No GFS run is available")
+        return candidates[0]
 
-    def _index(self, url: str) -> tuple[str, Mapping[str, object] | None]:
+    def _index(self, url: str, *, refresh: bool = False) -> tuple[str, Mapping[str, object] | None]:
         current = self._clock()
         cached = self._indices.get(url)
-        if cached is not None and current < cached[0]:
+        if cached is not None and current < cached[0] and not refresh:
             self._indices.move_to_end(url)
             return cached[1], cached[2]
         client = self._adapter._get_client()

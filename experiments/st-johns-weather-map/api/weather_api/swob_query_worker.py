@@ -48,7 +48,7 @@ def _number(value: object, *, field: str) -> float | None:
 
 
 def _field_token(properties: Mapping[str, object], name: str) -> str | None:
-    for suffix in ("-qa", "-data_flag", "_qa", "_data_flag"):
+    for suffix in ("-qa", "-data_flag", "-data_flag-value", "_qa", "_data_flag"):
         value = _property(properties, f"{name}{suffix}")
         if value not in (None, ""):
             return str(value)
@@ -58,7 +58,7 @@ def _field_token(properties: Mapping[str, object], name: str) -> str | None:
 def _station_id(feature: Mapping[str, object], properties: Mapping[str, object], index: int) -> str:
     # OGC feature id can be a report id. Prefer native station identifiers, but
     # retain the raw feature id separately below when it is published.
-    for name in ("stn_id", "station_id", "wmo_id", "wmo_stn", "msc_id"):
+    for name in ("stn_id", "station_id", "wmo_id", "wmo_stn", "msc_id", "msc_id-value"):
         value = _property(properties, name)
         if value not in (None, ""):
             return str(value)
@@ -127,7 +127,7 @@ def normalize(document: object) -> list[dict[str, object]]:
             values[key] = value
         station_metadata = {
             name: str(_property(properties, name))
-            for name in ("wmo_id", "wmo_stn", "msc_id", "stn_id")
+            for name in ("wmo_id", "wmo_stn", "msc_id", "msc_id-value", "stn_id")
             if _property(properties, name) not in (None, "")
         }
         rows.append({

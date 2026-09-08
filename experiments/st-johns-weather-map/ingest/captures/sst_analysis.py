@@ -29,6 +29,7 @@ OISST_ROOT = "https://www.ncei.noaa.gov/data/sea-surface-temperature-optimum-int
 MAX_METADATA_BYTES = 2 * 1024 * 1024
 MAX_CHUNK_BYTES = 16 * 1024 * 1024
 MAX_OISST_BYTES = 32 * 1024 * 1024
+MAX_OSTIA_CHUNKS_PER_FIELD = 16
 
 OSTIA_MANIFEST = RunManifest(
     source_id="metoffice-ostia-sst",
@@ -178,13 +179,21 @@ class OSTIAAdapter:
         for upstream in ("analysed_sst", "analysis_error", "mask"):
             spec = metadata[f"{upstream}/.zarray"]
             cy, cx = int(spec["chunks"][1]), int(spec["chunks"][2])
-            ychunk, xchunk = int(lat_idx[0]) // cy, int(lon_idx[0]) // cx
-            if int(lat_idx[-1]) // cy != ychunk or int(lon_idx[-1]) // cx != xchunk:
-                raise AdapterUnavailable("OSTIA evidence box unexpectedly spans multiple native chunks")
-            url = f"{self._root}/{upstream}/{time_index}.{ychunk}.{xchunk}"; urls.append(url)
-            raw = _decode_chunk(_download_bytes(client, url, workdir, f"ostia-{upstream}.chunk", MAX_CHUNK_BYTES), spec).reshape((cy, cx))
+            if cy <= 0 or cx <= 0:
+                raise AdapterUnavailable("OSTIA native chunk dimensions must be positive")
+            ychunks, xchunks = numpy.unique(lat_idx // cy), numpy.unique(lon_idx // cx)
+            if len(ychunks) * len(xchunks) > MAX_OSTIA_CHUNKS_PER_FIELD:
+                raise AdapterUnavailable("OSTIA evidence box exceeds its native chunk-count ceiling")
+            subset = numpy.empty((lat_idx.size, lon_idx.size), dtype=numpy.dtype(spec["dtype"]))
+            for ychunk in ychunks:
+                rows = numpy.flatnonzero(lat_idx // cy == ychunk)
+                for xchunk in xchunks:
+                    columns = numpy.flatnonzero(lon_idx // cx == xchunk)
+                    chunk_id = f"{time_index}.{ychunk}.{xchunk}"
+                    url = f"{self._root}/{upstream}/{chunk_id}"; urls.append(url)
+                    raw = _decode_chunk(_download_bytes(client, url, workdir, f"ostia-{upstream}-{chunk_id}.chunk", MAX_CHUNK_BYTES), spec).reshape((cy, cx))
+                    subset[numpy.ix_(rows, columns)] = raw[numpy.ix_(lat_idx[rows] - ychunk * cy, lon_idx[columns] - xchunk * cx)]
             attrs = metadata[f"{upstream}/.zattrs"]
-            subset = raw[lat_idx - ychunk * cy][:, lon_idx - xchunk * cx]
             if upstream != "mask":
                 missing = subset == spec.get("fill_value")
                 subset = subset.astype("float32") * float(attrs.get("scale_factor", 1)) + float(attrs.get("add_offset", 0))

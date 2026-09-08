@@ -6,6 +6,7 @@ resolved before a source cache read and cannot silently advance to another run.
 from __future__ import annotations
 
 from copy import deepcopy
+from concurrent.futures import Future
 from datetime import datetime
 import threading
 from typing import Callable
@@ -22,12 +23,21 @@ class NativeRunInventory:
         self._discover, self._now, self._clock, self._ttl = discover, now, clock, ttl
         self._lock = threading.Lock()
         self._cached: tuple[float, tuple[RunCandidate, ...]] | None = None
+        self._inflight: Future | None = None
 
-    def candidates(self) -> tuple[RunCandidate, ...]:
+    def candidates(self, *, refresh: bool = False) -> tuple[RunCandidate, ...]:
         with self._lock:
             elapsed = self._clock()
-            if self._cached is not None and elapsed < self._cached[0]:
+            if not refresh and self._cached is not None and elapsed < self._cached[0]:
                 return deepcopy(self._cached[1])
+            future = self._inflight
+            owner = future is None
+            if owner:
+                future = Future()
+                self._inflight = future
+        if not owner:
+            return deepcopy(future.result())
+        try:
             reference = self._now()
             declared = self._discover(FetchWindow(now=reference, back_hours=24, forward_hours=0))
             by_id = {}
@@ -37,11 +47,19 @@ class NativeRunInventory:
                         raise ValueError('Conflicting native run identities')
                     by_id[candidate.provider_run_id] = candidate
             candidates = tuple(sorted(by_id.values(), key=lambda item: item.run_time, reverse=True)[:2])
-            self._cached = (self._clock() + self._ttl, candidates)
+            with self._lock:
+                self._cached = (self._clock() + self._ttl, candidates)
+            future.set_result(candidates)
             return deepcopy(candidates)
+        except Exception as error:
+            future.set_exception(error)
+            raise
+        finally:
+            with self._lock:
+                self._inflight = None
 
-    def resolve(self, run_id: str) -> RunCandidate:
-        for candidate in self.candidates():
+    def resolve(self, run_id: str, *, refresh: bool = False) -> RunCandidate:
+        for candidate in self.candidates(refresh=refresh):
             if candidate.provider_run_id == run_id:
                 return candidate
         raise RunUnavailable('Run no longer available in the bounded latest/previous inventory')

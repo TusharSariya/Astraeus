@@ -50,6 +50,7 @@ class AQHIStationObservation:
     longitude: float
     value: float
     quality: str | None
+    feature_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,7 @@ def _decode(body: bytes) -> tuple[AQHIStationObservation, ...]:
         station_id=str(item["station_id"]), station_name=item.get("station_name"),
         observation_time=datetime.fromisoformat(str(item["observation_time"])).astimezone(UTC),
         latitude=float(item["latitude"]), longitude=float(item["longitude"]),
+        feature_id=item.get("feature_id"),
         value=float(item["value"]), quality=str(item["quality"]) if item.get("quality") is not None else None,
     ) for item in parsed)
 
@@ -162,6 +164,7 @@ class AQHIQueryService:
         try:
             with self._client.stream("GET", self.request_url, headers={"Accept": "application/json", "Accept-Encoding": "identity"}) as response:
                 if response.status_code != 200:
+                    response.raise_for_status()
                     raise AqhiQueryUnavailable(f"ECCC AQHI returned HTTP {response.status_code}")
                 declared = response.headers.get("content-length")
                 if declared is not None and (not declared.isdigit() or int(declared) > AQHI_BODY_MAX_BYTES):
@@ -175,6 +178,7 @@ class AQHIQueryService:
                     chunks.append(chunk)
                 body = b"".join(chunks)
                 completed = self._utcnow()
+                completed_monotonic = self._clock()
                 effective_url = str(response.request.url)
                 request_headers = _safe_headers(response.request.headers, {"accept", "accept-encoding", "user-agent"}, 4 * 1024)
                 response_headers = _safe_headers(response.headers, {"age", "cache-control", "content-type", "date", "etag", "last-modified"}, 8 * 1024)
@@ -196,18 +200,21 @@ class AQHIQueryService:
             body_sha256=hashlib.sha256(body).hexdigest(), cached_at=completed,
             expires_at=completed + timedelta(seconds=ttl),
         )
-        entry = AQHICacheEntry(observations, acquisition, self._clock() + ttl)
+        expires_at_monotonic = completed_monotonic + ttl
+        if self._clock() >= expires_at_monotonic:
+            raise AqhiQueryUnavailable("ECCC AQHI expired during validation")
+        entry = AQHICacheEntry(observations, acquisition, expires_at_monotonic)
         if entry.backing_bytes > AQHI_CACHE_MAX_BYTES:
             raise AqhiQueryUnavailable("ECCC AQHI normalized cache entry exceeds its ceiling")
         return entry
 
-    def entry(self) -> AQHICacheEntry:
+    def entry(self, *, refresh: bool = False) -> AQHICacheEntry:
         with self._lock:
             cached = self._entry
-            if cached is not None and self._clock() < cached.expires_at_monotonic:
+            if not refresh and cached is not None and self._clock() < cached.expires_at_monotonic:
                 return cached
-            self._entry = None
-            if cached is not None:
+            if cached is not None and self._clock() >= cached.expires_at_monotonic:
+                self._entry = None
                 self._expired_acquisition = cached.acquisition
             future = self._inflight
             owner = future is None
@@ -225,11 +232,18 @@ class AQHIQueryService:
             future.set_result(replacement)
             return replacement
         except BaseException as error:
-            if isinstance(error, AqhiQueryUnavailable) and self._expired_acquisition is not None:
-                error.outcome = AQHIDemandUnavailable(
-                    reason="refresh_failed", error_type=type(error).__name__,
-                    expired_acquisition=self._expired_acquisition,
-                )
+            with self._lock:
+                # Revalidation does not change the original fixed deadline.
+                # It can pass while the failed replacement is in flight.
+                retained = self._entry
+                if retained is not None and self._clock() >= retained.expires_at_monotonic:
+                    self._entry = None
+                    self._expired_acquisition = retained.acquisition
+                if isinstance(error, AqhiQueryUnavailable) and (cached is not None or self._expired_acquisition is not None):
+                    error.outcome = AQHIDemandUnavailable(
+                        reason="refresh_failed", error_type=type(error).__name__,
+                        expired_acquisition=self._expired_acquisition,
+                    )
             future.set_exception(error)
             raise error
         finally:
@@ -240,11 +254,13 @@ class AQHIQueryService:
         with self._lock:
             return self._entry if self._entry is not None and self._clock() < self._entry.expires_at_monotonic else None
 
-    def point_field(self, latitude: float, longitude: float, selected: datetime) -> EvidenceField:
+    def point_field(self, latitude: float, longitude: float, selected: datetime, *, refresh: bool = False) -> EvidenceField:
         if selected.tzinfo is None:
             raise ValueError("AQHI selected time must include an offset")
+        if not (math.isfinite(latitude) and math.isfinite(longitude) and -90 <= latitude <= 90 and -180 <= longitude <= 180):
+            raise ValueError("AQHI point coordinates must be finite and in range")
         instant = selected.astimezone(UTC)
-        entry = self.entry()
+        entry = self.entry(refresh=refresh)
         eligible = [item for item in entry.observations if item.observation_time <= instant and instant - item.observation_time < timedelta(hours=1)]
         if not eligible:
             raise AqhiQueryUnavailable("ECCC AQHI has no station observation less than one hour old at or before the selection")
@@ -257,7 +273,10 @@ class AQHIQueryService:
             station_id=station.station_id, observation_time=station.observation_time,
             provider_station_name=station.station_name, provider_latitude=station.latitude,
             provider_longitude=station.longitude,
-            native_metadata={"provider_quality": station.quality} if station.quality is not None else {},
+            native_metadata={
+                **({"provider_quality": station.quality} if station.quality is not None else {}),
+                **({"provider_feature_id": station.feature_id} if station.feature_id is not None else {}),
+            },
         )
         return EvidenceField(
             field="aqhi", key="air_quality_health_index", value=station.value,
@@ -287,6 +306,39 @@ class AQHIQueryService:
                 run_stale=None, run_stale_reason="AQHI is a station observation and has no model run",
             ),
         )
+
+
+def is_aqhi_observation_companion(field: EvidenceField) -> bool:
+    """Admit only this native AQHI observation, never another air-quality product.
+
+    Applicability to the selected point/time remains owned by ``point_field``;
+    this predicate preserves the narrow identity boundary during composition.
+    """
+    provenance = field.provenance
+    report = provenance.native_report
+    return (
+        field.field == "aqhi"
+        and isinstance(field.value, (int, float))
+        and not isinstance(field.value, bool)
+        and math.isfinite(field.value)
+        and field.key == "air_quality_health_index"
+        and provenance.source_id == "eccc-aqhi"
+        and provenance.data_mode == DataMode.LIVE
+        and provenance.evidence_class == "retrieved"
+        and provenance.product == "Air Quality Health Index observations via GeoMet WMS"
+        and provenance.adapter_version == "eccc-geomet-aqhi-demand-v1"
+        and provenance.run_time is None
+        and provenance.original_units == "index"
+        and provenance.normalized_units == "index"
+        and provenance.aqhi_acquisition is not None
+        and report is not None
+        and report.observation_time is not None
+        and report.provider_latitude is not None
+        and report.provider_longitude is not None
+        and report.observation_time == provenance.valid_time
+        and report.provider_latitude == provenance.sampled_latitude
+        and report.provider_longitude == provenance.sampled_longitude
+    )
 
 
 _service: AQHIQueryService | None = None

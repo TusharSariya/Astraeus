@@ -1,27 +1,29 @@
+import type { components as SourceApi } from '../generated/source-api'
+import { capabilityOptions, resolveSeriesOption, variantLabel } from './sourceCapabilities'
 import { SourceTag, sourceAttributes } from './SourceTag'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { attributionOf, type ApiEvidenceField } from '../api'
-import type { LocationPoint, ServedFieldValue } from '../types'
+import { isSourceVariant } from '../sourceContract'
+import { attributionOf } from '../api'
+import type { CatalogSource, LocationPoint, ServedFieldValue } from '../types'
 import { EvidenceGlyph, type InspectedEvidence } from './EvidenceInspector'
 import { resolveFamily } from '../fieldFamily'
 import { EVIDENCE_CLASS_LABELS } from '../evidenceClass'
 
-interface Selector { id: string; source_id: string; field: string; run: string }
-interface Selection { latitude: number; longitude: number; start: string; end: string; selectors: Selector[]; page_size: number }
-interface RunChoice { id: string; run_time: string }
-export interface NativeSeriesRow { selectable_runs?: RunChoice[]; run_inventory_reason?: string; selector_id: string; source_id: string; field: string; requested_run: string; availability: 'available' | 'checked_empty' | 'unknown' | 'unavailable'; reason: string | null; samples: ApiEvidenceField[] }
-export interface NativeSeriesResponse {
-  selection: Selection
-  snapshot: { id: string; selected_at: string; expires_at: string; change_token: string; identities: unknown[] }
-  series: NativeSeriesRow[]; next_cursor: string | null; complete: boolean; notices: string[]
-}
+type Selector = SourceApi['schemas']['Selector']
+type Selection = SourceApi['schemas']['SeriesSelection']
+type RunChoice = SourceApi['schemas']['SelectableRun']
+export type NativeSeriesRow = SourceApi['schemas']['SeriesRow'] & Required<Pick<SourceApi['schemas']['SeriesRow'], 'samples'>>
+export type NativeSeriesResponse = Omit<SourceApi['schemas']['SeriesResponse'], 'series'> & { series: NativeSeriesRow[] }
 export type SharedSeriesSelection = Pick<NativeSeriesResponse, 'selection' | 'snapshot' | 'series' | 'complete'> & { expired: boolean; families?: Record<string, string[]> }
 export function selectedEvidence(evidence: InspectedEvidence, snapshot: NativeSeriesResponse['snapshot']): InspectedEvidence {
-  return { ...evidence, key: `native:${snapshot.id}:${evidence.key}`, details: { ...evidence.details, 'Finite native selection': { id: snapshot.id, selected_at: snapshot.selected_at, expires_at: snapshot.expires_at } } }
+  return { ...evidence, key: `native:${snapshot.id}:${evidence.key}`, details: { ...evidence.details, 'Finite native selection': { id: snapshot.id, selected_at: snapshot.selected_at, expires_at: snapshot.expires_at, identities: snapshot.identities } } }
+}
+function variantIdentity(value: SourceApi['schemas']['SourceVariant'] | null | undefined): string {
+  return JSON.stringify(value ? [value.kind, value.member ?? null, value.statistic ?? null, value.quantile ?? null, value.threshold ?? null, value.comparison ?? null] : null)
 }
 function selectionKey(value: Selection): string {
   return JSON.stringify({ latitude: value.latitude, longitude: value.longitude, start: new Date(value.start).toISOString(), end: new Date(value.end).toISOString(),
-    selectors: value.selectors.map((s) => ({ id: s.id, source_id: s.source_id, field: s.field, run: s.run })), page_size: value.page_size })
+    selectors: value.selectors.map((s) => ({ id: s.id, source_id: s.source_id, field: s.field, run: s.run ?? 'latest', product_id: s.product_id ?? null, variant: s.variant ? { kind: s.variant.kind, member: s.variant.member ?? null, statistic: s.variant.statistic ?? null, quantile: s.variant.quantile ?? null, threshold: s.variant.threshold ?? null, comparison: s.variant.comparison ?? null } : null, level: s.level ?? null })), page_size: value.page_size })
 }
 const endpoint = '/api/experiments/weather/v0/point/series'
 async function post(path: string, body: unknown, signal: AbortSignal): Promise<unknown> {
@@ -30,16 +32,41 @@ async function post(path: string, body: unknown, signal: AbortSignal): Promise<u
   if (!response.ok) throw new Error(`${value?.detail?.code ?? response.status}: ${value?.detail?.message ?? 'Series request failed'}`)
   return value
 }
-function readResponse(value: unknown): NativeSeriesResponse {
+function readableSnapshotIdentities(value: unknown): boolean {
+  // The existing finite Series contract caps a selection at 48 native samples.
+  if (!Array.isArray(value) || value.length > 48) return false
+  const named = (part: unknown) => typeof part === 'string' && part.length > 0
+  return value.every((identity) => {
+    if (!identity || typeof identity !== 'object' || Array.isArray(identity)
+      || !named(identity.source_id) || !named(identity.field)) return false
+    for (const key of ['product_id', 'level', 'native_level', 'station_id', 'artifact_revision']) {
+      if (identity[key] != null && !named(identity[key])) return false
+    }
+    for (const key of ['run_time', 'valid_time']) {
+      if (identity[key] != null && (typeof identity[key] !== 'string' || !Number.isFinite(Date.parse(identity[key])))) return false
+    }
+    for (const [key, limit] of [['sampled_latitude', 90], ['sampled_longitude', 180]] as const) {
+      if (identity[key] != null && (typeof identity[key] !== 'number' || !Number.isFinite(identity[key]) || Math.abs(identity[key]) > limit)) return false
+    }
+    if (identity.variant != null && !isSourceVariant(identity.variant)
+      && !(identity.variant.kind === 'unknown' && isSourceVariant({ ...identity.variant, kind: 'deterministic' }))) return false
+    return true
+  })
+}
+export function readNativeSeriesResponse(value: unknown): NativeSeriesResponse {
   if (!value || typeof value !== 'object') throw new Error('Series response is unreadable')
   const body = value as NativeSeriesResponse
   if (!body.selection || !Array.isArray(body.selection.selectors) || !body.snapshot || typeof body.snapshot.id !== 'string'
+    || !readableSnapshotIdentities(body.snapshot.identities)
     || typeof body.snapshot.change_token !== 'string' || !Number.isFinite(Date.parse(body.snapshot.expires_at))
     || !Array.isArray(body.series) || typeof body.complete !== 'boolean'
     || !(body.next_cursor === null || typeof body.next_cursor === 'string') || !Array.isArray(body.notices)) throw new Error('Series response is unreadable')
   for (const row of body.series) {
     const selector = body.selection.selectors.find((item) => item.id === row.selector_id)
-    if (!selector || selector.source_id !== row.source_id || selector.field !== row.field || selector.run !== row.requested_run || !Array.isArray(row.samples)
+    if (!selector || (selector.product_id != null && selector.product_id !== row.product_id)
+      || (selector.level != null && selector.level !== row.level)
+      || (selector.variant != null && variantIdentity(selector.variant) !== variantIdentity(row.variant))
+      || selector.source_id !== row.source_id || selector.field !== row.field || selector.run !== row.requested_run || !Array.isArray(row.samples)
       || !['available', 'checked_empty', 'unknown', 'unavailable'].includes(row.availability)) throw new Error('Series identity is unreadable')
     if (row.selectable_runs !== undefined && (!Array.isArray(row.selectable_runs) || row.selectable_runs.length > 2 || !row.selectable_runs.every((run) => run && typeof run.id === 'string' && run.id.length > 0 && typeof run.run_time === 'string' && Number.isFinite(Date.parse(run.run_time))))) throw new Error('Run inventory is unreadable')
     const pinned = row.selectable_runs?.find((run) => run.id === selector.run)
@@ -64,6 +91,7 @@ function appendPage(previous: NativeSeriesResponse, page: NativeSeriesResponse):
   return { ...page, series: rows }
 }
 interface Props {
+  catalog?: CatalogSource[]
   jumpTo?: { field: string; source: string; revision: number } | null
   location: LocationPoint; instant: number; fields: ServedFieldValue[]; runs: Record<string, string>; enabled: boolean; focusReady?: boolean; selectionMoving?: boolean
   onLatest: (source: string) => void
@@ -74,11 +102,11 @@ interface Props {
 
 /** Owned by App so switching stage/dock does not discard a finite selection. */
 export function useNativeSeries(props: Props) {
-  const { location, instant, runs, fields, enabled, focusReady = true, selectionMoving = false } = props
+  const { location, instant, runs, enabled, focusReady = true, selectionMoving = false } = props
   const [first, setFirst] = useState('eccc-hrdps|temperature_2m')
   const [second, setSecond] = useState('eccc-hrdps|total_cloud_opacity')
   const [compare, setCompare] = useState(false)
-  const [runPair, setRunPair] = useState<{ source: string; field: string; runs: RunChoice[] } | null>(null)
+  const [runPair, setRunPair] = useState<{ selection: Selector; runs: RunChoice[] } | null>(null)
   const [hours, setHours] = useState(3)
   const [inventoryRows, setInventoryRows] = useState<NativeSeriesRow[]>([])
   const [data, setData] = useState<NativeSeriesResponse | null>(null)
@@ -90,9 +118,10 @@ export function useNativeSeries(props: Props) {
   const generation = useRef(0)
   const lastStarted = useRef<string | null>(null)
   useEffect(() => { if (props.jumpTo) { setFirst(`${props.jumpTo.source}|${props.jumpTo.field}`); setRunPair(null); setCompare(false) } }, [props.jumpTo])
+  const declaredOptions = capabilityOptions(props.catalog ?? [])
   const selectors = [first, second].map((key, i): Selector => {
-    const [source_id, field] = key.split('|')
-    return runPair ? { id: String(i), source_id: runPair.source, field: runPair.field, run: runPair.runs[i].id } : { id: String(i), source_id, field, run: runs[source_id] ?? 'latest' }
+    const chosen = resolveSeriesOption(key, declaredOptions)
+    return runPair ? { ...runPair.selection, id: String(i), run: runPair.runs[i].id } : { ...chosen.selection, id: String(i), run: runs[chosen.selection.source_id] ?? 'latest' }
   })
   const selection: Selection = { latitude: location.latitude, longitude: location.longitude,
     start: new Date(instant).toISOString(), end: new Date(instant + hours * 3600000).toISOString(), selectors, page_size: 12 }
@@ -103,7 +132,7 @@ export function useNativeSeries(props: Props) {
     const version = ++generation.current
     setBusy(true); setError(null); setCheck(null)
     try {
-      const page = readResponse(await post(endpoint, request, controller.signal))
+      const page = readNativeSeriesResponse(await post(endpoint, request, controller.signal))
       if (version !== generation.current) return
       // Coordinates and selectors are verified, not trusted from a late response.
       if (selectionKey(page.selection) !== signature) throw new Error('Response changed the requested Focus or selectors')
@@ -153,15 +182,19 @@ export function useNativeSeries(props: Props) {
     } catch (failure) { if (version === generation.current && !controller.signal.aborted) setCheck(`unknown: ${String(failure)}`) }
     finally { if (version === generation.current) setBusy(false) }
   }
-  const options = new Map([[first, first.replace('|', ' · ')], [second, second.replace('|', ' · ')]])
-  for (const field of fields) if (field.attribution.sourceId && field.attribution.fieldKey) {
-    const key = `${field.attribution.sourceId}|${field.attribution.fieldKey}`
-    options.set(key, key.replace('|', ' · '))
+  const options = new Map(declaredOptions.map((option) => [option.key, option]))
+  for (const key of [first, second]) {
+    const selected = resolveSeriesOption(key, declaredOptions)
+    if (!declaredOptions.some((option) => JSON.stringify(option.selection) === JSON.stringify(selected.selection))) options.set(key, selected)
   }
-  const select = (label: string, value: string, setter: (value: string) => void) => <label>{label}<select value={value} onChange={(event) => { setRunPair(null); setter(event.target.value) }}>{[...options].map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
+  const select = (label: string, value: string, setter: (value: string) => void) => {
+    const selected = resolveSeriesOption(value, declaredOptions)
+    const displayValue = declaredOptions.find((option) => JSON.stringify(option.selection) === JSON.stringify(selected.selection))?.key ?? value
+    return <label>{label}<select aria-label={label} name={label} value={displayValue} onChange={(event) => { setRunPair(null); setter(event.target.value) }}>{[...options.values()].map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select><small>{selected.reason}</small></label>
+  }
   const runInventories = new Map<string, { choices: RunChoice[]; reason: string }>()
   for (const row of inventoryRows) runInventories.set(row.source_id, { choices: row.selectable_runs ?? [], reason: row.run_inventory_reason ?? 'Selectable runs are not supplied by this reader' })
-  const firstSource = first.split('|')[0]
+  const firstSource = selectors[0].source_id
   const pairChoices = runInventories.get(firstSource)?.choices ?? []
   return <section className="native-series" aria-label="Native Series">
     <div className="series-controls"><button aria-pressed={!compare} onClick={() => setCompare(false)}>Overview</button><button aria-pressed={compare} onClick={() => setCompare(true)}>Temporary Compare</button>
@@ -178,8 +211,8 @@ export function useNativeSeries(props: Props) {
         {pinned && pinned !== previous?.id && <option value={pinned}>Pinned · {pinned}{inventory.choices.some((run) => run.id === pinned) ? '' : ' · Run no longer available in this inventory'}</option>}
       </select></label><p>{inventory.reason}</p>{!previous && <p>No named previous run is established by this inventory.</p>}</div>
     })}</div>}
-    {compare && !runPair && <button disabled={busy || expired || pairChoices.length !== 2} onClick={() => setRunPair({ source: firstSource, field: first.split('|')[1], runs: pairChoices })}>Compare latest and previous runs of Series A</button>}
-    {runPair && <p>Temporary same-field comparison · {runPair.field} · {runPair.source} · {runPair.runs.map((run) => run.id).join(' / ')}. Map and Activity are unchanged. <button onClick={() => setRunPair(null)}>Stop run comparison</button></p>}
+    {compare && !runPair && <button disabled={busy || expired || pairChoices.length !== 2} onClick={() => setRunPair({ selection: selectors[0], runs: pairChoices })}>Compare latest and previous runs of Series A</button>}
+    {runPair && <p>Temporary same-field comparison · {runPair.selection.field} · {runPair.selection.source_id} · {runPair.runs.map((run) => run.id).join(' / ')}. Map and Activity are unchanged. <button onClick={() => setRunPair(null)}>Stop run comparison</button></p>}
     <p>Native samples only. Separate value axes preserve each field’s units; spaces between samples are not interpolated. Compare is temporary.</p>
     {!runPair && selectors.filter((s) => s.run !== 'latest').map((s) => <p key={s.id}>Pinned {s.source_id}: {s.run}. <button onClick={() => props.onLatest(s.source_id)}>Use Latest available for {s.source_id}</button></p>)}
     <div role="status">{selectionMoving && <p>Pause playback to read native Series for this selection.</p>}{!focusReady && <p>Focus is awaiting registered geometry; no point values are shown.</p>}{busy && 'Reading selected native evidence…'}{error && <p>Read failed; no replacement was applied. {error}</p>}{check && <p>{check}</p>}{expired && <p>Selection expired. Refresh Series to read again.</p>}</div>
@@ -197,7 +230,7 @@ export function NativeTrack({ row, start, end, onInspect, hidePlot = false }: { 
   const units = new Set(numeric.map(({ sample }) => sample.provenance?.normalized_units))
   const values = numeric.map(({ sample }) => Number(sample.value))
   const min = Math.min(...values), max = Math.max(...values)
-  return <section className="native-track"><h3>{row.field} · <SourceTag id={row.source_id} /> · {row.requested_run}</h3><p>{row.availability}: {row.reason}</p>
+  return <section className="native-track"><h3>{row.field} · <SourceTag id={row.source_id} /> · {row.requested_run}</h3><p>{row.availability}: {row.reason}</p><p>Product {row.product_id ?? 'not supplied'} · {row.variant ? variantLabel(row.variant) : 'Variant not supplied'} · Level {row.level ?? 'not supplied'}</p>
     {!hidePlot && values.length > 0 && units.size === 1 && typeof [...units][0] === 'string' && <figure><svg viewBox="0 0 720 160" role="img" aria-label={`${row.field} native samples; exact values and times in the following table`}>
       <path d="M65 12V125H700" fill="none" stroke="currentColor" />
       <text x="0" y="22">{max.toPrecision(4)}</text><text x="0" y="118">{min.toPrecision(4)}</text>
@@ -208,7 +241,7 @@ export function NativeTrack({ row, start, end, onInspect, hidePlot = false }: { 
       {readings.map(({ sample, a }, i) => {
         const allowed = a && a.evidenceClass !== 'unrecognised' && !a.derivationRefused && !a.provenanceUnmodelled && !a.uncatalogued
         const text = allowed && sample.value !== null ? String(sample.value) : 'Unavailable'
-        return <tr key={i}><th scope="row">{a?.validTime}</th><td>{text} {sample.provenance?.normalized_units as string}<small>{a?.qualityFlags.join(', ')}</small></td><td>{a?.runTime ?? 'No run supplied'}<small>{String(sample.provenance?.data_mode ?? 'Mode unknown')} · {a?.phase ?? 'Phase not supplied'} · {a?.member ? `Member ${a.member}` : a?.ensemble ? JSON.stringify(a.ensemble) : 'No ensemble identity'}</small></td><td>{a && <><EvidenceGlyph kind={a.evidenceClass} />{EVIDENCE_CLASS_LABELS[a.evidenceClass]}</>}<button aria-label={`Inspect ${row.field} at ${a?.validTime} from ${row.source_id}, run ${a?.runTime ?? row.requested_run}, track ${row.selector_id}`} onClick={(event) => onInspect({ key: `series:${row.selector_id}:${i}:${a?.validTime}`, label: row.field, text, attribution: a ?? undefined }, event.currentTarget)}>Inspect {row.field} at {a?.validTime}</button></td></tr>
+        return <tr key={i}><th scope="row">{a?.validTime}</th><td>{text} {sample.provenance?.normalized_units as string}<small>{a?.qualityFlags.join(', ')}</small></td><td>{a?.runTime ?? 'No run supplied'}<small>Level {sample.provenance?.vertical_level ?? 'not supplied'} · Station {sample.provenance?.native_report?.station_id ?? 'not supplied'}</small><small>Sampled coordinates: {sample.provenance?.sampled_latitude ?? 'not supplied'}, {sample.provenance?.sampled_longitude ?? 'not supplied'} · Revision {sample.provenance?.artifact_revision ?? 'not supplied'}</small><small>{String(sample.provenance?.data_mode ?? 'Mode unknown')} · {a?.phase ?? 'Phase not supplied'} · {a?.member ? `Member ${a.member}` : a?.ensemble ? JSON.stringify(a.ensemble) : 'No ensemble identity'}</small></td><td>{a && <><EvidenceGlyph kind={a.evidenceClass} />{EVIDENCE_CLASS_LABELS[a.evidenceClass]}</>}<button aria-label={`Inspect ${row.field} at ${a?.validTime} from ${row.source_id}, run ${a?.runTime ?? row.requested_run}, track ${row.selector_id}`} onClick={(event) => onInspect({ key: `series:${row.selector_id}:${i}:${a?.validTime}`, label: row.field, text, attribution: a ?? undefined, details: { 'Native selection identity': { source_id: row.source_id, product_id: row.product_id ?? null, field: row.field, variant: row.variant ?? null, level: row.level ?? null, requested_run: row.requested_run }, 'Returned native provenance': sample.provenance } }, event.currentTarget)}>Inspect {row.field} at {a?.validTime}</button></td></tr>
       })}
     </tbody></table></details>
   </section>

@@ -74,7 +74,8 @@
       "noaa-goes-east"
     ],
     "weather radar rate type and extrapolation": [
-      "eccc-radar"
+      "eccc-radar",
+      "eccc-holyrood-cashr-dpqpe"
     ],
     "ten-minute lightning density": [
       "eccc-lightning"

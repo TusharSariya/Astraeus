@@ -209,6 +209,9 @@ def test_default_bounded_decoder_serves_fixed_payload_without_injection():
     )
     fields = service.point_fields(47.5615, -52.7126, clocks.wall)
     assert fields[0].value == 12.4 and fields[0].provenance.swob_acquisition.body_bytes > 0
+    snapshot = service.cached_entries_for(47.5615, -52.7126)
+    assert len(snapshot) == 1
+    assert service.point_fields_from_entry(snapshot[0], 47.5615, -52.7126, clocks.wall) == fields
     assert len(calls) == 1
 
 
@@ -362,3 +365,158 @@ def test_request_envelope_covers_a_station_inside_corrected_distance_boundary():
     fields = query_service(handler, clocks).point_fields(47.5615, -52.7126, clocks.wall)
     bbox = [float(value) for value in parse_qs(urlparse(str(requested[0].url)).query)["bbox"][0].split(",")]
     assert bbox[2] >= -51.9126 and fields[0].provenance.native_report.provider_report_id == "MSC-EAST"
+
+
+# Spec-Refs: swob-demand-query/specs/demand-query-cache (native identity,
+# finite expiry, coalesced misses); GOV-SPEC-004, GOV-SPEC-006.
+def test_explicit_refresh_replaces_fresh_snapshot_without_retiming_or_qc_reinterpretation():
+    clocks, requests = Clocks(), []
+
+    def handler(request):
+        requests.append(request)
+        item = feature(temperature=12.4 if len(requests) == 1 else 14.2, temperature_qa="suspect")
+        item["properties"].pop("dwpt_temp")
+        return httpx.Response(200, json=fixture_document(item), headers={"Cache-Control": "max-age=60"})
+
+    service = query_service(handler, clocks)
+    selected = clocks.wall
+    first = service.point_fields(47.5615, -52.7126, selected)
+    clocks.tick(3)
+    refreshed = service.point_fields(47.5615, -52.7126, selected, refresh=True)
+    assert len(requests) == 2
+    assert first[0].value == 12.4 and refreshed[0].value == 14.2
+    assert refreshed[1].value is None
+    assert refreshed[0].provenance.quality.status == "unknown"
+    assert "provider_quality:suspect" in refreshed[0].provenance.quality.flags
+    assert refreshed[0].provenance.valid_time == selected
+    assert refreshed[0].provenance.retrieval_time == clocks.wall
+    assert refreshed[0].provenance.native_report == first[0].provenance.native_report
+    assert refreshed[0].provenance.original_units == "degC"
+    assert service.point_fields(47.5615, -52.7126, selected)[0].value == 14.2
+    assert len(requests) == 2
+
+
+@pytest.mark.parametrize("expires_during_refresh", [False, True])
+def test_failed_explicit_refresh_keeps_only_still_fresh_old_entry(expires_during_refresh):
+    clocks, requests = Clocks(), []
+
+    def handler(request):
+        requests.append(request)
+        if len(requests) > 1:
+            if expires_during_refresh:
+                clocks.tick(61)
+            return httpx.Response(503)
+        return httpx.Response(200, json=fixture_document(feature()), headers={"Cache-Control": "max-age=60"})
+
+    service = query_service(handler, clocks)
+    selected = clocks.wall
+    old = service.entry_for(47.5615, -52.7126, selected)
+    with pytest.raises(SwobQueryUnavailable) as caught:
+        service.entry_for(47.5615, -52.7126, selected, refresh=True)
+    if expires_during_refresh:
+        assert service.cached_entries_for(47.5615, -52.7126) == ()
+        assert caught.value.outcome.reason == "refresh_failed"
+        assert caught.value.outcome.expired_acquisition == old.acquisition
+        assert caught.value.outcome.values_withheld
+    else:
+        assert service.entry_for(47.5615, -52.7126, selected) is old
+        assert caught.value.outcome.expired_acquisition is None
+    assert len(requests) == 2
+
+
+def test_concurrent_explicit_refresh_coalesces_and_normal_hit_remains_available(monkeypatch):
+    from concurrent.futures import Future
+    from threading import Event
+    import weather_api.swob_query as module
+
+    entered, release, waiter = Event(), Event(), Event()
+
+    class ObservedFuture(Future):
+        def result(self, timeout=None):
+            waiter.set()
+            return super().result(timeout)
+
+    monkeypatch.setattr(module, "Future", ObservedFuture)
+    clocks, requests = Clocks(), []
+
+    def handler(request):
+        requests.append(request)
+        if len(requests) > 1:
+            entered.set()
+            assert release.wait(5)
+        return httpx.Response(200, json=fixture_document(feature(temperature=10 + len(requests))),
+                              headers={"Cache-Control": "max-age=60"})
+
+    service = query_service(handler, clocks)
+    selected = clocks.wall
+    old = service.entry_for(47.5615, -52.7126, selected)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(service.entry_for, 47.5615, -52.7126, selected, refresh=True)
+        try:
+            assert entered.wait(5)
+            second = pool.submit(service.entry_for, 47.5615, -52.7126, selected, refresh=True)
+            assert waiter.wait(5)
+            assert service.entry_for(47.5615, -52.7126, selected) is old
+        finally:
+            release.set()
+        assert first.result() is second.result()
+    assert len(requests) == 2
+
+
+def test_native_planning_snapshot_is_location_scoped_finite_and_cache_only():
+    clocks, requests = Clocks(), []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json=fixture_document(feature(time=request.url.params["datetime"])),
+                              headers={"Cache-Control": "max-age=60"})
+
+    service = query_service(handler, clocks)
+    selected = clocks.wall
+    assert service.cached_entries_for(47.5615, -52.7126) == ()
+    late = service.entry_for(47.5615, -52.7126, selected + timedelta(minutes=7))
+    early = service.entry_for(47.5615, -52.7126, selected)
+    service.entry_for(47.6, -52.7, selected + timedelta(minutes=4))
+    snapshot = service.cached_entries_for(47.5615, -52.7126)
+    assert snapshot == (early, late)
+    assert len(requests) == 3
+    fields = service.point_fields_from_entry(snapshot[1], 47.5615, -52.7126, selected + timedelta(minutes=7))
+    assert fields[0].provenance.valid_time == selected + timedelta(minutes=7)
+    with pytest.raises(SwobQueryUnavailable, match="does not match"):
+        service.point_fields_from_entry(early, 47.6, -52.7, selected)
+    with pytest.raises(SwobQueryUnavailable, match="does not match"):
+        service.point_fields_from_entry(early, 47.5615, -52.7126, selected + timedelta(minutes=1))
+    clocks.tick(61)
+    assert service.cached_entries_for(47.5615, -52.7126) == ()
+    with pytest.raises(SwobQueryUnavailable, match="expired"):
+        service.point_fields_from_entry(early, 47.5615, -52.7126, selected)
+    assert len(requests) == 3
+
+
+# Spec-Refs: swob-demand-query native station/report identity and quality tokens.
+def test_native_msc_value_identifier_and_value_quality_tokens_preserve_wind_gaps():
+    item = feature()
+    item["id"] = "2026-09-07-2300-CAJW-AUTO-swob.xml"
+    properties = item["properties"]
+    properties.pop("wmo_id")
+    properties["msc_id-value"] = "8403603"
+    properties["dwpt_temp-data_flag-value"] = 1
+    properties["mslp-data_flag-value"] = 1
+    properties.pop("wnd_spd")
+    properties.pop("wnd_dir")
+    properties["avg_wnd_spd_10m_pst10mts"] = 13.4
+    properties["avg_wnd_dir_10m_pst10mts"] = 226
+    row, = normalize(fixture_document(item))
+    assert row["station_id"] == "8403603"
+    assert row["provider_report_id"] == item["id"]
+    assert row["station_metadata"] == {"msc_id-value": "8403603"}
+    assert row["field_quality_tokens"]["dew_point_2m"] == "1"
+    assert row["field_quality_tokens"]["mean_sea_level_pressure"] == "1"
+    assert row["values"]["wind_speed_10m"] is None
+    assert row["values"]["wind_direction_10m"] is None
+    clocks = Clocks()
+    service = query_service(lambda request: httpx.Response(200, json=fixture_document(item)), clocks)
+    fields = service.point_fields(47.5615, -52.7126, clocks.wall)
+    assert all(field.provenance.quality.status == "unknown" for field in fields)
+    assert "provider_quality:1" in fields[1].provenance.quality.flags
+    assert fields[1].value == 8.2

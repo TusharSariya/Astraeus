@@ -28,7 +28,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 
 from .fixtures import (
     AVALON_CORE_BOUNDS,
@@ -154,6 +154,9 @@ PRODUCT_SOURCE_IDS = {
     "GFS": "noaa-gfs",
     "NOAA": "noaa-gfs",
     "GFS Wave": "openmeteo-gfs-wave",
+    "CAMS AOD": "openmeteo-cams-aod",
+    "SWOB": "eccc-swob",
+    "AIFS Single": "ecmwf-aifs-single",
     "IFS": "ecmwf-ifs",
     "ECMWF": "ecmwf-ifs",
     "ICON": "dwd-icon-global",
@@ -277,6 +280,15 @@ def require_core_coverage(latitude: float, longitude: float) -> None:
 app.include_router(registry_router, prefix=PREFIX)
 app.include_router(series_router, prefix=PREFIX)
 app.include_router(activity_router, prefix=PREFIX)
+
+
+def require_live_native_images():
+    if configured_mode() != LIVE_MODE:
+        raise HTTPException(503, "Native image acquisition is unavailable in this data mode", headers={"Cache-Control": "no-store"})
+
+
+from .holyrood_api import router as holyrood_router
+app.include_router(holyrood_router, prefix=PREFIX, dependencies=[Depends(require_live_native_images)])
 
 
 @app.get(f"{PREFIX}/catalog", response_model=CatalogResponse)
@@ -1276,9 +1288,10 @@ def _live_point(
         observations, notices = demand_metar()
         unavailable = []
         try:
-            from .aqhi_query import AqhiQueryUnavailable, aqhi_query_service  # noqa: PLC0415
+            from .aqhi_query import AqhiQueryUnavailable  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            aqhi = aqhi_query_service().point_field(latitude, longitude, time)
+            aqhi, = source_readers()["eccc-aqhi"].read_point(latitude, longitude, time)
             observations.append(aqhi)
             notices.append(
                 f"eccc-aqhi station {aqhi.provenance.native_report.station_id} observation at "
@@ -1290,9 +1303,10 @@ def _live_point(
             if isinstance(error, AqhiQueryUnavailable):
                 unavailable.append(error.outcome)
         try:
-            from .swob_query import SwobQueryUnavailable, swob_query_service  # noqa: PLC0415
+            from .swob_query import SwobQueryUnavailable  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            swob = swob_query_service().point_fields(latitude, longitude, time)
+            swob = source_readers()["eccc-swob"].read_point(latitude, longitude, time)
             observations.extend(swob)
             report = swob[0].provenance.native_report
             notices.append(
@@ -1308,6 +1322,7 @@ def _live_point(
 
     def demand_consensus() -> tuple[list[EvidenceField], object, list[str], list[str], set[str]]:
         """Feed the unchanged consensus reader with independently queried sources."""
+        from .source_status import observe_call
         calls = {
             "eccc-hrdps": lambda: __import__("weather_api.hrdps_query", fromlist=["hrdps_query_coordinator"]).hrdps_query_coordinator().point_fields(latitude, longitude, time),
             "noaa-gfs": lambda: __import__("weather_api.gfs_query", fromlist=["gfs_query_coordinator"]).gfs_query_coordinator().point_fields(latitude, longitude, time),
@@ -1316,7 +1331,7 @@ def _live_point(
         demanded: list[EvidenceField] = []
         notices: list[str] = []
         with ThreadPoolExecutor(max_workers=len(calls)) as executor:
-            futures = {executor.submit(call): source for source, call in calls.items()}
+            futures = {executor.submit(observe_call, source, call): source for source, call in calls.items()}
             # All calls are already submitted concurrently. Consume them in
             # declaration order so cache repeats retain identical field and
             # contributor ordering even when sources finish in another order.
@@ -1326,18 +1341,31 @@ def _live_point(
                     demanded.extend(source_fields)
                 except Exception as error:
                     LOGGER.info("consensus demand source %s unavailable: %s", source, type(error).__name__)
-                    notices.append(f"{source} demand evidence is unavailable and was omitted independently: {error}")
+                    notices.append(f"{source} demand evidence is unavailable and was omitted independently")
 
         from .science import build_consensus  # noqa: PLC0415
         candidates = consensus_candidates_from_fields(demanded)
         consensus = build_consensus(candidates)
         return demanded, consensus, sorted({field.provenance.source_id for field in demanded}), notices, {item.source_id for item in candidates}
 
+    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB"}:
+        from .source_delivery import source_readers
+        source_id = "eccc-swob" if product.upper() == "SWOB" else "ecmwf-aifs-single" if product.upper() == "AIFS SINGLE" else "ecmwf-ifs"
+        try:
+            fields = list(source_readers()[source_id].read_point(latitude, longitude, time))
+        except Exception:
+            fields = []
+        return PointResponse(data_mode=DataMode.LIVE if fields else DataMode.UNAVAILABLE,
+            latitude=latitude, longitude=longitude, valid_time=time, fields=fields,
+            selection=Selection(mode="evidence_only", selected_source_id=None, selected_product_id=None,
+                badge=f"{product} selected" if fields else f"{product} unavailable",
+                reason="Exact native experimental evidence; source admission remains unchanged" if fields else "No validated native evidence for this selected time and location"),
+            notices=["The selected source retains its own native time, units and provenance; no other model or time is substituted"])
     if product and product.upper() == "HRDPS":
         try:
-            from .hrdps_query import hrdps_query_coordinator  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            fields, _consensus, _sources = hrdps_query_coordinator().point_fields(latitude, longitude, time)
+            fields = list(source_readers()["eccc-hrdps"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.exception("HRDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
             return _unavailable_point(
@@ -1367,9 +1395,10 @@ def _live_point(
         )
     if product and product.upper() == "RDPS":
         try:
-            from .rdps_query import RDPSQueryUnavailable, rdps_query_coordinator  # noqa: PLC0415
+            from .rdps_query import RDPSQueryUnavailable  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            fields, _consensus, _sources = rdps_query_coordinator().point_fields(latitude, longitude, time)
+            fields = list(source_readers()["eccc-rdps"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.exception("RDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
             return _unavailable_point(
@@ -1399,9 +1428,10 @@ def _live_point(
         )
     if product and product.upper() == "GDPS":
         try:
-            from .gdps_query import GDPSQueryUnavailable, gdps_query_coordinator  # noqa: PLC0415
+            from .gdps_query import GDPSQueryUnavailable  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            fields, _consensus, _sources = gdps_query_coordinator().point_fields(latitude, longitude, time)
+            fields = list(source_readers()["eccc-gdps"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.exception("GDPS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
             return _unavailable_point(
@@ -1431,11 +1461,13 @@ def _live_point(
         )
     if product and product.upper() == "GEFS":
         try:
-            from .gefs_query import gefs_query_coordinator
-            fields, _consensus, _sources = gefs_query_coordinator().point_fields(
-                latitude, longitude, time, member=member, statistic=statistic,
-                quantile=quantile, threshold=threshold, comparison=comparison,
-            )
+            from .source_contract import SourceVariant
+            from .source_delivery import source_readers
+            variant = (SourceVariant(kind="derived_statistic", statistic=statistic, quantile=quantile,
+                threshold=threshold, comparison=comparison) if statistic is not None else
+                SourceVariant(kind="member", member=member) if member is not None else None)
+            fields = list(source_readers()["noaa-gefs"].read_point(latitude, longitude, time,
+                variant=variant, member_filter=member if statistic is not None else None))
         except Exception as error:
             LOGGER.exception("GEFS demand point failed")
             return _unavailable_point(latitude, longitude, time,
@@ -1455,9 +1487,9 @@ def _live_point(
             notices=["GEFS members remain separate and preserve provider member identities; no member averaging was substituted"])
     if product and product.upper() == "GFS":
         try:
-            from .gfs_query import gfs_query_coordinator  # noqa: PLC0415
+            from .source_delivery import source_readers  # noqa: PLC0415
 
-            fields, _consensus, _sources = gfs_query_coordinator().point_fields(latitude, longitude, time)
+            fields = list(source_readers()["noaa-gfs"].read_point(latitude, longitude, time))
         except Exception as error:
             LOGGER.exception("GFS demand point failed at %s,%s for %s", latitude, longitude, time.isoformat())
             return _unavailable_point(
@@ -1498,6 +1530,23 @@ def _live_point(
             fields=fields + observations,
             notices=[f"GFS values are from native timestep {actual_time.isoformat()}; no temporal interpolation was applied", *observation_notices],
         )
+    if product and product.upper() == "CAMS AOD":
+        from .source_delivery import source_readers  # noqa: PLC0415
+
+        try:
+            fields = list(source_readers()["openmeteo-cams-aod"].read_point(latitude, longitude, time))
+        except Exception:
+            return PointResponse(data_mode=DataMode.UNAVAILABLE, latitude=latitude, longitude=longitude,
+                valid_time=time, fields=[], selection=Selection(mode="evidence_only", selected_source_id=None,
+                    selected_product_id=None, badge="CAMS AOD unavailable",
+                    reason="The exact selected intermediary hour has no validated CAMS AOD response"),
+                notices=["CAMS AOD acquisition is unavailable; no other air-quality product or neighbouring time was substituted"])
+        return PointResponse(data_mode=DataMode.LIVE, latitude=latitude, longitude=longitude, valid_time=time,
+            fields=fields, selection=Selection(mode="evidence_only", selected_source_id=None,
+                selected_product_id=None, badge="CAMS AOD via Open-Meteo",
+                reason="Reprocessed aerosol optical depth evidence is not a display primary"),
+            notices=["CAMS AOD uses the exact hourly label returned by Open-Meteo; native CAMS is three-hourly",
+                     "The intermediary series does not expose a producer run for this value; metadata context is not assigned as its run"])
     if product and product.upper() == "GFS WAVE":
         try:
             from .openmeteo_gfs_wave_query import openmeteo_gfs_wave_query_service  # noqa: PLC0415
@@ -2382,11 +2431,16 @@ def get_point(
             member=member, statistic=statistic,
         )
     if mode == LIVE_MODE:
-        return _live_point(
+        response = _live_point(
             latitude, longitude, time, product,
             member=member, statistic=statistic,
             quantile=quantile, threshold=threshold, comparison=comparison,
         )
+        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name != "SWOB"), "GDPS", "GEFS"}:
+            from .observation_companions import with_aqhi_observation  # noqa: PLC0415
+
+            response = with_aqhi_observation(response)
+        return response
     return _unavailable_point(latitude, longitude, time, reason="WEATHER_DATA_MODE is not set to live or fixture", flags=["data_mode_unconfigured"], notices=["WEATHER_DATA_MODE is missing or malformed; this deployment fails closed"])
 
 

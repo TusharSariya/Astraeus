@@ -119,8 +119,8 @@ it('pins a named previous run and keeps temporary two-run comparison out of brow
   await userEvent.click(screen.getByRole('button', { name: 'Compare latest and previous runs of Series A' }))
   await screen.findByRole('img', { name: /Same-field run overlay/ })
   expect(calls.at(-1)?.body.selectors).toEqual([
-    { id: '0', source_id: 'eccc-hrdps', field: 'temperature_2m', run: 'new' },
-    { id: '1', source_id: 'eccc-hrdps', field: 'temperature_2m', run: 'old' },
+    { id: '0', source_id: 'eccc-hrdps', field: 'temperature_2m', run: 'new', product_id: null, variant: null, level: null },
+    { id: '1', source_id: 'eccc-hrdps', field: 'temperature_2m', run: 'old', product_id: null, variant: null, level: null },
   ])
   expect(runControl).toHaveValue('old')
   const count = calls.length

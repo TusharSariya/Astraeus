@@ -23,6 +23,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import Field, ValidationError, field_validator, model_validator
 
 from .models import EvidenceField, StrictModel, catalogue_key_for
+from .source_contract import SourceVariant
 
 TTL_SECONDS = 300
 MAX_SELECTIONS = 16
@@ -37,6 +38,9 @@ class Selector(StrictModel):
     source_id: str = Field(min_length=1, max_length=100)
     field: str = Field(min_length=1, max_length=100)
     run: str = Field(default='latest', max_length=100)
+    product_id: str | None = Field(default=None, min_length=1, max_length=100)
+    variant: SourceVariant | None = None
+    level: str | None = Field(default=None, min_length=1, max_length=100)
 
     @field_validator('field')
     @classmethod
@@ -88,6 +92,9 @@ class SeriesRow(StrictModel):
     source_id: str
     field: str
     requested_run: str
+    product_id: str | None = None
+    variant: SourceVariant | None = None
+    level: str | None = None
     selectable_runs: list[SelectableRun] = Field(default_factory=list, max_length=2)
     run_inventory_reason: str = "This native reader does not expose a selectable run inventory"
     availability: Literal['available', 'checked_empty', 'unknown', 'unavailable']
@@ -100,6 +107,14 @@ class ReadingIdentity(StrictModel):
     field: str
     run_time: datetime | None
     artifact_revision: str | None
+    product_id: str | None = None
+    variant: SourceVariant | None = None
+    level: str | None = None
+    native_level: str | None = None
+    valid_time: datetime | None = None
+    station_id: str | None = None
+    sampled_latitude: float | None = None
+    sampled_longitude: float | None = None
 
 
 class Snapshot(StrictModel):
@@ -137,112 +152,91 @@ def fail(code: str, message: str, *, status: int = 422, restart: bool = False):
 def _row(selector: Selector, availability: str, reason: str, samples=None) -> SeriesRow:
     return SeriesRow(selector_id=selector.id, source_id=selector.source_id,
                      field=selector.field, requested_run=selector.run,
+                     product_id=selector.product_id, variant=selector.variant, level=selector.level,
                      availability=availability, reason=reason, samples=samples or [])
 
 
 class NativeForecastReader:
-    """Discover native inventory, then use the existing exact-time point seam.
-
-    No /point fanout (which would query unrelated observations), hourly timeline,
-    persistent store, or invented samples. Missing advertised fields are unknown,
-    not proof that the provider published an absence.
-    """
+    """Consume narrow source plans under the existing aggregate Series bounds."""
     def __call__(self, selection: SeriesSelection, stop: Callable[[], bool]) -> list[SeriesRow]:
         from .store import configured_mode, LIVE_MODE
         if configured_mode() != LIVE_MODE:
             return [_row(s, 'unavailable', 'Native Series requires live source queries; no fixture fallback') for s in selection.selectors]
-        from .hrdps_query import hrdps_query_coordinator
-        from .rdps_query import rdps_query_coordinator
-        from .gdps_query import gdps_query_coordinator
-        from .gfs_query import gfs_query_coordinator
-        factories = {'eccc-hrdps': hrdps_query_coordinator, 'eccc-rdps': rdps_query_coordinator,
-                     'eccc-gdps': gdps_query_coordinator, 'noaa-gfs': gfs_query_coordinator}
-        rows: list[SeriesRow] = []
-        inventory = {}
-        runs = {}
-        queried = {}
-        reads = 0
+        from .source_delivery import reading_identity, source_readers
         from .native_runs import RunUnavailable
+        readers = source_readers()
+        rows, plans, queried = [], {}, {}
+        reads = 0
         for selector in selection.selectors:
             if stop():
                 fail('snapshot_unreadable', 'Native Series acquisition deadline exceeded', status=503)
-            factory = factories.get(selector.source_id)
-            if factory is None:
+            reader = readers.get(selector.source_id)
+            if reader is None:
                 rows.append(_row(selector, 'unavailable', 'Native Series acquisition is not implemented for this source'))
+                continue
+            # Optional dimensions preserve old source/field/run clients while
+            # refusing any explicitly requested unsupported native identity.
+            explicit = any(value is not None for value in (selector.product_id, selector.variant, selector.level))
+            capability = next((item for item in reader.descriptors() if item.field == selector.field
+                and selector.product_id in (None, item.product_id)
+                and (selector.variant is None or selector.variant in item.variants)
+                and (selector.level is None or selector.level in item.levels)), None)
+            if explicit and capability is None:
+                rows.append(_row(selector, 'unavailable', 'The selected product, field, variant or level has no implemented native delivery path'))
                 continue
             selectable = []
             run_reason = 'This native reader does not expose a selectable run inventory'
             def result(availability, reason, samples=()):
                 row = _row(selector, availability, reason, samples)
-                row.selectable_runs = selectable
-                row.run_inventory_reason = run_reason
+                row.product_id = reader.product_id
+                if capability is not None:
+                    row.variant = selector.variant or (capability.variants[0] if len(capability.variants) == 1 else None)
+                    row.level = selector.level or (capability.levels[0] if len(capability.levels) == 1 else None)
+                row.selectable_runs, row.run_inventory_reason = selectable, run_reason
                 return row
             try:
-                coordinator = factory()
-                supports_runs = callable(getattr(coordinator, 'run_inventory', None))
-                if selector.run != 'latest' and not supports_runs:
-                    rows.append(result('unavailable', 'This delivery path cannot pin that named run; choose Latest available explicitly'))
+                key = (selector.source_id, reader.product_id, selector.run)
+                if key not in plans:
+                    plans[key] = reader.plan_series(selection.start, selection.end, run=selector.run)
+                plan = plans[key]
+                if plan is None:
+                    rows.append(result('unavailable', 'This point reader has no native Series delivery path'))
                     continue
-                if supports_runs:
-                    if selector.source_id not in runs:
-                        runs[selector.source_id] = coordinator.run_inventory()
-                    declared = runs[selector.source_id]
-                    selectable = [SelectableRun(id=run.provider_run_id, run_time=run.run_time) for run in declared]
-                    run_reason = 'Latest/previous from the existing bounded source directory listing; listed paths are validated on acquisition. Missing older dated roots are not inferred.'
-                    if selector.run != 'latest' and selector.run not in {run.id for run in selectable}:
-                        raise RunUnavailable('Run no longer available in the bounded latest/previous inventory')
-                    times_to_run = {}
-                    # Walk newest first: older-run segments fill only the times
-                    # the newer inventory does not cover, with actual runs kept.
-                    for run in selectable:
-                        if selector.run not in ('latest', run.id):
-                            continue
-                        key = (selector.source_id, run.id)
-                        if key not in inventory:
-                            inventory[key] = coordinator.run_times(run.id)
-                        for stamp in inventory[key]:
-                            if selection.start <= stamp < selection.end:
-                                times_to_run.setdefault(stamp, run)
-                    stamps = sorted(times_to_run)
-                else:
-                    key = (selector.source_id, 'latest')
-                    if key not in inventory:
-                        stamps = coordinator.timeline_times(selection.start)
-                        if selector.source_id == 'noaa-gfs':
-                            stamps, _receipt = stamps
-                        inventory[key] = sorted({stamp for stamp in stamps if selection.start <= stamp < selection.end})
-                    stamps = inventory[key]
-                    times_to_run = {}
-                keys = [(selector.source_id, times_to_run[stamp].id if stamp in times_to_run else 'latest', stamp) for stamp in stamps]
+                selectable = [SelectableRun(id=run.provider_run_id, run_time=run.run_time) for run in plan.runs]
+                run_reason = plan.reason
+                keys = [(selector.source_id, reader.product_id, frame.run_id, frame.valid_time) for frame in plan.frames]
                 if reads + sum(key not in queried for key in keys) > MAX_NATIVE_READS:
                     fail('query_limit_exceeded', 'Selection exceeds 12 native source/run/timestamp reads; shorten the window')
-                if not stamps:
+                if not plan.frames:
                     rows.append(result('unknown', 'No native timestamps in the consulted run listing for this window; a pinned run is not substituted'))
                     continue
-                samples = []
-                incomplete = False
-                for stamp, key in zip(stamps, keys):
+                samples, incomplete = [], False
+                for frame, key in zip(plan.frames, keys):
                     if stop():
                         fail('snapshot_unreadable', 'Native Series acquisition deadline exceeded', status=503)
                     if key not in queried:
                         reads += 1
-                        options = {'run_id': key[1]} if supports_runs else {}
-                        queried[key], _, _ = coordinator.point_fields(selection.latitude, selection.longitude, stamp, **options)
+                        queried[key] = reader.read_point(selection.latitude, selection.longitude, frame.valid_time, run=frame.run_id)
                     matching = [field for field in queried[key] if field.key == selector.field
                                 and field.provenance.source_id == selector.source_id
-                                and field.provenance.valid_time == stamp
-                                and (not supports_runs or field.provenance.run_time == times_to_run[stamp].run_time)]
+                                and field.provenance.valid_time == frame.valid_time
+                                and (frame.run_time is None or field.provenance.run_time == frame.run_time)]
+                    if capability is not None:
+                        matching = [field for field in matching
+                                    if (identity := reading_identity(field, reader.product_id)).variant in capability.variants
+                                    and identity.level in capability.levels
+                                    and (selector.variant is None or identity.variant == selector.variant)
+                                    and (selector.level is None or identity.level == selector.level)]
                     samples.extend(matching)
                     incomplete |= not bool(matching)
                 rows.append(result('unknown' if incomplete else 'available',
-                                   'Some advertised timestamps did not return the selected field/run; these intervals are unknown' if incomplete else 'Native provider timestamps and actual run segments only', samples))
+                    'Some advertised timestamps did not return the selected field/run; these intervals are unknown' if incomplete else 'Native provider timestamps and actual run segments only', samples))
             except RunUnavailable as error:
                 rows.append(result('unavailable', str(error)))
             except HTTPException:
                 raise
             except Exception:
                 rows.append(result('unknown', 'The native source inventory or selected-time acquisition could not be read'))
-
         return rows
 
 
@@ -328,12 +322,15 @@ class SeriesService:
             if size > MAX_RESPONSE_BYTES or sum(len(row.samples) for row in rows) > 48:
                 fail('query_limit_exceeded', 'Selection exceeds 48 samples or 512 KiB')
             selected_at = self.utcnow()
-            identities = {(sample.provenance.source_id, sample.key, sample.provenance.run_time, sample.provenance.artifact_revision)
-                          for row in rows for sample in row.samples}
+            from .source_delivery import reading_identity
+            identities = {}
+            for row in rows:
+                for sample in row.samples:
+                    identity = reading_identity(sample, row.product_id or sample.provenance.product)
+                    identities[identity.model_dump_json()] = ReadingIdentity.model_validate(identity.model_dump())
             snapshot = Snapshot(id=uuid4().hex, selected_at=selected_at,
                 expires_at=selected_at + timedelta(seconds=TTL_SECONDS), change_token='',
-                identities=[ReadingIdentity(source_id=s, field=f, run_time=r, artifact_revision=a)
-                            for s, f, r, a in sorted(identities, key=str)])
+                identities=[identities[key] for key in sorted(identities)])
             count = sum(max(1, len(row.samples)) for row in rows)
             snapshot.change_token = self._token(snapshot, -1)
             cursors = {self._token(snapshot, offset): offset for offset in range(selection.page_size, count, selection.page_size)}

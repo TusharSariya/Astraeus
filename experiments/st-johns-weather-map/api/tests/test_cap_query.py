@@ -239,10 +239,11 @@ def test_demand_features_route_bypasses_artifact_store_and_preserves_partial_war
     import weather_api.cap_query as cap_module
     app_module = sys.modules["weather_api.app"]
     monkeypatch.setenv("WEATHER_DATA_MODE", "live")
+    monkeypatch.setattr(app_module, "now", lambda: NOW)
     monkeypatch.setattr(cap_module, "cap_query_service", lambda: Service())
     monkeypatch.setattr(app_module, "live_store", lambda: (_ for _ in ()).throw(AssertionError("store must not be read")))
     response = TestClient(app).get(f"{PREFIX}/layers/eccc-cap-alerts-current/features", params={"valid_time": NOW.isoformat()})
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     payload = response.json()
     assert payload["data_mode"] == "unavailable"
     assert payload["alerts_in_force"] is None and payload["all_boxes_succeeded"] is False

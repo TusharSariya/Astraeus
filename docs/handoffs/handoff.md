@@ -1,5 +1,20 @@
 # Autonomous execution handoff: deliver the working desktop evidence app
 
+## API-first source delivery, September 7
+
+Continue from `/private/tmp/astraeus-api-first-delivery` on
+`execution/api-first-delivery`; preserve the unrelated dirty normal checkout.
+The [current source-delivery handoff](api-first-restart-20260907.md) replaces the
+restart pause and records actual source/software/access states, live versus
+fixture proof, current verification failures/fixes and remaining issue criteria.
+
+The runtime now provides 20 total slots; workers are Astra medium and isolated.
+Existing Google profile authentication is explicitly authorized and successfully
+retrieved WeatherNext metadata and a historical native point. Completed issues
+#54/#55 are closed, and #70/#38 have current progress comments. Source-batch
+merge and remaining source closures require passing assembled checks; no broad
+source or operational milestone is claimed complete.
+
 Updated September 6, 2026. This is the current non-normative execution record.
 It supersedes earlier framework-first queue instructions while preserving their
 history and the owner's earlier design selections.
