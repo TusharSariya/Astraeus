@@ -14,7 +14,7 @@ def main():
     from weather_api.weathernext_native import NativeLimits, NativeStatisticsReader, ObjectIdentity
     from weather_api.weathernext_query import WeatherNextSelection
     def receive():
-        line = sys.stdin.buffer.readline(24 * 1024**2)
+        line = sys.stdin.buffer.readline(90 * 1024**2)
         if not line.endswith(b'\n'):
             raise ValueError('worker input bound')
         return json.loads(line)
@@ -32,9 +32,11 @@ def main():
             return base64.b64decode(self.call({'op':'read','identity':asdict(identity),'max_bytes':max_bytes})['body'],validate=True)
     try:
         request = receive()
+        cap=request.get('max_received_bytes',16*1024**2)
+        if type(cap) is not int or not 0<cap<=64*1024**2: raise ValueError('worker byte cap')
         selection = WeatherNextSelection(datetime.fromisoformat(request['initialization']),datetime.fromisoformat(request['valid_time']),
                                          request['latitude'],request['longitude'],tuple(request['fields']))
-        result = NativeStatisticsReader(Transport(),limits=NativeLimits(metadata_bytes=256*1024,received_bytes=16*1024**2,
+        result = NativeStatisticsReader(Transport(),limits=NativeLimits(metadata_bytes=256*1024,received_bytes=cap,
                                          decoded_chunk_bytes=128*1024**2,operations=30,seconds=85)).read_point(
                                          selection,now=datetime.fromisoformat(request['now']))
         output=asdict(result)
