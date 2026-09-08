@@ -58,7 +58,8 @@ def contract():
 def fixtures():
     now = datetime(2026, 9, 7, 12, tzinfo=UTC)
     source_ids = {"eccc-hrdps", "eccc-rdps", "eccc-gdps", "noaa-gfs", "eccc-aqhi", "openmeteo-cams-aod",
-                  "eccc-swob", "noaa-gefs", "ecmwf-ifs", "ecmwf-aifs-single", "eccc-holyrood-cashr-dpqpe"}
+                  "eccc-swob", "noaa-gefs", "ecmwf-ifs", "ecmwf-aifs-single", "eccc-holyrood-cashr-dpqpe",
+                  "metoffice-ostia-sst", "noaa-oisst-v2-1", "google-weathernext-3-statistics"}
     records = [record for record in registry_source_records() if record.id in source_ids]
     catalogue = CatalogResponse(data_mode=DataMode.FIXTURE, generated_at=now, sources=records)
     statuses = SourceStatusResponse(data_mode=DataMode.FIXTURE,
