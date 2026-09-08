@@ -21,8 +21,9 @@ requests use the existing bounded/paced transport. Retention expires after
 60 seconds fixed before acquisition, using both UTC and monotonic clocks.
 This is retention, not scientific freshness. Shared misses coalesce; explicit
 refresh replaces only successful complete snapshots and leaves an unexpired
-previous revision after failure. The collection identity hashes canonical
-native JSON; source byte SHA remains separate in the receipt.
+previous revision after failure. The content digest hashes canonical native JSON; the acquisition revision
+separately binds that digest, validated aware receipt completion, UTC acquisition
+start and monotonic deadline. Source byte SHA remains separate in the receipt.
 
 The source-local metadata lists native feature IDs, file IDs, amendments,
 publication time, validity time and expiration time without changing their
@@ -76,3 +77,21 @@ adapter-only and require a complete-family read/cache surface. SCRIBE/integrated
 nowcasting remains unsupported pending the existing published matrix schema
 pin. No live active thunderstorm report occurred in this proof. Do not close
 #137 or claim the entire public-hazard family is delivered from this increment.
+
+
+## Review correction: identical-content refresh lifetime
+
+The initial body-only revision allowed a refresh at +30 seconds to renew an old
+reference from an expiry of +60 to +90 seconds. That implementation is replaced:
+`content_digest` remains stable for identical canonical content, while `revision`
+binds the acquisition's validated timezone-aware completion and fixed UTC and
+monotonic retention bounds. A repeated body and even an identical replayed
+receipt cannot extend the old selection when the acquisition lifetime changes.
+
+The fixed-clock counterexample refreshes at +30 with identical bytes and the
+same receipt, then checks at +61: the first revision is unavailable, the second
+revision is readable, and their separate content digests remain equal. The
+source-only command above (only `test_thunderstorm_outlook_query.py`) passed
+11 tests; specctl 0 errors, 0 warnings. The dated live proof above precedes this
+identity correction and its recorded revision is historical; no provider bytes
+were reacquired for this regression correction.

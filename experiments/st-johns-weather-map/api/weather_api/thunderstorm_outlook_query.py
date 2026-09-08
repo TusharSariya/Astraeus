@@ -26,6 +26,7 @@ class OutlookUnavailable(RuntimeError):
 class OutlookSnapshot:
     revision: str
     body: bytes
+    content_digest: str
     receipt_json: bytes
     retrieved_at: datetime
     retained_until: datetime
@@ -43,7 +44,7 @@ class OutlookSnapshot:
             "native_crs": "OGC:CRS84", "source_quality": "unknown",
             "field_dispositions": {field: "observed-empty" if not document["features"] else "retrieved" if field in present else "missing-in-snapshot" for field in fields},
             "uncontracted_properties": sorted(present.difference(fields)),
-            "source_id": self.source_id, "revision": self.revision,
+            "source_id": self.source_id, "revision": self.revision, "content_digest": self.content_digest,
             "operational": False, "primary": False, "scientific_freshness": "unknown",
             "retrieved_at": self.retrieved_at.isoformat(), "retained_until": self.retained_until.isoformat(),
             "cache_status": self.cache_status, "collection": COLLECTION,
@@ -108,7 +109,14 @@ class ThunderstormOutlookQuery:
             if self.monotonic() >= deadline or self.clock() >= started + timedelta(seconds=RETENTION_SECONDS):
                 raise OutlookUnavailable("outlook acquisition exceeded retention")
             completed = datetime.fromisoformat(candidate.detail["receipts"][COLLECTION]["completed_at"])
-            entry = OutlookSnapshot(hashlib.sha256(body).hexdigest(), body, receipt, completed,
+            if completed.tzinfo is None:
+                raise OutlookUnavailable("outlook completion must be timezone-aware")
+            content_digest = hashlib.sha256(body).hexdigest()
+            # A revision identifies one bounded acquisition, not merely content.
+            # Binding the monotonic start also distinguishes a repeated receipt
+            # under a frozen/rolled-back wall clock without extending old URLs.
+            identity = json.dumps([content_digest, completed.isoformat(), started.isoformat(), deadline], separators=(",", ":")).encode()
+            entry = OutlookSnapshot(hashlib.sha256(identity).hexdigest(), body, content_digest, receipt, completed,
                                     started + timedelta(seconds=RETENTION_SECONDS), "refresh" if refresh else "miss")
             with self._lock:
                 self._entry, self._deadline = entry, deadline

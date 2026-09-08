@@ -1,7 +1,7 @@
 """GOV-SPEC-001/002/004/005/006 native outlook experimental readback."""
 import json
 from datetime import timedelta
-from dataclasses import replace
+from ingest.contract import FetchWindow
 import pytest
 from ingest.adapters.eccc_hazards import ECCCThunderstormOutlookAdapter
 from weather_api.thunderstorm_outlook_query import ThunderstormOutlookQuery, OutlookUnavailable
@@ -88,3 +88,26 @@ def test_expiry_never_refreshes_or_extends_retention(rollback):
     ticks[0]+=60
     with pytest.raises(OutlookUnavailable): query.retained(entry.revision)
     assert len(calls)==1
+
+
+def test_identical_body_refresh_does_not_renew_original_revision():
+    query, _, calls, clock, ticks = setup()
+    # Replay the exact same provider receipt as well as bytes, so only the
+    # acquisition's monotonic lifetime can distinguish the renewed selection.
+    candidate = query.adapter.discover(FetchWindow(NOW))[0]
+    candidate.detail['receipts']['thunderstorm_outlook']['completed_at'] = NOW.isoformat()
+    query.adapter.discover = lambda _: [candidate]
+    first = query.snapshot()
+    clock[0] += timedelta(seconds=30)
+    ticks[0] += 30
+    second = query.snapshot(refresh=True)
+    assert first.body == second.body
+    assert first.content_digest == second.content_digest
+    assert first.revision != second.revision
+    assert first.retained_until == NOW + timedelta(seconds=60)
+    assert second.retained_until == NOW + timedelta(seconds=90)
+    clock[0] += timedelta(seconds=31)
+    ticks[0] += 31
+    with pytest.raises(OutlookUnavailable):
+        query.retained(first.revision)
+    assert query.retained(second.revision).body == first.body
