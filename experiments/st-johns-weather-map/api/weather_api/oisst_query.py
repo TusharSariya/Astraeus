@@ -12,6 +12,7 @@ import tempfile
 import threading
 import time
 from concurrent.futures import Future, TimeoutError
+from functools import lru_cache
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -35,6 +36,11 @@ FIELDS = ('sea_surface_temperature', 'sea_surface_temperature_uncertainty')
 
 class OISSTUnavailable(RuntimeError):
     pass
+
+
+@lru_cache(maxsize=1)
+def oisst_query_service():
+    return OISSTQueryService()
 
 
 class _CompletionClient:

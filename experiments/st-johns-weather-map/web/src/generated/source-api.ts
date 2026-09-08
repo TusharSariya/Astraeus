@@ -935,6 +935,8 @@ export interface components {
             native_report?: components["schemas"]["NativeReportIdentity"] | null;
             /** Native Resolution */
             native_resolution: string;
+            /** Native Variable */
+            native_variable?: string | null;
             /** Normalized Units */
             normalized_units: string;
             /**

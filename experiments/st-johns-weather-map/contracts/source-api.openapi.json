@@ -1939,6 +1939,18 @@
             "title": "Native Resolution",
             "type": "string"
           },
+          "native_variable": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Variable"
+          },
           "normalized_units": {
             "title": "Normalized Units",
             "type": "string"
