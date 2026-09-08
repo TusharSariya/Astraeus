@@ -1,5 +1,47 @@
 # API-first source delivery - September 7, 2026
 
+## Merged source completion checkpoint, September 8
+
+PR #300 merged draft RAP/GOES contract reconciliation and the current GDPS-GEML
+inventory at `91799af`; these documents do not authorize their pending behavior.
+PR #301 merged OSTIA daily point delivery, configured historical WeatherNext
+point delivery, RAP final-byte expiry and historical Focus verification at
+`270a9e3`. SST issue #153 is closed. The owner's retired #69/#57/#65 are closed
+as not planned. There are 76 open issues; #70 remains incomplete.
+
+PR #302 merged GEPS shared point delivery and explicit frontend statistic
+selection at `38f9bb7`. Four provider reductions are mapped; the raw gust product,
+527 remaining reductions, member selection and native Series remain unfinished
+under open #148. Current anonymous acquisition used 11 requests / 94,095 decoded
+provider bytes. Browser replay verified mean, spread and median identities with
+zero provider requests. Producer run remains unknown rather than treating a
+requested WCS reference as verified run identity.
+
+The final GEPS assembly passed 325 API/registry tests, 551 frontend tests and the
+production build; generated OpenAPI/TypeScript/fixtures and specctl passed. The
+preceding full backend run had 3,160 passes, 43 skips and six time-dependent
+AQHI/OVATION fixture failures. Those six were reproduced and repaired by pinning
+test clocks; both affected files then passed all 33 tests. No production time
+window was loosened and no unperformed full rerun is claimed.
+
+OSTIA has anonymous live capture and bounded Linux/API/browser proof. WeatherNext
+historical temperature delivery is implemented, with existing host Google access
+verified separately; the Docker API still lacks its runtime configuration and
+identity. Future serving rights and remaining fields are unresolved. Aurora and
+NVIDIA model paths still require their specific deployment/compute/initialization
+inputs. Lightning PR #250, RAP/GOES draft contracts, GDPS-GEML acquisition/units and
+thunderstorm report publication retain their explicit unresolved decisions.
+WeatherMesh #262 remains open: account/API-key requirements alone do not exclude
+free-account sources. Its corrected access note records unresolved ongoing free
+entitlement and intended-use rights without claiming all access is paid-only.
+
+The web/API images were rebuilt from merged #302 for localhost:5173 and port
+8000. Runtime verification found an initial timeout; after restart health returned
+200, but default consensus waited on the existing GEFS bounded acquisition
+(600-second ceiling). This checkpoint does not claim that startup problem fixed
+or that every displayed layer is current. Saved CAP/radar/lightning frames still
+include old unavailable evidence. The dirty normal checkout remains untouched.
+
 ## Resumed completion batch
 
 The owner closed #69, #57 and #65 as no longer relevant; all three are closed
