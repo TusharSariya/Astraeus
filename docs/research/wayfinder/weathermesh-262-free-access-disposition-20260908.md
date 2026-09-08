@@ -3,12 +3,19 @@
 Reviewed 2026-09-08 for [#262](https://github.com/TusharSariya/Astraeus/issues/262),
 under #70. Non-normative research; no source, registry, API or status changed.
 
-**Recommendation:** close #262 as **not planned under the current access scope**,
-not as implemented and not as geographically excluded. No documented continuing
-free, anonymous WM-6 data feed suitable for Astraeus delivery was established.
-The current scope excludes account/trial requests, paid service and provider
-outreach. This is a scope disposition, not a claim that such access cannot ever
-exist.
+**Recommendation:** keep #262 **open with unresolved ongoing free entitlement
+and intended-use rights**. Do not close it as not planned on the basis of an
+account or API-key requirement. The [owner scope in #70](https://github.com/TusharSariya/Astraeus/issues/70)
+explicitly permits free registration and approved-account access; it excludes
+paid subscriptions, paid trial conversion and unauthorized provider outreach.
+This bounded audit prohibited account creation and authentication during the
+audit only. Those task limits are not a global source-eligibility rule.
+
+The checked docs establish a time-limited free trial, not a documented ongoing
+free entitlement. They do not prove that all ongoing entitlements are paid-only
+or that a suitable no-charge extension cannot exist. No free, reusable WM-6
+delivery path has yet been verified; this is an unresolved prerequisite, not
+proof of permanent exclusion or of no Avalon coverage.
 
 ## Existing checkpoint and narrow new evidence
 
@@ -47,7 +54,7 @@ exception does not supply an anonymous data endpoint or demonstrate rights for
 an ongoing source-to-server-to-client forecast cache. No agreement was sought
 or accepted.
 
-## Geography and the actual reopening condition
+## Geography and the next eligible prerequisite
 
 The [WM-6 product documentation](https://api.windbornesystems.com/models-measurements/about-our-models/weathermesh-6/)
 describes `wm-6` Global at 0.25 degrees, separate from regional `wm-6-3km`.
@@ -58,14 +65,22 @@ is a documented delivery interface, but its authenticated examples are not
 proof of a public free feed. Public city pages and benchmark displays likewise
 do not establish a native WM-6 array/rights contract.
 
-Reopen if WindBorne publishes a documented continuing no-charge delivery path
-with sufficient intended-use rights, or if the owner explicitly expands scope
-to authorize an account/trial/licensed entitlement and the required rights
-review. The next bounded step would then pin Global versus HighRes, native
-run/valid time, variable/member/statistic identities, units, grid-cell versus
-interpolated sampling, masks and measured resource limits before a source
-contract and implementation. Until that condition changes, no code or repeated
-access probing is ready.
+The next prerequisite is to establish whether an owner-approved free-account
+entitlement, including any documented no-charge continuation, supports the
+intended recurring use and rights. The getting-started guide permits requesting
+a trial extension but does not establish its duration, price or intended-use
+rights; this audit did not request one. Free account access must be considered
+before excluding the source. Account setup, credential handling and any outreach
+remain separate authorized actions, not implicit steps of this documentation
+audit.
+
+Once entitlement and rights are established, the next bounded verification can
+pin Global versus HighRes, native run/valid time, variable/member/statistic
+identities, units, grid-cell versus interpolated sampling, masks and measured
+resource limits before a source contract and implementation. A future
+not-planned recommendation would require evidence that the applicable continuing
+access is paid-only or otherwise outside owner scope, not merely that no free
+feed was found. No #262 closure is recommended or performed here.
 
 Spec-Impact: none. Research-only clarification of an existing access blocker;
 no scientific, API, registration or normative-status change.
