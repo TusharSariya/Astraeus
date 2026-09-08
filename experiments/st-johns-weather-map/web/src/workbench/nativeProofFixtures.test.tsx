@@ -42,3 +42,15 @@ it('consumes the exact constructed Holyrood API pair and image bodies only after
   expect(screen.getByRole('region')).toHaveTextContent('Scientific freshness unknown')
   expect(fixture.native_fixture_proof.provider_requests).toBe(0)
 })
+it('consumes SWOB as its own station observation with no model run or companion substitution', () => {
+  const body = fixture.point_swob
+  expect(body.data_mode).toBe('fixture')
+  const snapshot = normalizePoint(body)
+  expect(snapshot.servedFields).toHaveLength(6)
+  for (const row of snapshot.servedFields) {
+    expect(row.attribution.sourceId).toBe('eccc-swob')
+    expect(row.attribution.runTime).toBeNull()
+    expect(row.attribution.responseProvenance?.native_report).toMatchObject({ station_id: '71801', provider_report_id: 'CAJW' })
+  }
+  expect(body.observation_unavailable).toEqual([])
+})

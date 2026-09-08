@@ -898,6 +898,14 @@ export const POINT_PRODUCT_BY_SOURCE_ID: Record<string, string> = {
 
 /** The product token `/point` accepts for a catalogue source, or null when the
  *  endpoint has no parameter value for it and the control must not be offered. */
+/** Group by declared native variant, never by a provider name or product token. */
+export function isObservationPointProduct(source: Pick<CatalogSource, 'id' | 'capabilities' | 'forecast_horizon'>): boolean {
+  const product = pointProductFor(source)
+  const declarations = (source.capabilities ?? []).filter((capability) => capability.point && capability.point_product === product)
+  if (declarations.length) return declarations.every((capability) => capability.variants.length > 0 && capability.variants.every((variant) => variant.kind === 'observation'))
+  return /^observations?(?: only)?$/i.test(source.forecast_horizon)
+}
+
 export function pointProductFor(source: Pick<CatalogSource, 'id' | 'capabilities'>): string | null {
   const declared = new Set((source.capabilities ?? []).filter((capability) => isSourceCapability(capability, source.id) && capability.point && isPointProductToken(capability.point_product)).map((capability) => capability.point_product!))
   if (declared.size > 1) return null // Conflicting declared products cannot select a source implicitly.
