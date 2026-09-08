@@ -605,6 +605,7 @@ class Provenance(StrictModel):
     aqhi_acquisition: AQHIAcquisition | None = None
     swob_acquisition: SWOBAcquisition | None = None
     source_acquisition: SourceAcquisition | None = None
+    native_variable: str | None = Field(default=None, max_length=128)
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
     #: echoing the request back would overstate where the reading came from.
