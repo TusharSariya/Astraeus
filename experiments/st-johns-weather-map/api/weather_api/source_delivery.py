@@ -267,6 +267,8 @@ def source_readers() -> dict[str, SourceReader]:
     from .gfs_wave_delivery import GFSWaveSource
     from .openmeteo_gfs_wave_query import openmeteo_gfs_wave_query_service
     from .oisst_query import oisst_query_service
+    from .ostia_query import ostia_query_service
+    from .ostia_delivery import OSTIASource
     common = ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure")
     readers = [
         ForecastSource("eccc-hrdps", "hrdps", hrdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
@@ -280,6 +282,7 @@ def source_readers() -> dict[str, SourceReader]:
         METARSource(),
         GFSWaveSource(openmeteo_gfs_wave_query_service),
         OISSTSource(oisst_query_service),
+        OSTIASource(ostia_query_service),
         *(ECMWFSource(source_id, product_id, lambda source_id=source_id: ecmwf_query_coordinator(source_id),
             ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "mean_sea_level_pressure", "total_cloud_geometric"), named_runs=False)
             for source_id, product_id in (("ecmwf-ifs", "ifs"), ("ecmwf-aifs-single", "aifs-single"))),
