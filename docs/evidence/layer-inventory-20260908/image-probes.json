@@ -1,0 +1,213 @@
+{
+  "catalogues": 5,
+  "violations": [],
+  "image_checks": [
+    {
+      "id": "geomet-live-goes-east-dayvis-nightir",
+      "requested_time": "2026-09-08T12:50:00Z",
+      "status": 200,
+      "bytes": 13522,
+      "content_type": "image/jpeg",
+      "served_time": "2026-09-08T12:50:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-goes-east-naturalcolor",
+      "requested_time": "2026-09-08T12:50:00Z",
+      "status": 200,
+      "bytes": 18457,
+      "content_type": "image/jpeg",
+      "served_time": "2026-09-08T12:50:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-goes-east-nightir-2km",
+      "requested_time": "2026-09-08T12:50:00Z",
+      "status": 200,
+      "bytes": 3963,
+      "content_type": "image/jpeg",
+      "served_time": "2026-09-08T12:50:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-goes-east-snowfog-nightmicro",
+      "requested_time": "2026-09-08T12:50:00Z",
+      "status": 200,
+      "bytes": 15672,
+      "content_type": "image/jpeg",
+      "served_time": "2026-09-08T12:50:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-hr",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 34140,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-nt",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 20391,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-pn",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 546,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-pr",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 30265,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-td",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 28821,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-tt",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 25985,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-uu",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 16064,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-wd",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 31478,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-weong-fog-ice",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 334,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-weong-fog-liquid",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 1547,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-hrdps-wspd",
+      "requested_time": "2026-09-10T06:00:00Z",
+      "status": 200,
+      "bytes": 28612,
+      "content_type": "image/png",
+      "served_time": "2026-09-10T06:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-rdps-weong-fog-ice",
+      "requested_time": "2026-09-11T18:00:00Z",
+      "status": 200,
+      "bytes": 334,
+      "content_type": "image/png",
+      "served_time": "2026-09-11T18:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "geomet-live-rdps-weong-fog-liquid",
+      "requested_time": "2026-09-11T18:00:00Z",
+      "status": 200,
+      "bytes": 334,
+      "content_type": "image/png",
+      "served_time": "2026-09-11T18:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "eccc-lightning-lightning",
+      "requested_time": "2026-09-08T13:00:00Z",
+      "status": 200,
+      "bytes": 334,
+      "content_type": "image/png",
+      "served_time": "2026-09-08T13:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "eccc-radar-radar",
+      "requested_time": "2026-09-08T13:12:00Z",
+      "status": 200,
+      "bytes": 486,
+      "content_type": "image/png",
+      "served_time": "2026-09-08T13:12:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "noaa-gfs-demand-total-cloud",
+      "requested_time": "2026-09-08T13:00:00Z",
+      "status": 200,
+      "bytes": 2118,
+      "content_type": "image/png",
+      "served_time": "2026-09-08T13:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "noaa-gfs-demand-cloud-low",
+      "requested_time": "2026-09-08T13:00:00Z",
+      "status": 200,
+      "bytes": 2118,
+      "content_type": "image/png",
+      "served_time": "2026-09-08T13:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "noaa-gfs-demand-cloud-middle",
+      "requested_time": "2026-09-08T13:00:00Z",
+      "status": 200,
+      "bytes": 1795,
+      "content_type": "image/png",
+      "served_time": "2026-09-08T13:00:00+00:00",
+      "retrieval_status": "retrieved"
+    },
+    {
+      "id": "noaa-gfs-demand-cloud-high",
+      "requested_time": "2026-09-08T13:00:00Z",
+      "status": 200,
+      "bytes": 1784,
+      "content_type": "image/png",
+      "served_time": "2026-09-08T13:00:00+00:00",
+      "retrieval_status": "retrieved"
+    }
+  ]
+}

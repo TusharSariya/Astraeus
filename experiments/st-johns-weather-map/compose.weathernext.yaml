@@ -1,0 +1,8 @@
+# Opt-in local Google forecast runtime; Makefile selects this when the pin exists.
+services:
+  api:
+    environment:
+      WEATHER_WEATHERNEXT_LOCAL_CONFIG: /run/weathernext-local.json
+      WEATHER_WEATHERNEXT_ACCESS_TOKEN_FILE: /tmp/weathernext-auth/access-token
+    volumes:
+      - ./.weathernext-local.json:/run/weathernext-local.json:ro

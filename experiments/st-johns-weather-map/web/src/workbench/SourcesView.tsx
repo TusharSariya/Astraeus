@@ -1,3 +1,5 @@
+import { DiscoveryFilters } from './DiscoveryBrowser'
+import { discoveryEntries, matchesDiscovery, type Filters } from './discovery'
 import { SourceTag, sourceAttributes } from './SourceTag'
 import { NativeTrack, selectedEvidence, type SharedSeriesSelection } from './NativeSeries'
 import { layerMapping, layerImagery } from './layerIdentity'
@@ -33,15 +35,19 @@ export function useSourcesView(props: Props) {
   const [perspective, setPerspective] = useState('Ledger')
   const [query, setQuery] = useState('')
   const [family, setFamily] = useState('')
+  const [discoveryFilters, setDiscoveryFilters] = useState<Filters>({})
   const [selected, setSelected] = useState<string | null>(null)
   const { catalog, statuses, fields, layers, drawn, instant, onInspect, nativeSelection = null, observationUnavailable = [] } = props
   const nativeFamilies = (row: NonNullable<typeof nativeSelection>['series'][number]) => nativeSelection?.families?.[row.selector_id]?.length ? nativeSelection.families[row.selector_id] : [UNGROUPED_FAMILY]
   const allIds = [...new Set([...observationUnavailable.map((outcome) => outcome.source_id),...(nativeSelection?.series.map((row) => row.source_id) ?? []), ...catalog.map((source) => source.id), ...fields.flatMap((field) => field.attribution.sourceId ? [field.attribution.sourceId] : []), ...(statuses ?? []).map((status) => status.source_id), ...layers.flatMap((layer) => layerMapping(layer).fields.map((row) => row.source_id))])]
   const families = [...new Set([...(nativeSelection?.series.flatMap(nativeFamilies) ?? []), ...catalog.flatMap((source) => source.fields?.map((field) => field.family) ?? []), ...fields.map((field) => field.attribution.family)].filter((value): value is string => typeof value === 'string' && value.length > 0))].sort()
+  const discovery = discoveryEntries(catalog, layers)
   const visible = allIds.filter((id) => {
+    const entry = discovery.find(e => e.id === id)
+    if (entry && !matchesDiscovery(entry, query, discoveryFilters)) return false
     const source = catalog.find((entry) => entry.id === id)
     const values = fields.filter((field) => field.attribution.sourceId === id)
-    return [id, source?.producer, source?.product, ...(nativeSelection?.series.filter((row) => row.source_id === id).map((row) => row.field) ?? []), ...source?.fields?.map((field) => field.key) ?? []].join(' ').toLowerCase().includes(query.trim().toLowerCase())
+    return (entry !== undefined || [id, source?.producer, source?.product, ...(nativeSelection?.series.filter((row) => row.source_id === id).map((row) => row.field) ?? []), ...source?.fields?.map((field) => field.key) ?? []].join(' ').toLowerCase().includes(query.trim().toLowerCase()))
       && (!family || source?.fields?.some((field) => field.family === family) || values.some((field) => field.attribution.family === family) || nativeSelection?.series.some((row) => row.source_id === id && nativeFamilies(row).includes(family)))
   })
   function inspect(id: string, opener: HTMLButtonElement) { setSelected(id); onInspect(sourceEvidence(id, catalog, statuses, fields, layers, nativeSelection, observationUnavailable), opener) }
@@ -49,9 +55,9 @@ export function useSourcesView(props: Props) {
   const readings = (id: string) => fields.filter((field) => field.attribution.sourceId === id && (!family || field.attribution.family === family))
   return <section className="sources-view" aria-label="Source evidence catalogue">
     <div className="sources-controls"><div role="group" aria-label="Sources perspective">{['Ledger', 'Family finder', 'Coverage lanes'].map((name) => <button key={name} aria-pressed={perspective === name} onClick={() => setPerspective(name)}>{name}</button>)}</div>
-      <label>Find source or field<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+      <DiscoveryFilters label="Find source or field" onClear={() => setFamily('')} entries={discovery} query={query} setQuery={setQuery} filters={discoveryFilters} setFilters={setDiscoveryFilters} />
       <label>Field family<select value={family} onChange={(event) => setFamily(event.target.value)}><option value="">All families</option>{families.map((name) => <option key={name} value={name}>{familyTitle(name)}</option>)}</select></label>
-      <button onClick={() => { setQuery(''); setFamily('') }}>Clear filters</button>
+
     </div>
     <p>Declared capability, successful acquisition and evidence at Focus are separate facts. Native samples and listed frames do not imply continuous or geographic coverage.</p>
     {props.catalogError && <p>Catalogue unreadable: {props.catalogError}</p>}{props.statusError && <p>Acquisition status unreadable: {props.statusError}</p>}

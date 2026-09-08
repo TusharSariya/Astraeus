@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Layers are an additive stack with per-layer opacity and published draw order
-The map SHALL support several layers drawn at once, each toggleable and each with its own opacity control. The reader SHALL be able to reorder the stack, and the current order, opacity, and visibility SHALL be represented in the URL. A reader with no saved or linked stack SHALL receive the five-layer Nowcast built-in selected in Wayfinder #46; a Saved stack loaded from the browser or URL SHALL replace the current stack explicitly. Every requested layer SHALL still resolve and fail independently, so an unavailable default member never becomes a substitute value or removes the remaining stack.
+The map SHALL support several layers drawn at once, each toggleable and each with its own opacity control. The reader SHALL be able to reorder the stack, and the current order, opacity, and visibility SHALL be represented in the URL. A reader with no saved or linked stack SHALL receive the five-layer Nowcast built-in with the roles selected in Wayfinder #46 and current delivery identities (GOES natural colour `geomet-live-goes-east-naturalcolor`, HRDPS cloud `geomet-live-hrdps-nt`, selected-time CAP `eccc-cap-alerts-current`, radar `eccc-radar-radar`, lightning `eccc-lightning-lightning`); a Saved stack loaded from the browser or URL SHALL replace the current stack explicitly. Every requested layer SHALL still resolve and fail independently, so an unavailable default member never becomes a substitute value or removes the remaining stack.
 
 #### Scenario: Radar over a field
 - **WHEN** two layers are enabled
@@ -22,3 +22,93 @@ The map SHALL support several layers drawn at once, each toggleable and each wit
 #### Scenario: No layer published
 - **WHEN** `/layers` returns nothing or could not be read
 - **THEN** the selector shows a status message naming the reason, the map remains a basemap, and no layer is invented
+
+#### Scenario: Retired linked or saved layer
+- **WHEN** an explicit stack names a retired delivery identity
+- **THEN** the selection is preserved, its absence is explained, and a known replacement is offered only if it is published in the current catalogue and not already selected
+- **AND** accepting replacement preserves drawing position, visibility and opacity, focuses the replacement's visibility control, and changes the URL through the existing stack update
+- **AND** saving/loading a stack retains exactly its requested identities
+
+#### Scenario: Distinguishing catalogue and draw failures
+- **WHEN** a selected layer cannot draw
+- **THEN** the row distinguishes catalogue loading, catalogue request failure, successful catalogue absence, draw loading and unavailable imagery
+- **AND** details expose the returned draw reason and catalogue notices without asserting a provider HTTP failure, empty dataset or cache hit that the response does not establish
+
+Verification: `web/src/workbench/MapStack.test.tsx` exercises default identities,
+explicit replacement, preserved selection settings and focus, duplicate refusal,
+loading/failure/absence states and retained saved selections. Browser verification
+checks replacement and URL restoration using constructed responses, plus a bounded
+live catalogue/raster check recorded separately from fixture evidence.
+
+The feature loader also conforms to the accepted `evidence-truth-boundary`
+requirements “The browser trusts the declared mode, not the status code” and
+“An empty retrieved answer is distinct from no retrieval”. Mapped regressions in
+`web/src/api.test.ts` reject unavailable/missing/unknown modes even on HTTP 200
+and retain provider notices. `web/src/MapPanel.test.tsx` and
+`web/src/workbench/MapStack.test.tsx` verify that a successful empty collection
+emits an empty receipt and a “No features returned” row rather than an outage.
+
+#### Scenario: Stored sample and provider image inventories differ
+- **WHEN** a retained WMS sample predates the serving window but its recorded provider binding advertises current images
+- **THEN** the layer keeps its identity and exposes current image times separately from an empty in-window sample axis
+- **AND** the map requests images at image timestamps, never features at those image-only timestamps
+- **AND** the native timeline includes the declared image timestamps
+
+#### Scenario: Catalogue frames cannot pass serving validation
+- **WHEN** any layer producer returns sample times, frame records or image times outside the current serving window
+- **THEN** the catalogue removes those times from its requestable axes and explains the excluded extent
+- **AND** frame resolution also refuses out-of-window frames from an older catalogue without issuing malformed requests
+
+Verification: catalogue endpoint regressions cover every producer through the
+shared response boundary, including boundary instants and rolled windows. Map
+request regressions distinguish sample and image axes, provider failure and stale
+older API responses. Bounded live checks audit every advertised frame axis and
+request the current radar/lightning imagery independently.
+
+### Requirement: Unified source and layer discovery
+
+Browse SHALL combine the source registry and declared map, point and native
+Series capabilities, independently of selected point product. Optional typed
+discovery metadata SHALL distinguish subjects, provider, product, kind, method
+and ensemble form from evidence class and current availability. Explicit
+multi-subject associations SHALL not imply scientific comparability. Unknown
+metadata SHALL remain searchable; registered sources SHALL not disappear.
+
+Default grouping SHALL be Subject, with Provider, Model/product, Kind and
+Ungrouped alternatives. Search, group selector and active filter chips SHALL remain visible.
+Subject filters SHALL apply to individual layer rows using explicit capability
+subjects or layer family metadata; provider, model and method facets SHALL retain
+source-level metadata. Supported point and Series actions SHALL remain in details
+for each associated map layer. Collapsible Filters SHALL apply OR within
+each dimension and AND across dimensions. All sources SHALL show by default;
+actionable entries precede information-only entries. Multiple group appearances
+SHALL retain one identity and one stack selection. Sources SHALL reuse the
+discovery filter engine without losing Ledger or Coverage.
+
+#### Scenario: WeatherNext is point-only
+- **WHEN** the source declares historical and local temperature point paths
+- **THEN** Browse offers each explicit path and its limitations, with no invented image or Series
+- **AND** opening a path preserves Focus and opens point Evidence; unavailable time or configuration stays explicit
+
+#### Scenario: Multiple subjects and providers
+- **WHEN** GOES cloud imagery is browsed
+- **THEN** it appears in Clouds and Satellite imagery with the explicitly declared producer and delivery route
+- **AND** filtering or repeated group appearances never duplicate a stack entry
+
+#### Scenario: Catalogue independence and partial failure
+- **WHEN** point product changes or one catalogue route fails
+- **THEN** unrelated layer identities remain available and partial failure is labelled
+- **AND** browsing performs no weather-value acquisition, cache warming or jobs
+
+#### Scenario: Keyboard and return context
+- **WHEN** details, overlays or views are opened and closed
+- **THEN** filters, group expansion, scroll, stack order, camera and Focus persist, and dismissal restores focus
+
+Verification: discovery registry/API and frontend tests, actual Chrome
+three-size/three-theme/200-percent-zoom captures, production build, contract
+validation and specctl. Existing URL and saved-stack regressions remain mapped.
+
+#### Scenario: Empty GFS map cache
+- **WHEN** a GFS stratum has an implemented selected-time raster route but no cached frames
+- **THEN** its descriptor remains selectable with unknown imagery and an empty native timestamp axis
+- **AND** only an explicit active selection requests the existing bounded raster route; absent strata remain absent in the returned image

@@ -1,0 +1,18 @@
+
+> @astraeus/st-johns-weather-map-web@0.0.1 test
+> vitest run --run src/workbench/discovery.test.tsx src/workbench/SourcesView.test.tsx src/workbench/MapStack.test.tsx src/workbench/inspectorReturn.test.tsx
+
+ Vitest  "providerOptions" in "gl" project is ignored because it's overridden by the configs. To hide this warning, remove the "providerOptions" property from the browser configuration.
+
+ RUN  v3.2.7 /Users/tusharsariya/Projects/Astraeus-map-first/experiments/st-johns-weather-map/web
+
+ ✓ |unit| src/workbench/inspectorReturn.test.tsx (2 tests) 47ms
+ ✓ |unit| src/workbench/discovery.test.tsx (4 tests) 178ms
+ ✓ |unit| src/workbench/MapStack.test.tsx (12 tests) 256ms
+ ✓ |unit| src/workbench/SourcesView.test.tsx (4 tests) 340ms
+
+ Test Files  4 passed (4)
+      Tests  22 passed (22)
+   Start at  11:38:53
+   Duration  845ms (transform 255ms, setup 207ms, collect 467ms, tests 821ms, environment 566ms, prepare 120ms)
+

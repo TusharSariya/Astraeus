@@ -1,23 +1,43 @@
-import { SourceTag } from './SourceTag'
+import { DiscoveryBrowser, SourceActions, type DiscoveryActions } from './DiscoveryBrowser'
+import { LayerRow } from './LayerRow'
+import { discoveryRows, type DiscoveryRow } from './discovery'
 import { mapLayerEvidence } from './MapEvidenceDetails'
-import { layerMapping, layerImagery } from './layerIdentity'
-import { useState } from 'react'
-import type { LayerItem, LayerSelection, GeoJsonFeature, ResolvedEvidenceClass } from '../types'
+import { layerImagery } from './layerIdentity'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { CatalogSource, LayerItem, LayerSelection, GeoJsonFeature, ResolvedEvidenceClass } from '../types'
 import { layerFamily, layerGroup, layerLegendUrl } from '../api'
 import { ActiveFamilyLegends } from '../MapFamilyLegend'
-import { familyTitle, groupByFamily } from '../fieldFamily'
+import { groupByFamily } from '../fieldFamily'
 import { resolveEvidenceClass } from '../evidenceClass'
 import { EvidenceGlyph, type InspectedEvidence } from './EvidenceInspector'
 
-// Selected #46 built-in identities. Missing members remain requested, never substituted.
-export const NOWCAST_STACK: LayerSelection[] = ['geomet-live-goes-east-naturalcolor', 'eccc-hrdps-surface-total-cloud', 'eccc-cap-alerts-alerts_features', 'eccc-radar-radar', 'eccc-lightning-lightning'].map((id) => ({ id, opacity: 0.85, visible: true }))
+// Five #46 roles, using current delivery paths. Linked/saved identities remain explicit.
+export const NOWCAST_STACK: LayerSelection[] = ['geomet-live-goes-east-naturalcolor', 'geomet-live-hrdps-nt', 'eccc-cap-alerts-current', 'eccc-radar-radar', 'eccc-lightning-lightning'].map((id) => ({ id, opacity: 0.85, visible: true }))
+// Explicit delivery transitions, not provider or scientific-field inference.
+const DELIVERY_UPDATES: Record<string, { id: string; reason: string }> = {
+  'eccc-hrdps-surface-total-cloud': {
+    id: 'geomet-live-hrdps-nt',
+    reason: 'Stored HRDPS cloud delivery was retired. The current cloud image is a GeoMet live proxy; it has different provenance and does not restore archived imagery.',
+  },
+  'eccc-cap-alerts-alerts_features': {
+    id: 'eccc-cap-alerts-current',
+    reason: 'This stack selects the older stored CAP layer. Current CAP alerts use selected-time demand features; historical availability is not implied.',
+  },
+}
 export interface DrawEvidence {
   id: string; drawn: boolean; description: string; times: string[]
+  status?: 'loading' | 'refreshing' | 'drawn' | 'unavailable' | 'hidden' | 'empty'
   selection?: { latitude: number; longitude: number; instant: number }
   evidenceClass?: ResolvedEvidenceClass
   images?: Array<{ frame: string; weight: number; request: unknown; provenance: unknown }>
   display?: { kind: string; selectedMethod: string; usedMethod: string | null; shader: string | null; inputFrames: string[]; responseHeaders: Record<string, string | null> | null; options: unknown; captureIdentity: string | null; methodVersion: string | null }
   features?: GeoJsonFeature[]
+}
+interface DetailsSelection {
+  identity: { kind: 'layer'; id: string } | { kind: 'source'; id: string }
+  row?: DiscoveryRow
+  opener: HTMLButtonElement
+  scroll: number
 }
 const STORAGE_KEY = 'astraeus-saved-map-stacks'
 function readSaved(): Record<string, LayerSelection[]> {
@@ -32,55 +52,127 @@ function readSaved(): Record<string, LayerSelection[]> {
     return result
   } catch { return {} }
 }
-export function MapStack({ layers, stack, onChange, drawn, onInspect }: {
+export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = false, error = null, notices = [], catalog = [], catalogError, onPoint, onSeries, onSource }: DiscoveryActions & {
+  catalog?: CatalogSource[]; catalogError?: string | null
   layers: LayerItem[]; stack: LayerSelection[]; onChange: (stack: LayerSelection[]) => void; drawn: DrawEvidence[]
-  onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void
+  onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void; loading?: boolean; error?: string | null; notices?: string[]
 }) {
+  const discovery = useMemo(() => discoveryRows(catalog, layers), [catalog, layers])
+  const [details, setDetails] = useState<DetailsSelection | null>(null)
+  const root = useRef<HTMLElement>(null)
+  const heading = useRef<HTMLHeadingElement>(null), listHeading = useRef<HTMLParagraphElement>(null)
+  const primaryButtons = useRef(new Map<string, HTMLButtonElement>())
+  const pendingFocus = useRef<string | 'heading' | null>(null)
+  useLayoutEffect(() => {
+    if (pendingFocus.current) {
+      (primaryButtons.current.get(pendingFocus.current) ?? listHeading.current)?.focus()
+      pendingFocus.current = null
+    }
+  }, [stack])
+  useLayoutEffect(() => { if (details) heading.current?.focus() }, [details?.identity.id])
+  const openDetails = (id: string, opener: HTMLButtonElement, row?: DiscoveryRow) => {
+    const overlay = opener.closest('.bench-overlay')
+    setDetails({ identity: row && !row.layerId ? { kind: 'source', id } : { kind: 'layer', id }, row, opener, scroll: overlay?.scrollTop ?? 0 })
+    if (overlay) overlay.scrollTop = 0
+  }
+  const closeDetails = () => {
+    const back = details; setDetails(null)
+    requestAnimationFrame(() => {
+      if (!back) return
+      const overlay = back.opener.closest('.bench-overlay')
+      if (overlay) overlay.scrollTop = back.scroll
+      if (back.opener.isConnected) back.opener.focus({ preventScroll: true })
+      else if (tab === 'Browse') root.current?.querySelector<HTMLInputElement>('input[type="search"]')?.focus()
+      else listHeading.current?.focus()
+    })
+  }
+  const remove = (id: string) => {
+    const order = [...stack].reverse(), index = order.findIndex(row => row.id === id)
+    pendingFocus.current = order[index + 1]?.id ?? order[index - 1]?.id ?? 'heading'
+    onChange(stack.filter(row => row.id !== id))
+  }
+  const toggle = (id: string) => onChange(stack.some(row => row.id === id) ? stack.filter(row => row.id !== id) : [...stack, { id, visible: true, opacity: .85 }])
+  const replacementFocus = useRef<string | null>(null)
   const [saved, setSaved] = useState(readSaved)
   const [name, setName] = useState(''); const [notice, setNotice] = useState('')
-  const activeLayers = stack.filter((entry) => entry.visible).flatMap((entry) => { const layer = layers.find((candidate) => candidate.id === entry.id); return layer ? [layer] : [] })
-  const patch = (id: string, values: Partial<LayerSelection>) => onChange(stack.map((entry) => entry.id === id ? { ...entry, ...values } : entry))
-  const move = (index: number, delta: number) => { const next = [...stack]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; onChange(next) }
-  return <section className="bench-stack" aria-label="Ordered Map stack">
-    <h3>Map stack <small>Top first</small></h3>
-    <div className="bench-stack-actions"><button onClick={() => onChange(NOWCAST_STACK.map((entry) => ({ ...entry })))}>Nowcast</button>
-      <label>Saved stacks<select value="" onChange={(e) => { if (Object.hasOwn(saved, e.target.value)) onChange(saved[e.target.value].map((entry) => ({ ...entry }))) }}><option value="">Load stack…</option>{Object.keys(saved).map((key) => <option key={key}>{key}</option>)}</select></label>
-      <form onSubmit={(e) => { e.preventDefault(); const key = name.trim(); if (!key || key.length > 60) return; if (Object.keys(saved).length >= 12 && !Object.hasOwn(saved, key)) { setNotice('Twelve Saved stacks maximum.'); return }; const next = { ...saved, [key]: stack }; try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setSaved(next); setNotice(`Saved ${key}`) } catch { setNotice('Browser storage unavailable; stack was not saved.') } }}>
-        <label>Stack name<input maxLength={60} value={name} onChange={(e) => setName(e.target.value)} /></label><button>Save stack</button>
+  const [tab, setTab] = useState<'Active' | 'Browse'>('Active')
+  const patch = (id: string, values: Partial<LayerSelection>) => onChange(stack.map(entry => entry.id === id ? { ...entry, ...values } : entry))
+  const move = (index: number, delta: number) => { const next = [...stack]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; onChange(next); if (index + delta === 0 || index + delta === stack.length - 1) heading.current?.focus() }
+  return <section ref={root} className="bench-stack" aria-label="Ordered Map stack" onKeyDown={event => {
+    if (details && event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); event.stopPropagation(); closeDetails() }
+  }}>
+    <div hidden={!!details}>
+    <div className="bench-stack-tabs" role="group" aria-label="Layer lists">{(['Active', 'Browse'] as const).map(value => <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>{value}{value === 'Active' ? ` · ${stack.length}` : ''}</button>)}</div>
+    <details className="bench-stacks-menu"><summary>Stacks</summary><div className="bench-stack-actions">
+      <button onClick={() => onChange(NOWCAST_STACK.map(entry => ({ ...entry })))}>Nowcast</button>
+      <label>Saved stacks<select value="" onChange={event => { if (Object.hasOwn(saved, event.target.value)) onChange(saved[event.target.value].map(entry => ({ ...entry }))) }}><option value="">Load stack…</option>{Object.keys(saved).map(key => <option key={key}>{key}</option>)}</select></label>
+      <form onSubmit={event => { event.preventDefault(); const key = name.trim(); if (!key || key.length > 60) return; if (Object.keys(saved).length >= 12 && !Object.hasOwn(saved, key)) { setNotice('Twelve Saved stacks maximum.'); return }; const next = { ...saved, [key]: stack }; try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setSaved(next); setNotice(`Saved ${key}`) } catch { setNotice('Browser storage unavailable; stack was not saved.') } }}>
+        <label>Stack name<input maxLength={60} value={name} onChange={event => setName(event.target.value)} /></label><button>Save stack</button>
       </form>
-      <label>Add layer<select value="" onChange={(e) => { if (e.target.value) onChange([...stack, { id: e.target.value, opacity: 0.85, visible: true }]) }}><option value="">Choose published layer…</option>{layers.filter((layer) => !stack.some((entry) => entry.id === layer.id)).map((layer) => <option key={layer.id} value={layer.id}>{layer.title}</option>)}</select></label>
-    </div>
+    </div></details>
     {notice && <p role="status">{notice}</p>}
-    {stack.length === 0 && <p>Basemap only. No meteorological layer is requested.</p>}
-    <ol reversed>{[...stack].reverse().map((entry, topIndex) => {
-      const index = stack.length - topIndex - 1
-      const layer = layers.find((layer) => layer.id === entry.id)
-      const actual = drawn.find((row) => row.id === entry.id)
-      const mapping = layer ? layerMapping(layer) : null
-      const availability = layer ? layerImagery(layer) : null
-      const sourceIds = [...new Set(mapping?.fields.map((row) => row.source_id) ?? [])]
-      const title = layer?.title ?? entry.id
-      const description = layer ? actual?.description ?? 'No frame has been drawn.' : 'Requested layer is unavailable in the published layer response.'
-      return <li key={entry.id}>
-        <div><EvidenceGlyph kind={actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} /><strong>{actual?.evidenceClass === 'generated_display' && 'GENERATED · '}{title}</strong><small>{layer ? familyTitle(layerFamily(layer)) : 'Family unknown'} · {layer?.product ? `Product ${layer.product}` : 'Product not supplied'} · {sourceIds.length ? sourceIds.map((id) => <SourceTag key={id} id={id} />) : 'Source identity not supplied'}</small></div>
-        <p>{entry.visible ? description : 'Hidden by reader.'}</p>
-        {availability && <p>Imagery availability: {availability.status} · {availability.reason}</p>}
-        <p>Actual frame: {actual?.times.length ? actual.times.join(', ') : 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map((time) => layer?.frames?.find((frame) => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}{layer?.run_stale === true ? ' (stale run)' : layer?.run_stale === null ? ` (${layer.run_stale_reason ?? 'freshness unknown'})` : ''}</p>
-        <div className="bench-stack-row-actions"><label><input type="checkbox" checked={entry.visible} onChange={(e) => patch(entry.id, { visible: e.target.checked })} />Show {title}</label>
-          <label>Opacity<input aria-label={`Stack opacity ${title}`} type="range" min={0} max={1} step={0.05} value={entry.opacity} onChange={(e) => patch(entry.id, { opacity: Number(e.target.value) })} /></label>
-          <button aria-label={`Raise ${title}`} disabled={index === stack.length - 1} onClick={() => move(index, 1)}>↑</button><button aria-label={`Lower ${title}`} disabled={index === 0} onClick={() => move(index, -1)}>↓</button>
-          <button aria-label={`Inspect layer ${title}`} onClick={(e) => onInspect(mapLayerEvidence(entry.id, layer, actual), e.currentTarget)}>Inspect</button>
-          <button aria-label={`Remove ${title}`} onClick={() => onChange(stack.filter((row) => row.id !== entry.id))}>Remove</button>
-        </div>
-      </li>
-    })}</ol>
-    <details className="bench-family-legends"><summary>Family legends</summary><h4>Active family scales</h4>{groupByFamily(activeLayers, layerFamily).map((group) => <section key={group.family}>
-      <ActiveFamilyLegends layers={group.members} />
-      {group.members.filter((layer) => layer.raster_available === true).map((layer) => <FamilyScale key={layer.id} layer={layer} />)}
-    </section>)}</details>
+    {loading && <p role="status">Loading available layers…</p>}{error && <p role="status">Layers unavailable: {error}</p>}
+    <div hidden={tab !== 'Browse'}>
+      <DiscoveryBrowser catalog={catalog} layers={layers} stack={stack} error={catalogError} onToggle={toggle} onDetails={(row, opener) => openDetails(row.layerId ?? row.id, opener, row)} />
+    </div>
+    <div hidden={tab !== 'Active'}>
+      <p ref={listHeading} tabIndex={-1} className="bench-order-label">Drawing order · top first</p>
+      {stack.length === 0 && <p>Basemap only. No meteorological layer is requested.</p>}
+      <ol reversed className="dense-layer-list">{[...stack].reverse().map(entry => {
+        const layer = layers.find(candidate => candidate.id === entry.id), actual = drawn.find(row => row.id === entry.id)
+        const title = layer?.title ?? discovery.find(row => row.layerId === entry.id)?.title ?? entry.id
+        const state = !entry.visible ? 'Hidden' : entry.opacity <= 0 ? 'Opacity zero' : loading && !layer ? 'Checking layer catalogue' : error && !layer ? 'Catalogue request failed · availability unknown' : !layer ? 'Not in current catalogue · imagery not requested' : actual?.status === 'loading' ? 'Loading frame' : actual?.status === 'refreshing' ? 'Refreshing' : actual?.status === 'empty' ? 'No features returned' : actual?.drawn ? actual.evidenceClass === 'generated_display' ? 'Generated' : layer.run_stale ? 'Stale' : 'Drawn' : 'Unavailable · no frame drawn'
+        return <li key={entry.id}><LayerRow title={title} status={state} onPrimary={() => remove(entry.id)}
+          primaryRef={node => { if (node) primaryButtons.current.set(entry.id, node); else primaryButtons.current.delete(entry.id) }}
+          onDetails={opener => openDetails(entry.id, opener)} visibility={<button className="dense-visibility" aria-label={`Show ${title}`} aria-pressed={entry.visible}
+            ref={node => { if (node && replacementFocus.current === entry.id) { node.focus(); replacementFocus.current = null } }}
+            onClick={() => patch(entry.id, { visible: !entry.visible })} title={entry.visible ? 'Hide layer' : 'Show layer'}>{entry.visible ? '◉' : '○'}</button>} /></li>
+      })}</ol>
+    </div>
+    </div>
+    {details && (() => {
+      const id = details.identity.id, isLayer = details.identity.kind === 'layer'
+      const layer = isLayer ? layers.find(candidate => candidate.id === id) : undefined
+      const actual = isLayer ? drawn.find(row => row.id === id) : undefined
+      const entry = isLayer ? stack.find(row => row.id === id) : undefined, index = stack.findIndex(row => row.id === id)
+      const row = discovery.find(row => isLayer ? row.layerId === id : row.id === id) ?? details.row
+      const title = layer?.title ?? row?.title ?? id
+      const source = row?.source
+      const update = isLayer ? DELIVERY_UPDATES[id] : undefined
+      const replacement = !loading && !error && update ? layers.find(candidate => candidate.id === update.id) : undefined
+      const alreadySelected = replacement && stack.some(row => row.id === replacement.id)
+      const catalogueState = loading ? 'Checking layer catalogue' : error ? 'Catalogue request failed · availability unknown' : layer ? 'Listed in current catalogue' : 'Not in current catalogue · imagery not requested'
+      const diagnosis = !layer ? `${catalogueState}.${error ? ` ${error}` : ''}` : actual?.description ?? 'No current draw receipt for this layer.'
+      return <section className="layer-details" aria-label="Layer or source details">
+        <div className="bench-view-heading"><h3 ref={heading} tabIndex={-1}>{title}</h3><button onClick={closeDetails}>Back to {tab}</button></div>
+        {isLayer && <>
+          <p>{id}</p><p><EvidenceGlyph kind={actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} /> {actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} · {source?.product ?? layer?.product ?? 'Source unknown'}</p>
+          <p>{layer?.semantics ?? 'No current layer metadata returned.'}</p><p>{diagnosis}</p>
+          <p>Actual frame: {actual?.times.join(', ') || 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map(time => layer?.frames?.find(frame => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}</p>
+          <p>Run state: {layer?.run_stale === true ? 'Stale' : layer?.run_stale === false ? 'Current' : 'Unknown'}. Imagery checked: {layer ? layerImagery(layer).checked_at ?? 'not supplied' : 'not supplied'}.</p>
+          <p>{layer ? layerImagery(layer).reason : 'No imagery request was made for this absent layer.'}</p>
+          {notices.length > 0 && <details><summary>Catalogue notices · all sources</summary><ul>{notices.map((value, index) => <li key={index}>{value}</li>)}</ul></details>}
+          {update && <div className="bench-layer-repair"><p>{update.reason}</p>{entry && replacement && !alreadySelected && <button onClick={() => { replacementFocus.current = replacement.id; patch(id, { id: replacement.id }); setDetails(null); setNotice(`Selected ${replacement.title}. Its returned evidence basis applies. Save the stack again to retain this change in browser storage.`) }}>Use {replacement.title}</button>}{alreadySelected && <small>Current delivery is already in this stack. Remove the older selection when ready.</small>}</div>}
+          {entry ? <div className="bench-stack-row-actions">
+            <label><input type="checkbox" aria-label={`Show ${title}`} checked={entry.visible} onChange={event => patch(id, { visible: event.target.checked })} />Visible</label>
+            <label>Opacity<input aria-label={`Stack opacity ${title}`} type="range" min={0} max={1} step={.05} value={entry.opacity} onChange={event => patch(id, { opacity: Number(event.target.value) })} /></label>
+            <button aria-label={`Raise ${title}`} disabled={index === stack.length - 1} onClick={() => move(index, 1)}>↑</button><button aria-label={`Lower ${title}`} disabled={index === 0} onClick={() => move(index, -1)}>↓</button>
+          </div> : <button onClick={() => toggle(id)}>Add {title}</button>}
+          <button aria-label={`Inspect layer ${title}`} onClick={event => onInspect({ ...mapLayerEvidence(id, layer, actual), text: diagnosis, details: { ...mapLayerEvidence(id, layer, actual).details, 'Catalogue status': catalogueState, 'Catalogue error': error, 'Catalogue notices': notices, 'Delivery update': update ?? null } }, event.currentTarget)}>Provenance</button>
+        </>}
+        <SourceActions source={source} onPoint={onPoint} onSeries={onSeries} onSource={onSource} />
+      </section>
+    })()}
+
   </section>
 }
-
+export function MapLegends({ layers, stack }: { layers: LayerItem[]; stack: LayerSelection[] }) {
+  const activeLayers = stack.filter(entry => entry.visible).flatMap(entry => { const layer = layers.find(candidate => candidate.id === entry.id); return layer ? [layer] : [] })
+  return <section className="bench-family-legends"><h3>Active family scales</h3>
+    {!activeLayers.length && <p>No active provider scales.</p>}
+    {groupByFamily(activeLayers, layerFamily).map(group => <section key={group.family}><ActiveFamilyLegends layers={group.members} />{group.members.filter(layer => layer.raster_available === true).map(layer => <FamilyScale key={layer.id} layer={layer} />)}</section>)}
+  </section>
+}
 function FamilyScale({ layer }: { layer: LayerItem }) {
   const [failed, setFailed] = useState(false)
   if (!layer.legend_available || failed) return <p>{layer.title} · {failed ? 'Legend could not be retrieved' : 'No provider legend declared'}; no scale is invented.</p>

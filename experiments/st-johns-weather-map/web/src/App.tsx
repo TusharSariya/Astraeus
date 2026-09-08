@@ -1,6 +1,6 @@
 import { useActivity, activityEvidence, type ActivityResponse } from './workbench/ActivityView'
 import { captureInspectorReturn, restoreInspectorReturn, type InspectorReturn } from './workbench/inspectorReturn'
-import { MapSamplesLink, MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
+import { MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
 import { mapRunRefusals } from './workbench/layerIdentity'
 import { SkyView, skyEvidence } from './workbench/SkyView'
 import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
@@ -11,7 +11,7 @@ import { WorkbenchShell } from './workbench/WorkbenchShell'
 import { FocusBar } from './workbench/FocusBar'
 import { parseFocusUrl, serializeFocusUrl, type View } from './workbench/focusUrl'
 import { EvidenceInspector, EvidenceLedger, evidenceKey, type InspectedEvidence } from './workbench/EvidenceInspector'
-import { MapStack, NOWCAST_STACK, type DrawEvidence } from './workbench/MapStack'
+import { MapStack, MapLegends, NOWCAST_STACK, type DrawEvidence } from './workbench/MapStack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, isObservationPointProduct, pointProductFor, pointProductsFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
@@ -26,6 +26,7 @@ import { EnsemblePanel, ensembleMemberOptions, ensembleTextRows } from './Ensemb
 import { StoryFlyout } from './StoryFlyout'
 import { TimelineDock } from './TimelineDock'
 import { windowFromTimeline } from './tierBoundary'
+import { containingRange, displayWindow, frameNeighbour, frameTime, type TimeRange } from './timelineModel'
 import { useTheme } from './theme'
 import type {
   AppMode, CatalogSource, CloudLayerReading, DataSource, EvidenceSnapshot, FallbackMode, FieldAlternative, FieldAttribution, FieldDataMode,
@@ -391,14 +392,14 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [inspected, setInspected] = useState<InspectedEvidence | null>(null)
   const inspectorReturn = useRef<InspectorReturn | null>(null)
   const inspect = useCallback((evidence: InspectedEvidence, element: HTMLButtonElement) => {
+    setTracksOpen(false); setStoryOpen(false)
     inspectorReturn.current = captureInspectorReturn(element)
     setInspected(evidence)
   }, [])
   const closeInspector = () => {
     const target = inspectorReturn.current
     setInspected(null)
-    if (!target?.scope || target.scope.isConnected) restoreInspectorReturn(target)
-    else requestAnimationFrame(() => restoreInspectorReturn(target))
+    requestAnimationFrame(() => restoreInspectorReturn(target))
   }
 
   const { theme, setTheme } = useTheme()
@@ -439,6 +440,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   // The transport: a clock over the same selected instant the scrubber
   // moves. It resolves frames by exactly the rules a scrub does.
   const [playing, setPlaying] = useState(false)
+  const [timeRange, setTimeRange] = useState<TimeRange>(() => containingRange(selectedMs, reference.getTime()))
+  const [tracksOpen, setTracksOpen] = useState(false)
   const [speed, setSpeed] = useState<PlaybackSpeed>(1)
   const [direction, setDirection] = useState<PlaybackDirection>(1)
   const [storyOpen, setStoryOpen] = useState(false)
@@ -519,12 +522,17 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   // The scrubber's window: `/timeline` `start..end` (24 h back, 14 d ahead)
   // when the timeline is available and its bounds parse, else the same fixed
   // fallback span — never the old fixed 3 h/24 h window (task 4.1).
-  const { backMinutes: BACK_MINUTES, forwardMinutes: FORWARD_MINUTES } = useMemo(
+  const evidenceWindow = useMemo(
     () => windowFromTimeline(timeline, reference),
     [timeline, reference],
   )
-  const windowStartMs = useMemo(() => reference.getTime() - BACK_MINUTES * 60_000, [reference, BACK_MINUTES])
-  const windowEndMs = useMemo(() => reference.getTime() + FORWARD_MINUTES * 60_000, [reference, FORWARD_MINUTES])
+  const evidenceStartMs = reference.getTime() - evidenceWindow.backMinutes * 60_000
+  const evidenceEndMs = reference.getTime() + evidenceWindow.forwardMinutes * 60_000
+  const visibleWindow = displayWindow(timeRange, reference.getTime(), evidenceStartMs, evidenceEndMs)
+  const windowStartMs = legacyOpen ? evidenceStartMs : visibleWindow.start
+  const windowEndMs = legacyOpen ? evidenceEndMs : visibleWindow.end
+  const BACK_MINUTES = (reference.getTime() - windowStartMs) / 60_000
+  const FORWARD_MINUTES = (windowEndMs - reference.getTime()) / 60_000
 
   const validTimeIso = useMemo(() => {
     if (legacyOpen && selectedMs === reference.getTime()) return undefined
@@ -568,9 +576,9 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       setSelectedMs(clampMs(snapInstant(snapInstants, target)))
       return
     }
-    const rounded = Math.round(rawMinutes / SCRUB_STEP_MINUTES) * SCRUB_STEP_MINUTES
+    const rounded = Math.round(rawMinutes / (legacyOpen ? SCRUB_STEP_MINUTES : 1)) * (legacyOpen ? SCRUB_STEP_MINUTES : 1)
     setSelectedMs(clampMs(reference.getTime() + rounded * 60_000))
-  }, [reference, snapInstants, clampMs, pausePlayback])
+  }, [reference, snapInstants, clampMs, pausePlayback, legacyOpen])
 
   const onScrubKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
     const step = (towards: 1 | -1, minutes: number) => {
@@ -581,40 +589,45 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     }
     switch (event.key) {
       case 'ArrowRight':
-      case 'ArrowUp': step(1, SCRUB_STEP_MINUTES); break
+      case 'ArrowUp': step(1, legacyOpen ? SCRUB_STEP_MINUTES : 1); break
       case 'ArrowLeft':
-      case 'ArrowDown': step(-1, SCRUB_STEP_MINUTES); break
+      case 'ArrowDown': step(-1, legacyOpen ? SCRUB_STEP_MINUTES : 1); break
       case 'PageUp': step(1, 60); break
       case 'PageDown': step(-1, 60); break
       case 'Home': event.preventDefault(); pausePlayback(); setSelectedMs(snapInstants.length > 0 ? snapInstants[0] : windowStartMs); break
       case 'End': event.preventDefault(); pausePlayback(); setSelectedMs(snapInstants.length > 0 ? snapInstants[snapInstants.length - 1] : windowEndMs); break
       default: break
     }
-  }, [snapInstants, selectedMs, clampMs, windowStartMs, windowEndMs, pausePlayback])
+  }, [snapInstants, selectedMs, clampMs, windowStartMs, windowEndMs, pausePlayback, legacyOpen])
 
-  const scrubValueText = `${scrubOffset} — ${stJohnsTime(validTime.toISOString())} NT${snapping ? ', snapped to the nearest published frame' : ''}`
+  const scrubValueText = legacyOpen ? `${scrubOffset} — ${stJohnsTime(validTime.toISOString())} NT${snapping ? ', snapped to the nearest published frame' : ''}` : `${scrubOffset} · ${frameTime(selectedMs)}${snapInstants.includes(selectedMs) ? ', at a published frame' : snapping ? ', drag to snap to a published frame' : ', one-minute free scrubbing'}`
 
-  // The playback clock. Each animation frame advances the selected instant
-  // by the wall-clock time since the previous frame, so a backgrounded tab
-  // (which gets no frames at all) resumes where it left off instead of
-  // jumping by however long it was hidden.
+  // Discrete steps, one per second. Visibility changes restart the timer;
+  // neither a background tab nor a delayed task produces a catch-up burst.
   useEffect(() => {
     if (!playing) return
-    let frame = 0
-    let last: number | null = null
-    const tick = (now: number) => {
-      const elapsedSeconds = last === null ? 0 : (now - last) / 1000
-      last = now
-      if (elapsedSeconds > 0) {
-        setSelectedMs((current) => advanceClock({
-          ms: current, elapsedSeconds, speedMinutesPerSecond: speed, direction, windowStartMs, windowEndMs,
-        }))
+    if (legacyOpen) {
+      let frame = 0; let previous: number | null = null
+      const tick = (now: number) => {
+        const elapsedSeconds = previous === null ? 0 : (now - previous) / 1000
+        if (elapsedSeconds > 0) setSelectedMs(current => advanceClock({ ms: current, elapsedSeconds, speedMinutesPerSecond: speed, direction, windowStartMs, windowEndMs }))
+        previous = now; frame = requestAnimationFrame(tick)
       }
       frame = requestAnimationFrame(tick)
+      return () => cancelAnimationFrame(frame)
     }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [playing, speed, direction, windowStartMs, windowEndMs])
+    let timer: ReturnType<typeof setInterval> | undefined
+    const restart = () => {
+      clearInterval(timer)
+      if (document.visibilityState === 'hidden') return
+      timer = setInterval(() => setSelectedMs(current => advanceClock({
+        ms: current, elapsedSeconds: 1, speedMinutesPerSecond: speed, direction, windowStartMs, windowEndMs,
+      })), 1000)
+    }
+    restart()
+    document.addEventListener('visibilitychange', restart)
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', restart) }
+  }, [playing, speed, direction, windowStartMs, windowEndMs, legacyOpen])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -733,8 +746,10 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   // window; the row will say so in its own words if that moved it.
   const jumpToTime = useCallback((date: Date) => {
     pausePlayback()
-    setSelectedMs(clampMs(date.getTime()))
-  }, [clampMs, pausePlayback])
+    const instant = Math.max(evidenceStartMs, Math.min(evidenceEndMs, date.getTime()))
+    setSelectedMs(instant)
+    if (instant < windowStartMs || instant > windowEndMs) setTimeRange(containingRange(instant, reference.getTime()))
+  }, [evidenceStartMs, evidenceEndMs, windowStartMs, windowEndMs, reference, pausePlayback])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -768,11 +783,11 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   useEffect(() => {
     const controller = new AbortController()
     setLayersLoading(true)
-    Promise.all([loadLayers(demandLayerProduct, controller.signal), loadLayers('CAP', controller.signal)]).then(([result, cap]) => {
+    Promise.all([undefined, 'GFS', 'CAP'].map(product => loadLayers(product, controller.signal))).then(results => {
       if (!controller.signal.aborted) {
-        setLayers([...result.layers.filter((item) => item.id !== 'eccc-cap-alerts-current'), ...cap.layers.filter((item) => item.id === 'eccc-cap-alerts-current')])
-        setLayerNotices([...result.notices, ...cap.notices])
-        setLayersError(result.error ?? cap.error)
+        setLayers([...new Map(results.flatMap(result => result.layers).map(layer => [layer.id, layer])).values()])
+        setLayerNotices([...new Set(results.flatMap(result => result.notices))])
+        setLayersError(results.map(result => result.error).filter(Boolean).join('; ') || null)
         setLayersLoading(false)
       }
     }).catch(() => undefined)
@@ -893,7 +908,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   useEffect(() => {
     const restore = () => {
       const next = parseFocusUrl(window.location.search, stations[0])
-      setLocation(next.location); setSite(next.site); setSelectedMsState(next.instant ?? reference.getTime()); setLiveNow(next.instant === null); setView(next.view); setDock(next.dock); setSelections(next.stack ?? NOWCAST_STACK); setRunChoices(next.runs); setInspected(null)
+      setLocation(next.location); setSite(next.site); setSelectedMsState(next.instant ?? reference.getTime()); setTimeRange(containingRange(next.instant ?? reference.getTime(), reference.getTime())); pausePlayback(); setLiveNow(next.instant === null); setView(next.view); setDock(next.dock); setSelections(next.stack ?? NOWCAST_STACK); setRunChoices(next.runs); setInspected(null)
     }
     window.addEventListener('popstate', restore)
     return () => window.removeEventListener('popstate', restore)
@@ -1261,7 +1276,16 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     </>
   )
   const benchTimeline = (
-            <TimelineDock
+            <TimelineDock compact
+              desktop={{
+                range: timeRange, onRange: range => { pausePlayback(); setTimeRange(range) },
+                onInterval: setSpeed,
+                onStep: direction => { pausePlayback(); setSelectedMs(current => clampMs(current + direction * speed * 60_000)) },
+                onFrame: direction => { const next = frameNeighbour(markers.markers.map(marker => marker.ms), selectedMs, direction); if (next !== null) jumpToTime(new Date(next)) },
+                onReveal: () => setTimeRange(containingRange(selectedMs, reference.getTime())),
+                layers, selections, drawn, reference, evidenceStartMs, evidenceEndMs, expanded: tracksOpen,
+                onExpanded: open => { setTracksOpen(open); if (open) { setStoryOpen(false); setInspected(null) } },
+              }}
               offsetMinutes={offsetMinutes}
               scrubOffset={scrubOffset}
               validClock={stJohnsTime(validTime.toISOString())}
@@ -1282,7 +1306,10 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
               playing={playing}
               speed={speed}
               direction={direction}
-              onTogglePlay={() => setPlaying((on) => !on)}
+              onTogglePlay={() => {
+                if (!playing && (selectedMs < windowStartMs || selectedMs > windowEndMs)) setSelectedMs(direction === 1 ? windowStartMs : windowEndMs)
+                setPlaying(on => !on)
+              }}
               onFaster={() => setSpeed(fasterSpeed)}
               onSlower={() => setSpeed(slowerSpeed)}
               onToggleDirection={() => setDirection((towards) => (towards === 1 ? -1 : 1))}
@@ -1294,7 +1321,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
               methodNotices={methodNotices}
               methodError={methodError}
               storyOpen={storyOpen}
-              onToggleStory={() => setStoryOpen((open) => !open)}
+              onToggleStory={() => { setTracksOpen(false); setStoryOpen(open => !open) }}
               storyToggleRef={storyToggleRef}
             />
   )
@@ -1888,22 +1915,31 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   useEffect(() => { setInspected(current => current?.key.startsWith('sky:') ? skyEvidence(current.key, skyProps) : current) }, [skyProps])
   if (legacyOpen) return <><button className="return-bench" onClick={() => setLegacyOpen(false)}>Return to desktop Bench</button>{legacy}</>
   const ledger = <EvidenceLedger rows={snapshot.servedFields.filter((field) => !runChoices[field.attribution.sourceId ?? ''] || runChoices[field.attribution.sourceId ?? ''] === 'latest')} onInspect={inspect} />
-  return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock}
+  return <WorkbenchShell timelineExpanded={tracksOpen || storyOpen} onDismissTimeline={() => { setTracksOpen(false); setStoryOpen(false) }} view={view} dock={dock} onView={setView} onDock={setDock}
     focus={<FocusBar location={location} site={site} registry={registeredSites} registryError={registryError} nearest={nearestSite} onSite={setSite} instant={selectedMs} liveNow={liveNow}
-      onPoint={(point) => { setSite(null); setLocation(point) }} onInstant={(value) => { pausePlayback(); setSelectedMs(value) }} onNow={() => { pausePlayback(); setSelectedMsState(reference.getTime()); setLiveNow(true) }}>
+      onPoint={(point) => { setSite(null); setLocation(point) }} onInstant={value => { pausePlayback(); setSelectedMs(value); setTimeRange(containingRange(value, reference.getTime())) }} onNow={() => { pausePlayback(); setSelectedMsState(reference.getTime()); setLiveNow(true) }} />}
+    settings={<>
       <div className="bench-themes" role="group" aria-label="Colour theme">{(['light', 'dark', 'night'] as const).map((name) => <button key={name} aria-pressed={theme === name} onClick={() => setTheme(name)}>{name === 'night' ? 'Red night' : name}</button>)}</div>
       {Object.entries(runChoices).filter(([, run]) => run !== 'latest').map(([source, run]) => <details className="bench-run-pin" key={source}><summary>Browsing run · {source}: {run}</summary><p>Map delivery cannot request named runs; matching imagery and point ledger values are withheld. Sky and Activity retain their own evidence selection. <button onClick={() => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next })}>Use Latest available for {source}</button></p></details>)}
       <button onClick={() => setLegacyOpen(true)}>Existing evidence panels</button>
-    </FocusBar>}
-    status={<><strong>{dataPathCopy[dataSource]}</strong>{dataSource === 'loading' ? ' · Waiting for the point response at the selected location and time.' : <> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices</>}
+    </>}
+    statusLabel={dataPathCopy[dataSource]}
+    status={<>{dataSource === 'loading' ? ' · Waiting for the point response at the selected location and time.' : <> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices</>}
       {sourceError && <span> · {sourceError}</span>}{initialFocus.notices.map((notice) => <span key={notice}> · {notice}</span>)}</>}
     timeline={benchTimeline}
+    onDismissInspector={() => setInspected(null)}
     inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} nativeImages={(() => {
       const source = inspected.key.startsWith('source:') ? catalog.find((entry) => entry.id === inspected.key.slice(7)) : null
       return source?.native_image_endpoint ? { sourceId: source.id, endpoint: source.native_image_endpoint, instant: selectedMs } : undefined
     })()} /> : undefined}
+    layers={<MapStack catalog={catalog} catalogError={catalogError}
+      onPoint={(product, opener) => { pausePlayback(); setSelectedProduct(product); window.dispatchEvent(new CustomEvent('bench-map-evidence', { detail: { opener, returnToLayers: true } })) }}
+      onSeries={(field, source) => { setActivitySeries({ field, source, revision: Date.now() }); setView('Series'); if (dock === 'Series') setDock(null); window.dispatchEvent(new Event('bench-timeline-activate')) }}
+      onSource={(source, opener) => inspect(sourceEvidence(source.id, catalog, sourceStatuses, snapshot.servedFields, layers), opener)} layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} loading={layersLoading} error={layersError} notices={layerNotices} />}
+    legends={<MapLegends layers={layers} stack={selections} />}
+    evidence={<><p className="discovery-selected-point">Point product: {selectedProduct ?? 'API selection'} · {dataPathCopy[dataSource]}</p><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger" open={!!selectedProduct}><summary>Point evidence ledger</summary>{ledger}</details></>}
     views={{
-      Map: <><MapSamplesLink /><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
+      Map: <div className="bench-map-layout">{benchMap}</div>,
       Series: nativeSeries,
       Sky: <SkyView {...skyProps} />,
       Activity: activity,

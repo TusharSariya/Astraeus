@@ -182,9 +182,21 @@ describe('MapPanel layer stack', () => {
   beforeEach(() => { (globalThis as Record<string, unknown>).__mapControls = [] })
   afterEach(() => vi.unstubAllGlobals())
 
+  it.each([
+    { mode: 'live', status: 'empty', reason: 'published no values' },
+    { mode: 'unavailable', status: 'unavailable', reason: 'upstream timed out' },
+  ])('keeps a $mode empty response distinct in the actual draw receipt', async ({ mode, status, reason }) => {
+    const receipt = vi.fn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: mode, features: [], notices: ['upstream timed out'] }))))
+    render(panel({ onDrawEvidence: receipt }))
+    await waitFor(() => expect(receipt.mock.lastCall?.[0][0].status).toBe(status))
+    expect(receipt.mock.lastCall?.[0][0].description).toContain(reason)
+    expect(receipt.mock.lastCall?.[0][0].drawn).toBe(false)
+  })
+
   it('routes an actual feature pick to its shared semantic inspection action', async () => {
     const inspect = vi.fn(), receipt = vi.fn()
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [-52.7, 47.5] }, properties: { station_id: 'FIXTURE', value: 0 } }] }))))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [-52.7, 47.5] }, properties: { station_id: 'FIXTURE', value: 0 } }] }))))
     render(panel({ onFeatureInspect: inspect, onDrawEvidence: receipt }))
     await waitFor(() => expect(receipt.mock.lastCall?.[0][0].drawn).toBe(true))
     const props = (globalThis as Record<string, unknown>).__featureLayerProps as { onClick: (info: { index: number }) => void }
@@ -205,7 +217,7 @@ describe('MapPanel layer stack', () => {
   })
 
   it('draws nothing for an observed layer scrubbed past the reference, and says why on the map', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 }))
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [] }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     // Two hours past the newest frame AND past the session reference: an
     // observed layer never falls forward, and never falls back for a future
@@ -222,7 +234,7 @@ describe('MapPanel layer stack', () => {
 
   it('falls back to the previous frame for an observed layer at a past instant, disclosing it on the map', async () => {
     const feature = { type: 'Feature', geometry: { type: 'Point', coordinates: [-52.71, 47.56] }, properties: { radar_echo: 0 } }
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', features: [feature] }), { status: 200 }))
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [feature] }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     // 03:30Z is beyond the 180 s tolerance of both frames but before the
     // reference; only the earlier frame (03:54 is later — the PREVIOUS frame
@@ -245,7 +257,7 @@ describe('MapPanel layer stack', () => {
       properties: { radar_echo: 0 },
     }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ type: 'FeatureCollection', features: [feature] }), { status: 200 }),
+      new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [feature] }), { status: 200 }),
     ))
     // 03:57Z is three minutes from both frames; the resolver takes 03:54 or 04:00
     // and must state the offset either way rather than implying an exact match.
@@ -259,7 +271,7 @@ describe('MapPanel layer stack', () => {
 describe('MapPanel scale bar', () => {
   beforeEach(() => {
     ;(globalThis as Record<string, unknown>).__mapControls = []
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [] }), { status: 200 })))
   })
   afterEach(() => vi.unstubAllGlobals())
 
@@ -276,7 +288,7 @@ describe('MapPanel scale bar', () => {
 describe('MapPanel station coverage', () => {
   beforeEach(() => {
     ;(globalThis as Record<string, unknown>).__mapControls = []
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [] }), { status: 200 })))
   })
   afterEach(() => vi.unstubAllGlobals())
 
@@ -380,7 +392,7 @@ function routedFetch(raster: () => Response, legend?: () => Response, flow?: () 
         : (flow ? flow() : notFound('no derived motion')))
       : url.includes('/legend') && legend
         ? legend()
-        : new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 })))
+        : new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [] }), { status: 200 })))
 }
 
 function flowResponse(overrides: Record<string, string> = {}) {
@@ -415,6 +427,29 @@ describe('MapPanel imagery', () => {
     layers: [proxiedLayer],
     selections: [{ id: proxiedLayer.id, visible: true, opacity: 0.6 }],
     ...props,
+  })
+
+  it('draws current WMS imagery without requesting stale samples or inventing image-time features', async () => {
+    const receipt = vi.fn(), fetcher = routedFetch(() => rasterResponse())
+    vi.stubGlobal('fetch', fetcher)
+    const layer = { ...radarLayer, times: ['2026-08-25T04:00:00Z'], raster_available: true,
+      imagery_availability: { status: 'known' as const, checked_at: NOW.toISOString(), basis: 'provider_inventory', times: [NOW.toISOString()], reason: 'Current provider image inventory' } }
+    render(panel({ layers: [layer], onDrawEvidence: receipt }))
+    await waitFor(() => expect(receipt.mock.lastCall?.[0][0].drawn).toBe(true))
+    const urls = fetcher.mock.calls.map(([url]) => String(url))
+    expect(urls.some(url => url.includes('/features'))).toBe(false)
+    expect(urls.some(url => url.includes('2026-08-25'))).toBe(false)
+    expect(urls.some(url => url.includes('/raster') && new URL(url, 'http://test').searchParams.get('valid_time') === NOW.toISOString())).toBe(true)
+  })
+  it('does not borrow a sample timestamp when declared image availability is unknown', async () => {
+    const fetcher = routedFetch(() => rasterResponse())
+    vi.stubGlobal('fetch', fetcher)
+    const layer = { ...radarLayer, raster_available: true,
+      imagery_availability: { status: 'unknown' as const, checked_at: NOW.toISOString(), basis: 'provider_inventory', times: [], reason: 'Provider inventory could not be read' } }
+    render(panel({ layers: [layer] }))
+    await waitFor(() => expect(fetcher).toHaveBeenCalled())
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('/raster'))).toBe(false)
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('/features'))).toBe(true)
   })
 
   it('draws the Bench raster stack in reader order even when provider z-index disagrees', async () => {
@@ -651,7 +686,7 @@ describe('MapPanel imagery', () => {
         ? (url.includes('texture=tangents')
           ? new Response(JSON.stringify({ detail: 'no tangents' }), { status: 404, headers: { 'content-type': 'application/json' } })
           : flowResponse({ 'X-Weather-Interpolation-Method': served(url), 'X-Weather-Flow-Shader': 'hermite' }))
-        : new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 }))))
+        : new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [] }), { status: 200 }))))
     const { rerender } = render(strataPanel({ interpolate: true, validTime: new Date('2026-08-30T04:30:00Z') }))
     await waitFor(() => {
       expect(document.querySelector('.map-frame-notes')?.textContent ?? '').toMatch(/temporally interpolated for display/i)
@@ -750,7 +785,7 @@ describe('MapPanel imagery', () => {
         return new Promise<Response>((resolve) => { resolveSecond = resolve })
       }
       if (url.includes('/flow')) return new Response('{}', { status: 404 })
-      return new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), { status: 200 })
+      return new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'fixture', features: [] }), { status: 200 })
     }))
     const { rerender } = render(proxiedPanel())
     await screen.findAllByText(/Imagery retrieved/i)

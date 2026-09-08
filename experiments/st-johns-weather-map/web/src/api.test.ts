@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { DerivedEvidenceDetails } from './EvidenceClassBadge'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadCapAlerts, loadLayerFlow, loadLayerRaster, loadLayers, loadMethods, loadProfile, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
+import { ALL_CLOUD_BANDS, DEFAULT_INTERPOLATION_METHOD, LAYER_GROUP_LABELS, LAYER_GROUP_ORDER, RASTER_CRS, cloudBandOf, describeEvidenceBasis, describeResolution, drawableFrames, filterCloudLayers, frameMarkers, LAYER_TICK_COLORS, layerTickColor, groupLayers, layerGroup, layerFlowUrl, layerRasterUrl, loadCapAlerts, loadLayerFlow, loadLayerFeatures, loadLayerRaster, loadLayers, loadMethods, loadProfile, loadSpaceWeather, loadStory, loadTimeline, nextFrame, normalizePoint, pointProductFor, previousFrame, renderPixelSize, resolveLayerFrame, snapInstant, stepInstant, unionFrameInstants, type ApiPointResponse } from './api'
 import type { CatalogSource, CloudLayerReading, LayerItem, TimelineResponse } from './types'
 
 const rasterLayer: LayerItem = {
@@ -1038,4 +1038,40 @@ it.each(['changed_native', 'missing_witness', 'partial_witness', 'failed_witness
   if (mutation === 'failed_witness') point.fields[2] = { ...point.fields[2], provenance: { ...point.fields[2].provenance, quality: { status: 'failed' } } }
   expect(normalizePoint(point).temperatureC).toBeNull()
   expect(normalizePoint(point).mode).toBe('unavailable')
+})
+
+describe('layer feature retrieval truth boundary', () => {
+  const frame = { time: '2026-09-08T13:00:00Z', offsetSeconds: 0 }
+  it.each([
+    { mode: 'unavailable', notice: 'Provider request failed: HTTP 503' },
+    { mode: undefined, notice: 'No declared retrieval mode' },
+    { mode: 'invented-mode', notice: 'Unknown retrieval mode' },
+  ])('does not turn HTTP 200 with $mode into an empty answer', async ({ mode, notice }) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: mode, features: [], notices: [notice] }))))
+    const result = await loadLayerFeatures(rasterLayer, frame)
+    expect(result.error).toContain(notice)
+    expect(result.features).toEqual([])
+  })
+  it('preserves a successful empty collection without inventing a failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ type: 'FeatureCollection', data_mode: 'live', features: [], notices: [] }))))
+    expect(await loadLayerFeatures(rasterLayer, frame)).toEqual({ features: [], error: null })
+  })
+  it('preserves HTTP failure status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 403 })))
+    expect((await loadLayerFeatures(rasterLayer, frame)).error).toContain('403')
+  })
+})
+
+it('refuses stale catalogue fallback frames outside the serving window', () => {
+  const layer = { ...rasterLayer, group: 'observation', times: ['2026-09-03T02:10:00Z'] }
+  const result = resolveLayerFrame(layer, new Date('2026-09-08T12:00:00Z'), { reference: new Date('2026-09-08T12:00:00Z'), interpolate: false })
+  expect(result.kind).toBe('none')
+  if (result.kind === 'none') expect(result.reason).toContain('serving window')
+})
+it('includes separately declared native image times in timeline markers and snaps', () => {
+  const at = '2026-09-08T12:00:00Z', ms = Date.parse(at)
+  const layer = { ...rasterLayer, times: [], imagery_availability: { status: 'known' as const, checked_at: at, basis: 'provider_inventory', times: [at], reason: 'Provider image inventory' } }
+  const stack = [{ id: layer.id, visible: true }]
+  expect(unionFrameInstants([layer], stack, ms-1000, ms+1000)).toEqual([ms])
+  expect(frameMarkers([layer], stack, ms-1000, ms+1000).markers.map(row => row.ms)).toEqual([ms])
 })

@@ -559,6 +559,7 @@ def test_gfs_scoped_layers_advertise_native_geometric_cloud_strata(monkeypatch):
     app_module = sys.modules['weather_api.app']
     from weather_api import gfs_query
     stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    monkeypatch.setattr(app_module, 'now', lambda: stamp)
     class Coordinator:
         def cached_cloud_availability(self):
             return {field: (stamp,) for field in ('total_cloud_geometric', 'cloud_low', 'cloud_middle', 'cloud_high')}
@@ -580,19 +581,23 @@ def test_gfs_scoped_layers_advertise_native_geometric_cloud_strata(monkeypatch):
     assert all('geometric' in layer['semantics'] and 'opacity' in layer['semantics'] for layer in body['layers'])
 
 
-def test_gfs_scoped_layers_exclude_an_absent_optional_stratum(monkeypatch):
+def test_gfs_scoped_layers_keep_uncached_strata_discoverable_without_frames(monkeypatch):
     from fastapi.testclient import TestClient
     import sys
     app_module = sys.modules['weather_api.app']
     from weather_api import gfs_query
     stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    monkeypatch.setattr(app_module, 'now', lambda: stamp)
     class Coordinator:
         def cached_cloud_availability(self):
             return {'total_cloud_geometric': (), 'cloud_low': (stamp,), 'cloud_middle': (), 'cloud_high': (stamp,)}
     monkeypatch.setenv('WEATHER_DATA_MODE', 'live')
     monkeypatch.setattr(gfs_query, 'gfs_query_coordinator', lambda: Coordinator())
     body = TestClient(app_module.app).get(f'{app_module.PREFIX}/layers', params={'product': 'GFS'}).json()
-    assert [layer['id'] for layer in body['layers']] == ['noaa-gfs-demand-cloud-low', 'noaa-gfs-demand-cloud-high']
+    assert len(body['layers']) == 4
+    cached = [layer for layer in body['layers'] if layer['times']]
+    assert [layer['id'] for layer in cached] == ['noaa-gfs-demand-cloud-low', 'noaa-gfs-demand-cloud-high']
+    assert all(layer['imagery_availability']['status'] == 'unknown' for layer in body['layers'] if not layer['times'])
 
 def test_native_geometric_cloud_raster_preserves_percent_and_missing_alpha(tmp_path):
     import io

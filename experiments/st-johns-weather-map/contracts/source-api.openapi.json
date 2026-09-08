@@ -429,6 +429,48 @@
         "title": "DerivedInput",
         "type": "object"
       },
+      "DiscoveryMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "ensemble_forms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ensemble Forms",
+            "type": "array"
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "map_capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/MapCapability"
+            },
+            "title": "Map Capabilities",
+            "type": "array"
+          },
+          "methods": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "subjects": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Subjects",
+            "type": "array"
+          }
+        },
+        "title": "DiscoveryMetadata",
+        "type": "object"
+      },
       "EnsembleMemberSet": {
         "additionalProperties": false,
         "description": "The members one ensemble number covers, as they actually resolved.\n\nCarried on the value rather than beside it, because a statistic whose\nmember set a reader cannot recover is exactly the unnamed ensemble number\nthis project refuses. ``members_declared`` is what the family's registry\nrecord declares, ``members_used`` is what resolved a value, and\n``members_missing`` names the shortfall wherever the identifiers are known\n(the shortfall is never filled with invented member ids). ``partial``\nfollows from the two counts at the derive step and is carried so a reader\nneed not recompute it.\n\nThere is deliberately no run-staleness field here. Run staleness is\n``Provenance.run_stale`` with ``Provenance.run_stale_reason``, added by the\nhorizon-tiers change, and this model hangs off that same ``Provenance``: a\nsecond field would let one value say two things about one run.",
@@ -1351,6 +1393,43 @@
           "headers"
         ],
         "title": "HolyroodReceipt",
+        "type": "object"
+      },
+      "MapCapability": {
+        "additionalProperties": false,
+        "properties": {
+          "layer_id": {
+            "title": "Layer Id",
+            "type": "string"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product"
+          },
+          "subjects": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Subjects",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "layer_id",
+          "title"
+        ],
+        "title": "MapCapability",
         "type": "object"
       },
       "NativeReportIdentity": {
@@ -3400,6 +3479,16 @@
               }
             ],
             "title": "Delivery Kind"
+          },
+          "discovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiscoveryMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "display_primary": {
             "default": true,

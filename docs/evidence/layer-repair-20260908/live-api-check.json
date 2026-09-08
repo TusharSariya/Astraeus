@@ -1,0 +1,44 @@
+{
+  "checked_at": "2026-09-08T12:45:18.296224+00:00",
+  "requests": [
+    {
+      "path": "/layers/eccc-cap-alerts-current/features?valid_time=2026-09-08T12%3A45%3A18.296224%2B00%3A00",
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 1638,
+      "seconds": 0.74,
+      "data_mode": "live",
+      "all_boxes_succeeded": true,
+      "empty_is_an_answer": true,
+      "alerts_in_force": 0,
+      "feature_count": 0
+    },
+    {
+      "path": "/layers?product=CAP",
+      "status": 200,
+      "content_type": "application/json",
+      "bytes": 1425,
+      "seconds": 0.01,
+      "data_mode": "live",
+      "notices": [
+        "CAP layer listing read a fresh source-local cache entry and made no provider request"
+      ],
+      "layer_ids": [
+        "eccc-cap-alerts-current"
+      ]
+    },
+    {
+      "path": "/layers/geomet-live-hrdps-nt/raster?valid_time=2026-09-08T13%3A00%3A00Z&width=256&height=256&south=46.6&north=48.2&west=-54.3&east=-52.4&crs=EPSG%3A3857",
+      "status": 200,
+      "content_type": "image/png",
+      "bytes": 20215,
+      "seconds": 0.68,
+      "provenance_headers": {
+        "cache-control": "public, max-age=60",
+        "x-weather-evidence-basis": "live_proxy",
+        "x-weather-retrieval-status": "retrieved",
+        "x-weather-valid-time": "2026-09-08T13:00:00+00:00"
+      }
+    }
+  ]
+}

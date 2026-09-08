@@ -60,13 +60,13 @@ SHALL remain inspectable without inferred success or a capture fallback.
 - **THEN** the source remains selected and its declaration does not become
   demonstrated temporal or location coverage
 
-### Requirement: All views use the selected Hyperlegible design system
-The desktop SHALL use the #41 variant C canonical tokens: Atkinson Hyperlegible
-Next and Mono, neutral greys, 15px base and 44px controls, with light, dark and
-red-on-black night themes. Source slots SHALL remain stable by provider with
-model line styles, and state/evidence shape and text SHALL remain meaningful
-without colour. The selected red night tokens supersede the older Activity
-ember treatment. Reduced motion SHALL suppress optional motion.
+### Requirement: All views use the original ocean design system
+The desktop SHALL use ocean/teal panels, cyan and amber accents, a serif
+Avalon wordmark and compact technical labels. Light and red-on-black night
+themes SHALL use compatible tokens across all five views. Source slots SHALL
+remain stable by provider with model line styles. State and evidence shape
+and text SHALL remain meaningful without colour. Reduced motion SHALL suppress
+optional motion.
 
 #### Scenario: A view switches to red night
 - **WHEN** the reader changes theme while inspecting a source
@@ -74,7 +74,7 @@ ember treatment. Reduced motion SHALL suppress optional motion.
   and verdict states remain identifiable through shape and text
 
 ### Requirement: The desktop shell is one Bench around a shared Focus
-The interface SHALL present vertical controls for Map, Series, Sky, Activity, and Sources, one active view on the main stage, and at most one different view docked at the right. The Focus SHALL contain one site or arbitrary point and one exact instant shared by every open view. A view MAY enter full screen, and Escape SHALL return it to the Bench without changing the Focus.
+The interface SHALL present one View menu for Map, Series, Sky, Activity, and Sources, one active view on the main stage, and at most one different view docked at the right. The Focus SHALL contain one site or arbitrary point and one exact instant shared by every open view. A view MAY enter full screen, and Escape SHALL return it to the Bench without changing the Focus.
 
 #### Scenario: Views share one instant
 - **WHEN** the reader changes the instant while Map is staged and Series is docked
@@ -96,18 +96,33 @@ The client SHALL encode `site` or `lat` and `lon`, `view`, optional `dock`, and 
 - **THEN** the Focus displays those coordinates, the nearest registered site and distance, and that the site's horizon is not borrowed
 
 ### Requirement: Global evidence state stays visible while the Map remains usable
-The shell SHALL keep a full-width data-mode banner immediately below the Focus bar and the shared timeline at the bottom of the Bench. The banner SHALL name the data mode and summarize retrieved, stale, aged-out, and notice states without replacing or displacing the active stage. The Map SHALL keep a single-line disclosure strip on its bottom edge naming the number of layers drawn, generated-display use, and exceptions; complete details SHALL be reachable from that strip.
+The shell SHALL use one 56px desktop toolbar containing the compact wordmark, View menu with companion docking, location, instant, concise API state, Layers and settings. Location, time and status details SHALL open in popovers. Settings SHALL expose theme and existing evidence panels. Long labels SHALL truncate visually with their full text available. Semantic headings and focus-visible skip links SHALL remain. The shared timeline SHALL remain within 80px when collapsed, retaining selected time and unavailable coverage. Timeline details and weather story SHALL expand over the map without resizing it. With panels closed at 1280×800 and larger, the map SHALL fill the remaining stage and occupy at least 80% of the application viewport. View changes SHALL preserve location, instant, selections and map camera. The Map SHALL keep a single-line disclosure strip on its bottom edge naming the number of layers drawn, generated-display use, and exceptions; complete details SHALL be reachable from that strip.
 
 #### Scenario: Evidence is unavailable
 - **WHEN** the API cannot supply current evidence
-- **THEN** the banner states unavailable, the active stage remains on screen, and no fixture or previous live value appears in its place
+- **THEN** the toolbar states unavailable, the active stage remains on screen, and no fixture or previous live value appears in its place
 
 #### Scenario: Some Map layers are absent
 - **WHEN** only three of five requested layers have drawable frames
 - **THEN** the strip states "3 of 5" and names or provides the bounded exception summary while the detail control exposes every layer's reason
 
 ### Requirement: The Map legend is the ordered evidence stack
-The Map SHALL list the active stack top-first and grouped by field family. Every row SHALL expose an evidence-class glyph, source tag, short layer name, served run or observation identity when supplied, the frame actually drawn and its age, visibility, opacity, reorder controls, a provenance action, and removal. Legends SHALL appear once per family. The interface SHALL derive vocabulary only by an explicit existing client rule when the API omits it and SHALL disclose unknown identity rather than infer unsupported provenance.
+One 360px right Layers overlay SHALL be closed initially, with Active and Browse tabs. Both lists SHALL use 28px single-line rows with existing 13px typography, thin separators and compact headings. Browse SHALL flatten each declared map capability into a stable layer row and retain one source row for sources without map capabilities. Each row SHALL expose selection, a short scientifically distinct name, compact availability and a details button; full identity SHALL remain accessible through its name, hover and details. Point-only rows SHALL say Point; information-only rows SHALL show status. Search SHALL occupy one compact line, followed by Group by, Filters and conditional Clear. Permanent capability counts and descriptive paragraphs SHALL be removed. An ungrouped Browse list SHALL expose at least 14 full rows at 1280×800 with filters and details closed.
+
+Clicking a map row SHALL toggle that exact layer's stack membership, including unavailable layers. Repeated group appearances SHALL share selection, including hidden selections. Additions SHALL retain existing defaults and append at the top of drawing order; retained entries SHALL preserve settings. Active SHALL list actual drawing order top-first; clicking its main row SHALL remove it, while a separate visibility control SHALL hide/show without removal. Removing an Active row SHALL focus the next row, then previous row, then list heading. Enter/Space SHALL invoke the primary action. Right-click, Shift+F10, Menu key and the trailing details button SHALL open identical details without toggling membership. Point-only and information-only primary actions SHALL open details.
+
+Details SHALL occupy the shared overlay space and include full identity, evidence class, availability/failure reasons, supplied timestamps, provenance, supported point/Series actions and selected-layer visibility, opacity and reorder controls. Generated, unavailable, stale and unknown states SHALL remain explicit. No inline capability trees or technical field-key buttons SHALL appear in the main lists. Opening details SHALL preserve filters, expansion and scroll; Escape SHALL return focus to the originating row. Saved-stack loading/naming SHALL remain behind Stacks. Legends SHALL appear once per family. Layers, Evidence and provenance SHALL share one overlay space with preserved return context. Vocabulary SHALL use only explicit existing client rules; unknown identity SHALL not become inferred provenance.
+
+#### Scenario: Dense rows toggle one identity
+- **WHEN** a hidden selected map layer appears in two subject groups
+- **THEN** both appearances show selected, either main action removes that identity, and right-click or keyboard details access never changes membership
+
+#### Scenario: Details preserve the list context
+- **WHEN** details are opened from a scrolled filtered group and dismissed with Escape
+- **THEN** filters, expansion and scroll are preserved and focus returns to the originating row
+- **AND** removing an Active row focuses its next visible neighbour, previous neighbour or list heading
+
+Verification: `web/src/workbench/MapStack.test.tsx`, `discovery.test.tsx` and the dense-menu browser proof cover membership, keyboard/return context, selected controls, density, themes, desktop sizes and zoom. Existing saved-stack, URL and camera regressions remain required.
 
 #### Scenario: Two layers share a family
 - **WHEN** two cloud layers use different provider legends
@@ -118,7 +133,7 @@ The Map SHALL list the active stack top-first and grouped by field family. Every
 - **THEN** its row says that identity is unknown and does not assume retrieved or a source
 
 ### Requirement: Every listed value uses the shared provenance ledger and inspector
-Every listed evidence value SHALL have a permanent evidence-class SVG glyph in a fixed gutter and a visible source tag. Activating the value's specifically named provenance control SHALL select the row and fill one nonmodal docked inspector with the full provenance sentence, class, source and delivery kind, absence, method and inputs, quality, freshness, sample, comparability, terms, and capture identity that the response actually supplied. Missing properties SHALL be named as missing; the client SHALL NOT manufacture them.
+Every listed evidence value SHALL have a permanent evidence-class SVG glyph in a fixed gutter and a visible source tag. Activating the value's specifically named provenance control SHALL select the row and fill one nonmodal overlay inspector with the full provenance sentence, class, source and delivery kind, absence, method and inputs, quality, freshness, sample, comparability, terms, and capture identity that the response actually supplied. Missing properties SHALL be named as missing; the client SHALL NOT manufacture them.
 
 #### Scenario: A null value is inspected
 - **WHEN** a field value is null with a returned absence reason
@@ -160,3 +175,114 @@ The shell SHALL keep every currently usable response-backed panel or view reacha
 #### Scenario: A view capability is absent
 - **WHEN** a selected view has no implemented response-backed content
 - **THEN** its stage names the unavailable capability and offers no control that appears to request unsupported evidence
+
+#### Scenario: Map-first desktop visual acceptance
+- **WHEN** the application is exercised at 1280×800, 1440×900 and 1920×1080
+- **THEN** actual browser captures cover closed/open panels, all themes and 200% zoom; no controls are clipped or obstructed and the page does not scroll unexpectedly
+- **AND** browser verification covers search, stack editing/saving, focus return, all views, URL restoration, unchanged camera, loading, failures, unavailable layers and long labels
+
+
+### Requirement: The compact timeline exposes transport and native frames
+The desktop timeline SHALL expose previous/next native frame, backward/forward
+fixed-minute step, play/pause, reverse, interval selection, selected date/time,
+Now, range selection and Tracks without opening details. The interval SHALL be
+1, 2, 4, 8, 15 or 30 minutes, initially 1. Playback SHALL advance one interval
+per wall-clock second, looping inside the displayed range, with no background
+catch-up. Manual selections and range changes SHALL pause playback. Fixed-minute
+steps SHALL not snap; frame actions SHALL select exact native timestamps.
+Drag scrubbing SHALL snap to the visible-frame union with interpolation off,
+otherwise to one minute. The current interpolation and per-layer resolution
+rules SHALL remain unchanged. These desktop rules replace the older 16/32 min/s
+continuous transport and five-minute free scrub behavior.
+
+#### Scenario: The owner chooses a two-minute interval
+- **WHEN** the reader steps forward or plays for one second
+- **THEN** selected time advances exactly two minutes even for an hourly layer; the layer's native frame and offset remain disclosed
+
+#### Scenario: Manual interaction interrupts playback
+- **WHEN** the reader drags, selects a marker, changes range or makes another manual time selection
+- **THEN** playback pauses and does not resume automatically
+
+### Requirement: Display ranges and layer tracks preserve exact shared time
+The client SHALL offer Near term (-1h..+6h), Day (-6h..+24h) and Outlook
+(-24h..+14d), relative to the fixed session reference, bounded by the API window.
+Near term SHALL be the default unless a restored selection needs a larger range.
+Range changes SHALL preserve selected time and camera. An offscreen selection
+SHALL offer a return to a containing range; Play outside a range SHALL begin at
+its directional boundary. Tracks SHALL expand over the map, initially closed,
+with one row per active stack entry in drawing order; hidden entries SHALL be
+labelled and excluded from combined navigation. Selected frame times, offsets,
+run changes, cadence and stale/loading/unavailable states SHALL remain distinct.
+The collapsed dock SHALL fit 80px at desktop sizes; at 200% zoom controls MAY
+reflow taller for access. Bottom expansions and right overlays SHALL coordinate
+so their controls do not obstruct one another. Escape SHALL close the current
+panel and restore focus.
+
+#### Scenario: Mixed resolutions and a restored outlook instant
+- **WHEN** radar, satellite, hourly and six-hourly layers are active and the URL restores +7d
+- **THEN** Outlook contains the exact instant, each row preserves native cadence and gaps, and map camera is unchanged
+
+### Requirement: Every returned frame timestamp remains reachable
+The compact axis SHALL show measured collision-free time labels, Now, date
+changes and the +24h planning boundary where applicable. It SHALL combine
+coincident native markers and cluster overlapping targets without losing any
+returned timestamp. Each cluster SHALL open a chronological exact-time chooser.
+Tracks SHALL include a searchable frame list. Hover and keyboard focus SHALL
+expose exact local date/time, UTC and declared forecast initialization separately.
+No acquisition time SHALL be invented or confused with forecast valid time.
+Published availability SHALL not be described as retrieved imagery without a
+matching draw receipt. Empty history, unknown axes and failed requests SHALL
+remain explicit; history and forecast classification SHALL come from the layer,
+not from which side of Now a timestamp falls on.
+
+#### Scenario: Dense historical frames
+- **WHEN** hundreds of frames overlap on Outlook
+- **THEN** counted clusters and the frame list expose every exact timestamp, selectable with pointer or keyboard
+
+#### Scenario: A request finishes after the playhead moves
+- **WHEN** imagery for an older selection arrives late
+- **THEN** it cannot replace newer selected evidence; any retained image is named at its actual time
+
+### Requirement: Newfoundland discovery omits geographically inapplicable sources
+Owner direction, 2026-09-08: omit sources that cannot cover Newfoundland; retain
+paid, credentialed and agreement-gated sources. All UI catalogue and source-status
+surfaces SHALL omit exact source identities with documented geographic exclusion.
+Temporary failures, stale data, unknown coverage, missing adapters, payment,
+credentials and agreements SHALL NOT establish geographic exclusion. The raw
+registry and API audit SHALL retain the records. This is a presentation rule,
+not source admission or evidence filtering.
+
+#### Scenario: A Europe-only source is returned by the API
+- **WHEN** the catalogue or source-status endpoint returns Open-Meteo pollen/ammonia
+- **THEN** it is absent from Browse, Sources and their counts and filters
+- **AND** global and access-restricted sources remain visible with their actual status
+
+Verification: `web/src/regionalSources.test.ts` exercises both shared UI boundaries.
+
+### Requirement: Superseded sources are hidden without deletion
+Owner direction, 2026-09-08: dated sources that have been superseded SHALL be
+hidden from all UI catalogue and source-status surfaces, including Browse and
+Sources. The declared `superseded` registry state SHALL determine this rule;
+old timestamps, historical coverage and transient staleness SHALL NOT. Registry
+records and API audit history SHALL remain intact. Replacement sources and
+paid, credentialed or agreement-gated entries SHALL remain visible unless they
+independently meet an explicit geographic exclusion or supersession rule.
+
+#### Scenario: A retired feed has a replacement
+- **WHEN** the API returns superseded standalone RAQDPS-FireWork and its RAQDPS replacement
+- **THEN** the UI hides standalone FireWork and retains RAQDPS
+- **AND** the raw records remain intact and unrelated historical or stale feeds remain visible
+
+Verification: `web/src/regionalSources.test.ts` tests catalogue, status and discovery
+consumers, including a future superseded identity without a hardcoded source list.
+
+### Requirement: Opted-in local WeatherNext configuration survives normal restart
+The owner's local restart workflow SHALL preserve an explicitly pinned WeatherNext
+configuration through `make down up`. A checkout-local ignored configuration SHALL
+opt into the existing Compose mount and private token refresh after API startup.
+Without that file, startup SHALL perform no Google authentication. Refresh failure
+SHALL fail the command visibly. No automatic run rollover, ingestion schedule,
+credential persistence in Git or source-admission change is authorized.
+
+Verification: Compose configuration validation, Make dry runs with and without
+the local pin, existing token-refresh helper and a normal local startup.

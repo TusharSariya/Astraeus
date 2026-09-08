@@ -1,0 +1,347 @@
+{
+  "full_run": {
+    "totals": {
+      "name": "pytest",
+      "errors": "10",
+      "failures": "22",
+      "skipped": "86",
+      "tests": "3062",
+      "time": "81.360",
+      "timestamp": "2026-09-08T10:46:33.860548-02:30",
+      "hostname": "tushars-MacBook-Pro.local"
+    },
+    "failed": [
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_point_preserves_named_intermediary_evidence",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_missing_selected_hour_never_substitutes_other_evidence[non_hour]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_missing_selected_hour_never_substitutes_other_evidence[missing_hour]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_missing_selected_hour_never_substitutes_other_evidence[null]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_missing_selected_hour_never_substitutes_other_evidence[failed]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_gfs_query",
+        "name": "test_gfs_scoped_layers_advertise_native_geometric_cloud_strata",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_holyrood_presentation",
+        "name": "test_metadata_and_actual_linux_leaf_preserve_exact_original_pair",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_holyrood_query",
+        "name": "test_default_bounded_worker_preserves_fixture_bytes_and_cache",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[HRDPS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[RDPS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[GDPS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[GFS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[GEFS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[IFS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[ICON]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[GFS Wave]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_oisst_query",
+        "name": "test_actual_linux_worker",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_openmeteo_cams_aod_query",
+        "name": "test_default_cancellable_child_runs_existing_adapter_offline",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_ostia_query",
+        "name": "test_actual_linux_bounded_worker_replays_native_fixture",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_ostia_query",
+        "name": "test_forced_worker_termination_cleans_native_download_scratch",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_exact_versioned_na_request_and_existing_index_parser",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_native_metadata_and_mask_are_preserved",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_mismatched_native_identity_fails_closed[generatingProcessIdentifier-96]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_mismatched_native_identity_fails_closed[level-10]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_mismatched_native_identity_fails_closed[step-9]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_mismatched_native_identity_fails_closed[latitudeOfSouthernPoleInDegrees--30]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_native_bitmap_missing_cell_remains_null",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_range_refusal_never_downloads_a_full_file[200]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_range_refusal_never_downloads_a_full_file[302]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_range_refusal_never_downloads_a_full_file[403]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_swob_query",
+        "name": "test_default_point_and_layer_bridge_serve_cached_swob_without_legacy_store",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_swob_query",
+        "name": "test_default_api_serializes_expired_swob_receipt_without_values",
+        "kind": "failure"
+      }
+    ]
+  },
+  "unchanged_baseline_97f15d7_replay": {
+    "totals": {
+      "name": "pytest",
+      "errors": "10",
+      "failures": "21",
+      "skipped": "0",
+      "tests": "32",
+      "time": "1.656",
+      "timestamp": "2026-09-08T10:51:23.161681-02:30",
+      "hostname": "tushars-MacBook-Pro.local"
+    },
+    "failed": [
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_point_preserves_named_intermediary_evidence",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_missing_selected_hour_never_substitutes_other_evidence[non_hour]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_missing_selected_hour_never_substitutes_other_evidence[missing_hour]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_missing_selected_hour_never_substitutes_other_evidence[null]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_cams_aod_delivery",
+        "name": "test_missing_selected_hour_never_substitutes_other_evidence[failed]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_holyrood_presentation",
+        "name": "test_metadata_and_actual_linux_leaf_preserve_exact_original_pair",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_holyrood_query",
+        "name": "test_default_bounded_worker_preserves_fixture_bytes_and_cache",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[HRDPS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[RDPS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[GDPS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[GFS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[GEFS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[IFS]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[ICON]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_observation_companions",
+        "name": "test_named_model_keeps_selection_and_native_aqhi_identity[GFS Wave]",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_oisst_query",
+        "name": "test_actual_linux_worker",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_openmeteo_cams_aod_query",
+        "name": "test_default_cancellable_child_runs_existing_adapter_offline",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_ostia_query",
+        "name": "test_actual_linux_bounded_worker_replays_native_fixture",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_ostia_query",
+        "name": "test_forced_worker_termination_cleans_native_download_scratch",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_swob_query",
+        "name": "test_default_point_and_layer_bridge_serve_cached_swob_without_legacy_store",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_swob_query",
+        "name": "test_default_api_serializes_expired_swob_receipt_without_values",
+        "kind": "failure"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_exact_versioned_na_request_and_existing_index_parser",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_native_metadata_and_mask_are_preserved",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_mismatched_native_identity_fails_closed[generatingProcessIdentifier-96]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_mismatched_native_identity_fails_closed[level-10]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_mismatched_native_identity_fails_closed[step-9]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_mismatched_native_identity_fails_closed[latitudeOfSouthernPoleInDegrees--30]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_native_bitmap_missing_cell_remains_null",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_range_refusal_never_downloads_a_full_file[200]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_range_refusal_never_downloads_a_full_file[302]",
+        "kind": "error"
+      },
+      {
+        "class": "tests.test_rrfs_native",
+        "name": "test_range_refusal_never_downloads_a_full_file[403]",
+        "kind": "error"
+      }
+    ]
+  },
+  "resolved_by_pinning_gfs_catalogue_fixture_clock": "test_gfs_scoped_layers_advertise_native_geometric_cloud_strata",
+  "remaining_failures_preexist_this_change": true
+}

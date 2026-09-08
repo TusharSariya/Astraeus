@@ -429,3 +429,47 @@ The source Wayfinder #70 remains the subsequent queue.
 
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; accepted Activity verdict
 contract and desktop workbench shared Focus/provenance/five-view requirements.
+
+
+## September 8 map-first correction
+
+The owner-selected revision replaces conflicting earlier shell/token decisions.
+Implementation and automated verification are recorded in the
+[map-first evidence report](../../../../../docs/evidence/map-first-20260908/README.md).
+
+- [x] Record owner authority and update the desktop contract.
+- [x] Restore ocean/teal tokens, serif wordmark and compact labels in all views.
+- [x] Replace the rail/banner/permanent stack with toolbar and shared overlays.
+- [x] Preserve camera, Focus, URL selections, stack state and data boundaries.
+- [x] Verify search/edit/save, focus return, all views, failure and loading states.
+- [x] Capture actual before/after, three viewport sizes, themes and native 200% zoom.
+- [x] Pass 556 frontend tests, production build, strict OpenSpec and specctl.
+- [ ] Owner visual acceptance of the correction; #38 remains open.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.
+
+
+## Native-frame timeline revision — owner authorized September 8
+
+- [x] Record the accepted compact + expandable tracks and step + playback revision.
+- [x] Implement three presentation ranges, exact native markers/clusters/search, per-layer status and coordinated overlay focus.
+- [x] Verify all intervals, background/resume, snapping, URL restoration and mixed native cadences with mapped frontend tests.
+- [x] Capture actual desktop and native 200% zoom matrices across all themes; verify saved stacks, five views, camera and request failures.
+- [x] Run 565 frontend tests, production build, strict OpenSpec and specctl (all pass).
+- [ ] Owner visual acceptance on #38; not inferred from automated checks.
+
+Evidence: `docs/evidence/native-timeline-20260908/README.md` (repo root).
+
+## Dense layer-menu revision - owner authorized September 8
+
+- [x] Record the owner-selected 28px single-line Browse and Active contract.
+- [x] Flatten capabilities with per-layer subject filtering and retained source facets.
+- [x] Implement membership toggles, separate visibility and shared-space details.
+- [x] Verify all details gestures, actual drawing order, settings, removal focus and return context.
+- [x] Preserve missing selections, provenance, point/Series paths, saved stacks and URLs.
+- [x] Capture Browse and Active at three desktop sizes, all themes and native 200% zoom, including scrolled rows.
+- [x] Pass 597 frontend tests, build, generated contracts, strict OpenSpec and specctl.
+- [ ] Owner visual acceptance on #38; not inferred from automated checks.
+
+Evidence: `docs/evidence/dense-layer-menus-20260908/README.md` (repo root).
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.

@@ -1,4 +1,98 @@
+## Unified discovery checkpoint — September 8, 2026
+
+PR #306 now includes all-source Browse: 125 registry sources, Subject-first
+multi-tag grouping, compact combined filters for provider/product/kind/method/
+ensemble/interface, explicit point/Series actions, and stable map catalogues.
+WeatherNext 3 exposes its existing local/historical point paths; no raster or
+additional native fields are claimed. Empty GFS caches preserve discoverability.
+
+Verification and browser evidence: [unified discovery](../evidence/unified-discovery-20260908/README.md).
+Runtime remains frontend5197/API8197 in the isolated map-first worktree; refresh
+the frontend to use the correction. #38 remains open for owner visual acceptance.
+No source admission, credential setup or production deployment is included.
+
 # Autonomous execution handoff: deliver the working desktop evidence app
+
+## Radar/lightning catalogue consistency correction, September 8
+
+The earlier repair left old stored sample frames advertised and used them for
+WMS imagery. PR #306 now filters every catalogue branch to the API serving
+window and resolves recorded WMS images against their separately retrieved
+native inventory. Features never borrow image-only timestamps. All 23 available
+image probes returned HTTP 200; Chrome drew current radar/lightning with no old
+September 3 or image-time feature requests. [Evidence](../evidence/layer-inventory-20260908/README.md).
+
+586 frontend tests, 152 affected backend tests, build, both broad Chrome proofs,
+strict OpenSpec and specctl pass. Full backend execution is not green: 21
+failures/10 errors reproduced on unchanged baseline after one new GFS fixture
+clock failure was corrected. Do not claim full backend conformance.
+
+`make up` really rebuilds, but the regular checkout is older (`9af2aaf`). The
+workbench now uses its own `astraeus-map-first` API image/container on port 8197,
+with existing local storage. Frontend 5197 proxies that API. Run
+`make workbench-api-up` and `make workbench-web` from the isolated worktree's
+experiment directory; [startup details](../../experiments/st-johns-weather-map/docs/workbench-runtime.md).
+The regular dirty checkout was preserved. #38 remains open for visual acceptance.
+
+## Layer-default and failure-reason correction, September 8
+
+PR #306 now uses current HRDPS cloud and selected-time CAP default identities.
+Explicit linked/saved selections remain unchanged until a supported replacement
+is clicked; the replacement preserves stack settings and keyboard focus.
+Layer details and Inspect retain catalogue notices and draw failure reasons.
+The shared feature loader now honors unavailable/missing/unknown body data modes
+on HTTP 200; successful empty responses have a distinct “No features returned”
+state. Existing constructed feature fixtures now declare their data mode.
+
+582 frontend tests, build, strict OpenSpec and specctl pass. Map-first and timeline
+Chrome proofs pass, including URL restoration, saved stacks, focus/camera and all
+viewport/theme/zoom combinations. A bounded actual Chrome proof draws the real
+HRDPS 13:00Z cloud image after repairing the retired selection. CAP independently
+returns a valid zero-alert result. [Full evidence](../evidence/layer-repair-20260908/README.md).
+
+The local API was rebuilt from this branch while retaining its existing Compose
+configuration/data volumes. An intermittent CPU-busy API stall required a restart
+before the final live proof; this performance issue is not claimed fixed. Radar
+and lightning still expose September 3 frames, and some layer evidence classes
+remain undeclared. These are source/runtime limitations, not silently repaired
+with substitute evidence. #70 stays incomplete; #38 stays open for owner visual
+acceptance. Frontend remains http://localhost:5197.
+
+## Native-frame timeline correction, September 8
+
+The owner selected the compact + expandable track design and exact 1/2/4/8/15/30
+minute step + playback behavior. PR #306 now exposes the transport and native
+markers in an 80px dock, with Near term/Day/Outlook ranges, exact cluster picks,
+per-layer tracks, timestamp search and selection-specific map receipts. The older
+72px minimal timeline and its hidden controls are superseded by this revision.
+
+565 frontend tests, production build, strict OpenSpec and specctl pass. Two real
+Chrome proof scripts pass: 38 timeline matrix/interaction captures plus the broader
+saved-stack, five-view, camera and failure-state regression. Closed map shares are
+83.0%, 84.9%, 87.4%. All themes and native 200% zoom passed without page scrolling.
+[Evidence and full timeline screenshot matrix](../evidence/native-timeline-20260908/README.md).
+The frontend remains at http://localhost:5197 in the isolated map-first worktree.
+#38 stays open for owner visual acceptance. No API/acquisition or phone scope change.
+
+## Map-first visual correction, September 8
+
+The owner rejected the earlier visual-completion claim and selected the original
+ocean/teal styling with one View menu, one initially closed Layers overlay and a
+slim timeline. #38 is reopened for visual acceptance. The isolated branch
+`fix/map-first-workbench`, based on merged main `85ba422`, implements the revised
+accepted desktop contract while retaining the five views and existing data paths.
+
+Actual browser evidence measures map viewport share at 84.0%, 85.8% and 88.1%
+at 1280×800, 1440×900 and 1920×1080. All themes and native Chrome 200% zoom are
+covered. Layers/Evidence/provenance share one overlay; navigation retains map
+camera and local view state, and hidden views do not receive new frame props.
+556 frontend tests, the production build, strict OpenSpec and specctl pass.
+
+See [the correction evidence](../evidence/map-first-20260908/README.md) for exact
+commands, constructed-fixture limitations, receipts and before/after captures.
+Owner visual acceptance is still pending; do not close #38 based on test results
+alone. Retired issues and deferred phone work remain unchanged.
+
 
 ## WeatherNext current forecast follow-up, September 8
 

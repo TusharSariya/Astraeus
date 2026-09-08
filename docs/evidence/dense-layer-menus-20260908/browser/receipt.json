@@ -1,0 +1,1336 @@
+{
+  "catalogueSources": 125,
+  "camera": "Panned map pixels unchanged through details and nested provenance; canvas retained across point and Series navigation",
+  "weather": "Unavailable constructed responses; zero real weather acquisition",
+  "measures": [
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "tab": "Browse",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 648,
+        "top": 64,
+        "right": 1272,
+        "bottom": 712,
+        "left": 912
+      },
+      "rows": 140,
+      "visible": 16,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "tab": "Active",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 648,
+        "top": 64,
+        "right": 1272,
+        "bottom": 712,
+        "left": 912
+      },
+      "rows": 19,
+      "visible": 17,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "tab": "Browse",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 648,
+        "top": 64,
+        "right": 1272,
+        "bottom": 712,
+        "left": 912
+      },
+      "rows": 140,
+      "visible": 16,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "tab": "Active",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 648,
+        "top": 64,
+        "right": 1272,
+        "bottom": 712,
+        "left": 912
+      },
+      "rows": 19,
+      "visible": 17,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "tab": "Browse",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 648,
+        "top": 64,
+        "right": 1272,
+        "bottom": 712,
+        "left": 912
+      },
+      "rows": 140,
+      "visible": 16,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "tab": "Active",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 648,
+        "top": 64,
+        "right": 1272,
+        "bottom": 712,
+        "left": 912
+      },
+      "rows": 19,
+      "visible": 17,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "tab": "Browse",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 748,
+        "top": 64,
+        "right": 1432,
+        "bottom": 812,
+        "left": 1072
+      },
+      "rows": 140,
+      "visible": 20,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "tab": "Active",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 748,
+        "top": 64,
+        "right": 1432,
+        "bottom": 812,
+        "left": 1072
+      },
+      "rows": 19,
+      "visible": 19,
+      "heights": [
+        28
+      ],
+      "scrollable": false
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "tab": "Browse",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 748,
+        "top": 64,
+        "right": 1432,
+        "bottom": 812,
+        "left": 1072
+      },
+      "rows": 140,
+      "visible": 20,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "tab": "Active",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 748,
+        "top": 64,
+        "right": 1432,
+        "bottom": 812,
+        "left": 1072
+      },
+      "rows": 19,
+      "visible": 19,
+      "heights": [
+        28
+      ],
+      "scrollable": false
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "tab": "Browse",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 748,
+        "top": 64,
+        "right": 1432,
+        "bottom": 812,
+        "left": 1072
+      },
+      "rows": 140,
+      "visible": 20,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "tab": "Active",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 748,
+        "top": 64,
+        "right": 1432,
+        "bottom": 812,
+        "left": 1072
+      },
+      "rows": 19,
+      "visible": 19,
+      "heights": [
+        28
+      ],
+      "scrollable": false
+    },
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "tab": "Browse",
+      "width": 1920,
+      "height": 1080,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 928,
+        "top": 64,
+        "right": 1912,
+        "bottom": 992,
+        "left": 1552
+      },
+      "rows": 140,
+      "visible": 26,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "tab": "Active",
+      "width": 1920,
+      "height": 1080,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 928,
+        "top": 64,
+        "right": 1912,
+        "bottom": 992,
+        "left": 1552
+      },
+      "rows": 19,
+      "visible": 19,
+      "heights": [
+        28
+      ],
+      "scrollable": false
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "tab": "Browse",
+      "width": 1920,
+      "height": 1080,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 928,
+        "top": 64,
+        "right": 1912,
+        "bottom": 992,
+        "left": 1552
+      },
+      "rows": 140,
+      "visible": 26,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "tab": "Active",
+      "width": 1920,
+      "height": 1080,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 928,
+        "top": 64,
+        "right": 1912,
+        "bottom": 992,
+        "left": 1552
+      },
+      "rows": 19,
+      "visible": 19,
+      "heights": [
+        28
+      ],
+      "scrollable": false
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "tab": "Browse",
+      "width": 1920,
+      "height": 1080,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 928,
+        "top": 64,
+        "right": 1912,
+        "bottom": 992,
+        "left": 1552
+      },
+      "rows": 140,
+      "visible": 26,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "tab": "Active",
+      "width": 1920,
+      "height": 1080,
+      "dpr": 1,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 928,
+        "top": 64,
+        "right": 1912,
+        "bottom": 992,
+        "left": 1552
+      },
+      "rows": 19,
+      "visible": 19,
+      "heights": [
+        28
+      ],
+      "scrollable": false
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "tab": "Browse",
+      "width": 640,
+      "height": 400,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 164,
+        "top": 94,
+        "right": 632,
+        "bottom": 258,
+        "left": 272
+      },
+      "rows": 140,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "tab": "Active",
+      "width": 640,
+      "height": 400,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 164,
+        "top": 94,
+        "right": 632,
+        "bottom": 258,
+        "left": 272
+      },
+      "rows": 19,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "tab": "Browse",
+      "width": 640,
+      "height": 400,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 164,
+        "top": 94,
+        "right": 632,
+        "bottom": 258,
+        "left": 272
+      },
+      "rows": 140,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "tab": "Active",
+      "width": 640,
+      "height": 400,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 164,
+        "top": 94,
+        "right": 632,
+        "bottom": 258,
+        "left": 272
+      },
+      "rows": 19,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "tab": "Browse",
+      "width": 640,
+      "height": 400,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 164,
+        "top": 94,
+        "right": 632,
+        "bottom": 258,
+        "left": 272
+      },
+      "rows": 140,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "tab": "Active",
+      "width": 640,
+      "height": 400,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 164,
+        "top": 94,
+        "right": 632,
+        "bottom": 258,
+        "left": 272
+      },
+      "rows": 19,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "tab": "Browse",
+      "width": 720,
+      "height": 450,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 214,
+        "top": 94,
+        "right": 712,
+        "bottom": 308,
+        "left": 352
+      },
+      "rows": 140,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "tab": "Active",
+      "width": 720,
+      "height": 450,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 214,
+        "top": 94,
+        "right": 712,
+        "bottom": 308,
+        "left": 352
+      },
+      "rows": 19,
+      "visible": 2,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "tab": "Browse",
+      "width": 720,
+      "height": 450,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 214,
+        "top": 94,
+        "right": 712,
+        "bottom": 308,
+        "left": 352
+      },
+      "rows": 140,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "tab": "Active",
+      "width": 720,
+      "height": 450,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 214,
+        "top": 94,
+        "right": 712,
+        "bottom": 308,
+        "left": 352
+      },
+      "rows": 19,
+      "visible": 2,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "tab": "Browse",
+      "width": 720,
+      "height": 450,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 214,
+        "top": 94,
+        "right": 712,
+        "bottom": 308,
+        "left": 352
+      },
+      "rows": 140,
+      "visible": 0,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "tab": "Active",
+      "width": 720,
+      "height": 450,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 214,
+        "top": 94,
+        "right": 712,
+        "bottom": 308,
+        "left": 352
+      },
+      "rows": 19,
+      "visible": 2,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "tab": "Browse",
+      "width": 960,
+      "height": 540,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 388,
+        "top": 64,
+        "right": 952,
+        "bottom": 452,
+        "left": 592
+      },
+      "rows": 140,
+      "visible": 7,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "tab": "Active",
+      "width": 960,
+      "height": 540,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 388,
+        "top": 64,
+        "right": 952,
+        "bottom": 452,
+        "left": 592
+      },
+      "rows": 19,
+      "visible": 8,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "tab": "Browse",
+      "width": 960,
+      "height": 540,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 388,
+        "top": 64,
+        "right": 952,
+        "bottom": 452,
+        "left": 592
+      },
+      "rows": 140,
+      "visible": 7,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "tab": "Active",
+      "width": 960,
+      "height": 540,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 388,
+        "top": 64,
+        "right": 952,
+        "bottom": 452,
+        "left": 592
+      },
+      "rows": 19,
+      "visible": 8,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "tab": "Browse",
+      "width": 960,
+      "height": 540,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 388,
+        "top": 64,
+        "right": 952,
+        "bottom": 452,
+        "left": 592
+      },
+      "rows": 140,
+      "visible": 7,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "tab": "Active",
+      "width": 960,
+      "height": 540,
+      "dpr": 2,
+      "scrollX": false,
+      "scrollY": false,
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 388,
+        "top": 64,
+        "right": 952,
+        "bottom": 452,
+        "left": 592
+      },
+      "rows": 19,
+      "visible": 8,
+      "heights": [
+        28
+      ],
+      "scrollable": true
+    }
+  ],
+  "requests": [
+    {
+      "path": "/methods",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/catalog",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/sources/status",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP",
+      "method": "GET"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/timeline",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/sites",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/cameras",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/methods",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/catalog",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/sources/status",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP",
+      "method": "GET"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/timeline",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/sites",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/cameras",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/astronomy",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/space-weather",
+      "query": "?at=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/timeline",
+      "query": "?product=WeatherNext+3+local",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z&product=WeatherNext+3+local",
+      "method": "GET"
+    },
+    {
+      "path": "/point/series",
+      "query": "",
+      "method": "POST"
+    },
+    {
+      "path": "/methods",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/catalog",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/sources/status",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP",
+      "method": "GET"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/timeline",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/sites",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/cameras",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/methods",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/catalog",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/sources/status",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP",
+      "method": "GET"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/timeline",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/sites",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/cameras",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/astronomy",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/space-weather",
+      "query": "?at=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/methods",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/catalog",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/sources/status",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP",
+      "method": "GET"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/timeline",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/sites",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/cameras",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/methods",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/catalog",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/sources/status",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS",
+      "method": "GET"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP",
+      "method": "GET"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/timeline",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/sites",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/registry/cameras",
+      "query": "",
+      "method": "GET"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/astronomy",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    },
+    {
+      "path": "/space-weather",
+      "query": "?at=2026-09-08T14%3A00%3A00.000Z",
+      "method": "GET"
+    }
+  ],
+  "errors": []
+}

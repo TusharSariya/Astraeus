@@ -5,7 +5,7 @@ import { GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer } fro
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { DEFAULT_INTERPOLATION_METHOD, describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerEvidenceClass, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, stJohnsTime } from './api'
+import { DEFAULT_INTERPOLATION_METHOD, describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerEvidenceClass, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, resolveLayerImageFrame, stJohnsTime } from './api'
 import { flowObjectUrls } from './api'
 import { EvidenceClassBadge } from './EvidenceClassBadge'
 import { ActiveFamilyLegends, LayerLegendDefinition, LayerStorageLine, describeLayerFamilySentence } from './MapFamilyLegend'
@@ -393,7 +393,7 @@ export function MapPanel({
   const [states, setStates] = useState<Record<string, LayerState>>({})
   const [rasters, setRasters] = useState<Record<string, RasterState>>({})
   const [extent, setExtent] = useState<ViewExtent | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen)
+  const [drawerOpen, setDrawerOpen] = useState(compactDisclosure ? false : initialDrawerOpen)
   const [referenceMapError, setReferenceMapError] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const drawerOpenRef = useRef(drawerOpen)
@@ -519,14 +519,15 @@ export function MapPanel({
     () => active.map(({ entry, layer }) => ({
       entry,
       layer,
-      resolution: resolveLayerFrame(layer, validTime, { interpolate: interpolate && layer.evidence_basis !== 'demand_query', reference }),
+      resolution: resolveLayerImageFrame(layer, validTime, { interpolate: interpolate && layer.evidence_basis !== 'demand_query', reference }),
+      featureResolution: resolveLayerFrame(layer, validTime, { interpolate: false, reference }),
     })),
     [active, validTime, interpolate, reference],
   )
-  const frameKey = resolved.map(({ layer, resolution }) => {
+  const frameKey = resolved.map(({ layer, resolution, featureResolution }) => {
     const frames = drawableFrames(resolution).map((frame) => frame.time).join('+') || 'none'
     const fraction = resolution.kind === 'blend' ? `~${resolution.fraction.toFixed(3)}` : ''
-    return `${layer.id}@${frames}${fraction}`
+    return `${layer.id}@${frames}${fraction}|samples:${drawableFrames(featureResolution).map(frame => frame.time).join('+')}`
   }).join('|')
 
   // The disclosure sentences for every active layer not drawn at an exact
@@ -620,6 +621,9 @@ export function MapPanel({
       center: [-52.9, 47.55],
       zoom: 6.5,
       attributionControl: false,
+      // MapLibre resizes hidden containers to 400×300. The Bench owns resize
+      // tracking so a hidden view cannot alter an in-progress camera transform.
+      trackResize: !compactDisclosure,
       style: createWeatherMapStyle(theme),
       // Only the end-to-end pixel check reads the canvas back after a frame;
       // keeping the drawing buffer costs every reader a compositing step, so
@@ -685,7 +689,13 @@ export function MapPanel({
     })
 
     mapRef.current = map
+    // Hidden mounted views and companion docking change the canvas box without a window resize.
+    const resize = compactDisclosure && typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+      if (containerRef.current?.clientWidth && containerRef.current.clientHeight) map.resize()
+    }) : null
+    if (containerRef.current) resize?.observe(containerRef.current)
     return () => {
+      resize?.disconnect()
       if (extentTimer) clearTimeout(extentTimer)
       map.remove()
       mapRef.current = null
@@ -724,7 +734,7 @@ export function MapPanel({
 
     setStates((previous) => {
       const next: Record<string, LayerState> = {}
-      for (const { layer, resolution } of resolved) {
+      for (const { layer, featureResolution: resolution } of resolved) {
         // Layer kind comes from the artifact's stored geometry, so a `raster`
         // layer has no stored features to ask for: /features answers 404 for the
         // proxied ones. Its evidence is the image, reported separately below.
@@ -746,7 +756,7 @@ export function MapPanel({
       return next
     })
 
-    for (const { layer, entry, resolution } of resolved) {
+    for (const { layer, entry, featureResolution: resolution } of resolved) {
       const frame = featureFrame(resolution)
       if (!frame || layer.kind === 'raster') continue
       void loadLayerFeatures(layer, frame, controller.signal).then((result) => {
@@ -1310,6 +1320,7 @@ export function MapPanel({
     const times = slots.map((slot) => slot.image.provenance.validTime ?? new Date(slot.frame.time).toISOString()).concat(visible && features?.status === 'drawn' ? [new Date(features.frame.time).toISOString()] : [])
     return {
       selection, id: entry.id,
+      status: !visible ? 'hidden' : raster?.status === 'refreshing' ? 'refreshing' : raster?.status === 'requesting' || features?.status === 'loading' ? 'loading' : slots.length > 0 || features?.status === 'drawn' ? 'drawn' : features?.status === 'empty' && !layer?.raster_available ? 'empty' : 'unavailable',
       drawn: visible && (slots.length > 0 || features?.status === 'drawn'),
       description: !entry.visible ? 'Hidden by reader.' : entry.opacity <= 0 ? 'Opacity is zero; no image or feature is visible.' : !layer ? 'Requested layer unavailable in published response.' : `${describeState(layer)} ${describeRaster(layer)} ${fallbackNotes.find((note) => note.layer.id === entry.id)?.text ?? ''}`,
       times,
@@ -1514,7 +1525,7 @@ export function MapPanel({
           absorbing the old chip strip and stack panel. The strip was measured
           at 1321 px wide in an 867 px pane, painting over the caption; nothing
           but the caption is now absolutely positioned in the top band. */}
-      <aside ref={drawerRef} className={`map-layer-drawer ${drawerOpen ? 'open' : 'closed'}`} aria-label="Published map layers">
+      {!compactDisclosure && <aside ref={drawerRef} className={`map-layer-drawer ${drawerOpen ? 'open' : 'closed'}`} aria-label="Published map layers">
         <button type="button" className="drawer-toggle" aria-controls={`layer-drawer-${label}`} aria-expanded={drawerOpen} onClick={() => setDrawerOpen((open) => !open)}>
           Layers ({onCount} on)
         </button>
@@ -1566,7 +1577,7 @@ export function MapPanel({
             )}
           </div>
         )}
-      </aside>
+      </aside>}
 
       <div className="map-text-alternative">
         <h3>Map contents as text</h3>

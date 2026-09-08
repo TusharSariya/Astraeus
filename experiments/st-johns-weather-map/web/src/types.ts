@@ -664,6 +664,7 @@ export interface LayersResult {
 /** A `/catalog` source record. Only the fields the UI actually renders are typed;
  *  nothing here is defaulted, so a missing field stays visibly missing. */
 export interface CatalogSource {
+  discovery?: import('./workbench/discovery').DiscoveryMetadata | null
   native_image_endpoint?: string | null
   capabilities?: SourceCapability[]
   id: string

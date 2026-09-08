@@ -1,3 +1,6 @@
+> Current visual authority: the September 8 owner-selected map-first revision in
+> [acceptance.md](acceptance.md) and the [desktop contract](specs/desktop-evidence-workbench/spec.md) replaces conflicting historical layout/token choices below.
+
 ## Acceptance
 
 Accepted for implementation under the [owner authorization](acceptance.md).

@@ -116,7 +116,7 @@ export function StoryFlyout({
       <div className="story-head-row">
         <div className="section-head">
           <span>02</span>
-          <div><small>Scrub timeline (-3h to +24h)</small><h2 id="story-title">Weather story</h2></div>
+          <div><small>Selected time and layer coverage</small><h2 id="story-title">Weather story</h2></div>
         </div>
         <button type="button" className="story-flyout-close" onClick={onClose}>Close</button>
       </div>

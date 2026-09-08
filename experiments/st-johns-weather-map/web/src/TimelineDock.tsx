@@ -5,6 +5,7 @@
  *  playback clock live in one place (App) for both this and the expert
  *  slider. */
 
+import { DesktopTimeline, type DesktopTimelineOptions } from './DesktopTimeline'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { stJohnsTime, type FrameMarkers, type InterpolationMethodItem } from './api'
 import { CoveragePanel } from './CoveragePanel'
@@ -15,6 +16,8 @@ import { boundaryMark, HORIZON_SCALE_MARKS, planningTierHasCoverage } from './ti
 import type { TimelineResponse } from './types'
 
 export interface TimelineDockProps {
+  compact?: boolean
+  desktop?: DesktopTimelineOptions
   offsetMinutes: number
   scrubOffset: string
   /** The effective selected instant on the St. John's clock. */
@@ -70,7 +73,12 @@ const QUICK_JUMPS = [-3, -1, 0, 3, 6, 12, 18, 24]
  *  under the thumb's centre rather than drifting toward the ends. */
 const THUMB_PX = 18
 
-export function TimelineDock({
+export function TimelineDock(props: TimelineDockProps) {
+  if (props.compact && props.desktop) return <DesktopTimeline {...props} desktop={props.desktop} />
+  return <LegacyTimelineDock {...props} />
+}
+
+function LegacyTimelineDock({
   offsetMinutes, scrubOffset, validClock, backMinutes, forwardMinutes, snapping, ariaValueText,
   onScrubMinutes, onScrubKeyDown, onQuickJump, windowStartMs, windowEndMs, markers, onJumpToInstant,
   playing, speed, direction, onTogglePlay, onFaster, onSlower, onToggleDirection,
@@ -138,7 +146,7 @@ export function TimelineDock({
   // change point can be detected instant by instant without re-scanning.
   const lastRunByLayer = new Map<string, string | null>()
   return (
-    <section className="timeline-dock" aria-label="Scrub timeline">
+    <div><section className="timeline-dock" aria-label="Scrub timeline">
       <div className="timeline-dock-head">
         <div className="story-scrubber-badge">
           <span>Valid:</span>
@@ -290,7 +298,7 @@ export function TimelineDock({
               onClick={onSlower}
               disabled={speed === PLAYBACK_SPEEDS[0]}
               aria-label="Slower"
-              title="Halve the playback speed"
+              title="Previous playback interval"
             >⏴⏴</button>
             <button
               type="button"
@@ -306,7 +314,7 @@ export function TimelineDock({
               onClick={onFaster}
               disabled={speed === PLAYBACK_SPEEDS[PLAYBACK_SPEEDS.length - 1]}
               aria-label="Faster"
-              title="Double the playback speed"
+              title="Next playback interval"
             >⏵⏵</button>
             <button
               type="button"
@@ -330,6 +338,6 @@ export function TimelineDock({
           </div>
         </div>
       </div>
-    </section>
+    </section></div>
   )
 }

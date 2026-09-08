@@ -1,3 +1,6 @@
+> Current visual authority: the September 8 owner-selected map-first revision in
+> [acceptance.md](acceptance.md) and the [desktop contract](specs/desktop-evidence-workbench/spec.md) replaces conflicting historical layout/token choices below.
+
 # Selected desktop designs and apply order
 
 This index consolidates the existing owner selections under Wayfinder #38 and
