@@ -13,6 +13,7 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true })
 try {
   for (const [index, item] of fixture.cases.entries()) {
     console.log('Checking', item.product)
+    const requestStart = requests.length
     const point = item.point
     assert.ok(point.fields.length > 0, 'Proof requires acquired API fields')
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
@@ -28,7 +29,8 @@ try {
       if (path === '/catalog') body = fixture.catalog
       else if (path === '/point') {
         requests.push(url.pathname + url.search)
-        const exact = url.searchParams.get('product') === item.product && Date.parse(url.searchParams.get('valid_time')) === Date.parse(point.valid_time)
+        const exact = Number(url.searchParams.get('latitude')) === point.latitude && Number(url.searchParams.get('longitude')) === point.longitude && url.searchParams.get('product') === item.product && Date.parse(url.searchParams.get('valid_time')) === Date.parse(point.valid_time)
+          && (!item.statistic || url.searchParams.get('statistic') === item.statistic && url.searchParams.get('quantile') === (item.quantile == null ? null : String(item.quantile)))
         body = exact ? point : { ...body, fields: [], valid_time: url.searchParams.get('valid_time'), selection: { mode: 'evidence_only', badge: 'Offline replay: no matching request', reason: 'Exact source/time only' } }
       } else if (path === '/layers') body = { ...body, layers: [] }
       else if (path === '/sources/status') body = { ...body, statuses: [] }
@@ -46,6 +48,12 @@ try {
     await page.getByRole('button', { name: 'Workbench', exact: true }).click()
     console.log('Selecting product')
     await page.getByRole('combobox', { name: 'Product', exact: true }).selectOption(item.product)
+    if (item.statistic) {
+      const selector = page.getByRole('combobox', { name: 'Provider statistic', exact: true })
+      assert.equal(await selector.inputValue(), '')
+      assert.equal(requests.slice(requestStart).filter(request => new URL(request, base).searchParams.get('product') === item.product).length, 0)
+      await selector.selectOption(JSON.stringify({ statistic: item.statistic, quantile: item.quantile ?? null }))
+    }
     console.log('Waiting for point badge')
     await page.getByText(point.selection.badge, { exact: true }).first().waitFor()
     await page.getByRole('button', { name: 'Return to desktop Bench', exact: true }).click()
@@ -54,11 +62,19 @@ try {
     await page.getByRole('button', { name: new RegExp(`^Inspect ${field.field} from ${field.provenance.source_id}`) }).click()
     const inspector = page.getByRole('complementary', { name: 'Evidence inspector' })
     const detail = name => inspector.locator('dt').filter({ hasText: new RegExp(`^${name}$`) }).locator('..').locator('dd').innerText()
-    assert.deepEqual(JSON.parse(await detail('Complete returned provenance')), field.provenance)
+    const provenance = JSON.parse(await detail('Complete returned provenance'))
+    assert.deepEqual(provenance, field.provenance)
+    if (item.statistic) {
+      assert.equal(provenance.ensemble.statistic, item.statistic)
+      assert.equal(provenance.ensemble.quantile, item.quantile)
+      assert.equal(provenance.run_time, null)
+      assert.equal(provenance.quality.status, 'unknown')
+      assert.equal(await detail('Run'), 'Not supplied')
+    }
     assert.equal(Date.parse(new URL(page.url()).searchParams.get('t')), Date.parse(point.valid_time))
     assert.equal(await page.getByLabel('Instant (ISO, with timezone)').inputValue(), new Date(point.valid_time).toISOString())
     await page.screenshot({ path: `${out}/${index}-native-identity.png` })
-    checks.push({ product: item.product, selectedTime: point.valid_time, sourceId: field.provenance.source_id, nativeTime: field.provenance.valid_time, dataMode: point.data_mode, completeProvenancePreserved: true })
+    checks.push({ product: item.product, statistic: item.statistic, quantile: item.quantile, selectedTime: point.valid_time, sourceId: field.provenance.source_id, nativeTime: field.provenance.valid_time, dataMode: point.data_mode, completeProvenancePreserved: true })
     await page.close()
   }
   assert.deepEqual(errors, [])

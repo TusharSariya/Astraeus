@@ -456,6 +456,26 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
    *  applies) and the effects re-run once when the registry is known, dropping
    *  a value that was a reading to an alternative. */
   const nonPrimarySources = useMemo(() => nonPrimarySourceIds(catalog), [catalog])
+  // GEPS point delivery requires an explicit provider reduction. Catalogue
+  // declarations supply choices; neither their order nor returned values select one.
+  const [pointStatisticKey, setPointStatisticKey] = useState('')
+  const requiresPointStatistic = selectedProduct === 'GEPS reductions'
+  const pointStatistics = useMemo(() => {
+    const choices = new Map<string, { statistic: string; quantile: number | null }>()
+    for (const source of catalog) {
+      if (source.id !== 'eccc-geps' || pointProductFor(source) !== 'GEPS reductions') continue
+      for (const capability of source.capabilities ?? []) {
+        if (!capability.point || capability.point_product !== 'GEPS reductions') continue
+        for (const variant of capability.variants) {
+          if (variant.kind !== 'provider_statistic' || !variant.statistic || variant.threshold != null) continue
+          const choice = { statistic: variant.statistic, quantile: variant.quantile ?? null }
+          choices.set(JSON.stringify(choice), choice)
+        }
+      }
+    }
+    return choices
+  }, [catalog])
+  const pointStatistic = requiresPointStatistic ? pointStatistics.get(pointStatisticKey) : undefined
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [layers, setLayers] = useState<LayerItem[]>([])
   const [layerNotices, setLayerNotices] = useState<string[]>([])
@@ -483,7 +503,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   // as the endpoint accepts it. Reset whenever the point response stops
   // carrying it below, rather than left pointed at a member that vanished.
   const [selectedMember, setSelectedMember] = useState<string | null>(null)
-  const snapshotKey = JSON.stringify([location.latitude, location.longitude, selectedMs, selectedProduct, selectedMember, site])
+  const snapshotKey = JSON.stringify([location.latitude, location.longitude, selectedMs, selectedProduct, selectedMember, requiresPointStatistic ? pointStatisticKey : null, site])
   const snapshot = legacyOpen || snapshotRequestKey === snapshotKey ? responseSnapshot : unavailableSnapshot
   const [sourceStatuses, setSourceStatuses] = useState<SourceStatusItem[] | null>(null)
   const [sourceStatusError, setSourceStatusError] = useState<string | null>(null)
@@ -827,7 +847,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
 
     if (!legacyOpen && playing) { setSourceError('Pause playback to read point evidence at the selected instant'); return () => controller.abort() }
     if (!legacyOpen && site && !registeredSites?.sites.some((entry) => entry.id === site && entry.latitude === location.latitude && entry.longitude === location.longitude)) { setDataSource('unavailable'); setSourceError(`Registered site ${site} awaits registry metadata; no default-point reading is substituted`); return () => controller.abort() }
-    loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources, member: selectedMember }).then((result) => {
+    if (requiresPointStatistic && !pointStatistic) { setProfile(null); setDataSource('unavailable'); setSourceError(pointStatisticKey ? 'Selected provider statistic is no longer declared; choose an available statistic.' : 'Choose a provider statistic before requesting GEPS reductions.'); return () => controller.abort() }
+    loadPoint(location, validTimeIso, selectedProduct ?? undefined, controller.signal, { nonPrimarySources, member: requiresPointStatistic ? null : selectedMember, statistic: pointStatistic?.statistic, quantile: pointStatistic?.quantile }).then((result) => {
       if (!controller.signal.aborted) {
         setSnapshot(result.snapshot)
         setSnapshotRequestKey(snapshotKey)
@@ -836,7 +857,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       }
     }).catch(() => undefined)
 
-    if (mode === 'expert') {
+    if (requiresPointStatistic) setProfile(null)
+    if (mode === 'expert' && !requiresPointStatistic) {
       setProfile(null)
       loadProfile(location, validTimeIso, selectedProduct ?? undefined, controller.signal).then((prof) => {
         // A location, timestamp, mode or source change aborts this request.
@@ -847,7 +869,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     }
 
     return () => controller.abort()
-  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources, selectedMember, site, legacyOpen, registeredSites, playing])
+  }, [location, validTimeIso, mode, selectedProduct, nonPrimarySources, selectedMember, site, legacyOpen, registeredSites, playing, requiresPointStatistic, pointStatistic, pointStatisticKey])
 
   // The story is assembled from the hours the timeline says are published, one
   // real /point response per card. Hours that return nothing are simply absent;
@@ -855,12 +877,12 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   useEffect(() => {
     const controller = new AbortController()
     setStory([])
-    if (!timeline || (!legacyOpen && !storyOpen)) return () => controller.abort()
+    if (requiresPointStatistic || !timeline || (!legacyOpen && !storyOpen)) return () => controller.abort()
     loadStory(location, timeline, selectedProduct ?? undefined, controller.signal, { nonPrimarySources })
       .then((steps) => setStory(steps))
       .catch(() => undefined)
     return () => controller.abort()
-  }, [location, timeline, selectedProduct, nonPrimarySources, legacyOpen, storyOpen])
+  }, [location, timeline, selectedProduct, nonPrimarySources, legacyOpen, storyOpen, requiresPointStatistic])
 
 
   useEffect(() => {
@@ -1679,7 +1701,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
                 Every option below comes from a response. A selector with no returned options stays disabled and says why.
                 Provider, product and variable change what is requested; run and level are read-only, because the point
                 request has no parameter for either. Member is a real selector when the source is an ensemble family
-                that publishes members, and read-only otherwise.
+                that publishes members, and read-only otherwise. GEPS reductions require an explicit provider statistic from the catalogue.
               </p>
               <FieldControl label="Provider">
                 <EvidenceSelect
@@ -1704,6 +1726,15 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
                   }))] : []}
                 />
               </FieldControl>
+              {requiresPointStatistic && <FieldControl label="Provider statistic">
+                <EvidenceSelect label="Provider statistic" value={pointStatisticKey} onChange={setPointStatisticKey}
+                  emptyReason="No provider statistic declared for GEPS reductions"
+                  options={pointStatistics.size ? [
+                    { value: '', label: 'Choose a provider statistic…' },
+                    ...(pointStatisticKey && !pointStatistics.has(pointStatisticKey) ? [{ value: pointStatisticKey, label: 'Selected statistic no longer declared', disabled: true }] : []),
+                    ...Array.from(pointStatistics, ([value, choice]) => ({ value, label: `${choice.statistic}${choice.quantile === null ? '' : ` · quantile ${choice.quantile}`}` })),
+                  ] : []} />
+              </FieldControl>}
               <FieldControl label="Run">
                 <ProvenanceReadout label="Run" values={runs} emptyReason="No run time in returned provenance" />
               </FieldControl>

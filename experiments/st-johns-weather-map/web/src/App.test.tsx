@@ -1991,3 +1991,38 @@ it.each([
   expect(screen.getByLabelText('Instant (ISO, with timezone)')).toHaveValue(new Date(instant).toISOString())
   expect(Date.parse(new URL(window.location.href).searchParams.get('t') ?? '')).toBe(Date.parse(instant))
 })
+
+it('requires explicit declared GEPS reduction and sends quantile without substituting the first statistic', async () => {
+  window.history.replaceState(null, '', '/?t=2026-09-05T12:00:00Z')
+  const capabilities = [
+    { kind: 'provider_statistic', statistic: 'ensemble_mean' },
+    { kind: 'provider_statistic', statistic: 'ensemble_spread' },
+    { kind: 'provider_statistic', statistic: 'ensemble_quantile', quantile: 0.5 },
+  ].map(variant => ({ source_id: 'eccc-geps', product_id: 'geomet-provider-reductions', field: 'temperature_2m', point: true, point_product: 'GEPS reductions', native_series: false, variants: [variant], levels: ['2 m'], run_selection: 'not_applicable', time_semantics: 'Exact advertised time', coverage_description: 'Native cell' }))
+  const fetchMock = routedFetch({
+    catalog: { sources: [{ id: 'eccc-geps', producer: 'ECCC', product: 'GEPS reductions', state: 'implemented-unverified', capabilities }] },
+    point: apiPoint([], { mode: 'evidence_only', badge: 'Unavailable reduction', reason: 'No exact native reading' }, 'unavailable'),
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Existing evidence panels' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Workbench' }))
+  await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Product' }), 'GEPS reductions')
+  const selector = screen.getByRole('combobox', { name: 'Provider statistic' })
+  expect(selector).toHaveValue('')
+  const gepsRequests = () => fetchMock.mock.calls.map(([request]) => new URL(request, 'http://localhost')).filter(url => url.pathname.endsWith('/point') && url.searchParams.get('product') === 'GEPS reductions')
+  expect(gepsRequests()).toHaveLength(0)
+  expect(screen.getAllByText(/Choose a provider statistic before requesting/).length).toBeGreaterThan(0)
+  for (const choice of [{ statistic: 'ensemble_quantile', quantile: 0.5 }, { statistic: 'ensemble_spread', quantile: null }]) {
+    await userEvent.selectOptions(selector, JSON.stringify(choice))
+    await waitFor(() => expect(gepsRequests().at(-1)?.searchParams.get('statistic')).toBe(choice.statistic))
+    expect(gepsRequests().at(-1)?.searchParams.get('quantile')).toBe(choice.quantile === null ? null : String(choice.quantile))
+    expect(Date.parse(gepsRequests().at(-1)?.searchParams.get('valid_time') ?? '')).toBe(Date.parse('2026-09-05T12:00:00Z'))
+    expect(selector).toHaveValue(JSON.stringify(choice))
+  }
+  expect(gepsRequests().every(url => url.searchParams.get('statistic') !== 'ensemble_mean')).toBe(true)
+  await userEvent.selectOptions(selector, '')
+  const count = gepsRequests().length
+  await waitFor(() => expect(screen.getAllByText(/Choose a provider statistic before requesting/).length).toBeGreaterThan(0))
+  expect(gepsRequests()).toHaveLength(count)
+})
