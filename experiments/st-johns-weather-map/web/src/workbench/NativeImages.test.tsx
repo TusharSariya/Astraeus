@@ -99,3 +99,10 @@ it('requires complete bounded listing and image receipt primitives', () => {
   }
   expect(isNativeImagePair({ ...pair, images: [{ ...pair.images[0], width: 4097 }, pair.images[1]] }, selection)).toBe(false)
 })
+
+it('accepts bounded full-day listings above 128 KiB but refuses either receipt above 512 KiB', () => {
+  expect(isNativeImagePair({ ...pair, listing_receipt: { ...receipt, body_bytes: 128 * 1024 + 1 } }, selection)).toBe(true)
+  expect(isNativeImagePair({ ...pair, listing_receipt: { ...receipt, body_bytes: 512 * 1024 } }, selection)).toBe(true)
+  expect(isNativeImagePair({ ...pair, listing_receipt: { ...receipt, body_bytes: 512 * 1024 + 1 } }, selection)).toBe(false)
+  expect(isNativeImagePair({ ...pair, images: [{ ...pair.images[0], receipt: { ...receipt, body_bytes: 512 * 1024 + 1 } }, pair.images[1]] }, selection)).toBe(false)
+})

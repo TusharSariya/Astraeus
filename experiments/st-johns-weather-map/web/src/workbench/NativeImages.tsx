@@ -41,7 +41,7 @@ export function isNativeImagePair(value: unknown, selection: NativeImageSelectio
     || !record(value.presentation) || !closed(value.presentation, ['encoding', 'transformation', 'legend', 'native_crs', 'georeferencing', 'numeric_pixel_values'])
     || value.presentation.encoding !== 'image/gif' || value.presentation.legend !== 'preserved-in-producer-image' || value.presentation.native_crs !== null
     || value.presentation.transformation !== 'unmodified-producer-image' || value.presentation.georeferencing !== 'not-established' || value.presentation.numeric_pixel_values !== 'unavailable'
-    || !imageReceipt(value.listing_receipt, 128 * 1024) || !Array.isArray(value.images) || value.images.length !== 2) return false
+    || !imageReceipt(value.listing_receipt, 512 * 1024) || !Array.isArray(value.images) || value.images.length !== 2) return false
   return ['Rain', 'Snow'].every((phase) => value.images instanceof Array && value.images.filter((image: unknown) => record(image)
     && closed(image, ['phase', 'source_filename', 'width', 'height', 'frames', 'receipt', 'image_url'])
     && image.phase === phase && image.image_url === `${selection.endpoint}/${value.pair_revision}/${phase}.gif`
