@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import sharedFixture from '../../../contracts/fixtures/source-delivery.json'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -8,7 +9,7 @@ import { isNativeImagePair, NativeImages } from './NativeImages'
 
 // Root's shared generator imports source-native-proof-fixture.py. The override
 // runs the same consumption cases before that shared-file integration lands.
-const fixture = JSON.parse(readFileSync(process.env.NATIVE_SOURCE_PROOF_FIXTURE ?? new URL('../../../contracts/fixtures/source-delivery.json', import.meta.url), 'utf8'))
+const fixture = process.env.NATIVE_SOURCE_PROOF_FIXTURE ? JSON.parse(readFileSync(process.env.NATIVE_SOURCE_PROOF_FIXTURE, 'utf8')) : sharedFixture
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 it.each([['point_ifs', 'ecmwf-ifs', '(0 - 1)'], ['point_aifs_single', 'ecmwf-aifs-single', '%']])('consumes exact %s source acquisition and native cloud units', (key, source, units) => {
   const body = fixture[key]
