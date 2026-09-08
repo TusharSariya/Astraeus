@@ -13,7 +13,7 @@ import { parseFocusUrl, serializeFocusUrl, type View } from './workbench/focusUr
 import { EvidenceInspector, EvidenceLedger, evidenceKey, type InspectedEvidence } from './workbench/EvidenceInspector'
 import { MapStack, NOWCAST_STACK, type DrawEvidence } from './workbench/MapStack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, isObservationPointProduct, pointProductFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, isObservationPointProduct, pointProductFor, pointProductsFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
@@ -956,21 +956,22 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   // design, so every model button was permanently dead beside a fully
   // implemented endpoint. A source the endpoint has no parameter value for is
   // not rendered as a disabled affordance either; it is simply not a control.
-  const pointSources = useMemo(() => catalog.filter((source) => pointProductFor(source) !== null), [catalog])
-  const forecastSources = useMemo(() => pointSources.filter((source) => !isObservationPointProduct(source)), [pointSources])
+  const pointSources = useMemo(() => catalog.flatMap((source) => pointProductsFor(source).map(product => ({ source, product }))), [catalog])
+  const forecastSources = useMemo(() => pointSources.filter(({ source, product }) => !isObservationPointProduct(source, product)), [pointSources])
   const providers = useMemo(() => unique(catalog.map((source) => source.producer)), [catalog])
   /** The model row grouped by producer, producers in catalogue order and each
    *  producer's sources in catalogue order. BLEND stays first and ungrouped. */
   const forecastSourcesByProducer = useMemo(() => {
-    const groups: Array<{ producer: string; sources: CatalogSource[] }> = []
-    forecastSources.forEach((source) => {
+    const groups: Array<{ producer: string; sources: typeof pointSources }> = []
+    forecastSources.forEach((choice) => {
+      const { source } = choice
       const group = groups.find((entry) => entry.producer === source.producer)
-      if (group) group.sources.push(source)
-      else groups.push({ producer: source.producer, sources: [source] })
+      if (group) group.sources.push(choice)
+      else groups.push({ producer: source.producer, sources: [choice] })
     })
     return groups
   }, [forecastSources])
-  const productSources = useMemo(() => (provider ? pointSources.filter((source) => source.producer === provider) : pointSources), [pointSources, provider])
+  const productSources = useMemo(() => (provider ? pointSources.filter(({ source }) => source.producer === provider) : pointSources), [pointSources, provider])
   const runs = useMemo(() => unique(snapshot.provenance.map((row) => row.run)), [snapshot])
   const members = useMemo(() => unique(snapshot.provenance.map((row) => row.member ?? '')), [snapshot])
   const levels = useMemo(() => unique(snapshot.provenance.map((row) => row.level)), [snapshot])
@@ -1020,8 +1021,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
    *  the selected response itself; retained products continue to use
    *  `/sources/status` and `/timeline`. The registry's cadence and horizon
    *  prose is provider documentation and moves to the tooltip, labelled so. */
-  const coverageOf = useCallback((source: CatalogSource): { text: string; unavailable: boolean } => {
-    const product = pointProductFor(source)
+  const coverageOf = useCallback((source: CatalogSource, product: string): { text: string; unavailable: boolean } => {
     const isSelected = product !== null && selectedProduct === product
     if (isSelected && dataSource === 'loading') return { text: 'querying selected time\u2026', unavailable: false }
     if (isSelected && dataSource === 'live' && snapshot.selectedSourceId === source.id) {
@@ -1143,14 +1143,13 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
               // cards. Still one scrolling row: the group is a flex item too.
               <div key={producer} className="model-group" role="group" aria-label={producer}>
                 <span className="model-group-label">{producer}</span>
-                {sources.map((source) => {
+                {sources.map(({ source, product }) => {
                   // Every button here names a product the endpoint accepts, so it is
                   // pressable — including one with nothing ingested, because the
                   // API's reason for having nothing is worth reading. Whether the
                   // product has an artifact covering this point and hour is the
                   // API's answer, shown below, not a prediction made here.
-                  const product = pointProductFor(source) as string
-                  const coverage = coverageOf(source)
+                  const coverage = coverageOf(source, product)
                   // The catalogue's own delivery declaration, shown on the
                   // catalogue entry as well as beside each value: a reader
                   // choosing a model should see whether its values are the
@@ -1159,7 +1158,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
                   const kindLabel = deliveryKindLabel(kind, source.intermediary ?? null)
                   return (
                     <button
-                      key={source.id}
+                      key={`${source.id}:${product}`}
                       type="button"
                       aria-pressed={selectedProduct === product}
                       title={`${source.role} \u00b7 ${source.cadence} \u00b7 ${source.forecast_horizon}${kindLabel ? ` \u00b7 ${kindLabel}` : ''}${source.display_primary === false ? ' \u00b7 never a display primary' : ''} (provider documentation, not verified here)`}
@@ -1718,10 +1717,10 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
                   value={selectedProduct ?? ''}
                   onChange={(value) => setSelectedProduct(value === '' ? null : value)}
                   emptyReason={catalogError ? `Catalog unavailable: ${catalogError}` : 'No catalogued product is accepted by the point endpoint'}
-                  options={productSources.length > 0 ? [{ value: '', label: 'Consensus (API selection)' }, ...productSources.map((source) => ({
-                    value: pointProductFor(source) as string,
-                    label: `${pointProductFor(source)} — ${source.product}`,
-                    group: isObservationPointProduct(source) ? 'Native observations' : 'Forecast and other point products',
+                  options={productSources.length > 0 ? [{ value: '', label: 'Consensus (API selection)' }, ...productSources.map(({ source, product }) => ({
+                    value: product,
+                    label: `${product} — ${source.product}`,
+                    group: isObservationPointProduct(source, product) ? 'Native observations' : 'Forecast and other point products',
                     title: `${source.role} · registry state: ${source.state}`,
                   }))] : []}
                 />

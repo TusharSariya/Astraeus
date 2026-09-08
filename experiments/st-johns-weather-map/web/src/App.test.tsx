@@ -2049,3 +2049,25 @@ it('keeps point loading distinct from completed catalogue and layers until the p
   expect(screen.getByText(/0 returned values/)).toBeInTheDocument()
   expect(fetchMock.mock.calls.some(([url]) => url.includes('/health'))).toBe(false)
 })
+
+it('offers both WeatherNext point paths for one native identity and preserves explicit unavailable selections', async () => {
+  window.history.replaceState(null, '', '/?t=2026-09-08T12:00:00Z')
+  const tokens = ['WeatherNext 3 historical', 'WeatherNext 3 local']
+  const capabilities = tokens.map(point_product => ({ source_id: 'google-weathernext-3-statistics', product_id: 'weathernext_3_0_0_statistics', field: 'temperature_2m', point: true, point_product, native_series: false, variants: [{ kind: 'provider_statistic', statistic: 'ensemble_mean' }], levels: ['2 m'], run_selection: 'not_applicable', time_semantics: 'Exact native time', coverage_description: 'Native cell' }))
+  const fetchMock = routedFetch({ catalog: { sources: [{ id: 'google-weathernext-3-statistics', producer: 'Google', product: 'WeatherNext 3 statistics', state: 'implemented-unverified', capabilities: [...capabilities, capabilities[0]] }] }, point: apiPoint([], { mode: 'evidence_only', badge: 'Unavailable WeatherNext', reason: 'No configured exact native reading' }, 'unavailable') })
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Existing evidence panels' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Workbench' }))
+  const selector = screen.getByRole('combobox', { name: 'Product' })
+  expect(selector).toHaveValue('')
+  for (const token of tokens) {
+    expect(within(selector).getAllByRole('option', { name: new RegExp(token) })).toHaveLength(1)
+    await userEvent.selectOptions(selector, token)
+    await waitFor(() => expect(fetchMock.mock.calls.some(([request]) => {
+      const url = new URL(request, 'http://localhost')
+      return url.pathname.endsWith('/point') && url.searchParams.get('product') === token && Date.parse(url.searchParams.get('valid_time') ?? '') === Date.parse('2026-09-08T12:00:00Z')
+    })).toBe(true))
+    expect(selector).toHaveValue(token)
+  }
+})
