@@ -50,12 +50,13 @@ def main():
 
 def http_main():
     # Host-side helper: runtime auth remains in this short-lived process only.
-    from weather_api.weathernext_gcs import GcloudProfileToken, WeatherNextGCSTransport
+    from weather_api.weathernext_gcs import AccessTokenFile, GcloudProfileToken, WeatherNextGCSTransport
     from weather_api.weathernext_native import ObjectIdentity
     try:
         request=json.loads(sys.stdin.buffer.read(65536))
         expected=ObjectIdentity(**request['expected']) if request['expected'] else None
-        transport=WeatherNextGCSTransport(token_provider=GcloudProfileToken(request['profile']))
+        provider=AccessTokenFile(request['token_file']) if 'token_file' in request else GcloudProfileToken(request['profile'])
+        transport=WeatherNextGCSTransport(token_provider=provider)
         transport._validate('weathernext3_statistics_spatial',request['name'])
         body=transport._get(request['name'],request['params'],cap=request['cap'],timeout=request['timeout'],expected=expected)
         print(json.dumps({'body':base64.b64encode(body).decode('ascii')}),flush=True)

@@ -16,7 +16,7 @@ import sys
 import time
 import uuid
 
-from weather_api.weathernext_gcs import GcloudProfileToken, WeatherNextGCSTransport
+from weather_api.weathernext_gcs import AccessTokenFile, GcloudProfileToken, WeatherNextGCSTransport
 from weather_api.weathernext_native import BUCKET, ObjectIdentity
 from weather_api.weathernext_query import WeatherNextSelection
 
@@ -47,7 +47,7 @@ class AccountedGCSTransport(WeatherNextGCSTransport):
             raise BridgeUnavailable('WeatherNext chunk exceeds remaining byte budget')
         operation={'name':name,'kind':'media' if expected else 'metadata','generation':expected.generation if expected else None}
         self.operations.append(operation)
-        if isinstance(self._token_provider,GcloudProfileToken):
+        if isinstance(self._token_provider,(GcloudProfileToken,AccessTokenFile)):
             body=self._subprocess_get(name,params,effective,timeout,expected)
         else:
             body=super()._get(name,params,cap=effective,timeout=timeout,expected=expected)
@@ -57,7 +57,11 @@ class AccountedGCSTransport(WeatherNextGCSTransport):
 
     def _subprocess_get(self,name,params,cap,timeout,expected):
         request={'name':name,'params':params,'cap':cap,'timeout':timeout,
-                 'expected':asdict(expected) if expected else None,'profile':self._token_provider.profile}
+                 'expected':asdict(expected) if expected else None}
+        if isinstance(self._token_provider,AccessTokenFile):
+            request['token_file']=self._token_provider.path
+        else:
+            request['profile']=self._token_provider.profile
         child=subprocess.Popen([sys.executable,'-m','weather_api.weathernext_gcs_worker','--http'],
                                stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,start_new_session=True)
         try:

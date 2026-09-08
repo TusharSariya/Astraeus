@@ -160,3 +160,89 @@ def test_transport_exception_does_not_disclose_token():
         transport.read(IDENTITY,max_bytes=3,timeout=10)
     assert str(caught.value) == 'WeatherNext GCS bounded request failed'
     assert caught.value.__suppress_context__
+
+
+def private_token(tmp_path, body=b'synthetic-token\n'):
+    path = tmp_path / 'runtime-token'
+    path.write_bytes(body)
+    path.chmod(0o600)
+    return path
+
+
+def test_token_file_rereads_atomic_replacement(tmp_path):
+    from weather_api.weathernext_gcs import AccessTokenFile
+    path = private_token(tmp_path)
+    provider = AccessTokenFile(str(path))
+    assert provider(timeout=1) == 'synthetic-token'
+    replacement = tmp_path / 'replacement'
+    replacement.write_bytes(b'new.synthetic_token+/==\r\n')
+    replacement.chmod(0o600)
+    replacement.replace(path)
+    assert provider(timeout=1) == 'new.synthetic_token+/=='
+
+
+@pytest.mark.parametrize('body', [b'', b'Bearer secret', b'one\ntwo', b'one\n\n', b' token', b'token ', b'\xff', b'x'*16385, b'token:secret', b'=token'])
+def test_token_file_invalid_content_is_safe(tmp_path, body):
+    from weather_api.weathernext_gcs import AccessTokenFile
+    path = private_token(tmp_path, body)
+    with pytest.raises(GCSUnavailable) as caught:
+        AccessTokenFile(str(path))(timeout=1)
+    assert str(caught.value) == 'WeatherNext GCS authentication unavailable'
+
+
+@pytest.mark.parametrize('kind', ['missing', 'public', 'symlink', 'directory', 'fifo'])
+def test_token_file_path_failures_are_safe_and_nonblocking(tmp_path, kind):
+    import os
+    from weather_api.weathernext_gcs import AccessTokenFile
+    path = private_token(tmp_path)
+    if kind == 'missing': path.unlink()
+    elif kind == 'public': path.chmod(0o644)
+    elif kind == 'symlink':
+        target = tmp_path / 'link'
+        target.symlink_to(path)
+        path = target
+    elif kind == 'directory': path = tmp_path
+    elif kind == 'fifo':
+        path.unlink()
+        os.mkfifo(path, 0o600)
+    with pytest.raises(GCSUnavailable) as caught:
+        AccessTokenFile(str(path))(timeout=1)
+    assert str(caught.value) == 'WeatherNext GCS authentication unavailable'
+
+
+def test_explicit_token_file_precedes_gcloud_and_empty_does_not_fallback(tmp_path, monkeypatch):
+    from weather_api.weathernext_gcs import ACCESS_TOKEN_FILE_ENV, AccessTokenFile, runtime_token_provider
+    path = private_token(tmp_path)
+    monkeypatch.setenv(ACCESS_TOKEN_FILE_ENV, str(path))
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **kw: pytest.fail('must not invoke gcloud'))
+    assert runtime_token_provider('astraeus')(timeout=1) == 'synthetic-token'
+    monkeypatch.setenv(ACCESS_TOKEN_FILE_ENV, '')
+    provider = runtime_token_provider('astraeus')
+    assert isinstance(provider, AccessTokenFile)
+    with pytest.raises(GCSUnavailable): provider(timeout=1)
+    monkeypatch.delenv(ACCESS_TOKEN_FILE_ENV)
+    assert isinstance(runtime_token_provider('astraeus'), GcloudProfileToken)
+
+
+def test_token_file_http_uses_only_bearer_header(tmp_path):
+    from weather_api.weathernext_gcs import AccessTokenFile
+    opener = Opener(Response())
+    transport = WeatherNextGCSTransport(token_provider=AccessTokenFile(str(private_token(tmp_path))), opener=opener)
+    assert transport.read(IDENTITY, max_bytes=3, timeout=10) == b'abc'
+    assert opener.requests[0].get_header('Authorization') == 'Bearer synthetic-token'
+    assert 'synthetic-token' not in opener.requests[0].full_url
+
+
+def test_token_file_exact_byte_limit_and_expired_deadline(tmp_path):
+    from weather_api.weathernext_gcs import AccessTokenFile
+    provider = AccessTokenFile(str(private_token(tmp_path, b'x'*16384)))
+    assert len(provider(timeout=1)) == 16384
+    with pytest.raises(GCSUnavailable): provider(timeout=0)
+
+
+def test_token_file_requires_current_process_owner(tmp_path, monkeypatch):
+    import os
+    from weather_api.weathernext_gcs import AccessTokenFile
+    path = private_token(tmp_path)
+    monkeypatch.setattr(os, 'geteuid', lambda: path.stat().st_uid + 1)
+    with pytest.raises(GCSUnavailable): AccessTokenFile(str(path))(timeout=1)

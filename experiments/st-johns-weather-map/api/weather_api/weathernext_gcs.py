@@ -6,6 +6,9 @@ Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006 (experiment).
 from __future__ import annotations
 
 import json
+import math
+import os
+import stat
 import re
 import subprocess
 import time
@@ -15,6 +18,9 @@ from urllib.parse import quote, urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from weather_api.weathernext_native import BUCKET, ObjectIdentity
+
+ACCESS_TOKEN_FILE_ENV = 'WEATHER_WEATHERNEXT_ACCESS_TOKEN_FILE'
+ACCESS_TOKEN_MAX_BYTES = 16 * 1024
 
 METADATA_CAP = 64 * 1024
 PAYLOAD_CAP = 512 * 1024 * 1024
@@ -57,6 +63,52 @@ class GcloudProfileToken:
             return token
         except Exception:
             raise GCSUnavailable("authentication unavailable") from None
+
+
+class AccessTokenFile:
+    """Read an explicitly provisioned private short-lived OAuth token at runtime.
+
+    No caching or refresh daemon: an operator may atomically replace the file.
+    Expiration is assessed by Google; an expired token fails through normal 401.
+    Neither file contents nor filesystem errors enter exception messages.
+    """
+    def __init__(self, path: str):
+        self.path = path
+
+    def __call__(self, *, timeout: float) -> str:
+        descriptor = None
+        try:
+            if (not self.path or not os.path.isabs(self.path)
+                    or not math.isfinite(timeout) or timeout <= 0):
+                raise ValueError("token file configuration")
+            # Do not follow symlinks or block opening a FIFO/device. Validate the
+            # opened inode so replacement races cannot bypass the private-file gate.
+            descriptor = os.open(self.path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+            info = os.fstat(descriptor)
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+                    or info.st_mode & 0o077 or not 0 < info.st_size <= ACCESS_TOKEN_MAX_BYTES):
+                raise ValueError("token file boundary")
+            body = os.read(descriptor, ACCESS_TOKEN_MAX_BYTES)
+            if len(body) != info.st_size or os.fstat(descriptor).st_size != info.st_size:
+                raise ValueError("token file changed")
+            # gcloud's single trailing newline is allowed. Internal whitespace,
+            # a Bearer prefix, multiple lines and non-ASCII bytes are rejected.
+            token = body.removesuffix(b"\n").removesuffix(b"\r").decode("ascii")
+            if not re.fullmatch(r"[A-Za-z0-9\-._~+/]+=*", token):
+                raise ValueError("token syntax")
+            return token
+        except Exception:
+            raise GCSUnavailable("authentication unavailable") from None
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+
+
+def runtime_token_provider(profile: str):
+    """Explicit file wins, including invalid/empty configuration; no fallback."""
+    if ACCESS_TOKEN_FILE_ENV in os.environ:
+        return AccessTokenFile(os.environ[ACCESS_TOKEN_FILE_ENV])
+    return GcloudProfileToken(profile)
 
 
 class _NoRedirect(HTTPRedirectHandler):
