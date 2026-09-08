@@ -1,14 +1,17 @@
 # API-first source delivery - September 7, 2026
 
-Current execution record, updated September 8 00:57 UTC / September 7 17:57 PDT.
+Current execution record, updated September 8 01:11 UTC / September 7 18:11 PDT.
 PR #296 is merged into main at a4f77c63b90acfd8cf1e5d797ee9414236d21839.
-The reviewed remaining delta is on execution/api-first-final-consolidation.
-The overall source plan remains incomplete; implementation is winding down into final verification.
+PR #297 is also merged into main at 773a793540e85f59586828374e9f216040964b25.
+The last reviewed VIIRS native-inspection helper is on execution/api-first-viirs-final.
+The owner has now authorized auditing older unused branches/worktrees for useful
+work to consolidate. Four Astra-medium auditors are reviewing separate partitions.
+The overall source plan remains incomplete.
 
 ## Workspace and authority
 
 - Integration: `/private/tmp/astraeus-api-first-delivery`, branch
-  `execution/api-first-final-consolidation`, based on merged PR #296.
+  `execution/api-first-viirs-final`, based on merged PR #297.
   The earlier delivery branch preserves the pre-rebase history.
 - Preserve the unrelated dirty normal checkout at
   `/Users/tusharsariya/Projects/Astraeus`, branch `execution/activity-profiles`.
@@ -164,9 +167,23 @@ branches remain; unrelated and unmerged worktrees were preserved. Receipt:
 213 worktrees and 358 branches; removal leaves 204 worktrees. The broad stale
 workspace inventory still needs a separate evidence-based preservation audit.
 
-Ready follow-up [PR #297](https://github.com/TusharSariya/Astraeus/pull/297)
-contains the remaining reviewed delta. Final backend receipt:
-`/private/tmp/astraeus-final-consolidation-api.log`. Merge after the required
-GitHub check and update both Wayfinders with its actual merge receipt. No completed worker
+Merged [PR #297](https://github.com/TusharSariya/Astraeus/pull/297)
+at `773a793540e85f59586828374e9f216040964b25`. Final backend receipt:
+`/private/tmp/astraeus-final-consolidation-api.log`. Both Wayfinders record its
+actual merge. No additional whole open issue is proven complete by that delta.
+
+VIIRS commit a370282 is independently reviewed and passes eight Linux tests on
+assembled main. It preserves native raw categories, diagnostics and geolocation
+from an exact retained NOAA-20 granule in a bounded process. The captured swath
+is in central Asia, not Avalon; #102 remains open for geographic discovery, QC
+meaning, applicable point/cache/API delivery and the other VIIRS products.
+
+The owner explicitly authorized the legacy-work value audit after the initial
+cutoff. Three auditors own disjoint groups of 54/53/53 older worktrees; a fourth
+owns 162 branches without attached worktrees. Manifest:
+`/private/tmp/astraeus-legacy-work-audit.json`. They must exclude active or
+uncertain worktrees and report exact missing commits, value, contract/issue
+mapping and required checks. Audit is read-only; no wholesale deletion or
+completion claim is authorized by a branch count. Root owns review and merges. No completed worker
 should be described as actively running. Do not restart excluded HRRR work or
 retest completed sources without a new failure, change or unresolved concern.
