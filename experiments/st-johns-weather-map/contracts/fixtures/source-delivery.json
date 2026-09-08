@@ -4750,6 +4750,1059 @@
       }
     ]
   },
+  "native_fixture_proof": {
+    "basis": "Constructed deterministic API fixtures; ECMWF native decoder seam and tiny 1x1 Holyrood GIF, not live evidence or representative radar",
+    "mock_transport_reads": {
+      "eccc-holyrood-cashr-dpqpe": 3,
+      "ecmwf-aifs-single": 12,
+      "ecmwf-ifs": 12
+    },
+    "provider_requests": 0
+  },
+  "native_image_bodies_base64": {
+    "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images/732fdabc831daef20f648f1c55bd8517ab9ed28946ba00333e6ed411a48106ac/Rain.gif": "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAkQBADs=",
+    "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images/732fdabc831daef20f648f1c55bd8517ab9ed28946ba00333e6ed411a48106ac/Snow.gif": "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAkQBADs="
+  },
+  "native_images_holyrood": {
+    "cache_status": "miss",
+    "images": [
+      {
+        "frames": 1,
+        "height": 1,
+        "image_url": "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images/732fdabc831daef20f648f1c55bd8517ab9ed28946ba00333e6ed411a48106ac/Rain.gif",
+        "phase": "Rain",
+        "receipt": {
+          "body_bytes": 35,
+          "completed_at": "2026-09-06T05:00:00Z",
+          "headers": [
+            [
+              "content-length",
+              "35"
+            ],
+            [
+              "etag",
+              "fixed"
+            ]
+          ],
+          "sha256": "6c63cc5063ac82d8bbc925f9a31adf3a87f1510c021e0fde51854d60484b5019",
+          "url": "https://dd.weather.gc.ca/today/radar/DPQPE/GIF/CASHR/20260906T0454Z_MSC_Radar-DPQPE_CASHR_Rain.gif"
+        },
+        "source_filename": "20260906T0454Z_MSC_Radar-DPQPE_CASHR_Rain.gif",
+        "width": 1
+      },
+      {
+        "frames": 1,
+        "height": 1,
+        "image_url": "/api/experiments/weather/v0/sources/eccc-holyrood-cashr-dpqpe/images/732fdabc831daef20f648f1c55bd8517ab9ed28946ba00333e6ed411a48106ac/Snow.gif",
+        "phase": "Snow",
+        "receipt": {
+          "body_bytes": 35,
+          "completed_at": "2026-09-06T05:00:00Z",
+          "headers": [
+            [
+              "content-length",
+              "35"
+            ],
+            [
+              "etag",
+              "fixed"
+            ]
+          ],
+          "sha256": "6c63cc5063ac82d8bbc925f9a31adf3a87f1510c021e0fde51854d60484b5019",
+          "url": "https://dd.weather.gc.ca/today/radar/DPQPE/GIF/CASHR/20260906T0454Z_MSC_Radar-DPQPE_CASHR_Snow.gif"
+        },
+        "source_filename": "20260906T0454Z_MSC_Radar-DPQPE_CASHR_Snow.gif",
+        "width": 1
+      }
+    ],
+    "listing_receipt": {
+      "body_bytes": 223,
+      "completed_at": "2026-09-06T05:00:00Z",
+      "headers": [
+        [
+          "content-length",
+          "223"
+        ],
+        [
+          "etag",
+          "fixed"
+        ]
+      ],
+      "sha256": "839c16685162ff6d70dd642748cccaa6c8b154c95c9cf79611f95f5abb4304c3",
+      "url": "https://dd.weather.gc.ca/today/radar/DPQPE/GIF/CASHR/"
+    },
+    "operational": false,
+    "pair_revision": "732fdabc831daef20f648f1c55bd8517ab9ed28946ba00333e6ed411a48106ac",
+    "presentation": {
+      "encoding": "image/gif",
+      "georeferencing": "not-established",
+      "legend": "preserved-in-producer-image",
+      "native_crs": null,
+      "numeric_pixel_values": "unavailable",
+      "transformation": "unmodified-producer-image"
+    },
+    "primary": false,
+    "producer": "Environment and Climate Change Canada",
+    "product": "Holyrood CASHR native DPQPE rendered imagery",
+    "retained_until": "2026-09-06T05:01:00Z",
+    "scientific_freshness": "unknown",
+    "semantics": "rendered-image-only",
+    "source_id": "eccc-holyrood-cashr-dpqpe",
+    "source_quality": "unknown",
+    "station_id": "CASHR",
+    "valid_time": "2026-09-06T04:54:00Z"
+  },
+  "point_aifs_single": {
+    "comparability": [
+      {
+        "a": "dew_point_2m",
+        "b": "relative_humidity_2m",
+        "comparable": false,
+        "detail": "dew_point_2m is Dew-point temperature. and relative_humidity_2m is Relative humidity, phase-dependent below freezing.. Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "reason": "definition"
+      }
+    ],
+    "consensus": null,
+    "data_mode": "fixture",
+    "demand_unavailable": null,
+    "fields": [
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "field": "dew_point",
+        "key": "dew_point_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "degC",
+          "operational": false,
+          "original_units": "K",
+          "product": "AIFS Single Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+            "product_id": "aifs-single",
+            "provider_run_id": "ecmwf-aifs-single-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-aifs-single",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/"
+              },
+              {
+                "byte_size": 730,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "730",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "f3a2b71484d88e296bac8591ec7e31f61411fc56cba11c0bc506237168d80cc0",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-aifs-single",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 5.0
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Mean sea level pressure is reduced to sea level by the producer's own reduction; surface pressure is the pressure at the model's own orography. They differ by the station's elevation and are not comparable.",
+        "family": "pressure",
+        "field": "mean_sea_level_pressure",
+        "key": "mean_sea_level_pressure",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "hPa",
+          "operational": false,
+          "original_units": "Pa",
+          "product": "AIFS Single Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+            "product_id": "aifs-single",
+            "provider_run_id": "ecmwf-aifs-single-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-aifs-single",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/"
+              },
+              {
+                "byte_size": 730,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "730",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "f3a2b71484d88e296bac8591ec7e31f61411fc56cba11c0bc506237168d80cc0",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-aifs-single",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "mean sea level"
+        },
+        "storage": "available-not-stored",
+        "value": 1013.25
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "field": "relative_humidity",
+        "key": "relative_humidity_2m",
+        "phase": "liquid",
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": "relative_humidity_from_dewpoint_liquid",
+          "derivation_citation": "Saturation vapour pressure after Bolton (1980), Monthly Weather Review 108, 1046-1053, evaluated by MetPy 1.7.1 `relative_humidity_from_dewpoint` with an explicit liquid-water phase.",
+          "derivation_inputs": [
+            {
+              "evidence_class": "retrieved",
+              "field": "temperature",
+              "product": "AIFS Single Open Data",
+              "quality": {
+                "flags": [],
+                "status": "unknown"
+              },
+              "run_time": "2026-09-07T12:00:00Z",
+              "source_id": "ecmwf-aifs-single",
+              "units": "degC",
+              "valid_time": "2026-09-07T12:00:00Z"
+            },
+            {
+              "evidence_class": "retrieved",
+              "field": "dew_point",
+              "product": "AIFS Single Open Data",
+              "quality": {
+                "flags": [],
+                "status": "unknown"
+              },
+              "run_time": "2026-09-07T12:00:00Z",
+              "source_id": "ecmwf-aifs-single",
+              "units": "degC",
+              "valid_time": "2026-09-07T12:00:00Z"
+            }
+          ],
+          "derivation_version": "metpy-1.7.1-liquid-v1",
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "derived_here",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "percent",
+          "operational": false,
+          "original_units": "percent",
+          "product": "AIFS Single Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [
+              "derived"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+            "product_id": "aifs-single",
+            "provider_run_id": "ecmwf-aifs-single-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-aifs-single",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/"
+              },
+              {
+                "byte_size": 730,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "730",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "f3a2b71484d88e296bac8591ec7e31f61411fc56cba11c0bc506237168d80cc0",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-aifs-single",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 87.1
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+        "family": "temperature",
+        "field": "temperature",
+        "key": "temperature_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "degC",
+          "operational": false,
+          "original_units": "K",
+          "product": "AIFS Single Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+            "product_id": "aifs-single",
+            "provider_run_id": "ecmwf-aifs-single-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-aifs-single",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/"
+              },
+              {
+                "byte_size": 730,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "730",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "f3a2b71484d88e296bac8591ec7e31f61411fc56cba11c0bc506237168d80cc0",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-aifs-single",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 7.0
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Members measure how much sky is covered, by four incompatible definitions. Opacity-weighted cover (ECCC GEM 'NT') weights each layer by how much light it actually stops, so thin cirrus reads near zero. Geometric cover (GFS, ECMWF, ICON) is a maximum-random overlap of layer fractions and counts thin cirrus in full. A six-hour mean (GEFS) is a time average and is never an instant. Observed dome cover (METAR oktas) is one observer's fraction of the celestial dome at one point. Satellite layered fraction (GOES ABI Cloud Cover Layers) is a retrieval per vertical layer. Values from different definitions must never share a colour ramp, an axis or a difference view.",
+        "family": "cloud_cover",
+        "field": "total_cloud_geometric",
+        "key": "total_cloud_geometric",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "percent",
+          "operational": false,
+          "original_units": "%",
+          "product": "AIFS Single Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "1999854b91c2cf071f8daf5e5520909418f76d07022b97561a9155fc0d3270ec",
+            "product_id": "aifs-single",
+            "provider_run_id": "ecmwf-aifs-single-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-aifs-single",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/"
+              },
+              {
+                "byte_size": 730,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "730",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "f3a2b71484d88e296bac8591ec7e31f61411fc56cba11c0bc506237168d80cc0",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/aifs-single/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-aifs-single",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "entire atmosphere (column)"
+        },
+        "storage": "available-not-stored",
+        "value": 50.0
+      }
+    ],
+    "latitude": 47.5,
+    "longitude": -52.75,
+    "notices": [
+      "The selected source retains its own native time, units and provenance; no other model or time is substituted",
+      "eccc-aqhi has no validated nearby station observation less than one hour old at or before this selection",
+      "Constructed native contract fixture; no provider request or live evidence"
+    ],
+    "observation_unavailable": [
+      {
+        "error_type": "AQHICompanionUnavailable",
+        "expired_acquisition": null,
+        "reason": "query_failed",
+        "source_id": "eccc-aqhi",
+        "values_withheld": true
+      }
+    ],
+    "operational": false,
+    "selection": {
+      "badge": "AIFS Single selected",
+      "mode": "evidence_only",
+      "reason": "Exact native experimental evidence; source admission remains unchanged",
+      "selected_product_id": null,
+      "selected_source_id": null
+    },
+    "valid_time": "2026-09-07T12:00:00Z"
+  },
   "point_aqhi": {
     "comparability": [],
     "consensus": null,
@@ -4843,7 +5896,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 13.4
+        "value": 13.8
       },
       {
         "absence_state": null,
@@ -5062,7 +6115,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 13.4
+        "value": 13.8
       }
     ],
     "latitude": 47.56,
@@ -5183,6 +6236,957 @@
       "badge": "CAMS AOD via Open-Meteo",
       "mode": "evidence_only",
       "reason": "Reprocessed aerosol optical depth evidence is not a display primary",
+      "selected_product_id": null,
+      "selected_source_id": null
+    },
+    "valid_time": "2026-09-07T12:00:00Z"
+  },
+  "point_ifs": {
+    "comparability": [
+      {
+        "a": "dew_point_2m",
+        "b": "relative_humidity_2m",
+        "comparable": false,
+        "detail": "dew_point_2m is Dew-point temperature. and relative_humidity_2m is Relative humidity, phase-dependent below freezing.. Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "reason": "definition"
+      }
+    ],
+    "consensus": null,
+    "data_mode": "fixture",
+    "demand_unavailable": null,
+    "fields": [
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "field": "dew_point",
+        "key": "dew_point_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "degC",
+          "operational": false,
+          "original_units": "K",
+          "product": "IFS Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+            "product_id": "ifs",
+            "provider_run_id": "ecmwf-ifs-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-ifs",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/"
+              },
+              {
+                "byte_size": 698,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "698",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "a4b943b0988614c25eaadccc2c6ab01aa1258d01c789c1e8dcc27f3dd4f1c96b",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-ifs",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 5.0
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Mean sea level pressure is reduced to sea level by the producer's own reduction; surface pressure is the pressure at the model's own orography. They differ by the station's elevation and are not comparable.",
+        "family": "pressure",
+        "field": "mean_sea_level_pressure",
+        "key": "mean_sea_level_pressure",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "hPa",
+          "operational": false,
+          "original_units": "Pa",
+          "product": "IFS Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+            "product_id": "ifs",
+            "provider_run_id": "ecmwf-ifs-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-ifs",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/"
+              },
+              {
+                "byte_size": 698,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "698",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "a4b943b0988614c25eaadccc2c6ab01aa1258d01c789c1e8dcc27f3dd4f1c96b",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-ifs",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "mean sea level"
+        },
+        "storage": "available-not-stored",
+        "value": 1013.25
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Relative humidity, specific humidity, dew point and column water vapour. Relative humidity carries a required phase attribute: HRDPS and RDPS divide by saturation over liquid water at every temperature, GFS by a mixed-phase saturation ramping from ice at 253.16 K to water at 273.16 K. The two agree above freezing and differ by up to about 24 percent below it, so a liquid-versus-mixed pair is flagged not comparable whenever either value's air temperature is below 273.16 K. Specific humidity, dew point and precipitable water carry no phase ambiguity and are separate quantities, not relative humidity in other clothes.",
+        "family": "humidity",
+        "field": "relative_humidity",
+        "key": "relative_humidity_2m",
+        "phase": "liquid",
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": "relative_humidity_from_dewpoint_liquid",
+          "derivation_citation": "Saturation vapour pressure after Bolton (1980), Monthly Weather Review 108, 1046-1053, evaluated by MetPy 1.7.1 `relative_humidity_from_dewpoint` with an explicit liquid-water phase.",
+          "derivation_inputs": [
+            {
+              "evidence_class": "retrieved",
+              "field": "temperature",
+              "product": "IFS Open Data",
+              "quality": {
+                "flags": [],
+                "status": "unknown"
+              },
+              "run_time": "2026-09-07T12:00:00Z",
+              "source_id": "ecmwf-ifs",
+              "units": "degC",
+              "valid_time": "2026-09-07T12:00:00Z"
+            },
+            {
+              "evidence_class": "retrieved",
+              "field": "dew_point",
+              "product": "IFS Open Data",
+              "quality": {
+                "flags": [],
+                "status": "unknown"
+              },
+              "run_time": "2026-09-07T12:00:00Z",
+              "source_id": "ecmwf-ifs",
+              "units": "degC",
+              "valid_time": "2026-09-07T12:00:00Z"
+            }
+          ],
+          "derivation_version": "metpy-1.7.1-liquid-v1",
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "derived_here",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "percent",
+          "operational": false,
+          "original_units": "percent",
+          "product": "IFS Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [
+              "derived"
+            ],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+            "product_id": "ifs",
+            "provider_run_id": "ecmwf-ifs-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-ifs",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/"
+              },
+              {
+                "byte_size": 698,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "698",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "a4b943b0988614c25eaadccc2c6ab01aa1258d01c789c1e8dcc27f3dd4f1c96b",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-ifs",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 87.1
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Air temperature at a stated level, plus surface temperatures that are not air temperature at all. A screen temperature and a skin or radiative surface temperature are different quantities and are not comparable; whether ECCC's 'aggregate land surface skin temperature' and 'aggregate surface radiative temperature' are the same quantity is unverified and they are kept apart.",
+        "family": "temperature",
+        "field": "temperature",
+        "key": "temperature_2m",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "degC",
+          "operational": false,
+          "original_units": "K",
+          "product": "IFS Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+            "product_id": "ifs",
+            "provider_run_id": "ecmwf-ifs-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-ifs",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/"
+              },
+              {
+                "byte_size": 698,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "698",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "a4b943b0988614c25eaadccc2c6ab01aa1258d01c789c1e8dcc27f3dd4f1c96b",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-ifs",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "2 m"
+        },
+        "storage": "available-not-stored",
+        "value": 7.0
+      },
+      {
+        "absence_state": null,
+        "blocked": null,
+        "comparability": "Members measure how much sky is covered, by four incompatible definitions. Opacity-weighted cover (ECCC GEM 'NT') weights each layer by how much light it actually stops, so thin cirrus reads near zero. Geometric cover (GFS, ECMWF, ICON) is a maximum-random overlap of layer fractions and counts thin cirrus in full. A six-hour mean (GEFS) is a time average and is never an instant. Observed dome cover (METAR oktas) is one observer's fraction of the celestial dome at one point. Satellite layered fraction (GOES ABI Cloud Cover Layers) is a retrieval per vertical layer. Values from different definitions must never share a colour ramp, an axis or a difference view.",
+        "family": "cloud_cover",
+        "field": "total_cloud_geometric",
+        "key": "total_cloud_geometric",
+        "phase": null,
+        "provenance": {
+          "adapter_version": "unknown",
+          "aqhi_acquisition": null,
+          "artifact_revision": "demand:42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+          "attribution": "Credit ECMWF and identify IFS/AIFS product, cycle, type, member and processing.",
+          "contributing_evidence": [],
+          "contributors": [],
+          "coverage": {
+            "fraction": null,
+            "status": "unknown"
+          },
+          "data_mode": "fixture",
+          "delivery_kind": "published_cell",
+          "demand_acquisition": null,
+          "derivation": null,
+          "derivation_citation": null,
+          "derivation_inputs": [],
+          "derivation_version": null,
+          "display_primary_eligible": false,
+          "ensemble": null,
+          "evidence_class": "retrieved",
+          "forecast_centre": "European Centre for Medium-Range Weather Forecasts",
+          "freshness": {
+            "age_seconds": 0,
+            "status": "fresh",
+            "threshold_seconds": 43200
+          },
+          "intermediary": null,
+          "intermediary_method": null,
+          "last_valid_time": null,
+          "licence": "CC BY 4.0 plus ECMWF Terms of Use",
+          "member": null,
+          "member_control": null,
+          "native_crs": "EPSG:4326",
+          "native_report": null,
+          "native_resolution": "unknown",
+          "normalized_units": "percent",
+          "operational": false,
+          "original_units": "(0 - 1)",
+          "product": "IFS Open Data",
+          "provider": "European Centre for Medium-Range Weather Forecasts",
+          "quality": {
+            "flags": [],
+            "status": "unknown"
+          },
+          "retrieval_time": "2026-09-07T12:00:00Z",
+          "run_stale": false,
+          "run_stale_reason": null,
+          "run_time": "2026-09-07T12:00:00Z",
+          "sample_distance_km": 0.0,
+          "sample_method": "rectilinear",
+          "sampled_latitude": 47.5,
+          "sampled_longitude": -52.75,
+          "source_acquisition": {
+            "expires_at": "2026-09-07T12:10:00Z",
+            "normalized_sha256": "42b0a0878445acbd1853f22def95e4fdbc7e7dff51937e8c304a886101b303a1",
+            "product_id": "ifs",
+            "provider_run_id": "ecmwf-ifs-2026090712",
+            "retrieval_time": "2026-09-07T12:00:00Z",
+            "run_time": "2026-09-07T12:00:00Z",
+            "source_id": "ecmwf-ifs",
+            "transport_receipts": [
+              {
+                "byte_size": 52,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "52",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "dac2aa59ca86429ef451fa6fc4444237fc0cb572a0fda2596d6fa05de639b223",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/"
+              },
+              {
+                "byte_size": 698,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index",
+                "http_status": 200,
+                "request_headers": {
+                  "Accept-Encoding": "identity"
+                },
+                "response_headers": {
+                  "content-length": "698",
+                  "content-type": "text/plain; charset=utf-8"
+                },
+                "sha256": "a4b943b0988614c25eaadccc2c6ab01aa1258d01c789c1e8dcc27f3dd4f1c96b",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.index"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=0-3"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 0-3/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=4-7"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 4-7/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=8-11"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 8-11/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              },
+              {
+                "byte_size": 4,
+                "completed_at": "2026-09-07T12:00:00Z",
+                "effective_url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2",
+                "http_status": 206,
+                "request_headers": {
+                  "Accept-Encoding": "identity",
+                  "Range": "bytes=12-15"
+                },
+                "response_headers": {
+                  "content-length": "4",
+                  "content-range": "bytes 12-15/100"
+                },
+                "sha256": "1ed0532076444a48a796ea8edeb377ad0d4180936bc47d97fd199a5216b16f11",
+                "url": "https://data.ecmwf.int/forecasts/20260907/12z/ifs/0p25/oper/20260907120000-0h-oper-fc.grib2"
+              }
+            ],
+            "valid_time": "2026-09-07T12:00:00Z"
+          },
+          "source_display_primary": false,
+          "source_id": "ecmwf-ifs",
+          "swob_acquisition": null,
+          "valid_time": "2026-09-07T12:00:00Z",
+          "vertical_level": "entire atmosphere (column)"
+        },
+        "storage": "available-not-stored",
+        "value": 50.0
+      }
+    ],
+    "latitude": 47.5,
+    "longitude": -52.75,
+    "notices": [
+      "The selected source retains its own native time, units and provenance; no other model or time is substituted",
+      "eccc-aqhi has no validated nearby station observation less than one hour old at or before this selection",
+      "Constructed native contract fixture; no provider request or live evidence"
+    ],
+    "observation_unavailable": [
+      {
+        "error_type": "AQHICompanionUnavailable",
+        "expired_acquisition": null,
+        "reason": "query_failed",
+        "source_id": "eccc-aqhi",
+        "values_withheld": true
+      }
+    ],
+    "operational": false,
+    "selection": {
+      "badge": "IFS selected",
+      "mode": "evidence_only",
+      "reason": "Exact native experimental evidence; source admission remains unchanged",
       "selected_product_id": null,
       "selected_source_id": null
     },
@@ -5332,7 +7336,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 13.4
+            "value": 13.8
           },
           {
             "absence_state": null,
@@ -5421,7 +7425,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 13.4
+            "value": 13.8
           }
         ],
         "selectable_runs": [],
@@ -5514,7 +7518,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 96.8
+            "value": 97.6
           },
           {
             "absence_state": null,
@@ -5585,7 +7589,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 96.8
+            "value": 97.6
           }
         ],
         "selectable_runs": [],

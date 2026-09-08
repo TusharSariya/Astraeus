@@ -99,10 +99,12 @@ def fixtures():
         series=rows, next_cursor=None, complete=True,
         notices=["Deterministic fixture. No provider request or live evidence."])
     point, failed_point = observation_fixtures(now, rows[0].samples[0])
+    import runpy
+    native_fixtures = runpy.run_path(str(ROOT / "web/scripts/source-native-proof-fixture.py"))["build_native_fixtures"](ROOT)
     return {"catalog": catalogue.model_dump(mode="json"), "status": statuses.model_dump(mode="json"),
             "series": series.model_dump(mode="json"), "point_aqhi": point.model_dump(mode="json"),
             "point_aqhi_unavailable": failed_point.model_dump(mode="json"),
-            "point_cams_aod": cams_fixture(now).model_dump(mode="json")}
+            "point_cams_aod": cams_fixture(now).model_dump(mode="json")} | native_fixtures
 
 
 def cams_fixture(now):
