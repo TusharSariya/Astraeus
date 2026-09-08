@@ -3,15 +3,17 @@
 ## API-first source delivery, September 7
 
 [PR #296](https://github.com/TusharSariya/Astraeus/pull/296) is merged into main at
-`a4f77c6`. The final reviewed delta is on `execution/api-first-final-consolidation`
+`a4f77c6`. PR #297 is merged at `773a793`; the last reviewed VIIRS helper is on
+`execution/api-first-viirs-final`
 in `/private/tmp/astraeus-api-first-delivery`; preserve the unrelated dirty normal
 checkout. The [current delivery record](api-first-restart-20260907.md) contains
 actual source, authentication, deployment and verification states.
 
 Frontend 547 tests/build and captured OISST HTTP proof pass. The final Linux
 backend passed 2,896 tests with 43 skips and zero failures.
-Ready [PR #297](https://github.com/TusharSariya/Astraeus/pull/297) contains the
-remaining reviewed delta. #54/#55/#241/#105 closed as completed; HRRR #259
+[PR #297](https://github.com/TusharSariya/Astraeus/pull/297) contains the
+merged final source delta. Four Astra-medium auditors now review older unused
+worktrees and branches under the owner's new explicit consolidation request. #54/#55/#241/#105 closed as completed; HRRR #259
 closed as not planned under the owner's Avalon scope, with geographic evidence.
 80 issues remain open. Nine proven-redundant team worktrees were removed; other
 worktrees and all branches are preserved. WeatherNext existing Google auth works;
