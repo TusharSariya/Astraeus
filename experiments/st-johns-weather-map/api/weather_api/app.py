@@ -159,6 +159,7 @@ PRODUCT_SOURCE_IDS = {
     "METAR": "awc-metar-speci",
     "OISST SST": "noaa-oisst-v2-1",
     "OSTIA SST": "metoffice-ostia-sst",
+    "GEPS reductions": "eccc-geps",
     "WeatherNext 3 historical": "google-weathernext-3-statistics",
     "AIFS Single": "ecmwf-aifs-single",
     "IFS": "ecmwf-ifs",
@@ -1352,6 +1353,20 @@ def _live_point(
         consensus = build_consensus(candidates)
         return demanded, consensus, sorted({field.provenance.source_id for field in demanded}), notices, {item.source_id for item in candidates}
 
+    if product and product.upper() == "GEPS REDUCTIONS":
+        from .geps_delivery import validate_variant, RESIDUAL
+        from .source_delivery import source_readers
+        variant = validate_variant(statistic, quantile, member, threshold, comparison)
+        try:
+            fields = list(source_readers()["eccc-geps"].read_point(latitude, longitude, time, variant=variant))
+        except Exception:
+            fields = []
+        return PointResponse(data_mode=DataMode.LIVE if fields else DataMode.UNAVAILABLE,
+            latitude=latitude, longitude=longitude, valid_time=time, fields=fields,
+            selection=Selection(mode="evidence_only", selected_source_id=None, selected_product_id=None,
+                badge="GEPS reductions selected" if fields else "GEPS reductions unavailable",
+                reason="Exact provider statistic; producer run remains unknown"),
+            notices=[RESIDUAL, "Requested WCS reference time is not verified producer-run identity"])
     if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB", "METAR", "OISST SST", "OSTIA SST", "WEATHERNEXT 3 HISTORICAL"}:
         from .source_delivery import source_readers
         source_id = {"OSTIA SST": "metoffice-ostia-sst", "WEATHERNEXT 3 HISTORICAL": "google-weathernext-3-statistics", "SWOB": "eccc-swob", "METAR": "awc-metar-speci", "OISST SST": "noaa-oisst-v2-1",
@@ -2404,6 +2419,7 @@ def get_point(
     longitude: float = Query(default=-52.7126, ge=-180, le=180),
     valid_time: datetime | None = None,
     product: str | None = None,
+    run: str | None = Query(default=None, description="GEPS reductions reject named producer runs"),
     hrdps_fresh: bool = True,
     rdps_fresh: bool = True,
     consensus_evidence: bool = True,
@@ -2422,11 +2438,22 @@ def get_point(
     or with a silent null - would hide which construction produced the number.
     """
     require_core_coverage(latitude, longitude)
+    if run is not None and (product is None or product.upper() != "GEPS REDUCTIONS"):
+        raise HTTPException(status_code=422, detail="This point product does not support explicit run selection")
     if statistic is not None and statistic not in ENSEMBLE_STATISTIC_ENTRIES:
         raise HTTPException(status_code=422, detail=f"unknown statistic: {statistic}; the registered entries are {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
     if comparison is not None and comparison not in THRESHOLD_COMPARISONS:
         raise HTTPException(status_code=422, detail=f"unknown comparison: {comparison}; the accepted comparisons are {', '.join(THRESHOLD_COMPARISONS)}")
-    if product and product.upper() == "WEATHERNEXT 3 HISTORICAL":
+    if product and product.upper() == "GEPS REDUCTIONS":
+        from .geps_delivery import validate_variant, validate_selection
+        try:
+            validate_variant(statistic, quantile, member, threshold, comparison, run)
+            if valid_time is None:
+                raise ValueError("GEPS requires an explicit offset-aware valid_time")
+            time = validate_selection(valid_time)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from None
+    elif product and product.upper() == "WEATHERNEXT 3 HISTORICAL":
         from .weathernext_query import HISTORICAL_DELAY, WeatherNextSelection
         from .weathernext_configuration import load_historical_configuration, HistoricalConfigurationUnavailable
         if valid_time is None or valid_time.tzinfo is None:
@@ -2457,6 +2484,12 @@ def get_point(
     else:
         time = requested_time(valid_time)
     mode = configured_mode()
+    if mode == FIXTURE_MODE and product and product.upper() == "GEPS REDUCTIONS":
+        return PointResponse(data_mode=DataMode.UNAVAILABLE, latitude=latitude, longitude=longitude,
+            valid_time=time, fields=[], selection=Selection(mode="evidence_only", selected_source_id=None,
+                selected_product_id=None, badge="GEPS reductions unavailable",
+                reason="GEPS reductions have no configured point fixture"),
+            notices=["No synthetic provider statistic or run is substituted"])
     if mode == FIXTURE_MODE:
         return _fixture_point(
             latitude, longitude, time, product,
@@ -2469,7 +2502,7 @@ def get_point(
             member=member, statistic=statistic,
             quantile=quantile, threshold=threshold, comparison=comparison,
         )
-        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"SWOB", "METAR", "OISST SST", "OSTIA SST", "WeatherNext 3 historical"}), "GDPS", "GEFS"}:
+        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"SWOB", "METAR", "OISST SST", "OSTIA SST", "WeatherNext 3 historical", "GEPS reductions"}), "GDPS", "GEFS"}:
             from .observation_companions import with_aqhi_observation  # noqa: PLC0415
 
             response = with_aqhi_observation(response)

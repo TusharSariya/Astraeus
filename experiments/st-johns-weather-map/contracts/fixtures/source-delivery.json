@@ -1354,6 +1354,168 @@
         "status_reason": "Official product is catalogued; ingestion and fixture/live tests are not implemented yet. The atmospheric forecast uses the dated 15 km LatLon0.15 tree; the separate 10 km tree carries sea-ice analysis NetCDF and is not a forecast fallback."
       },
       {
+        "access_endpoint": "https://geo.weather.gc.ca/geomet/",
+        "archival": "Immutable downloaded artifact plus seven days of run/status metadata; no claim of a permanent provider archive.",
+        "attribution": "Credit Environment and Climate Change Canada; preserve producer, product, run/valid time and supplied notices.",
+        "authentication": "Anonymous HTTPS/AMQP",
+        "caching": "Cache only within the 25 GiB experiment cap; retain the latest and previous complete model run or at least three observation hours.",
+        "cadence": "2 runs/day",
+        "capabilities": [
+          {
+            "coverage_description": "Five verified coverages acquired; raw gust-threshold probability lacks an accepted catalogue/level/window mapping; 527 other advertised reductions remain unresolved; no member or native Series capability",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEPS reductions",
+            "product_id": "geomet-provider-reductions",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-geps",
+            "time_semantics": "Exact advertised valid time; requested reference time remains unverified; native temporal window unresolved",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "provider_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Five verified coverages acquired; raw gust-threshold probability lacks an accepted catalogue/level/window mapping; 527 other advertised reductions remain unresolved; no member or native Series capability",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEPS reductions",
+            "product_id": "geomet-provider-reductions",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-geps",
+            "time_semantics": "Exact advertised valid time; requested reference time remains unverified; native temporal window unresolved",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "provider_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_spread",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Five verified coverages acquired; raw gust-threshold probability lacks an accepted catalogue/level/window mapping; 527 other advertised reductions remain unresolved; no member or native Series capability",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEPS reductions",
+            "product_id": "geomet-provider-reductions",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-geps",
+            "time_semantics": "Exact advertised valid time; requested reference time remains unverified; native temporal window unresolved",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "provider_statistic",
+                "member": null,
+                "quantile": 0.5,
+                "statistic": "ensemble_quantile",
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Five verified coverages acquired; raw gust-threshold probability lacks an accepted catalogue/level/window mapping; 527 other advertised reductions remain unresolved; no member or native Series capability",
+            "field": "total_cloud_opacity",
+            "levels": [
+              "entire atmosphere (column)"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "GEPS reductions",
+            "product_id": "geomet-provider-reductions",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-geps",
+            "time_semantics": "Exact advertised valid time; requested reference time remains unverified; native temporal window unresolved",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "provider_statistic",
+                "member": null,
+                "quantile": 0.5,
+                "statistic": "ensemble_quantile",
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "ensemble",
+        "delivery_kind": "published_cell",
+        "display_primary": true,
+        "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/nwp_geps/readme_geps_en/",
+        "exact_variables": [
+          "temperature",
+          "humidity",
+          "wind",
+          "pressure",
+          "precipitation",
+          "cloud",
+          "threshold_occurrence"
+        ],
+        "fields": [
+          {
+            "family": "cloud_cover",
+            "key": "total_cloud_opacity",
+            "note": "Provider reductions only (ERMEAN, ERSSTD, percentiles ERC0-ERC100, threshold probabilities ERGE*/PROB); no GEPS.MEM.* coverages exist to reduce here. Stored as issued and never recombined with a statistic computed over another member set. The catalogue has no key that expresses 'a reduction of total_cloud_opacity' distinctly from the retrieved value itself, so every reduction type lands under this one key and the reduction identity (ERMEAN vs ERC50 vs ...) travels only in the upstream name, not in a separate catalogue key.",
+            "storage": "stored",
+            "upstream": "GEPS.DIAG.*_NT.<reduction>"
+          },
+          {
+            "family": "temperature",
+            "key": "temperature_2m",
+            "note": "Verified live: GEPS.DIAG.3_TT.ERC50 answered 200, 1 474 B at native 0.5 deg. As total_cloud_opacity above: one of the provider's own reduction set, stored as issued, with no catalogue key distinguishing which reduction a given value is.",
+            "storage": "stored",
+            "upstream": "GEPS.DIAG.3_TT.<reduction>"
+          }
+        ],
+        "fixture_status": "planned",
+        "forecast_horizon": "16 days; extended 39-day anomalies twice weekly",
+        "freshness_threshold_seconds": 86400,
+        "geographic_coverage": "Published native domain; crop high-resolution data to Avalon and retain coarser Grand Banks context.",
+        "id": "eccc-geps",
+        "integration": "official_sdk: MetPX Sarracenia for ECCC AMQP discovery/distribution; ecCodes + cfgrib + xarray for official GRIB2/NetCDF",
+        "intermediary": null,
+        "levels": [
+          "surface",
+          "2 m",
+          "10 m",
+          "isobaric",
+          "column",
+          "provider reduction only: mean, spread, percentiles, threshold probabilities"
+        ],
+        "licence": "MSC Open Data licence",
+        "live_smoke_status": "planned",
+        "may_enter_consensus": false,
+        "native_image_endpoint": null,
+        "producer": "Environment and Climate Change Canada",
+        "product": "GEPS ensemble statistics (no members published openly)",
+        "redistribution": "Redistribution permitted subject to the MSC Open Data licence, attribution and no-warranty terms.",
+        "role": "Provider-published ensemble statistics; stored as retrieved, never recomputed here",
+        "schedulable": false,
+        "schema_version": "Official product definition as documented by ECCC; pin discovered GRIB2/NetCDF templates before activation",
+        "state": "catalogued",
+        "status_reason": "Probed 2026-09-02: absent from the open HTTP tree. https://dd.weather.gc.ca/today/model_geps/ and .../today/ensemble/geps/grib2/ are 404 on dd.weather.gc.ca and on the hpfx.collab.science.gc.ca mirror, and MSC's own product readme still documents the dead path. Reachable through GeoMet, but GeoMet publishes NO GEPS members at all: only the provider's own reduction as GEPS.DIAG.* - ERMEAN, ERSSTD, percentiles ERC0 to ERC100, and threshold probabilities. Store those as retrieved; never recompute them here. MetPX Sarracenia over AMQP is the one open route not yet probed. Catalogued until a registered adapter claims the id; admission by the 2026-09-02 resolutions is a ceiling, not a fetch."
+      },
+      {
         "access_endpoint": "https://s3.waw3-1.cloudferro.com/mdl-arco-time-045/arco/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/timeChunked.zarr/",
         "archival": "Rolling current-analysis evidence only; historical acquisition remains ticket 94.",
         "attribution": "Credit the Met Office, GHRSST and Copernicus Marine Service; retain product id and DOI 10.48670/moi-00165.",
@@ -8842,6 +9004,25 @@
         "operational": false,
         "source_id": "eccc-gdps",
         "state": "implemented-unverified"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Probed 2026-09-02: absent from the open HTTP tree. https://dd.weather.gc.ca/today/model_geps/ and .../today/ensemble/geps/grib2/ are 404 on dd.weather.gc.ca and on the hpfx.collab.science.gc.ca mirror, and MSC's own product readme still documents the dead path. Reachable through GeoMet, but GeoMet publishes NO GEPS members at all: only the provider's own reduction as GEPS.DIAG.* - ERMEAN, ERSSTD, percentiles ERC0 to ERC100, and threshold probabilities. Store those as retrieved; never recompute them here. MetPX Sarracenia over AMQP is the one open route not yet probed. Catalogued until a registered adapter claims the id; admission by the 2026-09-02 resolutions is a ceiling, not a fetch.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 86400
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "eccc-geps",
+        "state": "catalogued"
       },
       {
         "configuration": {

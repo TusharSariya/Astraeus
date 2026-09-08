@@ -1668,6 +1668,8 @@ export interface operations {
                 longitude?: number;
                 valid_time?: string | null;
                 product?: string | null;
+                /** @description GEPS reductions reject named producer runs */
+                run?: string | null;
                 hrdps_fresh?: boolean;
                 rdps_fresh?: boolean;
                 consensus_evidence?: boolean;

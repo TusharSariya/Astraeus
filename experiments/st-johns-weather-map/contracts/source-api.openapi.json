@@ -3945,6 +3945,24 @@
             }
           },
           {
+            "description": "GEPS reductions reject named producer runs",
+            "in": "query",
+            "name": "run",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "GEPS reductions reject named producer runs",
+              "title": "Run"
+            }
+          },
+          {
             "in": "query",
             "name": "hrdps_fresh",
             "required": false,
