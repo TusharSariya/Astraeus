@@ -1,3 +1,5 @@
+> Historical recovery: restored from `aa093e122fff` during the September 8 unused-work audit. This retains the original September 3 research; version, licensing, performance and product claims have not been revalidated. Current accepted contracts and implemented behavior take precedence over its recommendations.
+
 Non-normative research, 2026-09-03. Not a spec, not a design decision.
 
 # Web map rendering alternatives to MapLibre and deck.gl, September 2026

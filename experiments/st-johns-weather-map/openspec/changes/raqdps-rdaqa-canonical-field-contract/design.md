@@ -88,7 +88,7 @@ Acceptance of this contract would authorize only a follow-up experimental normal
 
 **Field-per-phase keys** would encode preliminary/final/FireWork in every name. It simplifies callers that cannot filter provenance but creates duplicate physical quantities and makes cross-phase comparison harder. The recommended required phase attribute supplies the distinction without multiplying keys.
 
-**Store upstream `mol mol-1` in new gas keys** avoids scaling but would leave ozone split between two canonical units and prevent reuse of the accepted `ozone_surface_mole_fraction` key. Exact SI-prefix scaling is lossless for finite decoded values and keeps one unit per canonical quantity.
+**Store upstream `mol mol-1` in new gas keys** avoids scaling but would leave ozone split between two canonical units and prevent reuse of the accepted `ozone_surface_mole_fraction` key. The declared SI-prefix operation keeps one unit per canonical quantity; binary64 rounding is checked with the one-ULP bound above, not claimed to be lossless.
 
 **Keep all fields permanently source-scoped** preserves today's safest nonpublication state but prevents validated RAQDPS/RDAQA evidence from using normal field APIs. It remains the fallback if the owner declines this contract.
 

@@ -1,3 +1,5 @@
+> Historical recovery: restored from `eb0ae0fc3f31` during the September 8 unused-work audit. This retains the original September 3 research; version, licensing, performance and product claims have not been revalidated. Current accepted contracts and implemented behavior take precedence over its recommendations.
+
 # Prior art: how forecasting workbenches organise layers, time and verdicts
 
 Resolves wayfinder research ticket #45 (child of map #38). Last reviewed:

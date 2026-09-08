@@ -3,15 +3,17 @@
 Current execution record, updated September 8 01:11 UTC / September 7 18:11 PDT.
 PR #296 is merged into main at a4f77c63b90acfd8cf1e5d797ee9414236d21839.
 PR #297 is also merged into main at 773a793540e85f59586828374e9f216040964b25.
-The last reviewed VIIRS native-inspection helper is on execution/api-first-viirs-final.
+PR #298 merged the last reviewed VIIRS native-inspection helper at `2d87b67`.
+All committed current-team source work is on main.
 The owner has now authorized auditing older unused branches/worktrees for useful
-work to consolidate. Four Astra-medium auditors are reviewing separate partitions.
+work to consolidate. The four-worker legacy value audit is complete; see the
+[full disposition and recovery record](legacy-work-audit-20260908.md).
 The overall source plan remains incomplete.
 
 ## Workspace and authority
 
 - Integration: `/private/tmp/astraeus-api-first-delivery`, branch
-  `execution/api-first-viirs-final`, based on merged PR #297.
+  `execution/legacy-audit-recovery`, based on merged PR #298.
   The earlier delivery branch preserves the pre-rebase history.
 - Preserve the unrelated dirty normal checkout at
   `/Users/tusharsariya/Projects/Astraeus`, branch `execution/activity-profiles`.
@@ -172,8 +174,8 @@ at `773a793540e85f59586828374e9f216040964b25`. Final backend receipt:
 `/private/tmp/astraeus-final-consolidation-api.log`. Both Wayfinders record its
 actual merge. No additional whole open issue is proven complete by that delta.
 
-VIIRS commit a370282 is independently reviewed and passes eight Linux tests on
-assembled main. It preserves native raw categories, diagnostics and geolocation
+VIIRS commit a370282 is independently reviewed, passes eight Linux tests on
+assembled main, and is merged by PR #298. It preserves native raw categories, diagnostics and geolocation
 from an exact retained NOAA-20 granule in a bounded process. The captured swath
 is in central Asia, not Avalon; #102 remains open for geographic discovery, QC
 meaning, applicable point/cache/API delivery and the other VIIRS products.
@@ -187,3 +189,8 @@ mapping and required checks. Audit is read-only; no wholesale deletion or
 completion claim is authorized by a branch count. Root owns review and merges. No completed worker
 should be described as actively running. Do not restart excluded HRRR work or
 retest completed sources without a new failure, change or unresolved concern.
+
+Legacy audit complete: 70 older worktrees covered, 57 superseded, 18 dirty
+excluded and 15 documentary/reconciliation candidates. No old production-code
+branch is ready for direct merge; selected historical text is recovered on the
+current branch. No additional whole issue qualified for closure.

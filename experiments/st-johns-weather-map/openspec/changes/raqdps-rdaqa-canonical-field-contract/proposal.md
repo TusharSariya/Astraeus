@@ -1,5 +1,7 @@
 # RAQDPS and RDAQA canonical field and phase contract
 
+> Recovery status, September 8: this proposal was recovered from unused branch commits `9e4ed41` and `584eb2f`. It remains unaccepted. Its field/phase choices and publication model require owner review and reconciliation with current API-first delivery before implementation. Restoration does not authorize source activation or mark #133 complete.
+
 ## Problem
 
 The bounded experiment retrieves all 28 selected RAQDPS and RDAQA coverages, but fourteen quantities cannot enter a full `RunManifest` truthfully. The catalogue lacks PM10 column burden, nitric-oxide and other gas mole-fraction keys, wildfire-attributed particulate keys, smoke 24-hour statistics, and a required RDAQA phase identity. Existing gas mass-concentration keys are dimensionally incompatible with GeoMet's `mol/mol` values.

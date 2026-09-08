@@ -1,3 +1,5 @@
+> Historical recovery: restored from `30792afafa1f` during the September 8 unused-work audit. This retains the original September 3 research; version, licensing, performance and product claims have not been revalidated. Current accepted contracts and implemented behavior take precedence over its recommendations.
+
 Non-normative research, 2026-09-03. Not a spec, not a design decision.
 
 # Multi-layer raster compositing and compare on MapLibre and deck.gl
