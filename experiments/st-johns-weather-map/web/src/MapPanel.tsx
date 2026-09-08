@@ -393,7 +393,7 @@ export function MapPanel({
   const [states, setStates] = useState<Record<string, LayerState>>({})
   const [rasters, setRasters] = useState<Record<string, RasterState>>({})
   const [extent, setExtent] = useState<ViewExtent | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen)
+  const [drawerOpen, setDrawerOpen] = useState(compactDisclosure ? false : initialDrawerOpen)
   const [referenceMapError, setReferenceMapError] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const drawerOpenRef = useRef(drawerOpen)
@@ -620,6 +620,9 @@ export function MapPanel({
       center: [-52.9, 47.55],
       zoom: 6.5,
       attributionControl: false,
+      // MapLibre resizes hidden containers to 400×300. The Bench owns resize
+      // tracking so a hidden view cannot alter an in-progress camera transform.
+      trackResize: !compactDisclosure,
       style: createWeatherMapStyle(theme),
       // Only the end-to-end pixel check reads the canvas back after a frame;
       // keeping the drawing buffer costs every reader a compositing step, so
@@ -685,7 +688,13 @@ export function MapPanel({
     })
 
     mapRef.current = map
+    // Hidden mounted views and companion docking change the canvas box without a window resize.
+    const resize = compactDisclosure && typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+      if (containerRef.current?.clientWidth && containerRef.current.clientHeight) map.resize()
+    }) : null
+    if (containerRef.current) resize?.observe(containerRef.current)
     return () => {
+      resize?.disconnect()
       if (extentTimer) clearTimeout(extentTimer)
       map.remove()
       mapRef.current = null
@@ -1514,7 +1523,7 @@ export function MapPanel({
           absorbing the old chip strip and stack panel. The strip was measured
           at 1321 px wide in an 867 px pane, painting over the caption; nothing
           but the caption is now absolutely positioned in the top band. */}
-      <aside ref={drawerRef} className={`map-layer-drawer ${drawerOpen ? 'open' : 'closed'}`} aria-label="Published map layers">
+      {!compactDisclosure && <aside ref={drawerRef} className={`map-layer-drawer ${drawerOpen ? 'open' : 'closed'}`} aria-label="Published map layers">
         <button type="button" className="drawer-toggle" aria-controls={`layer-drawer-${label}`} aria-expanded={drawerOpen} onClick={() => setDrawerOpen((open) => !open)}>
           Layers ({onCount} on)
         </button>
@@ -1566,7 +1575,7 @@ export function MapPanel({
             )}
           </div>
         )}
-      </aside>
+      </aside>}
 
       <div className="map-text-alternative">
         <h3>Map contents as text</h3>

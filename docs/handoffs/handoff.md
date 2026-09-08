@@ -1,5 +1,25 @@
 # Autonomous execution handoff: deliver the working desktop evidence app
 
+## Map-first visual correction, September 8
+
+The owner rejected the earlier visual-completion claim and selected the original
+ocean/teal styling with one View menu, one initially closed Layers overlay and a
+slim timeline. #38 is reopened for visual acceptance. The isolated branch
+`fix/map-first-workbench`, based on merged main `85ba422`, implements the revised
+accepted desktop contract while retaining the five views and existing data paths.
+
+Actual browser evidence measures map viewport share at 84.0%, 85.8% and 88.1%
+at 1280×800, 1440×900 and 1920×1080. All themes and native Chrome 200% zoom are
+covered. Layers/Evidence/provenance share one overlay; navigation retains map
+camera and local view state, and hidden views do not receive new frame props.
+556 frontend tests, the production build, strict OpenSpec and specctl pass.
+
+See [the correction evidence](../evidence/map-first-20260908/README.md) for exact
+commands, constructed-fixture limitations, receipts and before/after captures.
+Owner visual acceptance is still pending; do not close #38 based on test results
+alone. Retired issues and deferred phone work remain unchanged.
+
+
 ## WeatherNext current forecast follow-up, September 8
 
 The current source batch proves a real future-valid WeatherNext3 temperature

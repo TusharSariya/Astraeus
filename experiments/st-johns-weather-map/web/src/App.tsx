@@ -1,6 +1,6 @@
 import { useActivity, activityEvidence, type ActivityResponse } from './workbench/ActivityView'
 import { captureInspectorReturn, restoreInspectorReturn, type InspectorReturn } from './workbench/inspectorReturn'
-import { MapSamplesLink, MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
+import { MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
 import { mapRunRefusals } from './workbench/layerIdentity'
 import { SkyView, skyEvidence } from './workbench/SkyView'
 import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
@@ -11,7 +11,7 @@ import { WorkbenchShell } from './workbench/WorkbenchShell'
 import { FocusBar } from './workbench/FocusBar'
 import { parseFocusUrl, serializeFocusUrl, type View } from './workbench/focusUrl'
 import { EvidenceInspector, EvidenceLedger, evidenceKey, type InspectedEvidence } from './workbench/EvidenceInspector'
-import { MapStack, NOWCAST_STACK, type DrawEvidence } from './workbench/MapStack'
+import { MapStack, MapLegends, NOWCAST_STACK, type DrawEvidence } from './workbench/MapStack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, isObservationPointProduct, pointProductFor, pointProductsFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
@@ -397,8 +397,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const closeInspector = () => {
     const target = inspectorReturn.current
     setInspected(null)
-    if (!target?.scope || target.scope.isConnected) restoreInspectorReturn(target)
-    else requestAnimationFrame(() => restoreInspectorReturn(target))
+    requestAnimationFrame(() => restoreInspectorReturn(target))
   }
 
   const { theme, setTheme } = useTheme()
@@ -1261,7 +1260,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     </>
   )
   const benchTimeline = (
-            <TimelineDock
+            <TimelineDock compact
               offsetMinutes={offsetMinutes}
               scrubOffset={scrubOffset}
               validClock={stJohnsTime(validTime.toISOString())}
@@ -1890,20 +1889,26 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const ledger = <EvidenceLedger rows={snapshot.servedFields.filter((field) => !runChoices[field.attribution.sourceId ?? ''] || runChoices[field.attribution.sourceId ?? ''] === 'latest')} onInspect={inspect} />
   return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock}
     focus={<FocusBar location={location} site={site} registry={registeredSites} registryError={registryError} nearest={nearestSite} onSite={setSite} instant={selectedMs} liveNow={liveNow}
-      onPoint={(point) => { setSite(null); setLocation(point) }} onInstant={(value) => { pausePlayback(); setSelectedMs(value) }} onNow={() => { pausePlayback(); setSelectedMsState(reference.getTime()); setLiveNow(true) }}>
+      onPoint={(point) => { setSite(null); setLocation(point) }} onInstant={(value) => { pausePlayback(); setSelectedMs(value) }} onNow={() => { pausePlayback(); setSelectedMsState(reference.getTime()); setLiveNow(true) }} />}
+    settings={<>
       <div className="bench-themes" role="group" aria-label="Colour theme">{(['light', 'dark', 'night'] as const).map((name) => <button key={name} aria-pressed={theme === name} onClick={() => setTheme(name)}>{name === 'night' ? 'Red night' : name}</button>)}</div>
       {Object.entries(runChoices).filter(([, run]) => run !== 'latest').map(([source, run]) => <details className="bench-run-pin" key={source}><summary>Browsing run · {source}: {run}</summary><p>Map delivery cannot request named runs; matching imagery and point ledger values are withheld. Sky and Activity retain their own evidence selection. <button onClick={() => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next })}>Use Latest available for {source}</button></p></details>)}
       <button onClick={() => setLegacyOpen(true)}>Existing evidence panels</button>
-    </FocusBar>}
-    status={<><strong>{dataPathCopy[dataSource]}</strong>{dataSource === 'loading' ? ' · Waiting for the point response at the selected location and time.' : <> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices</>}
+    </>}
+    statusLabel={dataPathCopy[dataSource]}
+    status={<>{dataSource === 'loading' ? ' · Waiting for the point response at the selected location and time.' : <> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices</>}
       {sourceError && <span> · {sourceError}</span>}{initialFocus.notices.map((notice) => <span key={notice}> · {notice}</span>)}</>}
     timeline={benchTimeline}
+    onDismissInspector={() => setInspected(null)}
     inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} nativeImages={(() => {
       const source = inspected.key.startsWith('source:') ? catalog.find((entry) => entry.id === inspected.key.slice(7)) : null
       return source?.native_image_endpoint ? { sourceId: source.id, endpoint: source.native_image_endpoint, instant: selectedMs } : undefined
     })()} /> : undefined}
+    layers={<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} loading={layersLoading} error={layersError} />}
+    legends={<MapLegends layers={layers} stack={selections} />}
+    evidence={<><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>}
     views={{
-      Map: <><MapSamplesLink /><div className="bench-map-layout">{benchMap}<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} /></div><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>,
+      Map: <div className="bench-map-layout">{benchMap}</div>,
       Series: nativeSeries,
       Sky: <SkyView {...skyProps} />,
       Activity: activity,

@@ -1,3 +1,6 @@
+> Current visual authority: the September 8 owner-selected map-first revision in
+> [acceptance.md](acceptance.md) and the [desktop contract](specs/desktop-evidence-workbench/spec.md) replaces conflicting historical layout/token choices below.
+
 ## Context
 
 See [proposal.md](proposal.md). The current React Workbench already owns the API client, evidence types, MapLibre/deck.gl imagery path, playback and scrubber logic, field families, theme handling, and fixture gate. Owner-selected prototypes define the Bench shell (#39), Map stack (#46), ledger inspector (#40), and repaired keyboard contract (#69). The API remains timestamp-driven and sources may continue changing shared response types in parallel.

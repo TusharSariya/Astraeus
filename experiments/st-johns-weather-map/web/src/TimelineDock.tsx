@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { stJohnsTime, type FrameMarkers, type InterpolationMethodItem } from './api'
-import { CoveragePanel } from './CoveragePanel'
+import { CoveragePanel, resolveCoverageState, timelineItemForInstant } from './CoveragePanel'
 import { MethodMenu } from './MethodMenu'
 import { describeSpeed, PLAYBACK_SPEEDS, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { placeScaleMarks, textMeasurer } from './scrubberAxis'
@@ -15,6 +15,7 @@ import { boundaryMark, HORIZON_SCALE_MARKS, planningTierHasCoverage } from './ti
 import type { TimelineResponse } from './types'
 
 export interface TimelineDockProps {
+  compact?: boolean
   offsetMinutes: number
   scrubOffset: string
   /** The effective selected instant on the St. John's clock. */
@@ -77,8 +78,12 @@ export function TimelineDock({
   interpolate, onToggleInterpolate,
   methods, method, onSelectMethod, methodNotices, methodError,
   storyOpen, onToggleStory, storyToggleRef,
-  timeline, timelineError, selectedMs,
+  timeline, timelineError, selectedMs, compact = false,
 }: TimelineDockProps) {
+  const [expanded, setExpanded] = useState(false)
+  const detailsButton = useRef<HTMLButtonElement>(null)
+  const coverage = resolveCoverageState(timeline, timelineError, timeline ? timelineItemForInstant(timeline.items, selectedMs) : null)
+  const coverageLabel = coverage.kind === 'entries' ? `${coverage.entries.length} covering sources` : coverage.kind === 'empty' ? 'Nothing covers this instant' : 'Coverage unavailable'
   const span = windowEndMs - windowStartMs
   const boundary = useMemo(
     () => boundaryMark(timeline?.boundary ?? null, timeline?.tiers ?? null, windowStartMs, windowEndMs),
@@ -138,7 +143,19 @@ export function TimelineDock({
   // change point can be detected instant by instant without re-scanning.
   const lastRunByLayer = new Map<string, string | null>()
   return (
-    <section className="timeline-dock" aria-label="Scrub timeline">
+    <div className={compact ? 'bench-time-control' : undefined} onKeyDown={event => {
+      if (compact && expanded && event.key === 'Escape' && !event.defaultPrevented) { event.stopPropagation(); event.preventDefault(); setExpanded(false); detailsButton.current?.focus() }
+    }}>
+      {compact && <div className="bench-time-slim">
+        <button aria-label={playing ? 'Pause' : 'Play'} aria-pressed={playing} onClick={onTogglePlay}>{playing ? 'Ⅱ' : '▶'}</button>
+        <div className="bench-time-selected"><strong>{validClock} NT · {scrubOffset}</strong><small title={coverage.kind === 'unavailable' ? coverage.reason : coverageLabel}>{coverageLabel}</small></div>
+        <input aria-label="Valid timeline scrubber" aria-valuetext={ariaValueText} type="range" min={-backMinutes} max={forwardMinutes} step={1} value={offsetMinutes} onChange={event => onScrubMinutes(Number(event.target.value))} onKeyDown={onScrubKeyDown} />
+        <button onClick={() => onQuickJump(0)}>Now</button>
+        <button ref={detailsButton} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>Timeline details</button>
+        <button ref={!expanded ? storyToggleRef : undefined} aria-expanded={storyOpen} onClick={onToggleStory}>Weather story</button>
+      </div>}
+    <section hidden={compact && !expanded} className={`timeline-dock${compact ? ' bench-time-expanded' : ''}`} aria-label="Scrub timeline">
+      {compact && <button onClick={() => { setExpanded(false); detailsButton.current?.focus() }}>Close timeline details</button>}
       <div className="timeline-dock-head">
         <div className="story-scrubber-badge">
           <span>Valid:</span>
@@ -170,7 +187,7 @@ export function TimelineDock({
         )}
         <button
           type="button"
-          ref={storyToggleRef}
+          ref={!compact || expanded ? storyToggleRef : undefined}
           className={`dock-toggle ${storyOpen ? 'on' : ''}`}
           aria-expanded={storyOpen}
           aria-controls="story-flyout"
@@ -330,6 +347,6 @@ export function TimelineDock({
           </div>
         </div>
       </div>
-    </section>
+    </section></div>
   )
 }

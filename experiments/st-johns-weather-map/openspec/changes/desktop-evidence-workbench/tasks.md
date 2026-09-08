@@ -429,3 +429,21 @@ The source Wayfinder #70 remains the subsequent queue.
 
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006; accepted Activity verdict
 contract and desktop workbench shared Focus/provenance/five-view requirements.
+
+
+## September 8 map-first correction
+
+The owner-selected revision replaces conflicting earlier shell/token decisions.
+Implementation and automated verification are recorded in the
+[map-first evidence report](../../../../../docs/evidence/map-first-20260908/README.md).
+
+- [x] Record owner authority and update the desktop contract.
+- [x] Restore ocean/teal tokens, serif wordmark and compact labels in all views.
+- [x] Replace the rail/banner/permanent stack with toolbar and shared overlays.
+- [x] Preserve camera, Focus, URL selections, stack state and data boundaries.
+- [x] Verify search/edit/save, focus return, all views, failure and loading states.
+- [x] Capture actual before/after, three viewport sizes, themes and native 200% zoom.
+- [x] Pass 556 frontend tests, production build, strict OpenSpec and specctl.
+- [ ] Owner visual acceptance of the correction; #38 remains open.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.

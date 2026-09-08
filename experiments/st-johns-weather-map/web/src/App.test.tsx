@@ -2044,7 +2044,7 @@ it('keeps point loading distinct from completed catalogue and layers until the p
   expect(screen.queryByText(/0 returned values/)).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Existing evidence panels' })).toBeEnabled()
   await act(async () => pending.forEach(resolve => resolve(response(apiPoint([], undefined, 'unavailable')))))
-  await waitFor(() => expect(screen.getByText('Unavailable')).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Unavailable'))
   expect(screen.queryByText('Loading point evidence')).not.toBeInTheDocument()
   expect(screen.getByText(/0 returned values/)).toBeInTheDocument()
   expect(fetchMock.mock.calls.some(([url]) => url.includes('/health'))).toBe(false)

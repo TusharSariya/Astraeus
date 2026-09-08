@@ -60,13 +60,13 @@ SHALL remain inspectable without inferred success or a capture fallback.
 - **THEN** the source remains selected and its declaration does not become
   demonstrated temporal or location coverage
 
-### Requirement: All views use the selected Hyperlegible design system
-The desktop SHALL use the #41 variant C canonical tokens: Atkinson Hyperlegible
-Next and Mono, neutral greys, 15px base and 44px controls, with light, dark and
-red-on-black night themes. Source slots SHALL remain stable by provider with
-model line styles, and state/evidence shape and text SHALL remain meaningful
-without colour. The selected red night tokens supersede the older Activity
-ember treatment. Reduced motion SHALL suppress optional motion.
+### Requirement: All views use the original ocean design system
+The desktop SHALL use ocean/teal panels, cyan and amber accents, a serif
+Avalon wordmark and compact technical labels. Light and red-on-black night
+themes SHALL use compatible tokens across all five views. Source slots SHALL
+remain stable by provider with model line styles. State and evidence shape
+and text SHALL remain meaningful without colour. Reduced motion SHALL suppress
+optional motion.
 
 #### Scenario: A view switches to red night
 - **WHEN** the reader changes theme while inspecting a source
@@ -74,7 +74,7 @@ ember treatment. Reduced motion SHALL suppress optional motion.
   and verdict states remain identifiable through shape and text
 
 ### Requirement: The desktop shell is one Bench around a shared Focus
-The interface SHALL present vertical controls for Map, Series, Sky, Activity, and Sources, one active view on the main stage, and at most one different view docked at the right. The Focus SHALL contain one site or arbitrary point and one exact instant shared by every open view. A view MAY enter full screen, and Escape SHALL return it to the Bench without changing the Focus.
+The interface SHALL present one View menu for Map, Series, Sky, Activity, and Sources, one active view on the main stage, and at most one different view docked at the right. The Focus SHALL contain one site or arbitrary point and one exact instant shared by every open view. A view MAY enter full screen, and Escape SHALL return it to the Bench without changing the Focus.
 
 #### Scenario: Views share one instant
 - **WHEN** the reader changes the instant while Map is staged and Series is docked
@@ -96,18 +96,18 @@ The client SHALL encode `site` or `lat` and `lon`, `view`, optional `dock`, and 
 - **THEN** the Focus displays those coordinates, the nearest registered site and distance, and that the site's horizon is not borrowed
 
 ### Requirement: Global evidence state stays visible while the Map remains usable
-The shell SHALL keep a full-width data-mode banner immediately below the Focus bar and the shared timeline at the bottom of the Bench. The banner SHALL name the data mode and summarize retrieved, stale, aged-out, and notice states without replacing or displacing the active stage. The Map SHALL keep a single-line disclosure strip on its bottom edge naming the number of layers drawn, generated-display use, and exceptions; complete details SHALL be reachable from that strip.
+The shell SHALL use one 56px desktop toolbar containing the compact wordmark, View menu with companion docking, location, instant, concise API state, Layers and settings. Location, time and status details SHALL open in popovers. Settings SHALL expose theme and existing evidence panels. Long labels SHALL truncate visually with their full text available. Semantic headings and focus-visible skip links SHALL remain. The shared timeline SHALL remain within 80px when collapsed, retaining selected time and unavailable coverage. Timeline details and weather story SHALL expand over the map without resizing it. With panels closed at 1280×800 and larger, the map SHALL fill the remaining stage and occupy at least 80% of the application viewport. View changes SHALL preserve location, instant, selections and map camera. The Map SHALL keep a single-line disclosure strip on its bottom edge naming the number of layers drawn, generated-display use, and exceptions; complete details SHALL be reachable from that strip.
 
 #### Scenario: Evidence is unavailable
 - **WHEN** the API cannot supply current evidence
-- **THEN** the banner states unavailable, the active stage remains on screen, and no fixture or previous live value appears in its place
+- **THEN** the toolbar states unavailable, the active stage remains on screen, and no fixture or previous live value appears in its place
 
 #### Scenario: Some Map layers are absent
 - **WHEN** only three of five requested layers have drawable frames
 - **THEN** the strip states "3 of 5" and names or provides the bounded exception summary while the detail control exposes every layer's reason
 
 ### Requirement: The Map legend is the ordered evidence stack
-The Map SHALL list the active stack top-first and grouped by field family. Every row SHALL expose an evidence-class glyph, source tag, short layer name, served run or observation identity when supplied, the frame actually drawn and its age, visibility, opacity, reorder controls, a provenance action, and removal. Legends SHALL appear once per family. The interface SHALL derive vocabulary only by an explicit existing client rule when the API omits it and SHALL disclose unknown identity rather than infer unsupported provenance.
+One 360px right Layers overlay SHALL be closed initially, with Active and Browse tabs. Browse SHALL search layer names/providers and filter by family, showing short name, provider, evidence glyph, availability and add control. Active SHALL list the actual drawing order top-first, without family regrouping. Every row SHALL expose an evidence-class glyph, source tag, short layer name, served run or observation identity when supplied, the frame actually drawn and its age, visibility, opacity, reorder controls, a provenance action, and removal. Opacity, reorder and run details SHALL expand per row. Saved-stack loading and naming SHALL live behind a compact Stacks action. Legends SHALL appear once per family through a compact map control. Scientific essays, field definitions and full provenance SHALL be explicitly labelled details. Generated, unavailable, stale and unknown states SHALL remain visible. Map samples and the point ledger SHALL be reachable in an Evidence overlay. Layers, Evidence and provenance SHALL share one overlay space; provenance SHALL preserve the originating panel state and return context. Escape SHALL close the current panel and restore focus. Overlay visibility SHALL remain temporary client state. The interface SHALL derive vocabulary only by an explicit existing client rule when the API omits it and SHALL disclose unknown identity rather than infer unsupported provenance.
 
 #### Scenario: Two layers share a family
 - **WHEN** two cloud layers use different provider legends
@@ -118,7 +118,7 @@ The Map SHALL list the active stack top-first and grouped by field family. Every
 - **THEN** its row says that identity is unknown and does not assume retrieved or a source
 
 ### Requirement: Every listed value uses the shared provenance ledger and inspector
-Every listed evidence value SHALL have a permanent evidence-class SVG glyph in a fixed gutter and a visible source tag. Activating the value's specifically named provenance control SHALL select the row and fill one nonmodal docked inspector with the full provenance sentence, class, source and delivery kind, absence, method and inputs, quality, freshness, sample, comparability, terms, and capture identity that the response actually supplied. Missing properties SHALL be named as missing; the client SHALL NOT manufacture them.
+Every listed evidence value SHALL have a permanent evidence-class SVG glyph in a fixed gutter and a visible source tag. Activating the value's specifically named provenance control SHALL select the row and fill one nonmodal overlay inspector with the full provenance sentence, class, source and delivery kind, absence, method and inputs, quality, freshness, sample, comparability, terms, and capture identity that the response actually supplied. Missing properties SHALL be named as missing; the client SHALL NOT manufacture them.
 
 #### Scenario: A null value is inspected
 - **WHEN** a field value is null with a returned absence reason
@@ -160,3 +160,8 @@ The shell SHALL keep every currently usable response-backed panel or view reacha
 #### Scenario: A view capability is absent
 - **WHEN** a selected view has no implemented response-backed content
 - **THEN** its stage names the unavailable capability and offers no control that appears to request unsupported evidence
+
+#### Scenario: Map-first desktop visual acceptance
+- **WHEN** the application is exercised at 1280×800, 1440×900 and 1920×1080
+- **THEN** actual browser captures cover closed/open panels, all themes and 200% zoom; no controls are clipped or obstructed and the page does not scroll unexpectedly
+- **AND** browser verification covers search, stack editing/saving, focus return, all views, URL restoration, unchanged camera, loading, failures, unavailable layers and long labels

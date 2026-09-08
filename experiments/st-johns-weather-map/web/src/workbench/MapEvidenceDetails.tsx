@@ -26,6 +26,7 @@ export function openMapFeature(layer: string, index: number) {
   if (!(control instanceof HTMLButtonElement)) return
   const disclosure = control.closest('details')
   if (disclosure) disclosure.open = true
+  window.dispatchEvent(new Event('bench-map-evidence'))
   control.click()
 }
 function featureName(feature: GeoJsonFeature, index: number) {

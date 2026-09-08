@@ -42,3 +42,15 @@ the implementation evidence required before completion. Contract validation alon
 is not feature verification.
 
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-005, GOV-SPEC-006.
+
+## Owner-selected map-first revision, September 8, 2026
+
+The owner requested implementation of “Restore the original look with a
+map-first layout”, explicitly replacing vertical navigation, permanent banner
+and Hyperlegible styling with the original ocean/teal styling, one View menu,
+one initially closed Layers overlay and a slim timeline. This accepted
+non-breaking desktop revision is classified `spec-compatible-change` and
+retains the existing evidence, keyboard, API and acquisition requirements.
+The updated desktop contract is the current visual authority; older prototype
+and #41 references record history. #38 is reopened for correction and actual
+visual acceptance. No verified status or phone-scope change is authorized.

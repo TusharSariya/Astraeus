@@ -31,6 +31,7 @@ it('keeps an explicitly fixed instant equal to Now fixed, then makes Now links s
 it('keeps keyboard inspection coherent across a response and theme change', async () => {
   render(<App />)
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Live API'))
+  fireEvent.click(screen.getByRole('button', { name: 'Evidence' }))
   fireEvent.click(screen.getByText('Point evidence ledger'))
   const opener = await screen.findByRole('button', { name: /^Inspect temperature from noaa\-gfs/ })
   await userEvent.click(opener)
@@ -38,7 +39,7 @@ it('keeps keyboard inspection coherent across a response and theme change', asyn
   await userEvent.click(screen.getByRole('button', { name: 'Red night' }))
   expect(screen.getByRole('complementary', { name: 'Evidence inspector' })).toHaveTextContent('noaa-gfs')
   await userEvent.click(screen.getByRole('button', { name: 'Close inspector' }))
-  expect(opener).toHaveFocus()
+  await waitFor(() => expect(opener).toHaveFocus())
 })
 it('does not query a default Series point while a named site awaits registered geometry', async () => {
   window.history.replaceState(null, '', `/?site=signal-hill&view=Series&t=${at}&stack=[]`)
@@ -50,6 +51,7 @@ it('does not query a default Series point while a named site awaits registered g
 
 it('reads a same-second Focus change exactly and clears old point evidence on failure', async () => {
   render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: 'Evidence' }))
   fireEvent.click(screen.getByText('Point evidence ledger'))
   await screen.findByRole('button', { name: /^Inspect temperature from noaa\-gfs/ })
   const original = vi.mocked(fetch).getMockImplementation()!
