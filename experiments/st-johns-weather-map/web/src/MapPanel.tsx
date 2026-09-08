@@ -5,7 +5,7 @@ import { GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer } fro
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { DEFAULT_INTERPOLATION_METHOD, describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerEvidenceClass, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, stJohnsTime } from './api'
+import { DEFAULT_INTERPOLATION_METHOD, describeEvidenceBasis, describeOffset, describeResolution, drawableFrames, groupLayers, layerEvidenceClass, layerGroup, layerLegendUrl, loadLayerFeatures, loadLayerFlow, loadLayerRaster, loadLegendFailure, renderPixelSize, resolveLayerFrame, resolveLayerImageFrame, stJohnsTime } from './api'
 import { flowObjectUrls } from './api'
 import { EvidenceClassBadge } from './EvidenceClassBadge'
 import { ActiveFamilyLegends, LayerLegendDefinition, LayerStorageLine, describeLayerFamilySentence } from './MapFamilyLegend'
@@ -519,14 +519,15 @@ export function MapPanel({
     () => active.map(({ entry, layer }) => ({
       entry,
       layer,
-      resolution: resolveLayerFrame(layer, validTime, { interpolate: interpolate && layer.evidence_basis !== 'demand_query', reference }),
+      resolution: resolveLayerImageFrame(layer, validTime, { interpolate: interpolate && layer.evidence_basis !== 'demand_query', reference }),
+      featureResolution: resolveLayerFrame(layer, validTime, { interpolate: false, reference }),
     })),
     [active, validTime, interpolate, reference],
   )
-  const frameKey = resolved.map(({ layer, resolution }) => {
+  const frameKey = resolved.map(({ layer, resolution, featureResolution }) => {
     const frames = drawableFrames(resolution).map((frame) => frame.time).join('+') || 'none'
     const fraction = resolution.kind === 'blend' ? `~${resolution.fraction.toFixed(3)}` : ''
-    return `${layer.id}@${frames}${fraction}`
+    return `${layer.id}@${frames}${fraction}|samples:${drawableFrames(featureResolution).map(frame => frame.time).join('+')}`
   }).join('|')
 
   // The disclosure sentences for every active layer not drawn at an exact
@@ -733,7 +734,7 @@ export function MapPanel({
 
     setStates((previous) => {
       const next: Record<string, LayerState> = {}
-      for (const { layer, resolution } of resolved) {
+      for (const { layer, featureResolution: resolution } of resolved) {
         // Layer kind comes from the artifact's stored geometry, so a `raster`
         // layer has no stored features to ask for: /features answers 404 for the
         // proxied ones. Its evidence is the image, reported separately below.
@@ -755,7 +756,7 @@ export function MapPanel({
       return next
     })
 
-    for (const { layer, entry, resolution } of resolved) {
+    for (const { layer, entry, featureResolution: resolution } of resolved) {
       const frame = featureFrame(resolution)
       if (!frame || layer.kind === 'raster') continue
       void loadLayerFeatures(layer, frame, controller.signal).then((result) => {

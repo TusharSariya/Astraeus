@@ -1,0 +1,10 @@
+# Isolated API image/container for this worktree. Reuse the existing local
+# database and object store; never let a main-checkout rebuild replace this API.
+services:
+  api:
+    ports: !override
+      - "127.0.0.1:8197:8000"
+networks:
+  weather: !override
+    external: true
+    name: astraeus-st-johns-weather_weather

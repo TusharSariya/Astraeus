@@ -559,6 +559,7 @@ def test_gfs_scoped_layers_advertise_native_geometric_cloud_strata(monkeypatch):
     app_module = sys.modules['weather_api.app']
     from weather_api import gfs_query
     stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    monkeypatch.setattr(app_module, 'now', lambda: stamp)
     class Coordinator:
         def cached_cloud_availability(self):
             return {field: (stamp,) for field in ('total_cloud_geometric', 'cloud_low', 'cloud_middle', 'cloud_high')}
@@ -586,6 +587,7 @@ def test_gfs_scoped_layers_exclude_an_absent_optional_stratum(monkeypatch):
     app_module = sys.modules['weather_api.app']
     from weather_api import gfs_query
     stamp = datetime(2026, 9, 6, 18, tzinfo=UTC)
+    monkeypatch.setattr(app_module, 'now', lambda: stamp)
     class Coordinator:
         def cached_cloud_availability(self):
             return {'total_cloud_geometric': (), 'cloud_low': (stamp,), 'cloud_middle': (), 'cloud_high': (stamp,)}

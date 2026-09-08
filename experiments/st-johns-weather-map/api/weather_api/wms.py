@@ -222,6 +222,8 @@ class budgeted:
 
     def __enter__(self) -> _Budget:
         geomet_client()
+        # Nested catalogue producers share the HTTP request's remaining budget.
+        self.budget = _active_budget.get() or self.budget
         self._token = _active_budget.set(self.budget)
         return self.budget
 

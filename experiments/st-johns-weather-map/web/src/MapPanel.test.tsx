@@ -429,6 +429,29 @@ describe('MapPanel imagery', () => {
     ...props,
   })
 
+  it('draws current WMS imagery without requesting stale samples or inventing image-time features', async () => {
+    const receipt = vi.fn(), fetcher = routedFetch(() => rasterResponse())
+    vi.stubGlobal('fetch', fetcher)
+    const layer = { ...radarLayer, times: ['2026-08-25T04:00:00Z'], raster_available: true,
+      imagery_availability: { status: 'known' as const, checked_at: NOW.toISOString(), basis: 'provider_inventory', times: [NOW.toISOString()], reason: 'Current provider image inventory' } }
+    render(panel({ layers: [layer], onDrawEvidence: receipt }))
+    await waitFor(() => expect(receipt.mock.lastCall?.[0][0].drawn).toBe(true))
+    const urls = fetcher.mock.calls.map(([url]) => String(url))
+    expect(urls.some(url => url.includes('/features'))).toBe(false)
+    expect(urls.some(url => url.includes('2026-08-25'))).toBe(false)
+    expect(urls.some(url => url.includes('/raster') && new URL(url, 'http://test').searchParams.get('valid_time') === NOW.toISOString())).toBe(true)
+  })
+  it('does not borrow a sample timestamp when declared image availability is unknown', async () => {
+    const fetcher = routedFetch(() => rasterResponse())
+    vi.stubGlobal('fetch', fetcher)
+    const layer = { ...radarLayer, raster_available: true,
+      imagery_availability: { status: 'unknown' as const, checked_at: NOW.toISOString(), basis: 'provider_inventory', times: [], reason: 'Provider inventory could not be read' } }
+    render(panel({ layers: [layer] }))
+    await waitFor(() => expect(fetcher).toHaveBeenCalled())
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('/raster'))).toBe(false)
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('/features'))).toBe(true)
+  })
+
   it('draws the Bench raster stack in reader order even when provider z-index disagrees', async () => {
     vi.stubGlobal('fetch', routedFetch(() => rasterResponse()))
     const other = { ...proxiedLayer, id: 'other-proxy', z_index: -100 }

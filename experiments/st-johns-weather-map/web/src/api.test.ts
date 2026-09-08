@@ -1061,3 +1061,17 @@ describe('layer feature retrieval truth boundary', () => {
     expect((await loadLayerFeatures(rasterLayer, frame)).error).toContain('403')
   })
 })
+
+it('refuses stale catalogue fallback frames outside the serving window', () => {
+  const layer = { ...rasterLayer, group: 'observation', times: ['2026-09-03T02:10:00Z'] }
+  const result = resolveLayerFrame(layer, new Date('2026-09-08T12:00:00Z'), { reference: new Date('2026-09-08T12:00:00Z'), interpolate: false })
+  expect(result.kind).toBe('none')
+  if (result.kind === 'none') expect(result.reason).toContain('serving window')
+})
+it('includes separately declared native image times in timeline markers and snaps', () => {
+  const at = '2026-09-08T12:00:00Z', ms = Date.parse(at)
+  const layer = { ...rasterLayer, times: [], imagery_availability: { status: 'known' as const, checked_at: at, basis: 'provider_inventory', times: [at], reason: 'Provider image inventory' } }
+  const stack = [{ id: layer.id, visible: true }]
+  expect(unionFrameInstants([layer], stack, ms-1000, ms+1000)).toEqual([ms])
+  expect(frameMarkers([layer], stack, ms-1000, ms+1000).markers.map(row => row.ms)).toEqual([ms])
+})

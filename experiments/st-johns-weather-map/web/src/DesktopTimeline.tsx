@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { frameMarkers, resolveLayerFrame, drawableFrames, describeResolution, layerGroup, LAYER_GROUP_LABELS, type FrameMarker } from './api'
+import { frameMarkers, resolveLayerImageFrame, drawableFrames, describeResolution, layerGroup, LAYER_GROUP_LABELS, type FrameMarker } from './api'
 import type { LayerItem, LayerSelection } from './types'
 import type { DrawEvidence } from './workbench/MapStack'
 import type { TimelineDockProps } from './TimelineDock'
@@ -150,7 +150,7 @@ export function DesktopTimeline(props: TimelineDockProps & { desktop: DesktopTim
       {Number.isFinite(boundary) && boundary >= start && boundary <= end && <p>Core through +24h; planning to +14d. Gaps indicate no reported frames.</p>}
       <div className="timeline-track-rows">{rows.map(({ selection, layer, markers: native }) => {
         if (!layer) return <article key={selection.id}><strong>{selection.id}</strong><p>Layer unavailable · no published frame axis</p></article>
-        const resolution = resolveLayerFrame(layer, new Date(selectedMs), { reference: state.reference, interpolate: props.interpolate && layer.evidence_basis !== 'demand_query' })
+        const resolution = resolveLayerImageFrame(layer, new Date(selectedMs), { reference: state.reference, interpolate: props.interpolate && layer.evidence_basis !== 'demand_query' })
         const frames = drawableFrames(resolution)
         const receipt = state.drawn.find(row => row.id === layer.id)
         const shownTimes = receipt?.drawn ? receipt.times : frames.map(frame => frame.time)

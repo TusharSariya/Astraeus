@@ -965,6 +965,13 @@ def _proxied_forecast_layers() -> tuple[list[Layer], list[str]]:
 
 @app.get(f"{PREFIX}/layers", response_model=LayersResponse)
 def get_layers(product: str | None = Query(default=None)) -> LayersResponse:
+    from .layer_inventory import serving_inventory  # noqa: PLC0415
+
+    with wms.budgeted():
+        return serving_inventory(_layer_catalogue(product), now())
+
+
+def _layer_catalogue(product: str | None = None) -> LayersResponse:
     if fixture_mode():
         return LayersResponse(
             data_mode=DataMode.FIXTURE,

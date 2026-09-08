@@ -50,3 +50,14 @@ live-smoke:
 # needs the Compose stack up, not just the API importable.
 test-layers:
 	cd api && WEATHER_LAYER_CONTRACT=1 uv run pytest -m layer_contract
+
+# Run from this worktree after the normal local storage stack is up.
+.PHONY: workbench-api-up workbench-api-down workbench-web
+workbench-api-up:
+	docker compose -p astraeus-map-first -f compose.yaml -f compose.workbench.yaml up --build --wait --no-deps api
+
+workbench-api-down:
+	docker compose -p astraeus-map-first -f compose.yaml -f compose.workbench.yaml down
+
+workbench-web:
+	cd web && WEATHER_API_PROXY_TARGET=http://127.0.0.1:8197 npm run dev -- --host 127.0.0.1 --port 5197 --strictPort

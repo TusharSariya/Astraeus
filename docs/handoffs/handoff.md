@@ -1,5 +1,26 @@
 # Autonomous execution handoff: deliver the working desktop evidence app
 
+## Radar/lightning catalogue consistency correction, September 8
+
+The earlier repair left old stored sample frames advertised and used them for
+WMS imagery. PR #306 now filters every catalogue branch to the API serving
+window and resolves recorded WMS images against their separately retrieved
+native inventory. Features never borrow image-only timestamps. All 23 available
+image probes returned HTTP 200; Chrome drew current radar/lightning with no old
+September 3 or image-time feature requests. [Evidence](../evidence/layer-inventory-20260908/README.md).
+
+586 frontend tests, 152 affected backend tests, build, both broad Chrome proofs,
+strict OpenSpec and specctl pass. Full backend execution is not green: 21
+failures/10 errors reproduced on unchanged baseline after one new GFS fixture
+clock failure was corrected. Do not claim full backend conformance.
+
+`make up` really rebuilds, but the regular checkout is older (`9af2aaf`). The
+workbench now uses its own `astraeus-map-first` API image/container on port 8197,
+with existing local storage. Frontend 5197 proxies that API. Run
+`make workbench-api-up` and `make workbench-web` from the isolated worktree's
+experiment directory; [startup details](../../experiments/st-johns-weather-map/docs/workbench-runtime.md).
+The regular dirty checkout was preserved. #38 remains open for visual acceptance.
+
 ## Layer-default and failure-reason correction, September 8
 
 PR #306 now uses current HRDPS cloud and selected-time CAP default identities.

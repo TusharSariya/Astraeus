@@ -47,3 +47,20 @@ requirements “The browser trusts the declared mode, not the status code” and
 and retain provider notices. `web/src/MapPanel.test.tsx` and
 `web/src/workbench/MapStack.test.tsx` verify that a successful empty collection
 emits an empty receipt and a “No features returned” row rather than an outage.
+
+#### Scenario: Stored sample and provider image inventories differ
+- **WHEN** a retained WMS sample predates the serving window but its recorded provider binding advertises current images
+- **THEN** the layer keeps its identity and exposes current image times separately from an empty in-window sample axis
+- **AND** the map requests images at image timestamps, never features at those image-only timestamps
+- **AND** the native timeline includes the declared image timestamps
+
+#### Scenario: Catalogue frames cannot pass serving validation
+- **WHEN** any layer producer returns sample times, frame records or image times outside the current serving window
+- **THEN** the catalogue removes those times from its requestable axes and explains the excluded extent
+- **AND** frame resolution also refuses out-of-window frames from an older catalogue without issuing malformed requests
+
+Verification: catalogue endpoint regressions cover every producer through the
+shared response boundary, including boundary instants and rolled windows. Map
+request regressions distinguish sample and image axes, provider failure and stale
+older API responses. Bounded live checks audit every advertised frame axis and
+request the current radar/lightning imagery independently.

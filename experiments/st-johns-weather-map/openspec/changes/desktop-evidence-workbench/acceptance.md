@@ -77,3 +77,14 @@ evidence basis, including live-proxy limitations. Existing linked/saved stacks
 are never silently migrated; a supported replacement requires an explicit click.
 This is a non-breaking correction within the isolated desktop experiment. No
 new provider acquisition, scientific rule or verified status is authorized.
+
+## Owner-authorized catalogue/frame consistency repair, September 8, 2026
+
+The owner supplied radar/lightning requests rejected with 422 and requested
+“fix all instances where this problem exists”. This authorizes enforcing the
+existing serving window on all advertised native sample, frame and imagery
+axes, and using the existing recorded WMS binding to read its bounded cached
+provider image inventory separately from stored sample times. No field/source
+identity is guessed, no observation is manufactured and no scheduled ingestion
+is introduced. Client image requests use that image inventory; feature requests
+continue to use only stored sample frames. Unknown inventories stay unknown.

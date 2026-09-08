@@ -1,3 +1,5 @@
+import { layerImagery } from './workbench/layerIdentity'
+import { FALLBACK_BACK_MINUTES, FALLBACK_FORWARD_MINUTES } from './tierBoundary'
 import { observationReceipt } from './observationReceipt'
 import type { ObservationUnavailable } from './types'
 import { isPointProductToken, isSourceCapability, isSourceConfiguration } from './sourceContract'
@@ -1794,6 +1796,17 @@ function sameRunOrUnknown(layer: LayerItem, previousTime: string, nextTime: stri
 }
 
 export function resolveLayerFrame(layer: LayerItem, at: Date, opts: { interpolate: boolean; reference: Date }): FrameResolution {
+  // Older catalogues can outlive the serving window. Never send a frame that
+  // the API's hour-aligned horizon validation necessarily refuses.
+  const referenceHour = Math.floor(opts.reference.getTime() / 3_600_000) * 3_600_000
+  const start = referenceHour - FALLBACK_BACK_MINUTES * 60_000
+  const end = referenceHour + FALLBACK_FORWARD_MINUTES * 60_000
+  const suppliedTimes = layer.times ?? []
+  const times = suppliedTimes.filter(time => Date.parse(time) >= start && Date.parse(time) <= end)
+  if (times.length !== suppliedTimes.length) {
+    if (!times.length) return { kind: 'none', reason: 'no advertised frames fall inside the serving window; stale catalogue frames were not requested', nearest: null }
+    layer = { ...layer, times }
+  }
   // A current demand layer deliberately advertises no fetched frame: the
   // selected instant is sent to its bounded native-query endpoint, which then
   // accepts or refuses it. Giving it an invented advertised frame would claim
@@ -1833,6 +1846,21 @@ export function resolveLayerFrame(layer: LayerItem, at: Date, opts: { interpolat
   const nearest = nearestFrame(layer, at)
   if (!nearest) return { kind: 'none', reason: 'this layer published no readable frames', nearest: null }
   return { kind: 'snapped', frame: nearest, direction: 'nearest' }
+}
+
+/** Image availability is independent of stored feature sample times. */
+export function resolveLayerImageFrame(layer: LayerItem, at: Date, opts: { interpolate: boolean; reference: Date }): FrameResolution {
+  if (!layer.imagery_availability || layer.raster_available !== true) return resolveLayerFrame(layer, at, opts)
+  if (layer.evidence_basis === 'demand_query' && !(layer.times?.length)) return resolveLayerFrame(layer, at, opts)
+  const inventory = layerImagery(layer)
+  if (inventory.status !== 'known') return { kind: 'none', reason: inventory.reason, nearest: null }
+  return resolveLayerFrame({ ...layer, times: inventory.times }, at, opts)
+}
+
+/** Timeline union only; image timestamps must never become feature requests. */
+export function layerNativeTimes(layer: LayerItem): string[] {
+  const inventory = layerImagery(layer)
+  return [...new Set([...(layer.times ?? []), ...(inventory.status === 'known' ? inventory.times : [])])]
 }
 
 /** The frames a resolution permits drawing: none, one, or a blend pair. */
@@ -1886,7 +1914,7 @@ export function unionFrameInstants(layers: LayerItem[], selections: Array<{ id: 
   const instants = new Set<number>()
   for (const layer of layers) {
     if (!visible.has(layer.id)) continue
-    for (const time of layer.times ?? []) {
+    for (const time of layerNativeTimes(layer)) {
       const stamp = new Date(time).getTime()
       if (!Number.isNaN(stamp) && stamp >= windowStartMs && stamp <= windowEndMs) instants.add(stamp)
     }
@@ -1949,7 +1977,7 @@ export function frameMarkers(
     if (!visible.has(layer.id)) continue
     const color = layerTickColor(layer.id, layers)
     let published = 0
-    for (const time of layer.times ?? []) {
+    for (const time of layerNativeTimes(layer)) {
       const stamp = new Date(time).getTime()
       if (Number.isNaN(stamp)) continue
       published += 1

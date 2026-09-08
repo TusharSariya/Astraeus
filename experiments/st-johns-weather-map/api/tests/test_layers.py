@@ -281,7 +281,7 @@ def test_a_run_inside_twice_its_cadence_is_not_run_stale(monkeypatch, data_mode)
 def test_a_run_stale_frame_is_still_served_and_still_renderable(monkeypatch, data_mode):
     """`run_stale` is a flag on the frame and never a reason to hide it.
 
-    The frame list is unchanged by the verdict, the layer is still offered, and
+    The in-window frame list is unchanged by the run-staleness verdict, the layer is still offered, and
     `raster_available` - which is what `/layers/{id}/raster` and `/features`
     answer from - is untouched by staleness.
     """
@@ -292,11 +292,13 @@ def test_a_run_stale_frame_is_still_served_and_still_renderable(monkeypatch, dat
     layers, _payload = layers_from(monkeypatch, data_mode, store)
     layer = layers[LAYER_ID]
 
-    published = [iso(stamp) for stamp in frames_of([run])]
+    published = [iso(stamp) for stamp in frames_of([run]) if REFERENCE - timedelta(hours=24) <= stamp <= REFERENCE + timedelta(days=14)]
     assert layer["times"] == published
     assert [entry["valid_time"] for entry in layer["frames"]] == published
     assert layer["run_stale"] is True
-    # Nothing about the run's age removed a frame or the layer itself.
+    # Validity-window clipping is separate from the producer run's age.
+    assert any('outside the serving window' in notice for notice in _payload['notices'])
+    # No in-window frame is removed just because its producer run is old.
     assert len(layer["frames"]) == len(published) > 0
 
 
