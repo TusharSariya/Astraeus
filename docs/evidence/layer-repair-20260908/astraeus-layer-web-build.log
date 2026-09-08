@@ -1,0 +1,18 @@
+
+> @astraeus/st-johns-weather-map-web@0.0.1 build
+> tsc -b && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 919 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     1.15 kB │ gzip:   0.57 kB
+dist/assets/index-D4M171n1.css    141.69 kB │ gzip:  24.25 kB
+dist/assets/index-uemJ6lyh.js   2,385.74 kB │ gzip: 674.39 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.41s

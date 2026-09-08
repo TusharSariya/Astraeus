@@ -1,5 +1,29 @@
 # Autonomous execution handoff: deliver the working desktop evidence app
 
+## Layer-default and failure-reason correction, September 8
+
+PR #306 now uses current HRDPS cloud and selected-time CAP default identities.
+Explicit linked/saved selections remain unchanged until a supported replacement
+is clicked; the replacement preserves stack settings and keyboard focus.
+Layer details and Inspect retain catalogue notices and draw failure reasons.
+The shared feature loader now honors unavailable/missing/unknown body data modes
+on HTTP 200; successful empty responses have a distinct “No features returned”
+state. Existing constructed feature fixtures now declare their data mode.
+
+582 frontend tests, build, strict OpenSpec and specctl pass. Map-first and timeline
+Chrome proofs pass, including URL restoration, saved stacks, focus/camera and all
+viewport/theme/zoom combinations. A bounded actual Chrome proof draws the real
+HRDPS 13:00Z cloud image after repairing the retired selection. CAP independently
+returns a valid zero-alert result. [Full evidence](../evidence/layer-repair-20260908/README.md).
+
+The local API was rebuilt from this branch while retaining its existing Compose
+configuration/data volumes. An intermittent CPU-busy API stall required a restart
+before the final live proof; this performance issue is not claimed fixed. Radar
+and lightning still expose September 3 frames, and some layer evidence classes
+remain undeclared. These are source/runtime limitations, not silently repaired
+with substitute evidence. #70 stays incomplete; #38 stays open for owner visual
+acceptance. Frontend remains http://localhost:5197.
+
 ## Native-frame timeline correction, September 8
 
 The owner selected the compact + expandable track design and exact 1/2/4/8/15/30

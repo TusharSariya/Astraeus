@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Layers are an additive stack with per-layer opacity and published draw order
-The map SHALL support several layers drawn at once, each toggleable and each with its own opacity control. The reader SHALL be able to reorder the stack, and the current order, opacity, and visibility SHALL be represented in the URL. A reader with no saved or linked stack SHALL receive the five-layer Nowcast built-in selected in Wayfinder #46; a Saved stack loaded from the browser or URL SHALL replace the current stack explicitly. Every requested layer SHALL still resolve and fail independently, so an unavailable default member never becomes a substitute value or removes the remaining stack.
+The map SHALL support several layers drawn at once, each toggleable and each with its own opacity control. The reader SHALL be able to reorder the stack, and the current order, opacity, and visibility SHALL be represented in the URL. A reader with no saved or linked stack SHALL receive the five-layer Nowcast built-in with the roles selected in Wayfinder #46 and current delivery identities (GOES natural colour `geomet-live-goes-east-naturalcolor`, HRDPS cloud `geomet-live-hrdps-nt`, selected-time CAP `eccc-cap-alerts-current`, radar `eccc-radar-radar`, lightning `eccc-lightning-lightning`); a Saved stack loaded from the browser or URL SHALL replace the current stack explicitly. Every requested layer SHALL still resolve and fail independently, so an unavailable default member never becomes a substitute value or removes the remaining stack.
 
 #### Scenario: Radar over a field
 - **WHEN** two layers are enabled
@@ -22,3 +22,28 @@ The map SHALL support several layers drawn at once, each toggleable and each wit
 #### Scenario: No layer published
 - **WHEN** `/layers` returns nothing or could not be read
 - **THEN** the selector shows a status message naming the reason, the map remains a basemap, and no layer is invented
+
+#### Scenario: Retired linked or saved layer
+- **WHEN** an explicit stack names a retired delivery identity
+- **THEN** the selection is preserved, its absence is explained, and a known replacement is offered only if it is published in the current catalogue and not already selected
+- **AND** accepting replacement preserves drawing position, visibility and opacity, focuses the replacement's visibility control, and changes the URL through the existing stack update
+- **AND** saving/loading a stack retains exactly its requested identities
+
+#### Scenario: Distinguishing catalogue and draw failures
+- **WHEN** a selected layer cannot draw
+- **THEN** the row distinguishes catalogue loading, catalogue request failure, successful catalogue absence, draw loading and unavailable imagery
+- **AND** details expose the returned draw reason and catalogue notices without asserting a provider HTTP failure, empty dataset or cache hit that the response does not establish
+
+Verification: `web/src/workbench/MapStack.test.tsx` exercises default identities,
+explicit replacement, preserved selection settings and focus, duplicate refusal,
+loading/failure/absence states and retained saved selections. Browser verification
+checks replacement and URL restoration using constructed responses, plus a bounded
+live catalogue/raster check recorded separately from fixture evidence.
+
+The feature loader also conforms to the accepted `evidence-truth-boundary`
+requirements “The browser trusts the declared mode, not the status code” and
+“An empty retrieved answer is distinct from no retrieval”. Mapped regressions in
+`web/src/api.test.ts` reject unavailable/missing/unknown modes even on HTTP 200
+and retain provider notices. `web/src/MapPanel.test.tsx` and
+`web/src/workbench/MapStack.test.tsx` verify that a successful empty collection
+emits an empty receipt and a “No features returned” row rather than an outage.

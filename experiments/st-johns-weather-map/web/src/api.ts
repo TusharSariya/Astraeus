@@ -2028,8 +2028,13 @@ export async function loadLayerFeatures(
     const url = `${prefix}/layers/${encodeURIComponent(layer.id)}/features?valid_time=${encodeURIComponent(frame.time)}`
     const response = await fetch(url, { signal, headers: { Accept: 'application/geo+json,application/json' } })
     if (!response.ok) return { features: [], error: `feature request returned ${response.status}` }
-    const body = (await response.json()) as Partial<LayerFeatureCollection>
-    if (!Array.isArray(body.features)) return { features: [], error: 'feature request returned an incompatible schema' }
+    const body = (await response.json()) as Partial<LayerFeatureCollection> | null
+    if (!body || body.type !== 'FeatureCollection' || !Array.isArray(body.features)) return { features: [], error: 'feature request returned an incompatible schema' }
+    if (toDataMode(body.data_mode) === 'unavailable') {
+      const notices = Array.isArray(body.notices) ? body.notices.filter((notice): notice is string => typeof notice === 'string') : []
+      const reason = body.data_mode === undefined ? 'Feature response declared no data_mode' : `Feature response declared data_mode "${body.data_mode}"`
+      return { features: [], error: [reason, ...notices].join(' · ') }
+    }
     return { features: body.features, error: null }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error

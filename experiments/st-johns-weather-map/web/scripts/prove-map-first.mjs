@@ -8,7 +8,7 @@ const output = process.env.BENCH_PROOF_DIR ?? '/tmp/astraeus-map-first-proof'
 const before = process.env.BENCH_BEFORE === '1'
 await mkdir(output, { recursive: true })
 const at = '2026-09-07T12:00:00.000Z'
-const layerId = 'eccc-hrdps-surface-total-cloud'
+const layerId = 'geomet-live-hrdps-nt'
 const layer = { id: layerId, title: 'HRDPS total cloud · fixed fixture with a deliberately long provider and layer label for truncation verification', kind: 'points', field: 'total_cloud', field_key: 'cloud_area_fraction_total', family: 'cloud_cover', product: 'HRDPS', units: '%', semantics: 'Fixed constructed test values; no live weather retrieval.', times: [at], staleness_tolerance_seconds: 3600, evidence_class: 'retrieved', evidence_basis: 'published_artifact', data_mode: 'fixture', raster_available: false }
 const browser = await chromium.launchPersistentContext(await mkdtemp(`${tmpdir()}/map-first-chrome-`), { channel: 'chrome', headless: true, viewport: { width: 1440, height: 900 } })
 const page = await browser.newPage()
@@ -32,7 +32,7 @@ await page.route('**/*', async (route) => {
       { field: 'total_cloud', value: 65, family: 'cloud_cover', provenance: { source_id: 'eccc-hrdps', provider: 'ECCC', product: 'HRDPS', normalized_units: '%', evidence_class: 'retrieved', data_mode: 'fixture', valid_time: at, quality: { status: 'unknown', flags: [] } } },
     ], notices: ['FIXED CONSTRUCTED BROWSER PROOF · not live evidence'] }
   } else if (path === '/layers') body = { data_mode: 'fixture', layers: url.searchParams.get('product') === 'CAP' ? [] : [layer], notices: [] }
-  else if (path.endsWith('/features')) body = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [-52.6, 47.5] }, properties: { value: 65 } }] }
+  else if (path.endsWith('/features')) body = { type: 'FeatureCollection', data_mode: 'fixture', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [-52.6, 47.5] }, properties: { value: 65 } }] }
   else if (path === '/catalog') body = { data_mode: 'fixture', sources: [] }
   else if (path === '/sources/status') body = { data_mode: 'fixture', statuses: [], notices: [] }
   else if (path === '/methods') body = { data_mode: 'fixture', methods: [], notices: [] }
@@ -183,6 +183,25 @@ try {
         }
       }
     }
+    // A retired URL stays explicit until the reader accepts its declared replacement.
+    const retiredId = 'eccc-hrdps-surface-total-cloud'
+    const oldStack = [{ id: retiredId, visible: false, opacity: .35 }]
+    await page.goto(`${base}/?t=${at}&stack=${encodeURIComponent(JSON.stringify(oldStack))}`)
+    await page.getByRole('button',{name:'Layers',exact:true}).click()
+    await page.getByText(/Stored HRDPS cloud delivery was retired/).waitFor()
+    assert.deepEqual(JSON.parse(new URL(page.url()).searchParams.get('stack')),oldStack)
+    await page.screenshot({path:`${output}/retired-selection.png`})
+    await page.getByRole('button',{name:`Use ${layer.title}`,exact:true}).click()
+    const repairedStack=[{...oldStack[0],id:layerId}]
+    assert.deepEqual(JSON.parse(new URL(page.url()).searchParams.get('stack')),repairedStack)
+    assert.equal(await page.getByRole('checkbox',{name:`Show ${layer.title}`}).evaluate(el=>el===document.activeElement),true)
+    await page.screenshot({path:`${output}/repaired-selection.png`})
+    await page.reload()
+    await page.getByRole('button',{name:'Layers',exact:true}).click()
+    assert.deepEqual(JSON.parse(new URL(page.url()).searchParams.get('stack')),repairedStack)
+    await page.getByRole('checkbox',{name:`Show ${layer.title}`}).waitFor()
+    assert.equal(await page.getByRole('checkbox',{name:`Show ${layer.title}`}).isChecked(),false)
+    assert.equal(requests.some(path=>path.includes(`/layers/${retiredId}/`)),false)
     holdPoint=true; failLayers=true
     await page.goto(`${base}/?t=${at}`)
     await page.getByText('Loading point evidence',{exact:true}).waitFor()

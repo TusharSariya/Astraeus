@@ -1,0 +1,36 @@
+{
+  "at": "2026-09-08T12:52:44.607Z",
+  "scope": "Live catalogue and cloud imagery; unrelated API responses explicitly unavailable; live OpenFreeMap tiles",
+  "requests": [
+    "/layers",
+    "/layers",
+    "/layers/geomet-live-hrdps-nt/raster?south=45.51143&west=-58.48556&north=49.51225&east=-47.31444&width=1438&height=763&crs=EPSG%3A3857&valid_time=2026-09-08T13%3A00%3A00Z"
+  ],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:5197/api/experiments/weather/v0/layers/geomet-live-hrdps-nt/raster?south=45.51143&west=-58.48556&north=49.51225&east=-47.31444&width=1438&height=763&crs=EPSG%3A3857&valid_time=2026-09-08T13%3A00%3A00Z",
+      "status": 200,
+      "headers": {
+        "x-weather-upstream-url": "https://geo.weather.gc.ca/geomet/?service=WMS&version=1.3.0&request=GetMap&layers=HRDPS.CONTINENTAL_NT&crs=EPSG%3A3857&bbox=-6510582.757959449%2C5702398.246935857%2C-5267019.367968895%2C6362230.731041082&width=1438&height=763&format=image%2Fpng&transparent=TRUE&TIME=2026-09-08T13%3A00%3A00Z&DIM_REFERENCE_TIME=2026-09-08T06%3A00%3A00Z",
+        "x-weather-layer-id": "geomet-live-hrdps-nt",
+        "x-weather-image-basis": "live_proxy",
+        "x-weather-valid-time": "2026-09-08T13:00:00+00:00",
+        "x-weather-licence": "Environment and Climate Change Canada Data Servers End-use Licence",
+        "x-weather-reference-time": "2026-09-08T06:00:00+00:00",
+        "x-weather-retrieval-status": "retrieved",
+        "content-type": "image/png",
+        "x-weather-evidence-basis": "live_proxy",
+        "x-weather-data-mode": "live",
+        "cache-control": "public, max-age=60",
+        "x-weather-render-semantics": "a fully transparent image means retrieved and nothing detected, not unavailable",
+        "x-weather-attribution": "Environment and Climate Change Canada - MSC GeoMet",
+        "x-weather-crs": "EPSG:3857",
+        "x-weather-operational": "false",
+        "x-weather-byte-size": "291294",
+        "x-weather-wms-layer": "HRDPS.CONTINENTAL_NT",
+        "x-weather-time-semantics": "valid at the instant in X-Weather-Valid-Time"
+      }
+    }
+  ],
+  "errors": []
+}

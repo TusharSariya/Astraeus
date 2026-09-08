@@ -1,0 +1,89 @@
+
+> @astraeus/st-johns-weather-map-web@0.0.1 test
+> vitest run
+
+ Vitest  "providerOptions" in "gl" project is ignored because it's overridden by the configs. To hide this warning, remove the "providerOptions" property from the browser configuration.
+
+ RUN  v3.2.7 /Users/tusharsariya/Projects/Astraeus-map-first/experiments/st-johns-weather-map/web
+
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > draws exactly the real frames at t=0 and t=1, envelope on or off
+[H1 readback] envelope=0 t=0 -> 0, t=1 -> 255
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > draws exactly the real frames at t=0 and t=1, envelope on or off
+[H1 readback] envelope=1 t=0 -> 0, t=1 -> 255
+ ✓ |unit| src/workbench/sourceDelivery.test.tsx (8 tests) 413ms
+ ✓ |unit| src/workbench/WorkbenchShell.test.tsx (5 tests) 582ms
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > adds the served envelope at the midpoint: 0.5 + 0.25*a, and nothing without it
+[H1 readback] t=0.5 with envelope (a=0.4039) -> 153 (expected ~153); without -> 128 (expected ~128)
+ ✓ |unit| src/workbench/ActivityView.test.tsx (6 tests) 586ms
+ ✓ |unit| src/workbench/SourcesView.test.tsx (4 tests) 577ms
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > scales the envelope by the served percent, and a negative residual removes cloud
+[H1 readback] t=0.5 scale 50 -> 140 (expected ~140); negative a -> 102 (expected ~102)
+ ✓ |unit| src/workbench/NativeSeries.test.tsx (9 tests) 870ms
+ ✓ |unit| src/derived-inputs.test.tsx (6 tests) 656ms
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > hands the whole pixel to frame 0 under the visibility branch when v0=1, v1=0 at t=0.5
+[H1 readback] visibility v0=1,v1=0 t=0.5: frame0=0 -> 0; frame0=64 -> 64; symmetric mix of 64/255 -> 160
+ ✓ |gl (chromium)| src/FlowBlendLayer.browser.test.ts (8 tests) 890ms
+ ✓ |unit| src/evidence-class.test.tsx (12 tests) 932ms
+ ✓ |unit| src/field-family.test.tsx (25 tests) 995ms
+   ✓ a difference between non-comparable members is refused with the reason > refuses HRDPS minus GFS cloud in the interface, showing the reason  337ms
+ ✓ |unit| src/delivery-kind.test.tsx (20 tests) 996ms
+ ✓ |unit| src/workbench/NativeImages.test.tsx (9 tests) 184ms
+ ✓ |unit| src/ensemble.test.tsx (13 tests) 1066ms
+   ✓ the panel and the text alternative, rendered > sends the selected member as a request parameter  425ms
+ ✓ |unit| src/sites/site-preferred.test.tsx (7 tests) 296ms
+ ✓ |unit| src/field-family-catalogue.test.ts (2 tests) 128ms
+ ✓ |unit| src/aged-out.test.tsx (12 tests) 268ms
+ ✓ |unit| src/workbench/MapStack.test.tsx (12 tests) 471ms
+   ✓ keeps absent layers in top-first order, hides without removing, and replaces Saved stacks  355ms
+ ✓ |unit| src/workbench/layerIdentity.test.tsx (3 tests) 201ms
+ ✓ |unit| src/profiles/profile-contract.test.tsx (11 tests) 112ms
+ ✓ |unit| src/workbench/EvidenceInspector.test.tsx (5 tests) 155ms
+ ✓ |unit| src/workbench/MapEvidenceDetails.test.tsx (4 tests) 178ms
+ ✓ |unit| src/workbench/nativeProofFixtures.test.tsx (4 tests) 111ms
+ ✓ |unit| src/workbench/SkyView.test.tsx (4 tests) 105ms
+ ✓ |unit| src/cameras/camera-frames.test.tsx (9 tests) 115ms
+ ✓ |unit| src/coverage.test.tsx (13 tests) 81ms
+ ✓ |unit| src/workbench/inspectorReturn.test.tsx (2 tests) 130ms
+ ✓ |unit| src/boundary.test.tsx (18 tests) 70ms
+ ✓ |unit| src/api.test.ts (101 tests) 200ms
+ ✓ |unit| src/theme.test.tsx (2 tests) 16ms
+ ✓ |unit| src/timelineModel.test.ts (6 tests) 5ms
+ ✓ |unit| src/observationReceipt.test.ts (2 tests) 5ms
+ ✓ |unit| src/scrubberAxis.test.ts (13 tests) 19ms
+ ✓ |unit| src/pointProducts.test.ts (10 tests) 6ms
+ ✓ |unit| src/runchange.test.tsx (11 tests) 3ms
+ ✓ |unit| src/workbench/focusUrl.test.ts (3 tests) 5ms
+ ✓ |unit| src/FlowBlendLayer.test.ts (18 tests) 3ms
+ ✓ |unit| src/playback.test.ts (8 tests) 2ms
+ ✓ |unit| src/MapPanel.test.tsx (70 tests) 2742ms
+ ✓ |unit| src/mapStyle.test.ts (2 tests) 2ms
+ ✓ |unit| src/sourceContract.test.ts (3 tests) 1ms
+ ✓ |unit| src/workbench/DesktopApp.test.tsx (8 tests) 3185ms
+   ✓ keeps an explicitly fixed instant equal to Now fixed, then makes Now links session-relative  345ms
+   ✓ keeps keyboard inspection coherent across a response and theme change  675ms
+   ✓ reads a same-second Focus change exactly and clears old point evidence on failure  734ms
+   ✓ shares loaded native pages with Sources and clears its open inspector on fixed expiry without fetching again  797ms
+   ✓ keeps exact minute steps separate from native frame navigation and preserves instant across range changes  326ms
+ ✓ |unit| src/App.test.tsx (94 tests) 13625ms
+   ✓ weather workbench fail-closed behavior > shows point provenance notices in Brief and Workbench  452ms
+   ✓ weather workbench fail-closed behavior > clears prior CAP evidence while a new selected-time request is pending  500ms
+   ✓ weather workbench fail-closed behavior > renders level-qualified HRDPS values when the expert profile response completes  510ms
+   ✓ weather workbench fail-closed behavior > does not let an aborted profile response erase the newer selection  690ms
+   ✓ weather workbench fail-closed behavior > supports keyboard coordinate entry and validates bounds  384ms
+   ✓ story card keyboard activation > activates a story card from the keyboard alone, with the readings in its accessible name  340ms
+   ✓ space weather cards: Kp and Bz, fail-closed > renders the latest observed Kp, the windowed forecast max with its provider status, and Bz with its instant  324ms
+   ✓ space weather cards: Kp and Bz, fail-closed > says space weather is unavailable, with the API reason, instead of showing a quiet zero  383ms
+   ✓ space weather cards: Kp and Bz, fail-closed > marks a stale Bz as stale with its age rather than presenting it as current  383ms
+   ✓ space weather cards: Kp and Bz, fail-closed > labels missing native spacecraft, Bt, flags, quality, and transport as unknown  388ms
+   ✓ timeline dock: interpolation setting and frame snapping > snaps keyboard scrubbing to the exact published frame instants of the active layers  350ms
+   ✓ timeline dock: interpolation setting and frame snapping > does not request TAF at animation-frame cadence  341ms
+   ✓ timeline dock: interpolation setting and frame snapping > does not request Kp at animation-frame cadence  692ms
+   ✓ timeline dock: interpolation setting and frame snapping > clears solar-wind evidence while scrubbing and ignores an aborted older response  693ms
+   ✓ timeline dock: interpolation setting and frame snapping > doubles and halves the speed within the ladder, clamping at both ends  491ms
+   ✓ preserves an explicit older Focus for declared OSTIA SST even with unavailable point evidence  614ms
+
+ Test Files  41 passed (41)
+      Tests  582 passed (582)
+   Start at  10:18:43
+   Duration  15.23s (transform 2.17s, setup 4.20s, collect 8.99s, tests 30.99s, environment 12.75s, prepare 4.52s)
+

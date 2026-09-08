@@ -64,3 +64,16 @@ experimental desktop revision supersedes the older continuous playback ladder
 and five-minute free scrub decisions for the current workbench. API, acquisition,
 scientific, evidence and phone boundaries remain unchanged. No verified status
 is asserted. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.
+
+## Owner-authorized layer-default repair, September 8, 2026
+
+After inspecting the retired cloud selection, the owner requested: “ok if that
+issue is wide spread can you fix it?” This authorizes correcting built-in delivery
+identities to the current API catalogue and explaining missing selections. The
+five Nowcast roles stay the same: GOES natural colour, HRDPS total cloud, CAP
+alerts, radar and lightning. The cloud default uses the declared GeoMet live
+proxy; CAP uses its selected-time demand features. These keep their returned
+evidence basis, including live-proxy limitations. Existing linked/saved stacks
+are never silently migrated; a supported replacement requires an explicit click.
+This is a non-breaking correction within the isolated desktop experiment. No
+new provider acquisition, scientific rule or verified status is authorized.
