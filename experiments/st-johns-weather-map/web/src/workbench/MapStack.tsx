@@ -13,6 +13,7 @@ import { EvidenceGlyph, type InspectedEvidence } from './EvidenceInspector'
 export const NOWCAST_STACK: LayerSelection[] = ['geomet-live-goes-east-naturalcolor', 'eccc-hrdps-surface-total-cloud', 'eccc-cap-alerts-alerts_features', 'eccc-radar-radar', 'eccc-lightning-lightning'].map((id) => ({ id, opacity: 0.85, visible: true }))
 export interface DrawEvidence {
   id: string; drawn: boolean; description: string; times: string[]
+  status?: 'loading' | 'refreshing' | 'drawn' | 'unavailable' | 'hidden'
   selection?: { latitude: number; longitude: number; instant: number }
   evidenceClass?: ResolvedEvidenceClass
   images?: Array<{ frame: string; weight: number; request: unknown; provenance: unknown }>

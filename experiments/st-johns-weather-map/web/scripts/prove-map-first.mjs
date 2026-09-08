@@ -1,4 +1,4 @@
-// Fixed-response browser proof. No live weather or reference-map provider calls.
+// Constructed weather responses; live OpenFreeMap reference tiles.
 import { chromium } from 'playwright'
 import { mkdir, writeFile, mkdtemp } from 'node:fs/promises'
 import assert from 'node:assert/strict'
@@ -135,7 +135,8 @@ try {
     await canvas.focus(); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(500)
     await page.mouse.move(500,250); await page.mouse.down(); await page.mouse.move(740,250,{steps:10}); await page.mouse.up(); await page.waitForTimeout(600)
     const scale = await page.locator('.maplibregl-ctrl-scale').textContent()
-    await canvas.click({position:{x:640,y:336}})
+    const mapSize = await canvas.boundingBox()
+    await canvas.click({position:{x:mapSize.width/2,y:mapSize.height/2}})
     await page.waitForFunction(()=>new URL(location.href).searchParams.get('lat')!=='47.5123456789')
     const pointBefore = ['lat','lon'].map(key=>new URL(page.url()).searchParams.get(key))
     for (const view of ['Series','Sky','Activity','Sources','Map']) {
@@ -148,18 +149,18 @@ try {
     assert.equal(await handle.evaluate(el=>el===document.querySelector('.maplibregl-canvas')),true)
     assert.equal(await page.locator('.maplibregl-ctrl-scale').textContent(),scale)
     assert.deepEqual(['lat','lon'].map(key=>new URL(page.url()).searchParams.get(key)),pointBefore)
-    await canvas.click({position:{x:640,y:336}})
+    await canvas.click({position:{x:mapSize.width/2,y:mapSize.height/2}})
     await page.waitForTimeout(100)
     const pointAfter = ['lat','lon'].map(key=>new URL(page.url()).searchParams.get(key))
     pointAfter.forEach((value,index)=>assert.ok(Math.abs(Number(value)-Number(pointBefore[index]))<1e-8, `Camera changed: ${pointBefore} -> ${pointAfter}`))
-    await page.getByRole('button',{name:'Timeline details',exact:true}).click()
+    await page.getByRole('button',{name:'Tracks',exact:true}).click()
     const openMeasure = await measure(); assert.ok(openMeasure.mapFraction>=.80)
     await page.screenshot({path:`${output}/timeline-open.png`})
-    await page.getByRole('button',{name:'Close timeline details',exact:true}).click()
     await page.getByRole('button',{name:'Weather story',exact:true}).click()
     assert.equal((await measure()).mapHeight,openMeasure.mapHeight)
     await page.screenshot({path:`${output}/weather-story-open.png`})
-    await page.getByRole('button',{name:'Weather story',exact:true}).click()
+    await page.locator('#story-flyout').getByRole('button',{name:'Close',exact:true}).click()
+    assert.equal(await page.getByRole('button',{name:'Tracks',exact:true}).evaluate(el=>el===document.activeElement),true)
     // Set real Chrome page zoom, then verify the CSS viewport and device pixel ratio.
     const settings = await browser.newPage(); await settings.goto('chrome://settings/appearance'); await settings.locator('#zoomLevel').selectOption({label:'200%'}); await settings.close()
     for (const [width,height] of [[1280,800],[1440,900],[1920,1080]]) {

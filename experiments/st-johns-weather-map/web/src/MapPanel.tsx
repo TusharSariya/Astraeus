@@ -1319,6 +1319,7 @@ export function MapPanel({
     const times = slots.map((slot) => slot.image.provenance.validTime ?? new Date(slot.frame.time).toISOString()).concat(visible && features?.status === 'drawn' ? [new Date(features.frame.time).toISOString()] : [])
     return {
       selection, id: entry.id,
+      status: !visible ? 'hidden' : raster?.status === 'refreshing' ? 'refreshing' : raster?.status === 'requesting' || features?.status === 'loading' ? 'loading' : slots.length > 0 || features?.status === 'drawn' ? 'drawn' : 'unavailable',
       drawn: visible && (slots.length > 0 || features?.status === 'drawn'),
       description: !entry.visible ? 'Hidden by reader.' : entry.opacity <= 0 ? 'Opacity is zero; no image or feature is visible.' : !layer ? 'Requested layer unavailable in published response.' : `${describeState(layer)} ${describeRaster(layer)} ${fallbackNotes.find((note) => note.layer.id === entry.id)?.text ?? ''}`,
       times,

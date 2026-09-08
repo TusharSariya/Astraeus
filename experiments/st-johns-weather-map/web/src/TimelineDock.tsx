@@ -5,9 +5,10 @@
  *  playback clock live in one place (App) for both this and the expert
  *  slider. */
 
+import { DesktopTimeline, type DesktopTimelineOptions } from './DesktopTimeline'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { stJohnsTime, type FrameMarkers, type InterpolationMethodItem } from './api'
-import { CoveragePanel, resolveCoverageState, timelineItemForInstant } from './CoveragePanel'
+import { CoveragePanel } from './CoveragePanel'
 import { MethodMenu } from './MethodMenu'
 import { describeSpeed, PLAYBACK_SPEEDS, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { placeScaleMarks, textMeasurer } from './scrubberAxis'
@@ -16,6 +17,7 @@ import type { TimelineResponse } from './types'
 
 export interface TimelineDockProps {
   compact?: boolean
+  desktop?: DesktopTimelineOptions
   offsetMinutes: number
   scrubOffset: string
   /** The effective selected instant on the St. John's clock. */
@@ -71,19 +73,20 @@ const QUICK_JUMPS = [-3, -1, 0, 3, 6, 12, 18, 24]
  *  under the thumb's centre rather than drifting toward the ends. */
 const THUMB_PX = 18
 
-export function TimelineDock({
+export function TimelineDock(props: TimelineDockProps) {
+  if (props.compact && props.desktop) return <DesktopTimeline {...props} desktop={props.desktop} />
+  return <LegacyTimelineDock {...props} />
+}
+
+function LegacyTimelineDock({
   offsetMinutes, scrubOffset, validClock, backMinutes, forwardMinutes, snapping, ariaValueText,
   onScrubMinutes, onScrubKeyDown, onQuickJump, windowStartMs, windowEndMs, markers, onJumpToInstant,
   playing, speed, direction, onTogglePlay, onFaster, onSlower, onToggleDirection,
   interpolate, onToggleInterpolate,
   methods, method, onSelectMethod, methodNotices, methodError,
   storyOpen, onToggleStory, storyToggleRef,
-  timeline, timelineError, selectedMs, compact = false,
+  timeline, timelineError, selectedMs,
 }: TimelineDockProps) {
-  const [expanded, setExpanded] = useState(false)
-  const detailsButton = useRef<HTMLButtonElement>(null)
-  const coverage = resolveCoverageState(timeline, timelineError, timeline ? timelineItemForInstant(timeline.items, selectedMs) : null)
-  const coverageLabel = coverage.kind === 'entries' ? `${coverage.entries.length} covering sources` : coverage.kind === 'empty' ? 'Nothing covers this instant' : 'Coverage unavailable'
   const span = windowEndMs - windowStartMs
   const boundary = useMemo(
     () => boundaryMark(timeline?.boundary ?? null, timeline?.tiers ?? null, windowStartMs, windowEndMs),
@@ -143,19 +146,7 @@ export function TimelineDock({
   // change point can be detected instant by instant without re-scanning.
   const lastRunByLayer = new Map<string, string | null>()
   return (
-    <div className={compact ? 'bench-time-control' : undefined} onKeyDown={event => {
-      if (compact && expanded && event.key === 'Escape' && !event.defaultPrevented) { event.stopPropagation(); event.preventDefault(); setExpanded(false); detailsButton.current?.focus() }
-    }}>
-      {compact && <div className="bench-time-slim">
-        <button aria-label={playing ? 'Pause' : 'Play'} aria-pressed={playing} onClick={onTogglePlay}>{playing ? 'Ⅱ' : '▶'}</button>
-        <div className="bench-time-selected"><strong>{validClock} NT · {scrubOffset}</strong><small title={coverage.kind === 'unavailable' ? coverage.reason : coverageLabel}>{coverageLabel}</small></div>
-        <input aria-label="Valid timeline scrubber" aria-valuetext={ariaValueText} type="range" min={-backMinutes} max={forwardMinutes} step={1} value={offsetMinutes} onChange={event => onScrubMinutes(Number(event.target.value))} onKeyDown={onScrubKeyDown} />
-        <button onClick={() => onQuickJump(0)}>Now</button>
-        <button ref={detailsButton} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>Timeline details</button>
-        <button ref={!expanded ? storyToggleRef : undefined} aria-expanded={storyOpen} onClick={onToggleStory}>Weather story</button>
-      </div>}
-    <section hidden={compact && !expanded} className={`timeline-dock${compact ? ' bench-time-expanded' : ''}`} aria-label="Scrub timeline">
-      {compact && <button onClick={() => { setExpanded(false); detailsButton.current?.focus() }}>Close timeline details</button>}
+    <div><section className="timeline-dock" aria-label="Scrub timeline">
       <div className="timeline-dock-head">
         <div className="story-scrubber-badge">
           <span>Valid:</span>
@@ -187,7 +178,7 @@ export function TimelineDock({
         )}
         <button
           type="button"
-          ref={!compact || expanded ? storyToggleRef : undefined}
+          ref={storyToggleRef}
           className={`dock-toggle ${storyOpen ? 'on' : ''}`}
           aria-expanded={storyOpen}
           aria-controls="story-flyout"
@@ -307,7 +298,7 @@ export function TimelineDock({
               onClick={onSlower}
               disabled={speed === PLAYBACK_SPEEDS[0]}
               aria-label="Slower"
-              title="Halve the playback speed"
+              title="Previous playback interval"
             >⏴⏴</button>
             <button
               type="button"
@@ -323,7 +314,7 @@ export function TimelineDock({
               onClick={onFaster}
               disabled={speed === PLAYBACK_SPEEDS[PLAYBACK_SPEEDS.length - 1]}
               aria-label="Faster"
-              title="Double the playback speed"
+              title="Next playback interval"
             >⏵⏵</button>
             <button
               type="button"

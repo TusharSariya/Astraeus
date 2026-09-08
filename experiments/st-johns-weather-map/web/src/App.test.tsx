@@ -1763,7 +1763,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     vi.stubGlobal('fetch', routedFetch({}))
     render(<App initialLayout="legacy" />)
     const play = await screen.findByRole('button', { name: 'Play' })
-    expect(screen.getByText('1 min/s')).toBeInTheDocument()
+    expect(screen.getByText('1 min each second')).toBeInTheDocument()
     await userEvent.click(play)
 
     // The first frame only establishes the clock; the second advances by the
@@ -1850,7 +1850,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
 
     await userEvent.click(faster)
     await userEvent.click(faster)
-    expect(screen.getByText('4 min/s')).toBeInTheDocument()
+    expect(screen.getByText('4 min each second')).toBeInTheDocument()
     expect(slower).toBeEnabled()
 
     await userEvent.click(screen.getByRole('button', { name: 'Play' }))
@@ -1859,7 +1859,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     expect(screen.getByText(/\+4 min \(Forecast\)/, { selector: '.story-scrubber-badge strong' })).toBeInTheDocument()
 
     for (let press = 0; press < 5; press += 1) await userEvent.click(faster)
-    expect(screen.getByText('32 min/s')).toBeInTheDocument()
+    expect(screen.getByText('30 min each second')).toBeInTheDocument()
     expect(faster).toBeDisabled()
   })
 
@@ -1871,7 +1871,7 @@ describe('timeline dock: interpolation setting and frame snapping', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Faster' }))
     await userEvent.click(reverse)
     expect(reverse).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('◀ 2 min/s')).toBeInTheDocument()
+    expect(screen.getByText('◀ 2 min each second')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Play' }))
     await frame(1000)

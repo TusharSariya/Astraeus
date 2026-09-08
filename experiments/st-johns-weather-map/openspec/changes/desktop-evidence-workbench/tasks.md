@@ -447,3 +447,15 @@ Implementation and automated verification are recorded in the
 - [ ] Owner visual acceptance of the correction; #38 remains open.
 
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.
+
+
+## Native-frame timeline revision — owner authorized September 8
+
+- [x] Record the accepted compact + expandable tracks and step + playback revision.
+- [x] Implement three presentation ranges, exact native markers/clusters/search, per-layer status and coordinated overlay focus.
+- [x] Verify all intervals, background/resume, snapping, URL restoration and mixed native cadences with mapped frontend tests.
+- [x] Capture actual desktop and native 200% zoom matrices across all themes; verify saved stacks, five views, camera and request failures.
+- [x] Run 565 frontend tests, production build, strict OpenSpec and specctl (all pass).
+- [ ] Owner visual acceptance on #38; not inferred from automated checks.
+
+Evidence: `docs/evidence/native-timeline-20260908/README.md` (repo root).

@@ -165,3 +165,65 @@ The shell SHALL keep every currently usable response-backed panel or view reacha
 - **WHEN** the application is exercised at 1280×800, 1440×900 and 1920×1080
 - **THEN** actual browser captures cover closed/open panels, all themes and 200% zoom; no controls are clipped or obstructed and the page does not scroll unexpectedly
 - **AND** browser verification covers search, stack editing/saving, focus return, all views, URL restoration, unchanged camera, loading, failures, unavailable layers and long labels
+
+
+### Requirement: The compact timeline exposes transport and native frames
+The desktop timeline SHALL expose previous/next native frame, backward/forward
+fixed-minute step, play/pause, reverse, interval selection, selected date/time,
+Now, range selection and Tracks without opening details. The interval SHALL be
+1, 2, 4, 8, 15 or 30 minutes, initially 1. Playback SHALL advance one interval
+per wall-clock second, looping inside the displayed range, with no background
+catch-up. Manual selections and range changes SHALL pause playback. Fixed-minute
+steps SHALL not snap; frame actions SHALL select exact native timestamps.
+Drag scrubbing SHALL snap to the visible-frame union with interpolation off,
+otherwise to one minute. The current interpolation and per-layer resolution
+rules SHALL remain unchanged. These desktop rules replace the older 16/32 min/s
+continuous transport and five-minute free scrub behavior.
+
+#### Scenario: The owner chooses a two-minute interval
+- **WHEN** the reader steps forward or plays for one second
+- **THEN** selected time advances exactly two minutes even for an hourly layer; the layer's native frame and offset remain disclosed
+
+#### Scenario: Manual interaction interrupts playback
+- **WHEN** the reader drags, selects a marker, changes range or makes another manual time selection
+- **THEN** playback pauses and does not resume automatically
+
+### Requirement: Display ranges and layer tracks preserve exact shared time
+The client SHALL offer Near term (-1h..+6h), Day (-6h..+24h) and Outlook
+(-24h..+14d), relative to the fixed session reference, bounded by the API window.
+Near term SHALL be the default unless a restored selection needs a larger range.
+Range changes SHALL preserve selected time and camera. An offscreen selection
+SHALL offer a return to a containing range; Play outside a range SHALL begin at
+its directional boundary. Tracks SHALL expand over the map, initially closed,
+with one row per active stack entry in drawing order; hidden entries SHALL be
+labelled and excluded from combined navigation. Selected frame times, offsets,
+run changes, cadence and stale/loading/unavailable states SHALL remain distinct.
+The collapsed dock SHALL fit 80px at desktop sizes; at 200% zoom controls MAY
+reflow taller for access. Bottom expansions and right overlays SHALL coordinate
+so their controls do not obstruct one another. Escape SHALL close the current
+panel and restore focus.
+
+#### Scenario: Mixed resolutions and a restored outlook instant
+- **WHEN** radar, satellite, hourly and six-hourly layers are active and the URL restores +7d
+- **THEN** Outlook contains the exact instant, each row preserves native cadence and gaps, and map camera is unchanged
+
+### Requirement: Every returned frame timestamp remains reachable
+The compact axis SHALL show measured collision-free time labels, Now, date
+changes and the +24h planning boundary where applicable. It SHALL combine
+coincident native markers and cluster overlapping targets without losing any
+returned timestamp. Each cluster SHALL open a chronological exact-time chooser.
+Tracks SHALL include a searchable frame list. Hover and keyboard focus SHALL
+expose exact local date/time, UTC and declared forecast initialization separately.
+No acquisition time SHALL be invented or confused with forecast valid time.
+Published availability SHALL not be described as retrieved imagery without a
+matching draw receipt. Empty history, unknown axes and failed requests SHALL
+remain explicit; history and forecast classification SHALL come from the layer,
+not from which side of Now a timestamp falls on.
+
+#### Scenario: Dense historical frames
+- **WHEN** hundreds of frames overlap on Outlook
+- **THEN** counted clusters and the frame list expose every exact timestamp, selectable with pointer or keyboard
+
+#### Scenario: A request finishes after the playhead moves
+- **WHEN** imagery for an older selection arrives late
+- **THEN** it cannot replace newer selected evidence; any retained image is named at its actual time

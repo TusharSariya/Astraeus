@@ -2,12 +2,23 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { VIEWS, type View } from './focusUrl'
 import { Popover } from './Popover'
 interface Props {
+  timelineExpanded?: boolean; onDismissTimeline?: () => void
   view: View; dock: View | null; onView: (view: View) => void; onDock: (view: View | null) => void
   focus: ReactNode; status: ReactNode; statusLabel?: string; timeline: ReactNode; views: Record<View, ReactNode>
   onDismissInspector?: () => void; settings?: ReactNode; inspector?: ReactNode; layers?: ReactNode; evidence?: ReactNode; legends?: ReactNode
 }
 /** Mounted view slots preserve map camera and local view state across navigation/docking. */
-export function WorkbenchShell({ view, dock, onView, onDock, focus, status, statusLabel = 'API state', timeline, views, inspector, layers, evidence, legends, settings, onDismissInspector }: Props) {
+export function WorkbenchShell({ timelineExpanded = false, onDismissTimeline, view, dock, onView, onDock, focus, status, statusLabel = 'API state', timeline, views, inspector, layers, evidence, legends, settings, onDismissInspector }: Props) {
+  const stageRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const node = stageRef.current
+    if (!node) return
+    const measure = () => node.closest<HTMLElement>('.bench')?.style.setProperty('--bench-stage-height', `${node.getBoundingClientRect().height}px`)
+    measure()
+    if (typeof ResizeObserver !== 'function') return
+    const observer = new ResizeObserver(measure); observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
   const [fullScreen, setFullScreen] = useState<View | null>(null)
   const [panel, setPanel] = useState<'Layers' | 'Evidence' | null>(null)
   const panelOpener = useRef<HTMLButtonElement | null>(null)
@@ -18,10 +29,12 @@ export function WorkbenchShell({ view, dock, onView, onDock, focus, status, stat
   const lastVisible = useRef<Partial<Record<View, ReactNode>>>({})
   const shown = fullScreen ?? view
   useEffect(() => {
-    const open = () => { panelOpener.current = evidenceButton.current; setPanel('Evidence') }
+    const open = () => { window.dispatchEvent(new Event('bench-timeline-dismiss')); onDismissTimeline?.(); panelOpener.current = evidenceButton.current; setPanel('Evidence') }
+    const timeline = () => { setPanel(null); onDismissInspector?.() }
+    window.addEventListener('bench-timeline-activate', timeline)
     window.addEventListener('bench-map-evidence', open)
-    return () => window.removeEventListener('bench-map-evidence', open)
-  }, [])
+    return () => { window.removeEventListener('bench-map-evidence', open); window.removeEventListener('bench-timeline-activate', timeline) }
+  }, [onDismissTimeline, onDismissInspector])
   useEffect(() => {
     document.title = `${view} · Avalon Evidence Bench`
     if (previousView.current !== view) { document.getElementById(`view-${view}`)?.focus(); previousView.current = view }
@@ -32,9 +45,10 @@ export function WorkbenchShell({ view, dock, onView, onDock, focus, status, stat
     if (opener?.isConnected) (disclosure && !disclosure.open ? disclosure.querySelector('summary') : opener)?.focus()
     else document.getElementById('bench-stage')?.focus()
   }) }
+  useEffect(() => { if (timelineExpanded) setPanel(null) }, [timelineExpanded])
   const closePanel = () => { setPanel(null); panelOpener.current?.focus() }
-  const openPanel = (name: 'Layers' | 'Evidence', opener: HTMLButtonElement) => { panelOpener.current = opener; if (inspector) { onDismissInspector?.(); setPanel(name) } else setPanel(panel === name ? null : name) }
-  return <div className={`bench${fullScreen ? ' bench-fullscreen' : ''}`} onKeyDown={event => {
+  const openPanel = (name: 'Layers' | 'Evidence', opener: HTMLButtonElement) => { window.dispatchEvent(new Event('bench-timeline-dismiss')); onDismissTimeline?.(); panelOpener.current = opener; if (inspector) { onDismissInspector?.(); setPanel(name) } else setPanel(panel === name ? null : name) }
+  return <div className={`bench${fullScreen ? ' bench-fullscreen' : ''}${timelineExpanded ? ' timeline-is-expanded' : ''}`} onKeyDown={event => {
     if (event.key !== 'Escape' || event.defaultPrevented) return
     if (panel && !inspector) { event.stopPropagation(); closePanel() }
     else if (fullScreen && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLSelectElement)) exitFullScreen()
@@ -55,7 +69,7 @@ export function WorkbenchShell({ view, dock, onView, onDock, focus, status, stat
       <button aria-expanded={panel === 'Layers' && !inspector} onClick={event => openPanel('Layers', event.currentTarget)}>Layers</button>
       <Popover label="Settings" className="bench-settings">{settings}</Popover>
     </header>
-    <div className="bench-body">
+    <div ref={stageRef} className="bench-body">
       <main id="bench-stage" className={`bench-stage${!fullScreen && dock && dock !== view ? ' has-dock' : ''}`} tabIndex={-1}>
         {VIEWS.map(name => {
           const companion = !fullScreen && dock === name && dock !== view

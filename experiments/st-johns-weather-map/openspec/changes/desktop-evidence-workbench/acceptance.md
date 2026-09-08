@@ -54,3 +54,13 @@ retains the existing evidence, keyboard, API and acquisition requirements.
 The updated desktop contract is the current visual authority; older prototype
 and #41 references record history. #38 is reopened for correction and actual
 visual acceptance. No verified status or phone-scope change is authorized.
+
+## Owner-selected native-frame timeline revision, September 8, 2026
+
+The owner approved “Restore a usable, multilayer timeline” and explicitly
+instructed “Implement the plan.” This authorizes the desktop timeline requirement
+change below, including compact + expandable tracks and step + playback. This
+experimental desktop revision supersedes the older continuous playback ladder
+and five-minute free scrub decisions for the current workbench. API, acquisition,
+scientific, evidence and phone boundaries remain unchanged. No verified status
+is asserted. Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.

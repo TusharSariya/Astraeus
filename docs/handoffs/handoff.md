@@ -1,5 +1,21 @@
 # Autonomous execution handoff: deliver the working desktop evidence app
 
+## Native-frame timeline correction, September 8
+
+The owner selected the compact + expandable track design and exact 1/2/4/8/15/30
+minute step + playback behavior. PR #306 now exposes the transport and native
+markers in an 80px dock, with Near term/Day/Outlook ranges, exact cluster picks,
+per-layer tracks, timestamp search and selection-specific map receipts. The older
+72px minimal timeline and its hidden controls are superseded by this revision.
+
+565 frontend tests, production build, strict OpenSpec and specctl pass. Two real
+Chrome proof scripts pass: 38 timeline matrix/interaction captures plus the broader
+saved-stack, five-view, camera and failure-state regression. Closed map shares are
+83.0%, 84.9%, 87.4%. All themes and native 200% zoom passed without page scrolling.
+[Evidence and full timeline screenshot matrix](../evidence/native-timeline-20260908/README.md).
+The frontend remains at http://localhost:5197 in the isolated map-first worktree.
+#38 stays open for owner visual acceptance. No API/acquisition or phone scope change.
+
 ## Map-first visual correction, September 8
 
 The owner rejected the earlier visual-completion claim and selected the original
