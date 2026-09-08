@@ -3,10 +3,12 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 
-import h5py
 import httpx
 import numpy as np
 import pytest
+
+# This unregistered experiment uses h5py only in its prepared proof image.
+h5py = pytest.importorskip("h5py")
 
 from weather_api.graphcast_native import GraphCastObject, RangeRefused, read_point
 
